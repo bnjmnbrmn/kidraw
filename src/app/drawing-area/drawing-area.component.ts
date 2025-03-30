@@ -18,6 +18,8 @@ export class DrawingAreaComponent implements AfterViewInit {
   private crosshairsX!: number;
   private crosshairsY!: number;
 
+  private resizeObserver!: ResizeObserver;
+
   @Input({required: true}) commands!: Observable<string>;
 
   ngAfterViewInit(): void {
@@ -33,6 +35,18 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.drawCrosshairs()
 
     this.commands.subscribe(this.handleCommands.bind(this));
+
+    this.resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        console.log("entry: entry");
+        const { width, height } = entry.contentRect;
+        console.log(`New Size - Width: ${width}, Height: ${height}`);
+        this.canvas.height = this.componentNE.offsetHeight;
+        this.canvas.width = this.componentNE.offsetWidth;
+        this.redraw();
+      }
+    });
+    this.resizeObserver.observe(this.componentNE);
   }
 
   private redraw() {
