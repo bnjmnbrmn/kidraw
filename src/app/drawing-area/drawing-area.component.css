@@ -1,0 +1,12 @@
+:host {
+  background-color: lightgrey;
+  width: 100vw;
+  flex-shrink: 0;
+  flex-grow: 1;
+}
+
+
+canvas {
+  background-color: white;
+  display: block;
+}

@@ -1,0 +1,7 @@
+:host {
+  background-color: lightblue;
+  line-height: 3em;
+  width: 100vw;
+  text-align: center;
+  flex-shrink: 0;
+}
