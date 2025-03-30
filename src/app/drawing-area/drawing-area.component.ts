@@ -1,4 +1,5 @@
-import {AfterViewInit, Component, ElementRef, inject, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, inject, Input, ViewChild} from '@angular/core';
+import {Observable} from 'rxjs';
 
 @Component({
   selector: 'app-drawing-area',
@@ -14,19 +15,61 @@ export class DrawingAreaComponent implements AfterViewInit {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
 
+  private crosshairsX!: number;
+  private crosshairsY!: number;
+
+  @Input({required: true}) commands!: Observable<string>;
+
   ngAfterViewInit(): void {
     this.canvas = this.mainDrawingAreaER.nativeElement as HTMLCanvasElement;
     this.canvas.height = this.componentNE.offsetHeight;
     this.canvas.width = this.componentNE.offsetWidth;
     this.ctx = this.canvas.getContext("2d")!;
 
-    this.drawCrosshairs(this.ctx, this.canvas.width / 2, this.canvas.height / 2,
-      this.canvas.width, this.canvas.height
-    );
+    this.crosshairsX = this.canvas.width / 2;
+    this.crosshairsY = this.canvas.height / 2;
+
+    this.redraw();
+    this.drawCrosshairs()
+
+    this.commands.subscribe(this.handleCommands.bind(this));
   }
 
-  drawCrosshairs(c: CanvasRenderingContext2D, x: number, y: number,
-                 canvasWidth: number, canvasHeight: number) {
+  private redraw() {
+
+    this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
+    this.drawCrosshairs();
+
+  }
+
+  private handleCommands(command: string) {
+
+    console.log("command: " + command);
+
+    if (command === 'left') {
+      this.crosshairsX -= 10;
+    }
+    if (command === 'right') {
+      this.crosshairsX += 10;
+    }
+    if (command === 'up') {
+      this.crosshairsY -= 10;
+    }
+    if (command === 'down') {
+      this.crosshairsY += 10;
+    }
+
+    this.redraw();
+
+  }
+
+  private drawCrosshairs() {
+
+    const c = this.ctx;
+    const x = this.crosshairsX;
+    const y = this.crosshairsY;
+    const canvasWidth = this.canvas.width;
+    const canvasHeight = this.canvas.height;
 
     c.strokeStyle = 'rgba(0,0,0,0.2)'
     c.lineWidth = 2;
