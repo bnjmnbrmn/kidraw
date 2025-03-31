@@ -4,6 +4,7 @@ import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
+import {Command} from './drawing-area/command.model';
 
 @Component({
   selector: 'app-root',
@@ -13,9 +14,9 @@ import {Subject} from 'rxjs';
 })
 export class AppComponent {
 
-  commandsSubject: Subject<string> = new Subject<string>();
+  commandsSubject: Subject<Command> = new Subject<Command>();
 
-  relayKeymenuCommand(kmCommand: string) {
+  relayKeymenuCommand(kmCommand: Command) {
     console.log("kmCommand: " + kmCommand)
     this.commandsSubject.next(kmCommand);
   }

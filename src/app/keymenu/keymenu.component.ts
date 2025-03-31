@@ -1,4 +1,5 @@
 import {Component, EventEmitter, HostListener, Output} from '@angular/core';
+import type {Command} from "../drawing-area/command.model";
 
 @Component({
   selector: 'app-keymenu',
@@ -8,13 +9,13 @@ import {Component, EventEmitter, HostListener, Output} from '@angular/core';
 })
 export class KeymenuComponent {
 
-  @Output() keymenuOut = new EventEmitter<string>;
+  @Output() keymenuOut = new EventEmitter<Command>;
 
-  keyCommandMap: Map<string, string> = new Map(Object.entries({
-    h: 'left',
-    j: 'down',
-    k: 'up',
-    l: 'right',
+  keyCommandMap: Map<string, Command> = new Map(Object.entries({
+    h: {kind: "move-cursor-left"},
+    j: {kind: "move-cursor-down"},
+    k: {kind: "move-cursor-up"},
+    l: {kind: "move-cursor-right"},
   }));
 
   @HostListener('document:keydown', ["$event"])

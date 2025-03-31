@@ -1,5 +1,6 @@
 import {AfterViewInit, Component, ElementRef, inject, Input, ViewChild} from '@angular/core';
 import {Observable} from 'rxjs';
+import {Command} from './command.model';
 
 @Component({
   selector: 'app-drawing-area',
@@ -20,7 +21,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private resizeObserver!: ResizeObserver;
 
-  @Input({required: true}) commands!: Observable<string>;
+  @Input({required: true}) commands!: Observable<Command>;
 
   ngAfterViewInit(): void {
     this.canvas = this.mainDrawingAreaER.nativeElement as HTMLCanvasElement;
@@ -56,21 +57,22 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   }
 
-  private handleCommands(command: string) {
+  private handleCommands(command: Command) {
 
-    console.log("command: " + command);
-
-    if (command === 'left') {
-      this.crosshairsX -= 10;
-    }
-    if (command === 'right') {
-      this.crosshairsX += 10;
-    }
-    if (command === 'up') {
-      this.crosshairsY -= 10;
-    }
-    if (command === 'down') {
-      this.crosshairsY += 10;
+    console.log("Command: " + command);
+    switch (command.kind) {
+      case "move-cursor-left":
+        this.crosshairsX -= 10;
+        break;
+      case "move-cursor-down":
+        this.crosshairsY += 10;
+        break;
+      case "move-cursor-right":
+        this.crosshairsX += 10;
+        break;
+      case "move-cursor-up":
+        this.crosshairsY -= 10;
+        break;
     }
 
     this.redraw();
