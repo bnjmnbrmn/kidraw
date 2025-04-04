@@ -33,7 +33,6 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.crosshairsY = this.canvas.height / 2;
 
     this.redraw();
-    this.drawCrosshairs()
 
     this.commands.subscribe(this.handleCommands.bind(this));
 
@@ -52,8 +51,18 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private redraw() {
 
-    this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
+    let ctx = this.ctx;
+
+    // ctx.scale(1,1);
+    ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
     this.drawCrosshairs();
+
+    ctx.font = "1em Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline ="middle";
+
+    this.drawNode(200, 200, "hello");
+    this.drawNode(600, 200, "hi");
 
   }
 
@@ -87,18 +96,36 @@ export class DrawingAreaComponent implements AfterViewInit {
     const canvasWidth = this.canvas.width;
     const canvasHeight = this.canvas.height;
 
-    c.strokeStyle = 'rgba(0,0,0,0.2)'
+    const originalStrokeStyle = c.strokeStyle;
+    const originalLineWidth = c.lineWidth;
+
+    c.strokeStyle = 'rgba(0,0,0,0.5)'
     c.lineWidth = 2;
 
     c.beginPath()
-    c.moveTo(0, y);
-    c.lineTo(canvasWidth, y);
+    c.moveTo(x - 20, y);
+    c.lineTo(x + 20, y);
     c.stroke()
     c.beginPath()
-    c.moveTo(x, 0);
-    c.lineTo(x, canvasHeight);
+    c.moveTo(x, y-20);
+    c.lineTo(x, y+20);
     c.stroke()
+
+    c.strokeStyle = originalStrokeStyle;
+    c.lineWidth = originalLineWidth;
   }
 
 
+  private drawNode(x: number, y: number, text: string) {
+
+    const nodeWidth = Math.ceil(this.ctx.measureText(text).width / 50.0) * 100;
+    // noinspection UnnecessaryLocalVariableJS,JSSuspiciousNameCombination
+    const nodeHeight = nodeWidth;
+
+    this.ctx.strokeRect(x, y, nodeWidth, nodeHeight);
+    this.ctx.fillText(text, x + nodeWidth/2, y + nodeHeight/2);
+
+    console.log(nodeWidth);
+
+  }
 }
