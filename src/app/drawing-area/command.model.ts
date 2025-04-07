@@ -7,5 +7,4 @@ export type Command =
   | {kind: "select-item"}
   | {kind: "unselect-item"}
   | {kind: "create-connected-node"}
-  | {kind: "toggle-selected-item-dragging"}
 

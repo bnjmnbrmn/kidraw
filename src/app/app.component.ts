@@ -17,7 +17,7 @@ export class AppComponent {
   commandsSubject: Subject<Command> = new Subject<Command>();
 
   relayKeymenuCommand(kmCommand: Command) {
-    console.log("kmCommand: " + kmCommand)
+    console.log("app component kmCommand: " + JSON.stringify(kmCommand))
     this.commandsSubject.next(kmCommand);
   }
 }

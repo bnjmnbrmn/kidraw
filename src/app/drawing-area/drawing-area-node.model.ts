@@ -30,12 +30,12 @@ export class DANode {
 
     let label = this.label;
     let textWidth = label.width(ctx);
-    let textHeight = label.height(ctx);;
+    let textHeight = label.height(ctx);
 
     const width = Math.max(this.minWidth, Math.ceil(textWidth / 50.0) * 100.0);
     const height = Math.max(this.minHeight, Math.ceil(textHeight / 50.0) * 100.0);
 
-    ctx.strokeRect(this.x, this.y, width, height);
+    ctx.strokeRect(this.x - width / 2, this.y - height / 2, width, height);
 
     label.draw(ctx, this.x + width / 2, this.y + height / 2);
   }

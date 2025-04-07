@@ -22,6 +22,9 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private resizeObserver!: ResizeObserver;
 
+  private daNodes: DANode[] = [];
+  private selectedDANodes: DANode[] = [];
+
   @Input({required: true}) commands!: Observable<Command>;
 
   ngAfterViewInit(): void {
@@ -58,7 +61,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
     this.drawCrosshairs();
 
-    new DANode({x: 100, y: 100, label: "hello\nworld"}).draw(ctx);
+    for (const node of this.daNodes) {
+      node.draw(ctx);
+    }
+
+    // new DANode({x: 100, y: 100, label: "hello\nworld"}).draw(ctx);
 
     // // ctx.font = "1em Arial";
     // // ctx.textAlign = "center";
@@ -73,20 +80,26 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private handleCommands(command: Command) {
 
-    console.log("Command: " + command);
+    console.log("Command: " + JSON.stringify(command));
     switch (command.kind) {
       case "move-cursor-left":
-        this.crosshairsX -= 10;
+        this.crosshairsX -= 50;
         break;
       case "move-cursor-down":
-        this.crosshairsY += 10;
+        this.crosshairsY += 50;
         break;
       case "move-cursor-right":
-        this.crosshairsX += 10;
+        this.crosshairsX += 50;
         break;
       case "move-cursor-up":
-        this.crosshairsY -= 10;
+        this.crosshairsY -= 50;
         break;
+      case "create-new-node":
+        console.log("creating new node");
+        let daNode = new DANode({x: this.crosshairsX, y: this.crosshairsY});
+        this.daNodes.push(daNode);
+        this.selectedDANodes = [daNode]
+        break
     }
 
     this.redraw();
