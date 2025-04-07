@@ -1,6 +1,7 @@
 import {AfterViewInit, Component, ElementRef, inject, Input, ViewChild} from '@angular/core';
 import {Observable} from 'rxjs';
 import {Command} from './command.model';
+import {DANode} from './drawing-area-node.model';
 
 @Component({
   selector: 'app-drawing-area',
@@ -57,12 +58,16 @@ export class DrawingAreaComponent implements AfterViewInit {
     ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
     this.drawCrosshairs();
 
-    ctx.font = "1em Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline ="middle";
+    new DANode({x: 100, y: 100, label: "hello\nworld"}).draw(ctx);
 
-    this.drawNode(200, 200, "hello");
-    this.drawNode(600, 200, "hi");
+    // // ctx.font = "1em Arial";
+    // // ctx.textAlign = "center";
+    // // ctx.textBaseline ="middle";
+    //
+    // ctx.translate(100, 100);
+    //
+    // this.drawNode(200, 200, "hello");
+    // this.drawNode(600, 200, "hi");
 
   }
 
