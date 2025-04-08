@@ -1,6 +1,11 @@
 import {Component, EventEmitter, HostListener, Input, Output} from '@angular/core';
-import type {Command} from "../drawing-area/command.model";
-import {Observable} from 'rxjs';
+import type {DACommand} from "../drawing-area/command.model";
+
+type KMCommand =
+  | {kind: "switch-to-select-mode" }
+  | {kind: "switch-to-label-edit-mode" }
+
+type DAKMCommandPair = { daCommand: DACommand | undefined, kmCommand: KMCommand | undefined };
 
 @Component({
   selector: 'app-keymenu',
@@ -10,28 +15,28 @@ import {Observable} from 'rxjs';
 })
 export class KeymenuComponent {
 
-  @Output() keymenuOut = new EventEmitter<Command>;
+  @Output() keymenuOut = new EventEmitter<DACommand>;
   @Input() mode!: KMMode;
 
-  selectModeCommandForKeyboardEvent = (ke: KeyboardEvent): Command | undefined => {
+  selectModeCommandForKeyboardEvent = (ke: KeyboardEvent): DAKMCommandPair => {
     switch (ke.key) {
       case 'h':
-        return {kind: "move-cursor-left"};
+        return {daCommand: {kind: "move-cursor-left"}, kmCommand: undefined};
       case 'j':
-        return {kind: "move-cursor-down"};
+        return {daCommand: {kind: "move-cursor-down"}, kmCommand: undefined};
       case 'k':
-        return {kind: "move-cursor-up"};
+        return {daCommand: {kind: "move-cursor-up"}, kmCommand: undefined};
       case 'l':
-        return {kind: "move-cursor-right"};
+        return {daCommand: {kind: "move-cursor-right"}, kmCommand: undefined};
       case 'i':
-        return {kind: "create-new-node"};
+        return {daCommand: {kind: "create-new-node"}, kmCommand: undefined};
       default:
-        return undefined;
+        return {daCommand: undefined, kmCommand: undefined};
     }
 
   };
 
-  private labelEditModeCommandForKeyboardEvent: (ke: KeyboardEvent) => (Command | undefined) =
+  private labelEditModeCommandForKeyboardEvent: (ke: KeyboardEvent) => DAKMCommandPair =
     (ke) => {
 
       const code = ke.code;
@@ -41,24 +46,22 @@ export class KeymenuComponent {
 
       const key = ke.key;
       if (("Enter" === key && ke.shiftKey) || ("[" === key && ke.ctrlKey) || "Escape" === key) {
-        return {kind: "exit-label-edit-mode"}
+        return {daCommand: {kind: "exit-label-edit-mode"}, kmCommand: {kind: "switch-to-select-mode"}};
       } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
-        return {kind: "insert-char", value: key}
+        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
       } else if ("Enter" === key && this.noModifier(ke)) {
-        return {kind: "insert-char", value: key}
+        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
       } else if (["Enter", "Tab"].includes(key) && this.noModifier(ke)) {
-        return {kind: "insert-char", value: key}
-
-
+        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
       }
-      return undefined;
+      return {daCommand: undefined, kmCommand: undefined};
     };
 
   private noModifier(ke: KeyboardEvent) {
     return !ke.altKey && !ke.ctrlKey && !ke.shiftKey && !ke.metaKey;
   }
 
-  getModeMap(kmMode: KMMode): (ke: KeyboardEvent) => Command | undefined {
+  getModeMap(kmMode: KMMode): (ke: KeyboardEvent) => DAKMCommandPair {
     switch (kmMode) {
       case "select":
         return this.selectModeCommandForKeyboardEvent;
@@ -75,10 +78,22 @@ export class KeymenuComponent {
     // const ek = event.key; //as string;
     // console.log("ek: " + ek)
     const modeMap = this.getModeMap(this.mode);
-    const command = modeMap(event);
-    // console.log("km: " + JSON.stringify(command));
-    if (command) {
-      this.keymenuOut.emit(command)
+    const {daCommand, kmCommand} = modeMap(event);
+
+    if (kmCommand) {
+      switch (kmCommand.kind) {
+        case "switch-to-select-mode":
+          this.mode = "select";
+          break;
+        case "switch-to-label-edit-mode":
+          this.mode = "label-edit";
+          break;
+      }
+    }
+
+    // console.log("km: " + JSON.stringify(daCommand));
+    if (daCommand) {
+      this.keymenuOut.emit(daCommand)
     }
   }
 

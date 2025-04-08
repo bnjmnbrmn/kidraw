@@ -4,7 +4,7 @@ import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent, KMMode} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
-import {Command} from './drawing-area/command.model';
+import {DACommand} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
 
 @Component({
@@ -17,9 +17,9 @@ export class AppComponent {
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
 
-  commandsSubject: Subject<Command> = new Subject<Command>();
+  commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
-  relayKeymenuCommand(kmCommand: Command) {
+  relayKeymenuCommand(kmCommand: DACommand) {
     console.log("app component kmCommand: " + JSON.stringify(kmCommand))
     this.commandsSubject.next(kmCommand);
   }

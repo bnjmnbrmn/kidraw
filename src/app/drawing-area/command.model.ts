@@ -1,4 +1,4 @@
-export type Command =
+export type DACommand =
   | {kind: "move-cursor-left"}
   | {kind: "move-cursor-right"}
   | {kind: "move-cursor-up"}
