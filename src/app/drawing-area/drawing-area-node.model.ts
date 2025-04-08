@@ -1,25 +1,43 @@
+
 export interface NodeParams {
   x: number;
   y: number;
   width?: number;
   height?: number;
   label?: string;
+  isSelected?: boolean;
 }
 
 
 export class DANode {
+  get label(): DANodeLabel {
+    return this._label;
+  }
+
+  set label(value: DANodeLabel) {
+    this._label = value;
+  }
+  get isSelected(): boolean {
+    return this._isSelected;
+  }
+
+  set isSelected(value: boolean) {
+    this._isSelected = value;
+  }
   private x: number;
   private y: number;
   private minWidth: number;
   private minHeight: number;
-  private label: DANodeLabel;
+  private _label: DANodeLabel;
+  private _isSelected: boolean;
 
   constructor(nodeParams: NodeParams) {
     this.x = nodeParams.x;
     this.y = nodeParams.y;
     this.minWidth = nodeParams.width ?? 100;
     this.minHeight = nodeParams.height ?? 100;
-    this.label = new DANodeLabel(nodeParams.label ?? '');
+    this._label = new DANodeLabel(nodeParams.label ?? '');
+    this._isSelected = nodeParams.isSelected ?? false;
   }
 
   draw(ctx: CanvasRenderingContext2D) {
@@ -28,7 +46,13 @@ export class DANode {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    let label = this.label;
+    if (this._isSelected) {
+      ctx.lineWidth = 3;
+    } else {
+      ctx.lineWidth = 1;
+    }
+
+    let label = this._label;
     let textWidth = label.width(ctx);
     let textHeight = label.height(ctx);
 
@@ -37,7 +61,7 @@ export class DANode {
 
     ctx.strokeRect(this.x - width / 2, this.y - height / 2, width, height);
 
-    label.draw(ctx, this.x + width / 2, this.y + height / 2);
+    label.draw(ctx, this.x, this.y);
   }
 
 }
@@ -47,6 +71,10 @@ export class DANodeLabel {
 
   get text() {
     return this._text;
+  }
+
+  set text(value: string) {
+    this._text = value;
   }
 
   constructor(text: string) {

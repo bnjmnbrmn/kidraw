@@ -1,7 +1,8 @@
-import {AfterViewInit, Component, ElementRef, inject, Input, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output, ViewChild} from '@angular/core';
 import {Observable} from 'rxjs';
 import {Command} from './command.model';
 import {DANode} from './drawing-area-node.model';
+import {DANotification} from './da-notification.model';
 
 @Component({
   selector: 'app-drawing-area',
@@ -17,15 +18,15 @@ export class DrawingAreaComponent implements AfterViewInit {
   private canvas!: HTMLCanvasElement;
   private ctx!: CanvasRenderingContext2D;
 
+  private daNodes: DANode[] = [];
   private crosshairsX!: number;
   private crosshairsY!: number;
 
   private resizeObserver!: ResizeObserver;
 
-  private daNodes: DANode[] = [];
-  private selectedDANodes: DANode[] = [];
 
   @Input({required: true}) commands!: Observable<Command>;
+  @Output() daOut = new EventEmitter<DANotification>()
 
   ngAfterViewInit(): void {
     this.canvas = this.mainDrawingAreaER.nativeElement as HTMLCanvasElement;
@@ -42,9 +43,9 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     this.resizeObserver = new ResizeObserver(entries => {
       for (let entry of entries) {
-        console.log("entry: entry");
-        const { width, height } = entry.contentRect;
-        console.log(`New Size - Width: ${width}, Height: ${height}`);
+        // console.log("entry: entry");
+        // const { width, height } = entry.contentRect;
+        // console.log(`New Size - Width: ${width}, Height: ${height}`);
         this.canvas.height = this.componentNE.offsetHeight;
         this.canvas.width = this.componentNE.offsetWidth;
         this.redraw();
@@ -57,24 +58,12 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     let ctx = this.ctx;
 
-    // ctx.scale(1,1);
     ctx.clearRect(0,0,this.canvas.width, this.canvas.height);
     this.drawCrosshairs();
 
     for (const node of this.daNodes) {
       node.draw(ctx);
     }
-
-    // new DANode({x: 100, y: 100, label: "hello\nworld"}).draw(ctx);
-
-    // // ctx.font = "1em Arial";
-    // // ctx.textAlign = "center";
-    // // ctx.textBaseline ="middle";
-    //
-    // ctx.translate(100, 100);
-    //
-    // this.drawNode(200, 200, "hello");
-    // this.drawNode(600, 200, "hi");
 
   }
 
@@ -96,10 +85,15 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case "create-new-node":
         console.log("creating new node");
-        let daNode = new DANode({x: this.crosshairsX, y: this.crosshairsY});
+        let daNode = new DANode({x: this.crosshairsX, y: this.crosshairsY, isSelected: true});
         this.daNodes.push(daNode);
-        this.selectedDANodes = [daNode]
+        this.daOut.emit({kind: "started-label-editing-mode"})
         break
+      case "insert-char":
+        const key = command.value;
+        this.getSelectedDANodes().forEach(daNode => {
+          daNode.label.text += key;
+        })
     }
 
     this.redraw();
@@ -145,5 +139,9 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     console.log(nodeWidth);
 
+  }
+
+  private getSelectedDANodes() {
+    return this.daNodes.filter((daNode) => daNode.isSelected);
   }
 }
