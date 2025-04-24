@@ -30,6 +30,8 @@ export class KeymenuComponent {
         return {daCommand: {kind: "move-cursor-right"}, kmCommand: undefined};
       case 'i':
         return {daCommand: {kind: "create-new-node"}, kmCommand: undefined};
+      case 'v':
+        return {daCommand: {kind: "toggle-item-selection"}, kmCommand: undefined};
       default:
         return {daCommand: undefined, kmCommand: undefined};
     }

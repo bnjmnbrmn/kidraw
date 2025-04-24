@@ -122,7 +122,7 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case "create-new-node":
         console.log("creating new node");
-        let daNode = new DANode({x: this.crosshairs.x, y: this.crosshairs.y, isSelected: true});
+        let daNode = new DANode({ctx: this.ctx, x: this.crosshairs.x, y: this.crosshairs.y, isSelected: true});
         this.daNodes.push(daNode);
         this.daOut.emit({kind: "started-label-editing-mode"})
         break
@@ -139,10 +139,24 @@ export class DrawingAreaComponent implements AfterViewInit {
           daNode.isSelected = false;
         });
         break;
+      case "toggle-item-selection":
+        const daNodesContainingPoint: DANode[] = this.getDANodesContainingCrosshairs();
+        daNodesContainingPoint.forEach(daNode => daNode.isSelected = !daNode.isSelected);
+        break;
     }
 
     this.redraw();
 
+  }
+
+  private getDANodesContainingCrosshairs() {
+    return this.daNodes.filter(daNode =>
+      daNode.left < this.crosshairs.x
+      && this.crosshairs.x < daNode.right
+      && daNode.top < this.crosshairs.y
+      && this.crosshairs.y < daNode.bottom
+
+    );
   }
 
   private getSelectedDANodes() {

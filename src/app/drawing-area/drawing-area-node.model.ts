@@ -1,5 +1,6 @@
 
 export interface NodeParams {
+  ctx: CanvasRenderingContext2D;
   x: number;
   y: number;
   width?: number;
@@ -10,6 +11,24 @@ export interface NodeParams {
 
 
 export class DANode {
+
+  get left(): number {
+    return this.x - this.width / 2
+  }
+
+  get right(): number {
+    return this.x + this.width / 2
+  }
+
+  get top(): number {
+    return this.y - this.height / 2
+  }
+
+  get bottom(): number {
+    return this.x + this.height / 2
+  }
+
+
   get label(): DANodeLabel {
     return this._label;
   }
@@ -24,6 +43,8 @@ export class DANode {
   set isSelected(value: boolean) {
     this._isSelected = value;
   }
+
+  private ctx: CanvasRenderingContext2D;
   private x: number;
   private y: number;
   private minWidth: number;
@@ -32,42 +53,45 @@ export class DANode {
   private _isSelected: boolean;
 
   constructor(nodeParams: NodeParams) {
+    this.ctx = nodeParams.ctx;
     this.x = nodeParams.x;
     this.y = nodeParams.y;
     this.minWidth = nodeParams.width ?? 100;
     this.minHeight = nodeParams.height ?? 100;
-    this._label = new DANodeLabel(nodeParams.label ?? '');
+    this._label = new DANodeLabel(this.ctx, nodeParams.label ?? '');
     this._isSelected = nodeParams.isSelected ?? false;
   }
 
   draw(ctx: CanvasRenderingContext2D) {
 
-    ctx.font = "1em Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    this.ctx.font = "1em Arial";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
 
     if (this._isSelected) {
-      ctx.lineWidth = 3;
+      this.ctx.lineWidth = 3;
     } else {
-      ctx.lineWidth = 1;
+      this.ctx.lineWidth = 1;
     }
 
-    let label = this._label;
-    let textWidth = label.width(ctx);
-    let textHeight = label.height(ctx);
 
-    const width = Math.max(this.minWidth, Math.ceil(textWidth / 50.0) * 100.0);
-    const height = Math.max(this.minHeight, Math.ceil(textHeight / 50.0) * 100.0);
+    this.ctx.strokeRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
 
-    ctx.strokeRect(this.x - width / 2, this.y - height / 2, width, height);
-
-    label.draw(ctx, this.x, this.y);
+    this._label.draw(this.x, this.y);
   }
 
+  get height() {
+    return Math.max(this.minHeight, Math.ceil(this._label.height() / 50.0) * 100.0);
+  }
+
+  get width() {
+    return Math.max(this.minWidth, Math.ceil(this._label.width() / 50.0) * 100.0);
+  }
 }
 
 export class DANodeLabel {
   private _text: string;
+  private ctx: CanvasRenderingContext2D;
 
   get text() {
     return this._text;
@@ -77,20 +101,21 @@ export class DANodeLabel {
     this._text = value;
   }
 
-  constructor(text: string) {
+  constructor(ctx: CanvasRenderingContext2D, text: string) {
     this._text = text;
+    this.ctx = ctx;
     //todo handle multi-line text
   }
 
-  width(ctx: CanvasRenderingContext2D) {
-    return ctx.measureText(this.text).actualBoundingBoxLeft + ctx.measureText(this.text).actualBoundingBoxRight;
+  width() {
+    return this.ctx.measureText(this.text).actualBoundingBoxLeft + this.ctx.measureText(this.text).actualBoundingBoxRight;
   }
 
-  height(ctx: CanvasRenderingContext2D) {
-    return ctx.measureText(this.text).actualBoundingBoxAscent + ctx.measureText(this.text).actualBoundingBoxDescent
+  height() {
+    return this.ctx.measureText(this.text).actualBoundingBoxAscent + this.ctx.measureText(this.text).actualBoundingBoxDescent
   }
 
-  draw(ctx: CanvasRenderingContext2D, x: number, y: number) {
-    ctx.fillText(this.text, x, y);
+  draw(x: number, y: number) {
+    this.ctx.fillText(this.text, x, y);
   }
 }

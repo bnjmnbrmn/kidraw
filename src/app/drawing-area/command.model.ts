@@ -6,7 +6,7 @@ export type DACommand =
   | {kind: "create-new-node"}
   | {kind: "insert-char", value: string}
   | {kind: "exit-label-edit-mode"}
-  | {kind: "select-item"}
-  | {kind: "unselect-item"}
+  | {kind: "toggle-item-selection"}
+  | {kind: "connect-selected-nodes"}
   | {kind: "create-connected-node"}
 
