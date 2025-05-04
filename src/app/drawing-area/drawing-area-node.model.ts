@@ -5,27 +5,36 @@ export interface NodeParams {
   y: number;
   width?: number;
   height?: number;
-  label?: string;
+  labelText?: string;
   isSelected?: boolean;
 }
 
 
-export class DANode {
+interface Drawable {
+  leftBoundLogical: number,
+  rightBoundLogical: number,
+  topBoundLogical: number,
+  bottomBoundLogical: number,
+  widthLogical: number,
+  heightLogical: number
+}
 
-  get left(): number {
-    return this.x - this.width / 2
+export class DANode implements Drawable {
+
+  get leftBoundLogical(): number {
+    return this.xLogical - this.widthLogical / 2
   }
 
-  get right(): number {
-    return this.x + this.width / 2
+  get rightBoundLogical(): number {
+    return this.xLogical + this.widthLogical / 2
   }
 
-  get top(): number {
-    return this.y - this.height / 2
+  get topBoundLogical(): number {
+    return this.yLogical - this.heightLogical / 2
   }
 
-  get bottom(): number {
-    return this.x + this.height / 2
+  get bottomBoundLogical(): number {
+    return this.xLogical + this.heightLogical / 2
   }
 
 
@@ -45,28 +54,26 @@ export class DANode {
   }
 
   private ctx: CanvasRenderingContext2D;
-  private x: number;
-  private y: number;
-  private minWidth: number;
-  private minHeight: number;
+  private xLogical: number;
+  private yLogical: number;
+  private minWidthLogical: number;
+  private minHeightLogical: number;
   private _label: DANodeLabel;
   private _isSelected: boolean;
 
   constructor(nodeParams: NodeParams) {
     this.ctx = nodeParams.ctx;
-    this.x = nodeParams.x;
-    this.y = nodeParams.y;
-    this.minWidth = nodeParams.width ?? 100;
-    this.minHeight = nodeParams.height ?? 100;
-    this._label = new DANodeLabel(this.ctx, nodeParams.label ?? '');
+    this.xLogical = nodeParams.x;
+    this.yLogical = nodeParams.y;
+    this.minWidthLogical = nodeParams.width ?? 100;
+    this.minHeightLogical = nodeParams.height ?? 100;
+    this._label = new DANodeLabel(this.ctx, nodeParams.labelText ?? '');
     this._isSelected = nodeParams.isSelected ?? false;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw() {
 
-    this.ctx.font = "1em Arial";
-    this.ctx.textAlign = "center";
-    this.ctx.textBaseline = "middle";
+
 
     if (this._isSelected) {
       this.ctx.lineWidth = 3;
@@ -75,21 +82,35 @@ export class DANode {
     }
 
 
-    this.ctx.strokeRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+    this.ctx.strokeRect(this.xLogical - this.widthLogical / 2, this.yLogical - this.heightLogical / 2, this.widthLogical, this.heightLogical);
 
-    this._label.draw(this.x, this.y);
+    this._label.draw(this.xLogical, this.yLogical);
   }
 
-  get height() {
-    return Math.max(this.minHeight, Math.ceil(this._label.height() / 50.0) * 100.0);
+  get heightLogical() {
+    return Math.max(this.minHeightLogical, Math.ceil(this._label.heightLogical / 50.0) * 100.0);
   }
 
-  get width() {
-    return Math.max(this.minWidth, Math.ceil(this._label.width() / 50.0) * 100.0);
+  get widthLogical() {
+    return Math.max(this.minWidthLogical, Math.ceil(this._label.widthLogical / 50.0) * 100.0);
   }
 }
 
-export class DANodeLabel {
+abstract class AbstractDrawable implements Drawable {
+    abstract leftBoundLogical: number;
+    abstract rightBoundLogical: number;
+    abstract topBoundLogical: number;
+    abstract bottomBoundLogical: number;
+    get widthLogical(): number {
+      return this.rightBoundLogical - this.leftBoundLogical;
+    }
+    get heightLogical(): number {
+      return this.bottomBoundLogical - this.topBoundLogical;
+    };
+
+}
+
+export class DANodeLabel extends AbstractDrawable {
   private _text: string;
   private ctx: CanvasRenderingContext2D;
 
@@ -102,20 +123,72 @@ export class DANodeLabel {
   }
 
   constructor(ctx: CanvasRenderingContext2D, text: string) {
+    super();
     this._text = text;
     this.ctx = ctx;
     //todo handle multi-line text
   }
 
-  width() {
-    return this.ctx.measureText(this.text).actualBoundingBoxLeft + this.ctx.measureText(this.text).actualBoundingBoxRight;
+  get leftBoundLogical(): number {
+    let lbl!:number;
+    this.doInContext(() => {
+      lbl = this.ctx.measureText(this.text).actualBoundingBoxLeft;
+      }
+    );
+    return lbl;
   }
 
-  height() {
-    return this.ctx.measureText(this.text).actualBoundingBoxAscent + this.ctx.measureText(this.text).actualBoundingBoxDescent
+  get rightBoundLogical(): number {
+    let rbl!:number;
+    this.doInContext(() => {
+        rbl = this.ctx.measureText(this.text).actualBoundingBoxRight;
+      }
+    );
+    return rbl;
+  };
+
+  get topBoundLogical(): number {
+    let tbl!:number;
+    this.doInContext(() => {
+        tbl = this.ctx.measureText(this.text).actualBoundingBoxAscent;
+      }
+    );
+    return tbl;
   }
+
+  get bottomBoundLogical(): number {
+    let bbl!:number;
+    this.doInContext(() => {
+        bbl = this.ctx.measureText(this.text).actualBoundingBoxDescent;
+      }
+    );
+    return bbl;
+  };
+
+
+  private font = "1em Arial";
+  private textAlign: CanvasTextAlign = "center";
+  private textBaseline: CanvasTextBaseline = "middle"
 
   draw(x: number, y: number) {
-    this.ctx.fillText(this.text, x, y);
+    this.doInContext(() => {
+      this.ctx.fillText(this.text, x, y);
+    })
+  }
+
+  private doInContext(toDo: () => void) {
+    const originalFont = this.ctx.font;
+    const originalTextAlign = this.ctx.textAlign;
+    const originalTextBaseline = this.ctx.textBaseline;
+
+    this.ctx.font = this.font;
+    this.ctx.textAlign = this.textAlign;
+    this.ctx.textBaseline = this.textBaseline;
+
+    toDo();
+
+    this.ctx.font = originalFont;
+    this.ctx.textAlign = originalTextAlign;
+    this.ctx.textBaseline = originalTextBaseline;
   }
 }
