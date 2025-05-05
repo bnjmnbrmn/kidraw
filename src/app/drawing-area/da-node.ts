@@ -2,7 +2,6 @@ import Konva from 'konva';
 import Group = Konva.Group;
 import Rect = Konva.Rect;
 import Text = Konva.Text;
-import Layer = Konva.Layer;
 
 
 export class DANode extends Group {

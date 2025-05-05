@@ -9,10 +9,6 @@ export type DACommand =
   | {kind: "toggle-item-selection"}
   | {kind: "zoom-in"}
   | {kind: "zoom-out"}
-  | {kind: "pan-left"}
-  | {kind: "pan-right"}
-  | {kind: "pan-up"}
-  | {kind: "pan-down"}
   | {kind: "connect-selected-nodes"}
   | {kind: "create-connected-node"}
 

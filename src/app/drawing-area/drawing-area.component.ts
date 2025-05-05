@@ -1,12 +1,14 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output} from '@angular/core';
 import {Observable} from 'rxjs';
 import {DACommand} from './command.model';
-import {DANode} from './drawing-area-node.model';
+import {DANode} from './da-node';
 import {DANotification} from './da-notification.model';
 import Konva from 'konva';
 import {DACrosshairs} from './da-crosshairs';
+import {DAEdge} from './da-edge';
 import Layer = Konva.Layer;
 import Stage = Konva.Stage;
+import Group = Konva.Group;
 
 @Component({
   selector: 'app-drawing-area',
@@ -16,25 +18,23 @@ import Stage = Konva.Stage;
 })
 export class DrawingAreaComponent implements AfterViewInit {
 
-  private componentER = inject<ElementRef<HTMLElement>>(ElementRef);
-  private componentNE = this.componentER.nativeElement;
-  @ViewChild('mainDrawingArea') private mainDrawingAreaER!: ElementRef;
-  private canvas!: HTMLCanvasElement;
+  @Input({required: true}) commands!: Observable<DACommand>;
+  @Output() daOut = new EventEmitter<DANotification>()
+
+  private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   private daNodes: DANode[] = [];
+  private daEdges: DAEdge[] = [];
   private crosshairs!: DACrosshairs;
 
   private resizeObserver!: ResizeObserver;
-  private scale: number = 1.0;
 
 
-  @Input({required: true}) commands!: Observable<DACommand>;
-  @Output() daOut = new EventEmitter<DANotification>()
-  private panX: number = 0;
-  private panY: number = 0;
   private crosshairsLayer!: Layer;
   private mainLayer!: Layer;
   private stage!: Stage;
+  private daNodeGroup!: Group;
+  private daEdgeGroup!: Group;
 
 
   ngAfterViewInit(): void {
@@ -51,6 +51,11 @@ export class DrawingAreaComponent implements AfterViewInit {
       {x: this.stage.width() / 2, y: this.stage.height() / 2}
     );
     this.stage.add(this.mainLayer);
+
+    this.daEdgeGroup = new Group();
+    this.mainLayer.add(this.daEdgeGroup);
+    this.daNodeGroup = new Group();
+    this.mainLayer.add(this.daNodeGroup);
 
     this.crosshairsLayer = new Layer();
     this.crosshairs = new DACrosshairs();
@@ -106,7 +111,7 @@ export class DrawingAreaComponent implements AfterViewInit {
           (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x - (this.mainLayer.x() - this.stage.width()/2)) / this.mainLayer.scaleX(),
           (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).y - (this.mainLayer.y() - this.stage.height()/2)) / this.mainLayer.scaleY(),
           "");
-        this.mainLayer.add(daNode);
+        this.daNodeGroup.add(daNode);
         this.daNodes.push(daNode);
         this.daOut.emit({kind: "started-label-editing-mode"})
         break
@@ -142,18 +147,28 @@ export class DrawingAreaComponent implements AfterViewInit {
         this.mainLayer.scale({x: newScale, y: newScale});
       }
         break;
-      case "pan-left":
-        this.panX += 50;
-        break;
-      case "pan-right":
-        this.panX -= 50;
-        break;
-      case "pan-up":
-        this.panY += 50;
-        break;
-      case "pan-down":
-        this.panY -= 50;
-        break;
+      case "connect-selected-nodes":
+        console.log('connecting')
+        const selectedDANodes = this.getSelectedDANodes();
+        console.log("selectedDANodes", selectedDANodes);
+
+        //todo: connect to self
+        if (selectedDANodes.length <= 1)
+          break;
+
+        for (let selectedDANodeA of selectedDANodes) {
+          for (let selectedDANodeB of selectedDANodes) {
+            if (selectedDANodeA != selectedDANodeB) {
+
+              let daEdge = new DAEdge(selectedDANodeA, selectedDANodeB, "");
+              console.log(daEdge);
+              this.daEdgeGroup.add(daEdge);
+              this.daEdges.push(daEdge);
+            }
+          }
+        }
+
+        break
     }
 
   }
@@ -179,12 +194,8 @@ export class DrawingAreaComponent implements AfterViewInit {
     );
   }
 
-  private getSelectedDANodes() {
+  private getSelectedDANodes(): DANode[] {
     return this.daNodes.filter((daNode) => daNode.isSelected);
   }
 
-  private recenterCrossHairs() {
-    // this.crosshairs.x = this.canvas.width / 2;
-    // this.crosshairs.y =  this.canvas.height / 2;
-  }
 }

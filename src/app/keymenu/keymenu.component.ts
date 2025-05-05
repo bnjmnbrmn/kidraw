@@ -36,14 +36,8 @@ export class KeymenuComponent {
         return {daCommand: {kind: "zoom-out"}, kmCommand: undefined};
       case 'w':
         return {daCommand: {kind: "zoom-in"}, kmCommand: undefined};
-      case '6':
-        return {daCommand: {kind: "pan-left"}, kmCommand: undefined};
-      case '7':
-        return {daCommand: {kind: "pan-down"}, kmCommand: undefined};
-      case '8':
-        return {daCommand: {kind: "pan-up"}, kmCommand: undefined};
-      case '9':
-        return {daCommand: {kind: "pan-right"}, kmCommand: undefined};
+      case 'c':
+        return {daCommand: {kind: "connect-selected-nodes"}, kmCommand: undefined};
       default:
         return {daCommand: undefined, kmCommand: undefined};
     }
