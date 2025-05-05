@@ -1,7 +1,7 @@
 #+title: Project Todos
 
 * Drawing Area
-** TODO Animate pan/zoom/crosshairs move
+** DONE Animate pan/zoom/crosshairs move
 ** TODO Animate node add (fade in)
 ** TODO Connect to new node
 ** TODO Set new node direction
@@ -22,6 +22,8 @@
 ** TODO Separate edges when they are too close
 ** TODO Allow for directed and un-directed edges
 * Key Menu
-** Add Konva stage, and add hints as stage items
+** TODO Add Konva stage, and add hints as stage items
 * Deployment
+** TODO Deploy using S3/Route 53
 * General Visual Appeal
+** TODO Update Header

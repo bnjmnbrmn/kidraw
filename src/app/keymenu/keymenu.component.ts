@@ -21,13 +21,13 @@ export class KeymenuComponent {
   selectModeCommandForKeyboardEvent = (ke: KeyboardEvent): DAKMCommandPair => {
     switch (ke.key) {
       case 'h':
-        return {daCommand: {kind: "move-cursor-left"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-left"}, kmCommand: undefined};
       case 'j':
-        return {daCommand: {kind: "move-cursor-down"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-down"}, kmCommand: undefined};
       case 'k':
-        return {daCommand: {kind: "move-cursor-up"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-up"}, kmCommand: undefined};
       case 'l':
-        return {daCommand: {kind: "move-cursor-right"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-right"}, kmCommand: undefined};
       case 'i':
         return {daCommand: {kind: "create-new-node"}, kmCommand: undefined};
       case 'v':

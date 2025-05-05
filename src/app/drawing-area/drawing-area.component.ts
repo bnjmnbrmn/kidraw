@@ -9,6 +9,9 @@ import {DAEdge} from './da-edge';
 import Layer = Konva.Layer;
 import Stage = Konva.Stage;
 import Group = Konva.Group;
+import Tween = Konva.Tween;
+import Easings = Konva.Easings;
+import Vector2d = Konva.Vector2d;
 
 @Component({
   selector: 'app-drawing-area',
@@ -35,6 +38,7 @@ export class DrawingAreaComponent implements AfterViewInit {
   private stage!: Stage;
   private daNodeGroup!: Group;
   private daEdgeGroup!: Group;
+  private tweens: Tween[] = [];
 
 
   ngAfterViewInit(): void {
@@ -72,124 +76,258 @@ export class DrawingAreaComponent implements AfterViewInit {
       this.stage.height(this.componentNE.offsetHeight);
     });
     this.resizeObserver.observe(this.componentNE);
+
+    //todo: remove
+    this.createNewNode();
+    this.insertChar("fdsa");
+    this.exitLabelEditMode();
+    this.moveCrosshairsLeft();
+    this.moveCrosshairsLeft();
+    this.moveCrosshairsLeft();
+    this.moveCrosshairsLeft();
+    this.moveCrosshairsLeft();
+    this.createNewNode();
+    this.insertChar("fdsa");
+    this.exitLabelEditMode();
+    this.moveCrosshairsUp();
+    this.moveCrosshairsUp();
+    this.moveCrosshairsUp();
+    this.moveCrosshairsUp();
+
   }
+
 
   private handleCommands(command: DACommand) {
 
     console.log("Command: " + JSON.stringify(command));
     switch (command.kind) {
-      case "move-cursor-left":
-        if (this.crosshairs.x() > -this.stage.width() / 2 + 60)
-          this.crosshairs.move({x: -50, y: 0});
-        else
-          this.mainLayer.move({x: 50, y: 0})
+      case "move-crosshairs-left":
+        this.moveCrosshairsLeft();
         break;
-      case "move-cursor-down":
-        console.log(this.crosshairs.y());
-        if (this.crosshairs.y() < this.stage.height() / 2 - 60)
-          this.crosshairs.move({x: 0, y: 50});
-        else
-          this.mainLayer.move({x: 0, y: -50})
+      case "move-crosshairs-down":
+        this.moveCrosshairsDown();
         break;
-      case "move-cursor-right":
-        if (this.crosshairs.x() < this.stage.width() / 2 - 60)
-          this.crosshairs.move({x: 50, y: 0});
-        else
-          this.mainLayer.move({x: -50, y: 0})
+      case "move-crosshairs-right":
+        this.moveCrosshairsRight();
         break;
-      case "move-cursor-up":
-        if (this.crosshairs.y() > -this.stage.height() / 2 + 60)
-          this.crosshairs.move({x: 0, y: -50});
-        else
-          this.mainLayer.move({x: 0, y: 50})
+      case "move-crosshairs-up":
+        this.moveCrosshairsUp();
         break;
       case "create-new-node":
-        console.log("creating new node");
-        console.log("this.mainLayer.x(): ", this.mainLayer.x());
-        console.log("this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x", this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x)
-        let daNode = new DANode(
-          (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x - (this.mainLayer.x() - this.stage.width()/2)) / this.mainLayer.scaleX(),
-          (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).y - (this.mainLayer.y() - this.stage.height()/2)) / this.mainLayer.scaleY(),
-          "");
-        this.daNodeGroup.add(daNode);
-        this.daNodes.push(daNode);
-        this.daOut.emit({kind: "started-label-editing-mode"})
+        this.createNewNode();
         break
       case "insert-char":
         const key = command.value;
-        this.getSelectedDANodes().forEach(daNode => {
-          daNode.label.text(daNode.label.text() + key);
-        })
-        this.crosshairs.hide();
+        this.insertChar(key);
         break;
       case "exit-label-edit-mode":
-        console.log("case exit-label-edit-mode")
-        this.crosshairs.show();
-        this.getSelectedDANodes().forEach(daNode => {
-          daNode.isSelected = false;
-        });
+        this.exitLabelEditMode();
         break;
       case "toggle-item-selection":
-        console.log("this.daNodes", this.daNodes)
-        const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-        console.log("daNodesContainingCrosshairs", daNodesContainingCrosshairs);
-        daNodesContainingCrosshairs.forEach(daNode => daNode.isSelected = !daNode.isSelected);
+        this.toggleItemSelection();
         break;
-      case "zoom-in": {
-        const oldScale = this.mainLayer.scaleX();
-        const newScale = oldScale * 3.0 / 2.0;
-        this.mainLayer.scale({x: newScale, y: newScale});
-      }
+      case "zoom-in":
+        this.zoomIn();
         break;
-      case "zoom-out": {
-        const oldScale = this.mainLayer.scaleX();
-        const newScale = oldScale * 2.0 / 3.0;
-        this.mainLayer.scale({x: newScale, y: newScale});
-      }
+      case "zoom-out":
+        this.zoomOut();
         break;
       case "connect-selected-nodes":
-        console.log('connecting')
-        const selectedDANodes = this.getSelectedDANodes();
-        console.log("selectedDANodes", selectedDANodes);
-
-        //todo: connect to self
-        if (selectedDANodes.length <= 1)
-          break;
-
-        for (let selectedDANodeA of selectedDANodes) {
-          for (let selectedDANodeB of selectedDANodes) {
-            if (selectedDANodeA != selectedDANodeB) {
-
-              let daEdge = new DAEdge(selectedDANodeA, selectedDANodeB, "");
-              console.log(daEdge);
-              this.daEdgeGroup.add(daEdge);
-              this.daEdges.push(daEdge);
-            }
-          }
-        }
-
-        break
+        this.connectSelectedNodes();
+        break;
     }
 
+  }
+
+  private toggleItemSelection() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    console.log("this.daNodes", this.daNodes)
+    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
+    console.log("daNodesContainingCrosshairs", daNodesContainingCrosshairs);
+    daNodesContainingCrosshairs.forEach(daNode => daNode.isSelected = !daNode.isSelected);
+  }
+
+  private exitLabelEditMode() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    console.log("case exit-label-edit-mode")
+    this.crosshairs.show();
+    this.getSelectedDANodes().forEach(daNode => {
+      daNode.isSelected = false;
+    });
+  }
+
+  private insertChar(key: string) {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    this.getSelectedDANodes().forEach(daNode => {
+      daNode.label.text(daNode.label.text() + key);
+    })
+    this.crosshairs.hide();
+  }
+
+  private connectSelectedNodes() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    const selectedDANodes = this.getSelectedDANodes();
+
+    //todo: connect to self
+    if (selectedDANodes.length <= 1)
+      return;
+
+    for (let selectedDANodeA of selectedDANodes) {
+      for (let selectedDANodeB of selectedDANodes) {
+        if (selectedDANodeA != selectedDANodeB) {
+
+          let daEdge = new DAEdge(selectedDANodeA, selectedDANodeB, "");
+          console.log(daEdge);
+          this.daEdgeGroup.add(daEdge);
+          this.daEdges.push(daEdge);
+        }
+      }
+    }
+
+    return;
+  }
+
+  private zoomIn() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    const oldScale = this.mainLayer.scaleX();
+    const newScale = oldScale * 3.0 / 2.0;
+    this.tweens.push(new Tween({
+      node: this.mainLayer,
+      duration: .1,
+      // todo: why doesn't
+      // scale: {x: newScale, y: newScale},
+      // work?
+      scaleX: newScale,
+      scaleY: newScale
+    }).play());
+    // this.mainLayer.scale({x: newScale, y: newScale});
+  }
+
+  private zoomOut() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    const oldScale = this.mainLayer.scaleX();
+    const newScale = oldScale * 2.0 / 3.0;
+    let scale: Vector2d = {x: newScale, y: newScale};
+    console.log("scale", scale);
+    this.tweens.push(new Tween({
+      node: this.mainLayer,
+      duration: .1,
+      scaleX: newScale,
+      scaleY: newScale
+    }).play());
+    // this.mainLayer.scale({x: newScale, y: newScale});
+  }
+
+  private moveCrosshairsUp() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    if (this.crosshairs.y() > -this.stage.height() / 2 + 60) {
+      this.tweens.push(new Tween({
+        node: this.crosshairs,
+        duration: .1,
+        y: this.crosshairs.y() - 50,
+        easing: Easings.Linear
+      }).play());
+    } else {
+      this.tweens.push(new Tween({
+        node: this.mainLayer,
+        duration: .1,
+        y: this.mainLayer.y() + 50,
+        easing: Easings.Linear
+      }).play())
+    }
+  }
+
+  private moveCrosshairsRight() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    if (this.crosshairs.x() < this.stage.width() / 2 - 60) {
+      this.tweens.push(new Tween({
+        node: this.crosshairs,
+        duration: .1,
+        x: this.crosshairs.x() + 50,
+        easing: Easings.Linear
+      }).play());
+    } else
+      this.tweens.push(new Tween({
+        node: this.mainLayer,
+        duration: .1,
+        x: this.mainLayer.x() - 50,
+        easing: Easings.Linear
+      }).play())
+    // this.mainLayer.move({x: -50, y: 0})
+  }
+
+  private moveCrosshairsDown() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    if (this.crosshairs.y() < this.stage.height() / 2 - 60)
+      this.tweens.push(new Tween({
+        node: this.crosshairs,
+        duration: .1,
+        y: this.crosshairs.y() + 50,
+        easing: Easings.Linear
+      }).play());
+    // this.crosshairs.move({x: 0, y: 50});
+    else {
+      this.tweens.push(new Tween({
+        node: this.mainLayer,
+        duration: .1,
+        y: this.mainLayer.y() - 50,
+        easing: Easings.Linear
+      }).play())
+
+    }
+  }
+
+  private moveCrosshairsLeft() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    if (this.crosshairs.x() > -this.stage.width() / 2 + 60) {
+      this.tweens.push(new Tween({
+        node: this.crosshairs,
+        duration: .1,
+        x: this.crosshairs.x() - 50,
+        easing: Easings.Linear
+      }).play());
+    } else {
+      this.tweens.push(new Tween({
+        node: this.mainLayer,
+        duration: .1,
+        x: this.mainLayer.x() + 50,
+        easing: Easings.Linear
+      }).play())
+      // this.mainLayer.move({x: 50, y: 0})
+    }
+  }
+
+  private createNewNode() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    console.log("creating new node");
+    console.log("this.mainLayer.x(): ", this.mainLayer.x());
+    console.log("this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x", this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x)
+    let daNode = new DANode(
+      (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).x - (this.mainLayer.x() - this.stage.width() / 2)) / this.mainLayer.scaleX(),
+      (this.crosshairs.getAbsolutePosition(this.crosshairsLayer).y - (this.mainLayer.y() - this.stage.height() / 2)) / this.mainLayer.scaleY(),
+      "");
+    this.daNodeGroup.add(daNode);
+    this.daNodes.push(daNode);
+    this.daOut.emit({kind: "started-label-editing-mode"})
   }
 
   private getDANodesContainingCrosshairs() {
     const {x: chX, y: chY} = this.crosshairs.getAbsolutePosition();
     return this.daNodes.filter(daNode => {
-        const rect = daNode.rect;
-        const clientRect = rect.getClientRect(
-          // {relativeTo: this.crosshairs}
-        );
-        // console.log("clientRect", clientRect);
-
-        //todo test this after adding panning and zooming
-
-        // const {x: rectX, y: rectY} = rect.absolutePosition();
-
+      const clientRect = daNode.rect.getClientRect();
         return clientRect.x < chX && chX < clientRect.x + clientRect.width
           && clientRect.y < chY && chY < clientRect.y + clientRect.width;
-
-
       }
     );
   }
