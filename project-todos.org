@@ -3,6 +3,7 @@
 * Drawing Area
 ** DONE Animate pan/zoom/crosshairs move
 ** TODO Set up testing
+** TODO Set up Konva source code for debugging
 ** TODO Animate node add (fade in)
 ** TODO Connect to new node
 ** TODO Set new node direction
