@@ -195,7 +195,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     const oldScale = this.mainLayer.scaleX();
-    const newScale = oldScale * 3.0 / 2.0;
+    const newScale = oldScale * 2.0;
     this.tweens.push(new Tween({
       node: this.mainLayer,
       duration: .1,
@@ -212,7 +212,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     const oldScale = this.mainLayer.scaleX();
-    const newScale = oldScale * 2.0 / 3.0;
+    const newScale = oldScale * 1.0 / 2.0;
     let scale: Vector2d = {x: newScale, y: newScale};
     console.log("scale", scale);
     this.tweens.push(new Tween({

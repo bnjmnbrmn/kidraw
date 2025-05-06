@@ -2,6 +2,7 @@
 
 * Drawing Area
 ** DONE Animate pan/zoom/crosshairs move
+** TODO Set up testing
 ** TODO Animate node add (fade in)
 ** TODO Connect to new node
 ** TODO Set new node direction
@@ -21,9 +22,11 @@
 ** TODO Make edges movable
 ** TODO Separate edges when they are too close
 ** TODO Allow for directed and un-directed edges
+** TODO Undo/Redo
 * Key Menu
 ** TODO Add Konva stage, and add hints as stage items
 * Deployment
 ** TODO Deploy using S3/Route 53
+** TODO Set up analytics
 * General Visual Appeal
 ** TODO Update Header
