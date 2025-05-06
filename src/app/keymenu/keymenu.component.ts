@@ -21,13 +21,13 @@ export class KeymenuComponent {
   selectModeCommandForKeyboardEvent = (ke: KeyboardEvent): DAKMCommandPair => {
     switch (ke.key) {
       case 'h':
-        return {daCommand: {kind: "move-cursor-left"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-left"}, kmCommand: undefined};
       case 'j':
-        return {daCommand: {kind: "move-cursor-down"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-down"}, kmCommand: undefined};
       case 'k':
-        return {daCommand: {kind: "move-cursor-up"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-up"}, kmCommand: undefined};
       case 'l':
-        return {daCommand: {kind: "move-cursor-right"}, kmCommand: undefined};
+        return {daCommand: {kind: "move-crosshairs-right"}, kmCommand: undefined};
       case 'i':
         return {daCommand: {kind: "create-new-node"}, kmCommand: undefined};
       case 'v':
@@ -36,14 +36,8 @@ export class KeymenuComponent {
         return {daCommand: {kind: "zoom-out"}, kmCommand: undefined};
       case 'w':
         return {daCommand: {kind: "zoom-in"}, kmCommand: undefined};
-      case '6':
-        return {daCommand: {kind: "pan-left"}, kmCommand: undefined};
-      case '7':
-        return {daCommand: {kind: "pan-down"}, kmCommand: undefined};
-      case '8':
-        return {daCommand: {kind: "pan-up"}, kmCommand: undefined};
-      case '9':
-        return {daCommand: {kind: "pan-right"}, kmCommand: undefined};
+      case 'c':
+        return {daCommand: {kind: "connect-selected-nodes"}, kmCommand: undefined};
       default:
         return {daCommand: undefined, kmCommand: undefined};
     }
