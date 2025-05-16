@@ -1,8 +1,10 @@
 #+title: Project Todos
 
 * Drawing Area
-** DONE Animate pan/zoom/crosshairs move
-** TODO Set up testing
+** TODO Make edges select-able
+** TODO Cycle through item selection
+** TODO Add waypoints to edges
+** TODO Remove waypoints from edges
 ** TODO Set up Konva source code for debugging
 ** TODO Animate node add (fade in)
 ** TODO Connect to new node
@@ -17,9 +19,6 @@
 ** TODO Allow node text to be editable after creation
 ** TODO Change node size to allow for more/less text
 ** TODO Push nodes away from each other when they get too close
-** TODO Make edges select-able
-** TODO Add waypoints to edges
-** TODO Remove waypoints from edges
 ** TODO Make edges movable
 ** TODO Separate edges when they are too close
 ** TODO Allow for directed and un-directed edges
@@ -29,5 +28,9 @@
 * Deployment
 ** TODO Deploy using S3/Route 53
 ** TODO Set up analytics
-* General Visual Appeal
-** TODO Update Header
+* General
+** TODO Update Header :general:
+** TODO Set up testing
+** TODO Set up tailwind
+** TODO Set up monorepo
+** TODO Incorporate enums into DA commands
