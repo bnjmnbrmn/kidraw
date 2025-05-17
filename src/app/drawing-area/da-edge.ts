@@ -4,19 +4,36 @@ import {DANode} from './da-node';
 import Line = Konva.Line;
 
 export class DAEdge extends Group {
-  private line: Line;
+
+  private _isSelected: boolean = true;
+  private readonly _line: Line;
+
+  get isSelected(): boolean {
+    return this._isSelected;
+  }
+
+  set isSelected(value: boolean) {
+    this._isSelected = value;
+    this._line.strokeWidth(this.strokeWidth());
+  }
+
+  private strokeWidth() {
+    return this._isSelected ? 4 : 2;
+  }
+
+  get line(): Konva.Line {
+    return this._line;
+  }
+
   constructor(srcNode: DANode, destNode: DANode, label: string) {
     super();
 
-    this.line = new Konva.Line({
+    this._line = new Konva.Line({
       points: [srcNode.x(), srcNode.y(), destNode.x(), destNode.y()],
       stroke: 'black',
-      strokeWidth: 2
+      strokeWidth: this.strokeWidth()
     });
 
-    this.add(this.line);
-
-
-
+    this.add(this._line);
   }
 }

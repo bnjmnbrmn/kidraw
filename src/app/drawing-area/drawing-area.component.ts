@@ -12,6 +12,8 @@ import Group = Konva.Group;
 import Tween = Konva.Tween;
 import Easings = Konva.Easings;
 import Vector2d = Konva.Vector2d;
+import {IRect} from 'konva/lib/types';
+import {doesLineIntersectGroup} from './utils';
 
 @Component({
   selector: 'app-drawing-area',
@@ -149,6 +151,9 @@ export class DrawingAreaComponent implements AfterViewInit {
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
     console.log("daNodesContainingCrosshairs", daNodesContainingCrosshairs);
     daNodesContainingCrosshairs.forEach(daNode => daNode.isSelected = !daNode.isSelected);
+    const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
+    daEdgesContainingCrosshairs.forEach(daEdge => daEdge.isSelected = !daEdge.isSelected);
+
   }
 
   private exitLabelEditMode() {
@@ -339,4 +344,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     return this.daNodes.filter((daNode) => daNode.isSelected);
   }
 
+  private getDAEdgesContainingCrosshairs(): DAEdge[]{
+    return this.daEdges.filter(daEdge => {
+      return doesLineIntersectGroup(daEdge.line, this.crosshairs);
+    });
+  }
+
 }
+
