@@ -1,5 +1,5 @@
 import {Component, EventEmitter, HostListener, Input, Output} from '@angular/core';
-import type {DACommand} from "../drawing-area/command.model";
+import {DACommand, DACommandType} from "../drawing-area/command.model";
 
 type KMCommand =
   | {kind: "switch-to-select-mode" }
@@ -21,23 +21,23 @@ export class KeymenuComponent {
   selectModeCommandForKeyboardEvent = (ke: KeyboardEvent): DAKMCommandPair => {
     switch (ke.key) {
       case 'h':
-        return {daCommand: {kind: "move-crosshairs-left"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.MOVE_CROSSHAIRS_LEFT}, kmCommand: undefined};
       case 'j':
-        return {daCommand: {kind: "move-crosshairs-down"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.MOVE_CROSSHAIRS_DOWN}, kmCommand: undefined};
       case 'k':
-        return {daCommand: {kind: "move-crosshairs-up"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.MOVE_CROSSHAIRS_UP}, kmCommand: undefined};
       case 'l':
-        return {daCommand: {kind: "move-crosshairs-right"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT}, kmCommand: undefined};
       case 'i':
-        return {daCommand: {kind: "create-new-node"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.CREATE_NEW_NODE}, kmCommand: undefined};
       case 'v':
-        return {daCommand: {kind: "toggle-item-selection"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.TOGGLE_ITEM_SELECTION}, kmCommand: undefined};
       case 'q':
-        return {daCommand: {kind: "zoom-out"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.ZOOM_OUT}, kmCommand: undefined};
       case 'w':
-        return {daCommand: {kind: "zoom-in"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.ZOOM_IN}, kmCommand: undefined};
       case 'c':
-        return {daCommand: {kind: "connect-selected-nodes"}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.CONNECT_SELECTED_NODES}, kmCommand: undefined};
       default:
         return {daCommand: undefined, kmCommand: undefined};
     }
@@ -54,13 +54,13 @@ export class KeymenuComponent {
 
       const key = ke.key;
       if (("Enter" === key && ke.shiftKey) || ("[" === key && ke.ctrlKey) || "Escape" === key) {
-        return {daCommand: {kind: "exit-label-edit-mode"}, kmCommand: {kind: "switch-to-select-mode"}};
+        return {daCommand: {kind: DACommandType.EXIT_LABEL_EDIT_MODE}, kmCommand: {kind: "switch-to-select-mode"}};
       } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
-        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.INSERT_CHAR, value: key}, kmCommand: undefined};
       } else if ("Enter" === key && this.noModifier(ke)) {
-        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.INSERT_CHAR, value: key}, kmCommand: undefined};
       } else if (["Enter", "Tab"].includes(key) && this.noModifier(ke)) {
-        return {daCommand: {kind: "insert-char", value: key}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.INSERT_CHAR, value: key}, kmCommand: undefined};
       }
       return {daCommand: undefined, kmCommand: undefined};
     };

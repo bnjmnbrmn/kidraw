@@ -1,11 +1,11 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output} from '@angular/core';
 import {Observable} from 'rxjs';
-import {DACommand} from './command.model';
 import {DANode} from './da-node';
 import {DANotification} from './da-notification.model';
 import Konva from 'konva';
 import {DACrosshairs} from './da-crosshairs';
 import {DAEdge} from './da-edge';
+import {DACommand, DACommandType} from './command.model';
 import Layer = Konva.Layer;
 import Stage = Konva.Stage;
 import Group = Konva.Group;
@@ -78,65 +78,68 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.resizeObserver.observe(this.componentNE);
 
     //todo: remove
-    this.createNewNode();
-    this.insertChar("fdsa");
-    this.exitLabelEditMode();
-    this.moveCrosshairsLeft();
-    this.moveCrosshairsLeft();
-    this.moveCrosshairsLeft();
-    this.moveCrosshairsLeft();
-    this.moveCrosshairsLeft();
-    this.createNewNode();
-    this.insertChar("fdsa");
-    this.exitLabelEditMode();
-    this.moveCrosshairsUp();
-    this.moveCrosshairsUp();
-    this.moveCrosshairsUp();
-    this.moveCrosshairsUp();
+    // this.createNewNode();
+    // this.insertChar("fdsa");
+    // this.exitLabelEditMode();
+    // this.moveCrosshairsLeft();
+    // this.moveCrosshairsLeft();
+    // this.moveCrosshairsLeft();
+    // this.moveCrosshairsLeft();
+    // this.moveCrosshairsLeft();
+    // this.createNewNode();
+    // this.insertChar("fdsa");
+    // this.exitLabelEditMode();
+    // this.moveCrosshairsUp();
+    // this.moveCrosshairsUp();
+    // this.moveCrosshairsUp();
+    // this.moveCrosshairsUp();
 
   }
 
 
   private handleCommands(command: DACommand) {
-
-    console.log("Command: " + JSON.stringify(command));
     switch (command.kind) {
-      case "move-crosshairs-left":
+      case DACommandType.MOVE_CROSSHAIRS_LEFT:
         this.moveCrosshairsLeft();
         break;
-      case "move-crosshairs-down":
+      case DACommandType.MOVE_CROSSHAIRS_DOWN:
         this.moveCrosshairsDown();
         break;
-      case "move-crosshairs-right":
+      case DACommandType.MOVE_CROSSHAIRS_RIGHT:
         this.moveCrosshairsRight();
         break;
-      case "move-crosshairs-up":
+      case DACommandType.MOVE_CROSSHAIRS_UP:
         this.moveCrosshairsUp();
         break;
-      case "create-new-node":
+      case DACommandType.CREATE_NEW_NODE:
         this.createNewNode();
         break
-      case "insert-char":
+      case DACommandType.INSERT_CHAR:
         const key = command.value;
         this.insertChar(key);
         break;
-      case "exit-label-edit-mode":
+      case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
         break;
-      case "toggle-item-selection":
+      case DACommandType.TOGGLE_ITEM_SELECTION:
         this.toggleItemSelection();
         break;
-      case "zoom-in":
+      case DACommandType.ZOOM_IN:
         this.zoomIn();
         break;
-      case "zoom-out":
+      case DACommandType.ZOOM_OUT:
         this.zoomOut();
         break;
-      case "connect-selected-nodes":
+      case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
         break;
+      default:
+        this.assertNever(command);
     }
 
+  }
+  assertNever(x: never): never {
+    throw new Error(`Unexpected object: ${x}`);
   }
 
   private toggleItemSelection() {

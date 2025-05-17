@@ -1,14 +1,27 @@
+export enum DACommandType {
+  MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',
+  MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
+  MOVE_CROSSHAIRS_UP = 'MOVE_CROSSHAIRS_UP',
+  MOVE_CROSSHAIRS_DOWN = 'MOVE_CROSSHAIRS_DOWN',
+  CREATE_NEW_NODE = 'CREATE_NEW_NODE',
+  INSERT_CHAR = 'INSERT_CHAR',
+  EXIT_LABEL_EDIT_MODE = 'EXIT_LABEL_EDIT_MODE',
+  TOGGLE_ITEM_SELECTION = 'TOGGLE_ITEM_SELECTION',
+  ZOOM_IN = 'ZOOM_IN',
+  ZOOM_OUT = 'ZOOM_OUT',
+  CONNECT_SELECTED_NODES = 'CONNECT_SELECTED_NODES',
+}
+
 export type DACommand =
-  | {kind: "move-crosshairs-left"}
-  | {kind: "move-crosshairs-right"}
-  | {kind: "move-crosshairs-up"}
-  | {kind: "move-crosshairs-down"}
-  | {kind: "create-new-node"}
-  | {kind: "insert-char", value: string}
-  | {kind: "exit-label-edit-mode"}
-  | {kind: "toggle-item-selection"}
-  | {kind: "zoom-in"}
-  | {kind: "zoom-out"}
-  | {kind: "connect-selected-nodes"}
-  | {kind: "create-connected-node"}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_LEFT}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_UP}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN}
+  | {kind: DACommandType.CREATE_NEW_NODE}
+  | {kind: DACommandType.INSERT_CHAR, value: string}
+  | {kind: DACommandType.EXIT_LABEL_EDIT_MODE}
+  | {kind: DACommandType.TOGGLE_ITEM_SELECTION}
+  | {kind: DACommandType.ZOOM_IN}
+  | {kind: DACommandType.ZOOM_OUT}
+  | {kind: DACommandType.CONNECT_SELECTED_NODES}
 

@@ -29,7 +29,7 @@
 ** TODO Deploy using S3/Route 53
 ** TODO Set up analytics
 * General
-** TODO Update Header :general:
+** TODO Update Header
 ** TODO Set up testing
 ** TODO Set up tailwind
 ** TODO Set up monorepo
