@@ -6,14 +6,13 @@ import Konva from 'konva';
 import {DACrosshairs} from './da-crosshairs';
 import {DAEdge} from './da-edge';
 import {DACommand, DACommandType} from './command.model';
+import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import Layer = Konva.Layer;
 import Stage = Konva.Stage;
 import Group = Konva.Group;
 import Tween = Konva.Tween;
 import Easings = Konva.Easings;
 import Vector2d = Konva.Vector2d;
-import {IRect} from 'konva/lib/types';
-import {doesLineIntersectGroup} from './utils';
 
 @Component({
   selector: 'app-drawing-area',
@@ -140,6 +139,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     }
 
   }
+
   assertNever(x: never): never {
     throw new Error(`Unexpected object: ${x}`);
   }
@@ -331,11 +331,8 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private getDANodesContainingCrosshairs() {
-    const {x: chX, y: chY} = this.crosshairs.getAbsolutePosition();
     return this.daNodes.filter(daNode => {
-      const clientRect = daNode.rect.getClientRect();
-        return clientRect.x < chX && chX < clientRect.x + clientRect.width
-          && clientRect.y < chY && chY < clientRect.y + clientRect.width;
+      return rectContainsPoint(daNode.getClientRect(), this.crosshairs.getAbsolutePosition());
       }
     );
   }
@@ -344,10 +341,8 @@ export class DrawingAreaComponent implements AfterViewInit {
     return this.daNodes.filter((daNode) => daNode.isSelected);
   }
 
-  private getDAEdgesContainingCrosshairs(): DAEdge[]{
-    return this.daEdges.filter(daEdge => {
-      return doesLineIntersectGroup(daEdge.line, this.crosshairs);
-    });
+  private getDAEdgesContainingCrosshairs(): DAEdge[] {
+    return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, this.crosshairs));
   }
 
 }

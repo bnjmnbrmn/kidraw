@@ -25,7 +25,7 @@ export class DAEdge extends Group {
     return this._line;
   }
 
-  constructor(srcNode: DANode, destNode: DANode, label: string) {
+  constructor(private srcNode: DANode, private destNode: DANode, private label: string) {
     super();
 
     this._line = new Konva.Line({

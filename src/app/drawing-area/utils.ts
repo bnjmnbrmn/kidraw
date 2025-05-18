@@ -1,4 +1,5 @@
 import Konva from "konva";
+import {IRect} from 'konva/lib/types';
 
 interface Point {
   x: number;
@@ -55,9 +56,21 @@ class LineSegment {
       case "parallel":
         return false;
       default:
-        return (this.p1.x <= this.p2.x
-          ? betweenIncl(this.p1.x, lineIntersection.x, this.p2.x)
-          : betweenIncl(this.p2.x, lineIntersection.x, this.p1.x));
+
+        const thisMinX = Math.min(this.p1.x, this.p2.x);
+        const thisMaxX = Math.max(this.p1.x, this.p2.x);
+        const otherMinX = Math.min(other.p1.x, other.p2.x);
+        const otherMaxX = Math.max(other.p1.x, other.p2.x);
+
+        const thisMinY = Math.min(this.p1.y, this.p2.y);
+        const thisMaxY = Math.max(this.p1.y, this.p2.y);
+        const otherMinY = Math.min(other.p1.y, other.p2.y);
+        const otherMaxY = Math.max(other.p1.y, other.p2.y);
+
+        return (betweenIncl(thisMinX, lineIntersection.x, thisMaxX)
+          && betweenIncl(otherMinX, lineIntersection.x, otherMaxX)
+          && betweenIncl(thisMinY, lineIntersection.y, thisMaxY)
+          && betweenIncl(otherMinY, lineIntersection.y, otherMaxY));
 
     }
   }
@@ -70,7 +83,7 @@ function betweenIncl(a: number, b: number, c: number) {
 /**
  * Extracts line segments from a Konva.Line node.
  */
-function getLineSegments(lineNode: Konva.Line): LineSegment[] {
+function lineSegments(lineNode: Konva.Line): LineSegment[] {
   const points = lineNode.points();
   const absoluteTransform = lineNode.getAbsoluteTransform();
   const segments: LineSegment[] = [];
@@ -82,63 +95,65 @@ function getLineSegments(lineNode: Konva.Line): LineSegment[] {
     const transformedP1 = absoluteTransform.point(p1);
     const transformedQ1 = absoluteTransform.point(q1);
 
-    segments.push(new LineSegment( transformedP1, transformedQ1));
+    segments.push(new LineSegment(transformedP1, transformedQ1));
   }
   return segments;
+}
+
+function rectSegments(gR: IRect) {
+  const gRTopLeft = {x: gR.x, y: gR.y};
+  const gRTopRight = {x: gR.x + gR.width, y: gR.y};
+  const gRBottomRight = {x: gR.x + gR.width, y: gR.y + gR.height};
+  const gRBottomLeft = {x: gR.x, y: gR.y + gR.height};
+
+  const gRSegments: LineSegment[] = [
+    new LineSegment(gRTopLeft, gRTopRight),
+    new LineSegment(gRTopRight, gRBottomRight),
+    new LineSegment(gRBottomRight, gRBottomLeft),
+    new LineSegment(gRBottomLeft, gRTopLeft)
+  ];
+  return gRSegments;
+}
+
+export function rectsIntersect(rectA: IRect, rectB: IRect) {
+  return !(rectA.x > rectB.x + rectB.width ||
+    rectA.x + rectA.width < rectB.x ||
+    rectA.y > rectB.y + rectB.height ||
+    rectA.y + rectA.height < rectB.y);
+}
+
+export function rectContainsPoint(rect: IRect, point: Point) {
+  return point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height;
 }
 
 /**
  * Checks if a Konva.Line intersects the bounding box of a Konva.Group.
  */
-export function doesLineIntersectGroup(lineNode: Konva.Line, groupNode: Konva.Group): boolean {
-  const groupRect = groupNode.getClientRect();
+export function lineIntersectsGroupBoundingRect(line: Konva.Line, group: Konva.Group): boolean {
+  const groupBoundingRect = group.getClientRect();
+  const lineBoundingRect = line.getClientRect();
 
-  const topLeft = {x: groupRect.x, y: groupRect.y};
-  const topRight = {x: groupRect.x + groupRect.width, y: groupRect.y};
-  const bottomRight = {x: groupRect.x + groupRect.width, y: groupRect.y + groupRect.height};
-  const bottomLeft = {x: groupRect.x, y: groupRect.y + groupRect.height};
-
-  // Create segments for the group's bounding box
-  const rectSegments: LineSegment[] = [
-    new LineSegment(topLeft, topRight),
-    new LineSegment(topRight, bottomRight),
-    new LineSegment(bottomRight, bottomLeft),
-    new LineSegment(bottomLeft, topLeft)
-  ];
-
-  const lineSegments = getLineSegments(lineNode);
-
-  // 1. Broad-phase check: Check if bounding boxes even overlap
-  const lineRect = lineNode.getClientRect();
-  if (
-    lineRect.x > groupRect.x + groupRect.width ||
-    lineRect.x + lineRect.width < groupRect.x ||
-    lineRect.y > groupRect.y + groupRect.height ||
-    lineRect.y + lineRect.height < groupRect.y
-  ) {
+  if (!rectsIntersect(lineBoundingRect, groupBoundingRect)) {
     return false;
   }
 
-  for (const lineSeg of lineSegments) {
-    for (const rectSeg of rectSegments) {
+  const lineSegs = lineSegments(line);
+  const gRSegs = rectSegments(groupBoundingRect);
+
+  for (const lineSeg of lineSegs) {
+    for (const rectSeg of gRSegs) {
       if (lineSeg.intersectsWith(rectSeg)) {
         return true;
       }
     }
   }
 
-  const firstSegment = lineSegments[0];
-  if (firstSegment) {
-    const firstPointX = firstSegment.p1.x;
-    const firstPointY = firstSegment.p1.y;
-    if (
-      firstPointX >= groupRect.x &&
-      firstPointX <= groupRect.x + groupRect.width &&
-      firstPointY >= groupRect.y &&
-      firstPointY <= groupRect.y + groupRect.height
-    ) {
-      return true;
-    }
+  if ( rectContainsPoint(groupBoundingRect, lineSegs[0].p1)) {
+    return true;
   }
+
   return false;
 }
