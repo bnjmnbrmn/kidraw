@@ -190,6 +190,10 @@ let DrawingAreaComponent = (() => {
         selectItem() {
             this.tweens.forEach(t => t.finish());
             this.tweens = [];
+            if (this.getSelectedItems().length == 1) {
+                this.getSelectedItems()[0].isSelected = false;
+                return;
+            }
             this.unselectAll();
             const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
             if (daNodesContainingCrosshairs.length > 0) {
@@ -407,6 +411,9 @@ let DrawingAreaComponent = (() => {
         unselectAll() {
             this.daNodes.forEach(n => n.isSelected = false);
             this.daEdges.forEach(e => e.isSelected = false);
+        }
+        getSelectedItems() {
+            return this.getSelectedDANodes().concat(this.getSelectedDAEdges());
         }
     };
     __setFunctionName(_classThis, "DrawingAreaComponent");

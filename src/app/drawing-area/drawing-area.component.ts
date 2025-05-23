@@ -175,6 +175,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
 
+    if (this.getSelectedItems().length == 1) {
+      this.getSelectedItems()[0].isSelected = false;
+      return;
+    }
+
     this.unselectAll();
 
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
@@ -424,6 +429,10 @@ export class DrawingAreaComponent implements AfterViewInit {
   private unselectAll() {
     this.daNodes.forEach(n => n.isSelected = false);
     this.daEdges.forEach(e => e.isSelected = false);
+  }
+
+  private getSelectedItems() {
+    return (this.getSelectedDANodes() as (DANode|DAEdge)[]).concat(this.getSelectedDAEdges());
   }
 }
 
