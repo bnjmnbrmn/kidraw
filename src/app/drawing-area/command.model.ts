@@ -6,12 +6,12 @@ export enum DACommandType {
   CREATE_NEW_NODE = 'CREATE_NEW_NODE',
   INSERT_CHAR = 'INSERT_CHAR',
   EXIT_LABEL_EDIT_MODE = 'EXIT_LABEL_EDIT_MODE',
-  TOGGLE_ITEM_SELECTION = 'TOGGLE_ITEM_SELECTION',
+  MULTI_ITEM_SELECT = 'MULTI_ITEM_SELECT',
   ZOOM_IN = 'ZOOM_IN',
   ZOOM_OUT = 'ZOOM_OUT',
   CONNECT_SELECTED_NODES = 'CONNECT_SELECTED_NODES',
   CONNECT_SELECTED_NODE = 'CONNECT_SELECTED_NODE',
-  SELECT_ITEM = 'SELECT_ITEM',
+  SINGLE_ITEM_SELECT = 'SINGLE_ITEM_SELECT',
 }
 
 export type DACommand =
@@ -22,10 +22,10 @@ export type DACommand =
   | {kind: DACommandType.CREATE_NEW_NODE}
   | {kind: DACommandType.INSERT_CHAR, value: string}
   | {kind: DACommandType.EXIT_LABEL_EDIT_MODE}
-  | {kind: DACommandType.TOGGLE_ITEM_SELECTION}
+  | {kind: DACommandType.MULTI_ITEM_SELECT}
   | {kind: DACommandType.ZOOM_IN}
   | {kind: DACommandType.ZOOM_OUT}
   | {kind: DACommandType.CONNECT_SELECTED_NODES}
   | {kind: DACommandType.CONNECT_SELECTED_NODE}
-  | {kind: DACommandType.SELECT_ITEM}
+  | {kind: DACommandType.SINGLE_ITEM_SELECT}
 

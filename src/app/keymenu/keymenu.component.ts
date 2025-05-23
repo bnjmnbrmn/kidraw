@@ -31,9 +31,9 @@ export class KeymenuComponent {
       case 'i':
         return {daCommand: {kind: DACommandType.CREATE_NEW_NODE}, kmCommand: undefined};
       case 'v':
-        return {daCommand: {kind: DACommandType.TOGGLE_ITEM_SELECTION}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.MULTI_ITEM_SELECT}, kmCommand: undefined};
       case 's':
-        return {daCommand: {kind: DACommandType.SELECT_ITEM}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.SINGLE_ITEM_SELECT}, kmCommand: undefined};
       case 'q':
         return {daCommand: {kind: DACommandType.ZOOM_OUT}, kmCommand: undefined};
       case 'w':

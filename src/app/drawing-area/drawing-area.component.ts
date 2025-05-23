@@ -122,11 +122,11 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
         break;
-      case DACommandType.TOGGLE_ITEM_SELECTION:
-        this.toggleItemSelection();
+      case DACommandType.MULTI_ITEM_SELECT:
+        this.multiItemSelect();
         break;
-      case DACommandType.SELECT_ITEM:
-        this.selectItem();
+      case DACommandType.SINGLE_ITEM_SELECT:
+        this.singleItemSelect();
         break;
       case DACommandType.ZOOM_IN:
         this.zoomIn();
@@ -150,7 +150,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     throw new Error(`Unexpected object: ${x}`);
   }
 
-  private toggleItemSelection() {
+  private multiItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
@@ -171,7 +171,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     return;
   }
 
-  private selectItem() {
+  private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
 
@@ -198,7 +198,6 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     }
     return;
-
   }
 
   private exitLabelEditMode() {

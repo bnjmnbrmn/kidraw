@@ -145,11 +145,11 @@ let DrawingAreaComponent = (() => {
                 case command_model_1.DACommandType.EXIT_LABEL_EDIT_MODE:
                     this.exitLabelEditMode();
                     break;
-                case command_model_1.DACommandType.TOGGLE_ITEM_SELECTION:
-                    this.toggleItemSelection();
+                case command_model_1.DACommandType.MULTI_ITEM_SELECT:
+                    this.multiItemSelect();
                     break;
-                case command_model_1.DACommandType.SELECT_ITEM:
-                    this.selectItem();
+                case command_model_1.DACommandType.SINGLE_ITEM_SELECT:
+                    this.singleItemSelect();
                     break;
                 case command_model_1.DACommandType.ZOOM_IN:
                     this.zoomIn();
@@ -170,7 +170,7 @@ let DrawingAreaComponent = (() => {
         assertNever(x) {
             throw new Error(`Unexpected object: ${x}`);
         }
-        toggleItemSelection() {
+        multiItemSelect() {
             this.tweens.forEach(t => t.finish());
             this.tweens = [];
             const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
@@ -187,7 +187,7 @@ let DrawingAreaComponent = (() => {
             }
             return;
         }
-        selectItem() {
+        singleItemSelect() {
             this.tweens.forEach(t => t.finish());
             this.tweens = [];
             if (this.getSelectedItems().length == 1) {
