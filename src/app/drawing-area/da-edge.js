@@ -13,9 +13,13 @@ class DAEdge extends Group {
     set isSelected(value) {
         this._isSelected = value;
         this._line.strokeWidth(this.strokeWidth());
+        this._line.stroke(this.stroke());
     }
     strokeWidth() {
         return this._isSelected ? 4 : 2;
+    }
+    stroke() {
+        return this._isSelected ? 'red' : 'black';
     }
     get line() {
         return this._line;
@@ -28,7 +32,7 @@ class DAEdge extends Group {
         this._isSelected = true;
         this._line = new konva_1.default.Line({
             points: [srcNode.x(), srcNode.y(), destNode.x(), destNode.y()],
-            stroke: 'black',
+            stroke: this.stroke(),
             strokeWidth: this.strokeWidth()
         });
         this.add(this._line);

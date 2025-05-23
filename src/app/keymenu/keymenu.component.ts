@@ -32,12 +32,14 @@ export class KeymenuComponent {
         return {daCommand: {kind: DACommandType.CREATE_NEW_NODE}, kmCommand: undefined};
       case 'v':
         return {daCommand: {kind: DACommandType.TOGGLE_ITEM_SELECTION}, kmCommand: undefined};
+      case 's':
+        return {daCommand: {kind: DACommandType.SELECT_ITEM}, kmCommand: undefined};
       case 'q':
         return {daCommand: {kind: DACommandType.ZOOM_OUT}, kmCommand: undefined};
       case 'w':
         return {daCommand: {kind: DACommandType.ZOOM_IN}, kmCommand: undefined};
       case 'c':
-        return {daCommand: {kind: DACommandType.CONNECT_SELECTED_NODES}, kmCommand: undefined};
+        return {daCommand: {kind: DACommandType.CONNECT_SELECTED_NODE}, kmCommand: undefined};
       default:
         return {daCommand: undefined, kmCommand: undefined};
     }

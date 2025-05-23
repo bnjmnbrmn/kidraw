@@ -125,6 +125,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.TOGGLE_ITEM_SELECTION:
         this.toggleItemSelection();
         break;
+      case DACommandType.SELECT_ITEM:
+        this.selectItem();
+        break;
       case DACommandType.ZOOM_IN:
         this.zoomIn();
         break;
@@ -133,6 +136,9 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
+        break;
+      case DACommandType.CONNECT_SELECTED_NODE:
+        this.connectSelectedNode();
         break;
       default:
         this.assertNever(command);
@@ -147,12 +153,46 @@ export class DrawingAreaComponent implements AfterViewInit {
   private toggleItemSelection() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-    console.log("this.daNodes", this.daNodes)
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-    console.log("daNodesContainingCrosshairs", daNodesContainingCrosshairs);
-    daNodesContainingCrosshairs.forEach(daNode => daNode.isSelected = !daNode.isSelected);
+
+    if (daNodesContainingCrosshairs.length > 0) {
+      const nodeToToggle = daNodesContainingCrosshairs.reduce((n0,n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+      nodeToToggle.isSelected = !nodeToToggle.isSelected;
+      return;
+    }
+
     const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
-    daEdgesContainingCrosshairs.forEach(daEdge => daEdge.isSelected = !daEdge.isSelected);
+    if (daEdgesContainingCrosshairs.length > 0) {
+      const edgeToToggle = daEdgesContainingCrosshairs.reduce((e0,e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+      edgeToToggle.isSelected = !edgeToToggle.isSelected;
+      return;
+
+    }
+    return;
+  }
+
+  private selectItem() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+
+    this.unselectAll();
+
+    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
+
+    if (daNodesContainingCrosshairs.length > 0) {
+      const nodeToToggle = daNodesContainingCrosshairs.reduce((n0,n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+      nodeToToggle.isSelected = !nodeToToggle.isSelected;
+      return;
+    }
+
+    const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
+    if (daEdgesContainingCrosshairs.length > 0) {
+      const edgeToToggle = daEdgesContainingCrosshairs.reduce((e0,e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+      edgeToToggle.isSelected = !edgeToToggle.isSelected;
+      return;
+
+    }
+    return;
 
   }
 
@@ -195,6 +235,38 @@ export class DrawingAreaComponent implements AfterViewInit {
         }
       }
     }
+
+    return;
+  }
+
+  private connectSelectedNode() {
+    this.tweens.forEach(t => t.finish());
+    this.tweens = [];
+    const selectedDAEdges = this.getSelectedDAEdges();
+    if (selectedDAEdges.length != 0) {
+      return
+    }
+    const selectedDANodes = this.getSelectedDANodes();
+    if (selectedDANodes.length != 1) {
+      return;
+    }
+    const selectedDANode = selectedDANodes[0];
+
+    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
+    if (daNodesContainingCrosshairs.length > 1) {
+      return;
+    }
+
+    if (daNodesContainingCrosshairs.length == 0) {
+      //todo: insert new node and connect to it
+      return
+    }
+
+    const daNodeUnderCrosshairs = daNodesContainingCrosshairs[0];
+
+    let daEdge = new DAEdge(selectedDANode, daNodeUnderCrosshairs, "");
+    this.daEdgeGroup.add(daEdge);
+    this.daEdges.push(daEdge);
 
     return;
   }
@@ -341,9 +413,17 @@ export class DrawingAreaComponent implements AfterViewInit {
     return this.daNodes.filter((daNode) => daNode.isSelected);
   }
 
+  private getSelectedDAEdges(): DAEdge[] {
+    return this.daEdges.filter((daEdge) => daEdge.isSelected);
+  }
+
   private getDAEdgesContainingCrosshairs(): DAEdge[] {
     return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, this.crosshairs));
   }
 
+  private unselectAll() {
+    this.daNodes.forEach(n => n.isSelected = false);
+    this.daEdges.forEach(e => e.isSelected = false);
+  }
 }
 
