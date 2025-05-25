@@ -1,0 +1,73 @@
+import Konva from 'konva';
+import {DANode} from './da-node';
+import {DAEdge} from './da-edge';
+import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
+
+export class DrawingLayer extends Konva.Layer {
+  private readonly daEdgeGroup: Konva.Group;
+  private readonly daNodeGroup: Konva.Group;
+  private readonly daNodes: DANode[] = [];
+  private readonly daEdges: DAEdge[] = [];
+
+  constructor() {
+    super();
+
+    this.daEdgeGroup = new Konva.Group();
+    this.add(this.daEdgeGroup);
+    this.daNodeGroup = new Konva.Group();
+    this.add(this.daNodeGroup);
+
+  }
+
+  createNewNode(absoluteX: number, absoluteY: number) {
+    let daNode = new DANode((absoluteX - this.x()) / this.scaleX(), (absoluteY - this.y()) / this.scaleY(), "");
+    this.daNodeGroup.add(daNode);
+    this.daNodes.push(daNode);
+  }
+
+  getSelectedDANodes(): DANode[] {
+    return this.daNodes.filter((daNode) => daNode.isSelected);
+  }
+
+  getSelectedDAEdges(): DAEdge[] {
+    return this.daEdges.filter((daEdge) => daEdge.isSelected);
+  }
+
+  appendTextToSelected(text: string) {
+    this.getSelectedDANodes().forEach(daNode => {
+      daNode.label.text(daNode.label.text() + text);
+    });
+  }
+
+  unselectAll() {
+    this.getSelectedDANodes().forEach(daNode => {
+      daNode.isSelected = false;
+    });
+    this.getSelectedDAEdges().forEach(daEdge => {
+      daEdge.isSelected = false;
+    });
+  }
+
+
+  getSelectedItems() {
+    return (this.getSelectedDANodes() as (DANode|DAEdge)[]).concat(this.getSelectedDAEdges());
+  }
+
+  getDaNodesContainingPoint(point: { x: number; y: number }) {
+    return this.daNodes.filter(daNode => {
+        return rectContainsPoint(daNode.getClientRect(), point);
+      }
+    );
+  }
+
+  addEdge(srcNode: DANode, destNode: DANode) {
+    let daEdge = new DAEdge(srcNode, destNode, "");
+    this.daEdgeGroup.add(daEdge);
+    this.daEdges.push(daEdge);
+  }
+
+
+  getDaEdgesIntersectingGroup(group: Konva.Group) {
+    return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, group));
+  }
+}
