@@ -233,32 +233,40 @@ let DrawingAreaComponent = (() => {
             return;
         }
         zoomIn() {
-            this.tweens.forEach(t => t.finish());
-            this.tweens = [];
+            this.finishTweens();
             const oldScale = this.drawingLayer.scaleX();
+            const crosshairsPointTo = {
+                x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / oldScale,
+                y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / oldScale
+            };
             const newScale = oldScale * 2.0;
             this.tweens.push(new Tween({
                 node: this.drawingLayer,
                 duration: .1,
                 scaleX: newScale,
-                scaleY: newScale
+                scaleY: newScale,
+                x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
+                y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale
             }).play());
-            // this.drawingLayer.scale({x: newScale, y: newScale});
         }
         zoomOut() {
-            this.tweens.forEach(t => t.finish());
-            this.tweens = [];
+            this.finishTweens();
             const oldScale = this.drawingLayer.scaleX();
-            const newScale = oldScale * 1.0 / 2.0;
+            const crosshairsPointTo = {
+                x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / oldScale,
+                y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / oldScale
+            };
+            const newScale = oldScale / 2.0;
             let scale = { x: newScale, y: newScale };
             console.log("scale", scale);
             this.tweens.push(new Tween({
                 node: this.drawingLayer,
                 duration: .1,
                 scaleX: newScale,
-                scaleY: newScale
+                scaleY: newScale,
+                x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
+                y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale
             }).play());
-            // this.drawingLayer.scale({x: newScale, y: newScale});
         }
         moveCrosshairsUp() {
             this.tweens.forEach(t => t.finish());
