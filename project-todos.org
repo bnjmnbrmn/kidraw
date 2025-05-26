@@ -20,6 +20,7 @@
 ** TODO Make edges movable
 ** TODO Separate edges when they are too close
 ** TODO Allow for directed and un-directed edges
+** TODO Graph Navigation
 ** TODO Animate node add (fade in)
 ** TODO Undo/Redo
 * Deployment
