@@ -2,10 +2,11 @@ import {Component, ViewChild} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
-import {KeymenuComponent, KMMode} from './keymenu/keymenu.component';
+import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
 import {DACommand} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
+import {KMMode, LabelEditMode, SelectMode} from './keymenu/KMMode';
 
 @Component({
   selector: 'app-root',
@@ -28,10 +29,10 @@ export class AppComponent {
 
     switch (daNotification.kind) {
       case "started-label-editing-mode":
-        this.keymenuComponent.mode = "label-edit"
+        this.keymenuComponent.mode = LabelEditMode.getInstance();
         break;
       case "started-select-mode":
-        this.keymenuComponent.mode = "select";
+        this.keymenuComponent.mode = SelectMode.getInstance();
         break;
     }
 

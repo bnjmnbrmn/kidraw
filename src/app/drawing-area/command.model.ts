@@ -10,8 +10,7 @@ export enum DACommandType {
   ZOOM_IN = 'ZOOM_IN',
   ZOOM_OUT = 'ZOOM_OUT',
   CONNECT_SELECTED_NODES = 'CONNECT_SELECTED_NODES',
-  CONNECT_SELECTED_NODE = 'CONNECT_SELECTED_NODE',
-  SINGLE_ITEM_SELECT = 'SINGLE_ITEM_SELECT',
+  SINGLE_ITEM_TOGGLE_SELECT = 'SINGLE_ITEM_TOGGLE_SELECT',
 }
 
 export type DACommand =
@@ -26,6 +25,5 @@ export type DACommand =
   | {kind: DACommandType.ZOOM_IN}
   | {kind: DACommandType.ZOOM_OUT}
   | {kind: DACommandType.CONNECT_SELECTED_NODES}
-  | {kind: DACommandType.CONNECT_SELECTED_NODE}
-  | {kind: DACommandType.SINGLE_ITEM_SELECT}
+  | {kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT}
 

@@ -2,8 +2,8 @@ import Konva from "konva";
 
 export class DACrosshairs extends Konva.Group {
 
-  constructor() {
-    super({opacity: .5})
+  constructor(p: { x: number; y: number }) {
+    super({x: p.x, y: p.y, opacity: .5})
     const horiz = new Konva.Line({
       points: [-20, 0, 20, 0],
       stroke: 'black',

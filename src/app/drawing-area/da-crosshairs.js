@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DACrosshairs = void 0;
 const konva_1 = __importDefault(require("konva"));
 class DACrosshairs extends konva_1.default.Group {
-    constructor() {
-        super({ opacity: .5 });
+    constructor(p) {
+        super({ x: p.x, y: p.y, opacity: .5 });
         const horiz = new konva_1.default.Line({
             points: [-20, 0, 20, 0],
             stroke: 'black',
