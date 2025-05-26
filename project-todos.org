@@ -1,36 +1,34 @@
 #+title: Project Todos
 
+* Key Menu
+** TODO Add Konva stage, and add hints as stage items
 * Drawing Area
-** TODO Make edges select-able
-** TODO Cycle through item selection
-** TODO Add waypoints to edges
-** TODO Remove waypoints from edges
-** TODO Set up Konva source code for debugging
-** TODO Animate node add (fade in)
-** TODO Connect to new node
-** TODO Set new node direction
-** TODO Add arrowheads to directed edges
-** TODO Drag-able nodes
-** TODO Delete-able nodes
-** TODO Un-select all
 ** TODO Recenter view
 ** TODO Recenter crosshairs
-** TODO Zoom around crosshairs
+** TODO Drag-able nodes
+** TODO Delete-able nodes
+** TODO Editable nodes
+** TODO Z-cycle
+** TODO Add arrowheads to directed edges
+** TODO Add waypoints to edges
+** TODO Remove waypoints from edges
+** TODO Connect to new node
+** TODO Set new node direction
 ** TODO Allow node text to be editable after creation
 ** TODO Change node size to allow for more/less text
 ** TODO Push nodes away from each other when they get too close
 ** TODO Make edges movable
 ** TODO Separate edges when they are too close
 ** TODO Allow for directed and un-directed edges
+** TODO Animate node add (fade in)
 ** TODO Undo/Redo
-* Key Menu
-** TODO Add Konva stage, and add hints as stage items
 * Deployment
 ** TODO Deploy using S3/Route 53
 ** TODO Set up analytics
 * General
+** TODO Finish moving logic from component into layers
+** TODO Set up Konva source code for debugging
 ** TODO Update Header
 ** TODO Set up testing
 ** TODO Set up tailwind
 ** TODO Set up monorepo
-** TODO Incorporate enums into DA commands
