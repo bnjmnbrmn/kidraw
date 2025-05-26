@@ -14,6 +14,5 @@ var DACommandType;
     DACommandType["ZOOM_IN"] = "ZOOM_IN";
     DACommandType["ZOOM_OUT"] = "ZOOM_OUT";
     DACommandType["CONNECT_SELECTED_NODES"] = "CONNECT_SELECTED_NODES";
-    DACommandType["CONNECT_SELECTED_NODE"] = "CONNECT_SELECTED_NODE";
-    DACommandType["SINGLE_ITEM_SELECT"] = "SINGLE_ITEM_SELECT";
+    DACommandType["SINGLE_ITEM_TOGGLE_SELECT"] = "SINGLE_ITEM_TOGGLE_SELECT";
 })(DACommandType || (exports.DACommandType = DACommandType = {}));

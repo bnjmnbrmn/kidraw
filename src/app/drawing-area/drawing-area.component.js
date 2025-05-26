@@ -44,7 +44,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DrawingAreaComponent = void 0;
 const core_1 = require("@angular/core");
 const konva_1 = __importDefault(require("konva"));
-const da_edge_1 = require("./da-edge");
 const command_model_1 = require("./command.model");
 const drawing_layer_1 = require("./drawing.layer");
 const crosshairs_layer_1 = require("./crosshairs.layer");
@@ -72,8 +71,6 @@ let DrawingAreaComponent = (() => {
             this.commands = __runInitializers(this, _commands_initializers, void 0);
             this.daOut = (__runInitializers(this, _commands_extraInitializers), __runInitializers(this, _daOut_initializers, new core_1.EventEmitter()));
             this.componentNE = (__runInitializers(this, _daOut_extraInitializers), (0, core_1.inject)(core_1.ElementRef).nativeElement);
-            this.daNodes = [];
-            this.daEdges = [];
             this.tweens = [];
         }
         ngAfterViewInit() {
@@ -122,7 +119,7 @@ let DrawingAreaComponent = (() => {
                 case command_model_1.DACommandType.MULTI_ITEM_SELECT:
                     this.multiItemSelect();
                     break;
-                case command_model_1.DACommandType.SINGLE_ITEM_SELECT:
+                case command_model_1.DACommandType.SINGLE_ITEM_TOGGLE_SELECT:
                     this.singleItemSelect();
                     break;
                 case command_model_1.DACommandType.ZOOM_IN:
@@ -134,9 +131,6 @@ let DrawingAreaComponent = (() => {
                 case command_model_1.DACommandType.CONNECT_SELECTED_NODES:
                     this.connectSelectedNodes();
                     break;
-                case command_model_1.DACommandType.CONNECT_SELECTED_NODE:
-                    this.connectSelectedNode();
-                    break;
                 default:
                     this.assertNever(command);
             }
@@ -147,6 +141,9 @@ let DrawingAreaComponent = (() => {
         multiItemSelect() {
             this.tweens.forEach(t => t.finish());
             this.tweens = [];
+            this.selectTopItem();
+        }
+        selectTopItem() {
             const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
             if (daNodesContainingCrosshairs.length > 0) {
                 const nodeToToggle = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
@@ -164,20 +161,12 @@ let DrawingAreaComponent = (() => {
         singleItemSelect() {
             this.tweens.forEach(t => t.finish());
             this.tweens = [];
+            if (this.drawingLayer.getSelectedItems().length == 1) {
+                this.drawingLayer.getSelectedItems()[0].isSelected = false;
+                return;
+            }
             this.drawingLayer.unselectAll();
-            const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
-            if (daNodesContainingCrosshairs.length > 0) {
-                const nodeToToggle = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
-                nodeToToggle.isSelected = !nodeToToggle.isSelected;
-                return;
-            }
-            const daEdgesContainingCrosshairs = this.getDAEdgesContainingCrosshairs();
-            if (daEdgesContainingCrosshairs.length > 0) {
-                const edgeToToggle = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
-                edgeToToggle.isSelected = !edgeToToggle.isSelected;
-                return;
-            }
-            return;
+            this.selectTopItem();
         }
         exitLabelEditMode() {
             this.finishTweens();
@@ -191,46 +180,41 @@ let DrawingAreaComponent = (() => {
             this.drawingLayer.appendTextToSelected(key);
         }
         connectSelectedNodes() {
-            this.tweens.forEach(t => t.finish());
-            this.tweens = [];
-            const selectedDANodes = this.drawingLayer.getSelectedDANodes();
-            //todo: connect to self
-            if (selectedDANodes.length <= 1)
-                return;
-            for (let selectedDANodeA of selectedDANodes) {
-                for (let selectedDANodeB of selectedDANodes) {
-                    if (selectedDANodeA != selectedDANodeB) {
-                        let daEdge = new da_edge_1.DAEdge(selectedDANodeA, selectedDANodeB, "");
-                        console.log(daEdge);
-                        this.daEdgeGroup.add(daEdge);
-                        this.daEdges.push(daEdge);
-                    }
-                }
-            }
-            return;
-        }
-        connectSelectedNode() {
             this.finishTweens();
             const selectedDAEdges = this.drawingLayer.getSelectedDAEdges();
             if (selectedDAEdges.length != 0) {
                 return;
             }
             const selectedDANodes = this.drawingLayer.getSelectedDANodes();
-            if (selectedDANodes.length != 1) {
-                return;
-            }
-            const selectedDANode = selectedDANodes[0];
             const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
-            if (daNodesContainingCrosshairs.length > 1) {
+            if (selectedDANodes.length == 2) {
+                if (daNodesContainingCrosshairs.length == 1) {
+                    const destNode = daNodesContainingCrosshairs[0];
+                    const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
+                    this.drawingLayer.addEdge(srcNode, destNode);
+                }
+                else {
+                    return;
+                }
+            }
+            else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
+                if (daNodesContainingCrosshairs[0] != selectedDANodes[0]) {
+                    const destNode = daNodesContainingCrosshairs[0];
+                    const srcNode = selectedDANodes[0];
+                    this.drawingLayer.addEdge(srcNode, destNode);
+                    return;
+                }
+                else {
+                    //todo: connect node to self
+                    return;
+                }
+            }
+            else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
+                //todo: create new connected node
+            }
+            else {
                 return;
             }
-            if (daNodesContainingCrosshairs.length == 0) {
-                //todo: insert new node and connect to it
-                return;
-            }
-            const daNodeUnderCrosshairs = daNodesContainingCrosshairs[0];
-            this.drawingLayer.addEdge(selectedDANode, daNodeUnderCrosshairs);
-            return;
         }
         zoomIn() {
             this.finishTweens();
