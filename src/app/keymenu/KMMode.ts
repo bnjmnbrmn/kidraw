@@ -1,25 +1,19 @@
 import {DACommand, DACommandType} from '../drawing-area/command.model';
 import Konva from 'konva';
 import {KMCommand} from './KMCommand';
-import Layer = Konva.Layer;
+import {DisplayableKey} from "./keymenu.component";
 
 export type DAKMCommandPair = { daCommand: DACommand | undefined, kmCommand: KMCommand | undefined };
 
-export interface KMMode {
-  updateStage(stage: Konva.Stage): void;
 
-  commandsForEvent(event: KeyboardEvent): DAKMCommandPair;
-}
 
-export class SelectMode implements KMMode {
+export class SelectMode {
   private static instance: SelectMode;
+
 
   private constructor() {
   }
 
-  updateStage(stage: Konva.Stage): void {
-    throw new Error('Method not implemented.');
-  }
 
   commandsForEvent(ke: KeyboardEvent): DAKMCommandPair {
     switch (ke.key) {
@@ -56,27 +50,7 @@ export class SelectMode implements KMMode {
   }
 }
 
-export class LabelEditMode implements KMMode {
-  private static instance: LabelEditMode;
-
-  private constructor() {
-  }
-
-  updateStage(stage: Konva.Stage): void {
-    const testText = new Konva.Text({
-      x: 10,
-      y: 10,
-      text: 'Simple Text',
-      fontSize: 30,
-      fontFamily: 'Calibri',
-      fill: 'green'
-    });
-    stage.removeChildren();
-    const layer = new Konva.Layer();
-    layer.add(testText);
-
-    stage.add(layer);
-  }
+export class LabelEditMode {
 
   commandsForEvent(ke: KeyboardEvent): DAKMCommandPair {
     const code = ke.code;
@@ -101,10 +75,4 @@ export class LabelEditMode implements KMMode {
     return !ke.altKey && !ke.ctrlKey && !ke.shiftKey && !ke.metaKey;
   }
 
-  static getInstance(): LabelEditMode {
-    if (!LabelEditMode.instance) {
-      LabelEditMode.instance = new LabelEditMode();
-    }
-    return LabelEditMode.instance;
-  }
 }

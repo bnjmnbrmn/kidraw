@@ -6,7 +6,6 @@ import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
 import {DACommand} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
-import {KMMode, LabelEditMode, SelectMode} from './keymenu/KMMode';
 
 @Component({
   selector: 'app-root',
@@ -27,15 +26,11 @@ export class AppComponent {
 
   handleDANotification(daNotification: DANotification) {
 
-    switch (daNotification.kind) {
-      case "started-label-editing-mode":
-        this.keymenuComponent.mode = LabelEditMode.getInstance();
-        break;
-      case "started-select-mode":
-        this.keymenuComponent.mode = SelectMode.getInstance();
-        break;
-    }
-
-
+    // switch (daNotification.kind) {
+    //   case "started-label-editing-mode":
+    //     break;
+    //   case "started-select-mode":
+    //     break;
+    // }
   }
 }
