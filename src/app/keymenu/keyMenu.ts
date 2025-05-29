@@ -16,17 +16,17 @@ export class KeyMenu<T> {
 
   updateLayer() {
     this.layer.children = [];
-    this.currentMode!.updateLayer(this.layer)
+    this.currentMode?.updateLayer(this.layer)
   }
 
   handleKeyDown(event: KeyboardEvent) {
     console.log("KeyMenu received " + event.key + " down")
-    this.currentMode!.handleKeyDown(event)
+    this.currentMode?.handleKeyDown(event)
   }
 
   handleKeyUp(event: KeyboardEvent) {
     console.log("KeyMenu received " + event.key + " up")
-    this.currentMode!.handleKeyUp(event);
+    this.currentMode?.handleKeyUp(event);
   }
 
   switchMode(modeName: string) {
