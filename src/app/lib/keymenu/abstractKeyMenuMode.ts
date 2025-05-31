@@ -1,5 +1,5 @@
 import Konva from "konva";
-import {KeyMenuSubmenu} from './keyMenuSubmenu';
+import {KeyMenuSubmenu} from './thirtyKeyKM/keyMenuSubmenu';
 import {KeyMenuLayer} from './keyMenuLayer';
 import {KeyMenuMode} from './keyMenuMode';
 import { KeyMenu } from "./keyMenu";
