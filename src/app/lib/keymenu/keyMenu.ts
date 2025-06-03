@@ -1,6 +1,7 @@
 import {KeyMenuLayer} from './keyMenuLayer';
 import {KeyMenuMode} from './keyMenuMode';
 import {EventEmitter} from '@angular/core';
+import Konva from 'konva';
 
 export class KeyMenu<T> {
   public layer: KeyMenuLayer;
@@ -16,6 +17,9 @@ export class KeyMenu<T> {
 
   updateLayer() {
     this.layer.children = [];
+    this.layer.add(new Konva.Text({
+      text: "Mode: " + this.currentMode?.name
+    }));
     this.currentMode?.updateLayer(this.layer)
   }
 

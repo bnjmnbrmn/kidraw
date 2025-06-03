@@ -10,21 +10,69 @@ import {KMKey} from "../lib/keymenu/thirtyKeyKM/KMKey";
 
 export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenuSubmenu {
 
-  public override kmKeyConfigs: KMKeyConfig[] =
+  kmKeyConfigs: KMKeyConfig[] =
     [
       {
+        displayableKey: DisplayableKey.h, label: "Move Left",
+        action: () => console.log("Move Crosshairs Left")
+      },
+      {
+        displayableKey: DisplayableKey.j, label: "Move Down",
+        action: () => console.log("Move Crosshairs Down")
+      },
+      {
+        displayableKey: DisplayableKey.k, label: "Move Up",
+        action: () => console.log("Move Crosshairs Up")
+      },
+      {
+        displayableKey: DisplayableKey.l, label: "Move Right",
+        action: () => console.log("Move Crosshairs Right")
+      },
+      {
+        displayableKey: DisplayableKey.i, label: "Create Node",
+        action: () => {this.keyMenuMode.keyMenu.switchMode("Label Edit")}
+      },
+      {
+        displayableKey: DisplayableKey.v, label: "Multi-Item Select",
+        action: () => {this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})}
+      },
+      {
+        displayableKey: DisplayableKey.s, label: "Multi-Item Select",
+        action: () => {this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})}
+      },
+      {
+        displayableKey: DisplayableKey.s, label: "Single-Item Toggle Select",
+        action: () => {this.keymenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT})}
+      },
+      {
+        displayableKey: DisplayableKey.c, label: "Connect Selected",
+        action: () => {this.keymenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});}
+      },
+      {
         displayableKey: DisplayableKey.q, label: "Zoom Out",
-        action: () => console.log("Zoom Out")
+        action: () => {this.keymenuOut.emit({kind: DACommandType.ZOOM_OUT});}
       },
       {
         displayableKey: DisplayableKey.w, label: "Zoom In",
-        action: () => console.log("Zoom In")
+        action: () => {this.keymenuOut.emit({kind: DACommandType.ZOOM_IN});}
       }
     ];
 
-  constructor(private keymenuOut: EventEmitter<DACommand>, public keyMenuMode: KeyMenuMode<DACommand>,
-              x: number, y: number) {
+
+  public override kmKeys: KMKey[] = this.kmKeyConfigs.map(keyConfig => new KMKey(keyConfig));
+
+  constructor(
+    private keymenuOut: EventEmitter<DACommand>,
+    public keyMenuMode: KeyMenuMode<DACommand>,
+    x: number,
+    y: number) {
+
     super({x, y});
+
+    this.kmKeys.forEach(key => {
+      this.add(key);
+    });
+    this.keyMenuMode.keyMenu.layer.add(this);
   }
 
   handleKeyUp(event: KeyboardEvent): void {

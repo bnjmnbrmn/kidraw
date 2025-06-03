@@ -3,6 +3,7 @@ import {KeyMenuSubmenu} from "./keyMenuSubmenu";
 import {KeyMenuLayer} from "../keyMenuLayer";
 
 import {KMKeyConfig} from './KMKeyConfig';
+import {KMKey} from './KMKey';
 
 export abstract class ThirtyKeyKMSubmenu extends Konva.Group implements KeyMenuSubmenu {
 
@@ -12,7 +13,7 @@ export abstract class ThirtyKeyKMSubmenu extends Konva.Group implements KeyMenuS
 
   abstract updateLayer(layer: KeyMenuLayer): void;
 
-  abstract kmKeyConfigs: KMKeyConfig[];
+  abstract kmKeys: KMKey[];
 
   abstract handleKeyDown(event: KeyboardEvent): void;
 

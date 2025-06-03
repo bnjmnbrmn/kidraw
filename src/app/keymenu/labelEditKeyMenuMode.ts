@@ -1,24 +1,28 @@
-import {AbstractKeyMenuMode} from "../lib/keymenu/abstractKeyMenuMode";
-import {DACommand} from "../drawing-area/command.model";
+import {DACommand, DACommandType} from "../drawing-area/command.model";
 import {EventEmitter} from "@angular/core";
 import {KeyMenu} from "../lib/keymenu/keyMenu";
-import {KeyMenuLayer} from "../lib/keymenu/keyMenuLayer";
-import Konva from "konva";
-import {LabelEditModeRootSubmenu} from './labelEditModeRootSubmenu';
+import {PrintedInstructionKeyMenuMode} from '../lib/keymenu/printedInstructionKeyMenuMode';
 
-export class LabelEditKeyMenuMode extends AbstractKeyMenuMode<DACommand> {
+export class LabelEditKeyMenuMode extends PrintedInstructionKeyMenuMode<DACommand> {
   constructor(args: { keyMenuOut: EventEmitter<DACommand>, keyMenu: KeyMenu<DACommand> }) {
-    super({name: "Label Edit", keyMenu: args.keyMenu});
-    const labelEditRootSubmenu = new LabelEditModeRootSubmenu(args.keyMenuOut, this);
-    this.stack.push(labelEditRootSubmenu);
+    super({name: "Label Edit", keyMenu: args.keyMenu, instruction: "Press Escape, or Ctrl-[, to exit label edit mode"});
   }
 
-  override updateLayer(layer: KeyMenuLayer) {
-    super.updateLayer(layer);
-    layer.add(new Konva.Text({
-      text: "Press Escape, or Ctrl-[, to exit label edit mode",
-      x: 10,
-      y: 20
-    }));
+  override handleKeyDown(ke: KeyboardEvent) {
+    const key = ke.key;
+    if (("Enter" === key && ke.shiftKey) || ("[" === key && ke.ctrlKey) || "Escape" === key) {
+      this.keyMenu.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
+      this.keyMenu.switchMode("Select");
+    } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
+      this.keyMenu.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+    } else if ("Enter" === key && KeyMenu.noModifier(ke)) {
+      this.keyMenu.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+    } else if (["Enter", "Tab"].includes(key) && KeyMenu.noModifier(ke)) {
+      this.keyMenu.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+    }
   }
+
+  override handleKeyUp(event: KeyboardEvent): void {
+  }
+
 }

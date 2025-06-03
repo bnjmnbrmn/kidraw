@@ -2,15 +2,15 @@ import Konva from "konva";
 import {KeyMenuSubmenu} from './thirtyKeyKM/keyMenuSubmenu';
 import {KeyMenuLayer} from './keyMenuLayer';
 import {KeyMenuMode} from './keyMenuMode';
-import { KeyMenu } from "./keyMenu";
+import {KeyMenu} from "./keyMenu";
 
-export abstract class AbstractKeyMenuMode<T> implements KeyMenuMode<T> {
+export abstract class StackKeyMenuMode<T> implements KeyMenuMode<T> {
 
   public readonly name: string;
   public readonly stack: KeyMenuSubmenu[] = [];
   public keyMenu: KeyMenu<T>;
 
-  constructor(args: { name: string, keyMenu: KeyMenu<T>}) {
+  protected constructor(args: { name: string, keyMenu: KeyMenu<T>}) {
     this.name = args.name;
     this.keyMenu = args.keyMenu;
   }
@@ -21,12 +21,6 @@ export abstract class AbstractKeyMenuMode<T> implements KeyMenuMode<T> {
   }
 
   updateLayer(layer: KeyMenuLayer) {
-    const text = new Konva.Text({
-      text: "Mode: " + this.name
-    });
-
-    layer.add(text);
-
     this.stackTop.updateLayer(layer);
   }
 
@@ -38,3 +32,4 @@ export abstract class AbstractKeyMenuMode<T> implements KeyMenuMode<T> {
     this.stackTop.handleKeyUp(event);
   }
 }
+

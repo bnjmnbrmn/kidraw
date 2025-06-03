@@ -1,14 +1,14 @@
 import Konva from "konva";
 import {DisplayableKey} from "./displayableKey";
-import {KMKeyConfig} from "./KMKeyConfig";
 import Rect = Konva.Rect;
+import {KMKeyConfig} from './KMKeyConfig';
 
 export class KMKey extends Konva.Group {
 
   private static readonly KEY_WIDTH = 70;
   private static readonly KEY_HEIGHT = 70;
   private static readonly KEY_MARGIN = 5;
-  private static readonly ROW_OFFSETS = [0, 10, 30];  // Offset for each row to match standard keyboard
+  private static readonly ROW_OFFSETS = [0, 10, 30];
 
 
   private static readonly rowsAndColsForDisplayableKeys: Map<DisplayableKey, { row: number; col: number }> =
