@@ -121,10 +121,11 @@ export class KMKey extends Konva.Group {
 
     this._actionLabel = new Konva.Text({
       text: this.label,
-      width: KMKey.KEY_WIDTH,
-      height: KMKey.KEY_HEIGHT,
+      width: KMKey.KEY_WIDTH - 10,
+      height: KMKey.KEY_HEIGHT + 20,
       align: 'center',
       verticalAlign: 'middle',
+      x: 5
     });
     this.add(this._actionLabel)
 

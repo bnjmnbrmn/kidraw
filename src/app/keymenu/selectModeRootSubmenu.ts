@@ -47,13 +47,7 @@ export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenu
         }
       },
       {
-        displayableKey: DisplayableKey.s, label: "Multi-Item Select",
-        action: () => {
-          this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})
-        }
-      },
-      {
-        displayableKey: DisplayableKey.s, label: "Single-Item Toggle Select",
+        displayableKey: DisplayableKey.s, label: "Single-Item Select",
         action: () => {
           this.keymenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT})
         }
