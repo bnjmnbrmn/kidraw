@@ -8,11 +8,15 @@ export class KeyMenu<T> {
   public modes: KeyMenuMode<T>[];
   protected currentMode: KeyMenuMode<T> | undefined;
   public keyMenuOut: EventEmitter<T>;
+  private width: number;
+  private height: number;
 
-  constructor(args: { layer: KeyMenuLayer, keyMenuOut: EventEmitter<T> }) {
+  constructor(args: { layer: KeyMenuLayer; keyMenuOut: EventEmitter<T>; width: number; height: number }) {
     this.layer = args.layer;
     this.modes = [];
     this.keyMenuOut = args.keyMenuOut;
+    this.width = args.width;
+    this.height = args.height
   }
 
   updateLayer() {

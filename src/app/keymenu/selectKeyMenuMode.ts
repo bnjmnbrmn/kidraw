@@ -7,25 +7,14 @@ import Konva from "konva";
 import {SelectModeRootSubmenu} from './selectModeRootSubmenu';
 
 export class SelectKeyMenuMode extends StackKeyMenuMode<DACommand> {
-  private keyMenuOut: EventEmitter<DACommand>;
+  // private keyMenuOut: EventEmitter<DACommand>;
 
   constructor(args: { keyMenuOut: EventEmitter<DACommand>, keyMenu: KeyMenu<DACommand> }) {
     super({name: "Select", keyMenu: args.keyMenu});
-    this.keyMenuOut = args.keyMenuOut;
+    // this.keyMenuOut = args.keyMenuOut;
     const selectModeRootSubmenu = new SelectModeRootSubmenu(args.keyMenuOut, this, 50, 50);
     this.stack.push(selectModeRootSubmenu);
 
-  }
-
-  override handleKeyDown(event: KeyboardEvent): void {
-    this.stackTop.handleKeyDown(event)
-  }
-
-  override handleKeyUp(event: KeyboardEvent): void {
-  }
-
-  override updateLayer(layer: KeyMenuLayer): void {
-    super.updateLayer(layer);
   }
 
 }

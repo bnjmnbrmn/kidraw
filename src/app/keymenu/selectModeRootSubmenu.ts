@@ -14,52 +14,80 @@ export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenu
     [
       {
         displayableKey: DisplayableKey.h, label: "Move Left",
-        action: () => console.log("Move Crosshairs Left")
+        action: () =>
+          this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})
       },
       {
         displayableKey: DisplayableKey.j, label: "Move Down",
-        action: () => console.log("Move Crosshairs Down")
+        action: () =>
+          this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})
       },
       {
         displayableKey: DisplayableKey.k, label: "Move Up",
-        action: () => console.log("Move Crosshairs Up")
+        action: () =>
+          this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP})
       },
       {
         displayableKey: DisplayableKey.l, label: "Move Right",
-        action: () => console.log("Move Crosshairs Right")
+        action: () =>
+          this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})
       },
       {
         displayableKey: DisplayableKey.i, label: "Create Node",
-        action: () => {this.keyMenuMode.keyMenu.switchMode("Label Edit")}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+          this.kmKeys.forEach(kmKey => {kmKey.highlighted = false})
+          this.keyMenuMode.keyMenu.switchMode("Label Edit");
+        }
       },
       {
         displayableKey: DisplayableKey.v, label: "Multi-Item Select",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})
+        }
       },
       {
         displayableKey: DisplayableKey.s, label: "Multi-Item Select",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT})
+        }
       },
       {
         displayableKey: DisplayableKey.s, label: "Single-Item Toggle Select",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT})}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT})
+        }
       },
       {
         displayableKey: DisplayableKey.c, label: "Connect Selected",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
+        }
       },
       {
         displayableKey: DisplayableKey.q, label: "Zoom Out",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.ZOOM_OUT});}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.ZOOM_OUT});
+        }
       },
       {
         displayableKey: DisplayableKey.w, label: "Zoom In",
-        action: () => {this.keymenuOut.emit({kind: DACommandType.ZOOM_IN});}
+        action: () => {
+          this.keymenuOut.emit({kind: DACommandType.ZOOM_IN});
+        }
       }
     ];
 
+  private actionsForKeys : Map<String, () => void> = new Map(this.kmKeyConfigs.map(
+    kmKeyConfig => [kmKeyConfig.displayableKey.valueOf(), kmKeyConfig.action]));
 
   public override kmKeys: KMKey[] = this.kmKeyConfigs.map(keyConfig => new KMKey(keyConfig));
+
+  private kmKeysForEventKeys: Map<String, KMKey> = new Map(this.kmKeys.map(
+    kmKey => [kmKey.displayableKey.valueOf(), kmKey])
+  );
+
+
 
   constructor(
     private keymenuOut: EventEmitter<DACommand>,
@@ -76,43 +104,20 @@ export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenu
   }
 
   handleKeyUp(event: KeyboardEvent): void {
+    const kmKey: KMKey | undefined = this.kmKeysForEventKeys.get(event.key);
+    if (kmKey) {
+      kmKey.highlighted = false;
+    }
   }
 
 
   handleKeyDown(event: KeyboardEvent): void {
-    switch (event.key) {
-      case 'h':
-        this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
-        break;
-      case 'j':
-        this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
-        break;
-      case 'k':
-        this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
-        break;
-      case 'l':
-        this.keymenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
-        break;
-      case 'i':
-        this.keymenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
-        this.keyMenuMode.keyMenu.switchMode("Label Edit");
-        break;
-      case 'v':
-        this.keymenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT});
-        break;
-      case 's':
-        this.keymenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT});
-        break;
-      case 'q':
-        this.keymenuOut.emit({kind: DACommandType.ZOOM_OUT});
-        break;
-      case 'w':
-        this.keymenuOut.emit({kind: DACommandType.ZOOM_IN});
-        break;
-      case 'c':
-        this.keymenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
-        break;
+    console.log("event.key", event.key);
+    const kmKey: KMKey | undefined = this.kmKeysForEventKeys.get(event.key);
+    if (kmKey) {
+      kmKey.highlighted = true;
     }
+    this.actionsForKeys.get(event.key)?.();
   }
 
   updateLayer(layer: KeyMenuLayer): void {
@@ -121,21 +126,14 @@ export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenu
 
     this.parent = null;
 
-    for (const keyConfig of this.kmKeyConfigs) {
-      this.add(new KMKey(keyConfig));
+
+    for (const kmKey of this.kmKeys) {
+      kmKey.parent = null;
+      this.add(kmKey)
     }
-
-    console.log("SelectModeRootSubmenu updateLayer");
-
 
     layer.add(this);
 
-    console.log("Layer details:", {
-      children: layer.children,
-      visible: layer.visible(),
-      width: layer.width(),
-      height: layer.height()
-    });
 
   }
 

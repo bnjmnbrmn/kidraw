@@ -57,13 +57,23 @@ export class KMKey extends Konva.Group {
     );
 
 
-  private displayableKey: DisplayableKey;
+  public displayableKey: DisplayableKey;
   private label: string;
   public action: () => void;
   private _rect: Konva.Rect;
   private _keyLabel: Konva.Text;
   private _actionLabel: Konva.Text;
   private _keyLabelBackground: Rect;
+  private _highlighted: boolean = false;
+
+  get highlighted() {
+    return this._highlighted;
+  }
+
+  set highlighted(highlighted: boolean) {
+    this._highlighted = highlighted;
+    this._rect.strokeWidth(this.strokeWidth())
+  }
 
   constructor(config: KMKeyConfig) {
     super({
@@ -120,4 +130,7 @@ export class KMKey extends Konva.Group {
 
   }
 
+  private strokeWidth() {
+    return this._highlighted ? 4 : 2;
+  }
 }

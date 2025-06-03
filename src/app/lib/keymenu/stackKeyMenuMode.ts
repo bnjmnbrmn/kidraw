@@ -25,10 +25,12 @@ export abstract class StackKeyMenuMode<T> implements KeyMenuMode<T> {
   }
 
   handleKeyDown(event: KeyboardEvent) {
+    console.log("StackKeyMenuMode/"+ this.constructor.name + " received " + event.key + " down")
     this.stackTop.handleKeyDown(event)
   }
 
   handleKeyUp(event: KeyboardEvent) {
+    console.log("StackKeyMenuMode/"+ this.constructor.name + " received " + event.key + " up")
     this.stackTop.handleKeyUp(event);
   }
 }
