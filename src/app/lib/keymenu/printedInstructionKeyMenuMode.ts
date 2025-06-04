@@ -8,7 +8,13 @@ export abstract class PrintedInstructionKeyMenuMode<T> implements KeyMenuMode<T>
   public keyMenu: KeyMenu<T>;
   private instruction: string;
 
-  protected constructor(args: { name: string, keyMenu: KeyMenu<T>, instruction: string}) {
+  protected constructor(args: {
+    name: string;
+    keyMenu: KeyMenu<T>;
+    instruction: string;
+    parentWidth: number;
+    parentHeight: number
+  }) {
     this.name = args.name;
     this.keyMenu = args.keyMenu;
     this.instruction = args.instruction;
@@ -19,6 +25,7 @@ export abstract class PrintedInstructionKeyMenuMode<T> implements KeyMenuMode<T>
   abstract handleKeyUp(event: KeyboardEvent): void;
 
   updateLayer(layer: KeyMenuLayer): void {
+    //todo
     layer.add(new Konva.Text({
       text: this.instruction,
       x: 10,

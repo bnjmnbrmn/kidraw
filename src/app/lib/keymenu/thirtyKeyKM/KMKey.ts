@@ -5,10 +5,10 @@ import {KMKeyConfig} from './KMKeyConfig';
 
 export class KMKey extends Konva.Group {
 
-  private static readonly KEY_WIDTH = 70;
-  private static readonly KEY_HEIGHT = 70;
-  private static readonly KEY_MARGIN = 5;
-  private static readonly ROW_OFFSETS = [0, 10, 30];
+  public static readonly KEY_WIDTH = 70;
+  public static readonly KEY_HEIGHT = 70;
+  public static readonly KEY_MARGIN = 5;
+  public static readonly ROW_OFFSETS = [0, 10, 30];
 
 
   private static readonly rowsAndColsForDisplayableKeys: Map<DisplayableKey, { row: number; col: number }> =
@@ -100,7 +100,7 @@ export class KMKey extends Konva.Group {
       text: this.displayableKey.valueOf(),
       width: KMKey.KEY_WIDTH,
       height: 10,
-      y: 3,
+      y: 4,
       align: 'center',
       verticalAlign: 'middle',
 

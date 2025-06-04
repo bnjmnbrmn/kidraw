@@ -4,8 +4,12 @@ import {KeyMenu} from "../lib/keymenu/keyMenu";
 import {PrintedInstructionKeyMenuMode} from '../lib/keymenu/printedInstructionKeyMenuMode';
 
 export class LabelEditKeyMenuMode extends PrintedInstructionKeyMenuMode<DACommand> {
-  constructor(args: { keyMenuOut: EventEmitter<DACommand>, keyMenu: KeyMenu<DACommand> }) {
-    super({name: "Label Edit", keyMenu: args.keyMenu, instruction: "Press Escape, or Ctrl-[, to exit label edit mode"});
+  constructor(args: { keyMenuOut: EventEmitter<DACommand>; keyMenu: KeyMenu<DACommand>; parentWidth: number; parentHeight: number }) {
+    super({name: "Label Edit", keyMenu: args.keyMenu,
+      instruction: "Press Escape, or Ctrl-[, to exit label edit mode",
+      parentWidth: args.parentWidth, parentHeight: args.parentHeight
+
+    });
   }
 
   override handleKeyDown(ke: KeyboardEvent) {

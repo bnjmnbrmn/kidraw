@@ -8,8 +8,10 @@ import {LabelEditKeyMenuMode} from './labelEditKeyMenuMode';
 export class KiDrawKeyMenu extends KeyMenu<DACommand> {
   constructor(args: { layer: KeyMenuLayer, keyMenuOut: EventEmitter<DACommand>, width: number, height: number }) {
     super({layer: args.layer, keyMenuOut: args.keyMenuOut, width: args.width, height: args.height});
-    this.modes.push(new SelectKeyMenuMode({keyMenuOut: this.keyMenuOut, keyMenu: this}));
-    this.modes.push(new LabelEditKeyMenuMode({keyMenuOut: this.keyMenuOut, keyMenu: this}));
+    this.modes.push(new SelectKeyMenuMode({keyMenuOut: this.keyMenuOut, keyMenu: this,
+      parentWidth: args.width, parentHeight: args.height}));
+    this.modes.push(new LabelEditKeyMenuMode({keyMenuOut: this.keyMenuOut, keyMenu: this,
+      parentWidth: args.width, parentHeight: args.height}));
     this.currentMode = this.modes[0];
   }
 

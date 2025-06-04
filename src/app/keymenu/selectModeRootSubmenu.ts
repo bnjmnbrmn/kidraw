@@ -86,15 +86,17 @@ export class SelectModeRootSubmenu extends ThirtyKeyKMSubmenu implements KeyMenu
   constructor(
     private keymenuOut: EventEmitter<DACommand>,
     public keyMenuMode: KeyMenuMode<DACommand>,
-    x: number,
-    y: number) {
+    parentWidth: number,
+    parentHeight: number) {
 
-    super({x, y});
+    super({});
 
     this.kmKeys.forEach(key => {
       this.add(key);
     });
     this.keyMenuMode.keyMenu.layer.add(this);
+    this.x((parentWidth - (10 * KMKey.KEY_WIDTH + 9 * KMKey.KEY_MARGIN + KMKey.ROW_OFFSETS[2]))/2);
+    this.y((parentHeight - (3 * KMKey.KEY_HEIGHT + 2 * KMKey.KEY_MARGIN))/2);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
