@@ -6,8 +6,7 @@ import {KeyMenu} from "./keyMenu";
 import {DefaultUSKMSubmenuConfig} from './thirtyKeyKM/defaultUSKMSubmenu';
 
 
-export interface DefaultUSStackKMModeConfig extends DefaultUSKMSubmenuConfig {
-}
+export type DefaultUSStackKMModeConfig = DefaultUSKMSubmenuConfig;
 
 export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 

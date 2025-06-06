@@ -41,8 +41,8 @@ export class KeymenuComponent implements AfterViewInit {
             i: new LabeledAction("Zoom In", () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
             })
-          } as DefaultUSStackKMModeConfig)
-        } as DefaultUSStackKMModeConfig),
+          })
+        }),
         "labelEdit": new PrintedInstructionKeyMenuMode({
           instructions: "Insert/edit text.  Use ESC or Ctrl-[ to return to Normal mode."
         })
