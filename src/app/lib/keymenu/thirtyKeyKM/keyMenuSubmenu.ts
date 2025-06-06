@@ -7,5 +7,4 @@ export interface KeyMenuSubmenu {
 
   handleKeyUp(event: KeyboardEvent): void;
 
-  updateLayer(layer: KeyMenuLayer): void;
 }

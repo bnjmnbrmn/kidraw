@@ -1,9 +1,10 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject, Output} from '@angular/core';
-import {DACommand} from "../drawing-area/command.model";
+import {DACommand, DACommandType} from "../drawing-area/command.model";
 import Konva from 'konva';
-import {KeyMenuLayer} from '../lib/keymenu/keyMenuLayer';
-import {KiDrawKeyMenu} from './kiDrawKeyMenu';
-import Stage = Konva.Stage;
+import {KeyMenu} from '../lib/keymenu/keyMenu';
+import {DefaultUSStackKMMode, DefaultUSStackKMModeConfig} from '../lib/keymenu/defaultUSStackKMMode';
+import {PrintedInstructionKeyMenuMode} from '../lib/keymenu/printedInstructionKeyMenuMode';
+import {DefaultUSKMSubmenu, LabeledAction} from '../lib/keymenu/thirtyKeyKM/defaultUSKMSubmenu';
 
 
 @Component({
@@ -14,30 +15,39 @@ import Stage = Konva.Stage;
 })
 export class KeymenuComponent implements AfterViewInit {
 
-  private keyMenu!: KiDrawKeyMenu;
-  private keymenuLayer!: KeyMenuLayer;
-  private stage!: Stage;
+  private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   @Output() keyMenuOut = new EventEmitter<DACommand>;
 
   ngAfterViewInit(): void {
-    this.stage = new Stage({
-      container: 'keyMenu',
-      width: this.componentNE.offsetWidth,
-      height: this.componentNE.offsetHeight
+    this.keyMenu = new KeyMenu({
+      containerId: 'keyMenu',
+      containingHTMLElement: this.componentNE,
+      modes: {
+        "normal": new DefaultUSStackKMMode({
+          h: new LabeledAction(
+             'Move Left',
+             ()=> {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
+            }
+          ),
+          j: new LabeledAction(
+            'Move Down',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
+            }
+          ),
+          z: new DefaultUSKMSubmenu({
+            i: new LabeledAction("Zoom In", () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
+            })
+          } as DefaultUSStackKMModeConfig)
+        } as DefaultUSStackKMModeConfig),
+        "labelEdit": new PrintedInstructionKeyMenuMode({
+          instructions: "Insert/edit text.  Use ESC or Ctrl-[ to return to Normal mode."
+        })
+      }
     });
-    this.stage.container().style.backgroundColor = 'lightgray'
-    this.keymenuLayer = new KeyMenuLayer();
-    this.stage.add(this.keymenuLayer);
-
-
-    this.keyMenu = new KiDrawKeyMenu({
-      layer: this.keymenuLayer,
-      keyMenuOut: this.keyMenuOut,
-      width: this.componentNE.offsetWidth,
-      height: this.componentNE.offsetHeight
-    });
-    this.keyMenu.updateLayer()
   }
 
 

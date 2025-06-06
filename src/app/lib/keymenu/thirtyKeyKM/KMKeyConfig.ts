@@ -1,7 +1,10 @@
 import {DisplayableKey} from "./displayableKey";
+import {LabeledAction} from "./defaultUSKMSubmenu";
 
-export interface KMKeyConfig {
-  displayableKey: DisplayableKey;
-  label: string;
-  action: () => void;
+export class KMKeyConfig extends LabeledAction {
+  keyLabel: string;
+  constructor(keyLabel: string, actionLabel: string, action: () => void) {
+    super(actionLabel, action);
+    this.keyLabel = keyLabel;
+  }
 }

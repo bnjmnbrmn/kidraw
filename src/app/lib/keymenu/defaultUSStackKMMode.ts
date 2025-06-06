@@ -3,25 +3,22 @@ import {KeyMenuSubmenu} from './thirtyKeyKM/keyMenuSubmenu';
 import {KeyMenuLayer} from './keyMenuLayer';
 import {KeyMenuMode} from './keyMenuMode';
 import {KeyMenu} from "./keyMenu";
+import {DefaultUSKMSubmenuConfig} from './thirtyKeyKM/defaultUSKMSubmenu';
 
-export abstract class StackKeyMenuMode<T> implements KeyMenuMode<T> {
 
-  public readonly name: string;
+export interface DefaultUSStackKMModeConfig extends DefaultUSKMSubmenuConfig {
+}
+
+export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
+
   public readonly stack: KeyMenuSubmenu[] = [];
-  public keyMenu: KeyMenu<T>;
 
-  protected constructor(args: { name: string, keyMenu: KeyMenu<T>}) {
-    this.name = args.name;
-    this.keyMenu = args.keyMenu;
+  constructor(config: DefaultUSStackKMModeConfig) {
   }
 
 
   get stackTop() {
     return this.stack[this.stack.length - 1];
-  }
-
-  updateLayer(layer: KeyMenuLayer) {
-    this.stackTop.updateLayer(layer);
   }
 
   handleKeyDown(event: KeyboardEvent) {

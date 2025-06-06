@@ -3,7 +3,7 @@ import {DisplayableKey} from "./displayableKey";
 import Rect = Konva.Rect;
 import {KMKeyConfig} from './KMKeyConfig';
 
-export class KMKey extends Konva.Group {
+export class KMKey {
 
   public static readonly KEY_WIDTH = 70;
   public static readonly KEY_HEIGHT = 70;
@@ -57,81 +57,83 @@ export class KMKey extends Konva.Group {
     );
 
 
-  public displayableKey: DisplayableKey;
-  private label: string;
-  public action: () => void;
-  private _rect: Konva.Rect;
-  private _keyLabel: Konva.Text;
-  private _actionLabel: Konva.Text;
-  private _keyLabelBackground: Rect;
-  private _highlighted: boolean = false;
+  // public displayableKey: DisplayableKey;
+  // private label: string;
+  // public action: () => void;
+  // private _rect: Konva.Rect;
+  // private _keyLabel: Konva.Text;
+  // private _actionLabel: Konva.Text;
+  // private _keyLabelBackground: Rect;
+  // private _highlighted: boolean = false;
 
-  get highlighted() {
-    return this._highlighted;
-  }
+  // get highlighted() {
+  //   return this._highlighted;
+  // }
 
-  set highlighted(highlighted: boolean) {
-    this._highlighted = highlighted;
-    this._rect.strokeWidth(this.strokeWidth())
-  }
+  // set highlighted(highlighted: boolean) {
+  //   this._highlighted = highlighted;
+  //   this._rect.strokeWidth(this.strokeWidth())
+  // }
 
   constructor(config: KMKeyConfig) {
-    super({
-      x: KMKey.xAndYForDisplayableKeys.get(config.displayableKey)!.x,
-      y: KMKey.xAndYForDisplayableKeys.get(config.displayableKey)!.y
-    });
-    this.displayableKey = config.displayableKey;
-    this.label = config.label;
-    this.action = config.action;
-
-
-    this._rect = new Konva.Rect(
-      {
-        width: KMKey.KEY_WIDTH,
-        height: KMKey.KEY_HEIGHT,
-        stroke: 'black',
-        fill: 'white',
-      }
-    );
-    this.add(this._rect);
-
-
-    this._keyLabel = new Konva.Text({
-      text: this.displayableKey.valueOf(),
-      width: KMKey.KEY_WIDTH,
-      height: 10,
-      y: 4,
-      align: 'center',
-      verticalAlign: 'middle',
-
-    });
-
-    this._keyLabelBackground = new Konva.Rect({
-      width: KMKey.KEY_WIDTH,
-      height: this._keyLabel.height() + 10,
-      fill: 'lightgreen',
-      stroke: 'black',
-    })
-
-    this.add(this._keyLabelBackground);
-
-
-    this.add(this._keyLabel)
-
-
-    this._actionLabel = new Konva.Text({
-      text: this.label,
-      width: KMKey.KEY_WIDTH - 10,
-      height: KMKey.KEY_HEIGHT + 20,
-      align: 'center',
-      verticalAlign: 'middle',
-      x: 5
-    });
-    this.add(this._actionLabel)
 
   }
-
-  private strokeWidth() {
-    return this._highlighted ? 4 : 2;
-  }
+  //   super({
+  //     x: KMKey.xAndYForDisplayableKeys.get(config.displayableKey)!.x,
+  //     y: KMKey.xAndYForDisplayableKeys.get(config.displayableKey)!.y
+  //   });
+  //   this.displayableKey = config.displayableKey;
+  //   this.label = config.label;
+  //   this.action = config.action;
+  //
+  //
+  //   this._rect = new Konva.Rect(
+  //     {
+  //       width: KMKey.KEY_WIDTH,
+  //       height: KMKey.KEY_HEIGHT,
+  //       stroke: 'black',
+  //       fill: 'white',
+  //     }
+  //   );
+  //   this.add(this._rect);
+  //
+  //
+  //   this._keyLabel = new Konva.Text({
+  //     text: this.displayableKey.valueOf(),
+  //     width: KMKey.KEY_WIDTH,
+  //     height: 10,
+  //     y: 4,
+  //     align: 'center',
+  //     verticalAlign: 'middle',
+  //
+  //   });
+  //
+  //   this._keyLabelBackground = new Konva.Rect({
+  //     width: KMKey.KEY_WIDTH,
+  //     height: this._keyLabel.height() + 10,
+  //     fill: 'lightgreen',
+  //     stroke: 'black',
+  //   })
+  //
+  //   this.add(this._keyLabelBackground);
+  //
+  //
+  //   this.add(this._keyLabel)
+  //
+  //
+  //   this._actionLabel = new Konva.Text({
+  //     text: this.label,
+  //     width: KMKey.KEY_WIDTH - 10,
+  //     height: KMKey.KEY_HEIGHT + 20,
+  //     align: 'center',
+  //     verticalAlign: 'middle',
+  //     x: 5
+  //   });
+  //   this.add(this._actionLabel)
+  //
+  // }
+  //
+  // private strokeWidth() {
+  //   return this._highlighted ? 4 : 2;
+  // }
 }
