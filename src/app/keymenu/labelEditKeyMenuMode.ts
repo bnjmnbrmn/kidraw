@@ -1,9 +1,9 @@
 import {DACommand, DACommandType} from "../drawing-area/command.model";
 import {EventEmitter} from "@angular/core";
 import {KeyMenu} from "../lib/keymenu/keyMenu";
-import {PrintedInstructionKeyMenuMode} from '../lib/keymenu/printedInstructionKeyMenuMode';
+import {PrintedInstructionKMMode} from '../lib/keymenu/printedInstructionKMMode';
 
-export class LabelEditKeyMenuMode extends PrintedInstructionKeyMenuMode<DACommand> {
+export class LabelEditKeyMenuMode extends PrintedInstructionKMMode<DACommand> {
   // constructor(args: { keyMenuOut: EventEmitter<DACommand>; keyMenu: KeyMenu<DACommand>; parentWidth: number; parentHeight: number }) {
   //   super({name: "Label Edit", keyMenu: args.keyMenu,
   //     instruction: "Press Escape, or Ctrl-[, to exit label edit mode",

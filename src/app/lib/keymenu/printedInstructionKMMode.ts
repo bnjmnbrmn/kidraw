@@ -7,7 +7,7 @@ interface PrintedInstructionKeyMenuModeConfig {
   instructions: string;
 }
 
-export class PrintedInstructionKeyMenuMode<T> implements KeyMenuMode<T> {
+export class PrintedInstructionKMMode<T> implements KeyMenuMode<T> {
   constructor(config: PrintedInstructionKeyMenuModeConfig) {
   }
 

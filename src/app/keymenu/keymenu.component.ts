@@ -3,7 +3,7 @@ import {DACommand, DACommandType} from "../drawing-area/command.model";
 import Konva from 'konva';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {DefaultUSStackKMMode, DefaultUSStackKMModeConfig} from '../lib/keymenu/defaultUSStackKMMode';
-import {PrintedInstructionKeyMenuMode} from '../lib/keymenu/printedInstructionKeyMenuMode';
+import {PrintedInstructionKMMode} from '../lib/keymenu/printedInstructionKMMode';
 import {DefaultUSKMSubmenu, LabeledAction} from '../lib/keymenu/thirtyKeyKM/defaultUSKMSubmenu';
 
 
@@ -37,13 +37,15 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
             }
           ),
-          z: new DefaultUSKMSubmenu({
+          z: new LabeledSubmenu("Zoom/Pan",
+            new DefaultUSKMSubmenu({
             i: new LabeledAction("Zoom In", () => {
-              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
+              this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
             })
           })
-        }),
-        "labelEdit": new PrintedInstructionKeyMenuMode({
+
+          )        }),
+        "labelEdit": new PrintedInstructionKMMode({
           instructions: "Insert/edit text.  Use ESC or Ctrl-[ to return to Normal mode."
         })
       }

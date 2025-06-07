@@ -7,51 +7,58 @@ import {KMKey} from './KMKey';
 
 
 export class LabeledAction {
-  actionLabel: string;
-  action: () => void;
-
-  constructor(actionLabel: string, action: () => void) {
-    this.actionLabel = actionLabel;
-    this.action = action;
+  constructor(public actionLabel: string, public action: () => void) {
   }
 }
 
+
+export class LabeledDefaultUSKMSubmenuConfig {
+  constructor(public submenuLabel: string,
+              public defaultUSKMSubmenuConfig: DefaultUSKMSubmenuConfig) {
+
+  }
+
+}
+
+
 export type DefaultUSKMSubmenuConfig = {
-  q?: LabeledAction | DefaultUSKMSubmenu,
-  w?: LabeledAction | DefaultUSKMSubmenu,
-  e?: LabeledAction | DefaultUSKMSubmenu,
-  r?: LabeledAction | DefaultUSKMSubmenu,
-  t?: LabeledAction | DefaultUSKMSubmenu,
-  y?: LabeledAction | DefaultUSKMSubmenu,
-  u?: LabeledAction | DefaultUSKMSubmenu,
-  i?: LabeledAction | DefaultUSKMSubmenu,
-  o?: LabeledAction | DefaultUSKMSubmenu,
-  p?: LabeledAction | DefaultUSKMSubmenu,
-  a?: LabeledAction | DefaultUSKMSubmenu,
-  s?: LabeledAction | DefaultUSKMSubmenu,
-  d?: LabeledAction | DefaultUSKMSubmenu,
-  f?: LabeledAction | DefaultUSKMSubmenu,
-  g?: LabeledAction | DefaultUSKMSubmenu,
-  h?: LabeledAction | DefaultUSKMSubmenu,
-  j?: LabeledAction | DefaultUSKMSubmenu,
-  k?: LabeledAction | DefaultUSKMSubmenu,
-  l?: LabeledAction | DefaultUSKMSubmenu,
-  ';'?: LabeledAction | DefaultUSKMSubmenu,
-  z?: LabeledAction | DefaultUSKMSubmenu,
-  x?: LabeledAction | DefaultUSKMSubmenu,
-  c?: LabeledAction | DefaultUSKMSubmenu,
-  v?: LabeledAction | DefaultUSKMSubmenu,
-  b?: LabeledAction | DefaultUSKMSubmenu,
-  n?: LabeledAction | DefaultUSKMSubmenu,
-  m?: LabeledAction | DefaultUSKMSubmenu,
-  ','?: LabeledAction | DefaultUSKMSubmenu,
-  '.'?: LabeledAction | DefaultUSKMSubmenu,
-  '/'?: LabeledAction | DefaultUSKMSubmenu,
+  q?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  w?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  e?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  r?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  t?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  y?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  u?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  i?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  o?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  p?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  a?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  s?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  d?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  f?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  g?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  h?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  j?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  k?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  l?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  ';'?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  z?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  x?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  c?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  v?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  b?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  n?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  m?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  ','?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  '.'?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
+  '/'?: LabeledAction | LabeledDefaultUSKMSubmenuConfig,
 }
 
 export class DefaultUSKMSubmenu implements KeyMenuSubmenu {
+  readonly config: DefaultUSKMSubmenuConfig;
 
   constructor(config: DefaultUSKMSubmenuConfig) {
+    this.config = config
   }
 
 
@@ -73,12 +80,12 @@ export class DefaultUSKMSubmenu implements KeyMenuSubmenu {
   }
 
   // get actionsForKeys(): Map<String, () => void> {
-    // return new Map(this.kmKeyConfigs.map(
-    //   kmKeyConfig => [kmKeyConfig.displayableKey.valueOf(), kmKeyConfig.action]));
+  // return new Map(this.kmKeyConfigs.map(
+  //   kmKeyConfig => [kmKeyConfig.displayableKey.valueOf(), kmKeyConfig.action]));
   // }
 
   // get kmKeys(): KMKey[] {
-    // return this.kmKeyConfigs.map(keyConfig => new KMKey(keyConfig));
+  // return this.kmKeyConfigs.map(keyConfig => new KMKey(keyConfig));
   // }
 
   // get kmKeysForEventKeys(): Map<String, KMKey> {

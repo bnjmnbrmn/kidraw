@@ -3,16 +3,17 @@ import {KeyMenuSubmenu} from './thirtyKeyKM/keyMenuSubmenu';
 import {KeyMenuLayer} from './keyMenuLayer';
 import {KeyMenuMode} from './keyMenuMode';
 import {KeyMenu} from "./keyMenu";
-import {DefaultUSKMSubmenuConfig} from './thirtyKeyKM/defaultUSKMSubmenu';
+import {DefaultUSKMSubmenu, DefaultUSKMSubmenuConfig} from './thirtyKeyKM/defaultUSKMSubmenu';
 
 
 export type DefaultUSStackKMModeConfig = DefaultUSKMSubmenuConfig;
 
 export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
-  public readonly stack: KeyMenuSubmenu[] = [];
+  public readonly stack: DefaultUSKMSubmenu[] = [];
 
   constructor(config: DefaultUSStackKMModeConfig) {
+    this.stack[0] = new DefaultUSKMSubmenu(config);
   }
 
 
