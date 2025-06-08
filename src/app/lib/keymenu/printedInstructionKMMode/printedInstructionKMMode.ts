@@ -1,7 +1,4 @@
-import {KeyMenuMode} from "./keyMenuMode";
-import {KeyMenu} from "./keyMenu";
-import {KeyMenuLayer} from "./keyMenuLayer";
-import Konva from 'konva';
+import {KeyMenuMode} from "../keyMenuMode";
 
 interface PrintedInstructionKeyMenuModeConfig {
   instructions: string;

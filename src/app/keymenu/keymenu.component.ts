@@ -1,14 +1,12 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject, Output} from '@angular/core';
 import {DACommand, DACommandType} from "../drawing-area/command.model";
-import Konva from 'konva';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
-import {DefaultUSStackKMMode, DefaultUSStackKMModeConfig} from '../lib/keymenu/defaultUSStackKMMode';
-import {PrintedInstructionKMMode} from '../lib/keymenu/printedInstructionKMMode';
+import {DefaultUSStackKMMode} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMMode';
+import {PrintedInstructionKMMode} from '../lib/keymenu/printedInstructionKMMode/printedInstructionKMMode';
 import {
-  DefaultUSKMSubmenu,
-  LabeledAction,
-  LabeledDefaultUSKMSubmenuConfig
-} from '../lib/keymenu/thirtyKeyKM/defaultUSKMSubmenu';
+  DefaultUSStackKMModeLabeledSubmenuConfig
+} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMModeLabeledSubmenuConfig';
+import {DefaultUSStackKMModeLabeledAction} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMModeLabeledAction';
 
 
 @Component({
@@ -29,22 +27,22 @@ export class KeymenuComponent implements AfterViewInit {
       containingHTMLElement: this.componentNE,
       modes: {
         "normal": new DefaultUSStackKMMode({
-          h: new LabeledAction(
+          h: new DefaultUSStackKMModeLabeledAction(
             'Move Left',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
             }
           ),
-          j: new LabeledAction(
+          j: new DefaultUSStackKMModeLabeledAction(
             'Move Down',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
             }
           ),
-          z: new LabeledDefaultUSKMSubmenuConfig(
+          z: new DefaultUSStackKMModeLabeledSubmenuConfig(
             "Zoom/Pan",
             {
-              i: new LabeledAction("Zoom In", () => {
+              i: new DefaultUSStackKMModeLabeledAction("Zoom In", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
               })
             }
