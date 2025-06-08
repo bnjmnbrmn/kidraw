@@ -22,12 +22,12 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
   }
 
   handleKeyDown(event: KeyboardEvent) {
-    console.log("StackKeyMenuMode/"+ this.constructor.name + " received " + event.key + " down")
+    console.log(this.constructor.name + " received " + event.key + " down")
     this.stackTop.handleKeyDown(event)
   }
 
   handleKeyUp(event: KeyboardEvent) {
-    console.log("StackKeyMenuMode/"+ this.constructor.name + " received " + event.key + " up")
+    console.log(this.constructor.name + " received " + event.key + " up")
     this.stackTop.handleKeyUp(event);
   }
 }

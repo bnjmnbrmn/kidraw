@@ -43,63 +43,100 @@ class DefaultUSStackKMModeGroupGenerator<T> {
   public static readonly KEY_MARGIN = 5;
   public static readonly ROW_OFFSETS = [0, 10, 30];
 
-  private static readonly rowsAndColsForDisplayableKeys: Map<string, { row: number; col: number }> =
-    new Map(
-      [
-        [DisplayableKey.q, {row: 0, col: 0}],
-        [DisplayableKey.w, {row: 0, col: 1}],
-        [DisplayableKey.e, {row: 0, col: 2}],
-        [DisplayableKey.r, {row: 0, col: 3}],
-        [DisplayableKey.t, {row: 0, col: 4}],
-        [DisplayableKey.y, {row: 0, col: 5}],
-        [DisplayableKey.u, {row: 0, col: 6}],
-        [DisplayableKey.i, {row: 0, col: 7}],
-        [DisplayableKey.o, {row: 0, col: 8}],
-        [DisplayableKey.p, {row: 0, col: 9}],
-        [DisplayableKey.a, {row: 1, col: 0}],
-        [DisplayableKey.s, {row: 1, col: 1}],
-        [DisplayableKey.d, {row: 1, col: 2}],
-        [DisplayableKey.f, {row: 1, col: 3}],
-        [DisplayableKey.g, {row: 1, col: 4}],
-        [DisplayableKey.h, {row: 1, col: 5}],
-        [DisplayableKey.j, {row: 1, col: 6}],
-        [DisplayableKey.k, {row: 1, col: 7}],
-        [DisplayableKey.l, {row: 1, col: 8}],
-        [DisplayableKey.semicolon, {row: 1, col: 9}],
-        [DisplayableKey.z, {row: 2, col: 0}],
-        [DisplayableKey.x, {row: 2, col: 1}],
-        [DisplayableKey.c, {row: 2, col: 2}],
-        [DisplayableKey.v, {row: 2, col: 3}],
-        [DisplayableKey.b, {row: 2, col: 4}],
-        [DisplayableKey.n, {row: 2, col: 5}],
-        [DisplayableKey.m, {row: 2, col: 6}],
-        [DisplayableKey.comma, {row: 2, col: 7}],
-        [DisplayableKey.period, {row: 2, col: 8}],
-        [DisplayableKey.slash, {row: 2, col: 9}]
-      ]
+  private static readonly rowsAndColsForKeys: { [name: string]: { row: number; col: number } } =
+    {
+      'q': {row: 0, col: 0},
+      'w': {row: 0, col: 1},
+      'e': {row: 0, col: 2},
+      'r': {row: 0, col: 3},
+      't': {row: 0, col: 4},
+      'y': {row: 0, col: 5},
+      'u': {row: 0, col: 6},
+      'i': {row: 0, col: 7},
+      'o': {row: 0, col: 8},
+      'p': {row: 0, col: 9},
+      'a': {row: 1, col: 0},
+      's': {row: 1, col: 1},
+      'd': {row: 1, col: 2},
+      'f': {row: 1, col: 3},
+      'g': {row: 1, col: 4},
+      'h': {row: 1, col: 5},
+      'j': {row: 1, col: 6},
+      'k': {row: 1, col: 7},
+      'l': {row: 1, col: 8},
+      ';': {row: 1, col: 9},
+      'z': {row: 2, col: 0},
+      'x': {row: 2, col: 1},
+      'c': {row: 2, col: 2},
+      'v': {row: 2, col: 3},
+      'b': {row: 2, col: 4},
+      'n': {row: 2, col: 5},
+      'm': {row: 2, col: 6},
+      ',': {row: 2, col: 7},
+      '.': {row: 2, col: 8},
+      '/': {row: 2, col: 9}
+    }
+
+  protected static readonly xAndYForKeys: { [name: string]: { x: number; y: number } } =
+    Object.fromEntries(
+      Object.entries(DefaultUSStackKMModeGroupGenerator.rowsAndColsForKeys).map(([key, {row, col}]) =>
+        [
+          key,
+          {
+            x: col * (DefaultUSStackKMModeGroupGenerator.KEY_WIDTH + DefaultUSStackKMModeGroupGenerator.KEY_MARGIN)
+              + DefaultUSStackKMModeGroupGenerator.ROW_OFFSETS[row],
+            y: row * (DefaultUSStackKMModeGroupGenerator.KEY_HEIGHT + DefaultUSStackKMModeGroupGenerator.KEY_MARGIN)
+          }
+        ])
     );
 
-  protected static readonly xAndYForDisplayableKeys: Map<string, { x: number; y: number }> =
-    new Map(Array.from(this.rowsAndColsForDisplayableKeys.entries())
-      .map(([dk, {row, col}]) =>
-        [dk, {
-          x: col * (DefaultUSStackKMModeGroupGenerator.KEY_WIDTH + DefaultUSStackKMModeGroupGenerator.KEY_MARGIN)
-            + DefaultUSStackKMModeGroupGenerator.ROW_OFFSETS[row],
-          y: row * (DefaultUSStackKMModeGroupGenerator.KEY_HEIGHT + DefaultUSStackKMModeGroupGenerator.KEY_MARGIN)
-        }])
-    );
 
   private generateLeafKey(key: string, actionLabel: string): Group {
     const group = new Group({
-      x: DefaultUSStackKMModeGroupGenerator.xAndYForDisplayableKeys.get(key)!.x,
-      y: DefaultUSStackKMModeGroupGenerator.xAndYForDisplayableKeys.get(key)!.y
+      x: DefaultUSStackKMModeGroupGenerator.xAndYForKeys[key]!.x,
+      y: DefaultUSStackKMModeGroupGenerator.xAndYForKeys[key]!.y
     });
+
+    const keyRect = new Konva.Rect(
+      {
+        width: DefaultUSStackKMModeGroupGenerator.KEY_WIDTH,
+        height: DefaultUSStackKMModeGroupGenerator.KEY_HEIGHT,
+        stroke: 'black',
+        fill: 'white',
+      }
+    );
+    group.add(keyRect);
+    const keyLabelText = new Konva.Text({
+      text: actionLabel,
+      width: DefaultUSStackKMModeGroupGenerator.KEY_WIDTH,
+      height: 10,
+      y: 4,
+      align: 'center',
+      verticalAlign: 'middle',
+    });
+    const keyLabelRect = new Konva.Rect({
+      width: DefaultUSStackKMModeGroupGenerator.KEY_WIDTH,
+      height: keyLabelText.height() + 10,
+      fill: 'lightgreen',
+      stroke: 'black',
+    });
+    group.add(keyLabelRect);
+    group.add(keyLabelText)
+    const actionLabelText = new Konva.Text({
+      text: actionLabel,
+      width: DefaultUSStackKMModeGroupGenerator.KEY_WIDTH - 10,
+      height: DefaultUSStackKMModeGroupGenerator.KEY_HEIGHT + 20,
+      align: 'center',
+      verticalAlign: 'middle',
+      x: 5
+    });
+    group.add(actionLabelText)
 
     return group;
   }
 
   private generateInnerKey(key: string, submenuLabel: string): Group {
-    return new Group({});
+    return this.generateLeafKey(key, submenuLabel);
   }
 }
 
@@ -110,21 +147,15 @@ class PrintedInstructionKMModeGroupGenerator<T> {
 }
 
 export class KeyMenu<T> {
-  // public layer: KeyMenuLayer;
-  // public modes: KeyMenuMode<T>[];
-  // protected currentMode: KeyMenuMode<T> | undefined;
-  // public keyMenuOut: EventEmitter<T>;
-  // private width: number;
-  // private height: number;
   private stage: Stage;
   private containingHTMLElement: HTMLElement;
   private containerId: string;
-  private modes: { [p: string]: KeyMenuMode<T> };
-  private currentMode: KeyMenuMode<T>;
+  private modesForNames: { [p: string]: KeyMenuMode<T> };
+  private modeGroupsForNames: { [p: string]: Group };
+  private currentModeName: string;
   private layer: Layer;
   private currentModeGroup: Group;
-
-  private modeGroupMap: Map<KeyMenuMode<T>, Group> = new Map();
+  private currentMode: KeyMenuMode<T>;
 
 
   constructor(config: KeyMenuConfig<T>) {
@@ -139,34 +170,34 @@ export class KeyMenu<T> {
     this.layer = new Layer({});
     this.stage.add(this.layer);
 
-    this.modes = config.modes;
-    this.currentMode = this.modes[0];
+    this.modesForNames = config.modes;
+    this.currentModeName = Object.entries(config.modes)[0][0];
 
-    for (const modeName in this.modes) {
-      this.modeGroupMap.set(this.modes[modeName], this.toGroup(this.modes[modeName]));
-    }
+    this.currentMode = this.modesForNames[this.currentModeName];
 
-    this.currentModeGroup = this.modeGroupMap.get(this.currentMode)!;
+    this.modeGroupsForNames = Object.fromEntries(
+      Object.entries(this.modesForNames).map(([key, mode]) =>
+        [
+          key,
+          this.toGroup(mode)
+        ]
+      )
+
+    );
+
+    this.currentModeGroup = this.modeGroupsForNames[this.currentModeName];
 
     this.layer.add(this.currentModeGroup);
   }
 
-  // updateLayer() {
-  //   this.layer.children = [];
-  //   this.layer.add(new Konva.Text({
-  //     text: "Mode: " + this.currentMode?.name
-  //   }));
-  //   this.currentMode?.updateLayer(this.layer)
-  // }
-
   handleKeyDown(event: KeyboardEvent) {
     console.log("KeyMenu received " + event.key + " down")
-    // this.currentMode?.handleKeyDown(event)
+    this.currentMode.handleKeyDown(event)
   }
 
   handleKeyUp(event: KeyboardEvent) {
     console.log("KeyMenu received " + event.key + " up")
-    // this.currentMode?.handleKeyUp(event);
+    // this.currentModeName?.handleKeyUp(event);
   }
 
   switchMode(modeName: string) {
@@ -180,7 +211,7 @@ export class KeyMenu<T> {
     //   return;
     // }
     //
-    // keyMenuModes.forEach(mode => this.currentMode = mode);
+    // keyMenuModes.forEach(mode => this.currentModeName = mode);
     // this.updateLayer();
     //
   }
