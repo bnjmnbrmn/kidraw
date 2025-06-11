@@ -4,6 +4,10 @@ import {
 } from './defaultUSStackKMModeSubmenu';
 import {DefaultUSStackKMModeLabeledSubmenuConfig} from './defaultUSStackKMModeLabeledSubmenuConfig';
 import {DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
+import {DACommand} from '../../../drawing-area/command.model';
+import Konva from 'konva';
+import { Group } from 'konva/lib/Group';
+import { KeyMenu } from '../keyMenu';
 
 
 export type DefaultUSStackKMModeConfig = DefaultUSStackKMModeSubmenuConfig;
@@ -11,10 +15,15 @@ export type DefaultUSStackKMModeConfig = DefaultUSStackKMModeSubmenuConfig;
 export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
   public readonly stack: DefaultUSStackKMModeSubmenu<T>[] = [];
+  public name?: string;
+  public keyMenu?: KeyMenu<T>;
+  public konvaGroup: Group;
 
   constructor(config: DefaultUSStackKMModeConfig) {
     this.stack[0] = new DefaultUSStackKMModeSubmenu(this, config);
+    this.konvaGroup = this.generateKonvaGroup();
   }
+
 
 
   get stackTop() {
@@ -31,13 +40,22 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
     this.stackTop.handleKeyUp(event);
   }
 
-  highlightStackTopKey(key: keyof DefaultUSStackKMModeSubmenuConfig) {
-    //todo
-  }
 
   pushSubmenu(labeledDefaultUSKMSubmenuConfig: DefaultUSStackKMModeLabeledSubmenuConfig) {
     //todo
 
   }
+
+
+  private generateKonvaGroup(): Group {
+    const group = new Group({});
+    const rootSubmenu = this.stack[0];
+    group.add(rootSubmenu.konvaGroup);
+    return group;
+  }
+
+
+
+
 }
 

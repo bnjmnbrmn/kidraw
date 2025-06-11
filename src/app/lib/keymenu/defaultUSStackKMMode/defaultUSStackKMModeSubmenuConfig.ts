@@ -1,35 +1,43 @@
 import {DefaultUSStackKMModeLabeledAction} from "./defaultUSStackKMModeLabeledAction";
 import {DefaultUSStackKMModeLabeledSubmenuConfig} from "./defaultUSStackKMModeLabeledSubmenuConfig";
 
-export interface DefaultUSStackKMModeSubmenuConfig {
-  q?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  w?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  e?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  r?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  t?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  y?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  u?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  i?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  o?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  p?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  a?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  s?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  d?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  f?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  g?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  h?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  j?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  k?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  l?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  ';'?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  z?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  x?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  c?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  v?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  b?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  n?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  m?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  ','?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  '.'?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
-  '/'?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig,
+
+export const defaultUSStackKMModeKeys = {
+  'q': {},
+  'w': {},
+  'e': {},
+  'r': {},
+  't': {},
+  'y': {},
+  'u': {},
+  'i': {},
+  'o': {},
+  'p': {},
+  'a': {},
+  's': {},
+  'd': {},
+  'f': {},
+  'g': {},
+  'h': {},
+  'j': {},
+  'k': {},
+  'l': {},
+  ';': {},
+  'z': {},
+  'x': {},
+  'c': {},
+  'v': {},
+  'b': {},
+  'n': {},
+  'm': {},
+  ',': {},
+  '.': {},
+  '/': {}
+} as const;
+
+export type DefaultUSStackKMModeKeyString = keyof typeof defaultUSStackKMModeKeys;
+
+
+export type DefaultUSStackKMModeSubmenuConfig = {
+  [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig
 }
