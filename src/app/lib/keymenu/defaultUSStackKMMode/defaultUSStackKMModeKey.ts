@@ -1,15 +1,16 @@
 import {Group} from "konva/lib/Group";
-import {DefaultUSStackKMModeKeyString} from "./defaultUSStackKMModeSubmenuConfig";
+import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from "./defaultUSStackKMModeSubmenuConfig";
 import Konva from "konva";
 import {DefaultUSStackKMModeSubmenu} from "./defaultUSStackKMModeSubmenu";
 import Rect = Konva.Rect;
+import {DefaultUSStackKMMode} from './defaultUSStackKMMode';
 
-export class DefaultUSStackKMModeKey {
+export abstract class DefaultUSStackKMModeKey<T> {
   public konvaGroup: Group;
   private _highlight: boolean;
   private keyRect: Rect;
 
-  constructor(public keyString: DefaultUSStackKMModeKeyString, public label: string) {
+  constructor(public keyString: DefaultUSStackKMModeKeyString, public label: string, public mode: DefaultUSStackKMMode<T>) {
 
     this._highlight = false;
 
@@ -30,7 +31,7 @@ export class DefaultUSStackKMModeKey {
     );
     this.konvaGroup.add(this.keyRect);
     const keyLabelText = new Konva.Text({
-      text: label,
+      text: keyString,
       width: DefaultUSStackKMModeSubmenu.KEY_WIDTH,
       height: 10,
       y: 4,
@@ -70,4 +71,21 @@ export class DefaultUSStackKMModeKey {
     }
   }
 
+}
+
+export class DefaultUSStackKMModeLeafKey<T> extends DefaultUSStackKMModeKey<T> {
+  performAction() {
+      this.action();
+  }
+  constructor(keyString: DefaultUSStackKMModeKeyString, label: string, public action: () => void, mode: DefaultUSStackKMMode<T>) {
+    super(keyString, label, mode);
+  }
+}
+
+export class DefaultUSStackKMModeInnerKey<T> extends DefaultUSStackKMModeKey<T> {
+  submenu: DefaultUSStackKMModeSubmenu<T>;
+  constructor(keyString: DefaultUSStackKMModeKeyString, label: string, public submenuConfig: DefaultUSStackKMModeSubmenuConfig, mode: DefaultUSStackKMMode<T>) {
+    super(keyString, label, mode);
+    this.submenu = new DefaultUSStackKMModeSubmenu<T>(this.mode, this.submenuConfig)
+  }
 }

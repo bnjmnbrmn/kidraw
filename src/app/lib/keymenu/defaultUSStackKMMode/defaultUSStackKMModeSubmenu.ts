@@ -3,21 +3,23 @@ import {DefaultUSStackKMModeLabeledAction} from './defaultUSStackKMModeLabeledAc
 import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
 import {Group} from 'konva/lib/Group';
 import {DefaultUSStackKMModeLabeledSubmenuConfig} from './defaultUSStackKMModeLabeledSubmenuConfig';
-import {DefaultUSStackKMModeKey} from './defaultUSStackKMModeKey';
+import {
+  DefaultUSStackKMModeLeafKey,
+  DefaultUSStackKMModeKey,
+  DefaultUSStackKMModeInnerKey
+} from './defaultUSStackKMModeKey';
 
 
 export class DefaultUSStackKMModeSubmenu<T> {
 
   konvaGroup: Group;
-  keys: { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey };
+  keys: { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey<T> };
 
   constructor(public mode: DefaultUSStackKMMode<T>,
               public config: DefaultUSStackKMModeSubmenuConfig) {
     this.keys = this.generateKeys(this.config);
     this.konvaGroup = this.generateGroup(this.keys)
   }
-
-
 
 
   public static readonly KEY_WIDTH = 70;
@@ -74,38 +76,39 @@ export class DefaultUSStackKMModeSubmenu<T> {
     ) as { [K in DefaultUSStackKMModeKeyString]: { x: number; y: number } };
 
 
-  private generateLeafKey(key: DefaultUSStackKMModeKeyString, actionLabel: string): DefaultUSStackKMModeKey {
-    return new DefaultUSStackKMModeKey(key, actionLabel);
+  private generateLeafKey(keyString: DefaultUSStackKMModeKeyString, actionLabel: string, action: () => void): DefaultUSStackKMModeKey<T> {
+    return new DefaultUSStackKMModeLeafKey(keyString, actionLabel, action, this.mode);
   }
 
-  private generateInnerKey(key: DefaultUSStackKMModeKeyString, submenuLabel: string): DefaultUSStackKMModeKey {
-    return this.generateLeafKey(key, submenuLabel);
+  private generateInnerKey(keyString: DefaultUSStackKMModeKeyString, submenuLabel: string, submenuConfig: DefaultUSStackKMModeSubmenuConfig): DefaultUSStackKMModeKey<T> {
+    return new DefaultUSStackKMModeInnerKey(keyString, submenuLabel, submenuConfig, this.mode);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
     console.log("event.key", event.key);
     const key = event.key as DefaultUSStackKMModeKeyString;
-    if (!this.config[key]) {
+    if (!this.keys[key]) {
       return;
     }
 
     this.unhighlightKey(key)
+    if (this.keys[key] instanceof DefaultUSStackKMModeInnerKey) {
+      this.mode.popSubmenu(this.keys[key]);
+    }
   }
 
   handleKeyDown(event: KeyboardEvent): void {
     console.log("event.key", event.key);
     const key = event.key as DefaultUSStackKMModeKeyString;
-    if (!this.config[key]) {
+    if (!this.keys[key]) {
       return;
     }
 
     this.highlightKey(key);
-    if (this.config[key] instanceof DefaultUSStackKMModeLabeledAction) {
-      const labeledAction = this.config[key];
-      labeledAction.action();
-    } else { // if this.config[key] instanceof LabeledDefaultUSKMSubmenuConfig
-      const labeledDefaultUSKMSubmenuConfig = this.config[key];
-      this.mode.pushSubmenu(labeledDefaultUSKMSubmenuConfig);
+    if (this.keys[key] instanceof DefaultUSStackKMModeLeafKey) {
+      this.keys[key].performAction();
+    } else if (this.keys[key] instanceof DefaultUSStackKMModeInnerKey) {
+      this.mode.pushSubmenu(this.keys[key]);
     }
   }
 
@@ -121,24 +124,24 @@ export class DefaultUSStackKMModeSubmenu<T> {
     }
   }
 
-  private generateKeys(config: DefaultUSStackKMModeSubmenuConfig): { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey } {
+  private generateKeys(config: DefaultUSStackKMModeSubmenuConfig): { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey<T> } {
 
-    const keys: [DefaultUSStackKMModeKeyString, DefaultUSStackKMModeKey][] = [];
+    const keys: [DefaultUSStackKMModeKeyString, DefaultUSStackKMModeKey<T>][] = [];
 
     (Object.entries(this.config) as
       [DefaultUSStackKMModeKeyString, DefaultUSStackKMModeLabeledAction | DefaultUSStackKMModeLabeledSubmenuConfig][])
-      .forEach(([key, config])   => {
+      .forEach(([key, config]) => {
         if (config instanceof DefaultUSStackKMModeLabeledSubmenuConfig) {
-          keys.push([key , this.generateInnerKey(key, config.submenuLabel)]);
+          keys.push([key, this.generateInnerKey(key, config.submenuLabel, config.defaultUSStackKMModeSubmenuConfig)]);
         } else { //if config instanceof LabeledAction
-          keys.push([key, this.generateLeafKey(key, config.actionLabel)]);
+          keys.push([key, this.generateLeafKey(key, config.actionLabel, config.action)]);
         }
       });
 
     return Object.fromEntries(keys);
   }
 
-  private generateGroup(keys: { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey }) {
+  private generateGroup(keys: { [K in DefaultUSStackKMModeKeyString]?: DefaultUSStackKMModeKey<T> }) {
     const group = new Group()
     for (const v of Object.values(keys)) {
       group.add(v.konvaGroup);
@@ -146,4 +149,7 @@ export class DefaultUSStackKMModeSubmenu<T> {
     return group;
   }
 
+  hideAllKeysExcept(innerKey: DefaultUSStackKMModeInnerKey<T>) {
+    //todo
+  }
 }

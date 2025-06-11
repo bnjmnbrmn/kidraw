@@ -8,6 +8,7 @@ import {DACommand} from '../../../drawing-area/command.model';
 import Konva from 'konva';
 import { Group } from 'konva/lib/Group';
 import { KeyMenu } from '../keyMenu';
+import {DefaultUSStackKMModeInnerKey} from './defaultUSStackKMModeKey';
 
 
 export type DefaultUSStackKMModeConfig = DefaultUSStackKMModeSubmenuConfig;
@@ -41,9 +42,9 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
   }
 
 
-  pushSubmenu(labeledDefaultUSKMSubmenuConfig: DefaultUSStackKMModeLabeledSubmenuConfig) {
-    //todo
-
+  pushSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
+    this.stackTop.hideAllKeysExcept(innerKey);
+    this.stack.push(innerKey.submenu)
   }
 
 
@@ -55,7 +56,8 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
   }
 
 
-
-
+  popSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
+    //todo
+  }
 }
 
