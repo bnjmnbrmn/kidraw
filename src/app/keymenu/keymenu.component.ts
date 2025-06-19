@@ -39,6 +39,25 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
             }
           ),
+          k: new DefaultUSStackKMModeLabeledAction(
+            'Move Up',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
+            }
+          ),
+          l: new DefaultUSStackKMModeLabeledAction(
+            'Move Right',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
+            }
+          ),
+          i: new DefaultUSStackKMModeLabeledAction(
+            'Insert Node',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+              this.keyMenu.switchMode("labelEdit")
+            }
+          ),
           z: new DefaultUSStackKMModeLabeledSubmenuConfig(
             "Zoom/Pan",
             {

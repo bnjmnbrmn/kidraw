@@ -6,14 +6,14 @@ import {KeyMenuConfig} from './keyMenuConfig';
 export import Group = Konva.Group;
 
 export class KeyMenu<T> {
-  private containingHTMLElement: HTMLElement;
-  private containerId: string;
+  containingHTMLElement: HTMLElement;
+  containerId: string;
 
-  private stage: Stage;
-  private layer: Layer;
+  stage: Stage;
+  layer: Layer;
 
-  private modesForNames: { [p: string]: KeyMenuMode<T> };
-  private currentMode: KeyMenuMode<T>;
+  modesForNames: { [p: string]: KeyMenuMode<T> };
+  currentMode: KeyMenuMode<T>;
 
 
   constructor(config: KeyMenuConfig<T>) {
@@ -37,7 +37,12 @@ export class KeyMenu<T> {
 
     this.currentMode = Object.entries(this.modesForNames)[0][1];
 
-    this.layer.add(this.currentMode.konvaGroup);
+    Object.values(this.modesForNames).forEach((mode) => {
+      this.layer.add(mode.konvaGroup);
+      mode.konvaGroup.hide();
+    })
+
+    this.currentMode.konvaGroup.show();
   }
 
   handleKeyDown(event: KeyboardEvent) {
@@ -51,7 +56,12 @@ export class KeyMenu<T> {
   }
 
   switchMode(modeName: string) {
-    //todo?
+    const modeForName = this.modesForNames[modeName];
+    if (modeForName) {
+      this.currentMode.konvaGroup.hide();
+      this.currentMode = modeForName;
+      this.currentMode.konvaGroup.show();
+    }
   }
 
   public static noModifier(ke: KeyboardEvent) {

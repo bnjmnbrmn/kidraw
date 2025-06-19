@@ -8,9 +8,9 @@ import {DefaultUSStackKMMode} from './defaultUSStackKMMode';
 export abstract class DefaultUSStackKMModeKey<T> {
   public konvaGroup: Group;
   private _highlight: boolean;
-  private keyRect: Rect;
+  private readonly keyRect: Rect;
 
-  constructor(public keyString: DefaultUSStackKMModeKeyString, public label: string, public mode: DefaultUSStackKMMode<T>) {
+  protected constructor(public keyString: DefaultUSStackKMModeKeyString, public label: string, public mode: DefaultUSStackKMMode<T>) {
 
     this._highlight = false;
 
@@ -25,7 +25,7 @@ export abstract class DefaultUSStackKMModeKey<T> {
         height: DefaultUSStackKMModeSubmenu.KEY_HEIGHT,
         stroke: 'black',
         fill: 'white',
-        shadowEnabled: false,
+        shadowEnabled: this.highlight,
         shadowOffset: {x: 1, y: 1},
       }
     );
@@ -64,11 +64,7 @@ export abstract class DefaultUSStackKMModeKey<T> {
 
   set highlight(value: boolean) {
     this._highlight = value;
-    if (this._highlight) {
-      this.keyRect.shadowEnabled(true);
-    } else {
-      this.keyRect.shadowEnabled(false);
-    }
+    this.keyRect.shadowEnabled(this._highlight);
   }
 
 }

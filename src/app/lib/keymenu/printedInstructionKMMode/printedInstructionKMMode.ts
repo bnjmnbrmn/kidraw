@@ -15,6 +15,9 @@ export class PrintedInstructionKMMode<T> implements KeyMenuMode<T> {
 
   constructor(config: PrintedInstructionKeyMenuModeConfig) {
     this.konvaGroup = new Konva.Group();
+    this.konvaGroup.add(new Konva.Text({
+      text: config.instructions,
+    }));
   }
 
   handleKeyDown(ke: KeyboardEvent): void {

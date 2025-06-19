@@ -4,9 +4,9 @@ import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from '
 import {Group} from 'konva/lib/Group';
 import {DefaultUSStackKMModeLabeledSubmenuConfig} from './defaultUSStackKMModeLabeledSubmenuConfig';
 import {
-  DefaultUSStackKMModeLeafKey,
+  DefaultUSStackKMModeInnerKey,
   DefaultUSStackKMModeKey,
-  DefaultUSStackKMModeInnerKey
+  DefaultUSStackKMModeLeafKey
 } from './defaultUSStackKMModeKey';
 
 
@@ -19,6 +19,9 @@ export class DefaultUSStackKMModeSubmenu<T> {
               public config: DefaultUSStackKMModeSubmenuConfig) {
     this.keys = this.generateKeys(this.config);
     this.konvaGroup = this.generateGroup(this.keys)
+    // this.mode.keyMenu?.layer.add(this.konvaGroup)
+    this.mode.konvaGroup.add(this.konvaGroup);
+    this.konvaGroup.hide();
   }
 
 
@@ -150,6 +153,17 @@ export class DefaultUSStackKMModeSubmenu<T> {
   }
 
   hideAllKeysExcept(innerKey: DefaultUSStackKMModeInnerKey<T>) {
-    //todo
+    Object.values(this.keys).forEach((key) => {
+      if (key.keyString !== innerKey.keyString) {
+        key.konvaGroup.hide();
+      }
+    });
+  }
+
+  showAllKeys() {
+    Object.values(this.keys).forEach((key) => {
+      key.konvaGroup.show();
+    });
+    this.konvaGroup.show();
   }
 }

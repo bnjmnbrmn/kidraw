@@ -1,13 +1,8 @@
 import {KeyMenuMode} from '../keyMenuMode';
-import {
-  DefaultUSStackKMModeSubmenu
-} from './defaultUSStackKMModeSubmenu';
-import {DefaultUSStackKMModeLabeledSubmenuConfig} from './defaultUSStackKMModeLabeledSubmenuConfig';
+import {DefaultUSStackKMModeSubmenu} from './defaultUSStackKMModeSubmenu';
 import {DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
-import {DACommand} from '../../../drawing-area/command.model';
-import Konva from 'konva';
-import { Group } from 'konva/lib/Group';
-import { KeyMenu } from '../keyMenu';
+import {Group} from 'konva/lib/Group';
+import {KeyMenu} from '../keyMenu';
 import {DefaultUSStackKMModeInnerKey} from './defaultUSStackKMModeKey';
 
 
@@ -21,8 +16,9 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
   public konvaGroup: Group;
 
   constructor(config: DefaultUSStackKMModeConfig) {
-    this.stack[0] = new DefaultUSStackKMModeSubmenu(this, config);
-    this.konvaGroup = this.generateKonvaGroup();
+    this.konvaGroup = new Group({});
+    this.stack.push(new DefaultUSStackKMModeSubmenu(this, config));
+    this.stackTop.konvaGroup.show();
   }
 
 
@@ -45,6 +41,7 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
   pushSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
     this.stackTop.hideAllKeysExcept(innerKey);
     this.stack.push(innerKey.submenu)
+    this.stackTop.showAllKeys();
   }
 
 
