@@ -21,24 +21,30 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     public readonly stack: DefaultUSStackKMModeSubmenu<T>[] = [];
     public konvaGroup: Group;
+    actionSchedulingEnabled: boolean = true;
 
     constructor(public name: string, public keyMenu: KeyMenu<T>,
                 config: DefaultUSStackKMModeConfig<T>) {
         this.konvaGroup = new Group();
         this.stack.push(new DefaultUSStackKMModeSubmenu(this, config.rootSubmenuConfig));
         this.stackTop.konvaGroup.show();
-        console.log(this.konvaGroup.getClientRect());
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
         this.konvaGroup.y(20)
     }
 
     beforeSwitchOut(): void {
-        console.log("beforeSwitchOut");
         while (this.stack.length > 1) {
             this.stackTop.unhighlightAllKeys();
+            this.stackTop.stopAllScheduledActions();
             this.stack.pop();
         }
         this.stackTop.unhighlightAllKeys();
+        this.stackTop.stopAllScheduledActions();
+        this.actionSchedulingEnabled = false;
+    }
+
+    beforeSwitchIn(): void {
+      this.actionSchedulingEnabled = true;
     }
 
 

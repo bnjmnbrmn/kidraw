@@ -66,6 +66,7 @@ export class KeyMenu<T> {
       this.currentMode.konvaGroup.hide();
       this.currentMode.beforeSwitchOut()
       this.currentMode = modeForName;
+      this.currentMode.beforeSwitchIn()
       this.currentMode.konvaGroup.show();
     }
   }

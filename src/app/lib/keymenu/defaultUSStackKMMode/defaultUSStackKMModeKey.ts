@@ -70,9 +70,7 @@ export abstract class DefaultUSStackKMModeKey<T> {
 }
 
 export class DefaultUSStackKMModeLeafKey<T> extends DefaultUSStackKMModeKey<T> {
-  performAction() {
-      this.action();
-  }
+
   constructor(keyString: DefaultUSStackKMModeKeyString, label: string, public action: () => void, mode: DefaultUSStackKMMode<T>) {
     super(keyString, label, mode);
   }

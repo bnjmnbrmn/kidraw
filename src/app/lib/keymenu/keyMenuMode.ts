@@ -9,4 +9,6 @@ export interface KeyMenuMode<T> {
   handleKeyUp(event: KeyboardEvent): void;
 
   beforeSwitchOut(): void;
+
+  beforeSwitchIn(): void;
 }

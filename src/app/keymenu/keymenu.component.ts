@@ -33,6 +33,26 @@ export class KeymenuComponent implements AfterViewInit {
       containingHTMLElement: this.componentNE,
       modes: {
         "normal": new DefaultUSStackKMModeConfig({
+
+          s: new DefaultUSStackKMModeLabeledAction(
+            'New Selection',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT});
+            }
+          ),
+          v: new DefaultUSStackKMModeLabeledAction(
+            'Additional Selection',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT});
+            }
+          ),
+
+          c: new DefaultUSStackKMModeLabeledAction(
+            'Connect',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
+            }
+          ),
           h: new DefaultUSStackKMModeLabeledAction(
             'Move Left',
             () => {
@@ -65,10 +85,13 @@ export class KeymenuComponent implements AfterViewInit {
             }
           ),
           z: new DefaultUSStackKMModeLabeledSubmenuConfig(
-            "Zoom/Pan",
+            "Zoom...",
             {
-              i: new DefaultUSStackKMModeLabeledAction("Zoom In", () => {
+              i: new DefaultUSStackKMModeLabeledAction("...In", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
+              }),
+              o: new DefaultUSStackKMModeLabeledAction("...Out", () => {
+                this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
               })
             }
           )
