@@ -1,8 +1,14 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject, Output} from '@angular/core';
 import {DACommand, DACommandType} from "../drawing-area/command.model";
 import {KeyMenu} from '../lib/keymenu/keyMenu';
-import {DefaultUSStackKMMode} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMMode';
-import {PrintedInstructionKMMode} from '../lib/keymenu/printedInstructionKMMode/printedInstructionKMMode';
+import {
+  DefaultUSStackKMMode,
+  DefaultUSStackKMModeConfig
+} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMMode';
+import {
+  PrintedInstructionKeyMenuModeConfig,
+  PrintedInstructionKMMode
+} from '../lib/keymenu/printedInstructionKMMode/printedInstructionKMMode';
 import {
   DefaultUSStackKMModeLabeledSubmenuConfig
 } from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMModeLabeledSubmenuConfig';
@@ -22,11 +28,11 @@ export class KeymenuComponent implements AfterViewInit {
   @Output() keyMenuOut = new EventEmitter<DACommand>;
 
   ngAfterViewInit(): void {
-    this.keyMenu = new KeyMenu({
+    this.keyMenu = new KeyMenu<DACommand>({
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
       modes: {
-        "normal": new DefaultUSStackKMMode({
+        "normal": new DefaultUSStackKMModeConfig({
           h: new DefaultUSStackKMModeLabeledAction(
             'Move Left',
             () => {
@@ -67,9 +73,24 @@ export class KeymenuComponent implements AfterViewInit {
             }
           )
         }),
-        "labelEdit": new PrintedInstructionKMMode({
-          instructions: "Insert/edit text.  Use ESC or Ctrl-[ to return to Normal mode."
-        })
+        "labelEdit": new PrintedInstructionKeyMenuModeConfig(
+          "Insert/edit text.  Use ESC or Ctrl-[ to return to Normal mode.",
+          (keyDownEvent: KeyboardEvent) => {
+            const key = keyDownEvent.key;
+            if (("Enter" === key && keyDownEvent.shiftKey)
+              || ("[" === key && keyDownEvent.ctrlKey) || "Escape" === key) {
+              this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
+              this.keyMenu.switchMode("normal");
+            } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
+              this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+            } else if ("Enter" === key && KeyMenu.noModifier(keyDownEvent)) {
+              this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+            } else if (["Enter", "Tab"].includes(key) && KeyMenu.noModifier(keyDownEvent)) {
+              this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+            }
+          }, (keyUpEvent: KeyboardEvent) => {
+          }
+        )
       }
     });
   }

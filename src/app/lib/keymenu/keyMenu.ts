@@ -3,6 +3,7 @@ import {KeyMenuMode} from './keyMenuMode';
 import Konva from 'konva';
 import {Layer} from 'konva/lib/Layer';
 import {KeyMenuConfig} from './keyMenuConfig';
+import {KeyMenuModeConfig} from './keyMenuModeConfig';
 export import Group = Konva.Group;
 
 export class KeyMenu<T> {
@@ -28,7 +29,8 @@ export class KeyMenu<T> {
     this.layer = new Layer({});
     this.stage.add(this.layer);
 
-    this.modesForNames = config.modes;
+    this.modesForNames = Object.fromEntries(Object.entries(config.modes)
+      .map(([k, v]) => [k, v.createMode()]));
 
     Object.entries(this.modesForNames).forEach(([name, mode]) => {
       mode.name = name;
