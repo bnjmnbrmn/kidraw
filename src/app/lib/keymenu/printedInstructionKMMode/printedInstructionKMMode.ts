@@ -11,8 +11,8 @@ export class PrintedInstructionKeyMenuModeConfig<T> implements KeyMenuModeConfig
                 public keyUpConfig: (event: KeyboardEvent) => void) {
     }
 
-    createMode(): PrintedInstructionKMMode<T> {
-        return new PrintedInstructionKMMode<T>(this);
+    createMode(name: string, keyMenu: KeyMenu<T>): PrintedInstructionKMMode<T> {
+        return new PrintedInstructionKMMode<T>(name, keyMenu, this);
     }
 }
 
@@ -20,11 +20,17 @@ export class PrintedInstructionKMMode<T> implements KeyMenuMode<T> {
 
     konvaGroup: Group;
 
-    constructor(private printedInstructionKMModeConfig: PrintedInstructionKeyMenuModeConfig<T>) {
+    constructor(public name: string, public keyMenu: KeyMenu<T>,
+                private printedInstructionKMModeConfig: PrintedInstructionKeyMenuModeConfig<T>) {
         this.konvaGroup = new Konva.Group();
         this.konvaGroup.add(new Konva.Text({
           text: printedInstructionKMModeConfig.instructions,
+            fontSize: 20
         }));
+
+
+        this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
+        this.konvaGroup.y(20)
     }
 
     handleKeyDown(event: KeyboardEvent): void {

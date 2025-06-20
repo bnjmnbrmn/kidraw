@@ -13,8 +13,8 @@ export class DefaultUSStackKMModeConfig<T> implements KeyMenuModeConfig<T, Defau
 
     constructor(public rootSubmenuConfig: DefaultUSStackKMModeSubmenuConfig) {}
 
-    createMode(): DefaultUSStackKMMode<T> {
-        return new DefaultUSStackKMMode<T>(this);
+    createMode(name: string, keyMenu: KeyMenu<T>): DefaultUSStackKMMode<T> {
+        return new DefaultUSStackKMMode<T>(name, keyMenu, this);
     }
 }
 
@@ -22,14 +22,16 @@ export class DefaultUSStackKMModeConfig<T> implements KeyMenuModeConfig<T, Defau
 export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     public readonly stack: DefaultUSStackKMModeSubmenu<T>[] = [];
-    public name?: string;
-    public keyMenu?: KeyMenu<T>;
     public konvaGroup: Group;
 
-    constructor(config: DefaultUSStackKMModeConfig<T>) {
-        this.konvaGroup = new Group({});
+    constructor(public name: string, public keyMenu: KeyMenu<T>,
+                config: DefaultUSStackKMModeConfig<T>) {
+        this.konvaGroup = new Group();
         this.stack.push(new DefaultUSStackKMModeSubmenu(this, config.rootSubmenuConfig));
         this.stackTop.konvaGroup.show();
+        console.log(this.konvaGroup.getClientRect());
+        this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
+        this.konvaGroup.y(20)
     }
 
 

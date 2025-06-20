@@ -30,12 +30,8 @@ export class KeyMenu<T> {
     this.stage.add(this.layer);
 
     this.modesForNames = Object.fromEntries(Object.entries(config.modes)
-      .map(([k, v]) => [k, v.createMode()]));
-
-    Object.entries(this.modesForNames).forEach(([name, mode]) => {
-      mode.name = name;
-      mode.keyMenu = this;
-    })
+      .map(([name, modeConfig]) =>
+        [name, modeConfig.createMode(name, this)]));
 
     this.currentMode = Object.entries(this.modesForNames)[0][1];
 

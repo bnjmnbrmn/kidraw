@@ -89,6 +89,7 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
             }
           }, (keyUpEvent: KeyboardEvent) => {
+            //do nothing
           }
         )
       }
