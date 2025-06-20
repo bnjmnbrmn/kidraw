@@ -2,10 +2,10 @@ import {Group} from "konva/lib/Group";
 import {KeyMenu} from "../keyMenu";
 import {KeyMenuMode} from "../keyMenuMode";
 import Konva from 'konva';
-import {DACommandType} from '../../../drawing-area/command.model';
 import {KeyMenuModeConfig} from '../keyMenuModeConfig';
 
-export class PrintedInstructionKeyMenuModeConfig<T> implements KeyMenuModeConfig<T, PrintedInstructionKMMode<T>> {
+export class PrintedInstructionKeyMenuModeConfig<T> implements KeyMenuModeConfig<T,
+    PrintedInstructionKMMode<T>> {
     constructor(public instructions: string,
                 public keyDownConfig: (event: KeyboardEvent) => void,
                 public keyUpConfig: (event: KeyboardEvent) => void) {
@@ -31,6 +31,10 @@ export class PrintedInstructionKMMode<T> implements KeyMenuMode<T> {
 
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
         this.konvaGroup.y(20)
+    }
+
+    beforeSwitchOut(): void {
+        // throw new Error("Method not implemented.");
     }
 
     handleKeyDown(event: KeyboardEvent): void {

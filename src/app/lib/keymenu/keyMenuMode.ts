@@ -7,4 +7,6 @@ export interface KeyMenuMode<T> {
   konvaGroup: Konva.Group;
   handleKeyDown(event: KeyboardEvent): void;
   handleKeyUp(event: KeyboardEvent): void;
+
+  beforeSwitchOut(): void;
 }

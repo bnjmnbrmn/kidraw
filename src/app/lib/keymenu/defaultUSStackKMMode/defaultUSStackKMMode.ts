@@ -1,13 +1,11 @@
 import {KeyMenuMode} from '../keyMenuMode';
 import {DefaultUSStackKMModeSubmenu} from './defaultUSStackKMModeSubmenu';
-import {DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
+import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
 import {Group} from 'konva/lib/Group';
 import {KeyMenu} from '../keyMenu';
 import {DefaultUSStackKMModeInnerKey} from './defaultUSStackKMModeKey';
 import {KeyMenuModeConfig} from "../keyMenuModeConfig";
 
-
-// export type DefaultUSStackKMModeConfig = DefaultUSStackKMModeSubmenuConfig;
 
 export class DefaultUSStackKMModeConfig<T> implements KeyMenuModeConfig<T, DefaultUSStackKMMode<T>> {
 
@@ -34,6 +32,15 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
         this.konvaGroup.y(20)
     }
 
+    beforeSwitchOut(): void {
+        console.log("beforeSwitchOut");
+        while (this.stack.length > 1) {
+            this.stackTop.unhighlightAllKeys();
+            this.stack.pop();
+        }
+        this.stackTop.unhighlightAllKeys();
+    }
+
 
     get stackTop() {
         return this.stack[this.stack.length - 1];
@@ -46,27 +53,47 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     handleKeyUp(event: KeyboardEvent) {
         console.log(this.constructor.name + " received " + event.key + " up")
+        const key = event.key as DefaultUSStackKMModeKeyString;
         this.stackTop.handleKeyUp(event);
+        if (this.stackTop.keys[key]) {
+            return;
+        }
+
+        if (this.submenuKeyStringStack.includes(key)) {
+            this.popSubmenuAndChildren(key);
+        }
     }
 
+    submenuKeyStringStack: string[] = [""];
 
     pushSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
         this.stackTop.hideAllKeysExcept(innerKey);
         this.stack.push(innerKey.submenu)
+        this.submenuKeyStringStack.push(innerKey.keyString);
         this.stackTop.showAllKeys();
     }
 
 
-    private generateKonvaGroup(): Group {
-        const group = new Group({});
-        const rootSubmenu = this.stack[0];
-        group.add(rootSubmenu.konvaGroup);
-        return group;
-    }
 
+    popSubmenuAndChildren(keyString: DefaultUSStackKMModeKeyString) {
+        const index = this.submenuKeyStringStack.findIndex(
+            (value) => keyString === value);
 
-    popSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
-        //todo
+        if (index < 0) {
+            return;
+        }
+
+        const submenusToHide: DefaultUSStackKMModeSubmenu<T>[] = this.stack.slice(index);
+        console.log("submenusToHide", submenusToHide);
+        submenusToHide.forEach((submenu: DefaultUSStackKMModeSubmenu<T>) => {
+            submenu.hideAllKeys();
+            submenu.unhighlightAllKeys();
+        });
+        this.stack.splice(index);
+        this.submenuKeyStringStack.splice(index);
+        this.stackTop.showAllKeys();
+        this.stackTop.unhighlightAllKeys();
+
     }
 }
 

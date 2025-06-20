@@ -1,7 +1,11 @@
 #+title: Project Todos
 
 * Key Menu
-** TODO Add Konva stage, and add hints as stage items
+** DONE Add Konva stage, and add hints as stage items
+** DONE Ignore System Key Repeat
+** DONE Handle Key release for DefaultUSStackKMMode
+** DONE Handle Switching Modes
+** TODO Introduce App Key Repeat
 * Drawing Area
 ** TODO Recenter view
 ** TODO Recenter crosshairs

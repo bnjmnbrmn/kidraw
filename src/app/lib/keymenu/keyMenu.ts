@@ -16,6 +16,8 @@ export class KeyMenu<T> {
   modesForNames: { [p: string]: KeyMenuMode<T> };
   currentMode: KeyMenuMode<T>;
 
+  keysDown: Set<string> = new Set();
+
 
   constructor(config: KeyMenuConfig<T>) {
     this.containingHTMLElement = config.containingHTMLElement;
@@ -44,12 +46,17 @@ export class KeyMenu<T> {
   }
 
   handleKeyDown(event: KeyboardEvent) {
-    console.log("KeyMenu received " + event.key + " down")
-    this.currentMode.handleKeyDown(event)
+    // console.log("KeyMenu received " + event.key + " down")
+
+    if (!this.keysDown.has(event.key)) {
+      this.keysDown.add(event.key);
+      this.currentMode.handleKeyDown(event)
+    }
   }
 
   handleKeyUp(event: KeyboardEvent) {
-    console.log("KeyMenu received " + event.key + " up")
+    // console.log("KeyMenu received " + event.key + " up")
+    this.keysDown.delete(event.key);
     this.currentMode.handleKeyUp(event)
   }
 
@@ -57,6 +64,7 @@ export class KeyMenu<T> {
     const modeForName = this.modesForNames[modeName];
     if (modeForName) {
       this.currentMode.konvaGroup.hide();
+      this.currentMode.beforeSwitchOut()
       this.currentMode = modeForName;
       this.currentMode.konvaGroup.show();
     }
