@@ -44,6 +44,9 @@ export class DAEdge extends Group {
         points: [srcNode.x(), srcNode.y(), apfltg.x, apfltg.y],
         stroke: this.stroke(),
         strokeWidth: this.strokeWidth(),
+        fill: 'black',
+        pointerLength: 10,
+        pointerWidth: 10,
       });
       this.add(this._line);
 
