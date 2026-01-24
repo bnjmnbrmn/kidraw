@@ -2,6 +2,7 @@ import Konva from 'konva';
 import Group = Konva.Group;
 import {DANode} from './da-node';
 import Line = Konva.Line;
+import {arrowPointForLineToGroup, Point} from './utils';
 
 export class DAEdge extends Group {
 
@@ -23,7 +24,7 @@ export class DAEdge extends Group {
   }
 
   private stroke() {
-    return this._isSelected ? 'red' : 'black';
+    return 'black'
   }
 
   get line(): Konva.Line {
@@ -33,12 +34,20 @@ export class DAEdge extends Group {
   constructor(private srcNode: DANode, private destNode: DANode, private label: string) {
     super();
 
-    this._line = new Konva.Line({
-      points: [srcNode.x(), srcNode.y(), destNode.x(), destNode.y()],
-      stroke: this.stroke(),
-      strokeWidth: this.strokeWidth()
-    });
+    const lineToGroup = new Line({points: [srcNode.x(), srcNode.y(), destNode.x(), destNode.y()]});
+    const apfltg: Point|null = arrowPointForLineToGroup(lineToGroup, destNode);
 
-    this.add(this._line);
+    if (apfltg == null) {
+      throw new Error();
+    } else {
+      this._line = new Konva.Arrow({
+        points: [srcNode.x(), srcNode.y(), apfltg.x, apfltg.y],
+        stroke: this.stroke(),
+        strokeWidth: this.strokeWidth(),
+      });
+      this.add(this._line);
+
+    }
+
   }
 }

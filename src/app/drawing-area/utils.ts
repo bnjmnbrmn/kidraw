@@ -1,7 +1,7 @@
 import Konva from "konva";
 import {IRect} from 'konva/lib/types';
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
 }
@@ -10,7 +10,7 @@ class LineSegment {
   constructor(public p1: Point, public p2: Point) {
   }
 
-  private getLineIntersection(other: LineSegment): { x: number; y: number } | 'coincident' | 'parallel' {
+  public getLineIntersection(other: LineSegment): { x: number; y: number } | 'coincident' | 'parallel' {
 
     const x1 = this.p1.x;
     const x2 = this.p2.x;
@@ -127,6 +127,53 @@ export function rectContainsPoint(rect: IRect, point: Point) {
     point.x <= rect.x + rect.width &&
     point.y >= rect.y &&
     point.y <= rect.y + rect.height;
+}
+
+export function arrowPointForLineToGroup(line: Konva.Line, group: Konva.Group): Point | null {
+
+  const lineSegs = lineSegments(line);
+  const lastLineSeg = lineSegs[lineSegs.length - 1];
+
+  const groupBoundingRect = group.getClientRect();
+
+  if (!rectContainsPoint(groupBoundingRect, lastLineSeg.p2) || rectContainsPoint(groupBoundingRect, lastLineSeg.p1)) {
+    return null;
+  }
+
+  const groupRectSegments = rectSegments(groupBoundingRect);
+
+  let intersectionPoints: Point[] = []
+  for (const groupRectSeg of groupRectSegments) {
+    const lineIntersection: { x: number; y: number } | "coincident" | "parallel" = lastLineSeg.getLineIntersection(groupRectSeg);
+    if (lineIntersection != "coincident" && lineIntersection != "parallel") {
+      intersectionPoints.push(lineIntersection);
+    }
+  }
+
+  return closest(intersectionPoints, lastLineSeg.p1)
+}
+
+function distSquared(p1: Point, p2: Point) {
+  return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+}
+
+function closest(points: Point[], p1: Point) {
+
+  if (points.length === 0) {
+    return null;
+  }
+
+  let closestPoint = points[0];
+  let closestPointDistSquared = distSquared(p1, closestPoint);
+  for (let i = 1; i < points.length; i++) {
+    const currentPoint = points[i];
+    const currentPointDistSquared = distSquared(p1, currentPoint);
+    if (currentPointDistSquared < closestPointDistSquared) {
+      closestPoint = currentPoint;
+    }
+  }
+
+  return closestPoint;
 }
 
 /**
