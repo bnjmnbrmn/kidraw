@@ -1,5 +1,4 @@
 import {Component, ViewChild} from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
@@ -9,13 +8,14 @@ import {DANotification} from './drawing-area/da-notification.model';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, HeaderComponent, DrawingAreaComponent, KeymenuComponent],
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent {
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
+  @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
@@ -32,5 +32,11 @@ export class AppComponent {
     //   case "started-select-mode":
     //     break;
     // }
+  }
+
+  onZoomLevelChange(level: number) {
+    if (this.headerComponent) {
+      this.headerComponent.onZoomLevelChange(level);
+    }
   }
 }

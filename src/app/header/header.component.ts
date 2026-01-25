@@ -7,5 +7,9 @@ import { Component } from '@angular/core';
   styleUrl: './header.component.css'
 })
 export class HeaderComponent {
+  zoomLevel: number = 100;
 
+  onZoomLevelChange(level: number) {
+    this.zoomLevel = level;
+  }
 }

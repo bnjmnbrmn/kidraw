@@ -7,6 +7,7 @@ import {DAEdge} from './da-edge';
 import {DACommand, DACommandType} from './command.model';
 import {DrawingLayer} from './drawing.layer';
 import {CrosshairsLayer} from './crosshairs.layer';
+import {DemoDataService} from '../services/demo-data.service';
 import Stage = Konva.Stage;
 import Group = Konva.Group;
 import Tween = Konva.Tween;
@@ -23,12 +24,14 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   @Input({required: true}) commands!: Observable<DACommand>;
   @Output() daOut = new EventEmitter<DANotification>()
+  @Output() zoomLevel = new EventEmitter<number>()
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private resizeObserver!: ResizeObserver;
   private crosshairsLayer!: CrosshairsLayer;
   private drawingLayer!: DrawingLayer;
   private stage!: Stage;
   private tweens: Tween[] = [];
+  private demoDataService = inject(DemoDataService);
 
 
   ngAfterViewInit(): void {
@@ -39,13 +42,21 @@ export class DrawingAreaComponent implements AfterViewInit {
     });
     this.stage.container().style.backgroundColor = 'white';
 
-
     this.drawingLayer = new DrawingLayer();
     this.stage.add(this.drawingLayer);
     this.crosshairsLayer = new CrosshairsLayer(this.stage);
     this.stage.add(this.crosshairsLayer);
 
+    // Check for demo flag in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('demo') === 'true') {
+      this.demoDataService.createDemoGraph(this.drawingLayer);
+    }
+
     this.commands.subscribe(this.handleCommands.bind(this));
+
+    // Emit initial zoom level
+    this.emitZoomLevel();
 
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
@@ -95,6 +106,12 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
+        break;
+      case DACommandType.RECENTER_VIEW:
+        this.recenterView();
+        break;
+      case DACommandType.RECENTER_CROSSHAIRS:
+        this.recenterCrosshairs();
         break;
       default:
         this.assertNever(command);
@@ -213,7 +230,10 @@ export class DrawingAreaComponent implements AfterViewInit {
       scaleX: newScale,
       scaleY: newScale,
       x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
-      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale
+      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
+      onFinish: () => {
+        this.emitZoomLevel();
+      }
 
     }).play());
   }
@@ -237,7 +257,10 @@ export class DrawingAreaComponent implements AfterViewInit {
       scaleX: newScale,
       scaleY: newScale,
       x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
-      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale
+      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
+      onFinish: () => {
+        this.emitZoomLevel();
+      }
     }).play());
   }
 
@@ -330,6 +353,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens = [];
   }
 
+  private emitZoomLevel() {
+    const currentScale = this.drawingLayer.scaleX();
+    this.zoomLevel.emit(Math.round(currentScale * 100));
+  }
+
   private createNewNode() {
     this.finishTweens();
 
@@ -346,6 +374,76 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private getDANodesContainingCrosshairs() {
     return this.drawingLayer.getDaNodesContainingPoint(this.crosshairsLayer.crosshairs.getAbsolutePosition());
+  }
+
+  private recenterView() {
+    this.finishTweens();
+
+    const children = this.drawingLayer.getChildren();
+    if (children.length === 0) return;
+
+    // Calculate the bounding box of all drawing elements in the layer's coordinate system
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    children.forEach(child => {
+      // Get the bounding box in the layer's own coordinate system (not transformed)
+      const clientRect = child.getClientRect({skipTransform: true});
+
+      minX = Math.min(minX, clientRect.x);
+      minY = Math.min(minY, clientRect.y);
+      maxX = Math.max(maxX, clientRect.x + clientRect.width);
+      maxY = Math.max(maxY, clientRect.y + clientRect.height);
+    });
+
+    // Calculate the center point of the drawing in layer coordinates
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Center the view on the content without changing scale
+    const stageWidth = this.stage.width();
+    const stageHeight = this.stage.height();
+    const currentScale = this.drawingLayer.scaleX();
+
+    const tween = new Tween({
+      node: this.drawingLayer,
+      duration: 0.3,
+      x: stageWidth / 2 - centerX * currentScale,
+      y: stageHeight / 2 - centerY * currentScale,
+      easing: Easings.EaseInOut,
+      onFinish: () => {
+        const index = this.tweens.indexOf(tween);
+        if (index > -1) {
+          this.tweens.splice(index, 1);
+        }
+      }
+    });
+
+    this.tweens.push(tween);
+    tween.play();
+  }
+
+  private recenterCrosshairs() {
+    this.finishTweens();
+    
+    const stageWidth = this.stage.width();
+    const stageHeight = this.stage.height();
+    
+    const tween = new Tween({
+      node: this.crosshairsLayer.crosshairs,
+      duration: 0.2,
+      x: stageWidth / 2,
+      y: stageHeight / 2,
+      easing: Easings.EaseInOut,
+      onFinish: () => {
+        const index = this.tweens.indexOf(tween);
+        if (index > -1) {
+          this.tweens.splice(index, 1);
+        }
+      }
+    });
+    
+    this.tweens.push(tween);
+    tween.play();
   }
 
 }

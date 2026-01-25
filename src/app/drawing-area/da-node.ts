@@ -7,7 +7,7 @@ import Text = Konva.Text;
 export class DANode extends Group {
   private readonly _rect: Rect;
   private readonly _label: Text;
-  private _isSelected: boolean = true;
+  private _isSelected: boolean = false;
 
   get isSelected(): boolean {
     return this._isSelected;

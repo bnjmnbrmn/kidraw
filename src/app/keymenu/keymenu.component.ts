@@ -94,6 +94,19 @@ export class KeymenuComponent implements AfterViewInit {
                 this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
               })
             }
+          ),
+          // Ergonomic single-key shortcuts for recenter operations
+          f: new DefaultUSStackKMModeLabeledAction(
+            'Recenter View',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW});
+            }
+          ),
+          d: new DefaultUSStackKMModeLabeledAction(
+            'Recenter Crosshairs',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS});
+            }
           )
         }),
         "labelEdit": new PrintedInstructionKeyMenuModeConfig(

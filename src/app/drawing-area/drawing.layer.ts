@@ -23,6 +23,8 @@ export class DrawingLayer extends Konva.Layer {
     let daNode = new DANode((absoluteX - this.x()) / this.scaleX(), (absoluteY - this.y()) / this.scaleY(), "");
     this.daNodeGroup.add(daNode);
     this.daNodes.push(daNode);
+    // Select the new node for editing
+    daNode.isSelected = true;
   }
 
   getSelectedDANodes(): DANode[] {

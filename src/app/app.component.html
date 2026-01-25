@@ -1,6 +1,7 @@
 <app-header/>
 <app-drawing-area [commands]="commandsSubject.asObservable()"
 (daOut)="handleDANotification($event)"
+(zoomLevel)="onZoomLevelChange($event)"
 />
 
 <app-keymenu
