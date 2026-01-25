@@ -33,6 +33,10 @@ export class DrawingAreaComponent implements AfterViewInit {
   private tweens: Tween[] = [];
   private demoDataService = inject(DemoDataService);
 
+  // Zoom limits: max 200% (2.0), min 100/(2^8) ≈ 0.39%
+  private readonly MAX_ZOOM = 2.0;
+  private readonly MIN_ZOOM = 100 / Math.pow(2, 8) / 100;
+
 
   ngAfterViewInit(): void {
     this.stage = new Stage({
@@ -214,7 +218,6 @@ export class DrawingAreaComponent implements AfterViewInit {
   private zoomIn() {
     this.finishTweens()
 
-
     const oldScale = this.drawingLayer.scaleX();
 
     const crosshairsPointTo = {
@@ -222,8 +225,7 @@ export class DrawingAreaComponent implements AfterViewInit {
       y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y())/oldScale
     };
 
-
-    const newScale = oldScale * 2.0;
+    const newScale = Math.min(oldScale * 2.0, this.MAX_ZOOM);
     this.tweens.push(new Tween({
       node: this.drawingLayer,
       duration: .1,
@@ -248,7 +250,7 @@ export class DrawingAreaComponent implements AfterViewInit {
       y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y())/oldScale
     };
 
-    const newScale = oldScale / 2.0;
+    const newScale = Math.max(oldScale / 2.0, this.MIN_ZOOM);
     let scale: Vector2d = {x: newScale, y: newScale};
     console.log("scale", scale);
     this.tweens.push(new Tween({
