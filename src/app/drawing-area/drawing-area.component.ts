@@ -1,18 +1,13 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output} from '@angular/core';
-import {Observable} from 'rxjs';
-import {DANode} from './da-node';
-import {DANotification} from './da-notification.model';
+import { DemoDataService } from '../services/demo-data.service';
+import { DrawingLayer } from './drawing.layer';
+import { CrosshairsLayer } from './crosshairs.layer';
+import { DANode } from './da-node.group';
+import { DAEdge } from './da-edge.group';
+import { DACommand, DACommandType } from './command.model';
+import { DANotification } from './da-notification.model';
+import { Observable } from 'rxjs';
 import Konva from 'konva';
-import {DAEdge} from './da-edge';
-import {DACommand, DACommandType} from './command.model';
-import {DrawingLayer} from './drawing.layer';
-import {CrosshairsLayer} from './crosshairs.layer';
-import {DemoDataService} from '../services/demo-data.service';
-import Stage = Konva.Stage;
-import Group = Konva.Group;
-import Tween = Konva.Tween;
-import Easings = Konva.Easings;
-import Vector2d = Konva.Vector2d;
 
 @Component({
   selector: 'app-drawing-area',
@@ -29,8 +24,8 @@ export class DrawingAreaComponent implements AfterViewInit {
   private resizeObserver!: ResizeObserver;
   private crosshairsLayer!: CrosshairsLayer;
   private drawingLayer!: DrawingLayer;
-  private stage!: Stage;
-  private tweens: Tween[] = [];
+  private stage!: Konva.Stage;
+  private tweens: Konva.Tween[] = [];
   private demoDataService = inject(DemoDataService);
 
   public readonly MAX_ZOOM = 2.0;
@@ -43,7 +38,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
 
   ngAfterViewInit(): void {
-    this.stage = new Stage({
+    this.stage = new Konva.Stage({
       container: 'mainDrawingArea',
       width: this.componentNE.offsetWidth,
       height: this.componentNE.offsetHeight,
@@ -57,7 +52,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     // Check for demo flag in URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('demo') === 'true') {
+    if (urlParams.get('demo') as string === 'true') {
       this.demoDataService.createDemoGraph(this.drawingLayer);
     }
 
@@ -238,7 +233,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     };
 
     const newScale = Math.min(oldScale * 2.0, this.MAX_ZOOM);
-    this.tweens.push(new Tween({
+    this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.TWEEN_DURATION,
       scaleX: newScale,
@@ -263,9 +258,9 @@ export class DrawingAreaComponent implements AfterViewInit {
     };
 
     const newScale = Math.max(oldScale / 2.0, this.MIN_ZOOM);
-    let scale: Vector2d = {x: newScale, y: newScale};
+    let scale: Konva.Vector2d = {x: newScale, y: newScale};
     console.log("scale", scale);
-    this.tweens.push(new Tween({
+    this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.TWEEN_DURATION,
       scaleX: newScale,
@@ -282,18 +277,18 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     if (this.crosshairsLayer.crosshairs.y() > 60) {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.crosshairsLayer.crosshairs,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         y: this.crosshairsLayer.crosshairs.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play());
     } else {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         y: this.drawingLayer.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play())
     }
   }
@@ -302,18 +297,18 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     if (this.crosshairsLayer.crosshairs.x() < this.stage.width() - 60) {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.crosshairsLayer.crosshairs,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         x: this.crosshairsLayer.crosshairs.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play());
     } else
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         x: this.drawingLayer.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play())
   }
 
@@ -321,18 +316,18 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     if (this.crosshairsLayer.crosshairs.y() < this.stage.height())
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.crosshairsLayer.crosshairs,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         y: this.crosshairsLayer.crosshairs.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play());
     else {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         y: this.drawingLayer.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play())
 
     }
@@ -341,18 +336,18 @@ export class DrawingAreaComponent implements AfterViewInit {
   private moveCrosshairsLeft() {
     this.finishTweens();
     if (this.crosshairsLayer.crosshairs.x() > 60) {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.crosshairsLayer.crosshairs,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         x: this.crosshairsLayer.crosshairs.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play());
     } else {
-      this.tweens.push(new Tween({
+      this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
         x: this.drawingLayer.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Easings.Linear
+        easing: Konva.Easings.Linear
       }).play())
       // this.drawingLayer.move({x: 50, y: 0})
     }
@@ -382,7 +377,7 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
 
-  private getDANodesContainingCrosshairs() {
+  private getDANodesContainingCrosshairs(): DANode[] {
     return this.drawingLayer.getDaNodesContainingPoint(this.crosshairsLayer.crosshairs.getAbsolutePosition());
   }
 
@@ -414,12 +409,12 @@ export class DrawingAreaComponent implements AfterViewInit {
     const stageHeight = this.stage.height();
     const currentScale = this.drawingLayer.scaleX();
 
-    const tween = new Tween({
+    const tween = new Konva.Tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
       x: stageWidth / 2 - centerX * currentScale,
       y: stageHeight / 2 - centerY * currentScale,
-      easing: Easings.EaseInOut,
+      easing: Konva.Easings.EaseInOut,
       onFinish: () => {
         const index = this.tweens.indexOf(tween);
         if (index > -1) {
@@ -438,12 +433,12 @@ export class DrawingAreaComponent implements AfterViewInit {
     const stageWidth = this.stage.width();
     const stageHeight = this.stage.height();
     
-    const tween = new Tween({
+    const tween = new Konva.Tween({
       node: this.crosshairsLayer.crosshairs,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
       x: stageWidth / 2,
       y: stageHeight / 2,
-      easing: Easings.EaseInOut,
+      easing: Konva.Easings.EaseInOut,
       onFinish: () => {
         const index = this.tweens.indexOf(tween);
         if (index > -1) {
