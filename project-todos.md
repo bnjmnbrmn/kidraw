@@ -8,13 +8,13 @@
 - [ ] Introduce App Key Repeat
 
 ## Drawing Area
-- [ ] Recenter view
-- [ ] Recenter crosshairs
+- [x] Recenter view
+- [x] Recenter crosshairs
 - [ ] Drag-able nodes
 - [ ] Delete-able nodes
 - [ ] Editable nodes
 - [ ] Z-cycle
-- [ ] Add arrowheads to directed edges
+- [x] Add arrowheads to directed edges
 - [ ] Add waypoints to edges
 - [ ] Remove waypoints from edges
 - [ ] Connect to new node
