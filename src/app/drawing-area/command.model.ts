@@ -13,6 +13,7 @@ export enum DACommandType {
   SINGLE_ITEM_TOGGLE_SELECT = 'SINGLE_ITEM_TOGGLE_SELECT',
   RECENTER_VIEW = 'RECENTER_VIEW',
   RECENTER_CROSSHAIRS = 'RECENTER_CROSSHAIRS',
+  UNSELECT_ALL = 'UNSELECT_ALL',
 }
 
 export type DACommand =
@@ -30,4 +31,5 @@ export type DACommand =
   | {kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT}
   | {kind: DACommandType.RECENTER_VIEW}
   | {kind: DACommandType.RECENTER_CROSSHAIRS}
+  | {kind: DACommandType.UNSELECT_ALL}
 

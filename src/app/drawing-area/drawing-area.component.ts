@@ -117,6 +117,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.RECENTER_CROSSHAIRS:
         this.recenterCrosshairs();
         break;
+      case DACommandType.UNSELECT_ALL:
+        this.unselectAll();
+        break;
       default:
         this.assertNever(command);
     }
@@ -170,6 +173,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.finishTweens();
     console.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
+    this.drawingLayer.unselectAll();
+  }
+
+  private unselectAll() {
+    this.finishTweens();
     this.drawingLayer.unselectAll();
   }
 

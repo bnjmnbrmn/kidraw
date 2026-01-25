@@ -135,6 +135,13 @@ export class KeymenuComponent implements AfterViewInit {
 
   @HostListener('document:keydown', ["$event"])
   handleKeyDown(event: KeyboardEvent) {
+    // Handle special keys for unselect in normal mode
+    if (this.keyMenu.currentMode.name === "normal") {
+      if (event.key === "Escape" || (event.key === "[" && event.ctrlKey)) {
+        this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL});
+        return;
+      }
+    }
     this.keyMenu.handleKeyDown(event);
   }
 
