@@ -9,6 +9,12 @@ export class DANode extends Group {
   private readonly _label: Text;
   private _isSelected: boolean = false;
 
+  public readonly NODE_WIDTH = 100;
+  public readonly NODE_HEIGHT = 100;
+  public readonly STROKE_WIDTH_SELECTED = 4;
+  public readonly STROKE_WIDTH_NORMAL = 2;
+  public readonly FONT_SIZE = 16;
+
   get isSelected(): boolean {
     return this._isSelected;
   }
@@ -19,7 +25,7 @@ export class DANode extends Group {
   }
 
   private strokeWidth() {
-    return this._isSelected ? 4 : 2;
+    return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
   }
 
   get rect(): Rect {
@@ -31,28 +37,26 @@ export class DANode extends Group {
 
   constructor(x: number, y: number, initialText: string) {
     super({x, y});
-    const width = 100;
-    const height = 100;
     this._rect = new Rect({
-      width: width,
-      height: height,
+      width: this.NODE_WIDTH,
+      height: this.NODE_HEIGHT,
       fill: 'white',
       stroke: 'black',
       strokeWidth: this.strokeWidth(),
       // cornerRadius: 5,
-      offsetX: width/2,
-      offsetY: height/2,
+      offsetX: this.NODE_WIDTH/2,
+      offsetY: this.NODE_HEIGHT/2,
     });
 
     this._label = new Text({
       text: initialText,
-      fontSize: 16,
-      width: width,
-      height: height,
+      fontSize: this.FONT_SIZE,
+      width: this.NODE_WIDTH,
+      height: this.NODE_HEIGHT,
       align: 'center',
       verticalAlign: 'middle',
-      offsetX: width/2,
-      offsetY: height/2,
+      offsetX: this.NODE_WIDTH/2,
+      offsetY: this.NODE_HEIGHT/2,
     });
     this.add(this._rect);
     this.add(this._label);

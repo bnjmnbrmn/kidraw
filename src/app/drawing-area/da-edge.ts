@@ -7,6 +7,12 @@ export class DAEdge extends Group {
   private _isSelected: boolean = true;
   private readonly _line: Konva.Line;
 
+  public readonly STROKE_WIDTH_SELECTED = 4;
+  public readonly STROKE_WIDTH_NORMAL = 2;
+  public readonly NODE_HALF_SIZE = 50;
+  public readonly POINTER_LENGTH = 10;
+  public readonly POINTER_WIDTH = 10;
+
   get isSelected(): boolean {
     return this._isSelected;
   }
@@ -18,7 +24,7 @@ export class DAEdge extends Group {
   }
 
   private strokeWidth() {
-    return this._isSelected ? 4 : 2;
+    return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
   }
 
   private stroke() {
@@ -39,7 +45,7 @@ export class DAEdge extends Group {
     const destY = destNode.y();
     
     // Node is 100x100 centered at its position
-    const halfSize = 50;
+    const halfSize = this.NODE_HALF_SIZE;
     
     // Direction vector from src to dest
     const dx = destX - srcX;
@@ -70,8 +76,8 @@ export class DAEdge extends Group {
       stroke: this.stroke(),
       strokeWidth: this.strokeWidth(),
       fill: 'black',
-      pointerLength: 10,
-      pointerWidth: 10,
+      pointerLength: this.POINTER_LENGTH,
+      pointerWidth: this.POINTER_WIDTH,
     });
     this.add(this._line);
   }
