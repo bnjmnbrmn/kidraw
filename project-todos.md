@@ -6,6 +6,7 @@
 - [x] Handle Key release for DefaultUSStackKMMode
 - [x] Handle Switching Modes
 - [ ] Introduce App Key Repeat
+- [ ] Adjust keyboard shortcuts to be non-vim specific with movement keys FDSE
 
 ## Drawing Area
 - [x] Recenter view

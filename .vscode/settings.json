@@ -1,0 +1,10 @@
+{
+  "markdown.preview.fontSize": 14,
+  "markdown.preview.lineHeight": 1.6,
+  "markdown.preview.scrollEditorWithPreview": true,
+  "markdown.preview.scrollPreviewWithEditor": true,
+  "markdown.marp.enableHtml": true,
+  "mermaid.preview.fontSize": 14,
+  "mermaid.preview.background": "white",
+  "mermaid.preview.theme": "default"
+}

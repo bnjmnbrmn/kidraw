@@ -3,7 +3,6 @@ import {KeyMenuMode} from './keyMenuMode';
 import Konva from 'konva';
 import {Layer} from 'konva/lib/Layer';
 import {KeyMenuConfig} from './keyMenuConfig';
-import {KeyMenuModeConfig} from './keyMenuModeConfig';
 export import Group = Konva.Group;
 
 export class KeyMenu<T> {

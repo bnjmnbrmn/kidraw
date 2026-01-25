@@ -33,9 +33,13 @@ export class DrawingAreaComponent implements AfterViewInit {
   private tweens: Tween[] = [];
   private demoDataService = inject(DemoDataService);
 
-  // Zoom limits: max 200% (2.0), min 100/(2^8) ≈ 0.39%
-  private readonly MAX_ZOOM = 2.0;
-  private readonly MIN_ZOOM = 100 / Math.pow(2, 8) / 100;
+  public readonly MAX_ZOOM = 2.0;
+  public readonly MIN_ZOOM = 100 / Math.pow(2, 8) / 100;
+  public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
+  public readonly CROSSHAIRS_MOVEMENT_DISTANCE = 50;
+  public readonly TWEEN_DURATION = .1;
+  public readonly RECENTER_DURATION = 0.3;
+  public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
 
 
   ngAfterViewInit(): void {
@@ -236,7 +240,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     const newScale = Math.min(oldScale * 2.0, this.MAX_ZOOM);
     this.tweens.push(new Tween({
       node: this.drawingLayer,
-      duration: .1,
+      duration: this.TWEEN_DURATION,
       scaleX: newScale,
       scaleY: newScale,
       x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
@@ -263,7 +267,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     console.log("scale", scale);
     this.tweens.push(new Tween({
       node: this.drawingLayer,
-      duration: .1,
+      duration: this.TWEEN_DURATION,
       scaleX: newScale,
       scaleY: newScale,
       x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
@@ -274,25 +278,21 @@ export class DrawingAreaComponent implements AfterViewInit {
     }).play());
   }
 
-  private readonly crosshairMovementDuration = .1;
-  private readonly crosshairsMovementDistance = 50;
-
-
   private moveCrosshairsUp() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     if (this.crosshairsLayer.crosshairs.y() > 60) {
       this.tweens.push(new Tween({
         node: this.crosshairsLayer.crosshairs,
-        duration: this.crosshairMovementDuration,
-        y: this.crosshairsLayer.crosshairs.y() - this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        y: this.crosshairsLayer.crosshairs.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play());
     } else {
       this.tweens.push(new Tween({
         node: this.drawingLayer,
-        duration: this.crosshairMovementDuration,
-        y: this.drawingLayer.y() + this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        y: this.drawingLayer.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play())
     }
@@ -304,15 +304,15 @@ export class DrawingAreaComponent implements AfterViewInit {
     if (this.crosshairsLayer.crosshairs.x() < this.stage.width() - 60) {
       this.tweens.push(new Tween({
         node: this.crosshairsLayer.crosshairs,
-        duration: this.crosshairMovementDuration,
-        x: this.crosshairsLayer.crosshairs.x() + this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        x: this.crosshairsLayer.crosshairs.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play());
     } else
       this.tweens.push(new Tween({
         node: this.drawingLayer,
-        duration: this.crosshairMovementDuration,
-        x: this.drawingLayer.x() - this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        x: this.drawingLayer.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play())
   }
@@ -323,15 +323,15 @@ export class DrawingAreaComponent implements AfterViewInit {
     if (this.crosshairsLayer.crosshairs.y() < this.stage.height())
       this.tweens.push(new Tween({
         node: this.crosshairsLayer.crosshairs,
-        duration: this.crosshairMovementDuration,
-        y: this.crosshairsLayer.crosshairs.y() + this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        y: this.crosshairsLayer.crosshairs.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play());
     else {
       this.tweens.push(new Tween({
         node: this.drawingLayer,
-        duration: this.crosshairMovementDuration,
-        y: this.drawingLayer.y() - this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        y: this.drawingLayer.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play())
 
@@ -343,15 +343,15 @@ export class DrawingAreaComponent implements AfterViewInit {
     if (this.crosshairsLayer.crosshairs.x() > 60) {
       this.tweens.push(new Tween({
         node: this.crosshairsLayer.crosshairs,
-        duration: this.crosshairMovementDuration,
-        x: this.crosshairsLayer.crosshairs.x() - this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        x: this.crosshairsLayer.crosshairs.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play());
     } else {
       this.tweens.push(new Tween({
         node: this.drawingLayer,
-        duration: this.crosshairMovementDuration,
-        x: this.drawingLayer.x() + this.crosshairsMovementDistance,
+        duration: this.CROSSHAIR_MOVEMENT_DURATION,
+        x: this.drawingLayer.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Easings.Linear
       }).play())
       // this.drawingLayer.move({x: 50, y: 0})
@@ -416,7 +416,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     const tween = new Tween({
       node: this.drawingLayer,
-      duration: 0.3,
+      duration: this.RECENTER_DURATION,
       x: stageWidth / 2 - centerX * currentScale,
       y: stageHeight / 2 - centerY * currentScale,
       easing: Easings.EaseInOut,
@@ -440,7 +440,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     
     const tween = new Tween({
       node: this.crosshairsLayer.crosshairs,
-      duration: 0.2,
+      duration: this.RECENTER_CROSSHAIRS_DURATION,
       x: stageWidth / 2,
       y: stageHeight / 2,
       easing: Easings.EaseInOut,
