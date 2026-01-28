@@ -41,3 +41,16 @@
 - [ ] Set up testing
 - [ ] Set up tailwind
 - [ ] Set up monorepo
+
+## Architecture Refactoring Plan
+1. [ ] Refactor KMKey types with new class hierarchy
+   - `KMActionKey`: `onKeyDown`, `onKeyUp` hooks
+   - `KMSubmenuKey` extends `KMActionKey`: adds `submenu`, default action is NOOP
+   - Enables drag feature: select on keydown, show direction submenu, unselect on keyup
+   - No interfaces for now (keep it simple)
+2. [ ] Shorten names and reorganize with namespaces/modules
+   - Tutorial on TypeScript namespaces vs modules
+   - Create layout hierarchy for future multi-keyboard support
+3. [ ] Refactor drawing-area to use composition instead of inheritance
+   - `DANode extends Konva.Group` → `DANode { group: Konva.Group }`
+   - Reconcile approaches across codebase
