@@ -3,7 +3,7 @@ import {DefaultUSStackKMModeSubmenu} from './defaultUSStackKMModeSubmenu';
 import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
 import {Group} from 'konva/lib/Group';
 import {KeyMenu} from '../keyMenu';
-import {DefaultUSStackKMModeInnerKey} from './defaultUSStackKMModeKey';
+import {KMSubmenuKey} from './kmKey';
 import {KeyMenuModeConfig} from "../keyMenuModeConfig";
 
 
@@ -72,10 +72,10 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     submenuKeyStringStack: string[] = [""];
 
-    pushSubmenu(innerKey: DefaultUSStackKMModeInnerKey<T>) {
-        this.stackTop.hideAllKeysExcept(innerKey);
-        this.stack.push(innerKey.submenu)
-        this.submenuKeyStringStack.push(innerKey.keyString);
+    pushSubmenu(submenuKey: KMSubmenuKey) {
+        this.stackTop.hideAllKeysExcept(submenuKey);
+        this.stack.push(submenuKey.submenu as DefaultUSStackKMModeSubmenu<T>);
+        this.submenuKeyStringStack.push(submenuKey.keyString);
         this.stackTop.showAllKeys();
     }
 

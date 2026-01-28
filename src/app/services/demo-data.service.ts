@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { DANode } from '../drawing-area/da-node';
-import { DAEdge } from '../drawing-area/da-edge';
+import { DANode } from '../drawing-area/da-node.group';
+import { DAEdge } from '../drawing-area/da-edge.group';
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 
 @Injectable({
