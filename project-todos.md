@@ -43,14 +43,20 @@
 - [ ] Set up monorepo
 
 ## Architecture Refactoring Plan
-1. [ ] Refactor KMKey types with new class hierarchy
-   - `KMActionKey`: `onKeyDown`, `onKeyUp` hooks
-   - `KMSubmenuKey` extends `KMActionKey`: adds `submenu`, default action is NOOP
+1. [ ] Refactor KMKey types with interface hierarchy + composition
+   - Interfaces: `KMActionKey`, `KMSubmenuKey`, `KMActionSubmenuKey`
+   - Classes: `DefaultKMActionKey`, `DefaultKMSubmenuKey`, `DefaultKMActionSubmenuKey`
+   - Use composition to avoid code duplication
+   - Action types have `onKeyDown`/`onKeyUp` (after rendering) + `onKeyDownBeforeRender`/`onKeyUpBeforeRender` (noops by default)
    - Enables drag feature: select on keydown, show direction submenu, unselect on keyup
-   - No interfaces for now (keep it simple)
 2. [ ] Shorten names and reorganize with namespaces/modules
    - Tutorial on TypeScript namespaces vs modules
    - Create layout hierarchy for future multi-keyboard support
 3. [ ] Refactor drawing-area to use composition instead of inheritance
    - `DANode extends Konva.Group` → `DANode { group: Konva.Group }`
    - Reconcile approaches across codebase
+
+## Alternative Approaches to Try Later
+- [ ] Try ActionKey/SubmenuKey inheritance (SubmenuKey extends ActionKey)
+- [ ] Try mixins approach for flexible behavior composition
+- [ ] Try factory methods + type guards/casts instead of Default classes
