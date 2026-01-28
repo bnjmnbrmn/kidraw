@@ -43,7 +43,7 @@
 - [ ] Set up monorepo
 
 ## Architecture Refactoring Plan
-1. [ ] Refactor KMKey types with interface hierarchy + composition
+1. [x] Refactor KMKey types with interface hierarchy + composition
    - Interfaces: `KMActionKey`, `KMSubmenuKey`, `KMActionSubmenuKey`
    - Classes: `DefaultKMActionKey`, `DefaultKMSubmenuKey`, `DefaultKMActionSubmenuKey`
    - Use composition to avoid code duplication
