@@ -49,12 +49,22 @@
    - Use composition to avoid code duplication
    - Action types have `onKeyDown`/`onKeyUp` (after rendering) + `onKeyDownBeforeRender`/`onKeyUpBeforeRender` (noops by default)
    - Enables drag feature: select on keydown, show direction submenu, unselect on keyup
-2. [ ] Shorten names and reorganize with namespaces/modules
+2. [x] Shorten names and reorganize with namespaces/modules
    - Tutorial on TypeScript namespaces vs modules
    - Create layout hierarchy for future multi-keyboard support
+   - Completed: domain-based structure, barrel exports, shortened type names
 3. [ ] Refactor drawing-area to use composition instead of inheritance
    - `DANode extends Konva.Group` → `DANode { group: Konva.Group }`
    - Reconcile approaches across codebase
+
+## Future Key Menu Abstraction (to address after step 3)
+- [ ] Add command registry layer to hide command details
+- [ ] Add pluggable visualization layer (different renderers)
+- [ ] Add key assignment configuration layer
+- [ ] Create reusable KeyMenuConfig interface
+- [ ] Support different keyboard layouts and visualizations
+- [ ] Make keymenu reusable for other applications
+- [ ] Rename: Remove Config suffix from config classes, add "Renderer" suffix to Konva implementation classes
 
 ## Alternative Approaches to Try Later
 - [ ] Try ActionKey/SubmenuKey inheritance (SubmenuKey extends ActionKey)
