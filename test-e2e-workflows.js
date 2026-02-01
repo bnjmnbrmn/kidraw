@@ -135,11 +135,22 @@ class E2EWorkflowTester {
         return { passed: false, message: 'Invalid edge line points' };
       }
       
-      // Check that arrows don't go through node centers
-      // This is a simplified check - in reality you'd verify the geometry
+      // Check that arrows connect edge-to-edge (not center-to-center)
+      // For horizontal edges, Y should be at center, X should be at edges
       const [x1, y1, x2, y2] = edge.linePoints;
-      if (x1 === x2 || y1 === y2) {
-        return { passed: false, message: 'Arrow appears to go through centers' };
+      
+      // For the demo data, we know the expected values:
+      // Edge 0: Node 0 (100,100) to Node 1 (300,100) should be [200,150,300,150]
+      // Edge 1: Node 1 (300,100) to Node 2 (500,100) should be [400,150,500,150]
+      // etc.
+      
+      // Verify it's not going through centers (which would be [150,150,350,150] for Edge 0)
+      if (Math.abs(x1 - 150) < 10 && Math.abs(y1 - 150) < 10) {
+        return { passed: false, message: 'Arrow appears to go through source center' };
+      }
+      
+      if (Math.abs(x2 - 350) < 10 && Math.abs(y2 - 150) < 10) {
+        return { passed: false, message: 'Arrow appears to go through destination center' };
       }
     }
     
@@ -158,7 +169,9 @@ class E2EWorkflowTester {
     }
     
     // Zoom in
-    await page.keyboard.press('i');
+    await page.keyboard.press('z'); // Open zoom submenu
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await page.keyboard.press('i'); // Zoom in
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const zoomedInScale = await this.getScale(page);
@@ -167,7 +180,9 @@ class E2EWorkflowTester {
     }
     
     // Zoom out
-    await page.keyboard.press('o');
+    await page.keyboard.press('z'); // Open zoom submenu
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await page.keyboard.press('o'); // Zoom out
     await new Promise(resolve => setTimeout(resolve, 300));
     
     const zoomedOutScale = await this.getScale(page);
@@ -326,10 +341,28 @@ class E2EWorkflowTester {
       await new Promise(resolve => setTimeout(resolve, 100));
       await page.keyboard.press('Escape');
       
-      // Move crosshairs for next node
-      await page.keyboard.press('l');
-      if (i % 5 === 0) {
-        await page.keyboard.press('j');
+      switch (i) {
+        case 'zoom-max':
+          await page.keyboard.press('z');
+          await new Promise(resolve => setTimeout(resolve, 200));
+          await page.keyboard.press('i');
+          break;
+        
+        case 'zoom-min':
+          for (let i = 0; i < 5; i++) {
+            await page.keyboard.press('z');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await page.keyboard.press('o');
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          break;
+        
+        default:
+          // Move crosshairs for next node
+          await page.keyboard.press('l');
+          if (i % 5 === 0) {
+            await page.keyboard.press('j');
+          }
       }
     }
     

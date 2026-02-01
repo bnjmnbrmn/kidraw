@@ -71,7 +71,6 @@ export class KMSubmenu<T> {
   }
 
   handleKeyDown(event: KeyboardEvent): void {
-    // console.log("event.key", event.key);
     const key = event.key as KeyString;
     if (!this.keys[key]) {
       return;
@@ -79,15 +78,17 @@ export class KMSubmenu<T> {
 
     this.highlightKey(key);
     const kmKey = this.keys[key]!;
-    if (isActionKey(kmKey)) {
+    
+    // Check for submenu keys FIRST, before action keys
+    if (isSubmenuKey(kmKey)) {
+      this.mode.pushSubmenu(kmKey);
+    }
+    else if (isActionKey(kmKey)) {
       kmKey.onKeyDownBeforeRender();
       kmKey.onKeyDown();
       if (this.mode.actionSchedulingEnabled) {
         this.scheduleAction(key, () => kmKey.onKeyDown());
       }
-    }
-    if (isSubmenuKey(kmKey)) {
-      this.mode.pushSubmenu(kmKey);
     }
   }
 

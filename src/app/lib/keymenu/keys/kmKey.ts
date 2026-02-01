@@ -166,6 +166,23 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     this._highlight = value;
     this.keyRect.shadowEnabled(this._highlight);
   }
+
+  onKeyDown(): void {
+    // Submenu key pressed - this is handled by KMSubmenu.handleKeyDown
+    // which calls mode.pushSubmenu(this)
+  }
+
+  onKeyDownBeforeRender(): void {
+    // Can be used for pre-render logic if needed
+  }
+
+  onKeyUp(): void {
+    // Submenu key released
+  }
+
+  onKeyUpBeforeRender(): void {
+    // Can be used for pre-render logic if needed
+  }
 }
 
 export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {

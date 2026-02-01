@@ -133,11 +133,15 @@ class VisualRegressionTester {
         break;
         
       case 'zoom-max':
+        await page.keyboard.press('z');
+        await new Promise(resolve => setTimeout(resolve, 200));
         await page.keyboard.press('i');
         break;
         
       case 'zoom-min':
         for (let i = 0; i < 5; i++) {
+          await page.keyboard.press('z');
+          await new Promise(resolve => setTimeout(resolve, 200));
           await page.keyboard.press('o');
           await new Promise(resolve => setTimeout(resolve, 200));
         }
