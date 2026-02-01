@@ -1,32 +1,32 @@
 import {KeyMenuMode} from '../keyMenuMode';
-import {DefaultUSStackKMModeSubmenu} from './defaultUSStackKMModeSubmenu';
-import {DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig} from './defaultUSStackKMModeSubmenuConfig';
+import {KMSubmenu} from '../keys/kmSubmenu';
+import {KeyString, SubmenuConfig} from '../layouts/us-qwerty';
 import {Group} from 'konva/lib/Group';
 import {KeyMenu} from '../keyMenu';
-import {KMSubmenuKey} from './kmKey';
+import {KMSubmenuKey} from '../keys/kmKey';
 import {KeyMenuModeConfig} from "../keyMenuModeConfig";
 
 
-export class DefaultUSStackKMModeConfig<T> implements KeyMenuModeConfig<T, DefaultUSStackKMMode<T>> {
+export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<T>> {
 
-    constructor(public rootSubmenuConfig: DefaultUSStackKMModeSubmenuConfig) {}
+    constructor(public rootSubmenuConfig: SubmenuConfig) {}
 
-    createMode(name: string, keyMenu: KeyMenu<T>): DefaultUSStackKMMode<T> {
-        return new DefaultUSStackKMMode<T>(name, keyMenu, this);
+    createMode(name: string, keyMenu: KeyMenu<T>): USQwertyMode<T> {
+        return new USQwertyMode<T>(name, keyMenu, this);
     }
 }
 
 
-export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
+export class USQwertyMode<T> implements KeyMenuMode<T> {
 
-    public readonly stack: DefaultUSStackKMModeSubmenu<T>[] = [];
+    public readonly stack: KMSubmenu<T>[] = [];
     public konvaGroup: Group;
     actionSchedulingEnabled: boolean = true;
 
     constructor(public name: string, public keyMenu: KeyMenu<T>,
-                config: DefaultUSStackKMModeConfig<T>) {
+                config: USQwertyModeConfig<T>) {
         this.konvaGroup = new Group();
-        this.stack.push(new DefaultUSStackKMModeSubmenu(this, config.rootSubmenuConfig));
+        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig));
         this.stackTop.konvaGroup.show();
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
         this.konvaGroup.y(20)
@@ -59,7 +59,7 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     handleKeyUp(event: KeyboardEvent) {
         console.log(this.constructor.name + " received " + event.key + " up")
-        const key = event.key as DefaultUSStackKMModeKeyString;
+        const key = event.key as KeyString;
         this.stackTop.handleKeyUp(event);
         if (this.stackTop.keys[key]) {
             return;
@@ -74,14 +74,14 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
 
     pushSubmenu(submenuKey: KMSubmenuKey) {
         this.stackTop.hideAllKeysExcept(submenuKey);
-        this.stack.push(submenuKey.submenu as DefaultUSStackKMModeSubmenu<T>);
+        this.stack.push(submenuKey.submenu as KMSubmenu<T>);
         this.submenuKeyStringStack.push(submenuKey.keyString);
         this.stackTop.showAllKeys();
     }
 
 
 
-    popSubmenuAndChildren(keyString: DefaultUSStackKMModeKeyString) {
+    popSubmenuAndChildren(keyString: KeyString) {
         const index = this.submenuKeyStringStack.findIndex(
             (value) => keyString === value);
 
@@ -89,9 +89,9 @@ export class DefaultUSStackKMMode<T> implements KeyMenuMode<T> {
             return;
         }
 
-        const submenusToHide: DefaultUSStackKMModeSubmenu<T>[] = this.stack.slice(index);
+        const submenusToHide: KMSubmenu<T>[] = this.stack.slice(index);
         console.log("submenusToHide", submenusToHide);
-        submenusToHide.forEach((submenu: DefaultUSStackKMModeSubmenu<T>) => {
+        submenusToHide.forEach((submenu: KMSubmenu<T>) => {
             submenu.hideAllKeys();
             submenu.unhighlightAllKeys();
         });

@@ -1,12 +1,12 @@
 import Konva from 'konva';
-import { DefaultUSStackKMModeKeyString, DefaultUSStackKMModeSubmenuConfig } from './defaultUSStackKMModeSubmenuConfig';
-import { DefaultUSStackKMMode } from './defaultUSStackKMMode';
-import { DefaultUSStackKMModeSubmenu } from './defaultUSStackKMModeSubmenu';
+import { KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT } from '../layouts/us-qwerty';
+import { USQwertyMode } from '../modes/us-qwerty';
+import { KMSubmenu } from './kmSubmenu';
 
 // ========== Interfaces ==========
 
 export interface KMKey {
-  readonly keyString: DefaultUSStackKMModeKeyString;
+  readonly keyString: KeyString;
   readonly label: string;
   readonly konvaGroup: Konva.Group;
   highlight: boolean;
@@ -20,7 +20,7 @@ export interface KMActionKey extends KMKey {
 }
 
 export interface KMSubmenuKey extends KMKey {
-  readonly submenu: DefaultUSStackKMModeSubmenu<unknown>;
+  readonly submenu: KMSubmenu<unknown>;
 }
 
 export interface KMActionSubmenuKey extends KMActionKey, KMSubmenuKey {}
@@ -42,19 +42,19 @@ export function isActionSubmenuKey(key: KMKey): key is KMActionSubmenuKey {
 // ========== Shared Key Rendering (Composition) ==========
 
 export interface KMKeyRenderConfig {
-  keyString: DefaultUSStackKMModeKeyString;
+  keyString: KeyString;
   label: string;
 }
 
 export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Konva.Group; keyRect: Konva.Rect } {
   const konvaGroup = new Konva.Group({
-    x: DefaultUSStackKMModeSubmenu.xAndYForKeys[config.keyString]!.x,
-    y: DefaultUSStackKMModeSubmenu.xAndYForKeys[config.keyString]!.y
+    x: xAndYForKeys[config.keyString]!.x,
+    y: xAndYForKeys[config.keyString]!.y
   });
 
   const keyRect = new Konva.Rect({
-    width: DefaultUSStackKMModeSubmenu.KEY_WIDTH,
-    height: DefaultUSStackKMModeSubmenu.KEY_HEIGHT,
+    width: KEY_WIDTH,
+    height: KEY_HEIGHT,
     stroke: 'black',
     fill: 'white',
     shadowEnabled: false,
@@ -64,7 +64,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
 
   const keyLabelText = new Konva.Text({
     text: config.keyString,
-    width: DefaultUSStackKMModeSubmenu.KEY_WIDTH,
+    width: KEY_WIDTH,
     height: 10,
     y: 4,
     align: 'center',
@@ -72,7 +72,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   });
 
   const keyLabelRect = new Konva.Rect({
-    width: DefaultUSStackKMModeSubmenu.KEY_WIDTH,
+    width: KEY_WIDTH,
     height: keyLabelText.height() + 10,
     fill: 'lightgreen',
     stroke: 'black',
@@ -82,8 +82,8 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
 
   const actionLabelText = new Konva.Text({
     text: config.label,
-    width: DefaultUSStackKMModeSubmenu.KEY_WIDTH - 10,
-    height: DefaultUSStackKMModeSubmenu.KEY_HEIGHT + 20,
+    width: KEY_WIDTH - 10,
+    height: KEY_HEIGHT + 20,
     align: 'center',
     verticalAlign: 'middle',
     x: 5
@@ -101,9 +101,9 @@ export class DefaultKMActionKey<T> implements KMActionKey {
   private _highlight: boolean = false;
 
   constructor(
-    public readonly keyString: DefaultUSStackKMModeKeyString,
+    public readonly keyString: KeyString,
     public readonly label: string,
-    public readonly mode: DefaultUSStackKMMode<T>,
+    public readonly mode: USQwertyMode<T>,
     private readonly _onKeyDown: () => void = () => {},
     private readonly _onKeyUp: () => void = () => {},
     private readonly _onKeyDownBeforeRender: () => void = () => {},
@@ -144,18 +144,18 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
   readonly konvaGroup: Konva.Group;
   private readonly keyRect: Konva.Rect;
   private _highlight: boolean = false;
-  readonly submenu: DefaultUSStackKMModeSubmenu<T>;
+  readonly submenu: KMSubmenu<T>;
 
   constructor(
-    public readonly keyString: DefaultUSStackKMModeKeyString,
+    public readonly keyString: KeyString,
     public readonly label: string,
-    public readonly mode: DefaultUSStackKMMode<T>,
-    submenuConfig: DefaultUSStackKMModeSubmenuConfig
+    public readonly mode: USQwertyMode<T>,
+    submenuConfig: SubmenuConfig
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new DefaultUSStackKMModeSubmenu<T>(this.mode, submenuConfig);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig);
   }
 
   get highlight(): boolean {
@@ -172,13 +172,13 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
   readonly konvaGroup: Konva.Group;
   private readonly keyRect: Konva.Rect;
   private _highlight: boolean = false;
-  readonly submenu: DefaultUSStackKMModeSubmenu<T>;
+  readonly submenu: KMSubmenu<T>;
 
   constructor(
-    public readonly keyString: DefaultUSStackKMModeKeyString,
+    public readonly keyString: KeyString,
     public readonly label: string,
-    public readonly mode: DefaultUSStackKMMode<T>,
-    submenuConfig: DefaultUSStackKMModeSubmenuConfig,
+    public readonly mode: USQwertyMode<T>,
+    submenuConfig: SubmenuConfig,
     private readonly _onKeyDown: () => void = () => {},
     private readonly _onKeyUp: () => void = () => {},
     private readonly _onKeyDownBeforeRender: () => void = () => {},
@@ -187,7 +187,7 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new DefaultUSStackKMModeSubmenu<T>(this.mode, submenuConfig);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig);
   }
 
   get highlight(): boolean {

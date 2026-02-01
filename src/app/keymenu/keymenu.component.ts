@@ -2,17 +2,17 @@ import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject
 import {DACommand, DACommandType} from "../drawing-area/command.model";
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {
-  DefaultUSStackKMMode,
-  DefaultUSStackKMModeConfig
-} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMMode';
+  USQwertyMode,
+  USQwertyModeConfig
+} from '../lib/keymenu/modes/us-qwerty';
 import {
   PrintedInstructionKeyMenuModeConfig,
   PrintedInstructionKMMode
 } from '../lib/keymenu/printedInstructionKMMode/printedInstructionKMMode';
 import {
-  DefaultUSStackKMModeLabeledSubmenuConfig
-} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMModeLabeledSubmenuConfig';
-import {DefaultUSStackKMModeLabeledAction} from '../lib/keymenu/defaultUSStackKMMode/defaultUSStackKMModeLabeledAction';
+  LabeledSubmenuConfig
+} from '../lib/keymenu/keys/labeledSubmenuConfig';
+import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 
 
 @Component({
@@ -32,77 +32,77 @@ export class KeymenuComponent implements AfterViewInit {
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
       modes: {
-        "normal": new DefaultUSStackKMModeConfig({
+        "normal": new USQwertyModeConfig({
 
-          s: new DefaultUSStackKMModeLabeledAction(
+          s: new LabeledAction(
             'New Selection',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT});
             }
           ),
-          v: new DefaultUSStackKMModeLabeledAction(
+          v: new LabeledAction(
             'Additional Selection',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT});
             }
           ),
 
-          c: new DefaultUSStackKMModeLabeledAction(
+          c: new LabeledAction(
             'Connect',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
             }
           ),
-          h: new DefaultUSStackKMModeLabeledAction(
+          h: new LabeledAction(
             'Move Left',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
             }
           ),
-          j: new DefaultUSStackKMModeLabeledAction(
+          j: new LabeledAction(
             'Move Down',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
             }
           ),
-          k: new DefaultUSStackKMModeLabeledAction(
+          k: new LabeledAction(
             'Move Up',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
             }
           ),
-          l: new DefaultUSStackKMModeLabeledAction(
+          l: new LabeledAction(
             'Move Right',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
             }
           ),
-          i: new DefaultUSStackKMModeLabeledAction(
+          i: new LabeledAction(
             'Insert Node',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
               this.keyMenu.switchMode("labelEdit")
             }
           ),
-          z: new DefaultUSStackKMModeLabeledSubmenuConfig(
+          z: new LabeledSubmenuConfig(
             "Zoom...",
             {
-              i: new DefaultUSStackKMModeLabeledAction("...In", () => {
+              i: new LabeledAction("...In", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
               }),
-              o: new DefaultUSStackKMModeLabeledAction("...Out", () => {
+              o: new LabeledAction("...Out", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
               })
             }
           ),
           // Ergonomic single-key shortcuts for recenter operations
-          f: new DefaultUSStackKMModeLabeledAction(
+          f: new LabeledAction(
             'Recenter View',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW});
             }
           ),
-          d: new DefaultUSStackKMModeLabeledAction(
+          d: new LabeledAction(
             'Recenter Crosshairs',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS});
