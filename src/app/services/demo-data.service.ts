@@ -18,12 +18,12 @@ export class DemoDataService {
     const node6 = new DANode(500, 250, 'Result');
 
     // Add nodes to drawing layer using the internal node group
-    drawingLayer['daNodeGroup'].add(node1);
-    drawingLayer['daNodeGroup'].add(node2);
-    drawingLayer['daNodeGroup'].add(node3);
-    drawingLayer['daNodeGroup'].add(node4);
-    drawingLayer['daNodeGroup'].add(node5);
-    drawingLayer['daNodeGroup'].add(node6);
+    drawingLayer['daNodeGroup'].add(node1.konvaGroup);
+    drawingLayer['daNodeGroup'].add(node2.konvaGroup);
+    drawingLayer['daNodeGroup'].add(node3.konvaGroup);
+    drawingLayer['daNodeGroup'].add(node4.konvaGroup);
+    drawingLayer['daNodeGroup'].add(node5.konvaGroup);
+    drawingLayer['daNodeGroup'].add(node6.konvaGroup);
     
     // Track nodes in the layer's node array
     drawingLayer['daNodes'].push(node1, node2, node3, node4, node5, node6);
@@ -37,12 +37,12 @@ export class DemoDataService {
     const edge6 = new DAEdge(node6, node3, '');
 
     // Add edges to drawing layer using the internal edge group
-    drawingLayer['daEdgeGroup'].add(edge1);
-    drawingLayer['daEdgeGroup'].add(edge2);
-    drawingLayer['daEdgeGroup'].add(edge3);
-    drawingLayer['daEdgeGroup'].add(edge4);
-    drawingLayer['daEdgeGroup'].add(edge5);
-    drawingLayer['daEdgeGroup'].add(edge6);
+    drawingLayer['daEdgeGroup'].add(edge1.konvaGroup);
+    drawingLayer['daEdgeGroup'].add(edge2.konvaGroup);
+    drawingLayer['daEdgeGroup'].add(edge3.konvaGroup);
+    drawingLayer['daEdgeGroup'].add(edge4.konvaGroup);
+    drawingLayer['daEdgeGroup'].add(edge5.konvaGroup);
+    drawingLayer['daEdgeGroup'].add(edge6.konvaGroup);
     
     // Track edges in the layer's edge array
     drawingLayer['daEdges'].push(edge1, edge2, edge3, edge4, edge5, edge6);

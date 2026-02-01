@@ -1,61 +1,74 @@
 import Konva from 'konva';
 
 
-export class DANode extends Konva.Group {
-    private readonly _rect: Konva.Rect;
-    private readonly _label: Konva.Text;
-    private _isSelected: boolean = false;
+export class DANode {
+  readonly group: Konva.Group;
+  private readonly _rect: Konva.Rect;
+  private readonly _label: Konva.Text;
+  private _isSelected: boolean = false;
 
-    public readonly NODE_WIDTH = 100;
-    public readonly NODE_HEIGHT = 100;
-    public readonly STROKE_WIDTH_SELECTED = 4;
-    public readonly STROKE_WIDTH_NORMAL = 2;
-    public readonly FONT_SIZE = 16;
+  public readonly NODE_WIDTH = 100;
+  public readonly NODE_HEIGHT = 100;
+  public readonly STROKE_WIDTH_SELECTED = 4;
+  public readonly STROKE_WIDTH_NORMAL = 2;
+  public readonly FONT_SIZE = 16;
 
-    get isSelected(): boolean {
-      return this._isSelected;
-    }
+  constructor(x: number, y: number, initialText: string) {
+    // Create the main group
+    this.group = new Konva.Group({ x, y });
 
-    set isSelected(value: boolean) {
-      this._isSelected = value;
-      this.rect.strokeWidth(this.strokeWidth());
-    }
+    // Create and configure the rectangle
+    this._rect = new Konva.Rect({
+      width: this.NODE_WIDTH,
+      height: this.NODE_HEIGHT,
+      fill: 'white',
+      stroke: 'black',
+      strokeWidth: this.STROKE_WIDTH_NORMAL,
+    });
+    this.group.add(this._rect);
 
-    private strokeWidth() {
-      return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
-    }
-
-    get rect(): Konva.Rect {
-      return this._rect;
-    }
-    get label(): Konva.Text {
-      return this._label;
-    }
-
-    constructor(x: number, y: number, initialText: string) {
-      super({ x, y });
-      this._rect = new Konva.Rect({
-        width: this.NODE_WIDTH,
-        height: this.NODE_HEIGHT,
-        fill: 'white',
-        stroke: 'black',
-        strokeWidth: this.strokeWidth(),
-        // cornerRadius: 5,
-        offsetX: this.NODE_WIDTH / 2,
-        offsetY: this.NODE_HEIGHT / 2,
-      });
-
-      this._label = new Konva.Text({
-        text: initialText,
-        fontSize: this.FONT_SIZE,
-        width: this.NODE_WIDTH,
-        height: this.NODE_HEIGHT,
-        align: 'center',
-        verticalAlign: 'middle',
-        offsetX: this.NODE_WIDTH / 2,
-        offsetY: this.NODE_HEIGHT / 2,
-      });
-      this.add(this._rect);
-      this.add(this._label);
-    }
+    // Create and configure the label
+    this._label = new Konva.Text({
+      text: initialText,
+      width: this.NODE_WIDTH,
+      height: this.NODE_HEIGHT,
+      fontSize: this.FONT_SIZE,
+      align: 'center',
+      verticalAlign: 'middle',
+    });
+    this.group.add(this._label);
   }
+
+  get isSelected(): boolean {
+    return this._isSelected;
+  }
+
+  set isSelected(value: boolean) {
+    this._isSelected = value;
+    this.rect.strokeWidth(this.strokeWidth());
+  }
+
+  private strokeWidth() {
+    return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
+  }
+
+  get rect(): Konva.Rect {
+    return this._rect;
+  }
+
+  get label(): Konva.Text {
+    return this._label;
+  }
+
+  get konvaGroup(): Konva.Group {
+    return this.group;
+  }
+
+  getClientRect() {
+    return this.group.getClientRect();
+  }
+
+  zIndex() {
+    return this.group.zIndex();
+  }
+}

@@ -20,8 +20,18 @@ export class DrawingLayer extends Konva.Layer {
   }
 
   createNewNode(absoluteX: number, absoluteY: number) {
-    let daNode = new DANode((absoluteX - this.x()) / this.scaleX(), (absoluteY - this.y()) / this.scaleY(), "");
-    this.daNodeGroup.add(daNode);
+    // Transform absolute coordinates to drawing layer coordinates (accounting for zoom and pan)
+    const layerX = (absoluteX - this.x()) / this.scaleX();
+    const layerY = (absoluteY - this.y()) / this.scaleY();
+    
+    // Calculate position so node center is at the crosshairs position
+    const NODE_WIDTH = 100;
+    const NODE_HEIGHT = 100;
+    const nodeCenterX = layerX - (NODE_WIDTH / 2);
+    const nodeCenterY = layerY - (NODE_HEIGHT / 2);
+    
+    let daNode = new DANode(nodeCenterX, nodeCenterY, "");
+    this.daNodeGroup.add(daNode.konvaGroup);
     this.daNodes.push(daNode);
     // Select the new node for editing
     daNode.isSelected = true;
@@ -64,7 +74,7 @@ export class DrawingLayer extends Konva.Layer {
 
   addEdge(srcNode: DANode, destNode: DANode) {
     let daEdge = new DAEdge(srcNode, destNode, "");
-    this.daEdgeGroup.add(daEdge);
+    this.daEdgeGroup.add(daEdge.konvaGroup);
     this.daEdges.push(daEdge);
   }
 

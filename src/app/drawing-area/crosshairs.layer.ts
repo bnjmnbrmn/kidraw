@@ -6,7 +6,7 @@ export class CrosshairsLayer extends Konva.Layer {
     constructor(private stage: Konva.Stage) {
       super();
       this.crosshairs = new DACrosshairs({ x: stage.width() / 2, y: stage.height() / 2 });
-      this.add(this.crosshairs);
+      this.add(this.crosshairs.konvaGroup);
     }
 
     showCrosshairs() {
@@ -18,10 +18,10 @@ export class CrosshairsLayer extends Konva.Layer {
     }
 
     crosshairsX() {
-      return this.crosshairs.getAbsolutePosition(this).x;
+      return this.crosshairs.getAbsolutePosition().x;
     }
 
     crosshairsY() {
-      return this.crosshairs.getAbsolutePosition(this).y;
+      return this.crosshairs.getAbsolutePosition().y;
     }
 }

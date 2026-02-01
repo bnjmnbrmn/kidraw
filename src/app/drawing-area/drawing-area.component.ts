@@ -29,7 +29,7 @@ export class DrawingAreaComponent implements AfterViewInit {
   private demoDataService = inject(DemoDataService);
 
   public readonly MAX_ZOOM = 2.0;
-  public readonly MIN_ZOOM = 100 / Math.pow(2, 8) / 100;
+  public readonly MIN_ZOOM = 0.125;
   public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
   public readonly CROSSHAIRS_MOVEMENT_DISTANCE = 50;
   public readonly TWEEN_DURATION = .1;
@@ -276,11 +276,11 @@ export class DrawingAreaComponent implements AfterViewInit {
   private moveCrosshairsUp() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.y() > 60) {
+    if (this.crosshairsLayer.crosshairs.y > 60) {
       this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs,
+        node: this.crosshairsLayer.crosshairs.konvaGroup,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.crosshairsLayer.crosshairs.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
+        y: this.crosshairsLayer.crosshairs.y - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Konva.Easings.Linear
       }).play());
     } else {
@@ -296,11 +296,11 @@ export class DrawingAreaComponent implements AfterViewInit {
   private moveCrosshairsRight() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.x() < this.stage.width() - 60) {
+    if (this.crosshairsLayer.crosshairs.x < this.stage.width() - 60) {
       this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs,
+        node: this.crosshairsLayer.crosshairs.konvaGroup,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.crosshairsLayer.crosshairs.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
+        x: this.crosshairsLayer.crosshairs.x + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Konva.Easings.Linear
       }).play());
     } else
@@ -315,11 +315,11 @@ export class DrawingAreaComponent implements AfterViewInit {
   private moveCrosshairsDown() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.y() < this.stage.height())
+    if (this.crosshairsLayer.crosshairs.y < this.stage.height())
       this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs,
+        node: this.crosshairsLayer.crosshairs.konvaGroup,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.crosshairsLayer.crosshairs.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
+        y: this.crosshairsLayer.crosshairs.y + this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Konva.Easings.Linear
       }).play());
     else {
@@ -335,11 +335,11 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private moveCrosshairsLeft() {
     this.finishTweens();
-    if (this.crosshairsLayer.crosshairs.x() > 60) {
+    if (this.crosshairsLayer.crosshairs.x > 60) {
       this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs,
+        node: this.crosshairsLayer.crosshairs.konvaGroup,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.crosshairsLayer.crosshairs.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
+        x: this.crosshairsLayer.crosshairs.x - this.CROSSHAIRS_MOVEMENT_DISTANCE,
         easing: Konva.Easings.Linear
       }).play());
     } else {
@@ -373,7 +373,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
 
   private getDAEdgesContainingCrosshairs(): DAEdge[] {
-    return this.drawingLayer.getDaEdgesIntersectingGroup(this.crosshairsLayer.crosshairs);
+    return this.drawingLayer.getDaEdgesIntersectingGroup(this.crosshairsLayer.crosshairs.konvaGroup);
   }
 
 
@@ -434,7 +434,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     const stageHeight = this.stage.height();
     
     const tween = new Konva.Tween({
-      node: this.crosshairsLayer.crosshairs,
+      node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
       x: stageWidth / 2,
       y: stageHeight / 2,
