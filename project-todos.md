@@ -30,15 +30,24 @@
 - [ ] Animate node add (fade in)
 - [ ] Undo/Redo
 
+## Testing
+- [x] Set up unit tests for drawing-area components
+- [x] Set up integration tests for complete workflows  
+- [x] Set up visual regression tests with baseline comparisons
+- [x] Set up E2E workflow tests with browser automation
+- [ ] Create entity-relation diagram to help understand system
+- [ ] Fix remaining E2E test failures (selection, label edit, edge creation, performance)
+- [ ] Add CI/CD pipeline for automated testing
+
 ## Deployment
 - [ ] Deploy using S3/Route 53
 - [ ] Set up analytics
 
 ## General
-- [ ] Finish moving logic from component into layers
-- [ ] Set up Konva source code for debugging
+- [x] Finish moving logic from component into layers
+- [x] Set up Konva source code for debugging
 - [ ] Update Header
-- [ ] Set up testing
+- [x] Set up testing
 - [ ] Set up tailwind
 - [ ] Set up monorepo
 
@@ -53,9 +62,11 @@
    - Tutorial on TypeScript namespaces vs modules
    - Create layout hierarchy for future multi-keyboard support
    - Completed: domain-based structure, barrel exports, shortened type names
-3. [ ] Refactor drawing-area to use composition instead of inheritance
+3. [x] Refactor drawing-area to use composition instead of inheritance
    - `DANode extends Konva.Group` → `DANode { group: Konva.Group }`
    - Reconcile approaches across codebase
+   - Fixed visual bugs: crosshairs positioning, node centering, arrow connections
+   - Added comprehensive test suite with 28 passing tests
 
 ## Future Key Menu Abstraction (to address after step 3)
 - [ ] Add command registry layer to hide command details
