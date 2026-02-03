@@ -43,3 +43,6 @@ Thumbs.db
 # TypeScript compiled files
 src/**/*.js
 src/**/*.js.map
+
+# E2E test output
+test-e2e-output/
