@@ -63,22 +63,13 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             return;
         }
 
-        // Only pop submenu if:
+        // Pop submenu if:
         // 1. The key is not in the current submenu AND
-        // 2. The key is in the submenu key string stack (meaning it was a submenu key to go back) AND
+        // 2. The key is in the submenu key string stack (meaning it was a submenu key) AND
         // 3. We're not at the root level
-        if (!this.stackTop.keys[key] && 
-            this.submenuKeyStringStack.includes(key) && 
+        if (!this.stackTop.keys[key] &&
+            this.submenuKeyStringStack.includes(key) &&
             this.stack.length > 1) {
-            
-            // Check if this key is the one that opened the current submenu
-            const currentSubmenuKey = this.submenuKeyStringStack[this.submenuKeyStringStack.length - 1];
-            if (key === currentSubmenuKey) {
-                // Don't pop on the same key that opened the submenu
-                // This allows the submenu to stay active
-                return;
-            }
-            
             this.popSubmenuAndChildren(key);
         }
     }

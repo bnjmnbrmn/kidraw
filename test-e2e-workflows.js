@@ -10,34 +10,59 @@ class E2EWorkflowTester {
     }
   }
 
-  async runTests() {
+  async runTests(testFilter = null) {
     console.log('🔄 Starting E2E Workflow Tests...\n');
-    
+
     const browser = await puppeteer.launch({
       headless: false, // Show browser for debugging
       slowMo: 100,
       args: ['--window-size=800x600']
     });
-    
+
     try {
       const page = await browser.newPage();
-      
+
       // Test workflows
       const workflows = [
         { name: 'Complete Node Creation Workflow', test: 'nodeCreationWorkflow' },
         { name: 'Complex Graph Creation', test: 'complexGraphWorkflow' },
         { name: 'Zoom and Pan Workflow', test: 'zoomPanWorkflow' },
+        { name: 'Zoom Submenu Close on Release', test: 'zoomSubmenuCloseWorkflow' },
         { name: 'Selection and Editing Workflow', test: 'selectionWorkflow' },
         { name: 'Label Edit Mode Transitions', test: 'labelEditWorkflow' },
         { name: 'Edge Creation Workflow', test: 'edgeCreationWorkflow' },
         { name: 'Stress Test - Many Nodes', test: 'stressTestWorkflow' },
         { name: 'Keyboard Navigation Workflow', test: 'keyboardWorkflow' }
       ];
-      
+
+      // Filter tests if requested
+      let testsToRun = workflows;
+      if (testFilter !== null) {
+        // Check if filter is a number (test index)
+        const testIndex = parseInt(testFilter);
+        if (!isNaN(testIndex) && testIndex >= 1 && testIndex <= workflows.length) {
+          testsToRun = [workflows[testIndex - 1]];
+          console.log(`Running test ${testIndex}: ${testsToRun[0].name}\n`);
+        } else {
+          // Try to match by name
+          testsToRun = workflows.filter(w =>
+            w.name.toLowerCase().includes(testFilter.toLowerCase()) ||
+            w.test.toLowerCase().includes(testFilter.toLowerCase())
+          );
+          if (testsToRun.length === 0) {
+            console.log(`❌ No tests found matching "${testFilter}"`);
+            console.log('\nAvailable tests:');
+            workflows.forEach((w, i) => console.log(`  ${i + 1}. ${w.name}`));
+            return;
+          }
+          console.log(`Running ${testsToRun.length} test(s) matching "${testFilter}"\n`);
+        }
+      }
+
       let passed = 0;
       let failed = 0;
-      
-      for (const workflow of workflows) {
+
+      for (const workflow of testsToRun) {
         try {
           console.log(`🧪 Running: ${workflow.name}`);
           const result = await this[workflow.test](page);
@@ -212,42 +237,126 @@ class E2EWorkflowTester {
     return { passed: true, message: 'Zoom and coordinate transformations working' };
   }
 
+  async zoomSubmenuCloseWorkflow(page) {
+    await page.goto('http://localhost:4200');
+    await page.waitForSelector('canvas', { timeout: 10000 });
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Get reference to key menu to check submenu state
+    const getSubmenuInfo = async () => {
+      return await page.evaluate(() => {
+        const keyMenuElement = document.querySelector('app-keymenu');
+        if (!keyMenuElement) return { found: false, reason: 'No keymenu element' };
+
+        // Access the Angular component
+        const component = window.ng.getComponent(keyMenuElement);
+        if (!component) return { found: false, reason: 'No component instance' };
+
+        const keyMenu = component.keyMenu;
+        if (!keyMenu) return { found: false, reason: 'No keyMenu property' };
+
+        const stage = keyMenu.stage;
+        if (!stage) return { found: false, reason: 'No Konva stage' };
+
+        // Collect all visible text labels (checking parent visibility too)
+        const allTexts = stage.find('Text');
+        const visibleLabels = [];
+        let hasZoomSubmenu = false;
+
+        for (let i = 0; i < allTexts.length; i++) {
+          const text = allTexts[i];
+          const content = text.text();
+          // Check if text itself and all its ancestors are visible
+          const isVisible = text.isVisible();
+
+          if (isVisible && content && content.trim()) {
+            visibleLabels.push(content);
+
+            // Check for zoom submenu specific labels
+            if (content === '...In' || content === '...Out') {
+              hasZoomSubmenu = true;
+            }
+          }
+        }
+
+        return {
+          found: hasZoomSubmenu,
+          visibleLabels: visibleLabels,
+          textCount: allTexts.length
+        };
+      });
+    };
+
+    // Initially, submenu should not be visible
+    let info = await getSubmenuInfo();
+
+    if (info.found) {
+      return { passed: false, message: 'Zoom submenu visible before pressing z' };
+    }
+
+    // Press 'z' to open zoom submenu (but don't release yet)
+    await page.keyboard.down('z');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Submenu should now be visible
+    info = await getSubmenuInfo();
+
+    if (!info.found) {
+      return {
+        passed: false,
+        message: `Zoom submenu not visible after pressing z. ${info.reason || ''} Found labels: ${info.visibleLabels ? info.visibleLabels.join(', ') : 'none'}`
+      };
+    }
+
+    // Release 'z' - submenu should close
+    await page.keyboard.up('z');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Submenu should no longer be visible
+    info = await getSubmenuInfo();
+
+    if (info.found) {
+      return { passed: false, message: 'Zoom submenu still visible after releasing z' };
+    }
+
+    return { passed: true, message: 'Zoom submenu closes correctly on key release' };
+  }
+
   async selectionWorkflow(page) {
     await page.goto('http://localhost:4200?demo=true');
     await page.waitForSelector('canvas', { timeout: 10000 });
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Move crosshairs to first node
     await page.keyboard.press('h');
     await page.keyboard.press('h');
     await page.keyboard.press('k');
     await page.keyboard.press('k');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Select node
-    await page.keyboard.press('i');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    await page.keyboard.press('Escape');
-    
+
+    // Select node using 's' key
+    await page.keyboard.press('s');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     // Verify selection
     const state = await this.getComponentState(page);
     const selectedNodes = state.nodes.filter(node => node.selected);
-    
+
     if (selectedNodes.length === 0) {
       return { passed: false, message: 'No nodes selected' };
     }
-    
-    // Unselect all
-    await page.keyboard.press('u');
+
+    // Unselect all using Escape
+    await page.keyboard.press('Escape');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
+
     const stateAfterUnselect = await this.getComponentState(page);
     const selectedNodesAfter = stateAfterUnselect.nodes.filter(node => node.selected);
-    
+
     if (selectedNodesAfter.length > 0) {
       return { passed: false, message: 'Nodes not unselected' };
     }
-    
+
     return { passed: true, message: 'Selection workflow working' };
   }
 
@@ -487,4 +596,5 @@ class E2EWorkflowTester {
 
 // Run the tests
 const tester = new E2EWorkflowTester();
-tester.runTests().catch(console.error);
+const testFilter = process.argv[2]; // Get test filter from command line
+tester.runTests(testFilter).catch(console.error);
