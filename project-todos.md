@@ -1,74 +1,45 @@
 # Project Todos
 
-## Key Menu
-- [x] Add Konva stage, and add hints as stage items
-- [x] Ignore System Key Repeat
-- [x] Handle Key release for DefaultUSStackKMMode
-- [x] Handle Switching Modes
-- [ ] Introduce App Key Repeat
-- [ ] Adjust keyboard shortcuts to be non-vim specific with movement keys FDSE
-
-## Drawing Area
-- [x] Recenter view
-- [x] Recenter crosshairs
+- [ ] Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
 - [ ] Drag-able nodes
 - [ ] Delete-able nodes
-- [ ] Editable nodes
-- [ ] Z-cycle
-- [x] Add arrowheads to directed edges
+- [ ] Editable text
+   - What sorts of keybindings to support when editing text?  Vim/Emacs/Ctrl-c etc + arrow keys?
+   - How to make this configurable?
+   - Change node size to allow for more/less text?  Change text size?  Max text length?
+- [ ] Figure out how to deal with overlapping nodes
+  - Z-cycle?
+    - Does there need to be a standard way to show that nodes are overlapping/occluding something?
+  - Blocking the insertion of new nodes that would overlap existing nodes?
+  - Pushing nodes away from each other when they get too close?
+- [ ] Design of standard way to switch modes
+   - ESC/Ctrl-[, or maybe some magic key combo or sequence like f+j or fjfj, or maybe repeated Ctrl-G ?
+      - configurable key combo/sequence 
+         - usability testing here
+         - how to make key combo discoverable, especially in edit mode
+- [ ] Undo/Redo
+- [ ] Introduce App Key Repeat / Ignore System Key Repeat
 - [ ] Add waypoints to edges
 - [ ] Remove waypoints from edges
 - [ ] Connect to new node
 - [ ] Set new node direction
-- [ ] Allow node text to be editable after creation
-- [ ] Change node size to allow for more/less text
-- [ ] Push nodes away from each other when they get too close
 - [ ] Make edges movable
 - [ ] Separate edges when they are too close
 - [ ] Allow for directed and un-directed edges
 - [ ] Graph Navigation
-- [ ] Animate node add (fade in)
-- [ ] Undo/Redo
-
-## Testing
-- [x] Set up unit tests for drawing-area components
-- [x] Set up integration tests for complete workflows  
-- [x] Set up visual regression tests with baseline comparisons
-- [x] Set up E2E workflow tests with browser automation
+- [ ] Make keymenu keybindings configurable
+- [ ] Update keymenu to optionally use "cards"
 - [ ] Create entity-relation diagram to help understand system
 - [ ] Fix remaining E2E test failures (selection, label edit, edge creation, performance)
+- [ ] Deploy using S3/Route 53
+- [ ] Make pretty
+   - Animate node add (fade in)?
+- [ ] Set up analytics
+   - Probably need some disclaimer about cookies
+- [ ] Set up as libraries
 - [ ] Add CI/CD pipeline for automated testing
 
-## Deployment
-- [ ] Deploy using S3/Route 53
-- [ ] Set up analytics
-
-## General
-- [x] Finish moving logic from component into layers
-- [x] Set up Konva source code for debugging
-- [ ] Update Header
-- [x] Set up testing
-- [ ] Set up tailwind
-- [ ] Set up monorepo
-
-## Architecture Refactoring Plan
-1. [x] Refactor KMKey types with interface hierarchy + composition
-   - Interfaces: `KMActionKey`, `KMSubmenuKey`, `KMActionSubmenuKey`
-   - Classes: `DefaultKMActionKey`, `DefaultKMSubmenuKey`, `DefaultKMActionSubmenuKey`
-   - Use composition to avoid code duplication
-   - Action types have `onKeyDown`/`onKeyUp` (after rendering) + `onKeyDownBeforeRender`/`onKeyUpBeforeRender` (noops by default)
-   - Enables drag feature: select on keydown, show direction submenu, unselect on keyup
-2. [x] Shorten names and reorganize with namespaces/modules
-   - Tutorial on TypeScript namespaces vs modules
-   - Create layout hierarchy for future multi-keyboard support
-   - Completed: domain-based structure, barrel exports, shortened type names
-3. [x] Refactor drawing-area to use composition instead of inheritance
-   - `DANode extends Konva.Group` → `DANode { group: Konva.Group }`
-   - Reconcile approaches across codebase
-   - Fixed visual bugs: crosshairs positioning, node centering, arrow connections
-   - Added comprehensive test suite with 28 passing tests
-
-## Future Key Menu Abstraction (to address after step 3)
+## Key Menu Refactoring 
 - [ ] Add command registry layer to hide command details
 - [ ] Add pluggable visualization layer (different renderers)
 - [ ] Add key assignment configuration layer
@@ -77,7 +48,7 @@
 - [ ] Make keymenu reusable for other applications
 - [ ] Rename: Remove Config suffix from config classes, add "Renderer" suffix to Konva implementation classes
 
-## Alternative Approaches to Try Later
+## Alternative Approaches to Try Later for Key Menu Code organization
 - [ ] Try ActionKey/SubmenuKey inheritance (SubmenuKey extends ActionKey)
 - [ ] Try mixins approach for flexible behavior composition
 - [ ] Try factory methods + type guards/casts instead of Default classes
