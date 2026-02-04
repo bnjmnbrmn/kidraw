@@ -114,20 +114,9 @@ export class KeymenuComponent implements AfterViewInit {
           (keyDownEvent: KeyboardEvent) => {
             const key = keyDownEvent.key;
             if (("Enter" === key && keyDownEvent.shiftKey)
-              || ("[" === key && keyDownEvent.ctrlKey) || "Escape" === key
-              || ["h", "j", "k", "l"].includes(key)) {
+              || ("[" === key && keyDownEvent.ctrlKey) || "Escape" === key) {
               this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
               this.keyMenu.switchMode("normal");
-              // For movement keys, also emit the movement command
-              if (key === "h") {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
-              } else if (key === "j") {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
-              } else if (key === "k") {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
-              } else if (key === "l") {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
-              }
             } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
               this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
             } else if ("Enter" === key && KeyMenu.noModifier(keyDownEvent)) {

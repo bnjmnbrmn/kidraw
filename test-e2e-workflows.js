@@ -364,27 +364,39 @@ class E2EWorkflowTester {
     await page.goto('http://localhost:4200');
     await page.waitForSelector('canvas', { timeout: 10000 });
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Create node and enter label edit mode
     await page.keyboard.press('i');
     await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Type some text
-    await page.keyboard.type('Test Label');
+
+    // Type some text including movement keys (should be inserted, not move)
+    await page.keyboard.type('hello');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Test movement key exits label edit mode
+
+    // Capture position before exiting
+    const posBeforeExit = await this.getCrosshairsPosition(page);
+
+    // Exit label edit mode with ESC
+    await page.keyboard.press('Escape');
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Position should not have changed yet
+    const posAfterExit = await this.getCrosshairsPosition(page);
+
+    if (Math.abs(posAfterExit.x - posBeforeExit.x) > 1 || Math.abs(posAfterExit.y - posBeforeExit.y) > 1) {
+      return { passed: false, message: 'Crosshairs moved when exiting label edit mode with ESC' };
+    }
+
+    // Now test that movement keys work in normal mode
     await page.keyboard.press('h');
     await new Promise(resolve => setTimeout(resolve, 300));
-    
-    // Verify crosshairs moved (indicating we exited label edit mode)
-    const crosshairsPos = await this.getCrosshairsPosition(page);
-    const initialPos = { x: 400, y: 112 }; // Default position
-    
-    if (crosshairsPos.x >= initialPos.x) {
-      return { passed: false, message: 'Movement key did not exit label edit mode' };
+
+    const posAfterMove = await this.getCrosshairsPosition(page);
+
+    if (posAfterMove.x >= posAfterExit.x) {
+      return { passed: false, message: `Movement key did not work after exiting label edit. Before: ${posAfterExit.x}, After: ${posAfterMove.x}` };
     }
-    
+
     return { passed: true, message: 'Label edit mode transitions working' };
   }
 
