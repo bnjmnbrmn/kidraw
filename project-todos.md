@@ -5,6 +5,9 @@
   - The submenu continues to have left/right/up/down options
   - Crosshairs disappear during the drag
   - When your leftmost selected item goes off screen (or partially off), you start to auto-pan left (same logic for other directions)
+  - **Known Issues:**
+    - Edge alignment during drag needs fine-tuning - edges move but may not align perfectly with node centers during animation
+    - Edge points update after animation rather than smoothly during movement
 - [ ] Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
 - [ ] Delete-able nodes
 - [ ] Editable text
