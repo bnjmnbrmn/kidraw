@@ -4,7 +4,9 @@ import {DANode} from './da-node';
 export class DAEdge {
   readonly group: Konva.Group;
   private _isSelected: boolean = true;
-  private readonly _line: Konva.Arrow;
+  public readonly _line: Konva.Arrow;
+  public readonly srcNode: DANode;
+  public readonly destNode: DANode;
 
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
@@ -14,6 +16,12 @@ export class DAEdge {
 
   constructor(srcNode: DANode, destNode: DANode, label: string) {
     this.group = new Konva.Group();
+    this.srcNode = srcNode;
+    this.destNode = destNode;
+
+    // Register this edge with the nodes
+    srcNode.addOutgoingEdge(this);
+    destNode.addIncomingEdge(this);
 
     this._line = new Konva.Arrow({
       points: this.calculatePoints(srcNode, destNode),
@@ -44,7 +52,7 @@ export class DAEdge {
     return 'black'
   }
 
-  private calculatePoints(srcNode: DANode, destNode: DANode): [number, number, number, number] {
+  public calculatePoints(srcNode: DANode, destNode: DANode): [number, number, number, number] {
     const srcPos = srcNode.konvaGroup.position();
     const destPos = destNode.konvaGroup.position();
     

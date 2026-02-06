@@ -475,21 +475,36 @@ export class DrawingAreaComponent implements AfterViewInit {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const dragDistance = 50;
     
+    // Collect all connected edges to move
+    const edgesToMove = new Set<DAEdge>();
+    selectedNodes.forEach(node => {
+      node.connectedEdges.forEach(edge => edgesToMove.add(edge));
+    });
+    
+    // Move nodes
     selectedNodes.forEach(node => {
       const currentX = node.group.x();
+      const targetX = currentX - dragDistance;
+      
       this.tweens.push(new Konva.Tween({
         node: node.group,
         duration: this.TWEEN_DURATION,
-        x: currentX - dragDistance,
+        x: targetX,
         easing: Konva.Easings.Linear,
         onFinish: () => {
-          // Auto-exit drag mode after animation completes
-          this.exitDragMode();
-          // Check if auto-panning is needed
-          this.checkAutoPan();
+          // Update edges after animation completes
+          edgesToMove.forEach(edge => {
+            this.updateEdgePoints(edge);
+          });
         }
       }).play());
     });
+    
+    // Auto-exit drag mode and check auto-pan after all animations complete
+    setTimeout(() => {
+      this.exitDragMode();
+      this.checkAutoPan();
+    }, this.TWEEN_DURATION * 1000 + 50);
   }
 
   private dragSelectedRight() {
@@ -498,21 +513,36 @@ export class DrawingAreaComponent implements AfterViewInit {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const dragDistance = 50;
     
+    // Collect all connected edges to move
+    const edgesToMove = new Set<DAEdge>();
+    selectedNodes.forEach(node => {
+      node.connectedEdges.forEach(edge => edgesToMove.add(edge));
+    });
+    
+    // Move nodes
     selectedNodes.forEach(node => {
       const currentX = node.group.x();
+      const targetX = currentX + dragDistance;
+      
       this.tweens.push(new Konva.Tween({
         node: node.group,
         duration: this.TWEEN_DURATION,
-        x: currentX + dragDistance,
+        x: targetX,
         easing: Konva.Easings.Linear,
         onFinish: () => {
-          // Auto-exit drag mode after animation completes
-          this.exitDragMode();
-          // Check if auto-panning is needed
-          this.checkAutoPan();
+          // Update edges after animation completes
+          edgesToMove.forEach(edge => {
+            this.updateEdgePoints(edge);
+          });
         }
       }).play());
     });
+    
+    // Auto-exit drag mode and check auto-pan after all animations complete
+    setTimeout(() => {
+      this.exitDragMode();
+      this.checkAutoPan();
+    }, this.TWEEN_DURATION * 1000 + 50);
   }
 
   private dragSelectedUp() {
@@ -521,21 +551,36 @@ export class DrawingAreaComponent implements AfterViewInit {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const dragDistance = 50;
     
+    // Collect all connected edges to move
+    const edgesToMove = new Set<DAEdge>();
+    selectedNodes.forEach(node => {
+      node.connectedEdges.forEach(edge => edgesToMove.add(edge));
+    });
+    
+    // Move nodes
     selectedNodes.forEach(node => {
       const currentY = node.group.y();
+      const targetY = currentY - dragDistance;
+      
       this.tweens.push(new Konva.Tween({
         node: node.group,
         duration: this.TWEEN_DURATION,
-        y: currentY - dragDistance,
+        y: targetY,
         easing: Konva.Easings.Linear,
         onFinish: () => {
-          // Auto-exit drag mode after animation completes
-          this.exitDragMode();
-          // Check if auto-panning is needed
-          this.checkAutoPan();
+          // Update edges after animation completes
+          edgesToMove.forEach(edge => {
+            this.updateEdgePoints(edge);
+          });
         }
       }).play());
     });
+    
+    // Auto-exit drag mode and check auto-pan after all animations complete
+    setTimeout(() => {
+      this.exitDragMode();
+      this.checkAutoPan();
+    }, this.TWEEN_DURATION * 1000 + 50);
   }
 
   private dragSelectedDown() {
@@ -544,21 +589,43 @@ export class DrawingAreaComponent implements AfterViewInit {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const dragDistance = 50;
     
+    // Collect all connected edges to move
+    const edgesToMove = new Set<DAEdge>();
+    selectedNodes.forEach(node => {
+      node.connectedEdges.forEach(edge => edgesToMove.add(edge));
+    });
+    
+    // Move nodes
     selectedNodes.forEach(node => {
       const currentY = node.group.y();
+      const targetY = currentY + dragDistance;
+      
       this.tweens.push(new Konva.Tween({
         node: node.group,
         duration: this.TWEEN_DURATION,
-        y: currentY + dragDistance,
+        y: targetY,
         easing: Konva.Easings.Linear,
         onFinish: () => {
-          // Auto-exit drag mode after animation completes
-          this.exitDragMode();
-          // Check if auto-panning is needed
-          this.checkAutoPan();
+          // Update edges after animation completes
+          edgesToMove.forEach(edge => {
+            this.updateEdgePoints(edge);
+          });
         }
       }).play());
     });
+    
+    // Auto-exit drag mode and check auto-pan after all animations complete
+    setTimeout(() => {
+      this.exitDragMode();
+      this.checkAutoPan();
+    }, this.TWEEN_DURATION * 1000 + 50);
+  }
+
+  private updateEdgePoints(edge: DAEdge) {
+    const points = edge.calculatePoints(edge.srcNode, edge.destNode);
+    edge._line.points(points);
+    // Force redraw
+    this.drawingLayer.batchDraw();
   }
 
   private checkAutoPan() {

@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import { DAEdge } from './da-edge';
 
 
 export class DANode {
@@ -6,6 +7,11 @@ export class DANode {
   private readonly _rect: Konva.Rect;
   private readonly _label: Konva.Text;
   private _isSelected: boolean = false;
+  
+  // Edge references with cache validation
+  public incomingEdges: DAEdge[] = [];
+  public outgoingEdges: DAEdge[] = [];
+  private _edgesCacheValid = false;
 
   public readonly NODE_WIDTH = 100;
   public readonly NODE_HEIGHT = 100;
@@ -70,5 +76,49 @@ export class DANode {
 
   zIndex() {
     return this.group.zIndex();
+  }
+
+  // Edge management methods
+  get connectedEdges(): DAEdge[] {
+    if (!this._edgesCacheValid) {
+      this._rebuildEdgesCache();
+      this._edgesCacheValid = true;
+    }
+    return [...this.incomingEdges, ...this.outgoingEdges];
+  }
+
+  private _rebuildEdgesCache() {
+    // Cache is already valid since we maintain arrays directly
+    // This method exists for future extensibility
+  }
+
+  invalidateEdgesCache() {
+    this._edgesCacheValid = false;
+  }
+
+  addIncomingEdge(edge: DAEdge) {
+    this.incomingEdges.push(edge);
+    this.invalidateEdgesCache();
+  }
+
+  addOutgoingEdge(edge: DAEdge) {
+    this.outgoingEdges.push(edge);
+    this.invalidateEdgesCache();
+  }
+
+  removeIncomingEdge(edge: DAEdge) {
+    const index = this.incomingEdges.indexOf(edge);
+    if (index > -1) {
+      this.incomingEdges.splice(index, 1);
+      this.invalidateEdgesCache();
+    }
+  }
+
+  removeOutgoingEdge(edge: DAEdge) {
+    const index = this.outgoingEdges.indexOf(edge);
+    if (index > -1) {
+      this.outgoingEdges.splice(index, 1);
+      this.invalidateEdgesCache();
+    }
   }
 }
