@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DrawingLayer } from './drawing.layer';
-import { DANode } from './da-node.group';
-import { DAEdge } from './da-edge.group';
+import { DANode } from './da-node';
+import { DAEdge } from './da-edge';
 import { DACrosshairs } from './da-crosshairs.group';
 
 describe('DrawingArea Integration Tests', () => {

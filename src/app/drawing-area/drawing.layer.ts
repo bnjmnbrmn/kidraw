@@ -1,6 +1,6 @@
 import Konva from 'konva';
-import {DANode} from './da-node.group';
-import {DAEdge} from './da-edge.group';
+import {DANode} from './da-node';
+import {DAEdge} from './da-edge';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 
 export class DrawingLayer extends Konva.Layer {

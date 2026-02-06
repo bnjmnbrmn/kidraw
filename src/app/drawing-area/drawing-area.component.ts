@@ -2,8 +2,8 @@ import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Outpu
 import { DemoDataService } from '../services/demo-data.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
-import { DANode } from './da-node.group';
-import { DAEdge } from './da-edge.group';
+import { DANode } from './da-node';
+import { DAEdge } from './da-edge';
 import { DACommand, DACommandType } from './command.model';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -118,6 +118,24 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case DACommandType.UNSELECT_ALL:
         this.unselectAll();
+        break;
+      case DACommandType.DRAG_SELECTED_LEFT:
+        this.dragSelectedLeft();
+        break;
+      case DACommandType.DRAG_SELECTED_RIGHT:
+        this.dragSelectedRight();
+        break;
+      case DACommandType.DRAG_SELECTED_UP:
+        this.dragSelectedUp();
+        break;
+      case DACommandType.DRAG_SELECTED_DOWN:
+        this.dragSelectedDown();
+        break;
+      case DACommandType.ENTER_DRAG_MODE:
+        this.enterDragMode();
+        break;
+      case DACommandType.EXIT_DRAG_MODE:
+        this.exitDragMode();
         break;
       default:
         this.assertNever(command);
@@ -449,6 +467,155 @@ export class DrawingAreaComponent implements AfterViewInit {
     
     this.tweens.push(tween);
     tween.play();
+  }
+
+  private dragSelectedLeft() {
+    this.finishTweens();
+    this.enterDragMode(); // Auto-enter drag mode
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const dragDistance = 50;
+    
+    selectedNodes.forEach(node => {
+      const currentX = node.group.x();
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        duration: this.TWEEN_DURATION,
+        x: currentX - dragDistance,
+        easing: Konva.Easings.Linear,
+        onFinish: () => {
+          // Auto-exit drag mode after animation completes
+          this.exitDragMode();
+          // Check if auto-panning is needed
+          this.checkAutoPan();
+        }
+      }).play());
+    });
+  }
+
+  private dragSelectedRight() {
+    this.finishTweens();
+    this.enterDragMode(); // Auto-enter drag mode
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const dragDistance = 50;
+    
+    selectedNodes.forEach(node => {
+      const currentX = node.group.x();
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        duration: this.TWEEN_DURATION,
+        x: currentX + dragDistance,
+        easing: Konva.Easings.Linear,
+        onFinish: () => {
+          // Auto-exit drag mode after animation completes
+          this.exitDragMode();
+          // Check if auto-panning is needed
+          this.checkAutoPan();
+        }
+      }).play());
+    });
+  }
+
+  private dragSelectedUp() {
+    this.finishTweens();
+    this.enterDragMode(); // Auto-enter drag mode
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const dragDistance = 50;
+    
+    selectedNodes.forEach(node => {
+      const currentY = node.group.y();
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        duration: this.TWEEN_DURATION,
+        y: currentY - dragDistance,
+        easing: Konva.Easings.Linear,
+        onFinish: () => {
+          // Auto-exit drag mode after animation completes
+          this.exitDragMode();
+          // Check if auto-panning is needed
+          this.checkAutoPan();
+        }
+      }).play());
+    });
+  }
+
+  private dragSelectedDown() {
+    this.finishTweens();
+    this.enterDragMode(); // Auto-enter drag mode
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const dragDistance = 50;
+    
+    selectedNodes.forEach(node => {
+      const currentY = node.group.y();
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        duration: this.TWEEN_DURATION,
+        y: currentY + dragDistance,
+        easing: Konva.Easings.Linear,
+        onFinish: () => {
+          // Auto-exit drag mode after animation completes
+          this.exitDragMode();
+          // Check if auto-panning is needed
+          this.checkAutoPan();
+        }
+      }).play());
+    });
+  }
+
+  private checkAutoPan() {
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length === 0) return;
+
+    const stageWidth = this.stage.width();
+    const stageHeight = this.stage.height();
+    const scale = this.drawingLayer.scaleX();
+    const layerX = this.drawingLayer.x();
+    const layerY = this.drawingLayer.y();
+    
+    let panX = 0;
+    let panY = 0;
+    const panDistance = 100;
+
+    // Check each selected node for off-screen conditions
+    selectedNodes.forEach(node => {
+      const nodeX = node.group.x() * scale + layerX;
+      const nodeY = node.group.y() * scale + layerY;
+      const nodeWidth = node.NODE_WIDTH * scale;
+      const nodeHeight = node.NODE_HEIGHT * scale;
+
+      // Check if node is partially or fully off-screen and pan accordingly
+      if (nodeX < 0) {
+        panX = Math.max(panX, panDistance); // Pan right
+      } else if (nodeX + nodeWidth > stageWidth) {
+        panX = Math.min(panX, -panDistance); // Pan left
+      }
+
+      if (nodeY < 0) {
+        panY = Math.max(panY, panDistance); // Pan down
+      } else if (nodeY + nodeHeight > stageHeight) {
+        panY = Math.min(panY, -panDistance); // Pan up
+      }
+    });
+
+    // Apply auto-pan if needed
+    if (panX !== 0 || panY !== 0) {
+      this.tweens.push(new Konva.Tween({
+        node: this.drawingLayer,
+        duration: this.TWEEN_DURATION,
+        x: layerX + panX,
+        y: layerY + panY,
+        easing: Konva.Easings.Linear
+      }).play());
+    }
+  }
+
+  private enterDragMode() {
+    // Hide crosshairs during drag mode
+    this.crosshairsLayer.hideCrosshairs();
+  }
+
+  private exitDragMode() {
+    // Show crosshairs when exiting drag mode
+    this.crosshairsLayer.showCrosshairs();
   }
 
 }

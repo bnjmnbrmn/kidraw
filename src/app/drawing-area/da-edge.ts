@@ -1,5 +1,5 @@
 import Konva from 'konva';
-import {DANode} from './da-node.group';
+import {DANode} from './da-node';
 
 export class DAEdge {
   readonly group: Konva.Group;

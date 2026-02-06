@@ -1,7 +1,11 @@
 # Project Todos
 
-- [ ] Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
 - [ ] Drag-able nodes
+  - Have a submenukey on the left side, maybe r, for "drag selected"
+  - The submenu continues to have left/right/up/down options
+  - Crosshairs disappear during the drag
+  - When your leftmost selected item goes off screen (or partially off), you start to auto-pan left (same logic for other directions)
+- [ ] Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
 - [ ] Delete-able nodes
 - [ ] Editable text
    - What sorts of keybindings to support when editing text?  Vim/Emacs/Ctrl-c etc + arrow keys?

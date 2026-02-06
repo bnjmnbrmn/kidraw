@@ -14,6 +14,12 @@ export enum DACommandType {
   RECENTER_VIEW = 'RECENTER_VIEW',
   RECENTER_CROSSHAIRS = 'RECENTER_CROSSHAIRS',
   UNSELECT_ALL = 'UNSELECT_ALL',
+  ENTER_DRAG_MODE = 'ENTER_DRAG_MODE',
+  DRAG_SELECTED_LEFT = 'DRAG_SELECTED_LEFT',
+  DRAG_SELECTED_RIGHT = 'DRAG_SELECTED_RIGHT',
+  DRAG_SELECTED_UP = 'DRAG_SELECTED_UP',
+  DRAG_SELECTED_DOWN = 'DRAG_SELECTED_DOWN',
+  EXIT_DRAG_MODE = 'EXIT_DRAG_MODE',
 }
 
 export type DACommand =
@@ -32,4 +38,10 @@ export type DACommand =
   | {kind: DACommandType.RECENTER_VIEW}
   | {kind: DACommandType.RECENTER_CROSSHAIRS}
   | {kind: DACommandType.UNSELECT_ALL}
+  | {kind: DACommandType.ENTER_DRAG_MODE}
+  | {kind: DACommandType.DRAG_SELECTED_LEFT}
+  | {kind: DACommandType.DRAG_SELECTED_RIGHT}
+  | {kind: DACommandType.DRAG_SELECTED_UP}
+  | {kind: DACommandType.DRAG_SELECTED_DOWN}
+  | {kind: DACommandType.EXIT_DRAG_MODE}
 

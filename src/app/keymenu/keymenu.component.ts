@@ -95,6 +95,23 @@ export class KeymenuComponent implements AfterViewInit {
               })
             }
           ),
+          r: new LabeledSubmenuConfig(
+            "Drag...",
+            {
+              h: new LabeledAction("...Left", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT});
+              }),
+              l: new LabeledAction("...Right", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
+              }),
+              k: new LabeledAction("...Up", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP});
+              }),
+              j: new LabeledAction("...Down", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN});
+              })
+            }
+          ),
           // Ergonomic single-key shortcuts for recenter operations
           f: new LabeledAction(
             'Recenter View',
