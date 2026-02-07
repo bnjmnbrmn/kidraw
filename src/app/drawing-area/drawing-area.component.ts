@@ -481,37 +481,51 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
-    // Move nodes with manual animation loop for smooth edge updates
-    selectedNodes.forEach(node => {
-      const currentX = node.group.x();
-      const targetX = currentX - dragDistance;
-      const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
-      const startTime = Date.now();
+    // Store initial crosshairs position
+    const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
+    const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
+    
+    // Store initial positions for all nodes
+    const initialPositions = selectedNodes.map(node => ({
+      node,
+      initialX: node.group.x(),
+      targetX: node.group.x() - dragDistance
+    }));
+    
+    // Single animation loop for all nodes
+    const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
       
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Update node position
-        const newX = currentX + (targetX - currentX) * progress;
+      // Update all nodes
+      initialPositions.forEach(({ node, initialX, targetX }) => {
+        const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
-        
-        // Update edges smoothly during animation
-        edgesToMove.forEach(edge => {
-          this.updateEdgePoints(edge);
-        });
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          // Animation complete
-          this.exitDragMode();
-          this.checkAutoPan();
-        }
-      };
+      });
       
-      animate();
-    });
+      // Update edges smoothly during animation
+      edgesToMove.forEach(edge => {
+        this.updateEdgePoints(edge);
+      });
+      
+      // Update crosshairs to move the same distance as nodes
+      const currentDragDistance = dragDistance * progress;
+      this.crosshairsLayer.crosshairs.x = initialCrosshairsX - currentDragDistance;
+      this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        this.exitDragMode();
+        this.checkAutoPan();
+      }
+    };
+    
+    animate();
   }
 
   private dragSelectedRight() {
@@ -526,37 +540,51 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
-    // Move nodes with manual animation loop for smooth edge updates
-    selectedNodes.forEach(node => {
-      const currentX = node.group.x();
-      const targetX = currentX + dragDistance;
-      const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
-      const startTime = Date.now();
+    // Store initial crosshairs position
+    const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
+    const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
+    
+    // Store initial positions for all nodes
+    const initialPositions = selectedNodes.map(node => ({
+      node,
+      initialX: node.group.x(),
+      targetX: node.group.x() + dragDistance
+    }));
+    
+    // Single animation loop for all nodes
+    const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
       
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Update node position
-        const newX = currentX + (targetX - currentX) * progress;
+      // Update all nodes
+      initialPositions.forEach(({ node, initialX, targetX }) => {
+        const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
-        
-        // Update edges smoothly during animation
-        edgesToMove.forEach(edge => {
-          this.updateEdgePoints(edge);
-        });
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          // Animation complete
-          this.exitDragMode();
-          this.checkAutoPan();
-        }
-      };
+      });
       
-      animate();
-    });
+      // Update edges smoothly during animation
+      edgesToMove.forEach(edge => {
+        this.updateEdgePoints(edge);
+      });
+      
+      // Update crosshairs to move the same distance as nodes
+      const currentDragDistance = dragDistance * progress;
+      this.crosshairsLayer.crosshairs.x = initialCrosshairsX + currentDragDistance;
+      this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        this.exitDragMode();
+        this.checkAutoPan();
+      }
+    };
+    
+    animate();
   }
 
   private dragSelectedUp() {
@@ -571,37 +599,51 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
-    // Move nodes with manual animation loop for smooth edge updates
-    selectedNodes.forEach(node => {
-      const currentY = node.group.y();
-      const targetY = currentY - dragDistance;
-      const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
-      const startTime = Date.now();
+    // Store initial crosshairs position
+    const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
+    const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
+    
+    // Store initial positions for all nodes
+    const initialPositions = selectedNodes.map(node => ({
+      node,
+      initialY: node.group.y(),
+      targetY: node.group.y() - dragDistance
+    }));
+    
+    // Single animation loop for all nodes
+    const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
       
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Update node position
-        const newY = currentY + (targetY - currentY) * progress;
+      // Update all nodes
+      initialPositions.forEach(({ node, initialY, targetY }) => {
+        const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
-        
-        // Update edges smoothly during animation
-        edgesToMove.forEach(edge => {
-          this.updateEdgePoints(edge);
-        });
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          // Animation complete
-          this.exitDragMode();
-          this.checkAutoPan();
-        }
-      };
+      });
       
-      animate();
-    });
+      // Update edges smoothly during animation
+      edgesToMove.forEach(edge => {
+        this.updateEdgePoints(edge);
+      });
+      
+      // Update crosshairs to move the same distance as nodes
+      const currentDragDistance = dragDistance * progress;
+      this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
+      this.crosshairsLayer.crosshairs.y = initialCrosshairsY - currentDragDistance;
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        this.exitDragMode();
+        this.checkAutoPan();
+      }
+    };
+    
+    animate();
   }
 
   private dragSelectedDown() {
@@ -616,37 +658,51 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
-    // Move nodes with manual animation loop for smooth edge updates
-    selectedNodes.forEach(node => {
-      const currentY = node.group.y();
-      const targetY = currentY + dragDistance;
-      const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
-      const startTime = Date.now();
+    // Store initial crosshairs position
+    const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
+    const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
+    
+    // Store initial positions for all nodes
+    const initialPositions = selectedNodes.map(node => ({
+      node,
+      initialY: node.group.y(),
+      targetY: node.group.y() + dragDistance
+    }));
+    
+    // Single animation loop for all nodes
+    const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
       
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Update node position
-        const newY = currentY + (targetY - currentY) * progress;
+      // Update all nodes
+      initialPositions.forEach(({ node, initialY, targetY }) => {
+        const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
-        
-        // Update edges smoothly during animation
-        edgesToMove.forEach(edge => {
-          this.updateEdgePoints(edge);
-        });
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          // Animation complete
-          this.exitDragMode();
-          this.checkAutoPan();
-        }
-      };
+      });
       
-      animate();
-    });
+      // Update edges smoothly during animation
+      edgesToMove.forEach(edge => {
+        this.updateEdgePoints(edge);
+      });
+      
+      // Update crosshairs to move the same distance as nodes
+      const currentDragDistance = dragDistance * progress;
+      this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
+      this.crosshairsLayer.crosshairs.y = initialCrosshairsY + currentDragDistance;
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        this.exitDragMode();
+        this.checkAutoPan();
+      }
+    };
+    
+    animate();
   }
 
   private updateEdgePoints(edge: DAEdge) {
@@ -662,37 +718,33 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     const stageWidth = this.stage.width();
     const stageHeight = this.stage.height();
-    const scale = this.drawingLayer.scaleX();
-    const layerX = this.drawingLayer.x();
-    const layerY = this.drawingLayer.y();
-    
+    const panDistance = 100;
+    const margin = 50;
+
+    // Get crosshairs position for auto-pan calculations
+    const crosshairsX = this.crosshairsLayer.crosshairs.x;
+    const crosshairsY = this.crosshairsLayer.crosshairs.y;
+
     let panX = 0;
     let panY = 0;
-    const panDistance = 100;
 
-    // Check each selected node for off-screen conditions
-    selectedNodes.forEach(node => {
-      const nodeX = node.group.x() * scale + layerX;
-      const nodeY = node.group.y() * scale + layerY;
-      const nodeWidth = node.NODE_WIDTH * scale;
-      const nodeHeight = node.NODE_HEIGHT * scale;
+    // Check if crosshairs go off screen and set pan values
+    if (crosshairsX < margin) {
+      panX = panDistance; // Pan right
+    } else if (crosshairsX > stageWidth - margin) {
+      panX = -panDistance; // Pan left
+    }
 
-      // Check if node is partially or fully off-screen and pan accordingly
-      if (nodeX < 0) {
-        panX = Math.max(panX, panDistance); // Pan right
-      } else if (nodeX + nodeWidth > stageWidth) {
-        panX = Math.min(panX, -panDistance); // Pan left
-      }
-
-      if (nodeY < 0) {
-        panY = Math.max(panY, panDistance); // Pan down
-      } else if (nodeY + nodeHeight > stageHeight) {
-        panY = Math.min(panY, -panDistance); // Pan up
-      }
-    });
+    if (crosshairsY < margin) {
+      panY = panDistance; // Pan down
+    } else if (crosshairsY > stageHeight - margin) {
+      panY = -panDistance; // Pan up
+    }
 
     // Apply auto-pan if needed
     if (panX !== 0 || panY !== 0) {
+      const layerX = this.drawingLayer.x();
+      const layerY = this.drawingLayer.y();
       this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.TWEEN_DURATION,
@@ -704,14 +756,11 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private enterDragMode() {
-    // Hide crosshairs during drag mode
-    this.crosshairsLayer.hideCrosshairs();
+    // Crosshairs stay visible during drag
   }
 
   private exitDragMode() {
-    // Show crosshairs when exiting drag mode
-    this.crosshairsLayer.showCrosshairs();
+    // Crosshairs remain visible after drag
   }
 
 }
-
