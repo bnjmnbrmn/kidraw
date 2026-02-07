@@ -8,7 +8,25 @@
   - **Known Issues:**
     - Edge alignment during drag needs fine-tuning - edges move but may not align perfectly with node centers during animation
     - Edge points update after animation rather than smoothly during movement
-- [ ] Delete-able nodes
+- [ ] Add waypoints to edges
+  - A waypoint should be like a node, but the box part should generally be invisible
+  - The waypoint should be draggable
+  - The waypoint should be selectable
+  - The waypoint should be deletable (don't add this feature until we've added deletion in general)
+  - The waypoint should be editable (don't add this feature until we've added editing in general)
+  - The label if it exists should always be visible 
+  - It should always connect two edge segments, at least one of which will be undirected (f there are multiple edge segments, only the final one, connected to the destination node, should be directed (to the destination node)).  
+  - The undirected edge should have its text to one side of the edges it connects
+  - We'll need to ultimately do some experiments with how we handle waypoint labels (or, maybe more likely, make this configurable by the user)
+   - We might have the text drawn to the side of the segements it connects
+      - The side should be determined by where the angle the two connecting segments is greater than 180 degrees, or, if the angle is equal to 180 degrees, the top (if the segments are non-vertical) or left (if the segments are vertical)
+   - We might have the box edge be invisible, but the box background be visible, matching the color of the background (not sure what to call this)
+- [ ] Remove waypoints from edges
+- [ ] Deletion
+   - If one or more nodes are selected, delete them and any edges connected to them
+   - If one or more edges are selected (and no nodes), delete them
+   - If a waypoint is selected, remove it and join the edges it connects with
+   - If nothing is selected, delete the node/edge/waypoint under the crosshairs, if any
 - [ ] Editable text
    - What sorts of keybindings to support when editing text?  Vim/Emacs/Ctrl-c etc + arrow keys?
    - How to make this configurable?
@@ -18,9 +36,10 @@
     - Does there need to be a standard way to show that nodes are overlapping/occluding something?
   - Blocking the insertion of new nodes that would overlap existing nodes?
   - Pushing nodes away from each other when they get too close?
-- [ ] Add waypoints to edges
-- [ ] Remove waypoints from edges
+- [ ] Allow edges to be non-directed or bidirectional
+- [ ] Undo/Redo
 - [ ] Graph Navigation
+- [ ] Shortcut to create a new node connected to the currently selected one
 - [ ] Re-evaluate keybindings
    - Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
    - Design of standard way to switch modes
@@ -28,20 +47,14 @@
          - configurable key combo/sequence 
             - usability testing here
             - how to make key combo discoverable, especially in edit mode
-- [ ] Undo/Redo
 - [ ] Introduce App Key Repeat / Ignore System Key Repeat
-- [ ] Connect to new node
-- [ ] Set new node direction
-- [ ] Make edges movable
+- [ ] Make pretty
+   - Animate node add (fade in)?
 - [ ] Separate edges when they are too close
-- [ ] Allow for directed and un-directed edges
 - [ ] Make keymenu keybindings configurable
 - [ ] Update keymenu to optionally use "cards"
 - [ ] Create entity-relation diagram to help understand system
-- [ ] Fix remaining E2E test failures (selection, label edit, edge creation, performance)
 - [ ] Deploy using S3/Route 53
-- [ ] Make pretty
-   - Animate node add (fade in)?
 - [ ] Set up analytics
    - Probably need some disclaimer about cookies
 - [ ] Set up as libraries
