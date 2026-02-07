@@ -6,8 +6,8 @@
   - Crosshairs disappear during the drag
   - When your leftmost selected item goes off screen (or partially off), you start to auto-pan left (same logic for other directions)
   - **Known Issues:**
-    - Edge alignment during drag needs fine-tuning - edges move but may not align perfectly with node centers during animation
-    - Edge points update after animation rather than smoothly during movement
+    - ~~Edge alignment during drag needs fine-tuning - edges move but may not align perfectly with node centers during animation~~ ✅ **FIXED**
+    - ~~Edge points update after animation rather than smoothly during movement~~ ✅ **FIXED**
 - [ ] Add waypoints to edges
   - A waypoint should be like a node, but the box part should generally be invisible
   - The waypoint should be draggable
