@@ -8,7 +8,6 @@
   - **Known Issues:**
     - Edge alignment during drag needs fine-tuning - edges move but may not align perfectly with node centers during animation
     - Edge points update after animation rather than smoothly during movement
-- [ ] Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
 - [ ] Delete-able nodes
 - [ ] Editable text
    - What sorts of keybindings to support when editing text?  Vim/Emacs/Ctrl-c etc + arrow keys?
@@ -19,21 +18,23 @@
     - Does there need to be a standard way to show that nodes are overlapping/occluding something?
   - Blocking the insertion of new nodes that would overlap existing nodes?
   - Pushing nodes away from each other when they get too close?
-- [ ] Design of standard way to switch modes
-   - ESC/Ctrl-[, or maybe some magic key combo or sequence like f+j or fjfj, or maybe repeated Ctrl-G ?
-      - configurable key combo/sequence 
-         - usability testing here
-         - how to make key combo discoverable, especially in edit mode
-- [ ] Undo/Redo
-- [ ] Introduce App Key Repeat / Ignore System Key Repeat
 - [ ] Add waypoints to edges
 - [ ] Remove waypoints from edges
+- [ ] Graph Navigation
+- [ ] Re-evaluate keybindings
+   - Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
+   - Design of standard way to switch modes
+      - ESC/Ctrl-[, or maybe some magic key combo or sequence like f+j or fjfj, or maybe repeated Ctrl-G ?
+         - configurable key combo/sequence 
+            - usability testing here
+            - how to make key combo discoverable, especially in edit mode
+- [ ] Undo/Redo
+- [ ] Introduce App Key Repeat / Ignore System Key Repeat
 - [ ] Connect to new node
 - [ ] Set new node direction
 - [ ] Make edges movable
 - [ ] Separate edges when they are too close
 - [ ] Allow for directed and un-directed edges
-- [ ] Graph Navigation
 - [ ] Make keymenu keybindings configurable
 - [ ] Update keymenu to optionally use "cards"
 - [ ] Create entity-relation diagram to help understand system
