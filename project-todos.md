@@ -40,6 +40,10 @@
 - [ ] Undo/Redo
 - [ ] Graph Navigation
 - [ ] Shortcut to create a new node connected to the currently selected one
+- [ ] Panning
+   - Maybe have combined pan/zoom mode, where the crosshairs follow the view area (e.g. if centered, stay centered, if near the top left, stay near the top left)
+- [ ] Fast/accelerating and slow/decelerating movement/zooming/panning
+   - Way to do this smart?  Auto accelerate/decelerate depending on if you are going in one direction or switch directions to focus in on a particular point?
 - [ ] Re-evaluate keybindings
    - Adjust keyboard shortcuts to be not vim-like specific with movement keys FDSE
    - Design of standard way to switch modes
