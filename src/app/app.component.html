@@ -2,6 +2,7 @@
 <app-drawing-area [commands]="commandsSubject.asObservable()"
 (daOut)="handleDANotification($event)"
 (zoomLevel)="onZoomLevelChange($event)"
+(waypointsVisibleChange)="onWaypointsVisibleChange($event)"
 />
 
 <app-keymenu

@@ -39,4 +39,10 @@ export class AppComponent {
       this.headerComponent.onZoomLevelChange(level);
     }
   }
+
+  onWaypointsVisibleChange(visible: boolean) {
+    if (this.headerComponent) {
+      this.headerComponent.onWaypointsVisibleChange(visible);
+    }
+  }
 }

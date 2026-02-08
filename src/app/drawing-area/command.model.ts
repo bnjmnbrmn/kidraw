@@ -20,6 +20,8 @@ export enum DACommandType {
   DRAG_SELECTED_UP = 'DRAG_SELECTED_UP',
   DRAG_SELECTED_DOWN = 'DRAG_SELECTED_DOWN',
   EXIT_DRAG_MODE = 'EXIT_DRAG_MODE',
+  ADD_WAYPOINT = 'ADD_WAYPOINT',
+  TOGGLE_WAYPOINT_VISIBILITY = 'TOGGLE_WAYPOINT_VISIBILITY',
 }
 
 export type DACommand =
@@ -44,4 +46,6 @@ export type DACommand =
   | {kind: DACommandType.DRAG_SELECTED_UP}
   | {kind: DACommandType.DRAG_SELECTED_DOWN}
   | {kind: DACommandType.EXIT_DRAG_MODE}
+  | {kind: DACommandType.ADD_WAYPOINT}
+  | {kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY}
 

@@ -4,7 +4,9 @@ import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
+import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType } from './command.model';
+import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -20,6 +22,7 @@ export class DrawingAreaComponent implements AfterViewInit {
   @Input({required: true}) commands!: Observable<DACommand>;
   @Output() daOut = new EventEmitter<DANotification>()
   @Output() zoomLevel = new EventEmitter<number>()
+  @Output() waypointsVisibleChange = new EventEmitter<boolean>()
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private resizeObserver!: ResizeObserver;
   private crosshairsLayer!: CrosshairsLayer;
@@ -27,8 +30,9 @@ export class DrawingAreaComponent implements AfterViewInit {
   private stage!: Konva.Stage;
   private tweens: Konva.Tween[] = [];
   private demoDataService = inject(DemoDataService);
+  private waypointsVisible: boolean = false;
 
-  public readonly MAX_ZOOM = 2.0;
+  public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
   public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
   public readonly CROSSHAIRS_MOVEMENT_DISTANCE = 50;
@@ -95,11 +99,11 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
         break;
-      case DACommandType.MULTI_ITEM_SELECT:
-        this.multiItemSelect();
-        break;
       case DACommandType.SINGLE_ITEM_TOGGLE_SELECT:
         this.singleItemSelect();
+        break;
+      case DACommandType.MULTI_ITEM_SELECT:
+        this.multiItemSelect();
         break;
       case DACommandType.ZOOM_IN:
         this.zoomIn();
@@ -137,6 +141,12 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.EXIT_DRAG_MODE:
         this.exitDragMode();
         break;
+      case DACommandType.ADD_WAYPOINT:
+        this.addWaypoint();
+        break;
+      case DACommandType.TOGGLE_WAYPOINT_VISIBILITY:
+        this.toggleWaypointVisibility();
+        break;
       default:
         this.assertNever(command);
     }
@@ -162,28 +172,44 @@ export class DrawingAreaComponent implements AfterViewInit {
       return;
     }
 
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) {
+      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
+      return;
+    }
+
     const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
     if (daEdgesContainingCrosshairs.length > 0) {
       const edgeToToggle = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
       edgeToToggle.isSelected = !edgeToToggle.isSelected;
       return;
-
     }
-    return;
   }
 
   private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
+    this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
 
-    if (this.drawingLayer.getSelectedItems().length == 1) {
-      this.drawingLayer.getSelectedItems()[0].isSelected = false;
+    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
+
+    if (daNodesContainingCrosshairs.length > 0) {
+      daNodesContainingCrosshairs[0].isSelected = true;
       return;
     }
 
-    this.drawingLayer.unselectAll();
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) {
+      waypointUnderCrosshairs.isSelected = true;
+      return;
+    }
 
-    this.selectTopItem();
+    const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
+    if (daEdgesContainingCrosshairs.length > 0) {
+      daEdgesContainingCrosshairs[0].isSelected = true;
+      return;
+    }
   }
 
   private exitLabelEditMode() {
@@ -191,11 +217,13 @@ export class DrawingAreaComponent implements AfterViewInit {
     console.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
   }
 
   private unselectAll() {
     this.finishTweens();
     this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
   }
 
   private insertChar(key: string) {
@@ -390,8 +418,42 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
 
+  private getCrosshairsBBoxInDrawingLayer(): { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number } {
+    const rect = this.crosshairsLayer.crosshairs.konvaGroup.getClientRect();
+    const scale = this.drawingLayer.scaleX();
+    const layerX = this.drawingLayer.x();
+    const layerY = this.drawingLayer.y();
+    const minX = (rect.x - layerX) / scale;
+    const minY = (rect.y - layerY) / scale;
+    const maxX = (rect.x + rect.width - layerX) / scale;
+    const maxY = (rect.y + rect.height - layerY) / scale;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    console.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${scale} layerPos=(${layerX},${layerY})`);
+    return { minX, minY, maxX, maxY, cx, cy };
+  }
+
+  private edgeIntersectsBox(edge: DAEdge, box: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
+    const pathPoints = edge.getPathPoints();
+    for (let i = 0; i < pathPoints.length - 1; i++) {
+      const p1 = pathPoints[i];
+      const p2 = pathPoints[i + 1];
+      if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private getDAEdgesContainingCrosshairs(): DAEdge[] {
-    return this.drawingLayer.getDaEdgesIntersectingGroup(this.crosshairsLayer.crosshairs.konvaGroup);
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+
+    const edges = this.drawingLayer.getDAEdges();
+    return edges.filter(edge => {
+      const hit = this.edgeIntersectsBox(edge, box);
+      if (hit) console.log(`  edge hit (${edge.waypoints.length} waypoints)`);
+      return hit;
+    });
   }
 
 
@@ -473,6 +535,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.finishTweens();
     this.enterDragMode(); // Auto-enter drag mode
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
     
     // Collect all connected edges to move
@@ -481,18 +544,30 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
+    // Also collect edges from selected waypoints
+    selectedWaypoints.forEach(waypoint => {
+      const edges = this.getEdgesContainingWaypoint(waypoint);
+      edges.forEach(edge => edgesToMove.add(edge));
+    });
+    
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
     
-    // Store initial positions for all nodes
-    const initialPositions = selectedNodes.map(node => ({
+    // Store initial positions for all nodes and waypoints
+    const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialX: node.group.x(),
       targetX: node.group.x() - dragDistance
     }));
     
-    // Single animation loop for all nodes
+    const initialWaypointPositions = selectedWaypoints.map(waypoint => ({
+      waypoint,
+      initialX: waypoint.x,
+      targetX: waypoint.x - dragDistance
+    }));
+    
+    // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
     
@@ -501,9 +576,15 @@ export class DrawingAreaComponent implements AfterViewInit {
       const progress = Math.min(elapsed / duration, 1);
       
       // Update all nodes
-      initialPositions.forEach(({ node, initialX, targetX }) => {
+      initialNodePositions.forEach(({ node, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
+      });
+      
+      // Update all waypoints
+      initialWaypointPositions.forEach(({ waypoint, initialX, targetX }) => {
+        const newX = initialX + (targetX - initialX) * progress;
+        waypoint.x = newX;
       });
       
       // Update edges smoothly during animation
@@ -532,6 +613,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.finishTweens();
     this.enterDragMode(); // Auto-enter drag mode
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
     
     // Collect all connected edges to move
@@ -540,18 +622,30 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
+    // Also collect edges from selected waypoints
+    selectedWaypoints.forEach((waypoint: DAWaypoint) => {
+      const edges = this.getEdgesContainingWaypoint(waypoint);
+      edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
+    });
+    
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
     
-    // Store initial positions for all nodes
-    const initialPositions = selectedNodes.map(node => ({
+    // Store initial positions for all nodes and waypoints
+    const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialX: node.group.x(),
       targetX: node.group.x() + dragDistance
     }));
     
-    // Single animation loop for all nodes
+    const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
+      waypoint,
+      initialX: waypoint.x,
+      targetX: waypoint.x + dragDistance
+    }));
+    
+    // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
     
@@ -560,9 +654,15 @@ export class DrawingAreaComponent implements AfterViewInit {
       const progress = Math.min(elapsed / duration, 1);
       
       // Update all nodes
-      initialPositions.forEach(({ node, initialX, targetX }) => {
+      initialNodePositions.forEach(({ node, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
+      });
+      
+      // Update all waypoints
+      initialWaypointPositions.forEach(({ waypoint, initialX, targetX }) => {
+        const newX = initialX + (targetX - initialX) * progress;
+        waypoint.x = newX;
       });
       
       // Update edges smoothly during animation
@@ -591,6 +691,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.finishTweens();
     this.enterDragMode(); // Auto-enter drag mode
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
     
     // Collect all connected edges to move
@@ -599,18 +700,30 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
+    // Also collect edges from selected waypoints
+    selectedWaypoints.forEach((waypoint: DAWaypoint) => {
+      const edges = this.getEdgesContainingWaypoint(waypoint);
+      edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
+    });
+    
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
     
-    // Store initial positions for all nodes
-    const initialPositions = selectedNodes.map(node => ({
+    // Store initial positions for all nodes and waypoints
+    const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialY: node.group.y(),
       targetY: node.group.y() - dragDistance
     }));
     
-    // Single animation loop for all nodes
+    const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
+      waypoint,
+      initialY: waypoint.y,
+      targetY: waypoint.y - dragDistance
+    }));
+    
+    // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
     
@@ -619,9 +732,15 @@ export class DrawingAreaComponent implements AfterViewInit {
       const progress = Math.min(elapsed / duration, 1);
       
       // Update all nodes
-      initialPositions.forEach(({ node, initialY, targetY }) => {
+      initialNodePositions.forEach(({ node, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
+      });
+      
+      // Update all waypoints
+      initialWaypointPositions.forEach(({ waypoint, initialY, targetY }) => {
+        const newY = initialY + (targetY - initialY) * progress;
+        waypoint.y = newY;
       });
       
       // Update edges smoothly during animation
@@ -650,6 +769,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.finishTweens();
     this.enterDragMode(); // Auto-enter drag mode
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
     
     // Collect all connected edges to move
@@ -658,18 +778,30 @@ export class DrawingAreaComponent implements AfterViewInit {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
     
+    // Also collect edges from selected waypoints
+    selectedWaypoints.forEach((waypoint: DAWaypoint) => {
+      const edges = this.getEdgesContainingWaypoint(waypoint);
+      edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
+    });
+    
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
     
-    // Store initial positions for all nodes
-    const initialPositions = selectedNodes.map(node => ({
+    // Store initial positions for all nodes and waypoints
+    const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialY: node.group.y(),
       targetY: node.group.y() + dragDistance
     }));
     
-    // Single animation loop for all nodes
+    const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
+      waypoint,
+      initialY: waypoint.y,
+      targetY: waypoint.y + dragDistance
+    }));
+    
+    // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
     
@@ -678,9 +810,15 @@ export class DrawingAreaComponent implements AfterViewInit {
       const progress = Math.min(elapsed / duration, 1);
       
       // Update all nodes
-      initialPositions.forEach(({ node, initialY, targetY }) => {
+      initialNodePositions.forEach(({ node, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
+      });
+      
+      // Update all waypoints
+      initialWaypointPositions.forEach(({ waypoint, initialY, targetY }) => {
+        const newY = initialY + (targetY - initialY) * progress;
+        waypoint.y = newY;
       });
       
       // Update edges smoothly during animation
@@ -708,6 +846,7 @@ export class DrawingAreaComponent implements AfterViewInit {
   private updateEdgePoints(edge: DAEdge) {
     const points = edge.calculatePoints(edge.srcNode, edge.destNode);
     edge._line.points(points);
+    edge.refreshSegments();
     // Force redraw
     this.drawingLayer.batchDraw();
   }
@@ -753,6 +892,102 @@ export class DrawingAreaComponent implements AfterViewInit {
         easing: Konva.Easings.Linear
       }).play());
     }
+  }
+
+  private addWaypoint(): void {
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+
+    const edges: DAEdge[] = this.drawingLayer.getDAEdges();
+
+    for (const edge of edges) {
+      const pathPoints = edge.getPathPoints();
+      for (let i = 0; i < pathPoints.length - 1; i++) {
+        const p1 = pathPoints[i];
+        const p2 = pathPoints[i + 1];
+        if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
+          // Place waypoint at the point on this segment closest to crosshairs center
+          const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
+          console.log(`addWaypoint: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
+          const waypoint = new DAWaypoint(point.x, point.y);
+          edge.addWaypoint(waypoint);
+          if (!this.waypointsVisible) {
+            this.waypointsVisible = true;
+            this.updateWaypointVisibility();
+            this.emitWaypointVisibility();
+          } else {
+            waypoint.setVisibleForSelection(true);
+          }
+          this.drawingLayer.batchDraw();
+          return;
+        }
+      }
+    }
+    console.log('addWaypoint: no edge found under crosshairs');
+  }
+
+
+  private updateWaypointVisibility(): void {
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.waypoints.forEach(waypoint => {
+        waypoint.setVisibleForSelection(this.waypointsVisible);
+      });
+    });
+  }
+
+  private toggleWaypointVisibility(): void {
+    this.waypointsVisible = !this.waypointsVisible;
+    this.updateWaypointVisibility();
+    this.drawingLayer.batchDraw();
+    this.emitWaypointVisibility();
+  }
+
+  private emitWaypointVisibility(): void {
+    this.waypointsVisibleChange.emit(this.waypointsVisible);
+  }
+
+  private getSelectedWaypoints(): DAWaypoint[] {
+    const selectedWaypoints: DAWaypoint[] = [];
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.waypoints.forEach(waypoint => {
+        if (waypoint.isSelected) {
+          selectedWaypoints.push(waypoint);
+        }
+      });
+    });
+    return selectedWaypoints;
+  }
+
+  private getWaypointUnderCrosshairs(): DAWaypoint | null {
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+
+    const edges = this.drawingLayer.getDAEdges();
+    for (const edge of edges) {
+      for (const waypoint of edge.waypoints) {
+        console.log(`  waypoint at (${waypoint.x.toFixed(1)},${waypoint.y.toFixed(1)}) vs box (${box.minX.toFixed(1)},${box.minY.toFixed(1)})-(${box.maxX.toFixed(1)},${box.maxY.toFixed(1)})`);
+        if (waypoint.x >= box.minX && waypoint.x <= box.maxX &&
+            waypoint.y >= box.minY && waypoint.y <= box.maxY) {
+          console.log('  -> waypoint HIT');
+          return waypoint;
+        }
+      }
+    }
+    return null;
+  }
+
+  private unselectAllWaypoints(): void {
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.waypoints.forEach(waypoint => {
+        waypoint.isSelected = false;
+      });
+    });
+  }
+
+  private getEdgesContainingWaypoint(waypoint: DAWaypoint): DAEdge[] {
+    const edges = this.drawingLayer.getDAEdges();
+    return edges.filter(edge => edge.waypoints.includes(waypoint));
   }
 
   private enterDragMode() {

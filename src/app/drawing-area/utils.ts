@@ -179,6 +179,56 @@ function closest(points: Point[], p1: Point) {
 /**
  * Checks if a Konva.Line intersects the bounding box of a Konva.Group.
  */
+/**
+ * Liang-Barsky line-rect intersection: checks if line segment (x1,y1)-(x2,y2)
+ * intersects axis-aligned rectangle [minX,minY]-[maxX,maxY].
+ */
+export function lineSegmentIntersectsRect(
+  x1: number, y1: number, x2: number, y2: number,
+  minX: number, minY: number, maxX: number, maxY: number
+): boolean {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+
+  for (const edge of [
+    { p: -dx, q: x1 - minX },
+    { p:  dx, q: maxX - x1 },
+    { p: -dy, q: y1 - minY },
+    { p:  dy, q: maxY - y1 },
+  ]) {
+    if (edge.p === 0) {
+      if (edge.q < 0) return false;
+    } else {
+      const r = edge.q / edge.p;
+      if (edge.p < 0) {
+        t0 = Math.max(t0, r);
+      } else {
+        t1 = Math.min(t1, r);
+      }
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns the closest point on segment (x1,y1)-(x2,y2) to point (px,py).
+ */
+export function closestPointOnSegment(
+  px: number, py: number,
+  x1: number, y1: number,
+  x2: number, y2: number
+): Point {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return { x: x1, y: y1 };
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  return { x: x1 + t * dx, y: y1 + t * dy };
+}
+
 export function lineIntersectsGroupBoundingRect(line: Konva.Line, group: Konva.Group): boolean {
   const groupBoundingRect = group.getClientRect();
   const lineBoundingRect = line.getClientRect();

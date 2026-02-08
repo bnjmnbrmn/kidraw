@@ -1,6 +1,6 @@
 # Project Todos
 
-- [ ] Drag-able nodes
+- [x] Drag-able nodes
   - Have a submenukey on the left side, maybe r, for "drag selected"
   - The submenu continues to have left/right/up/down options
   - Crosshairs disappear during the drag
@@ -10,10 +10,14 @@
     - ~~Edge points update after animation rather than smoothly during movement~~ ✅ **FIXED**
 - [ ] Add waypoints to edges
   - A waypoint should be like a node, but the box part should generally be invisible
-  - The waypoint should be draggable
+   - There should be a key to add a waypoint to the edge under the crosshairs
+   - When holding a select key (currently s or v), the waypoints should be visible as blue dots if they have no text, and as blue edged boxes if they do have text
   - The waypoint should be selectable
+  - It should be visible when selected
+  - The waypoint should be draggable
   - The waypoint should be deletable (don't add this feature until we've added deletion in general)
   - The waypoint should be editable (don't add this feature until we've added editing in general)
+  - Creating a waypoint should be like creating a node
   - The label if it exists should always be visible 
   - It should always connect two edge segments, at least one of which will be undirected (f there are multiple edge segments, only the final one, connected to the destination node, should be directed (to the destination node)).  
   - The undirected edge should have its text to one side of the edges it connects

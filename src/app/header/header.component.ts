@@ -8,8 +8,13 @@ import { Component } from '@angular/core';
 })
 export class HeaderComponent {
   zoomLevel: number = 100;
+  waypointsVisible: boolean = false;
 
   onZoomLevelChange(level: number) {
     this.zoomLevel = level;
+  }
+
+  onWaypointsVisibleChange(visible: boolean) {
+    this.waypointsVisible = visible;
   }
 }

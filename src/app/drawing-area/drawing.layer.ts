@@ -45,6 +45,10 @@ export class DrawingLayer extends Konva.Layer {
     return this.daEdges.filter((daEdge) => daEdge.isSelected);
   }
 
+  getDAEdges(): DAEdge[] {
+    return this.daEdges;
+  }
+
   appendTextToSelected(text: string) {
     this.getSelectedDANodes().forEach(daNode => {
       daNode.label.text(daNode.label.text() + text);

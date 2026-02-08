@@ -2,7 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
+import { DAWaypoint } from './da-waypoint';
 import { DACrosshairs } from './da-crosshairs.group';
+import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 
 describe('DrawingArea Unit Tests', () => {
   describe('DANode', () => {
@@ -54,7 +56,7 @@ describe('DrawingArea Unit Tests', () => {
       
       expect(edge.konvaGroup).toBeDefined();
       expect(edge.line).toBeDefined();
-      expect(edge.isSelected).toBe(true);
+      expect(edge.isSelected).toBe(false);
     });
 
     it('should calculate correct edge-to-edge points', () => {
@@ -77,12 +79,12 @@ describe('DrawingArea Unit Tests', () => {
       const destNode = new DANode(200, 100, 'dest');
       const edge = new DAEdge(srcNode, destNode, 'test');
       
-      expect(edge.isSelected).toBe(true);
-      expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_SELECTED);
-      
-      edge.isSelected = false;
       expect(edge.isSelected).toBe(false);
       expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_NORMAL);
+      
+      edge.isSelected = true;
+      expect(edge.isSelected).toBe(true);
+      expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_SELECTED);
     });
 
     it('should return correct z-index', () => {
@@ -233,6 +235,199 @@ describe('DrawingArea Unit Tests', () => {
       
       const selectedNodesAfter = drawingLayer.getSelectedDANodes();
       expect(selectedNodesAfter.length).toBe(0);
+    });
+  });
+
+  describe('lineSegmentIntersectsRect', () => {
+    // Rect from (10,10) to (30,30)
+    const minX = 10, minY = 10, maxX = 30, maxY = 30;
+
+    it('should detect horizontal line through rect', () => {
+      expect(lineSegmentIntersectsRect(0, 20, 40, 20, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should detect vertical line through rect', () => {
+      expect(lineSegmentIntersectsRect(20, 0, 20, 40, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should detect diagonal line through rect', () => {
+      expect(lineSegmentIntersectsRect(0, 0, 40, 40, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should detect line segment entirely inside rect', () => {
+      expect(lineSegmentIntersectsRect(15, 15, 25, 25, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should detect line starting inside rect', () => {
+      expect(lineSegmentIntersectsRect(20, 20, 50, 50, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should detect line ending inside rect', () => {
+      expect(lineSegmentIntersectsRect(0, 0, 20, 20, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should miss line fully above rect', () => {
+      expect(lineSegmentIntersectsRect(0, 5, 40, 5, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should miss line fully below rect', () => {
+      expect(lineSegmentIntersectsRect(0, 35, 40, 35, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should miss line fully left of rect', () => {
+      expect(lineSegmentIntersectsRect(5, 0, 5, 40, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should miss line fully right of rect', () => {
+      expect(lineSegmentIntersectsRect(35, 0, 35, 40, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should miss diagonal that passes corner but segment ends before rect', () => {
+      expect(lineSegmentIntersectsRect(0, 0, 5, 5, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should detect line touching rect edge', () => {
+      expect(lineSegmentIntersectsRect(0, 10, 40, 10, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should handle zero-length segment inside rect', () => {
+      expect(lineSegmentIntersectsRect(20, 20, 20, 20, minX, minY, maxX, maxY)).toBe(true);
+    });
+
+    it('should handle zero-length segment outside rect', () => {
+      expect(lineSegmentIntersectsRect(0, 0, 0, 0, minX, minY, maxX, maxY)).toBe(false);
+    });
+
+    it('should work with real demo edge - horizontal edge (150,150)-(350,150) vs crosshairs at (250,140)-(290,160)', () => {
+      // Simulates crosshairs bbox centered at 270,150 with ~20px extent
+      expect(lineSegmentIntersectsRect(150, 150, 350, 150, 250, 140, 290, 160)).toBe(true);
+    });
+
+    it('should miss when crosshairs are far from edge', () => {
+      expect(lineSegmentIntersectsRect(150, 150, 350, 150, 400, 400, 440, 440)).toBe(false);
+    });
+  });
+
+  describe('closestPointOnSegment', () => {
+    it('should return start point when closest', () => {
+      const p = closestPointOnSegment(0, 0, 10, 0, 20, 0);
+      expect(p.x).toBe(10);
+      expect(p.y).toBe(0);
+    });
+
+    it('should return end point when closest', () => {
+      const p = closestPointOnSegment(30, 0, 10, 0, 20, 0);
+      expect(p.x).toBe(20);
+      expect(p.y).toBe(0);
+    });
+
+    it('should return midpoint for perpendicular projection', () => {
+      const p = closestPointOnSegment(15, 10, 10, 0, 20, 0);
+      expect(p.x).toBe(15);
+      expect(p.y).toBe(0);
+    });
+
+    it('should handle vertical segment', () => {
+      const p = closestPointOnSegment(5, 15, 0, 10, 0, 20);
+      expect(p.x).toBe(0);
+      expect(p.y).toBe(15);
+    });
+
+    it('should handle zero-length segment', () => {
+      const p = closestPointOnSegment(5, 5, 10, 10, 10, 10);
+      expect(p.x).toBe(10);
+      expect(p.y).toBe(10);
+    });
+
+    it('should handle diagonal segment', () => {
+      const p = closestPointOnSegment(0, 10, 0, 0, 10, 10);
+      expect(p.x).toBeCloseTo(5, 5);
+      expect(p.y).toBeCloseTo(5, 5);
+    });
+  });
+
+  describe('DAWaypoint', () => {
+    it('should create waypoint at correct position', () => {
+      const wp = new DAWaypoint(100, 200);
+      expect(wp.x).toBe(100);
+      expect(wp.y).toBe(200);
+      expect(wp.isSelected).toBe(false);
+    });
+
+    it('should start hidden', () => {
+      const wp = new DAWaypoint(100, 200);
+      expect(wp.group.visible()).toBe(false);
+    });
+
+    it('should become visible when selected', () => {
+      const wp = new DAWaypoint(100, 200);
+      wp.isSelected = true;
+      expect(wp.group.visible()).toBe(true);
+      expect(wp.isSelected).toBe(true);
+    });
+
+    it('should become visible via setVisibleForSelection(true)', () => {
+      const wp = new DAWaypoint(100, 200);
+      wp.setVisibleForSelection(true);
+      expect(wp.group.visible()).toBe(true);
+    });
+
+    it('should hide when setVisibleForSelection(false) and not selected', () => {
+      const wp = new DAWaypoint(100, 200);
+      wp.setVisibleForSelection(true);
+      wp.setVisibleForSelection(false);
+      expect(wp.group.visible()).toBe(false);
+    });
+
+    it('should stay visible when setVisibleForSelection(false) but is selected', () => {
+      const wp = new DAWaypoint(100, 200);
+      wp.isSelected = true;
+      wp.setVisibleForSelection(false);
+      expect(wp.group.visible()).toBe(true);
+    });
+
+    it('should update position', () => {
+      const wp = new DAWaypoint(100, 200);
+      wp.x = 300;
+      wp.y = 400;
+      expect(wp.x).toBe(300);
+      expect(wp.y).toBe(400);
+    });
+  });
+
+  describe('DAEdge with waypoints', () => {
+    it('should add waypoint to edge', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const wp = new DAWaypoint(100, 50);
+      edge.addWaypoint(wp);
+      expect(edge.waypoints.length).toBe(1);
+      expect(edge.waypoints[0]).toBe(wp);
+    });
+
+    it('should sort waypoints by position along edge', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const wp1 = new DAWaypoint(300, 25);
+      const wp2 = new DAWaypoint(100, 25);
+      const wp3 = new DAWaypoint(200, 25);
+      edge.addWaypoint(wp1);
+      edge.addWaypoint(wp2);
+      edge.addWaypoint(wp3);
+      expect(edge.waypoints[0]).toBe(wp2);
+      expect(edge.waypoints[1]).toBe(wp3);
+      expect(edge.waypoints[2]).toBe(wp1);
+    });
+
+    it('should update selection style on main line', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_NORMAL);
+      edge.isSelected = true;
+      expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_SELECTED);
     });
   });
 });

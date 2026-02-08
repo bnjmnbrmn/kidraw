@@ -124,6 +124,18 @@ export class KeymenuComponent implements AfterViewInit {
             () => {
               this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS});
             }
+          ),
+          w: new LabeledAction(
+            'Add Waypoint',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});
+            }
+          ),
+          t: new LabeledAction(
+            'Toggle Waypoints',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY});
+            }
           )
         }),
         "labelEdit": new PrintedInstructionKeyMenuModeConfig(
