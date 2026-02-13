@@ -143,6 +143,29 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.DELETE});
             }
           ),
+          e: new LabeledSubmenuConfig(
+            "Select+Drag...",
+            {
+              s: new LabeledAction("...Select", () => {
+                this.keyMenuOut.emit({kind: DACommandType.SINGLE_ITEM_TOGGLE_SELECT});
+              }),
+              v: new LabeledAction("...Multi", () => {
+                this.keyMenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT});
+              }),
+              j: new LabeledAction("Drag Left", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT});
+              }),
+              k: new LabeledAction("Drag Down", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN});
+              }),
+              i: new LabeledAction("Drag Up", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP});
+              }),
+              l: new LabeledAction("Drag Right", () => {
+                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
+              })
+            }
+          ),
           a: new LabeledSubmenuConfig(
             "Add...",
             {
