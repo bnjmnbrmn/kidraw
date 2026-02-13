@@ -1,14 +1,9 @@
 import Konva from 'konva';
-import { DAEdge } from './da-edge';
 
 export class DAWaypoint {
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
   private readonly _circle: Konva.Circle;
-  private readonly _rect: Konva.Rect;
-  private _hasText: boolean = false;
-  private _text: Konva.Text | null = null;
-  private _label: string = '';
 
   public readonly WAYPOINT_RADIUS = 8;
   public readonly WAYPOINT_STROKE_WIDTH = 2;
@@ -16,12 +11,9 @@ export class DAWaypoint {
   public readonly SELECTED_STROKE_WIDTH = 3;
   public readonly SELECTED_COLOR = 'darkblue';
 
-  constructor(x: number, y: number, label: string = '') {
+  constructor(x: number, y: number) {
     this.group = new Konva.Group({ x, y });
-    this._label = label;
-    this._hasText = label.length > 0;
 
-    // Create circle for waypoint
     this._circle = new Konva.Circle({
       radius: this.WAYPOINT_RADIUS,
       stroke: this.WAYPOINT_COLOR,
@@ -29,40 +21,7 @@ export class DAWaypoint {
       fill: 'white'
     });
 
-    // Create rectangle for waypoints with text
-    this._rect = new Konva.Rect({
-      x: -25,
-      y: -15,
-      width: 50,
-      height: 30,
-      stroke: this.WAYPOINT_COLOR,
-      strokeWidth: this.WAYPOINT_STROKE_WIDTH,
-      fill: 'white',
-      visible: this._hasText
-    });
-
-    // Create text label if provided
-    if (this._hasText) {
-      this._text = new Konva.Text({
-        x: -20,
-        y: -10,
-        width: 40,
-        height: 20,
-        text: this._label,
-        fontSize: 12,
-        fontFamily: 'Arial',
-        textAlign: 'center',
-        verticalAlign: 'middle',
-        fill: 'black'
-      });
-    }
-
-    // Add shapes to group
     this.group.add(this._circle);
-    this.group.add(this._rect);
-    if (this._text) {
-      this.group.add(this._text);
-    }
 
     // Hidden by default until visibility is toggled on
     this.group.visible(false);
@@ -79,38 +38,6 @@ export class DAWaypoint {
   set isSelected(value: boolean) {
     this._isSelected = value;
     this.updateAppearance();
-  }
-
-  get hasText(): boolean {
-    return this._hasText;
-  }
-
-  get label(): string {
-    return this._label;
-  }
-
-  set label(value: string) {
-    this._label = value;
-    this._hasText = value.length > 0;
-    
-    // Create or update text
-    if (this._hasText && !this._text) {
-      this._text = new Konva.Text({
-        x: -20,
-        y: -10,
-        width: 40,
-        height: 20,
-        text: this._label,
-        fontSize: 12,
-        fontFamily: 'Arial',
-        textAlign: 'center',
-        verticalAlign: 'middle',
-        fill: 'black'
-      });
-      this.group.add(this._text);
-    } else if (this._text) {
-      this._text.text(this._label);
-    }
   }
 
   get position(): { x: number; y: number } {
@@ -146,7 +73,6 @@ export class DAWaypoint {
   }
 
   setVisibleForSelection(visible: boolean): void {
-    // Show group if visibility is toggled on OR if selected
     this.group.visible(visible || this._isSelected);
   }
 
@@ -156,10 +82,7 @@ export class DAWaypoint {
 
     this._circle.stroke(strokeColor);
     this._circle.strokeWidth(strokeWidth);
-    this._rect.stroke(strokeColor);
-    this._rect.strokeWidth(strokeWidth);
 
-    // Selected waypoints are always visible
     if (this._isSelected) {
       this.group.visible(true);
     }

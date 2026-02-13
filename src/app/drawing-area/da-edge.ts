@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAWaypoint} from './da-waypoint';
+import {DALabel} from './da-label';
 
 export class DAEdge {
   readonly group: Konva.Group;
@@ -9,6 +10,7 @@ export class DAEdge {
   public readonly srcNode: DANode;
   public readonly destNode: DANode;
   private _waypoints: DAWaypoint[] = [];
+  private _labels: DALabel[] = [];
   private _segments: (Konva.Line | Konva.Arrow)[] = [];
 
   public readonly STROKE_WIDTH_SELECTED = 4;
@@ -96,6 +98,23 @@ export class DAEdge {
       this._waypoints.splice(index, 1);
       waypoint.konvaGroup.remove();
       this.updateSegments();
+    }
+  }
+
+  get labels(): DALabel[] {
+    return this._labels;
+  }
+
+  addLabel(label: DALabel): void {
+    this._labels.push(label);
+    this.group.add(label.konvaGroup);
+  }
+
+  removeLabel(label: DALabel): void {
+    const index = this._labels.indexOf(label);
+    if (index > -1) {
+      this._labels.splice(index, 1);
+      label.konvaGroup.remove();
     }
   }
 

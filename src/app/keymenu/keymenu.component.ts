@@ -136,6 +136,12 @@ export class KeymenuComponent implements AfterViewInit {
             () => {
               this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY});
             }
+          ),
+          x: new LabeledAction(
+            'Delete',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.DELETE});
+            }
           )
         }),
         "labelEdit": new PrintedInstructionKeyMenuModeConfig(

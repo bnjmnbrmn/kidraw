@@ -76,12 +76,30 @@ export class DrawingLayer extends Konva.Layer {
     );
   }
 
+  removeNode(node: DANode): void {
+    // Remove all edges connected to this node first
+    const connectedEdges = this.daEdges.filter(e => e.srcNode === node || e.destNode === node);
+    connectedEdges.forEach(edge => this.removeEdge(edge));
+    
+    node.konvaGroup.remove();
+    const index = this.daNodes.indexOf(node);
+    if (index >= 0) {
+      this.daNodes.splice(index, 1);
+    }
+  }
+
+  removeEdge(edge: DAEdge): void {
+    edge.konvaGroup.remove();
+    const index = this.daEdges.indexOf(edge);
+    if (index >= 0) {
+      this.daEdges.splice(index, 1);
+    }
+  }
   addEdge(srcNode: DANode, destNode: DANode) {
     let daEdge = new DAEdge(srcNode, destNode, "");
     this.daEdgeGroup.add(daEdge.konvaGroup);
     this.daEdges.push(daEdge);
   }
-
 
   getDaEdgesIntersectingGroup(group: Konva.Group) {
     return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, group));

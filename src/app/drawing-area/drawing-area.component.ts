@@ -5,6 +5,7 @@ import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
+import { DALabel } from './da-label';
 import { DACommand, DACommandType } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
@@ -147,6 +148,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.TOGGLE_WAYPOINT_VISIBILITY:
         this.toggleWaypointVisibility();
         break;
+      case DACommandType.DELETE:
+        this.deleteSelected();
+        break;
       default:
         this.assertNever(command);
     }
@@ -191,6 +195,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.tweens = [];
     this.drawingLayer.unselectAll();
     this.unselectAllWaypoints();
+    this.unselectAllLabels();
 
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
 
@@ -202,6 +207,12 @@ export class DrawingAreaComponent implements AfterViewInit {
     const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (waypointUnderCrosshairs) {
       waypointUnderCrosshairs.isSelected = true;
+      return;
+    }
+
+    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
+    if (labelUnderCrosshairs) {
+      labelUnderCrosshairs.isSelected = true;
       return;
     }
 
@@ -218,12 +229,14 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.unselectAll();
     this.unselectAllWaypoints();
+    this.unselectAllLabels();
   }
 
   private unselectAll() {
     this.finishTweens();
     this.drawingLayer.unselectAll();
     this.unselectAllWaypoints();
+    this.unselectAllLabels();
   }
 
   private insertChar(key: string) {
@@ -988,6 +1001,115 @@ export class DrawingAreaComponent implements AfterViewInit {
   private getEdgesContainingWaypoint(waypoint: DAWaypoint): DAEdge[] {
     const edges = this.drawingLayer.getDAEdges();
     return edges.filter(edge => edge.waypoints.includes(waypoint));
+  }
+
+  private getSelectedLabels(): DALabel[] {
+    const selectedLabels: DALabel[] = [];
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.labels.forEach(label => {
+        if (label.isSelected) {
+          selectedLabels.push(label);
+        }
+      });
+    });
+    return selectedLabels;
+  }
+
+  private getLabelUnderCrosshairs(): DALabel | null {
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+
+    const edges = this.drawingLayer.getDAEdges();
+    for (const edge of edges) {
+      for (const label of edge.labels) {
+        if (label.x >= box.minX && label.x <= box.maxX &&
+            label.y >= box.minY && label.y <= box.maxY) {
+          return label;
+        }
+      }
+    }
+    return null;
+  }
+
+  private unselectAllLabels(): void {
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.labels.forEach(label => {
+        label.isSelected = false;
+      });
+    });
+  }
+
+  private getEdgesContainingLabel(label: DALabel): DAEdge[] {
+    const edges = this.drawingLayer.getDAEdges();
+    return edges.filter(edge => edge.labels.includes(label));
+  }
+
+  private deleteSelected(): void {
+    // Priority: nodes > edges > waypoints > crosshairs
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length > 0) {
+      selectedNodes.forEach(node => this.drawingLayer.removeNode(node));
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    if (selectedEdges.length > 0) {
+      selectedEdges.forEach(edge => this.drawingLayer.removeEdge(edge));
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const selectedWaypoints = this.getSelectedWaypoints();
+    if (selectedWaypoints.length > 0) {
+      selectedWaypoints.forEach(waypoint => {
+        const edges = this.getEdgesContainingWaypoint(waypoint);
+        edges.forEach(edge => edge.removeWaypoint(waypoint));
+      });
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const selectedLabels = this.getSelectedLabels();
+    if (selectedLabels.length > 0) {
+      selectedLabels.forEach(label => {
+        const edges = this.getEdgesContainingLabel(label);
+        edges.forEach(edge => edge.removeLabel(label));
+      });
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    // Nothing selected: delete item under crosshairs
+    const nodeUnderCrosshairs = this.getDANodesContainingCrosshairs()[0];
+    if (nodeUnderCrosshairs) {
+      this.drawingLayer.removeNode(nodeUnderCrosshairs);
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()[0];
+    if (edgeUnderCrosshairs) {
+      this.drawingLayer.removeEdge(edgeUnderCrosshairs);
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) {
+      const edges = this.getEdgesContainingWaypoint(waypointUnderCrosshairs);
+      edges.forEach(edge => edge.removeWaypoint(waypointUnderCrosshairs));
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
+    if (labelUnderCrosshairs) {
+      const edges = this.getEdgesContainingLabel(labelUnderCrosshairs);
+      edges.forEach(edge => edge.removeLabel(labelUnderCrosshairs));
+      this.drawingLayer.batchDraw();
+    }
   }
 
   private enterDragMode() {

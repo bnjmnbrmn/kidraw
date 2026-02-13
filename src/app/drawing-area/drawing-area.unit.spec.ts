@@ -3,6 +3,7 @@ import { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
+import { DALabel } from './da-label';
 import { DACrosshairs } from './da-crosshairs.group';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 
@@ -428,6 +429,145 @@ describe('DrawingArea Unit Tests', () => {
       expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_NORMAL);
       edge.isSelected = true;
       expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_SELECTED);
+    });
+
+    it('should remove waypoint from edge', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const wp = new DAWaypoint(100, 50);
+      edge.addWaypoint(wp);
+      expect(edge.waypoints.length).toBe(1);
+      edge.removeWaypoint(wp);
+      expect(edge.waypoints.length).toBe(0);
+    });
+
+    it('should return path points including waypoints', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const wp = new DAWaypoint(200, 100);
+      edge.addWaypoint(wp);
+      const points = edge.getPathPoints();
+      // src edge point, waypoint, dest edge point
+      expect(points.length).toBe(3);
+      expect(points[1].x).toBe(200);
+      expect(points[1].y).toBe(100);
+    });
+  });
+
+  describe('DALabel', () => {
+    it('should create label at correct position with text', () => {
+      const label = new DALabel(100, 200, 'test');
+      expect(label.x).toBe(100);
+      expect(label.y).toBe(200);
+      expect(label.label).toBe('test');
+      expect(label.isSelected).toBe(false);
+    });
+
+    it('should be visible by default', () => {
+      const label = new DALabel(100, 200, 'test');
+      expect(label.group.visible()).toBe(true);
+    });
+
+    it('should handle selection state', () => {
+      const label = new DALabel(100, 200, 'test');
+      label.isSelected = true;
+      expect(label.isSelected).toBe(true);
+      label.isSelected = false;
+      expect(label.isSelected).toBe(false);
+    });
+
+    it('should update label text', () => {
+      const label = new DALabel(100, 200, 'old');
+      label.label = 'new';
+      expect(label.label).toBe('new');
+    });
+
+    it('should update position', () => {
+      const label = new DALabel(100, 200, 'test');
+      label.x = 300;
+      label.y = 400;
+      expect(label.x).toBe(300);
+      expect(label.y).toBe(400);
+    });
+
+    it('should update position via position setter', () => {
+      const label = new DALabel(100, 200, 'test');
+      label.position = { x: 50, y: 75 };
+      expect(label.position.x).toBe(50);
+      expect(label.position.y).toBe(75);
+    });
+  });
+
+  describe('DAEdge with labels', () => {
+    it('should add label to edge', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const label = new DALabel(100, 50, 'mid');
+      edge.addLabel(label);
+      expect(edge.labels.length).toBe(1);
+      expect(edge.labels[0]).toBe(label);
+    });
+
+    it('should remove label from edge', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const label = new DALabel(100, 50, 'mid');
+      edge.addLabel(label);
+      expect(edge.labels.length).toBe(1);
+      edge.removeLabel(label);
+      expect(edge.labels.length).toBe(0);
+    });
+
+    it('should not affect waypoints when adding/removing labels', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(200, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      const wp = new DAWaypoint(100, 50);
+      const label = new DALabel(100, -20, 'tag');
+      edge.addWaypoint(wp);
+      edge.addLabel(label);
+      expect(edge.waypoints.length).toBe(1);
+      expect(edge.labels.length).toBe(1);
+      edge.removeLabel(label);
+      expect(edge.waypoints.length).toBe(1);
+      expect(edge.labels.length).toBe(0);
+    });
+  });
+
+  describe('DrawingLayer removal', () => {
+    let drawingLayer: DrawingLayer;
+
+    beforeEach(() => {
+      drawingLayer = new DrawingLayer();
+    });
+
+    it('should remove node and its connected edges', () => {
+      const node1 = new DANode(0, 0, 'A');
+      const node2 = new DANode(200, 0, 'B');
+      drawingLayer['daNodes'].push(node1, node2);
+      drawingLayer['daNodeGroup'].add(node1.konvaGroup);
+      drawingLayer['daNodeGroup'].add(node2.konvaGroup);
+      drawingLayer.addEdge(node1, node2);
+      expect(drawingLayer.getDAEdges().length).toBe(1);
+
+      drawingLayer.removeNode(node1);
+      expect(drawingLayer['daNodes'].length).toBe(1);
+      expect(drawingLayer.getDAEdges().length).toBe(0);
+    });
+
+    it('should remove edge', () => {
+      const node1 = new DANode(0, 0, 'A');
+      const node2 = new DANode(200, 0, 'B');
+      drawingLayer['daNodes'].push(node1, node2);
+      drawingLayer.addEdge(node1, node2);
+      expect(drawingLayer.getDAEdges().length).toBe(1);
+
+      drawingLayer.removeEdge(drawingLayer.getDAEdges()[0]);
+      expect(drawingLayer.getDAEdges().length).toBe(0);
     });
   });
 });
