@@ -151,6 +151,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.DELETE:
         this.deleteSelected();
         break;
+      case DACommandType.ADD_LABEL:
+        this.addLabel();
+        break;
       default:
         this.assertNever(command);
     }
@@ -942,6 +945,28 @@ export class DrawingAreaComponent implements AfterViewInit {
     console.log('addWaypoint: no edge found under crosshairs');
   }
 
+  private addLabel(): void {
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+
+    const edges: DAEdge[] = this.drawingLayer.getDAEdges();
+
+    for (const edge of edges) {
+      const pathPoints = edge.getPathPoints();
+      for (let i = 0; i < pathPoints.length - 1; i++) {
+        const p1 = pathPoints[i];
+        const p2 = pathPoints[i + 1];
+        if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
+          const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
+          console.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
+          const label = new DALabel(point.x, point.y, 'label');
+          edge.addLabel(label);
+          this.drawingLayer.batchDraw();
+          return;
+        }
+      }
+    }
+    console.log('addLabel: no edge found under crosshairs');
+  }
 
   private updateWaypointVisibility(): void {
     const edges = this.drawingLayer.getDAEdges();

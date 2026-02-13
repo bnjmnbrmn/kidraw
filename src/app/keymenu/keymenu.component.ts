@@ -143,6 +143,23 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.DELETE});
             }
           ),
+          a: new LabeledSubmenuConfig(
+            "Add...",
+            {
+              i: new LabeledAction("...Node", () => {
+                this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+              }),
+              w: new LabeledAction("...Waypoint", () => {
+                this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});
+              }),
+              e: new LabeledAction("...Edge", () => {
+                this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
+              }),
+              l: new LabeledAction("...Label", () => {
+                this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
+              })
+            }
+          ),
           g: new LabeledSubmenuConfig(
             "Move...",
             {

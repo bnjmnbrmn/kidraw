@@ -23,6 +23,7 @@ export enum DACommandType {
   ADD_WAYPOINT = 'ADD_WAYPOINT',
   TOGGLE_WAYPOINT_VISIBILITY = 'TOGGLE_WAYPOINT_VISIBILITY',
   DELETE = 'DELETE',
+  ADD_LABEL = 'ADD_LABEL',
 }
 
 export type DACommand =
@@ -50,4 +51,5 @@ export type DACommand =
   | {kind: DACommandType.ADD_WAYPOINT}
   | {kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY}
   | {kind: DACommandType.DELETE}
+  | {kind: DACommandType.ADD_LABEL}
 
