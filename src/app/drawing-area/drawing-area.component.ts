@@ -605,8 +605,9 @@ export class DrawingAreaComponent implements AfterViewInit {
         this.updateEdgePoints(edge);
       });
       
-      // Update crosshairs to move the same distance as nodes
-      const currentDragDistance = dragDistance * progress;
+      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+      const scale = this.drawingLayer.scaleX();
+      const currentDragDistance = dragDistance * scale * progress;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX - currentDragDistance;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
       
@@ -683,8 +684,9 @@ export class DrawingAreaComponent implements AfterViewInit {
         this.updateEdgePoints(edge);
       });
       
-      // Update crosshairs to move the same distance as nodes
-      const currentDragDistance = dragDistance * progress;
+      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+      const scale = this.drawingLayer.scaleX();
+      const currentDragDistance = dragDistance * scale * progress;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX + currentDragDistance;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
       
@@ -761,8 +763,9 @@ export class DrawingAreaComponent implements AfterViewInit {
         this.updateEdgePoints(edge);
       });
       
-      // Update crosshairs to move the same distance as nodes
-      const currentDragDistance = dragDistance * progress;
+      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+      const scale = this.drawingLayer.scaleX();
+      const currentDragDistance = dragDistance * scale * progress;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY - currentDragDistance;
       
@@ -839,8 +842,9 @@ export class DrawingAreaComponent implements AfterViewInit {
         this.updateEdgePoints(edge);
       });
       
-      // Update crosshairs to move the same distance as nodes
-      const currentDragDistance = dragDistance * progress;
+      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+      const scale = this.drawingLayer.scaleX();
+      const currentDragDistance = dragDistance * scale * progress;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY + currentDragDistance;
       

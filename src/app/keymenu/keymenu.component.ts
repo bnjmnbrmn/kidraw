@@ -142,6 +142,29 @@ export class KeymenuComponent implements AfterViewInit {
             () => {
               this.keyMenuOut.emit({kind: DACommandType.DELETE});
             }
+          ),
+          g: new LabeledSubmenuConfig(
+            "Move...",
+            {
+              j: new LabeledAction("...Left", () => {
+                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
+              }),
+              k: new LabeledAction("...Down", () => {
+                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
+              }),
+              i: new LabeledAction("...Up", () => {
+                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
+              }),
+              l: new LabeledAction("...Right", () => {
+                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
+              }),
+              m: new LabeledAction("Zoom Out", () => {
+                this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
+              }),
+              '.': new LabeledAction("Zoom In", () => {
+                this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
+              })
+            }
           )
         }),
         "labelEdit": new PrintedInstructionKeyMenuModeConfig(
