@@ -45,6 +45,10 @@ export class DrawingLayer extends Konva.Layer {
     return this.daEdges.filter((daEdge) => daEdge.isSelected);
   }
 
+  getDANodes(): DANode[] {
+    return this.daNodes;
+  }
+
   getDAEdges(): DAEdge[] {
     return this.daEdges;
   }

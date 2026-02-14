@@ -137,6 +137,7 @@ export class KeymenuComponent implements AfterViewInit {
             {
               i: new LabeledAction("...Node", () => {
                 this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+                this.keyMenu.switchMode("labelEdit");
               }),
               w: new LabeledAction("...Waypoint", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});

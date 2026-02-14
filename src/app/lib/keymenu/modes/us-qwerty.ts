@@ -34,10 +34,12 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     beforeSwitchOut(): void {
         while (this.stack.length > 1) {
+            this.stackTop.hideAllKeys();
             this.stackTop.unhighlightAllKeys();
             this.stackTop.stopAllScheduledActions();
             this.stack.pop();
         }
+        this.submenuKeyStringStack.splice(1);
         this.stackTop.unhighlightAllKeys();
         this.stackTop.stopAllScheduledActions();
         this.actionSchedulingEnabled = false;
@@ -45,6 +47,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     beforeSwitchIn(): void {
       this.actionSchedulingEnabled = true;
+      this.stackTop.showAllKeys();
     }
 
 

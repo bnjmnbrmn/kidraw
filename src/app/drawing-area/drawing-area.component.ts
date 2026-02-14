@@ -480,21 +480,36 @@ export class DrawingAreaComponent implements AfterViewInit {
   private recenterView() {
     this.finishTweens();
 
-    const children = this.drawingLayer.getChildren();
-    if (children.length === 0) return;
+    const nodes = this.drawingLayer.getSelectedDANodes().length > 0
+      ? this.drawingLayer.getSelectedDANodes()
+      : this.drawingLayer.getDANodes();
+    const edges = this.drawingLayer.getDAEdges();
 
-    // Calculate the bounding box of all drawing elements in the layer's coordinate system
+    if (nodes.length === 0 && edges.length === 0) return;
+
+    // Calculate bounding box from actual DANodes/DAEdges in layer coordinates
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-    children.forEach(child => {
-      // Get the bounding box in the layer's own coordinate system (not transformed)
-      const clientRect = child.getClientRect({skipTransform: true});
-
-      minX = Math.min(minX, clientRect.x);
-      minY = Math.min(minY, clientRect.y);
-      maxX = Math.max(maxX, clientRect.x + clientRect.width);
-      maxY = Math.max(maxY, clientRect.y + clientRect.height);
+    nodes.forEach(node => {
+      const x = node.group.x();
+      const y = node.group.y();
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + node.NODE_WIDTH);
+      maxY = Math.max(maxY, y + node.NODE_HEIGHT);
     });
+
+    edges.forEach(edge => {
+      const points = edge.getPathPoints();
+      points.forEach(p => {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+    });
+
+    if (minX === Infinity) return;
 
     // Calculate the center point of the drawing in layer coordinates
     const centerX = (minX + maxX) / 2;
