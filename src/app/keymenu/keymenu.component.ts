@@ -34,6 +34,44 @@ export class KeymenuComponent implements AfterViewInit {
       modes: {
         "normal": new USQwertyModeConfig({
 
+          // Movement (right hand)
+          j: new LabeledAction(
+            'Move Left',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
+            }
+          ),
+          k: new LabeledAction(
+            'Move Down',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
+            }
+          ),
+          i: new LabeledAction(
+            'Move Up',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
+            }
+          ),
+          l: new LabeledAction(
+            'Move Right',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
+            }
+          ),
+          u: new LabeledAction(
+            'Zoom Out',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
+            }
+          ),
+          o: new LabeledAction(
+            'Zoom In',
+            () => {
+              this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
+            }
+          ),
+          // Left-hand actions
           s: new LabeledAction(
             'New Selection',
             () => {
@@ -46,73 +84,6 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.MULTI_ITEM_SELECT});
             }
           ),
-
-          c: new LabeledAction(
-            'Connect',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
-            }
-          ),
-          h: new LabeledAction(
-            'Move Left',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
-            }
-          ),
-          j: new LabeledAction(
-            'Move Down',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
-            }
-          ),
-          k: new LabeledAction(
-            'Move Up',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
-            }
-          ),
-          l: new LabeledAction(
-            'Move Right',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
-            }
-          ),
-          i: new LabeledAction(
-            'Insert Node',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
-              this.keyMenu.switchMode("labelEdit")
-            }
-          ),
-          z: new LabeledSubmenuConfig(
-            "Zoom...",
-            {
-              i: new LabeledAction("...In", () => {
-                this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
-              }),
-              o: new LabeledAction("...Out", () => {
-                this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
-              })
-            }
-          ),
-          r: new LabeledSubmenuConfig(
-            "Drag...",
-            {
-              h: new LabeledAction("...Left", () => {
-                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT});
-              }),
-              l: new LabeledAction("...Right", () => {
-                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
-              }),
-              k: new LabeledAction("...Up", () => {
-                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP});
-              }),
-              j: new LabeledAction("...Down", () => {
-                this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN});
-              })
-            }
-          ),
-          // Ergonomic single-key shortcuts for recenter operations
           f: new LabeledAction(
             'Recenter View',
             () => {
@@ -123,12 +94,6 @@ export class KeymenuComponent implements AfterViewInit {
             'Recenter Crosshairs',
             () => {
               this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS});
-            }
-          ),
-          w: new LabeledAction(
-            'Add Waypoint',
-            () => {
-              this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});
             }
           ),
           t: new LabeledAction(
@@ -143,6 +108,7 @@ export class KeymenuComponent implements AfterViewInit {
               this.keyMenuOut.emit({kind: DACommandType.DELETE});
             }
           ),
+          // Submenus (left hand)
           e: new LabeledSubmenuConfig(
             "Select+Drag...",
             {
@@ -180,29 +146,6 @@ export class KeymenuComponent implements AfterViewInit {
               }),
               l: new LabeledAction("...Label", () => {
                 this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
-              })
-            }
-          ),
-          g: new LabeledSubmenuConfig(
-            "Move...",
-            {
-              j: new LabeledAction("...Left", () => {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
-              }),
-              k: new LabeledAction("...Down", () => {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN});
-              }),
-              i: new LabeledAction("...Up", () => {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP});
-              }),
-              l: new LabeledAction("...Right", () => {
-                this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT});
-              }),
-              m: new LabeledAction("Zoom Out", () => {
-                this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
-              }),
-              '.': new LabeledAction("Zoom In", () => {
-                this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
               })
             }
           )
