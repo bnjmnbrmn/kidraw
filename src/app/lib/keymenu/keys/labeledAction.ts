@@ -1,4 +1,1 @@
-export class LabeledAction {
-  constructor(public actionLabel: string, public action: () => void) {
-  }
-}
+export { LabeledAction } from '../layouts/us-qwerty/submenuConfig';

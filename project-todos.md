@@ -119,6 +119,90 @@ While any of the three held keys are active, opposite-hand keys provide:
 - [ ] Set up as libraries
 - [ ] Add CI/CD pipeline for automated testing
 
+## Key Menu System: Model & Invariants (WIP)
+
+This section documents the evolving conceptual model for the key menu system.
+Invariants I3–I7 and non-invariants are still under discussion.
+
+### Definitions
+
+- **Key Menu System** — the top-level container (currently the `KeyMenu` class). Owns modes, tracks the current mode.
+- **Mode** — e.g., `normal`, `labelEdit`. Has exactly one root submenu. A mode may have a validity condition on data state (e.g., `labelEdit` requires a node in editing state). If the condition becomes false, the system reverts to a default mode.
+- **Submenu** — a set of key menu items within a mode. Every submenu has exactly one key path. The root submenu of a mode has an empty key path. There is exactly one active submenu at any given time.
+- **Key path** — an ordered sequence of keys associated with a submenu. Represents the keys that must be physically held (in order) to reach that submenu. A key path `[f, d, s]` means: first `f` was pressed and held, then `d` was pressed and held (while `f` remained held), then `s` was pressed and held (while `f` and `d` remained held). The root submenu's key path is `[]`.
+- **Key menu item** — an entry in a submenu, associated with a specific physical key. A key menu item exists in exactly one submenu (its containing submenu). The same physical key can appear as key menu items in different submenus.
+- **Containing submenu** — the submenu a key menu item sits in (always exactly one, non-optional).
+- **Triggered submenu** — the submenu a key menu item opens when held (optional, via submenu binding).
+- **Action binding** — maps a key menu item to an action (+ optional repeater). Optional per key menu item.
+- **Submenu binding** — maps a key menu item to a triggered submenu. Optional per key menu item.
+- A key menu item can have zero or one of each binding type independently. A key menu item with both an action binding and a submenu binding is a "SubmenuAction" key.
+- **Action** (or **unit action** when emphasis on discreteness is needed) — a single discrete invocation of a function. Always one unit of work (e.g., "move crosshairs left by one step").
+- **Repeater** — optional mechanism that re-fires the (unit) action on an interval while the key is held.
+- **Fresh press** — a `keyDown` event where **both** of the following are true: (1) the key was not physically held immediately before the event, and (2) the key has a binding in the submenu that is active at the time of the event.
+- **Stale key** — a key that is already physically held when a submenu becomes active. A stale key must not trigger any action until it is released and pressed again.
+- **Physical key state** — per physical key: `held` or `not held`. This is ground truth from the OS.
+
+### Transition Types
+
+The active submenu can change via four mechanisms:
+
+- **Hold-transition** — pressing and holding a submenu-trigger key. The active submenu changes to the triggered submenu; the key path grows by one. Releasing the key reverses the transition (see I1d).
+- **Action-transition** — pressing and releasing an action key causes the active submenu to be replaced by a different submenu with the same key path. (Sometimes called an "indirect" submenu.)
+- **Mode switch** — the active mode changes entirely (e.g., `normal` → `labelEdit`). Resets to the new mode's root submenu.
+- **Key-path release** — releasing a key in the active submenu's key path (see I1d).
+
+### Invariants
+
+**I1a.** Every submenu has exactly one key path — an ordered sequence of keys. The root submenu of a mode has an empty key path.
+
+**I1b.** There is exactly one active submenu at any given time.
+
+**I1c.** Every key in the active submenu's key path must be physically held for that submenu to remain active.
+
+**I1d.** When a key in the active submenu's key path is released, the new active submenu's key path must be the **prefix** of the old key path up to (but not including) the released key. Keys that appear after the released key in the path are ignored, even if still physically held.
+
+  - Examples:
+    - Key path is `[f, d, s, a]`. Key `d` is released → new key path is `[f]`. Even though `s` and `a` are still physically held, they are past the released key in the path.
+    - Key path is `[f, d, s, a]`. Key `s` is released → new key path is `[f, d]`. Even though `a` is still physically held, it is past the released key in the path.
+    - Key path is `[f, d, s, a]`. Key `a` is released → new key path is `[f, d, s]`.
+    - Key path is `[f, d, s, a]`. Key `f` is released → new key path is `[]` (root submenu).
+    - Key path is `[i]`. Key `i` is released → new key path is `[]` (root submenu).
+
+**I2. Fresh press only.** An action fires only on a fresh press. A fresh press is a `keyDown` event where **both** of the following are true:
+  1. The key was not physically held immediately before the `keyDown` event.
+  2. The key has a binding in the submenu that is active at the time of the event.
+
+  A key that is already physically held when a submenu becomes active (e.g., via hold-transition, action-transition, or mode switch) is stale in that submenu. A stale key must not trigger any action until it is released and pressed again.
+
+  - Examples:
+    - Root submenu is active. `f` is not held. User presses `f` → fresh press, action fires.
+    - Key path is `[i]` (Insert submenu). `f` was already held before `i` was pressed (e.g., user was holding Move Right). Insert submenu becomes active → `f` is stale. The Insert submenu's `f` action (create node) must NOT fire until `f` is released and pressed again.
+    - User is in submenu `[i]`, presses `f` (creates node), releases `f` → action-transitions to drag submenu `[i]*`. Drag submenu also has `f` (drag right). Since `f` was just released, it's not held → no issue. If user presses `f` again, it's a fresh press.
+
+**I3. Repeater lifetime.** *(Under revision — see discussion notes below.)*
+
+A repeater is active only while **both** of the following are true:
+  1. Its key was freshly pressed (not stale).
+  2. The submenu that owns the key menu item is **in the stack** (i.e., is the active submenu or an ancestor of the active submenu).
+
+  If either condition becomes false, the repeater stops immediately. Note: a repeater can continue even when its submenu is not the active submenu, as long as the submenu is still in the stack. This supports cases like holding a SubmenuAction key (e.g., move-left) that both fires a repeating action and opens a child submenu — the movement should continue while the child submenu is active.
+
+**I4–I7** — TBD (one active mode, action-transitions preserve key path, mode validity, key release ordering). Discussion ongoing.
+
+### Non-Invariants (WIP)
+
+- A key can be physically held that has no binding in the active submenu. It is ignored.
+- Keys from a previous submenu that are still held do not auto-fire in a new submenu (the stale-hold rule, I2).
+- The set of disabled/enabled key menu items can change at any time based on data state, without changing which submenu is active.
+
+### Discussion Notes
+
+- **Key path coloring.** Plan to visualize the key path at the bottom of the keymenu component. Keys in the path would be colored progressively: blue → green → yellow → orange → red as the path deepens. Should be accessible for color-blindness.
+- **Keyboard card stack.** Original visualization concept (10+ years ago): submenus as a stack of colored "keyboard cards" with holes punched out where keys are pressed. Cards offset to show held keys in the stack. May revisit this or a similar visualization.
+- **Indirect (action-transitioned) submenus.** Multiple submenus can share the same key path within a mode. The active submenu is not uniquely determined by the held-key sequence alone — it also depends on which action-transitions have occurred. The starting submenu for a given key path (with no prior action-transitions) is unique per mode.
+
+---
+
 ## Key Menu Refactoring 
 - [ ] Add command registry layer to hide command details
 - [ ] Add pluggable visualization layer (different renderers)

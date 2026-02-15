@@ -1,8 +1,8 @@
 import {USQwertyMode} from "../modes/us-qwerty";
-import {LabeledAction} from './labeledAction';
 import {KeyString, SubmenuConfig, rowsAndColsForKeys, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, ROW_OFFSETS} from '../layouts/us-qwerty';
+import {LabeledAction, LabeledActionWithRelease, LabeledSubmenuConfig} from '../layouts/us-qwerty/submenuConfig';
+import type {SubmenuConfigValue} from '../layouts/us-qwerty/submenuConfig';
 import {Group} from 'konva/lib/Group';
-import {LabeledSubmenuConfig} from './labeledSubmenuConfig';
 import {
   KMKey,
   KMSubmenuKey,
@@ -29,8 +29,8 @@ export class KMSubmenu<T> {
   }
 
 
-  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void): KMKey {
-    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action);
+  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}): KMKey {
+    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp);
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig): KMKey {
@@ -109,10 +109,12 @@ export class KMSubmenu<T> {
     const keys: [KeyString, KMKey][] = [];
 
     (Object.entries(this.config) as
-      [KeyString, LabeledAction | LabeledSubmenuConfig][])
+      [KeyString, SubmenuConfigValue][])
       .forEach(([key, config]) => {
         if (config instanceof LabeledSubmenuConfig) {
           keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig)]);
+        } else if (config instanceof LabeledActionWithRelease) {
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease)]);
         } else { //if config instanceof LabeledAction
           keys.push([key, this.generateActionKey(key, config.actionLabel, config.action)]);
         }

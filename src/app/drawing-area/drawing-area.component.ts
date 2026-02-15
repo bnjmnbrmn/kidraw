@@ -428,8 +428,22 @@ export class DrawingAreaComponent implements AfterViewInit {
   private createNewNode() {
     this.finishTweens();
 
-    this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY());
+    // Get currently selected nodes (sources for auto-connect edges)
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
 
+    // Unselect all before creating (new node will auto-select)
+    this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
+    this.unselectAllLabels();
+
+    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY());
+
+    // Create edges from each previously selected node to the new node
+    for (const srcNode of selectedNodes) {
+      this.drawingLayer.addEdge(srcNode, newNode);
+    }
+
+    this.drawingLayer.batchDraw();
     this.daOut.emit({kind: "started-label-editing-mode"})
   }
 

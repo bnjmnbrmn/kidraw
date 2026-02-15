@@ -19,7 +19,7 @@ export class DrawingLayer extends Konva.Layer {
 
   }
 
-  createNewNode(absoluteX: number, absoluteY: number) {
+  createNewNode(absoluteX: number, absoluteY: number): DANode {
     // Transform absolute coordinates to drawing layer coordinates (accounting for zoom and pan)
     const layerX = (absoluteX - this.x()) / this.scaleX();
     const layerY = (absoluteY - this.y()) / this.scaleY();
@@ -35,6 +35,7 @@ export class DrawingLayer extends Konva.Layer {
     this.daNodes.push(daNode);
     // Select the new node for editing
     daNode.isSelected = true;
+    return daNode;
   }
 
   getSelectedDANodes(): DANode[] {
