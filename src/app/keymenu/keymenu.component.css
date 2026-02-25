@@ -1,6 +1,46 @@
 :host {
-  background-color: aquamarine;
+  display: block;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #dcfce7, #bbf7d0);
   width: 100vw;
   flex-grow: 0;
   height: 20em;
+}
+
+#keyMenu {
+  width: 100%;
+  height: 100%;
+}
+
+.breadcrumb-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.26rem 0.55rem calc(0.26rem + env(safe-area-inset-bottom));
+  background: rgba(15, 23, 42, 0.72);
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.breadcrumb-label {
+  color: #cbd5e1;
+}
+
+.breadcrumb-root,
+.breadcrumb-key {
+  font-family: 'DejaVu Sans Mono', monospace;
+  color: #e2e8f0;
+}
+
+.breadcrumb-separator {
+  color: #64748b;
 }

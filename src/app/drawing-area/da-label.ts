@@ -14,6 +14,11 @@ export class DALabel {
   public readonly RECT_WIDTH = 50;
   public readonly RECT_HEIGHT = 30;
   public readonly TEXT_PADDING = 5;
+  public readonly DEFAULT_FONT_SIZE = 12;
+  public readonly MIN_FONT_SIZE = 10;
+  public readonly MAX_FONT_SIZE = 36;
+
+  private _fontSize = this.DEFAULT_FONT_SIZE;
 
   constructor(x: number, y: number, label: string) {
     this.group = new Konva.Group({ x, y });
@@ -35,7 +40,7 @@ export class DALabel {
       width: this.RECT_WIDTH - this.TEXT_PADDING * 2,
       height: this.RECT_HEIGHT,
       text: this._label,
-      fontSize: 12,
+      fontSize: this._fontSize,
       fontFamily: 'Arial',
       textAlign: 'center',
       verticalAlign: 'middle',
@@ -93,6 +98,21 @@ export class DALabel {
 
   set y(value: number) {
     this.group.y(value);
+  }
+
+  adjustFontSizeBy(delta: number): boolean {
+    const nextSize = this.clamp(this._fontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
+    if (nextSize === this._fontSize) {
+      return false;
+    }
+
+    this._fontSize = nextSize;
+    this._text.fontSize(this._fontSize);
+    return true;
+  }
+
+  private clamp(value: number, minValue: number, maxValue: number): number {
+    return Math.min(Math.max(value, minValue), maxValue);
   }
 
   private updateAppearance(): void {

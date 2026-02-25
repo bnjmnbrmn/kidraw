@@ -1,15 +1,14 @@
 <div id="keyMenu"></div>
-<div>
-  <div style="width: 50%; float: left">
-    <p>h - Left</p>
-    <p>j - Down</p>
-    <p>k - Up</p>
-    <p>l - Right</p>
-  </div>
-  <div style="width: 50%; float:right">
-    <p>i - Insert Node</p>
-    <p>s - Select</p>
-    <p>v - Add/Remove from Selected</p>
-    <p>c - Connect</p>
-  </div>
-</div>
+
+<section class="breadcrumb-bar">
+  <span class="breadcrumb-label">Path:</span>
+  @if (activeKeyPath.length === 0) {
+    <span class="breadcrumb-root">root</span>
+  } @else {
+    <span class="breadcrumb-root">root</span>
+    @for (key of activeKeyPath; track $index) {
+      <span class="breadcrumb-separator">&gt;</span>
+      <span class="breadcrumb-key">{{ key }}</span>
+    }
+  }
+</section>

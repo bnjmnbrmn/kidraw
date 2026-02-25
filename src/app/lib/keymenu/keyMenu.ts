@@ -34,7 +34,16 @@ export class KeyMenu<T> {
       .map(([name, modeConfig]) =>
         [name, modeConfig.createMode(name, this)]));
 
-    this.currentMode = Object.entries(this.modesForNames)[0][1];
+    const availableModeNames = Object.keys(this.modesForNames);
+    if (availableModeNames.length === 0) {
+      throw new Error('KeyMenu requires at least one mode configuration.');
+    }
+
+    const configuredInitialModeName = config.initialModeName;
+    const initialModeName = configuredInitialModeName && this.modesForNames[configuredInitialModeName]
+      ? configuredInitialModeName
+      : availableModeNames[0];
+    this.currentMode = this.modesForNames[initialModeName];
 
     Object.values(this.modesForNames).forEach((mode) => {
       this.layer.add(mode.konvaGroup);
@@ -68,6 +77,11 @@ export class KeyMenu<T> {
       this.currentMode.beforeSwitchIn()
       this.currentMode.konvaGroup.show();
     }
+  }
+
+  destroy() {
+    this.keysDown.clear();
+    this.stage.destroy();
   }
 
   public static noModifier(ke: KeyboardEvent) {

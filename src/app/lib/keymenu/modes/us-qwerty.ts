@@ -62,7 +62,9 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     handleKeyUp(event: KeyboardEvent) {
         const key = event.key as KeyString;
         this.stackTop.handleKeyUp(event);
-        if (this.stackTop.keys[key]) {
+
+        if (this.submenuKeyStringStack.includes(key) && this.stack.length > 1) {
+            this.popSubmenuAndChildren(key);
             return;
         }
 
@@ -107,7 +109,6 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         }
 
         const submenusToHide: KMSubmenu<T>[] = this.stack.slice(index);
-        console.log("submenusToHide", submenusToHide);
         submenusToHide.forEach((submenu: KMSubmenu<T>) => {
             submenu.hideAllKeys();
             submenu.unhighlightAllKeys();

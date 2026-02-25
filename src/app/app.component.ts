@@ -17,7 +17,14 @@ export class AppComponent {
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
+  movementSpeed = 50;
+  canEdit = false;
+
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
+
+  onCanEditChange(canEdit: boolean) {
+    this.canEdit = canEdit;
+  }
 
   relayKeymenuCommand(kmCommand: DACommand) {
     console.log("app component kmCommand: " + JSON.stringify(kmCommand))
@@ -26,12 +33,16 @@ export class AppComponent {
 
   handleDANotification(daNotification: DANotification) {
 
-    // switch (daNotification.kind) {
-    //   case "started-label-editing-mode":
-    //     break;
-    //   case "started-select-mode":
-    //     break;
-    // }
+    switch (daNotification.kind) {
+      case "started-label-editing-mode":
+        this.keymenuComponent['keyMenu'].switchMode('labelEdit');
+        break;
+      case "open-insert-submenu":
+        this.keymenuComponent.openInsertSubmenu();
+        break;
+      case "started-select-mode":
+        break;
+    }
   }
 
   onZoomLevelChange(level: number) {
@@ -44,5 +55,9 @@ export class AppComponent {
     if (this.headerComponent) {
       this.headerComponent.onWaypointsVisibleChange(visible);
     }
+  }
+
+  onMovementSpeedChange(speed: number) {
+    this.movementSpeed = speed;
   }
 }

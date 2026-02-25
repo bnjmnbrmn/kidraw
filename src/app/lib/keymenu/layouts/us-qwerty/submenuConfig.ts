@@ -18,7 +18,18 @@ export class LabeledSubmenuConfig {
   }
 }
 
-export type SubmenuConfigValue = LabeledAction | LabeledActionWithRelease | LabeledSubmenuConfig;
+export class LabeledActionSubmenuConfig {
+  constructor(public submenuLabel: string,
+              public submenuConfig: SubmenuConfig,
+              public action: () => void) {
+  }
+}
+
+export type SubmenuConfigValue =
+  | LabeledAction
+  | LabeledActionWithRelease
+  | LabeledSubmenuConfig
+  | LabeledActionSubmenuConfig;
 
 export type SubmenuConfig = {
   [K in KeyString]?: SubmenuConfigValue

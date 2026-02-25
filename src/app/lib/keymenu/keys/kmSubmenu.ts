@@ -1,6 +1,11 @@
 import {USQwertyMode} from "../modes/us-qwerty";
 import {KeyString, SubmenuConfig, rowsAndColsForKeys, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, ROW_OFFSETS} from '../layouts/us-qwerty';
-import {LabeledAction, LabeledActionWithRelease, LabeledSubmenuConfig} from '../layouts/us-qwerty/submenuConfig';
+import {
+  LabeledAction,
+  LabeledActionSubmenuConfig,
+  LabeledActionWithRelease,
+  LabeledSubmenuConfig,
+} from '../layouts/us-qwerty/submenuConfig';
 import type {SubmenuConfigValue} from '../layouts/us-qwerty/submenuConfig';
 import {Group} from 'konva/lib/Group';
 import {
@@ -9,6 +14,7 @@ import {
   isActionKey,
   isSubmenuKey,
   DefaultKMActionKey,
+  DefaultKMActionSubmenuKey,
   DefaultKMSubmenuKey
 } from './kmKey';
 
@@ -37,8 +43,16 @@ export class KMSubmenu<T> {
     return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig);
   }
 
+  private generateActionSubmenuKey(
+    keyString: KeyString,
+    submenuLabel: string,
+    submenuConfig: SubmenuConfig,
+    action: () => void,
+  ): KMKey {
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action);
+  }
+
   handleKeyUp(event: KeyboardEvent): void {
-    console.log("event.key", event.key);
     const key = event.key as KeyString;
     if (this.keys[key]) {
       this.unhighlightKey(key);
@@ -78,17 +92,18 @@ export class KMSubmenu<T> {
 
     this.highlightKey(key);
     const kmKey = this.keys[key]!;
-    
-    // Check for submenu keys FIRST, before action keys
-    if (isSubmenuKey(kmKey)) {
-      this.mode.pushSubmenu(kmKey);
-    }
-    else if (isActionKey(kmKey)) {
+
+    if (isActionKey(kmKey)) {
       kmKey.onKeyDownBeforeRender();
       kmKey.onKeyDown();
-      if (this.mode.actionSchedulingEnabled) {
+
+      if (!isSubmenuKey(kmKey) && this.mode.actionSchedulingEnabled) {
         this.scheduleAction(key, () => kmKey.onKeyDown());
       }
+    }
+
+    if (isSubmenuKey(kmKey)) {
+      this.mode.pushSubmenu(kmKey);
     }
   }
 
@@ -113,6 +128,11 @@ export class KMSubmenu<T> {
       .forEach(([key, config]) => {
         if (config instanceof LabeledSubmenuConfig) {
           keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig)]);
+        } else if (config instanceof LabeledActionSubmenuConfig) {
+          keys.push([
+            key,
+            this.generateActionSubmenuKey(key, config.submenuLabel, config.submenuConfig, config.action),
+          ]);
         } else if (config instanceof LabeledActionWithRelease) {
           keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease)]);
         } else { //if config instanceof LabeledAction

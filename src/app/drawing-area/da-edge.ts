@@ -15,7 +15,6 @@ export class DAEdge {
 
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
-  public readonly NODE_HALF_SIZE = 50;
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
 
@@ -68,20 +67,16 @@ export class DAEdge {
   }
 
   private sortWaypointsByPosition(): void {
-    const srcPos = this.srcNode.konvaGroup.position();
-    const srcX = srcPos.x + this.NODE_HALF_SIZE;
-    const srcY = srcPos.y + this.NODE_HALF_SIZE;
-    const destPos = this.destNode.konvaGroup.position();
-    const destX = destPos.x + this.NODE_HALF_SIZE;
-    const destY = destPos.y + this.NODE_HALF_SIZE;
+    const srcCenter = this.getNodeCenter(this.srcNode);
+    const destCenter = this.getNodeCenter(this.destNode);
 
-    const dx = destX - srcX;
-    const dy = destY - srcY;
+    const dx = destCenter.x - srcCenter.x;
+    const dy = destCenter.y - srcCenter.y;
     const lenSq = dx * dx + dy * dy;
 
     this._waypoints.sort((a, b) => {
-      const tA = lenSq > 0 ? ((a.x - srcX) * dx + (a.y - srcY) * dy) / lenSq : 0;
-      const tB = lenSq > 0 ? ((b.x - srcX) * dx + (b.y - srcY) * dy) / lenSq : 0;
+      const tA = lenSq > 0 ? ((a.x - srcCenter.x) * dx + (a.y - srcCenter.y) * dy) / lenSq : 0;
+      const tB = lenSq > 0 ? ((b.x - srcCenter.x) * dx + (b.y - srcCenter.y) * dy) / lenSq : 0;
       return tA - tB;
     });
   }
@@ -184,19 +179,19 @@ export class DAEdge {
   }
 
   private getAllSegmentPoints(): { x: number; y: number }[] {
+    if (this.srcNode === this.destNode && this._waypoints.length === 0) {
+      return this.buildSelfLoopPoints(this.srcNode);
+    }
+
     const points: { x: number; y: number }[] = [];
-    
-    const srcPos = this.srcNode.konvaGroup.position();
-    const srcCenterX = srcPos.x + this.NODE_HALF_SIZE;
-    const srcCenterY = srcPos.y + this.NODE_HALF_SIZE;
-    const destPos = this.destNode.konvaGroup.position();
-    const destCenterX = destPos.x + this.NODE_HALF_SIZE;
-    const destCenterY = destPos.y + this.NODE_HALF_SIZE;
+
+    const srcCenter = this.getNodeCenter(this.srcNode);
+    const destCenter = this.getNodeCenter(this.destNode);
 
     // Source edge point aims toward first waypoint (or dest center if none)
     const firstTarget = this._waypoints.length > 0
       ? { x: this._waypoints[0].x, y: this._waypoints[0].y }
-      : { x: destCenterX, y: destCenterY };
+      : { x: destCenter.x, y: destCenter.y };
     const srcPoint = this.calculateSourceEdgePoint(firstTarget.x, firstTarget.y, this.srcNode);
     points.push(srcPoint);
 
@@ -208,7 +203,7 @@ export class DAEdge {
     // Dest edge point aims from last waypoint (or src center if none)
     const lastFrom = this._waypoints.length > 0
       ? { x: this._waypoints[this._waypoints.length - 1].x, y: this._waypoints[this._waypoints.length - 1].y }
-      : { x: srcCenterX, y: srcCenterY };
+      : { x: srcCenter.x, y: srcCenter.y };
     const destPoint = this.calculateNodeEdgePoint(lastFrom.x, lastFrom.y, this.destNode);
     points.push(destPoint);
 
@@ -217,19 +212,25 @@ export class DAEdge {
 
   private calculateNodeEdgePoint(fromX: number, fromY: number, toNode: DANode): { x: number; y: number } {
     const toPos = toNode.konvaGroup.position();
-    const toCenterX = toPos.x + this.NODE_HALF_SIZE;
-    const toCenterY = toPos.y + this.NODE_HALF_SIZE;
+    const halfWidth = toNode.NODE_WIDTH / 2;
+    const halfHeight = toNode.NODE_HEIGHT / 2;
+    const toCenterX = toPos.x + halfWidth;
+    const toCenterY = toPos.y + halfHeight;
     
     const dx = toCenterX - fromX;
     const dy = toCenterY - fromY;
+
+    if (dx === 0 && dy === 0) {
+      return { x: toCenterX, y: toCenterY };
+    }
     
     // Calculate the intersection point with the destination node
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
     
     // Determine which edge the line hits first
-    const tX = absDx > 0 ? this.NODE_HALF_SIZE / absDx : Infinity;
-    const tY = absDy > 0 ? this.NODE_HALF_SIZE / absDy : Infinity;
+    const tX = absDx > 0 ? halfWidth / absDx : Infinity;
+    const tY = absDy > 0 ? halfHeight / absDy : Infinity;
     const t = Math.min(tX, tY);
     
     // Calculate the intersection point (offset from dest center, toward src)
@@ -241,19 +242,25 @@ export class DAEdge {
 
   private calculateSourceEdgePoint(toX: number, toY: number, fromNode: DANode): { x: number; y: number } {
     const fromPos = fromNode.konvaGroup.position();
-    const fromCenterX = fromPos.x + this.NODE_HALF_SIZE;
-    const fromCenterY = fromPos.y + this.NODE_HALF_SIZE;
+    const halfWidth = fromNode.NODE_WIDTH / 2;
+    const halfHeight = fromNode.NODE_HEIGHT / 2;
+    const fromCenterX = fromPos.x + halfWidth;
+    const fromCenterY = fromPos.y + halfHeight;
     
     const dx = toX - fromCenterX;
     const dy = toY - fromCenterY;
+
+    if (dx === 0 && dy === 0) {
+      return { x: fromCenterX, y: fromCenterY };
+    }
     
     // Calculate the intersection point with the source node
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
     
     // Determine which edge the line hits first
-    const tX = absDx > 0 ? this.NODE_HALF_SIZE / absDx : Infinity;
-    const tY = absDy > 0 ? this.NODE_HALF_SIZE / absDy : Infinity;
+    const tX = absDx > 0 ? halfWidth / absDx : Infinity;
+    const tY = absDy > 0 ? halfHeight / absDy : Infinity;
     const t = Math.min(tX, tY);
     
     // Calculate the intersection point (offset from src center, toward dest)
@@ -263,38 +270,67 @@ export class DAEdge {
     return { x: edgeX, y: edgeY };
   }
 
-  public calculatePoints(srcNode: DANode, destNode: DANode): [number, number, number, number] {
+  public calculatePoints(srcNode: DANode, destNode: DANode): number[] {
+    if (srcNode === destNode) {
+      return this.buildSelfLoopPoints(srcNode).flatMap((point) => [point.x, point.y]);
+    }
+
     const srcPos = srcNode.konvaGroup.position();
     const destPos = destNode.konvaGroup.position();
-    
-    // Calculate node centers (nodes are positioned at their top-left, so add half dimensions)
-    const srcCenterX = srcPos.x + this.NODE_HALF_SIZE;
-    const srcCenterY = srcPos.y + this.NODE_HALF_SIZE;
-    const destCenterX = destPos.x + this.NODE_HALF_SIZE;
-    const destCenterY = destPos.y + this.NODE_HALF_SIZE;
-    
+
+    const srcHalfWidth = srcNode.NODE_WIDTH / 2;
+    const srcHalfHeight = srcNode.NODE_HEIGHT / 2;
+    const destHalfWidth = destNode.NODE_WIDTH / 2;
+    const destHalfHeight = destNode.NODE_HEIGHT / 2;
+
+    const srcCenterX = srcPos.x + srcHalfWidth;
+    const srcCenterY = srcPos.y + srcHalfHeight;
+    const destCenterX = destPos.x + destHalfWidth;
+    const destCenterY = destPos.y + destHalfHeight;
+
     const dx = destCenterX - srcCenterX;
     const dy = destCenterY - srcCenterY;
-    
-    // Calculate the intersection point with the destination node
+
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
-    
-    // Determine which edge the line hits first
-    const tX = absDx > 0 ? this.NODE_HALF_SIZE / absDx : Infinity;
-    const tY = absDy > 0 ? this.NODE_HALF_SIZE / absDy : Infinity;
-    const t = Math.min(tX, tY);
-    
-    // Calculate the intersection point (offset from dest center, toward src)
-    const arrowEndX = destCenterX - t * dx;
-    const arrowEndY = destCenterY - t * dy;
-    
-    // Calculate the intersection point with the source node
-    const srcT = Math.min(tX, tY);
-    const srcX = srcCenterX + srcT * dx;
-    const srcY = srcCenterY + srcT * dy;
-    
+
+    const tSrcX = absDx > 0 ? srcHalfWidth / absDx : Infinity;
+    const tSrcY = absDy > 0 ? srcHalfHeight / absDy : Infinity;
+    const tSrc = Math.min(tSrcX, tSrcY);
+
+    const tDestX = absDx > 0 ? destHalfWidth / absDx : Infinity;
+    const tDestY = absDy > 0 ? destHalfHeight / absDy : Infinity;
+    const tDest = Math.min(tDestX, tDestY);
+
+    const srcX = srcCenterX + tSrc * dx;
+    const srcY = srcCenterY + tSrc * dy;
+    const arrowEndX = destCenterX - tDest * dx;
+    const arrowEndY = destCenterY - tDest * dy;
+
     return [srcX, srcY, arrowEndX, arrowEndY];
+  }
+
+  private getNodeCenter(node: DANode): {x: number; y: number} {
+    return {
+      x: node.konvaGroup.x() + node.NODE_WIDTH / 2,
+      y: node.konvaGroup.y() + node.NODE_HEIGHT / 2,
+    };
+  }
+
+  private buildSelfLoopPoints(node: DANode): {x: number; y: number}[] {
+    const x = node.konvaGroup.x();
+    const y = node.konvaGroup.y();
+    const width = node.NODE_WIDTH;
+    const height = node.NODE_HEIGHT;
+    const loopOffsetX = Math.max(28, width * 0.32);
+    const loopOffsetY = Math.max(18, height * 0.2);
+
+    return [
+      {x: x + width, y: y + height * 0.35},
+      {x: x + width + loopOffsetX, y: y + height * 0.22 - loopOffsetY},
+      {x: x + width + loopOffsetX, y: y + height * 0.78 + loopOffsetY},
+      {x: x + width, y: y + height * 0.65},
+    ];
   }
 
   get konvaGroup(): Konva.Group {

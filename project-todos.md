@@ -201,13 +201,39 @@ A repeater is active only while **both** of the following are true:
 - **Keyboard card stack.** Original visualization concept (10+ years ago): submenus as a stack of colored "keyboard cards" with holes punched out where keys are pressed. Cards offset to show held keys in the stack. May revisit this or a similar visualization.
 - **Indirect (action-transitioned) submenus.** Multiple submenus can share the same key path within a mode. The active submenu is not uniquely determined by the held-key sequence alone — it also depends on which action-transitions have occurred. The starting submenu for a given key path (with no prior action-transitions) is unique per mode.
 
+### Immediate Experiment Buildout (in progress)
+
+- [x] Add UI tabs to switch interaction profiles (Classic / Steering / Traverse / Typography)
+- [x] Wire active profile into keymenu + drawing area behavior
+- [x] Implement steering commands (forward/back/strafe/rotate/speed up/down)
+- [x] Add heading indicator to crosshairs for steering profile
+- [x] Implement semantic graph traversal commands (next outgoing / next incoming)
+- [x] Implement self-loop edge support (source == destination)
+- [x] Implement selected-node size controls (increase/decrease)
+- [x] Implement selected-node text size controls (increase/decrease)
+- [x] Build and test all profiles
+
+### Interaction Profile Follow-ups (requested 2026-02-19)
+
+- [x] Move directional/movement controls to the right-hand side by default; make handedness configurable later
+- [x] Keep rotation controls grouped with the rest of movement controls
+- [x] Convert Select+Drag to held-key behavior (hold to drag with movement keys, release to exit) without a second keypress
+- [x] Consolidate recenter actions into a dedicated submenu
+- [x] Use only one zoom-in key and one zoom-out key
+- [x] Add double-Shift as the default shortcut to return to normal mode (keep Ctrl-[ and Escape)
+- [x] Add a graph-navigation submenu; entering it should snap to the nearest node
+- [x] Add an Edit action that enters the same edit mode used after inserting nodes/labels
+- [x] Investigate waypoint selection reliability and add regression coverage
+- [x] Show a movement-speed dial with visible min/max bounds
+- [x] Add a breadcrumb trail for the active anchor/key-path stack
+
 ---
 
 ## Key Menu Refactoring 
 - [ ] Add command registry layer to hide command details
 - [ ] Add pluggable visualization layer (different renderers)
-- [ ] Add key assignment configuration layer
-- [ ] Create reusable KeyMenuConfig interface
+- [x] Add key assignment configuration layer
+- [x] Create reusable KeyMenuConfig interface
 - [ ] Support different keyboard layouts and visualizations
 - [ ] Make keymenu reusable for other applications
 - [ ] Rename: Remove Config suffix from config classes, add "Renderer" suffix to Konva implementation classes

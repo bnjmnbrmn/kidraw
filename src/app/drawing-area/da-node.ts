@@ -13,11 +13,20 @@ export class DANode {
   public outgoingEdges: DAEdge[] = [];
   private _edgesCacheValid = false;
 
-  public readonly NODE_WIDTH = 100;
-  public readonly NODE_HEIGHT = 100;
+  public readonly DEFAULT_NODE_WIDTH = 100;
+  public readonly DEFAULT_NODE_HEIGHT = 100;
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
-  public readonly FONT_SIZE = 16;
+  public readonly DEFAULT_FONT_SIZE = 16;
+
+  public readonly MIN_NODE_SIZE = 50;
+  public readonly MAX_NODE_SIZE = 320;
+  public readonly MIN_FONT_SIZE = 10;
+  public readonly MAX_FONT_SIZE = 48;
+
+  private _nodeWidth = this.DEFAULT_NODE_WIDTH;
+  private _nodeHeight = this.DEFAULT_NODE_HEIGHT;
+  private _fontSize = this.DEFAULT_FONT_SIZE;
 
   constructor(x: number, y: number, initialText: string) {
     // Create the main group
@@ -60,6 +69,18 @@ export class DANode {
 
   get rect(): Konva.Rect {
     return this._rect;
+  }
+
+  get NODE_WIDTH(): number {
+    return this._nodeWidth;
+  }
+
+  get NODE_HEIGHT(): number {
+    return this._nodeHeight;
+  }
+
+  get FONT_SIZE(): number {
+    return this._fontSize;
   }
 
   get label(): Konva.Text {
@@ -120,5 +141,38 @@ export class DANode {
       this.outgoingEdges.splice(index, 1);
       this.invalidateEdgesCache();
     }
+  }
+
+  resizeBy(delta: number): boolean {
+    const nextWidth = this.clamp(this._nodeWidth + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
+    const nextHeight = this.clamp(this._nodeHeight + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
+
+    if (nextWidth === this._nodeWidth && nextHeight === this._nodeHeight) {
+      return false;
+    }
+
+    this._nodeWidth = nextWidth;
+    this._nodeHeight = nextHeight;
+
+    this._rect.width(this._nodeWidth);
+    this._rect.height(this._nodeHeight);
+    this._label.width(this._nodeWidth);
+    this._label.height(this._nodeHeight);
+    return true;
+  }
+
+  adjustLabelFontSizeBy(delta: number): boolean {
+    const nextSize = this.clamp(this._fontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
+    if (nextSize === this._fontSize) {
+      return false;
+    }
+
+    this._fontSize = nextSize;
+    this._label.fontSize(this._fontSize);
+    return true;
+  }
+
+  private clamp(value: number, minValue: number, maxValue: number): number {
+    return Math.min(Math.max(value, minValue), maxValue);
   }
 }

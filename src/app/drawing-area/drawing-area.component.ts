@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, Output} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import { DemoDataService } from '../services/demo-data.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
@@ -18,20 +18,24 @@ import Konva from 'konva';
   templateUrl: './drawing-area.component.html',
   styleUrl: './drawing-area.component.css'
 })
-export class DrawingAreaComponent implements AfterViewInit {
+export class DrawingAreaComponent implements AfterViewInit, OnChanges {
 
   @Input({required: true}) commands!: Observable<DACommand>;
   @Output() daOut = new EventEmitter<DANotification>()
   @Output() zoomLevel = new EventEmitter<number>()
   @Output() waypointsVisibleChange = new EventEmitter<boolean>()
+  @Output() movementSpeedChange = new EventEmitter<number>()
+  @Output() canEditChange = new EventEmitter<boolean>();
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private resizeObserver!: ResizeObserver;
   private crosshairsLayer!: CrosshairsLayer;
   private drawingLayer!: DrawingLayer;
   private stage!: Konva.Stage;
   private tweens: Konva.Tween[] = [];
+  private currentDragRafId: number | null = null;
   private demoDataService = inject(DemoDataService);
   private waypointsVisible: boolean = false;
+  private hasDragged = false;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -40,6 +44,17 @@ export class DrawingAreaComponent implements AfterViewInit {
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
+  public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
+  public readonly STEERING_SPEED_STEP = 10;
+  public readonly MIN_STEERING_SPEED = 20;
+  public readonly MAX_STEERING_SPEED = 200;
+  public readonly NODE_SIZE_STEP = 20;
+  public readonly TEXT_SIZE_STEP = 2;
+
+  private headingRadians = -Math.PI / 2;
+  private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
+  private outgoingTraversalIndexByNode = new Map<DANode, number>();
+  private incomingTraversalIndexByNode = new Map<DANode, number>();
 
 
   ngAfterViewInit(): void {
@@ -55,6 +70,9 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.crosshairsLayer = new CrosshairsLayer(this.stage);
     this.stage.add(this.crosshairsLayer);
 
+    this.crosshairsLayer.setHeading(this.headingRadians);
+    this.crosshairsLayer.setHeadingVisible(false);
+
     // Check for demo flag in URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('demo') as string === 'true') {
@@ -65,6 +83,7 @@ export class DrawingAreaComponent implements AfterViewInit {
 
     // Emit initial zoom level
     this.emitZoomLevel();
+    this.emitMovementSpeed();
 
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
@@ -74,6 +93,33 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+  }
+
+  private canEdit = false;
+
+  private checkAndEmitEditState() {
+    const hasSelection = this.drawingLayer.getSelectedDANodes().length > 0 ||
+      this.getSelectedLabels().length > 0;
+
+    let canEditNow = hasSelection;
+
+    if (!canEditNow) {
+      // Check hover if no selection
+      // Waypoints don't have editable text, so don't trigger edit state
+      const label = this.getLabelUnderCrosshairs();
+      if (label) canEditNow = true;
+      else {
+        const nodes = this.getDANodesContainingCrosshairs();
+        if (nodes.length > 0) canEditNow = true;
+      }
+    }
+
+    if (this.canEdit !== canEditNow) {
+      this.canEdit = canEditNow;
+      this.canEditChange.emit(this.canEdit);
+    }
+  }
 
   private handleCommands(command: DACommand) {
     console.log("handleCommands - " + JSON.stringify(command));
@@ -90,6 +136,51 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.MOVE_CROSSHAIRS_UP:
         this.moveCrosshairsUp();
         break;
+      case DACommandType.STEER_FORWARD:
+        this.steerForward();
+        break;
+      case DACommandType.STEER_BACKWARD:
+        this.steerBackward();
+        break;
+      case DACommandType.STRAFE_LEFT:
+        this.strafeLeft();
+        break;
+      case DACommandType.STRAFE_RIGHT:
+        this.strafeRight();
+        break;
+      case DACommandType.ROTATE_HEADING_LEFT:
+        this.rotateHeadingLeft();
+        break;
+      case DACommandType.ROTATE_HEADING_RIGHT:
+        this.rotateHeadingRight();
+        break;
+      case DACommandType.INCREASE_MOVE_SPEED:
+        this.increaseMoveSpeed();
+        break;
+      case DACommandType.DECREASE_MOVE_SPEED:
+        this.decreaseMoveSpeed();
+        break;
+      case DACommandType.TRAVERSE_OUTGOING_NEXT:
+        this.traverseOutgoingNext();
+        break;
+      case DACommandType.TRAVERSE_INCOMING_NEXT:
+        this.traverseIncomingNext();
+        break;
+      case DACommandType.SNAP_TO_NEAREST_NODE:
+        this.snapToNearestNode();
+        break;
+      case DACommandType.INCREASE_SELECTED_NODE_SIZE:
+        this.increaseSelectedNodeSize();
+        break;
+      case DACommandType.DECREASE_SELECTED_NODE_SIZE:
+        this.decreaseSelectedNodeSize();
+        break;
+      case DACommandType.INCREASE_SELECTED_TEXT_SIZE:
+        this.increaseSelectedTextSize();
+        break;
+      case DACommandType.DECREASE_SELECTED_TEXT_SIZE:
+        this.decreaseSelectedTextSize();
+        break;
       case DACommandType.CREATE_NEW_NODE:
         this.createNewNode();
         break
@@ -102,9 +193,11 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case DACommandType.SINGLE_ITEM_TOGGLE_SELECT:
         this.singleItemSelect();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.MULTI_ITEM_SELECT:
         this.multiItemSelect();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.ZOOM_IN:
         this.zoomIn();
@@ -114,15 +207,18 @@ export class DrawingAreaComponent implements AfterViewInit {
         break;
       case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.RECENTER_VIEW:
         this.recenterView();
         break;
       case DACommandType.RECENTER_CROSSHAIRS:
         this.recenterCrosshairs();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.UNSELECT_ALL:
         this.unselectAll();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.DRAG_SELECTED_LEFT:
         this.dragSelectedLeft();
@@ -148,11 +244,17 @@ export class DrawingAreaComponent implements AfterViewInit {
       case DACommandType.TOGGLE_WAYPOINT_VISIBILITY:
         this.toggleWaypointVisibility();
         break;
-      case DACommandType.DELETE:
-        this.deleteSelected();
-        break;
       case DACommandType.ADD_LABEL:
         this.addLabel();
+        break;
+      case DACommandType.EDIT_SELECTED:
+        this.handleEditSelected();
+        break;
+      case DACommandType.DELETE_LAST_CHAR:
+        this.deleteLastChar();
+        break;
+      case DACommandType.DELETE:
+        this.deleteSelected();
         break;
       default:
         this.assertNever(command);
@@ -171,17 +273,17 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private selectTopItem() {
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) {
+      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
+      return;
+    }
+
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
 
     if (daNodesContainingCrosshairs.length > 0) {
       const nodeToToggle = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
       nodeToToggle.isSelected = !nodeToToggle.isSelected;
-      return;
-    }
-
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) {
-      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
       return;
     }
 
@@ -200,13 +302,6 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.unselectAllWaypoints();
     this.unselectAllLabels();
 
-    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-
-    if (daNodesContainingCrosshairs.length > 0) {
-      daNodesContainingCrosshairs[0].isSelected = true;
-      return;
-    }
-
     const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (waypointUnderCrosshairs) {
       waypointUnderCrosshairs.isSelected = true;
@@ -216,6 +311,13 @@ export class DrawingAreaComponent implements AfterViewInit {
     const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
     if (labelUnderCrosshairs) {
       labelUnderCrosshairs.isSelected = true;
+      return;
+    }
+
+    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
+
+    if (daNodesContainingCrosshairs.length > 0) {
+      daNodesContainingCrosshairs[0].isSelected = true;
       return;
     }
 
@@ -248,6 +350,11 @@ export class DrawingAreaComponent implements AfterViewInit {
     this.drawingLayer.appendTextToSelected(key);
   }
 
+  private deleteLastChar() {
+    this.finishTweens();
+    this.drawingLayer.deleteLastCharFromSelected();
+  }
+
   private connectSelectedNodes() {
     this.finishTweens();
 
@@ -264,19 +371,16 @@ export class DrawingAreaComponent implements AfterViewInit {
         const destNode = daNodesContainingCrosshairs[0];
         const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
         this.drawingLayer.addEdge(srcNode, destNode);
+        this.unselectAll();
       } else {
         return;
       }
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
-      if (daNodesContainingCrosshairs[0] != selectedDANodes[0]) {
-        const destNode = daNodesContainingCrosshairs[0];
-        const srcNode = selectedDANodes[0];
-        this.drawingLayer.addEdge(srcNode, destNode);
-        return;
-      } else {
-        //todo: connect node to self
-        return;
-      }
+      const destNode = daNodesContainingCrosshairs[0];
+      const srcNode = selectedDANodes[0];
+      this.drawingLayer.addEdge(srcNode, destNode);
+      this.unselectAll();
+      return;
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
       //todo: create new connected node
     } else {
@@ -336,88 +440,321 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private moveCrosshairsUp() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.y > 60) {
-      this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs.konvaGroup,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.crosshairsLayer.crosshairs.y - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play());
-    } else {
-      this.tweens.push(new Konva.Tween({
-        node: this.drawingLayer,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.drawingLayer.y() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play())
-    }
+    this.moveCrosshairsBy(0, -this.CROSSHAIRS_MOVEMENT_DISTANCE);
   }
 
   private moveCrosshairsRight() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.x < this.stage.width() - 60) {
-      this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs.konvaGroup,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.crosshairsLayer.crosshairs.x + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play());
-    } else
-      this.tweens.push(new Konva.Tween({
-        node: this.drawingLayer,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.drawingLayer.x() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play())
+    this.moveCrosshairsBy(this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
   }
 
   private moveCrosshairsDown() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
-    if (this.crosshairsLayer.crosshairs.y < this.stage.height())
-      this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs.konvaGroup,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.crosshairsLayer.crosshairs.y + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play());
-    else {
-      this.tweens.push(new Konva.Tween({
-        node: this.drawingLayer,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        y: this.drawingLayer.y() - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play())
-
-    }
+    this.moveCrosshairsBy(0, this.CROSSHAIRS_MOVEMENT_DISTANCE);
   }
 
   private moveCrosshairsLeft() {
+    this.moveCrosshairsBy(-this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
+  }
+
+  private moveCrosshairsBy(deltaX: number, deltaY: number) {
     this.finishTweens();
-    if (this.crosshairsLayer.crosshairs.x > 60) {
+
+    const edgeMargin = 60;
+    const currentX = this.crosshairsLayer.crosshairs.x;
+    const currentY = this.crosshairsLayer.crosshairs.y;
+
+    const targetX = currentX + deltaX;
+    const targetY = currentY + deltaY;
+
+    const minX = edgeMargin;
+    const maxX = this.stage.width() - edgeMargin;
+    const minY = edgeMargin;
+    const maxY = this.stage.height() - edgeMargin;
+
+    const clampedX = Math.min(Math.max(targetX, minX), maxX);
+    const clampedY = Math.min(Math.max(targetY, minY), maxY);
+
+    const overflowX = targetX - clampedX;
+    const overflowY = targetY - clampedY;
+
+    if (clampedX !== currentX || clampedY !== currentY) {
       this.tweens.push(new Konva.Tween({
         node: this.crosshairsLayer.crosshairs.konvaGroup,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.crosshairsLayer.crosshairs.x - this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
+        x: clampedX,
+        y: clampedY,
+        easing: Konva.Easings.Linear,
       }).play());
-    } else {
+    }
+
+    if (overflowX !== 0 || overflowY !== 0) {
       this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.drawingLayer.x() + this.CROSSHAIRS_MOVEMENT_DISTANCE,
-        easing: Konva.Easings.Linear
-      }).play())
-      // this.drawingLayer.move({x: 50, y: 0})
+        x: this.drawingLayer.x() - overflowX,
+        y: this.drawingLayer.y() - overflowY,
+        easing: Konva.Easings.Linear,
+      }).play());
+    }
+  }
+
+  private steerForward() {
+    this.moveCrosshairsBy(
+      Math.cos(this.headingRadians) * this.steeringMoveDistance,
+      Math.sin(this.headingRadians) * this.steeringMoveDistance,
+    );
+  }
+
+  private steerBackward() {
+    this.moveCrosshairsBy(
+      -Math.cos(this.headingRadians) * this.steeringMoveDistance,
+      -Math.sin(this.headingRadians) * this.steeringMoveDistance,
+    );
+  }
+
+  private strafeLeft() {
+    const leftAngle = this.headingRadians - Math.PI / 2;
+    this.moveCrosshairsBy(
+      Math.cos(leftAngle) * this.steeringMoveDistance,
+      Math.sin(leftAngle) * this.steeringMoveDistance,
+    );
+  }
+
+  private strafeRight() {
+    const rightAngle = this.headingRadians + Math.PI / 2;
+    this.moveCrosshairsBy(
+      Math.cos(rightAngle) * this.steeringMoveDistance,
+      Math.sin(rightAngle) * this.steeringMoveDistance,
+    );
+  }
+
+  private rotateHeadingLeft() {
+    this.headingRadians = this.normalizeHeading(this.headingRadians - this.STEERING_ROTATION_STEP_RADIANS);
+    this.crosshairsLayer.setHeading(this.headingRadians);
+  }
+
+  private rotateHeadingRight() {
+    this.headingRadians = this.normalizeHeading(this.headingRadians + this.STEERING_ROTATION_STEP_RADIANS);
+    this.crosshairsLayer.setHeading(this.headingRadians);
+  }
+
+  private increaseMoveSpeed() {
+    this.steeringMoveDistance = Math.min(
+      this.steeringMoveDistance + this.STEERING_SPEED_STEP,
+      this.MAX_STEERING_SPEED,
+    );
+    this.emitMovementSpeed();
+  }
+
+  private decreaseMoveSpeed() {
+    this.steeringMoveDistance = Math.max(
+      this.steeringMoveDistance - this.STEERING_SPEED_STEP,
+      this.MIN_STEERING_SPEED,
+    );
+    this.emitMovementSpeed();
+  }
+
+  private emitMovementSpeed() {
+    this.movementSpeedChange.emit(this.steeringMoveDistance);
+  }
+
+  private normalizeHeading(angleRadians: number): number {
+    if (angleRadians <= -Math.PI) {
+      return angleRadians + Math.PI * 2;
+    }
+
+    if (angleRadians > Math.PI) {
+      return angleRadians - Math.PI * 2;
+    }
+
+    return angleRadians;
+  }
+
+  private traverseOutgoingNext() {
+    this.traverseFromAnchorNode('outgoing');
+  }
+
+  private traverseIncomingNext() {
+    this.traverseFromAnchorNode('incoming');
+  }
+
+  private snapToNearestNode() {
+    const nodes = this.drawingLayer.getDANodes();
+    if (nodes.length === 0) {
+      return;
+    }
+
+    const crosshairsPosition = {
+      x: this.crosshairsLayer.crosshairsX(),
+      y: this.crosshairsLayer.crosshairsY(),
+    };
+
+    let nearestNode = nodes[0];
+    let nearestDistanceSquared = Number.POSITIVE_INFINITY;
+
+    nodes.forEach((node) => {
+      const center = this.getNodeCenterInStageCoordinates(node);
+      const dx = center.x - crosshairsPosition.x;
+      const dy = center.y - crosshairsPosition.y;
+      const distanceSquared = dx * dx + dy * dy;
+
+      if (distanceSquared < nearestDistanceSquared) {
+        nearestDistanceSquared = distanceSquared;
+        nearestNode = node;
+      }
+    });
+
+    this.focusNode(nearestNode);
+  }
+
+  private traverseFromAnchorNode(direction: 'outgoing' | 'incoming') {
+    this.finishTweens();
+
+    const anchorNode = this.getTraversalAnchorNode();
+    if (!anchorNode) {
+      return;
+    }
+
+    const candidateEdges = direction === 'outgoing' ? anchorNode.outgoingEdges : anchorNode.incomingEdges;
+    if (candidateEdges.length === 0) {
+      return;
+    }
+
+    const indexMap = direction === 'outgoing'
+      ? this.outgoingTraversalIndexByNode
+      : this.incomingTraversalIndexByNode;
+    const currentIndex = indexMap.get(anchorNode) ?? 0;
+    const edge = candidateEdges[currentIndex % candidateEdges.length];
+    indexMap.set(anchorNode, (currentIndex + 1) % candidateEdges.length);
+
+    const targetNode = direction === 'outgoing' ? edge.destNode : edge.srcNode;
+    this.focusNode(targetNode);
+  }
+
+  private getTraversalAnchorNode(): DANode | null {
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length > 0) {
+      return selectedNodes[0];
+    }
+
+    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
+    if (nodesUnderCrosshairs.length > 0) {
+      return nodesUnderCrosshairs[0];
+    }
+
+    return null;
+  }
+
+  private focusNode(node: DANode) {
+    this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
+    this.unselectAllLabels();
+    node.isSelected = true;
+
+    const nodeCenterInStage = this.getNodeCenterInStageCoordinates(node);
+    const deltaX = nodeCenterInStage.x - this.crosshairsLayer.crosshairs.x;
+    const deltaY = nodeCenterInStage.y - this.crosshairsLayer.crosshairs.y;
+    this.moveCrosshairsBy(deltaX, deltaY);
+    this.checkAndEmitEditState();
+  }
+
+  private getNodeCenterInStageCoordinates(node: DANode): {x: number; y: number} {
+    const scale = this.drawingLayer.scaleX();
+    return {
+      x: this.drawingLayer.x() + (node.group.x() + node.NODE_WIDTH / 2) * scale,
+      y: this.drawingLayer.y() + (node.group.y() + node.NODE_HEIGHT / 2) * scale,
+    };
+  }
+
+  private increaseSelectedNodeSize() {
+    this.adjustSelectedNodeSize(this.NODE_SIZE_STEP);
+  }
+
+  private decreaseSelectedNodeSize() {
+    this.adjustSelectedNodeSize(-this.NODE_SIZE_STEP);
+  }
+
+  private adjustSelectedNodeSize(delta: number) {
+    const targetNodes = this.getSelectedNodesOrNodeUnderCrosshairs();
+    if (targetNodes.length === 0) {
+      return;
+    }
+
+    let changed = false;
+    const connectedEdges = new Set<DAEdge>();
+
+    targetNodes.forEach((node) => {
+      if (node.resizeBy(delta)) {
+        changed = true;
+        node.connectedEdges.forEach((edge) => connectedEdges.add(edge));
+      }
+    });
+
+    if (!changed) {
+      return;
+    }
+
+    connectedEdges.forEach((edge) => this.updateEdgePoints(edge));
+    this.drawingLayer.batchDraw();
+  }
+
+  private getSelectedNodesOrNodeUnderCrosshairs(): DANode[] {
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length > 0) {
+      return selectedNodes;
+    }
+
+    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
+    return nodesUnderCrosshairs.length > 0 ? [nodesUnderCrosshairs[0]] : [];
+  }
+
+  private increaseSelectedTextSize() {
+    this.adjustSelectedTextSize(this.TEXT_SIZE_STEP);
+  }
+
+  private decreaseSelectedTextSize() {
+    this.adjustSelectedTextSize(-this.TEXT_SIZE_STEP);
+  }
+
+  private adjustSelectedTextSize(delta: number) {
+    let changed = false;
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedLabels = this.getSelectedLabels();
+
+    if (selectedNodes.length === 0 && selectedLabels.length === 0) {
+      const nodeUnderCrosshairs = this.getDANodesContainingCrosshairs()[0];
+      if (nodeUnderCrosshairs) {
+        changed = nodeUnderCrosshairs.adjustLabelFontSizeBy(delta) || changed;
+      }
+
+      const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
+      if (labelUnderCrosshairs) {
+        changed = labelUnderCrosshairs.adjustFontSizeBy(delta) || changed;
+      }
+    } else {
+      selectedNodes.forEach((node) => {
+        changed = node.adjustLabelFontSizeBy(delta) || changed;
+      });
+
+      selectedLabels.forEach((label) => {
+        changed = label.adjustFontSizeBy(delta) || changed;
+      });
+    }
+
+    if (changed) {
+      this.drawingLayer.batchDraw();
     }
   }
 
   private finishTweens() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
+  }
+
+  private cancelDragAnimation() {
+    if (this.currentDragRafId !== null) {
+      cancelAnimationFrame(this.currentDragRafId);
+      this.currentDragRafId = null;
+    }
   }
 
   private emitZoomLevel() {
@@ -444,7 +781,7 @@ export class DrawingAreaComponent implements AfterViewInit {
     }
 
     this.drawingLayer.batchDraw();
-    this.daOut.emit({kind: "started-label-editing-mode"})
+    this.checkAndEmitEditState();
   }
 
 
@@ -577,8 +914,9 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private dragSelectedLeft() {
+    this.cancelDragAnimation();
     this.finishTweens();
-    this.enterDragMode(); // Auto-enter drag mode
+    this.hasDragged = true;
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
@@ -644,11 +982,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.currentDragRafId = requestAnimationFrame(animate);
       } else {
-        // Animation complete
-        this.exitDragMode();
-        this.checkAutoPan();
+        this.currentDragRafId = null;
       }
     };
     
@@ -656,8 +992,9 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private dragSelectedRight() {
+    this.cancelDragAnimation();
     this.finishTweens();
-    this.enterDragMode(); // Auto-enter drag mode
+    this.hasDragged = true;
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
@@ -723,11 +1060,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.currentDragRafId = requestAnimationFrame(animate);
       } else {
-        // Animation complete
-        this.exitDragMode();
-        this.checkAutoPan();
+        this.currentDragRafId = null;
       }
     };
     
@@ -735,8 +1070,9 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private dragSelectedUp() {
+    this.cancelDragAnimation();
     this.finishTweens();
-    this.enterDragMode(); // Auto-enter drag mode
+    this.hasDragged = true;
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
@@ -802,11 +1138,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY - currentDragDistance;
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.currentDragRafId = requestAnimationFrame(animate);
       } else {
-        // Animation complete
-        this.exitDragMode();
-        this.checkAutoPan();
+        this.currentDragRafId = null;
       }
     };
     
@@ -814,8 +1148,9 @@ export class DrawingAreaComponent implements AfterViewInit {
   }
 
   private dragSelectedDown() {
+    this.cancelDragAnimation();
     this.finishTweens();
-    this.enterDragMode(); // Auto-enter drag mode
+    this.hasDragged = true;
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
@@ -881,11 +1216,9 @@ export class DrawingAreaComponent implements AfterViewInit {
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY + currentDragDistance;
       
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.currentDragRafId = requestAnimationFrame(animate);
       } else {
-        // Animation complete
-        this.exitDragMode();
-        this.checkAutoPan();
+        this.currentDragRafId = null;
       }
     };
     
@@ -967,6 +1300,7 @@ export class DrawingAreaComponent implements AfterViewInit {
             waypoint.setVisibleForSelection(true);
           }
           this.drawingLayer.batchDraw();
+          this.unselectAll();
           return;
         }
       }
@@ -990,11 +1324,50 @@ export class DrawingAreaComponent implements AfterViewInit {
           const label = new DALabel(point.x, point.y, 'label');
           edge.addLabel(label);
           this.drawingLayer.batchDraw();
+          this.unselectAll(); // Clear selection after adding label
           return;
         }
       }
     }
     console.log('addLabel: no edge found under crosshairs');
+  }
+
+  private handleEditSelected() {
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedLabels = this.getSelectedLabels();
+    // Waypoints are not editable, so we don't check for them here.
+    console.log(`handleEditSelected: Nodes=${selectedNodes.length}, Labels=${selectedLabels.length}`);
+
+    // 1. If selection exists (and is editable), edit it.
+    if (selectedNodes.length > 0 ||
+        selectedLabels.length > 0) {
+       console.log('  -> Entering edit mode due to existing selection.');
+       this.daOut.emit({kind: "started-label-editing-mode"});
+       return;
+    }
+
+    // 2. If no selection, check under crosshairs for editable items.
+    // Waypoints are ignored.
+
+    const label = this.getLabelUnderCrosshairs();
+    if (label) {
+      console.log('  -> Found label under crosshairs. Selecting and editing.');
+      this.singleItemSelect();
+      this.daOut.emit({kind: "started-label-editing-mode"});
+      return;
+    }
+
+    const nodes = this.getDANodesContainingCrosshairs();
+    console.log(`  -> Nodes under crosshairs: ${nodes.length}`);
+    if (nodes.length > 0) {
+      console.log('  -> Found node under crosshairs. Selecting and editing.');
+      this.singleItemSelect();
+      this.daOut.emit({kind: "started-label-editing-mode"});
+      return;
+    }
+
+    // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
+    console.log('  -> Nothing targeted. Edit command ignored.');
   }
 
   private updateWaypointVisibility(): void {
@@ -1172,10 +1545,15 @@ export class DrawingAreaComponent implements AfterViewInit {
 
   private enterDragMode() {
     // Crosshairs stay visible during drag
+    this.hasDragged = false;
   }
 
   private exitDragMode() {
     // Crosshairs remain visible after drag
+    if (this.hasDragged) {
+      this.unselectAll();
+      this.checkAndEmitEditState();
+    }
   }
 
 }

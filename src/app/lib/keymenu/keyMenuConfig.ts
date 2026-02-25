@@ -1,10 +1,15 @@
 import {KeyMenuModeConfig} from './keyMenuModeConfig';
 import {KeyMenuMode} from "./keyMenuMode";
 
-export interface KeyMenuConfig<T> {
-  containerId: string,
-  containingHTMLElement: HTMLElement,
-  modes: {[name: string]: KeyMenuModeConfig<T, KeyMenuMode<T>>}
+export type KeyMenuModeConfigs<T, ModeName extends string = string> = {
+  [name in ModeName]: KeyMenuModeConfig<T, KeyMenuMode<T>>;
+};
+
+export interface KeyMenuConfig<T, ModeName extends string = string> {
+  containerId: string;
+  containingHTMLElement: HTMLElement;
+  modes: KeyMenuModeConfigs<T, ModeName>;
+  initialModeName?: ModeName;
 }
 
 

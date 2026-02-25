@@ -6,6 +6,7 @@ import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
 import { DACrosshairs } from './da-crosshairs.group';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
+import Konva from 'konva';
 
 describe('DrawingArea Unit Tests', () => {
   describe('DANode', () => {
@@ -46,6 +47,46 @@ describe('DrawingArea Unit Tests', () => {
       const zIndex = node.zIndex();
       
       expect(typeof zIndex).toBe('number');
+    });
+
+    it('should resize node dimensions within bounds', () => {
+      const node = new DANode(0, 0, 'test');
+
+      expect(node.resizeBy(40)).toBe(true);
+      expect(node.NODE_WIDTH).toBe(node.DEFAULT_NODE_WIDTH + 40);
+      expect(node.NODE_HEIGHT).toBe(node.DEFAULT_NODE_HEIGHT + 40);
+      expect(node.rect.width()).toBe(node.NODE_WIDTH);
+      expect(node.rect.height()).toBe(node.NODE_HEIGHT);
+      expect(node.label.width()).toBe(node.NODE_WIDTH);
+      expect(node.label.height()).toBe(node.NODE_HEIGHT);
+    });
+
+    it('should clamp node resizing at min/max bounds', () => {
+      const node = new DANode(0, 0, 'test');
+
+      expect(node.resizeBy(10000)).toBe(true);
+      expect(node.NODE_WIDTH).toBe(node.MAX_NODE_SIZE);
+      expect(node.resizeBy(1)).toBe(false);
+
+      expect(node.resizeBy(-10000)).toBe(true);
+      expect(node.NODE_WIDTH).toBe(node.MIN_NODE_SIZE);
+      expect(node.resizeBy(-1)).toBe(false);
+    });
+
+    it('should adjust node label font size within bounds', () => {
+      const node = new DANode(0, 0, 'test');
+
+      expect(node.adjustLabelFontSizeBy(6)).toBe(true);
+      expect(node.FONT_SIZE).toBe(node.DEFAULT_FONT_SIZE + 6);
+      expect(node.label.fontSize()).toBe(node.FONT_SIZE);
+
+      expect(node.adjustLabelFontSizeBy(10000)).toBe(true);
+      expect(node.FONT_SIZE).toBe(node.MAX_FONT_SIZE);
+      expect(node.adjustLabelFontSizeBy(1)).toBe(false);
+
+      expect(node.adjustLabelFontSizeBy(-10000)).toBe(true);
+      expect(node.FONT_SIZE).toBe(node.MIN_FONT_SIZE);
+      expect(node.adjustLabelFontSizeBy(-1)).toBe(false);
     });
   });
 
@@ -96,6 +137,20 @@ describe('DrawingArea Unit Tests', () => {
       
       expect(typeof zIndex).toBe('number');
     });
+
+    it('should support self-loop edges with loop path points', () => {
+      const node = new DANode(120, 80, 'self');
+      const edge = new DAEdge(node, node, 'self-loop');
+
+      const points = edge.line.points();
+      expect(points.length).toBe(8);
+      expect(points[0]).toBeCloseTo(node.konvaGroup.x() + node.NODE_WIDTH, 2);
+      expect(points[6]).toBeCloseTo(node.konvaGroup.x() + node.NODE_WIDTH, 2);
+      expect(points[1]).toBeLessThan(points[7]);
+
+      expect(node.outgoingEdges).toContain(edge);
+      expect(node.incomingEdges).toContain(edge);
+    });
   });
 
   describe('DACrosshairs', () => {
@@ -133,6 +188,32 @@ describe('DrawingArea Unit Tests', () => {
       
       expect(crosshairs.x).toBe(150);
       expect(crosshairs.y).toBe(250);
+    });
+
+    it('should update heading line points based on heading angle', () => {
+      const crosshairs = new DACrosshairs({ x: 0, y: 0 });
+      crosshairs.setHeading(Math.PI / 2);
+
+      const headingLine = crosshairs.konvaGroup.getChildren()[2] as Konva.Line;
+      const points = headingLine.points();
+
+      expect(points[0]).toBe(0);
+      expect(points[1]).toBe(0);
+      expect(points[2]).toBeCloseTo(0, 3);
+      expect(points[3]).toBeCloseTo(crosshairs.HEADING_LENGTH, 3);
+    });
+
+    it('should toggle heading line visibility', () => {
+      const crosshairs = new DACrosshairs({ x: 0, y: 0 });
+      const headingLine = crosshairs.konvaGroup.getChildren()[2] as Konva.Line;
+
+      expect(headingLine.visible()).toBe(false);
+
+      crosshairs.setHeadingVisible(true);
+      expect(headingLine.visible()).toBe(true);
+
+      crosshairs.setHeadingVisible(false);
+      expect(headingLine.visible()).toBe(false);
     });
   });
 
@@ -498,6 +579,22 @@ describe('DrawingArea Unit Tests', () => {
       expect(label.position.x).toBe(50);
       expect(label.position.y).toBe(75);
     });
+
+    it('should adjust font size within bounds', () => {
+      const label = new DALabel(100, 200, 'test');
+      const labelText = (label as any)._text as Konva.Text;
+
+      expect(label.adjustFontSizeBy(8)).toBe(true);
+      expect(labelText.fontSize()).toBe(label.DEFAULT_FONT_SIZE + 8);
+
+      expect(label.adjustFontSizeBy(10000)).toBe(true);
+      expect(labelText.fontSize()).toBe(label.MAX_FONT_SIZE);
+      expect(label.adjustFontSizeBy(1)).toBe(false);
+
+      expect(label.adjustFontSizeBy(-10000)).toBe(true);
+      expect(labelText.fontSize()).toBe(label.MIN_FONT_SIZE);
+      expect(label.adjustFontSizeBy(-1)).toBe(false);
+    });
   });
 
   describe('DAEdge with labels', () => {
@@ -568,6 +665,22 @@ describe('DrawingArea Unit Tests', () => {
 
       drawingLayer.removeEdge(drawingLayer.getDAEdges()[0]);
       expect(drawingLayer.getDAEdges().length).toBe(0);
+    });
+
+    it('should remove edge references from src/dest nodes when removing edge', () => {
+      const node1 = new DANode(0, 0, 'A');
+      const node2 = new DANode(200, 0, 'B');
+      drawingLayer['daNodes'].push(node1, node2);
+      drawingLayer.addEdge(node1, node2);
+
+      const edge = drawingLayer.getDAEdges()[0];
+      expect(node1.outgoingEdges).toContain(edge);
+      expect(node2.incomingEdges).toContain(edge);
+
+      drawingLayer.removeEdge(edge);
+
+      expect(node1.outgoingEdges).not.toContain(edge);
+      expect(node2.incomingEdges).not.toContain(edge);
     });
   });
 });

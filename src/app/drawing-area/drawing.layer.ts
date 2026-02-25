@@ -60,6 +60,15 @@ export class DrawingLayer extends Konva.Layer {
     });
   }
 
+  deleteLastCharFromSelected() {
+    this.getSelectedDANodes().forEach(daNode => {
+      const currentText = daNode.label.text();
+      if (currentText.length > 0) {
+        daNode.label.text(currentText.slice(0, -1));
+      }
+    });
+  }
+
   unselectAll() {
     this.getSelectedDANodes().forEach(daNode => {
       daNode.isSelected = false;
@@ -94,6 +103,8 @@ export class DrawingLayer extends Konva.Layer {
   }
 
   removeEdge(edge: DAEdge): void {
+    edge.srcNode.removeOutgoingEdge(edge);
+    edge.destNode.removeIncomingEdge(edge);
     edge.konvaGroup.remove();
     const index = this.daEdges.indexOf(edge);
     if (index >= 0) {
