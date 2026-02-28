@@ -891,10 +891,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
 
   private recenterCrosshairs() {
     this.finishTweens();
-    
+
     const stageWidth = this.stage.width();
     const stageHeight = this.stage.height();
-    
+
     const tween = new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
@@ -908,7 +908,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
         }
       }
     });
-    
+
     this.tweens.push(tween);
     tween.play();
   }
@@ -920,74 +920,84 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
-    
+
     // Collect all connected edges to move
     const edgesToMove = new Set<DAEdge>();
     selectedNodes.forEach(node => {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
-    
+
     // Also collect edges from selected waypoints
     selectedWaypoints.forEach(waypoint => {
       const edges = this.getEdgesContainingWaypoint(waypoint);
       edges.forEach(edge => edgesToMove.add(edge));
     });
-    
+
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
-    
+
     // Store initial positions for all nodes and waypoints
     const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialX: node.group.x(),
       targetX: node.group.x() - dragDistance
     }));
-    
+
     const initialWaypointPositions = selectedWaypoints.map(waypoint => ({
       waypoint,
       initialX: waypoint.x,
       targetX: waypoint.x - dragDistance
     }));
-    
+
     // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
-    
+    let prevOverflowX = 0;
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Update all nodes
       initialNodePositions.forEach(({ node, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
       });
-      
+
       // Update all waypoints
       initialWaypointPositions.forEach(({ waypoint, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         waypoint.x = newX;
       });
-      
+
       // Update edges smoothly during animation
       edgesToMove.forEach(edge => {
         this.updateEdgePoints(edge);
       });
-      
-      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+
+      // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
       const currentDragDistance = dragDistance * scale * progress;
-      this.crosshairsLayer.crosshairs.x = initialCrosshairsX - currentDragDistance;
+      const targetCrosshairsX = initialCrosshairsX - currentDragDistance;
+      const edgeMargin = 60;
+      const clampedX = Math.min(Math.max(targetCrosshairsX, edgeMargin), this.stage.width() - edgeMargin);
+      const overflowX = targetCrosshairsX - clampedX;
+      this.crosshairsLayer.crosshairs.x = clampedX;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
-      
+      const panDeltaX = -(overflowX - prevOverflowX);
+      if (panDeltaX !== 0) {
+        this.drawingLayer.x(this.drawingLayer.x() + panDeltaX);
+      }
+      prevOverflowX = overflowX;
+
       if (progress < 1) {
         this.currentDragRafId = requestAnimationFrame(animate);
       } else {
         this.currentDragRafId = null;
       }
     };
-    
+
     animate();
   }
 
@@ -998,74 +1008,84 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
-    
+
     // Collect all connected edges to move
     const edgesToMove = new Set<DAEdge>();
     selectedNodes.forEach(node => {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
-    
+
     // Also collect edges from selected waypoints
     selectedWaypoints.forEach((waypoint: DAWaypoint) => {
       const edges = this.getEdgesContainingWaypoint(waypoint);
       edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
     });
-    
+
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
-    
+
     // Store initial positions for all nodes and waypoints
     const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialX: node.group.x(),
       targetX: node.group.x() + dragDistance
     }));
-    
+
     const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
       waypoint,
       initialX: waypoint.x,
       targetX: waypoint.x + dragDistance
     }));
-    
+
     // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
-    
+    let prevOverflowX = 0;
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Update all nodes
       initialNodePositions.forEach(({ node, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         node.group.x(newX);
       });
-      
+
       // Update all waypoints
       initialWaypointPositions.forEach(({ waypoint, initialX, targetX }) => {
         const newX = initialX + (targetX - initialX) * progress;
         waypoint.x = newX;
       });
-      
+
       // Update edges smoothly during animation
       edgesToMove.forEach(edge => {
         this.updateEdgePoints(edge);
       });
-      
-      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+
+      // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
       const currentDragDistance = dragDistance * scale * progress;
-      this.crosshairsLayer.crosshairs.x = initialCrosshairsX + currentDragDistance;
+      const targetCrosshairsX = initialCrosshairsX + currentDragDistance;
+      const edgeMargin = 60;
+      const clampedX = Math.min(Math.max(targetCrosshairsX, edgeMargin), this.stage.width() - edgeMargin);
+      const overflowX = targetCrosshairsX - clampedX;
+      this.crosshairsLayer.crosshairs.x = clampedX;
       this.crosshairsLayer.crosshairs.y = initialCrosshairsY;
-      
+      const panDeltaX = -(overflowX - prevOverflowX);
+      if (panDeltaX !== 0) {
+        this.drawingLayer.x(this.drawingLayer.x() + panDeltaX);
+      }
+      prevOverflowX = overflowX;
+
       if (progress < 1) {
         this.currentDragRafId = requestAnimationFrame(animate);
       } else {
         this.currentDragRafId = null;
       }
     };
-    
+
     animate();
   }
 
@@ -1076,74 +1096,84 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
-    
+
     // Collect all connected edges to move
     const edgesToMove = new Set<DAEdge>();
     selectedNodes.forEach(node => {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
-    
+
     // Also collect edges from selected waypoints
     selectedWaypoints.forEach((waypoint: DAWaypoint) => {
       const edges = this.getEdgesContainingWaypoint(waypoint);
       edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
     });
-    
+
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
-    
+
     // Store initial positions for all nodes and waypoints
     const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialY: node.group.y(),
       targetY: node.group.y() - dragDistance
     }));
-    
+
     const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
       waypoint,
       initialY: waypoint.y,
       targetY: waypoint.y - dragDistance
     }));
-    
+
     // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
-    
+    let prevOverflowY = 0;
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Update all nodes
       initialNodePositions.forEach(({ node, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
       });
-      
+
       // Update all waypoints
       initialWaypointPositions.forEach(({ waypoint, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         waypoint.y = newY;
       });
-      
+
       // Update edges smoothly during animation
       edgesToMove.forEach(edge => {
         this.updateEdgePoints(edge);
       });
-      
-      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+
+      // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
       const currentDragDistance = dragDistance * scale * progress;
+      const targetCrosshairsY = initialCrosshairsY - currentDragDistance;
+      const edgeMargin = 60;
+      const clampedY = Math.min(Math.max(targetCrosshairsY, edgeMargin), this.stage.height() - edgeMargin);
+      const overflowY = targetCrosshairsY - clampedY;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
-      this.crosshairsLayer.crosshairs.y = initialCrosshairsY - currentDragDistance;
-      
+      this.crosshairsLayer.crosshairs.y = clampedY;
+      const panDeltaY = -(overflowY - prevOverflowY);
+      if (panDeltaY !== 0) {
+        this.drawingLayer.y(this.drawingLayer.y() + panDeltaY);
+      }
+      prevOverflowY = overflowY;
+
       if (progress < 1) {
         this.currentDragRafId = requestAnimationFrame(animate);
       } else {
         this.currentDragRafId = null;
       }
     };
-    
+
     animate();
   }
 
@@ -1154,74 +1184,84 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     const dragDistance = 50;
-    
+
     // Collect all connected edges to move
     const edgesToMove = new Set<DAEdge>();
     selectedNodes.forEach(node => {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
-    
+
     // Also collect edges from selected waypoints
     selectedWaypoints.forEach((waypoint: DAWaypoint) => {
       const edges = this.getEdgesContainingWaypoint(waypoint);
       edges.forEach((edge: DAEdge) => edgesToMove.add(edge));
     });
-    
+
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
-    
+
     // Store initial positions for all nodes and waypoints
     const initialNodePositions = selectedNodes.map(node => ({
       node,
       initialY: node.group.y(),
       targetY: node.group.y() + dragDistance
     }));
-    
+
     const initialWaypointPositions = selectedWaypoints.map((waypoint: DAWaypoint) => ({
       waypoint,
       initialY: waypoint.y,
       targetY: waypoint.y + dragDistance
     }));
-    
+
     // Single animation loop for all items
     const duration = this.TWEEN_DURATION * 1000; // Convert to milliseconds
     const startTime = Date.now();
-    
+    let prevOverflowY = 0;
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Update all nodes
       initialNodePositions.forEach(({ node, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         node.group.y(newY);
       });
-      
+
       // Update all waypoints
       initialWaypointPositions.forEach(({ waypoint, initialY, targetY }) => {
         const newY = initialY + (targetY - initialY) * progress;
         waypoint.y = newY;
       });
-      
+
       // Update edges smoothly during animation
       edgesToMove.forEach(edge => {
         this.updateEdgePoints(edge);
       });
-      
-      // Update crosshairs to move the same distance as nodes (scaled to stage coords)
+
+      // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
       const currentDragDistance = dragDistance * scale * progress;
+      const targetCrosshairsY = initialCrosshairsY + currentDragDistance;
+      const edgeMargin = 60;
+      const clampedY = Math.min(Math.max(targetCrosshairsY, edgeMargin), this.stage.height() - edgeMargin);
+      const overflowY = targetCrosshairsY - clampedY;
       this.crosshairsLayer.crosshairs.x = initialCrosshairsX;
-      this.crosshairsLayer.crosshairs.y = initialCrosshairsY + currentDragDistance;
-      
+      this.crosshairsLayer.crosshairs.y = clampedY;
+      const panDeltaY = -(overflowY - prevOverflowY);
+      if (panDeltaY !== 0) {
+        this.drawingLayer.y(this.drawingLayer.y() + panDeltaY);
+      }
+      prevOverflowY = overflowY;
+
       if (progress < 1) {
         this.currentDragRafId = requestAnimationFrame(animate);
       } else {
         this.currentDragRafId = null;
       }
     };
-    
+
     animate();
   }
 
