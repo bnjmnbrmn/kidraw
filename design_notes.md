@@ -41,16 +41,15 @@
 
 These are things we expect to **always** hold true. Violations are bugs.
 
-1. **Single interaction profile**: Only "Classic Grid" exists. No profile tabs, no profile switching.
-2. **Crosshairs always exist**: The crosshairs layer is always present and positioned on the stage.
-3. **Crosshairs stay in bounds**: Movement clamps crosshairs within `edgeMargin` of the stage edges; overflow scrolls the drawing layer instead.
-4. **Selection is visual**: A selected item always renders its selected visual state (stroke color, etc.).
-5. **Unselect-all clears everything**: `UNSELECT_ALL` deselects all nodes, edges, waypoints, and labels.
-6. **KeyMenu modes are exclusive**: Exactly one mode (`normal` or `labelEdit`) is active at any time.
-7. **Label edit mode hides crosshairs**: Entering label edit hides the crosshairs; exiting restores them.
-8. **Insert-node auto-connects**: Creating a new node with existing selected nodes creates edges from each selected node to the new node.
-9. **Zoom preserves crosshairs position**: Zooming in/out scales around the crosshairs' current position.
-10. **Key assignments are configurable**: All key bindings flow through `KeymenuKeyAssignments`; no hardcoded key literals in action logic.
+1. **Crosshairs always exist**: The crosshairs layer is always present and positioned on the stage.
+2. **Crosshairs stay in bounds**: Movement clamps crosshairs within `edgeMargin` of the stage edges; overflow scrolls the drawing layer instead.
+3. **Selection is visual**: A selected item always renders its selected visual state (stroke color, etc.).
+4. **Unselect-all clears everything**: `UNSELECT_ALL` deselects all nodes, edges, waypoints, and labels.
+5. **KeyMenu modes are exclusive**: Exactly one mode (`normal` or `labelEdit`) is active at any time.
+6. **Label edit mode hides crosshairs**: Entering label edit hides the crosshairs; exiting restores them.
+7. **Insert-node auto-connects**: Creating a new node with existing selected nodes creates edges from each selected node to the new node.
+8. **Zoom preserves crosshairs position**: Zooming in/out scales around the crosshairs' current position.
+9. **Key assignments are configurable**: All key bindings flow through `KeymenuKeyAssignments`; no hardcoded key literals in action logic.
 
 ## Non-Invariants (Explicitly Not Guaranteed)
 
