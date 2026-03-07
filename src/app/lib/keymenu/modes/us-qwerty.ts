@@ -111,7 +111,8 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.stack.pop();
 
         const depth = this.stack.length;
-        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette);
+        const heldKeys = this.submenuKeyStringStack.slice(1) as KeyString[];
+        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys);
         this.stack.push(newSubmenu);
         this.slideIn(newSubmenu);
     }

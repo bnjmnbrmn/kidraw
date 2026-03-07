@@ -18,7 +18,7 @@ const DEPTH_OFFSET_Y = 3;
 export interface CardRenderConfig {
   depth: number;
   palette: ThemePalette;
-  heldKeyString?: KeyString;
+  heldKeyStrings?: KeyString[];
 }
 
 export function getCardBackgroundColor(depth: number, palette: ThemePalette): string {
@@ -47,7 +47,7 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
   const { width: cardWidth, height: cardHeight } = getCardDimensions();
   const fillColor = getCardBackgroundColor(config.depth, config.palette);
   const shadowColor = config.palette.cardShadowColor;
-  const heldKeyString = config.heldKeyString;
+  const heldKeyStrings = (config.heldKeyStrings ?? []).filter(k => xAndYForKeys[k]);
 
   const shadowProps = {
     shadowColor: shadowColor,
@@ -57,40 +57,10 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
     shadowEnabled: true,
   };
 
-  if (heldKeyString && xAndYForKeys[heldKeyString]) {
-    const holePos = xAndYForKeys[heldKeyString];
-    const hx = holePos.x;
-    const hy = holePos.y;
-
-    return new Konva.Shape({
-      sceneFunc: (ctx, shape) => {
-        ctx.beginPath();
-        // Outer rect — clockwise
-        const x0 = -CARD_PADDING;
-        const y0 = -CARD_PADDING;
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x0 + cardWidth, y0);
-        ctx.lineTo(x0 + cardWidth, y0 + cardHeight);
-        ctx.lineTo(x0, y0 + cardHeight);
-        ctx.closePath();
-        // Hole rect — counterclockwise (opposite winding = hole with nonzero rule)
-        ctx.moveTo(hx, hy);
-        ctx.lineTo(hx, hy + KEY_HEIGHT);
-        ctx.lineTo(hx + KEY_WIDTH, hy + KEY_HEIGHT);
-        ctx.lineTo(hx + KEY_WIDTH, hy);
-        ctx.closePath();
-        ctx.fillStrokeShape(shape);
-      },
-      fill: fillColor,
-      width: cardWidth,
-      height: cardHeight,
-      ...shadowProps,
-    });
-  }
-
   return new Konva.Shape({
     sceneFunc: (ctx, shape) => {
       ctx.beginPath();
+      // Outer rect — clockwise
       const x0 = -CARD_PADDING;
       const y0 = -CARD_PADDING;
       ctx.moveTo(x0, y0);
@@ -98,6 +68,17 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
       ctx.lineTo(x0 + cardWidth, y0 + cardHeight);
       ctx.lineTo(x0, y0 + cardHeight);
       ctx.closePath();
+      // Hole rects — counterclockwise (opposite winding = hole with nonzero rule)
+      for (const key of heldKeyStrings) {
+        const holePos = xAndYForKeys[key];
+        const hx = holePos.x;
+        const hy = holePos.y;
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx, hy + KEY_HEIGHT);
+        ctx.lineTo(hx + KEY_WIDTH, hy + KEY_HEIGHT);
+        ctx.lineTo(hx + KEY_WIDTH, hy);
+        ctx.closePath();
+      }
       ctx.fillStrokeShape(shape);
     },
     fill: fillColor,
@@ -134,9 +115,10 @@ export function createBlankKey(config: BlankKeyConfig): Konva.Group {
  */
 export function getBlankKeyPositions(
   boundKeys: Set<KeyString>,
-  heldKeyString?: KeyString
+  heldKeyStrings?: KeyString[]
 ): KeyString[] {
-  return ALL_KEYS.filter(k => !boundKeys.has(k) && k !== heldKeyString);
+  const held = new Set(heldKeyStrings ?? []);
+  return ALL_KEYS.filter(k => !boundKeys.has(k) && !held.has(k));
 }
 
 export { ALL_KEYS, CARD_PADDING };

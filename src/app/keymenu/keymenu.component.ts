@@ -193,7 +193,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // Create the new submenu manually
     const newSubmenuConfig = this.buildInsertSubmenuConfig();
     const depth = mode.stack.length;
-    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, keyString as any);
+    const heldKeys = [...mode.submenuKeyStringStack.slice(1) as KeyString[], keyString as KeyString];
+    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, heldKeys);
 
     // Create a synthetic SubmenuKey that reuses the existing key's visuals
     const fakeSubmenuKey: KMSubmenuKey = {

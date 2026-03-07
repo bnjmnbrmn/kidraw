@@ -4,10 +4,10 @@ import { Subject } from 'rxjs';
 export interface ThemePalette {
   // Card backgrounds per depth (0 = root, 1 = first submenu, etc.)
   cardBackgrounds: string[];
-  // Key rendering
-  keyFill: string;
-  keyStroke: string;
-  keyLabelFill: string;
+  // Key rendering (per-depth arrays parallel to cardBackgrounds; last entry repeats for deeper levels)
+  keyFills: string[];
+  keyStrokes: string[];
+  keyLabelFills: string[];
   keyLabelText: string;
   actionText: string;
   // Blank (unbound) key
@@ -42,15 +42,37 @@ export interface ThemePalette {
 
 const DARK_PALETTE: ThemePalette = {
   cardBackgrounds: [
-    '#1e293b', // slate-800
-    '#1e3a5f', // blue-dark
-    '#1a3c34', // green-dark
-    '#3b1f4a', // purple-dark
-    '#4a2c1a', // brown-dark
+    '#1e293b', // slate-800  (root)
+    '#1e3455', // slate→blue (depth 1)
+    '#1e2f6e', // blue       (depth 2)
+    '#2b2470', // indigo     (depth 3)
+    '#3b1f6e', // violet     (depth 4)
+    '#4a1a5e', // purple     (depth 5)
   ],
-  keyFill: '#334155',       // slate-700
-  keyStroke: '#64748b',     // slate-500
-  keyLabelFill: '#475569',  // slate-600
+  keyFills: [
+    '#334155',  // slate-700     (depth 0)
+    '#2d3f66',  // slate→blue    (depth 1)
+    '#2d3a7a',  // blue          (depth 2)
+    '#38307c',  // indigo        (depth 3)
+    '#48307a',  // violet        (depth 4)
+    '#55286a',  // purple        (depth 5)
+  ],
+  keyStrokes: [
+    '#64748b',  // slate-500     (depth 0)
+    '#5b7199',  // blue-muted    (depth 1)
+    '#5565a8',  // blue          (depth 2)
+    '#6558a8',  // indigo        (depth 3)
+    '#7555a5',  // violet        (depth 4)
+    '#854f95',  // purple        (depth 5)
+  ],
+  keyLabelFills: [
+    '#475569',  // slate-600     (depth 0)
+    '#3d4f76',  // slate→blue    (depth 1)
+    '#3d4a8a',  // blue          (depth 2)
+    '#483f8c',  // indigo        (depth 3)
+    '#583f8a',  // violet        (depth 4)
+    '#65387a',  // purple        (depth 5)
+  ],
   keyLabelText: '#e2e8f0',  // slate-200
   actionText: '#cbd5e1',    // slate-300
   blankKeyFill: '#1e293b',  // slate-800
@@ -78,15 +100,37 @@ const DARK_PALETTE: ThemePalette = {
 
 const LIGHT_PALETTE: ThemePalette = {
   cardBackgrounds: [
-    '#e2e8f0', // slate-200
-    '#bfdbfe', // blue-200
-    '#bbf7d0', // green-200
-    '#e9d5ff', // purple-200
-    '#fed7aa', // orange-200
+    '#e2e8f0', // slate-200  (root)
+    '#dbeafe', // blue-100   (depth 1)
+    '#c7d2fe', // indigo-200 (depth 2)
+    '#c4b5fd', // violet-300 (depth 3)
+    '#d8b4fe', // purple-300 (depth 4)
+    '#e9d5ff', // purple-200 (depth 5)
   ],
-  keyFill: '#ffffff',
-  keyStroke: '#334155',       // slate-700 (softer than pure black)
-  keyLabelFill: '#cbd5e1',    // slate-300 (muted, aligns with card tones)
+  keyFills: [
+    '#ffffff',  // white         (depth 0)
+    '#eef4ff',  // blue tint     (depth 1)
+    '#eef0ff',  // indigo tint   (depth 2)
+    '#f3eeff',  // violet tint   (depth 3)
+    '#f5ecff',  // purple tint   (depth 4)
+    '#f9f0ff',  // purple-light  (depth 5)
+  ],
+  keyStrokes: [
+    '#334155',  // slate-700     (depth 0)
+    '#335577',  // blue-muted    (depth 1)
+    '#4444aa',  // indigo        (depth 2)
+    '#5533aa',  // violet        (depth 3)
+    '#6633aa',  // purple        (depth 4)
+    '#773399',  // purple-dark   (depth 5)
+  ],
+  keyLabelFills: [
+    '#cbd5e1',  // slate-300     (depth 0)
+    '#bfdbfe',  // blue-200      (depth 1)
+    '#c7d2fe',  // indigo-200    (depth 2)
+    '#ddd6fe',  // violet-200    (depth 3)
+    '#e9d5ff',  // purple-200    (depth 4)
+    '#f3e8ff',  // purple-100    (depth 5)
+  ],
   keyLabelText: '#1e293b',    // slate-800
   actionText: '#1e293b',      // slate-800
   blankKeyFill: '#f1f5f9',   // slate-100

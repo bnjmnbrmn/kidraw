@@ -62,11 +62,12 @@ export function defaultKeyRenderStyle(): KeyRenderStyle {
   };
 }
 
-export function keyRenderStyleFromPalette(palette: ThemePalette): KeyRenderStyle {
+export function keyRenderStyleFromPalette(palette: ThemePalette, depth: number = 0): KeyRenderStyle {
+  const i = Math.min(depth, palette.keyFills.length - 1);
   return {
-    fillColor: palette.keyFill,
-    strokeColor: palette.keyStroke,
-    labelFillColor: palette.keyLabelFill,
+    fillColor: palette.keyFills[i],
+    strokeColor: palette.keyStrokes[i],
+    labelFillColor: palette.keyLabelFills[i],
     labelTextColor: palette.keyLabelText,
     actionTextColor: palette.actionText,
     highlightShadowColor: palette.highlightShadowColor,
@@ -195,11 +196,12 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     style?: KeyRenderStyle,
     childDepth?: number,
     palette?: ThemePalette,
+    heldKeyStrings?: KeyString[],
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, keyString);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString]);
   }
 
   get highlight(): boolean {
@@ -247,11 +249,12 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     style?: KeyRenderStyle,
     childDepth?: number,
     palette?: ThemePalette,
+    heldKeyStrings?: KeyString[],
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, keyString);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString]);
   }
 
   get highlight(): boolean {

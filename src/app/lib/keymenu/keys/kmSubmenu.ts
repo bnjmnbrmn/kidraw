@@ -35,10 +35,10 @@ export class KMSubmenu<T> {
               public config: SubmenuConfig,
               private depth: number = 0,
               private palette?: ThemePalette,
-              private heldKeyString?: KeyString) {
+              private heldKeyStrings: KeyString[] = []) {
     const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
     this.restingX = offset.x;
-    const style = palette ? keyRenderStyleFromPalette(palette) : undefined;
+    const style = palette ? keyRenderStyleFromPalette(palette, depth) : undefined;
     this.keys = this.generateKeys(this.config, style);
     this.konvaGroup = this.generateGroup(this.keys);
     this.mode.konvaGroup.add(this.konvaGroup);
@@ -51,7 +51,7 @@ export class KMSubmenu<T> {
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
-    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette);
+    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString]);
   }
 
   private generateActionSubmenuKey(
@@ -61,7 +61,7 @@ export class KMSubmenu<T> {
     action: () => void,
     style?: KeyRenderStyle,
   ): KMKey {
-    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette);
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString]);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
@@ -173,13 +173,13 @@ export class KMSubmenu<T> {
       const cardBg = createCardBackground({
         depth: this.depth,
         palette: this.palette,
-        heldKeyString: this.heldKeyString,
+        heldKeyStrings: this.heldKeyStrings,
       });
       group.add(cardBg);
 
       // Add blank keys for unbound positions
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);
-      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyString);
+      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings);
       for (const keyString of blankPositions) {
         group.add(createBlankKey({ keyString, palette: this.palette }));
       }
