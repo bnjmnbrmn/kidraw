@@ -136,16 +136,52 @@ export function createBlankKey(config: BlankKeyConfig): Konva.Group {
   return group;
 }
 
+/** Maps each key to the set of keys sharing the same finger (standard touch typing). */
+const FINGER_GROUPS: KeyString[][] = [
+  ['q', 'a', 'z'],           // left pinky
+  ['w', 's', 'x'],           // left ring
+  ['e', 'd', 'c'],           // left middle
+  ['r', 't', 'f', 'g', 'v', 'b'],  // left index
+  ['y', 'u', 'h', 'j', 'n', 'm'],  // right index
+  ['i', 'k', ','],           // right middle
+  ['o', 'l', '.'],           // right ring
+  ['p', ';', '/'],           // right pinky
+];
+
+const KEY_TO_FINGER_GROUP: Map<KeyString, Set<KeyString>> = new Map();
+for (const group of FINGER_GROUPS) {
+  const groupSet = new Set<KeyString>(group);
+  for (const key of group) {
+    KEY_TO_FINGER_GROUP.set(key, groupSet);
+  }
+}
+
+/** Returns keys that are unreachable because they share a finger with a held key. */
+function getBlockedByFinger(heldKeyStrings: KeyString[]): Set<KeyString> {
+  const blocked = new Set<KeyString>();
+  for (const held of heldKeyStrings) {
+    const group = KEY_TO_FINGER_GROUP.get(held);
+    if (group) {
+      for (const k of group) {
+        blocked.add(k);
+      }
+    }
+  }
+  return blocked;
+}
+
 /**
  * Returns the set of KeyStrings that should be rendered as blank keys
- * (all positions minus bound keys and the held key).
+ * (all positions minus bound keys, held keys, and optionally finger-blocked keys).
  */
 export function getBlankKeyPositions(
   boundKeys: Set<KeyString>,
-  heldKeyStrings?: KeyString[]
+  heldKeyStrings?: KeyString[],
+  hideFingerBlocked: boolean = false
 ): KeyString[] {
   const held = new Set(heldKeyStrings ?? []);
-  return ALL_KEYS.filter(k => !boundKeys.has(k) && !held.has(k));
+  const blocked = hideFingerBlocked ? getBlockedByFinger(heldKeyStrings ?? []) : new Set<KeyString>();
+  return ALL_KEYS.filter(k => !boundKeys.has(k) && !held.has(k) && !blocked.has(k));
 }
 
 export { ALL_KEYS, CARD_PADDING };

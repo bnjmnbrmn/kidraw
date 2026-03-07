@@ -13,7 +13,8 @@ type SlideOrigin = 'bottom' | 'top';
 export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<T>> {
 
     constructor(public rootSubmenuConfig: SubmenuConfig,
-                public palette?: ThemePalette) {}
+                public palette?: ThemePalette,
+                public hideFingerBlocked: boolean = false) {}
 
     createMode(name: string, keyMenu: KeyMenu<T>): USQwertyMode<T> {
         return new USQwertyMode<T>(name, keyMenu, this);
@@ -27,6 +28,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     public konvaGroup: Group;
     actionSchedulingEnabled: boolean = true;
     private palette?: ThemePalette;
+    private hideFingerBlocked: boolean;
     private activeTweens: Map<KMSubmenu<T>, Konva.Tween> = new Map();
     /** Track which direction each submenu slid in from, so slide-out reverses it. */
     private slideOrigins: Map<KMSubmenu<T>, SlideOrigin> = new Map();
@@ -39,7 +41,8 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
                 config: USQwertyModeConfig<T>) {
         this.konvaGroup = new Group();
         this.palette = config.palette;
-        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette));
+        this.hideFingerBlocked = config.hideFingerBlocked;
+        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked));
         this.stackTop.konvaGroup.show();
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
         this.konvaGroup.y(20)
@@ -117,7 +120,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
         const depth = this.stack.length;
         const heldKeys = this.submenuKeyStringStack.slice(1) as KeyString[];
-        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys);
+        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked);
         this.stack.push(newSubmenu);
         this.slideIn(newSubmenu, 'top');
     }

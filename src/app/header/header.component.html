@@ -16,6 +16,13 @@
              (change)="onCapsLockSwapChange($event)">
       Ctrl/CapsLock swapped
     </label>
+    <label class="swap-label">
+      <input type="checkbox"
+             tabindex="-1"
+             [checked]="keyboardConfig.hideFingerBlockedKeys"
+             (change)="onHideFingerBlockedChange($event)">
+      Hide same-finger keys
+    </label>
     <button class="theme-toggle" tabindex="-1" (click)="toggleTheme()">
       {{ themeService.theme === 'dark' ? 'Light' : 'Dark' }}
     </button>

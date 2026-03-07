@@ -60,6 +60,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private themeService = inject(ThemeService);
   private keyboardConfig = inject(KeyboardConfigService);
   private themeSub?: Subscription;
+  private configSub?: Subscription;
 
   // State: when true, releasing the insert submenu key switches to labelEdit
   private insertDragActive = false;
@@ -139,6 +140,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.themeSub = this.themeService.themeChanged$.subscribe(() => {
       this.rebuildKeyMenu();
     });
+    this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
+      this.rebuildKeyMenu();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -149,6 +153,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
+    this.configSub?.unsubscribe();
     if (this.keyMenu) {
       this.keyMenu.destroy();
     }
@@ -168,7 +173,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       initialModeName: 'normal',
       stageBackground: this.themeService.palette.keymenuStageBackground,
       modes: {
-        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.themeService.palette),
+        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.themeService.palette, this.keyboardConfig.hideFingerBlockedKeys),
         labelEdit: this.buildLabelEditModeConfig(),
       }
     });
@@ -190,7 +195,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const newSubmenuConfig = this.buildInsertSubmenuConfig();
     const depth = mode.stack.length;
     const heldKeys = [...mode.submenuKeyStringStack.slice(1) as KeyString[], keyString as KeyString];
-    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, heldKeys);
+    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, heldKeys, this.keyboardConfig.hideFingerBlockedKeys);
 
     // Create a synthetic SubmenuKey that reuses the existing key's visuals
     const fakeSubmenuKey: KMSubmenuKey = {

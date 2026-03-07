@@ -26,19 +26,19 @@ describe('KeymenuComponent', () => {
     expect(component.activeProfileHints.some((hint) => hint.action.includes('Move'))).toBeTrue();
   });
 
-  it('should include delete action in drag submenu config', () => {
+  it('should include zoom actions in drag submenu config', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
     const emitSpy = spyOn(component.keyMenuOut, 'emit');
 
     const dragConfig = (component as any).dragSubmenuConfig as Record<string, unknown>;
-    const deleteAction = dragConfig['x'] as LabeledAction;
+    const zoomInAction = dragConfig['i'] as LabeledAction;
 
-    expect(deleteAction instanceof LabeledAction).toBeTrue();
-    expect(deleteAction.actionLabel).toBe('Delete');
+    expect(zoomInAction instanceof LabeledAction).toBeTrue();
+    expect(zoomInAction.actionLabel).toBe('Zoom In');
 
-    deleteAction.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.DELETE});
+    zoomInAction.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ZOOM_IN});
   });
 
   it('should not include Add Select action in select submenu config', () => {

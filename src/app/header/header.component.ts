@@ -31,4 +31,9 @@ export class HeaderComponent {
     const checked = (event.target as HTMLInputElement).checked;
     this.keyboardConfig.capsLockCtrlSwap = checked;
   }
+
+  onHideFingerBlockedChange(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.keyboardConfig.hideFingerBlockedKeys = checked;
+  }
 }

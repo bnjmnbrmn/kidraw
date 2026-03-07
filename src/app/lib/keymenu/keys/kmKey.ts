@@ -197,11 +197,12 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     childDepth?: number,
     palette?: ThemePalette,
     heldKeyStrings?: KeyString[],
+    hideFingerBlocked?: boolean,
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString]);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
   }
 
   get highlight(): boolean {
@@ -250,11 +251,12 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     childDepth?: number,
     palette?: ThemePalette,
     heldKeyStrings?: KeyString[],
+    hideFingerBlocked?: boolean,
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString]);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
   }
 
   get highlight(): boolean {

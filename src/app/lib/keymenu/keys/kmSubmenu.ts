@@ -36,7 +36,8 @@ export class KMSubmenu<T> {
               public config: SubmenuConfig,
               private depth: number = 0,
               private palette?: ThemePalette,
-              private heldKeyStrings: KeyString[] = []) {
+              private heldKeyStrings: KeyString[] = [],
+              private hideFingerBlocked: boolean = false) {
     const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
     this.restingX = offset.x;
     this.restingY = offset.y;
@@ -53,7 +54,7 @@ export class KMSubmenu<T> {
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
-    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString]);
+    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked);
   }
 
   private generateActionSubmenuKey(
@@ -63,7 +64,7 @@ export class KMSubmenu<T> {
     action: () => void,
     style?: KeyRenderStyle,
   ): KMKey {
-    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString]);
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
@@ -186,7 +187,7 @@ export class KMSubmenu<T> {
 
       // Add blank keys for unbound positions
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);
-      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings);
+      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings, this.hideFingerBlocked);
       for (const keyString of blankPositions) {
         group.add(createBlankKey({ keyString, palette: this.palette }));
       }
