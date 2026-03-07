@@ -20,7 +20,7 @@ import {
   keyRenderStyleFromPalette,
 } from './kmKey';
 import {ThemePalette} from '../../../services/theme.service';
-import {createCardBackground, createBlankKey, getBlankKeyPositions, getDepthOffset, CardRenderConfig} from '../rendering/cardRenderer';
+import {createCardBackground, createBlankKey, createHoleHighlights, getBlankKeyPositions, getDepthOffset, CardRenderConfig} from '../rendering/cardRenderer';
 
 
 export class KMSubmenu<T> {
@@ -28,8 +28,9 @@ export class KMSubmenu<T> {
   konvaGroup: Group;
   keys: { [K in KeyString]?: KMKey };
   actionSchedulingEnabled: boolean = true;
-  /** The x position this card rests at (accounts for depth offset). */
+  /** The x/y positions this card rests at (accounts for depth offset). */
   readonly restingX: number;
+  readonly restingY: number;
 
   constructor(public mode: USQwertyMode<T>,
               public config: SubmenuConfig,
@@ -38,6 +39,7 @@ export class KMSubmenu<T> {
               private heldKeyStrings: KeyString[] = []) {
     const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
     this.restingX = offset.x;
+    this.restingY = offset.y;
     const style = palette ? keyRenderStyleFromPalette(palette, depth) : undefined;
     this.keys = this.generateKeys(this.config, style);
     this.konvaGroup = this.generateGroup(this.keys);
@@ -170,12 +172,17 @@ export class KMSubmenu<T> {
       group.x(offset.x);
       group.y(offset.y);
 
-      const cardBg = createCardBackground({
+      const cardConfig: CardRenderConfig = {
         depth: this.depth,
         palette: this.palette,
         heldKeyStrings: this.heldKeyStrings,
-      });
-      group.add(cardBg);
+      };
+      group.add(createCardBackground(cardConfig));
+
+      // Add highlight borders around held-key holes
+      for (const highlight of createHoleHighlights(cardConfig)) {
+        group.add(highlight);
+      }
 
       // Add blank keys for unbound positions
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);

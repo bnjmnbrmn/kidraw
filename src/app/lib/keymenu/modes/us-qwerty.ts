@@ -8,6 +8,7 @@ import {KeyMenuModeConfig} from "../keyMenuModeConfig";
 import {ThemePalette} from '../../../services/theme.service';
 import Konva from 'konva';
 
+type SlideOrigin = 'bottom' | 'top';
 
 export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<T>> {
 
@@ -27,10 +28,12 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     actionSchedulingEnabled: boolean = true;
     private palette?: ThemePalette;
     private activeTweens: Map<KMSubmenu<T>, Konva.Tween> = new Map();
+    /** Track which direction each submenu slid in from, so slide-out reverses it. */
+    private slideOrigins: Map<KMSubmenu<T>, SlideOrigin> = new Map();
 
     private static readonly SLIDE_IN_DURATION = 0.25;  // seconds
     private static readonly SLIDE_OUT_DURATION = 0.15;
-    private static readonly SLIDE_OFFSET = 300;        // pixels from right
+    private static readonly SLIDE_OFFSET = 400;        // pixels — enough to be fully off-screen vertically
 
     constructor(public name: string, public keyMenu: KeyMenu<T>,
                 config: USQwertyModeConfig<T>) {
@@ -52,6 +55,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             this.stack.pop();
         }
         this.submenuKeyStringStack.splice(1);
+        this.slideOrigins.clear();
         this.stackTop.unhighlightAllKeys();
         this.stackTop.stopAllScheduledActions();
         this.actionSchedulingEnabled = false;
@@ -98,7 +102,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.stack.push(submenu);
         this.submenuKeyStringStack.push(submenuKey.keyString);
 
-        this.slideIn(submenu);
+        this.slideIn(submenu, 'bottom');
     }
 
     replaceTopSubmenu(newConfig: SubmenuConfig) {
@@ -108,27 +112,34 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.cancelTween(this.stackTop);
         this.stackTop.hideAllKeys();
         this.stackTop.stopAllScheduledActions();
+        this.slideOrigins.delete(this.stackTop);
         this.stack.pop();
 
         const depth = this.stack.length;
         const heldKeys = this.submenuKeyStringStack.slice(1) as KeyString[];
         const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys);
         this.stack.push(newSubmenu);
-        this.slideIn(newSubmenu);
+        this.slideIn(newSubmenu, 'top');
     }
 
-    private slideIn(submenu: KMSubmenu<T>) {
+    private slideIn(submenu: KMSubmenu<T>, origin: SlideOrigin) {
         const group = submenu.konvaGroup;
+        const yOffset = origin === 'bottom'
+            ? USQwertyMode.SLIDE_OFFSET
+            : -USQwertyMode.SLIDE_OFFSET;
+
         group.moveToTop();
-        group.x(submenu.restingX + USQwertyMode.SLIDE_OFFSET);
+        group.x(submenu.restingX);
+        group.y(submenu.restingY + yOffset);
         group.opacity(0);
         group.show();
 
         this.cancelTween(submenu);
+        this.slideOrigins.set(submenu, origin);
 
         const tween = new Konva.Tween({
             node: group,
-            x: submenu.restingX,
+            y: submenu.restingY,
             opacity: 1,
             duration: USQwertyMode.SLIDE_IN_DURATION,
             easing: Konva.Easings.EaseOut,
@@ -149,6 +160,15 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         }
 
         const submenusToRemove: KMSubmenu<T>[] = this.stack.slice(index);
+
+        // Update the stack first so stackTop points to the new parent
+        this.stack.splice(index);
+        this.submenuKeyStringStack.splice(index);
+
+        // Show parent card without moveToTop — it's already behind the departing cards
+        this.stackTop.konvaGroup.show();
+        this.stackTop.unhighlightAllKeys();
+
         submenusToRemove.forEach((submenu: KMSubmenu<T>) => {
             submenu.unhighlightAllKeys();
             submenu.stopAllScheduledActions();
@@ -156,29 +176,31 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             // Cancel any existing tween
             this.cancelTween(submenu);
 
-            // Slide out to the right
+            // Slide out in the direction it came from
+            const origin = this.slideOrigins.get(submenu) ?? 'bottom';
+            const yOffset = origin === 'bottom'
+                ? USQwertyMode.SLIDE_OFFSET
+                : -USQwertyMode.SLIDE_OFFSET;
+
             const group = submenu.konvaGroup;
             const tween = new Konva.Tween({
                 node: group,
-                x: submenu.restingX + USQwertyMode.SLIDE_OFFSET,
+                y: submenu.restingY + yOffset,
                 opacity: 0,
                 duration: USQwertyMode.SLIDE_OUT_DURATION,
                 easing: Konva.Easings.EaseIn,
                 onFinish: () => {
                     submenu.hideAllKeys();
                     group.x(submenu.restingX);
+                    group.y(submenu.restingY);
                     group.opacity(1);
                     this.activeTweens.delete(submenu);
+                    this.slideOrigins.delete(submenu);
                 }
             });
             this.activeTweens.set(submenu, tween);
             tween.play();
         });
-
-        this.stack.splice(index);
-        this.submenuKeyStringStack.splice(index);
-        this.stackTop.showAllKeys();
-        this.stackTop.unhighlightAllKeys();
     }
 
     /**
@@ -190,9 +212,11 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             tween.destroy();
             submenu.hideAllKeys();
             submenu.konvaGroup.x(submenu.restingX);
+            submenu.konvaGroup.y(submenu.restingY);
             submenu.konvaGroup.opacity(1);
         });
         this.activeTweens.clear();
+        this.slideOrigins.clear();
     }
 
     private cancelTween(submenu: KMSubmenu<T>) {

@@ -88,6 +88,33 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
   });
 }
 
+/**
+ * Creates highlight border rects around held-key holes.
+ * Returns an array of Konva.Rect outlines to add on top of the card background.
+ */
+export function createHoleHighlights(config: CardRenderConfig): Konva.Rect[] {
+  const heldKeyStrings = (config.heldKeyStrings ?? []).filter(k => xAndYForKeys[k]);
+  if (heldKeyStrings.length === 0) return [];
+
+  const highlightColor = config.palette.highlightShadowColor;
+  const borderWidth = 2;
+  const inset = borderWidth / 2;
+
+  return heldKeyStrings.map(key => {
+    const pos = xAndYForKeys[key];
+    return new Konva.Rect({
+      x: pos.x - inset,
+      y: pos.y - inset,
+      width: KEY_WIDTH + borderWidth,
+      height: KEY_HEIGHT + borderWidth,
+      stroke: highlightColor,
+      strokeWidth: borderWidth,
+      fill: undefined,
+      listening: false,
+    });
+  });
+}
+
 export interface BlankKeyConfig {
   keyString: KeyString;
   palette: ThemePalette;

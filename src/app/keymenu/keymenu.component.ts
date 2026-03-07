@@ -77,8 +77,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private get dragSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const zoom = this.keyAssignments.zoom;
-    const shared = this.keyAssignments.shared;
+    const nav = this.keyAssignments.nav;
 
     return {
       [drag.up]: new LabeledAction('Drag Up', () => {
@@ -93,14 +92,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.right]: new LabeledAction('Drag Right', () => {
         this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
       }),
-      [zoom.out]: new LabeledAction('Zoom Out', () => {
-        this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
-      }),
-      [zoom.in]: new LabeledAction('Zoom In', () => {
+      [nav.zoomIn]: new LabeledAction('Zoom In', () => {
         this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
       }),
-      [shared.delete]: new LabeledAction('Delete', () => {
-        this.keyMenuOut.emit({kind: DACommandType.DELETE});
+      [nav.zoomOut]: new LabeledAction('Zoom Out', () => {
+        this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
       }),
     } as SubmenuConfig;
   }
