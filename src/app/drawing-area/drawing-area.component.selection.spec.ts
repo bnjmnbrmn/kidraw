@@ -16,7 +16,7 @@ describe('DrawingAreaComponent selection priority', () => {
     return component;
   }
 
-  it('should toggle waypoint before node in selectTopItem', () => {
+  it('should select waypoint before node in ensureTopItemSelected', () => {
     const component = buildSelectionTestComponent();
     const waypoint = new DAWaypoint(100, 100);
     const node = new DANode(50, 50, 'node');
@@ -24,7 +24,7 @@ describe('DrawingAreaComponent selection priority', () => {
     component.getWaypointUnderCrosshairs = () => waypoint;
     component.getDANodesContainingCrosshairs = () => [node];
 
-    component.selectTopItem();
+    component.ensureTopItemSelected();
 
     expect(waypoint.isSelected).toBeTrue();
     expect(node.isSelected).toBeFalse();

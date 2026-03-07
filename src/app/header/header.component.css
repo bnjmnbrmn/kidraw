@@ -1,5 +1,6 @@
 :host {
-  background-color: lightblue;
+  background-color: var(--kd-header-bg);
+  color: var(--kd-header-text);
   line-height: 3em;
   width: 100vw;
   flex-shrink: 0;
@@ -19,9 +20,43 @@ h1 {
 
 .zoom-indicator {
   font-weight: bold;
-  color: #333;
-  background-color: rgba(255, 255, 255, 0.8);
+  color: var(--kd-zoom-text);
+  background-color: var(--kd-zoom-bg);
   padding: 0.25rem 0.75rem;
   border-radius: 0.25rem;
   font-family: monospace;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.theme-toggle:hover {
+  opacity: 0.8;
+}
+
+.swap-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.swap-label input[type="checkbox"] {
+  cursor: pointer;
 }

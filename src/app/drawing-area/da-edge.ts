@@ -2,8 +2,10 @@ import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAWaypoint} from './da-waypoint';
 import {DALabel} from './da-label';
+import {nextId} from './id-generator';
 
 export class DAEdge {
+  readonly id: string;
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
   public readonly _line: Konva.Arrow;
@@ -18,10 +20,17 @@ export class DAEdge {
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
 
-  constructor(srcNode: DANode, destNode: DANode, label: string) {
+  private _strokeColor: string = 'black';
+  private _fillColor: string = 'black';
+
+  constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
+              colors?: { stroke?: string; fill?: string }) {
+    this.id = id ?? nextId();
     this.group = new Konva.Group();
     this.srcNode = srcNode;
     this.destNode = destNode;
+    if (colors?.stroke) this._strokeColor = colors.stroke;
+    if (colors?.fill) this._fillColor = colors.fill;
 
     // Register this edge with the nodes
     srcNode.addOutgoingEdge(this);
@@ -31,7 +40,7 @@ export class DAEdge {
       points: this.calculatePoints(srcNode, destNode),
       stroke: this.stroke(),
       strokeWidth: this.strokeWidth(),
-      fill: 'black',
+      fill: this._fillColor,
       pointerLength: this.POINTER_LENGTH,
       pointerWidth: this.POINTER_WIDTH,
     });
@@ -52,7 +61,20 @@ export class DAEdge {
   }
 
   private stroke() {
-    return 'black'
+    return this._strokeColor;
+  }
+
+  applyColors(colors: { stroke: string; fill: string }): void {
+    this._strokeColor = colors.stroke;
+    this._fillColor = colors.fill;
+    this._line.stroke(this._strokeColor);
+    this._line.fill(this._fillColor);
+    this._segments.forEach(segment => {
+      segment.stroke(this._strokeColor);
+      if (segment instanceof Konva.Arrow) {
+        (segment as Konva.Arrow).fill(this._fillColor);
+      }
+    });
   }
 
   get waypoints(): DAWaypoint[] {
@@ -138,7 +160,7 @@ export class DAEdge {
           points: [points[i].x, points[i].y, points[i + 1].x, points[i + 1].y],
           stroke: this.stroke(),
           strokeWidth: this.strokeWidth(),
-          fill: 'black',
+          fill: this._fillColor,
           pointerLength: this.POINTER_LENGTH,
           pointerWidth: this.POINTER_WIDTH,
           tension: 0,

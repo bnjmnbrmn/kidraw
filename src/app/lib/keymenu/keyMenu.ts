@@ -26,7 +26,7 @@ export class KeyMenu<T> {
       width: this.containingHTMLElement.clientWidth,
       height: this.containingHTMLElement.clientHeight
     });
-    this.stage.container().style.backgroundColor = 'lightgray'
+    this.stage.container().style.backgroundColor = config.stageBackground ?? 'lightgray'
     this.layer = new Layer({});
     this.stage.add(this.layer);
 

@@ -2,6 +2,7 @@ import Konva from 'konva';
 import { KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT } from '../layouts/us-qwerty';
 import { USQwertyMode } from '../modes/us-qwerty';
 import { KMSubmenu } from './kmSubmenu';
+import { ThemePalette } from '../../../services/theme.service';
 
 // ========== Interfaces ==========
 
@@ -39,14 +40,50 @@ export function isActionSubmenuKey(key: KMKey): key is KMActionSubmenuKey {
   return isActionKey(key) && isSubmenuKey(key);
 }
 
+// ========== Key Render Style ==========
+
+export interface KeyRenderStyle {
+  fillColor: string;
+  strokeColor: string;
+  labelFillColor: string;
+  labelTextColor: string;
+  actionTextColor: string;
+  highlightShadowColor: string;
+}
+
+export function defaultKeyRenderStyle(): KeyRenderStyle {
+  return {
+    fillColor: 'white',
+    strokeColor: 'black',
+    labelFillColor: 'lightgreen',
+    labelTextColor: 'black',
+    actionTextColor: 'black',
+    highlightShadowColor: 'black',
+  };
+}
+
+export function keyRenderStyleFromPalette(palette: ThemePalette): KeyRenderStyle {
+  return {
+    fillColor: palette.keyFill,
+    strokeColor: palette.keyStroke,
+    labelFillColor: palette.keyLabelFill,
+    labelTextColor: palette.keyLabelText,
+    actionTextColor: palette.actionText,
+    highlightShadowColor: palette.highlightShadowColor,
+  };
+}
+
 // ========== Shared Key Rendering (Composition) ==========
 
 export interface KMKeyRenderConfig {
   keyString: KeyString;
   label: string;
+  style?: KeyRenderStyle;
 }
 
 export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Konva.Group; keyRect: Konva.Rect } {
+  const style = config.style ?? defaultKeyRenderStyle();
+
   const konvaGroup = new Konva.Group({
     x: xAndYForKeys[config.keyString]!.x,
     y: xAndYForKeys[config.keyString]!.y
@@ -55,10 +92,11 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   const keyRect = new Konva.Rect({
     width: KEY_WIDTH,
     height: KEY_HEIGHT,
-    stroke: 'black',
-    fill: 'white',
+    stroke: style.strokeColor,
+    fill: style.fillColor,
     shadowEnabled: false,
     shadowOffset: { x: 1, y: 1 },
+    shadowColor: style.highlightShadowColor,
   });
   konvaGroup.add(keyRect);
 
@@ -69,13 +107,14 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     y: 4,
     align: 'center',
     verticalAlign: 'middle',
+    fill: style.labelTextColor,
   });
 
   const keyLabelRect = new Konva.Rect({
     width: KEY_WIDTH,
     height: keyLabelText.height() + 10,
-    fill: 'lightgreen',
-    stroke: 'black',
+    fill: style.labelFillColor,
+    stroke: style.strokeColor,
   });
   konvaGroup.add(keyLabelRect);
   konvaGroup.add(keyLabelText);
@@ -86,7 +125,8 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     height: KEY_HEIGHT + 20,
     align: 'center',
     verticalAlign: 'middle',
-    x: 5
+    x: 5,
+    fill: style.actionTextColor,
   });
   konvaGroup.add(actionLabelText);
 
@@ -107,9 +147,10 @@ export class DefaultKMActionKey<T> implements KMActionKey {
     private readonly _onKeyDown: () => void = () => {},
     private readonly _onKeyUp: () => void = () => {},
     private readonly _onKeyDownBeforeRender: () => void = () => {},
-    private readonly _onKeyUpBeforeRender: () => void = () => {}
+    private readonly _onKeyUpBeforeRender: () => void = () => {},
+    style?: KeyRenderStyle,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
   }
@@ -150,12 +191,15 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     public readonly keyString: KeyString,
     public readonly label: string,
     public readonly mode: USQwertyMode<T>,
-    submenuConfig: SubmenuConfig
+    submenuConfig: SubmenuConfig,
+    style?: KeyRenderStyle,
+    childDepth?: number,
+    palette?: ThemePalette,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, keyString);
   }
 
   get highlight(): boolean {
@@ -199,12 +243,15 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     private readonly _onKeyDown: () => void = () => {},
     private readonly _onKeyUp: () => void = () => {},
     private readonly _onKeyDownBeforeRender: () => void = () => {},
-    private readonly _onKeyUpBeforeRender: () => void = () => {}
+    private readonly _onKeyUpBeforeRender: () => void = () => {},
+    style?: KeyRenderStyle,
+    childDepth?: number,
+    palette?: ThemePalette,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, keyString);
   }
 
   get highlight(): boolean {

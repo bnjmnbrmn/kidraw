@@ -6,3 +6,23 @@
 html, body {
   overflow: hidden;
 }
+
+:root {
+  --kd-header-bg: lightblue;
+  --kd-header-text: #000;
+  --kd-drawing-bg: #e2e8f0;
+  --kd-drawing-canvas-bg: #f8fafc;
+  --kd-keymenu-bg: #94a3b8;
+  --kd-zoom-bg: rgba(255, 255, 255, 0.8);
+  --kd-zoom-text: #333;
+}
+
+:root[data-theme="dark"] {
+  --kd-header-bg: #1e293b;
+  --kd-header-text: #e2e8f0;
+  --kd-drawing-bg: #1e293b;
+  --kd-drawing-canvas-bg: #1e293b;
+  --kd-keymenu-bg: #0f172a;
+  --kd-zoom-bg: rgba(30, 41, 59, 0.8);
+  --kd-zoom-text: #e2e8f0;
+}

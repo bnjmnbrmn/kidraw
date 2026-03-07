@@ -1,5 +1,5 @@
 :host {
-  background-color: lightgrey;
+  background-color: var(--kd-drawing-bg);
   width: 100vw;
   flex-shrink: 0;
   flex-grow: 1;
@@ -7,6 +7,6 @@
 
 
 canvas {
-  background-color: white;
+  background-color: var(--kd-drawing-canvas-bg);
   display: block;
 }

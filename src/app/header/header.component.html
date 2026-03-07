@@ -1,11 +1,22 @@
 <div class="header-content">
   <h1>KiDraw</h1>
-  <div class="zoom-indicator">
-    Zoom: {{ zoomLevel }}%
+  <div class="header-controls">
+    <div class="zoom-indicator">
+      Zoom: {{ zoomLevel }}%
+    </div>
+    @if (waypointsVisible) {
+    <div class="waypoint-indicator">
+      WP
+    </div>
+    }
+    <label class="swap-label">
+      <input type="checkbox"
+             [checked]="keyboardConfig.capsLockCtrlSwap"
+             (change)="onCapsLockSwapChange($event)">
+      Ctrl/CapsLock swapped
+    </label>
+    <button class="theme-toggle" (click)="toggleTheme()">
+      {{ themeService.theme === 'dark' ? 'Light' : 'Dark' }}
+    </button>
   </div>
-  @if (waypointsVisible) {
-  <div class="waypoint-indicator">
-    WP
-  </div>
-  }
 </div>

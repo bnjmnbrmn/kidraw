@@ -10,6 +10,7 @@ export interface KeyMenuConfig<T, ModeName extends string = string> {
   containingHTMLElement: HTMLElement;
   modes: KeyMenuModeConfigs<T, ModeName>;
   initialModeName?: ModeName;
+  stageBackground?: string;
 }
 
 

@@ -2,7 +2,7 @@
   display: block;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #dcfce7, #bbf7d0);
+  background: var(--kd-keymenu-bg);
   width: 100vw;
   flex-grow: 0;
   height: 20em;

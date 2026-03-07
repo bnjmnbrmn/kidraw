@@ -42,6 +42,9 @@ export class AppComponent {
         break;
       case "started-select-mode":
         break;
+      case "exit-label-editing-mode":
+        this.keymenuComponent['keyMenu'].switchMode('normal');
+        break;
     }
   }
 

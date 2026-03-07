@@ -11,6 +11,7 @@ import {
   Output,
   SimpleChanges,
 } from '@angular/core';
+import {Subscription} from 'rxjs';
 import {DACommand, DACommandType} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
@@ -26,7 +27,11 @@ import {
   DEFAULT_KEYMENU_KEY_ASSIGNMENTS,
   DirectionalKeyAssignments,
   KeymenuKeyAssignments,
+  VIM_KEYMENU_KEY_ASSIGNMENTS,
 } from './config/key-assignments';
+import {DebugLogService} from '../services/debug-log.service';
+import {ThemeService} from '../services/theme.service';
+import {KeyboardConfigService} from '../services/keyboard-config.service';
 
 import {KMSubmenu} from '../lib/keymenu/keys/kmSubmenu';
 import {KMSubmenuKey} from '../lib/keymenu/keys/kmKey';
@@ -46,15 +51,22 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input() movementSpeed = 50;
   @Input() canEdit = false;
-  @Input() keyAssignments: KeymenuKeyAssignments = DEFAULT_KEYMENU_KEY_ASSIGNMENTS;
+  @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private log = inject(DebugLogService);
+  private themeService = inject(ThemeService);
+  private keyboardConfig = inject(KeyboardConfigService);
+  private themeSub?: Subscription;
 
   // State: when true, releasing the insert submenu key switches to labelEdit
   private insertDragActive = false;
+  // Pending-action-on-release: set when node key is pressed, cleared by directional action or node key release
+  private insertNodePending = false;
   private selectDragHoldActive = false;
+  private directedEdgeActive = false;
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
@@ -95,16 +107,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   get activeProfileHints(): readonly ProfileHint[] {
     const movementKeys = this.getDirectionalKeyHint(this.keyAssignments.movement);
-    const zoomKeys = this.getPairKeyHint(this.keyAssignments.zoom.out, this.keyAssignments.zoom.in);
     const root = this.keyAssignments.root;
     const shared = this.keyAssignments.shared;
 
     return [
       {key: movementKeys, action: 'Move up/left/down/right'},
-      {key: zoomKeys, action: 'Zoom - / +'},
       {key: root.insertSubmenu, action: 'Insert submenu'},
       {key: `${root.selectDragSubmenu} (hold)`, action: 'Select + drag'},
-      {key: shared.recenterSubmenu, action: 'View submenu'},
+      {key: shared.navSubmenu, action: 'Nav submenu'},
       {key: shared.select, action: 'Clear selection'},
       {key: shared.delete, action: 'Delete'},
     ];
@@ -130,6 +140,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   ngAfterViewInit(): void {
     this.rebuildKeyMenu();
+    this.themeSub = this.themeService.themeChanged$.subscribe(() => {
+      this.rebuildKeyMenu();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -139,6 +152,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
     if (this.keyMenu) {
       this.keyMenu.destroy();
     }
@@ -150,13 +164,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.insertDragActive = false;
+    this.insertNodePending = false;
     this.selectDragHoldActive = false;
     this.keyMenu = new KeyMenu<DACommand>({
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
       initialModeName: 'normal',
+      stageBackground: this.themeService.palette.keymenuStageBackground,
       modes: {
-        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig()),
+        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.themeService.palette),
         labelEdit: this.buildLabelEditModeConfig(),
       }
     });
@@ -176,7 +192,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // Create the new submenu manually
     const newSubmenuConfig = this.buildInsertSubmenuConfig();
-    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig);
+    const depth = mode.stack.length;
+    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, keyString as any);
 
     // Create a synthetic SubmenuKey that reuses the existing key's visuals
     const fakeSubmenuKey: KMSubmenuKey = {
@@ -224,13 +241,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       },
       () => {
         // no-op
-      }
+      },
+      this.themeService.palette,
     );
   }
 
   private buildRootSubmenuConfig(): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const zoom = this.keyAssignments.zoom;
     const root = this.keyAssignments.root;
 
     return {
@@ -238,9 +255,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.left]: new LabeledAction('Move Left', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})),
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
       [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
-
-      [zoom.out]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
-      [zoom.in]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
 
       [root.editSubmenu]: new LabeledAction('Edit', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
       [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
@@ -254,24 +268,62 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const insert = this.keyAssignments.insert;
 
     return {
-      [insert.node]: new LabeledAction('...Node', () => {
+      // Node key is a SubmenuAction: press sets pending flag, hold opens directional submenu.
+      // On release (if no directional key pressed): creates node at crosshairs + drag mode.
+      // If directional key pressed while held: creates directed node + drag mode, clears pending.
+      [insert.node]: new LabeledActionSubmenuConfig('...Node', this.buildDirectionalInsertSubmenuConfig(), () => {
+        this.log.log('[keymenu] node key pressed, insertDragActive:', this.insertDragActive);
         if (this.insertDragActive) return;
-        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
-        this.insertDragActive = true;
-        const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-        mode.actionSchedulingEnabled = false;
-        mode.replaceTopSubmenu(this.dragSubmenuConfig);
-        queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
+        this.insertNodePending = true;
+        this.log.log('[keymenu] insertNodePending set to true');
       }),
       [insert.waypoint]: new LabeledAction('...Waypoint', () => {
         this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});
       }),
-      [insert.edge]: new LabeledAction('...Edge', () => {
-        this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES});
+      [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
+        this.directedEdgeActive = true;
+        this.keyMenuOut.emit({kind: DACommandType.BEGIN_DIRECTED_EDGE});
       }),
       [insert.label]: new LabeledAction('...Label', () => {
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
       }),
+    } as SubmenuConfig;
+  }
+
+  private buildDirectionalInsertSubmenuConfig(): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+
+    const createDirected = (direction: 'up' | 'down' | 'left' | 'right') => () => {
+      this.log.log('[keymenu] directional insert:', direction);
+      this.insertNodePending = false;
+      this.insertDragActive = true;
+      this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE_DIRECTED, direction});
+      const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
+      mode.actionSchedulingEnabled = false;
+      mode.replaceTopSubmenu(this.dragSubmenuConfig);
+      queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
+    };
+
+    return {
+      [movement.up]: new LabeledAction('Above', createDirected('up')),
+      [movement.down]: new LabeledAction('Below', createDirected('down')),
+      [movement.left]: new LabeledAction('Left', createDirected('left')),
+      [movement.right]: new LabeledAction('Right', createDirected('right')),
+    } as SubmenuConfig;
+  }
+
+  private buildDirectionalEdgeSubmenuConfig(): SubmenuConfig {
+    const nodeJump = this.keyAssignments.nav.nodeJump;
+
+    const setDestination = (direction: 'up' | 'down' | 'left' | 'right') => () => {
+      this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DESTINATION, direction});
+    };
+
+    return {
+      [nodeJump.up]: new LabeledAction('Above', setDestination('up')),
+      [nodeJump.down]: new LabeledAction('Below', setDestination('down')),
+      [nodeJump.left]: new LabeledAction('Left', setDestination('left')),
+      [nodeJump.right]: new LabeledAction('Right', setDestination('right')),
     } as SubmenuConfig;
   }
 
@@ -291,6 +343,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const drag = this.keyAssignments.drag;
     const zoom = this.keyAssignments.zoom;
     const shared = this.keyAssignments.shared;
+    const root = this.keyAssignments.root;
 
     return {
       [drag.up]: new LabeledAction('Drag Up', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP})),
@@ -300,6 +353,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [zoom.out]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [zoom.in]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
+      [root.insertSubmenu]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
     } as SubmenuConfig;
   }
 
@@ -307,21 +361,33 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const shared = this.keyAssignments.shared;
 
     return {
-      [shared.connect]: new LabeledAction('Connect', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_SELECTED_NODES})),
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
-      [shared.recenterSubmenu]: new LabeledSubmenuConfig('View...', this.buildViewSubmenuConfig()),
+      [shared.navSubmenu]: new LabeledSubmenuConfig('Nav...', this.buildNavSubmenuConfig()),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
+      [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
     } as SubmenuConfig;
   }
 
-  private buildViewSubmenuConfig(): SubmenuConfig {
-    const recenter = this.keyAssignments.recenter;
-    const shared = this.keyAssignments.shared;
+  private buildNavSubmenuConfig(): SubmenuConfig {
+    const nav = this.keyAssignments.nav;
 
     return {
-      [shared.toggleWaypointVisibility]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
-      [recenter.view]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
-      [recenter.crosshairs]: new LabeledAction('Recenter Crosshairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
+      // Directional node jump
+      [nav.nodeJump.left]: new LabeledAction('Node Left', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT})),
+      [nav.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
+      [nav.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
+      [nav.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
+      // Zoom
+      [nav.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
+      [nav.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      // Edge traversal (outgoing; incoming via Shift handled in keydown intercept)
+      [nav.outgoingNext]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
+      [nav.outgoingPrev]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_PREV})),
+      // Utility
+      [nav.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
+      [nav.recenterCrosshairs]: new LabeledAction('Recenter Crosshairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
+      [nav.toggleWaypoints]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
+      [nav.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
     } as SubmenuConfig;
   }
 
@@ -354,14 +420,79 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.keyMenu.switchMode('normal');
     this.insertDragActive = false;
+    this.insertNodePending = false;
     this.selectDragHoldActive = false;
     this.refreshActiveKeyPath();
     return true;
   }
 
+  @HostListener('window:blur')
+  @HostListener('document:visibilitychange')
+  handleWindowBlur() {
+    if (!this.keyMenu) return;
+    const mode = this.keyMenu.currentMode;
+    if (mode instanceof USQwertyMode) {
+      // Cancel any in-flight slide animations first
+      mode.cancelAllTweensAndReset();
+      // Pop all submenus back to root and clear all state
+      while (mode.stack.length > 1) {
+        mode.stackTop.hideAllKeys();
+        mode.stackTop.unhighlightAllKeys();
+        mode.stackTop.stopAllScheduledActions();
+        mode.stack.pop();
+      }
+      mode.submenuKeyStringStack.splice(1);
+      mode.stackTop.showAllKeys();
+      mode.stackTop.unhighlightAllKeys();
+      mode.stackTop.stopAllScheduledActions();
+    }
+    this.selectDragHoldActive = false;
+    this.directedEdgeActive = false;
+    this.insertDragActive = false;
+    this.insertNodePending = false;
+  }
+
+  private remapEvent(event: KeyboardEvent): KeyboardEvent {
+    if (!this.keyboardConfig.capsLockCtrlSwap) return event;
+    const code = event.code;
+    if (code === 'CapsLock' || code === 'ControlLeft') {
+      const swappedCode = code === 'CapsLock' ? 'ControlLeft' : 'CapsLock';
+      const swappedKey = code === 'CapsLock' ? 'Control' : 'CapsLock';
+      const swappedCtrl = code === 'CapsLock' ? true : event.ctrlKey;
+      return new KeyboardEvent(event.type, {
+        key: swappedKey,
+        code: swappedCode,
+        ctrlKey: swappedCtrl,
+        shiftKey: event.shiftKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        repeat: event.repeat,
+        bubbles: event.bubbles,
+      });
+    }
+    return event;
+  }
+
   @HostListener('document:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
     if (!this.keyMenu) {
+      return;
+    }
+    event = this.remapEvent(event);
+
+    // Ctrl+Z = Undo, Ctrl+Shift+Z / Ctrl+R = Redo (works in all modes)
+    if (event.ctrlKey && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) {
+        this.keyMenuOut.emit({kind: DACommandType.REDO});
+      } else {
+        this.keyMenuOut.emit({kind: DACommandType.UNDO});
+      }
+      return;
+    }
+    if (event.ctrlKey && event.key.toLowerCase() === 'r') {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: DACommandType.REDO});
       return;
     }
 
@@ -372,6 +503,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.keyMenu.currentMode.name === 'normal') {
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey)) {
         this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL});
+        return;
+      }
+
+      // Shift+N / Shift+P for incoming edge traversal (inside nav submenu context)
+      if (event.shiftKey && event.key === 'N') {
+        this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT});
+        return;
+      }
+      if (event.shiftKey && event.key === 'P') {
+        this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_PREV});
         return;
       }
     }
@@ -385,19 +526,52 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (!this.keyMenu) {
       return;
     }
+    event = this.remapEvent(event);
 
     this.keyMenu.handleKeyUp(event);
     this.refreshActiveKeyPath();
 
+    // If insert submenu key (f) is released, handle pending/drag states
+    if (event.key === this.keyAssignments.root.insertSubmenu) {
+      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive);
+      // If node creation was pending (d pressed but not yet released), create the node now
+      if (this.insertNodePending) {
+        this.log.log('[keymenu] f released before d — creating node at crosshairs');
+        this.insertNodePending = false;
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+        this.keyMenu.switchMode('labelEdit');
+        return;
+      }
+      if (this.insertDragActive) {
+        this.insertDragActive = false;
+        this.keyMenu.switchMode('labelEdit');
+      }
+      return;
+    }
+
+    // Pending node insert: releasing node key without pressing a direction creates node at crosshairs.
+    // Only fire if insert submenu key (f) is still held (we're still in the insert context).
+    if (this.insertNodePending && event.key === this.keyAssignments.insert.node) {
+      this.log.log('[keymenu] node key released with pending — creating node at crosshairs');
+      this.insertNodePending = false;
+      this.insertDragActive = true;
+      this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+      const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
+      mode.actionSchedulingEnabled = false;
+      mode.replaceTopSubmenu(this.dragSubmenuConfig);
+      queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
+    } else if (event.key === this.keyAssignments.insert.node) {
+      this.log.log('[keymenu] node key released but insertNodePending is false');
+    }
+
+    if (this.directedEdgeActive && event.key === this.keyAssignments.insert.edge) {
+      this.directedEdgeActive = false;
+      this.keyMenuOut.emit({kind: DACommandType.FINALIZE_DIRECTED_EDGE});
+    }
+
     if (this.selectDragHoldActive && event.key === this.keyAssignments.root.selectDragSubmenu) {
       this.selectDragHoldActive = false;
       this.keyMenuOut.emit({kind: DACommandType.EXIT_DRAG_MODE});
-    }
-
-    // After insert+drag: releasing the submenu key switches to label edit
-    if (this.insertDragActive && event.key === this.keyAssignments.root.insertSubmenu) {
-      this.insertDragActive = false;
-      this.keyMenu.switchMode('labelEdit');
     }
   }
 }

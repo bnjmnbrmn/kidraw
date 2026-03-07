@@ -80,43 +80,48 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ENTER_DRAG_MODE});
   });
 
-  it('should map zoom keys to p/y and move view controls under z submenu', () => {
+  it('should have nav submenu on r with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
     const emitSpy = spyOn(component.keyMenuOut, 'emit');
 
     const rootConfig = buildRootConfig(component);
-    const zoomOut = rootConfig['p'] as LabeledAction;
-    const zoomIn = rootConfig['y'] as LabeledAction;
     const clearSelection = rootConfig['c'] as LabeledAction;
 
-    expect(zoomOut.actionLabel).toBe('Zoom Out');
-    expect(zoomIn.actionLabel).toBe('Zoom In');
-    expect(clearSelection.actionLabel).toBe('Clear Selection');
-    const viewSubmenu = rootConfig['z'] as LabeledSubmenuConfig;
-    expect(viewSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
-    
-    // 'd' is Connect
-    const connectAction = rootConfig['d'] as LabeledAction;
-    expect(connectAction).toBeDefined();
-    expect(connectAction.actionLabel).toBe('Connect');
+    // Zoom keys should NOT be at root level
+    expect(rootConfig['p']).toBeUndefined();
+    expect(rootConfig['y']).toBeUndefined();
 
-    // 'e' is Edit, 'f' is Insert submenu
-    const editAction = rootConfig['e'] as LabeledAction;
+    expect(clearSelection.actionLabel).toBe('Clear Selection');
+    const navSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
+    expect(navSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+
+    // 'i' is Edit, 'f' is Insert submenu (vim profile)
+    const editAction = rootConfig['i'] as LabeledAction;
     expect(editAction).toBeDefined();
     expect(editAction.actionLabel).toBe('Edit');
     const insertSubmenu = rootConfig['f'] as LabeledSubmenuConfig;
     expect(insertSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    expect(rootConfig['h']).toBeUndefined();
+    // 'h' is Move Left in vim profile
+    const moveLeft = rootConfig['h'] as LabeledAction;
+    expect(moveLeft).toBeDefined();
+    expect(moveLeft.actionLabel).toBe('Move Left');
 
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
-    const toggleWaypoints = viewSubmenu.submenuConfig['w'] as LabeledAction;
+    // Nav submenu: 'd' is Toggle Waypoints, 'n'/'p' are edge traversal, 'h/j/k/l' are node jump
+    const toggleWaypoints = navSubmenu.submenuConfig['d'] as LabeledAction;
     expect(toggleWaypoints.actionLabel).toBe('Toggle Waypoints');
     toggleWaypoints.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY});
+
+    const nodeLeft = navSubmenu.submenuConfig['h'] as LabeledAction;
+    expect(nodeLeft.actionLabel).toBe('Node Left');
+
+    const nextEdge = navSubmenu.submenuConfig['n'] as LabeledAction;
+    expect(nextEdge.actionLabel).toBe('Next Edge');
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {
@@ -134,20 +139,24 @@ describe('KeymenuComponent', () => {
         insertSubmenu: 'k',
         selectDragSubmenu: 'l',
       },
+      shared: {
+        ...DEFAULT_KEYMENU_KEY_ASSIGNMENTS.shared,
+        undo: 'n',
+      },
     };
 
     component.keyAssignments = customAssignments;
 
     const rootConfig = buildRootConfig(component);
     expect((rootConfig['u'] as LabeledAction).actionLabel).toBe('Move Up');
-    expect((rootConfig['i'] as LabeledAction).actionLabel).toBe('Zoom Out');
+    // Zoom keys no longer at root level
+    expect(rootConfig['i']).toBeUndefined();
     expect(rootConfig['j'] instanceof LabeledAction).toBeTrue(); // Edit is a simple action
     expect(rootConfig['k'] instanceof LabeledSubmenuConfig).toBeTrue(); // Insert is a submenu
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
 
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');
-    expect(hints[1].key).toBe('i/j');
   });
 });
 

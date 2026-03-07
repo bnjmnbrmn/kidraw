@@ -1,0 +1,86 @@
+2026-03-05T10:12:51.684Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:12:54.531Z [keymenu] node key released with pending — creating node at crosshairs
+2026-03-05T10:12:54.738Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+2026-03-05T10:12:58.406Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:12:58.537Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:13:03.072Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:13:05.221Z [keymenu] directional insert: right
+[directedInsert] right sourceNodes: 1
+2026-03-05T10:13:06.117Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:14.212Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:14.469Z [keymenu] node key released with pending — creating node at crosshairs
+2026-03-05T10:33:14.806Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+2026-03-05T10:33:15.636Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:33:15.708Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:20.232Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:20.972Z [keymenu] directional insert: left
+[directedInsert] left sourceNodes: 1
+2026-03-05T10:33:21.672Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:28.501Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:34.440Z [keymenu] directional insert: up
+[directedInsert] up sourceNodes: 1
+2026-03-05T10:33:34.924Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:36.223Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:33:36.298Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:39.948Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:43.265Z [keymenu] directional insert: up
+[directedInsert] up sourceNodes: 1
+2026-03-05T10:33:44.156Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:53.911Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:54.726Z [keymenu] directional insert: right
+[directedInsert] right sourceNodes: 1
+2026-03-05T10:33:55.298Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:33:57.513Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:33:58.072Z [keymenu] directional insert: right
+[directedInsert] right sourceNodes: 1
+2026-03-05T10:33:58.662Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:34:03.381Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:34:08.178Z [keymenu] insert key released, insertNodePending: true insertDragActive: false
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:34:22.555Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:35:44.017Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:37:21.368Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:37:23.572Z [keymenu] insert key released, insertNodePending: true insertDragActive: false
+[keymenu] f released before d — creating node at crosshairs
+2026-03-05T10:37:24.137Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:37:25.668Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:37:25.732Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:37:30.158Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:37:30.497Z [keymenu] node key released with pending — creating node at crosshairs
+2026-03-05T10:37:30.825Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+2026-03-05T10:37:31.958Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:37:32.015Z [keymenu] node key released but insertNodePending is false
+2026-03-05T10:37:33.616Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:37:33.774Z [keymenu] insert key released, insertNodePending: true insertDragActive: false
+[keymenu] f released before d — creating node at crosshairs
+[keymenu] node key released but insertNodePending is false
+2026-03-05T10:37:42.316Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:37:59.243Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:40:33.296Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:40:35.175Z [keymenu] node key released with pending — creating node at crosshairs
+2026-03-05T10:40:35.492Z [keymenu] insert key released, insertNodePending: false insertDragActive: true
+2026-03-05T10:41:51.186Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:41:56.111Z [keymenu] insert key released, insertNodePending: false insertDragActive: false
+2026-03-05T10:42:04.633Z [keymenu] node key pressed, insertDragActive: false
+[keymenu] insertNodePending set to true
+2026-03-05T10:42:04.858Z [keymenu] node key released with pending — creating node at crosshairs
+[keymenu] insert key released, insertNodePending: false insertDragActive: true

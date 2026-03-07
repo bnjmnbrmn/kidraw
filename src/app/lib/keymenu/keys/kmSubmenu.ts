@@ -15,8 +15,12 @@ import {
   isSubmenuKey,
   DefaultKMActionKey,
   DefaultKMActionSubmenuKey,
-  DefaultKMSubmenuKey
+  DefaultKMSubmenuKey,
+  KeyRenderStyle,
+  keyRenderStyleFromPalette,
 } from './kmKey';
+import {ThemePalette} from '../../../services/theme.service';
+import {createCardBackground, createBlankKey, getBlankKeyPositions, getDepthOffset, CardRenderConfig} from '../rendering/cardRenderer';
 
 
 export class KMSubmenu<T> {
@@ -24,23 +28,30 @@ export class KMSubmenu<T> {
   konvaGroup: Group;
   keys: { [K in KeyString]?: KMKey };
   actionSchedulingEnabled: boolean = true;
+  /** The x position this card rests at (accounts for depth offset). */
+  readonly restingX: number;
 
   constructor(public mode: USQwertyMode<T>,
-              public config: SubmenuConfig) {
-    this.keys = this.generateKeys(this.config);
-    this.konvaGroup = this.generateGroup(this.keys)
-    // this.mode.keyMenu?.layer.add(this.konvaGroup)
+              public config: SubmenuConfig,
+              private depth: number = 0,
+              private palette?: ThemePalette,
+              private heldKeyString?: KeyString) {
+    const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
+    this.restingX = offset.x;
+    const style = palette ? keyRenderStyleFromPalette(palette) : undefined;
+    this.keys = this.generateKeys(this.config, style);
+    this.konvaGroup = this.generateGroup(this.keys);
     this.mode.konvaGroup.add(this.konvaGroup);
     this.konvaGroup.hide();
   }
 
 
-  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}): KMKey {
-    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp);
+  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle): KMKey {
+    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style);
   }
 
-  private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig): KMKey {
-    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig);
+  private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
+    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette);
   }
 
   private generateActionSubmenuKey(
@@ -48,8 +59,9 @@ export class KMSubmenu<T> {
     submenuLabel: string,
     submenuConfig: SubmenuConfig,
     action: () => void,
+    style?: KeyRenderStyle,
   ): KMKey {
-    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action);
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
@@ -90,6 +102,11 @@ export class KMSubmenu<T> {
       return;
     }
 
+    // Ignore browser-level key repeat — the app manages its own repeat via scheduleAction
+    if (event.repeat) {
+      return;
+    }
+
     this.highlightKey(key);
     const kmKey = this.keys[key]!;
 
@@ -119,7 +136,7 @@ export class KMSubmenu<T> {
     }
   }
 
-  private generateKeys(config: SubmenuConfig): { [K in KeyString]?: KMKey } {
+  private generateKeys(config: SubmenuConfig, style?: KeyRenderStyle): { [K in KeyString]?: KMKey } {
 
     const keys: [KeyString, KMKey][] = [];
 
@@ -127,16 +144,16 @@ export class KMSubmenu<T> {
       [KeyString, SubmenuConfigValue][])
       .forEach(([key, config]) => {
         if (config instanceof LabeledSubmenuConfig) {
-          keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig)]);
+          keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig, style)]);
         } else if (config instanceof LabeledActionSubmenuConfig) {
           keys.push([
             key,
-            this.generateActionSubmenuKey(key, config.submenuLabel, config.submenuConfig, config.action),
+            this.generateActionSubmenuKey(key, config.submenuLabel, config.submenuConfig, config.action, style),
           ]);
         } else if (config instanceof LabeledActionWithRelease) {
-          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease)]);
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease, style)]);
         } else { //if config instanceof LabeledAction
-          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action)]);
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, () => {}, style)]);
         }
       });
 
@@ -144,7 +161,31 @@ export class KMSubmenu<T> {
   }
 
   private generateGroup(keys: { [K in KeyString]?: KMKey }) {
-    const group = new Group()
+    const group = new Group();
+
+    // If we have a palette, render as a card with background + blank keys + holes
+    if (this.palette) {
+      // Offset each depth level diagonally so the card stack is visible
+      const offset = getDepthOffset(this.depth);
+      group.x(offset.x);
+      group.y(offset.y);
+
+      const cardBg = createCardBackground({
+        depth: this.depth,
+        palette: this.palette,
+        heldKeyString: this.heldKeyString,
+      });
+      group.add(cardBg);
+
+      // Add blank keys for unbound positions
+      const boundKeys = new Set(Object.keys(keys) as KeyString[]);
+      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyString);
+      for (const keyString of blankPositions) {
+        group.add(createBlankKey({ keyString, palette: this.palette }));
+      }
+    }
+
+    // Add bound keys on top
     for (const v of Object.values(keys)) {
       if (v) {
         group.add(v.konvaGroup);
@@ -153,27 +194,13 @@ export class KMSubmenu<T> {
     return group;
   }
 
-  hideAllKeysExcept(submenuKey: KMSubmenuKey) {
-    Object.values(this.keys).forEach((key) => {
-      if (key && key.keyString !== submenuKey.keyString) {
-        key.konvaGroup.hide();
-      }
-    });
-  }
-
   showAllKeys() {
-    Object.values(this.keys).forEach((key) => {
-      key.konvaGroup.show();
-    });
+    this.konvaGroup.moveToTop();
     this.konvaGroup.show();
   }
 
   hideAllKeys() {
-    Object.values(this.keys).forEach((key) => {
-      key.konvaGroup.hide();
-    });
     this.konvaGroup.hide();
-
   }
 
   unhighlightAllKeys() {

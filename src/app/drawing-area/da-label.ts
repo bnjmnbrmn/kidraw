@@ -1,6 +1,8 @@
 import Konva from 'konva';
+import {nextId} from './id-generator';
 
 export class DALabel {
+  readonly id: string;
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
   private readonly _rect: Konva.Rect;
@@ -20,18 +22,27 @@ export class DALabel {
 
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
-  constructor(x: number, y: number, label: string) {
+  private _fillColor: string = 'white';
+  private _strokeColor: string = this.LABEL_COLOR;
+  private _textColor: string = 'black';
+
+  constructor(x: number, y: number, label: string, id?: string,
+              colors?: { fill?: string; stroke?: string; text?: string }) {
+    this.id = id ?? nextId();
     this.group = new Konva.Group({ x, y });
     this._label = label;
+    if (colors?.fill) this._fillColor = colors.fill;
+    if (colors?.stroke) this._strokeColor = colors.stroke;
+    if (colors?.text) this._textColor = colors.text;
 
     this._rect = new Konva.Rect({
       x: -this.RECT_WIDTH / 2,
       y: -this.RECT_HEIGHT / 2,
       width: this.RECT_WIDTH,
       height: this.RECT_HEIGHT,
-      stroke: this.LABEL_COLOR,
+      stroke: this._strokeColor,
       strokeWidth: this.LABEL_STROKE_WIDTH,
-      fill: 'white'
+      fill: this._fillColor,
     });
 
     this._text = new Konva.Text({
@@ -44,7 +55,7 @@ export class DALabel {
       fontFamily: 'Arial',
       textAlign: 'center',
       verticalAlign: 'middle',
-      fill: 'black'
+      fill: this._textColor,
     });
 
     this.group.add(this._rect);
@@ -100,6 +111,10 @@ export class DALabel {
     this.group.y(value);
   }
 
+  get fontSize(): number {
+    return this._fontSize;
+  }
+
   adjustFontSizeBy(delta: number): boolean {
     const nextSize = this.clamp(this._fontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
     if (nextSize === this._fontSize) {
@@ -115,8 +130,17 @@ export class DALabel {
     return Math.min(Math.max(value, minValue), maxValue);
   }
 
+  applyColors(colors: { fill: string; stroke: string; text: string }): void {
+    this._fillColor = colors.fill;
+    this._strokeColor = colors.stroke;
+    this._textColor = colors.text;
+    this._rect.fill(this._fillColor);
+    this._text.fill(this._textColor);
+    this.updateAppearance();
+  }
+
   private updateAppearance(): void {
-    const strokeColor = this._isSelected ? this.SELECTED_COLOR : this.LABEL_COLOR;
+    const strokeColor = this._isSelected ? this.SELECTED_COLOR : this._strokeColor;
     const strokeWidth = this._isSelected ? this.SELECTED_STROKE_WIDTH : this.LABEL_STROKE_WIDTH;
 
     this._rect.stroke(strokeColor);

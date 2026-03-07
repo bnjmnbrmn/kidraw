@@ -1,8 +1,10 @@
 import Konva from 'konva';
 import { DAEdge } from './da-edge';
+import { nextId } from './id-generator';
 
 
 export class DANode {
+  readonly id: string;
   readonly group: Konva.Group;
   private readonly _rect: Konva.Rect;
   private readonly _label: Konva.Text;
@@ -28,7 +30,9 @@ export class DANode {
   private _nodeHeight = this.DEFAULT_NODE_HEIGHT;
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
-  constructor(x: number, y: number, initialText: string) {
+  constructor(x: number, y: number, initialText: string, id?: string,
+              colors?: { fill?: string; stroke?: string; text?: string }) {
+    this.id = id ?? nextId();
     // Create the main group
     this.group = new Konva.Group({ x, y });
 
@@ -36,8 +40,8 @@ export class DANode {
     this._rect = new Konva.Rect({
       width: this.NODE_WIDTH,
       height: this.NODE_HEIGHT,
-      fill: 'white',
-      stroke: 'black',
+      fill: colors?.fill ?? 'white',
+      stroke: colors?.stroke ?? 'black',
       strokeWidth: this.STROKE_WIDTH_NORMAL,
     });
     this.group.add(this._rect);
@@ -50,8 +54,15 @@ export class DANode {
       fontSize: this.FONT_SIZE,
       align: 'center',
       verticalAlign: 'middle',
+      fill: colors?.text,
     });
     this.group.add(this._label);
+  }
+
+  applyColors(colors: { fill: string; stroke: string; text: string }): void {
+    this._rect.fill(colors.fill);
+    this._rect.stroke(colors.stroke);
+    this._label.fill(colors.text);
   }
 
   get isSelected(): boolean {
@@ -170,6 +181,17 @@ export class DANode {
     this._fontSize = nextSize;
     this._label.fontSize(this._fontSize);
     return true;
+  }
+
+  restoreState(width: number, height: number, fontSize: number): void {
+    this._nodeWidth = width;
+    this._nodeHeight = height;
+    this._fontSize = fontSize;
+    this._rect.width(width);
+    this._rect.height(height);
+    this._label.width(width);
+    this._label.height(height);
+    this._label.fontSize(fontSize);
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

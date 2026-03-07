@@ -1,6 +1,8 @@
 import Konva from 'konva';
+import {nextId} from './id-generator';
 
 export class DAWaypoint {
+  readonly id: string;
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
   private readonly _circle: Konva.Circle;
@@ -11,14 +13,21 @@ export class DAWaypoint {
   public readonly SELECTED_STROKE_WIDTH = 3;
   public readonly SELECTED_COLOR = 'darkblue';
 
-  constructor(x: number, y: number) {
+  private _fillColor: string = 'white';
+  private _strokeColor: string = this.WAYPOINT_COLOR;
+
+  constructor(x: number, y: number, id?: string,
+              colors?: { fill?: string; stroke?: string }) {
+    this.id = id ?? nextId();
     this.group = new Konva.Group({ x, y });
+    if (colors?.fill) this._fillColor = colors.fill;
+    if (colors?.stroke) this._strokeColor = colors.stroke;
 
     this._circle = new Konva.Circle({
       radius: this.WAYPOINT_RADIUS,
-      stroke: this.WAYPOINT_COLOR,
+      stroke: this._strokeColor,
       strokeWidth: this.WAYPOINT_STROKE_WIDTH,
-      fill: 'white'
+      fill: this._fillColor,
     });
 
     this.group.add(this._circle);
@@ -76,8 +85,15 @@ export class DAWaypoint {
     this.group.visible(visible || this._isSelected);
   }
 
+  applyColors(colors: { fill: string; stroke: string }): void {
+    this._fillColor = colors.fill;
+    this._strokeColor = colors.stroke;
+    this._circle.fill(this._fillColor);
+    this.updateAppearance();
+  }
+
   private updateAppearance(): void {
-    const strokeColor = this._isSelected ? this.SELECTED_COLOR : this.WAYPOINT_COLOR;
+    const strokeColor = this._isSelected ? this.SELECTED_COLOR : this._strokeColor;
     const strokeWidth = this._isSelected ? this.SELECTED_STROKE_WIDTH : this.WAYPOINT_STROKE_WIDTH;
 
     this._circle.stroke(strokeColor);

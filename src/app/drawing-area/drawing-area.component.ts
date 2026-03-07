@@ -1,5 +1,7 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
+import { Subscription } from 'rxjs';
 import { DemoDataService } from '../services/demo-data.service';
+import { ThemeService } from '../services/theme.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
@@ -11,6 +13,8 @@ import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg }
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
+import { DebugLogService } from '../services/debug-log.service';
+import { UndoRedoService } from './undo-redo.service';
 
 @Component({
   selector: 'app-drawing-area',
@@ -18,7 +22,7 @@ import Konva from 'konva';
   templateUrl: './drawing-area.component.html',
   styleUrl: './drawing-area.component.css'
 })
-export class DrawingAreaComponent implements AfterViewInit, OnChanges {
+export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input({required: true}) commands!: Observable<DACommand>;
   @Output() daOut = new EventEmitter<DANotification>()
@@ -34,8 +38,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   private tweens: Konva.Tween[] = [];
   private currentDragRafId: number | null = null;
   private demoDataService = inject(DemoDataService);
+  private log = inject(DebugLogService);
+  private themeService = inject(ThemeService);
+  private themeSub?: Subscription;
   private waypointsVisible: boolean = false;
   private hasDragged = false;
+  private wasAlreadySelectedBeforeDrag = false;
+  private undoRedoService = new UndoRedoService();
+  private dragSnapshotCaptured = false;
+  private textEditSnapshotCaptured = false;
+  private directedEdgeSource: DANode | null = null;
+  private directedEdgeInProgress: DAEdge | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -56,6 +69,30 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   private outgoingTraversalIndexByNode = new Map<DANode, number>();
   private incomingTraversalIndexByNode = new Map<DANode, number>();
 
+  private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
+    DACommandType.CREATE_NEW_NODE,
+    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.CONNECT_SELECTED_NODES,
+    DACommandType.BEGIN_DIRECTED_EDGE,
+    DACommandType.SET_EDGE_DESTINATION,
+    DACommandType.ADD_WAYPOINT,
+    DACommandType.ADD_LABEL,
+    DACommandType.DELETE,
+    DACommandType.INSERT_CHAR,
+    DACommandType.DELETE_LAST_CHAR,
+    DACommandType.INCREASE_SELECTED_NODE_SIZE,
+    DACommandType.DECREASE_SELECTED_NODE_SIZE,
+    DACommandType.INCREASE_SELECTED_TEXT_SIZE,
+    DACommandType.DECREASE_SELECTED_TEXT_SIZE,
+    DACommandType.DRAG_SELECTED_LEFT,
+    DACommandType.DRAG_SELECTED_RIGHT,
+    DACommandType.DRAG_SELECTED_UP,
+    DACommandType.DRAG_SELECTED_DOWN,
+    DACommandType.MULTI_ITEM_SELECT,
+    DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
+    DACommandType.UNSELECT_ALL,
+  ]);
+
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -63,9 +100,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
       width: this.componentNE.offsetWidth,
       height: this.componentNE.offsetHeight,
     });
-    this.stage.container().style.backgroundColor = 'white';
+    this.stage.container().style.backgroundColor = this.themeService.palette.drawingStageBackground;
+    this.themeSub = this.themeService.themeChanged$.subscribe(() => {
+      this.stage.container().style.backgroundColor = this.themeService.palette.drawingStageBackground;
+      this.drawingLayer.applyThemeColors(this.themeService.palette);
+    });
 
     this.drawingLayer = new DrawingLayer();
+    this.drawingLayer.palette = this.themeService.palette;
     this.stage.add(this.drawingLayer);
     this.crosshairsLayer = new CrosshairsLayer(this.stage);
     this.stage.add(this.crosshairsLayer);
@@ -77,6 +119,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('demo') as string === 'true') {
       this.demoDataService.createDemoGraph(this.drawingLayer);
+      this.drawingLayer.applyThemeColors(this.themeService.palette);
     }
 
     this.commands.subscribe(this.handleCommands.bind(this));
@@ -94,6 +137,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+  }
+
+  ngOnDestroy(): void {
+    this.themeSub?.unsubscribe();
   }
 
   private canEdit = false;
@@ -121,8 +168,38 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     }
   }
 
+  private pushUndoSnapshot(command: DACommand): void {
+    const kind = command.kind;
+
+    // Drag coalescing: only snapshot on first drag command per session
+    if (kind === DACommandType.DRAG_SELECTED_LEFT ||
+        kind === DACommandType.DRAG_SELECTED_RIGHT ||
+        kind === DACommandType.DRAG_SELECTED_UP ||
+        kind === DACommandType.DRAG_SELECTED_DOWN) {
+      if (this.dragSnapshotCaptured) return;
+      this.dragSnapshotCaptured = true;
+    }
+
+    // Text edit coalescing: only snapshot on first text edit per session
+    if (kind === DACommandType.INSERT_CHAR || kind === DACommandType.DELETE_LAST_CHAR) {
+      if (this.textEditSnapshotCaptured) return;
+      this.textEditSnapshotCaptured = true;
+    } else {
+      // Non-text-edit mutation resets text coalescing
+      this.textEditSnapshotCaptured = false;
+    }
+
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+  }
+
   private handleCommands(command: DACommand) {
     console.log("handleCommands - " + JSON.stringify(command));
+
+    // Push undo snapshot before mutating commands
+    if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind)) {
+      this.pushUndoSnapshot(command);
+    }
+
     switch (command.kind) {
       case DACommandType.MOVE_CROSSHAIRS_LEFT:
         this.moveCrosshairsLeft();
@@ -163,11 +240,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
       case DACommandType.TRAVERSE_OUTGOING_NEXT:
         this.traverseOutgoingNext();
         break;
+      case DACommandType.TRAVERSE_OUTGOING_PREV:
+        this.traverseOutgoingPrev();
+        break;
       case DACommandType.TRAVERSE_INCOMING_NEXT:
         this.traverseIncomingNext();
         break;
+      case DACommandType.TRAVERSE_INCOMING_PREV:
+        this.traverseIncomingPrev();
+        break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
+        break;
+      case DACommandType.SNAP_TO_NODE_LEFT:
+        this.snapToNodeInDirection('left');
+        break;
+      case DACommandType.SNAP_TO_NODE_RIGHT:
+        this.snapToNodeInDirection('right');
+        break;
+      case DACommandType.SNAP_TO_NODE_UP:
+        this.snapToNodeInDirection('up');
+        break;
+      case DACommandType.SNAP_TO_NODE_DOWN:
+        this.snapToNodeInDirection('down');
         break;
       case DACommandType.INCREASE_SELECTED_NODE_SIZE:
         this.increaseSelectedNodeSize();
@@ -183,7 +278,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
         break;
       case DACommandType.CREATE_NEW_NODE:
         this.createNewNode();
-        break
+        break;
+      case DACommandType.CREATE_NEW_NODE_DIRECTED:
+        this.createNewNodeDirected(command.direction);
+        break;
       case DACommandType.INSERT_CHAR:
         const key = command.value;
         this.insertChar(key);
@@ -208,6 +306,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
       case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
         this.checkAndEmitEditState();
+        break;
+      case DACommandType.BEGIN_DIRECTED_EDGE:
+        this.beginDirectedEdge();
+        break;
+      case DACommandType.SET_EDGE_DESTINATION:
+        this.setEdgeDestination(command.direction);
+        break;
+      case DACommandType.FINALIZE_DIRECTED_EDGE:
+        this.finalizeDirectedEdge();
         break;
       case DACommandType.RECENTER_VIEW:
         this.recenterView();
@@ -256,6 +363,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
       case DACommandType.DELETE:
         this.deleteSelected();
         break;
+      case DACommandType.UNDO:
+        this.handleUndo();
+        break;
+      case DACommandType.REDO:
+        this.handleRedo();
+        break;
       default:
         this.assertNever(command);
     }
@@ -269,28 +382,48 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   private multiItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-    this.selectTopItem();
+    this.wasAlreadySelectedBeforeDrag = this.isTopItemSelected();
+    this.ensureTopItemSelected();
   }
 
-  private selectTopItem() {
+  private isTopItemSelected(): boolean {
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) return waypointUnderCrosshairs.isSelected;
+
+    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
+    if (daNodesContainingCrosshairs.length > 0) {
+      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+      return topNode.isSelected;
+    }
+
+    const daEdgesContainingCrosshairs = this.getDAEdgesContainingCrosshairs();
+    if (daEdgesContainingCrosshairs.length > 0) {
+      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+      return topEdge.isSelected;
+    }
+
+    return false;
+  }
+
+  private ensureTopItemSelected() {
     const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (waypointUnderCrosshairs) {
-      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
+      waypointUnderCrosshairs.isSelected = true;
       return;
     }
 
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
 
     if (daNodesContainingCrosshairs.length > 0) {
-      const nodeToToggle = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
-      nodeToToggle.isSelected = !nodeToToggle.isSelected;
+      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+      topNode.isSelected = true;
       return;
     }
 
     const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
     if (daEdgesContainingCrosshairs.length > 0) {
-      const edgeToToggle = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
-      edgeToToggle.isSelected = !edgeToToggle.isSelected;
+      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+      topEdge.isSelected = true;
       return;
     }
   }
@@ -378,6 +511,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
+      if (srcNode === destNode) return; // no self-edges
       this.drawingLayer.addEdge(srcNode, destNode);
       this.unselectAll();
       return;
@@ -570,11 +704,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   }
 
   private traverseOutgoingNext() {
-    this.traverseFromAnchorNode('outgoing');
+    this.traverseFromAnchorNode('outgoing', 1);
+  }
+
+  private traverseOutgoingPrev() {
+    this.traverseFromAnchorNode('outgoing', -1);
   }
 
   private traverseIncomingNext() {
-    this.traverseFromAnchorNode('incoming');
+    this.traverseFromAnchorNode('incoming', 1);
+  }
+
+  private traverseIncomingPrev() {
+    this.traverseFromAnchorNode('incoming', -1);
   }
 
   private snapToNearestNode() {
@@ -606,7 +748,103 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     this.focusNode(nearestNode);
   }
 
-  private traverseFromAnchorNode(direction: 'outgoing' | 'incoming') {
+  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down'): DANode | null {
+    const nodes = this.drawingLayer.getDANodes();
+    if (nodes.length === 0) return null;
+
+    const crosshairsPosition = {
+      x: this.crosshairsLayer.crosshairsX(),
+      y: this.crosshairsLayer.crosshairsY(),
+    };
+
+    let bestNode: DANode | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    nodes.forEach((node) => {
+      const center = this.getNodeCenterInStageCoordinates(node);
+      const dx = center.x - crosshairsPosition.x;
+      const dy = center.y - crosshairsPosition.y;
+
+      const MIN_OFFSET = 5;
+      let inDirection = false;
+      switch (direction) {
+        case 'left':  inDirection = dx < -MIN_OFFSET; break;
+        case 'right': inDirection = dx > MIN_OFFSET; break;
+        case 'up':    inDirection = dy < -MIN_OFFSET; break;
+        case 'down':  inDirection = dy > MIN_OFFSET; break;
+      }
+      if (!inDirection) return;
+
+      const isHorizontal = direction === 'left' || direction === 'right';
+      const primaryDist = isHorizontal ? Math.abs(dx) : Math.abs(dy);
+      const offAxisDist = isHorizontal ? Math.abs(dy) : Math.abs(dx);
+      const score = primaryDist + offAxisDist * 2;
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestNode = node;
+      }
+    });
+
+    return bestNode;
+  }
+
+  private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down') {
+    const bestNode = this.findNodeInDirection(direction);
+    if (bestNode) {
+      const nodeCenterInStage = this.getNodeCenterInStageCoordinates(bestNode);
+      const deltaX = nodeCenterInStage.x - this.crosshairsLayer.crosshairs.x;
+      const deltaY = nodeCenterInStage.y - this.crosshairsLayer.crosshairs.y;
+      this.moveCrosshairsBy(deltaX, deltaY);
+    }
+  }
+
+  private beginDirectedEdge() {
+    this.finishTweens();
+
+    // Source: node under crosshairs, or first selected node
+    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const srcNode = nodesUnderCrosshairs.length > 0
+      ? nodesUnderCrosshairs[0]
+      : (selectedNodes.length > 0 ? selectedNodes[0] : null);
+    if (!srcNode) return;
+
+    this.directedEdgeSource = srcNode;
+    // Create self-edge initially
+    this.drawingLayer.addEdge(srcNode, srcNode);
+    const edges = this.drawingLayer.getDAEdges();
+    this.directedEdgeInProgress = edges[edges.length - 1];
+    this.drawingLayer.batchDraw();
+  }
+
+  private setEdgeDestination(direction: 'left' | 'right' | 'up' | 'down') {
+    if (!this.directedEdgeSource || !this.directedEdgeInProgress) return;
+
+    const targetNode = this.findNodeInDirection(direction);
+    if (!targetNode) return;
+
+    // Remove the current in-progress edge and create a new one to the target
+    this.drawingLayer.removeEdge(this.directedEdgeInProgress);
+    this.drawingLayer.addEdge(this.directedEdgeSource, targetNode);
+    const edges = this.drawingLayer.getDAEdges();
+    this.directedEdgeInProgress = edges[edges.length - 1];
+
+    // Move crosshairs to target so subsequent direction presses work relative to new position
+    const targetCenter = this.getNodeCenterInStageCoordinates(targetNode);
+    const deltaX = targetCenter.x - this.crosshairsLayer.crosshairs.x;
+    const deltaY = targetCenter.y - this.crosshairsLayer.crosshairs.y;
+    this.moveCrosshairsBy(deltaX, deltaY);
+
+    this.drawingLayer.batchDraw();
+  }
+
+  private finalizeDirectedEdge() {
+    this.directedEdgeSource = null;
+    this.directedEdgeInProgress = null;
+  }
+
+  private traverseFromAnchorNode(direction: 'outgoing' | 'incoming', step: number = 1) {
     this.finishTweens();
 
     const anchorNode = this.getTraversalAnchorNode();
@@ -623,8 +861,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
       ? this.outgoingTraversalIndexByNode
       : this.incomingTraversalIndexByNode;
     const currentIndex = indexMap.get(anchorNode) ?? 0;
-    const edge = candidateEdges[currentIndex % candidateEdges.length];
-    indexMap.set(anchorNode, (currentIndex + 1) % candidateEdges.length);
+    const edge = candidateEdges[((currentIndex % candidateEdges.length) + candidateEdges.length) % candidateEdges.length];
+    indexMap.set(anchorNode, ((currentIndex + step) % candidateEdges.length + candidateEdges.length) % candidateEdges.length);
 
     const targetNode = direction === 'outgoing' ? edge.destNode : edge.srcNode;
     this.focusNode(targetNode);
@@ -784,6 +1022,54 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     this.checkAndEmitEditState();
   }
 
+  private createNewNodeDirected(direction: 'up' | 'down' | 'left' | 'right') {
+    this.finishTweens();
+
+    // Source nodes for auto-connect: selected nodes, OR node under crosshairs as fallback
+    let sourceNodes = this.drawingLayer.getSelectedDANodes();
+    if (sourceNodes.length === 0) {
+      const hoveredNodes = this.getDANodesContainingCrosshairs();
+      if (hoveredNodes.length > 0) {
+        sourceNodes = [hoveredNodes[0]];
+      }
+    }
+    this.log.log('[directedInsert]', direction, 'sourceNodes:', sourceNodes.length);
+
+    // Anchor in stage coords: source node center if exactly one, else current crosshairs
+    let anchorX: number;
+    let anchorY: number;
+    if (sourceNodes.length === 1) {
+      const center = this.getNodeCenterInStageCoordinates(sourceNodes[0]);
+      anchorX = center.x;
+      anchorY = center.y;
+    } else {
+      anchorX = this.crosshairsLayer.crosshairs.x;
+      anchorY = this.crosshairsLayer.crosshairs.y;
+    }
+
+    // Offset of 150 drawing-layer units (100 node + 50 gap), scaled to stage coords
+    const DIRECTED_OFFSET = 150 * this.drawingLayer.scaleX();
+    const deltaX = direction === 'left' ? -DIRECTED_OFFSET : direction === 'right' ? DIRECTED_OFFSET : 0;
+    const deltaY = direction === 'up' ? -DIRECTED_OFFSET : direction === 'down' ? DIRECTED_OFFSET : 0;
+
+    // Move crosshairs to target (handles clamping + auto-pan), then immediately finish
+    this.moveCrosshairsBy(anchorX - this.crosshairsLayer.crosshairs.x + deltaX,
+                          anchorY - this.crosshairsLayer.crosshairs.y + deltaY);
+    this.finishTweens();
+
+    this.drawingLayer.unselectAll();
+    this.unselectAllWaypoints();
+    this.unselectAllLabels();
+
+    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY());
+
+    for (const srcNode of sourceNodes) {
+      this.drawingLayer.addEdge(srcNode, newNode);
+    }
+
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+  }
 
   private getCrosshairsBBoxInDrawingLayer(): { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number } {
     const rect = this.crosshairsLayer.crosshairs.konvaGroup.getClientRect();
@@ -1330,7 +1616,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
           // Place waypoint at the point on this segment closest to crosshairs center
           const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
           console.log(`addWaypoint: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
-          const waypoint = new DAWaypoint(point.x, point.y);
+          const waypoint = new DAWaypoint(point.x, point.y, undefined, this.drawingLayer.waypointColors());
           edge.addWaypoint(waypoint);
           if (!this.waypointsVisible) {
             this.waypointsVisible = true;
@@ -1361,7 +1647,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
           const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
           console.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
-          const label = new DALabel(point.x, point.y, 'label');
+          const label = new DALabel(point.x, point.y, 'label', undefined, this.drawingLayer.labelColors());
           edge.addLabel(label);
           this.drawingLayer.batchDraw();
           this.unselectAll(); // Clear selection after adding label
@@ -1516,6 +1802,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
     return edges.filter(edge => edge.labels.includes(label));
   }
 
+  private handleUndo(): void {
+    this.finishTweens();
+    const currentState = this.drawingLayer.serializeGraph();
+    const snapshot = this.undoRedoService.undo(currentState);
+    if (snapshot) {
+      this.drawingLayer.restoreGraph(snapshot);
+      this.updateWaypointVisibility();
+      this.drawingLayer.batchDraw();
+      this.checkAndEmitEditState();
+      this.daOut.emit({kind: "exit-label-editing-mode"});
+      this.crosshairsLayer.showCrosshairs();
+      this.crosshairsLayer.batchDraw();
+    }
+  }
+
+  private handleRedo(): void {
+    this.finishTweens();
+    const currentState = this.drawingLayer.serializeGraph();
+    const snapshot = this.undoRedoService.redo(currentState);
+    if (snapshot) {
+      this.drawingLayer.restoreGraph(snapshot);
+      this.updateWaypointVisibility();
+      this.drawingLayer.batchDraw();
+      this.checkAndEmitEditState();
+      this.daOut.emit({kind: "exit-label-editing-mode"});
+      this.crosshairsLayer.showCrosshairs();
+      this.crosshairsLayer.batchDraw();
+    }
+  }
+
   private deleteSelected(): void {
     // Priority: nodes > edges > waypoints > crosshairs
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
@@ -1586,13 +1902,40 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges {
   private enterDragMode() {
     // Crosshairs stay visible during drag
     this.hasDragged = false;
+    this.dragSnapshotCaptured = false;
   }
 
   private exitDragMode() {
-    // Crosshairs remain visible after drag
     if (this.hasDragged) {
       this.unselectAll();
       this.checkAndEmitEditState();
+    } else if (this.wasAlreadySelectedBeforeDrag) {
+      // Quick tap vv on already-selected item: toggle it off
+      this.toggleTopItemSelection();
+      this.checkAndEmitEditState();
+    }
+    // Quick tap vv on unselected item: leave it selected (ensureTopItemSelected already did it)
+  }
+
+  private toggleTopItemSelection() {
+    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (waypointUnderCrosshairs) {
+      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
+      return;
+    }
+
+    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
+    if (daNodesContainingCrosshairs.length > 0) {
+      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+      topNode.isSelected = !topNode.isSelected;
+      return;
+    }
+
+    const daEdgesContainingCrosshairs = this.getDAEdgesContainingCrosshairs();
+    if (daEdgesContainingCrosshairs.length > 0) {
+      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+      topEdge.isSelected = !topEdge.isSelected;
+      return;
     }
   }
 
