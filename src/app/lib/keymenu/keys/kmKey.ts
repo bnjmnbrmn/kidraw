@@ -76,14 +76,21 @@ export function keyRenderStyleFromPalette(palette: ThemePalette, depth: number =
 
 // ========== Shared Key Rendering (Composition) ==========
 
+export type KMKeyType = 'action' | 'submenu' | 'actionSubmenu';
+
 export interface KMKeyRenderConfig {
   keyString: KeyString;
   label: string;
   style?: KeyRenderStyle;
+  keyType?: KMKeyType;
 }
+
+const CORNER_RADIUS = 8;
+const CHAMFER_SIZE = 12;
 
 export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Konva.Group; keyRect: Konva.Rect } {
   const style = config.style ?? defaultKeyRenderStyle();
+  const keyType = config.keyType ?? 'action';
 
   const konvaGroup = new Konva.Group({
     x: xAndYForKeys[config.keyString]!.x,
@@ -98,8 +105,40 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     shadowEnabled: false,
     shadowOffset: { x: 1, y: 1 },
     shadowColor: style.highlightShadowColor,
+    cornerRadius: keyType === 'action' ? CORNER_RADIUS
+                : keyType === 'actionSubmenu' ? CORNER_RADIUS
+                : 0,
   });
   konvaGroup.add(keyRect);
+
+  // Submenu indicator: chamfered (cut) corner bottom-right
+  if (keyType === 'submenu' || keyType === 'actionSubmenu') {
+    const chamfer = new Konva.Line({
+      points: [
+        KEY_WIDTH, KEY_HEIGHT - CHAMFER_SIZE,
+        KEY_WIDTH - CHAMFER_SIZE, KEY_HEIGHT,
+      ],
+      stroke: style.strokeColor,
+      strokeWidth: 2,
+      listening: false,
+    });
+    // Fill the chamfer triangle to match the card background (covers the rounded corner area)
+    const chamferFill = new Konva.Shape({
+      sceneFunc: (ctx, shape) => {
+        ctx.beginPath();
+        ctx.moveTo(KEY_WIDTH, KEY_HEIGHT - CHAMFER_SIZE);
+        ctx.lineTo(KEY_WIDTH - CHAMFER_SIZE, KEY_HEIGHT);
+        ctx.lineTo(KEY_WIDTH, KEY_HEIGHT);
+        ctx.closePath();
+        ctx.fillStrokeShape(shape);
+      },
+      fill: style.strokeColor,
+      opacity: 0.3,
+      listening: false,
+    });
+    konvaGroup.add(chamferFill);
+    konvaGroup.add(chamfer);
+  }
 
   const keyLabelText = new Konva.Text({
     text: config.keyString,
@@ -116,6 +155,9 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     height: keyLabelText.height() + 10,
     fill: style.labelFillColor,
     stroke: style.strokeColor,
+    cornerRadius: keyType === 'action' || keyType === 'actionSubmenu'
+      ? [CORNER_RADIUS, CORNER_RADIUS, 0, 0]
+      : 0,
   });
   konvaGroup.add(keyLabelRect);
   konvaGroup.add(keyLabelText);
@@ -151,7 +193,7 @@ export class DefaultKMActionKey<T> implements KMActionKey {
     private readonly _onKeyUpBeforeRender: () => void = () => {},
     style?: KeyRenderStyle,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'action' });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
   }
@@ -199,7 +241,7 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     heldKeyStrings?: KeyString[],
     hideFingerBlocked?: boolean,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'submenu' });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
     this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
@@ -253,7 +295,7 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     heldKeyStrings?: KeyString[],
     hideFingerBlocked?: boolean,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu' });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
     this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
