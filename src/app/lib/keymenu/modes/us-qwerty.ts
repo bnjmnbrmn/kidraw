@@ -27,6 +27,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     public readonly stack: KMSubmenu<T>[] = [];
     public konvaGroup: Group;
     actionSchedulingEnabled: boolean = true;
+    private _helpModeActive: boolean = false;
     private palette?: ThemePalette;
     private hideFingerBlocked: boolean;
     private activeTweens: Map<KMSubmenu<T>, Konva.Tween> = new Map();
@@ -51,6 +52,14 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     beforeSwitchOut(): void {
         this.cancelAllTweensAndReset();
 
+        // Reset help mode
+        if (this._helpModeActive) {
+            this._helpModeActive = false;
+            this.stackTop.helpModeActive = false;
+            this.stackTop.hideHelpOverlay();
+            this.stackTop.hideTooltip();
+        }
+
         while (this.stack.length > 1) {
             this.stackTop.hideAllKeys();
             this.stackTop.unhighlightAllKeys();
@@ -72,6 +81,21 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     get stackTop() {
         return this.stack[this.stack.length - 1];
+    }
+
+    get helpModeActive(): boolean {
+        return this._helpModeActive;
+    }
+
+    set helpModeActive(value: boolean) {
+        this._helpModeActive = value;
+        this.stackTop.helpModeActive = value;
+        if (value) {
+            this.stackTop.showHelpOverlay();
+        } else {
+            this.stackTop.hideHelpOverlay();
+            this.stackTop.hideTooltip();
+        }
     }
 
     handleKeyDown(event: KeyboardEvent) {
@@ -102,6 +126,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     pushSubmenu(submenuKey: KMSubmenuKey) {
         const submenu = submenuKey.submenu as KMSubmenu<T>;
+        submenu.helpModeActive = this._helpModeActive;
         this.stack.push(submenu);
         this.submenuKeyStringStack.push(submenuKey.keyString);
 

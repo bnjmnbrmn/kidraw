@@ -7,6 +7,7 @@ import {
   LabeledSubmenuConfig,
 } from '../layouts/us-qwerty/submenuConfig';
 import type {SubmenuConfigValue} from '../layouts/us-qwerty/submenuConfig';
+import Konva from 'konva';
 import {Group} from 'konva/lib/Group';
 import {
   KMKey,
@@ -18,9 +19,10 @@ import {
   DefaultKMSubmenuKey,
   KeyRenderStyle,
   keyRenderStyleFromPalette,
+  KMKeyIndicator,
 } from './kmKey';
 import {ThemePalette} from '../../../services/theme.service';
-import {createCardBackground, createBlankKey, createHoleHighlights, getBlankKeyPositions, getDepthOffset, CardRenderConfig} from '../rendering/cardRenderer';
+import {createCardBackground, createBlankKey, createHoleHighlights, getBlankKeyPositions, getDepthOffset, CardRenderConfig, getCardDimensions, CARD_PADDING} from '../rendering/cardRenderer';
 
 
 export class KMSubmenu<T> {
@@ -28,9 +30,13 @@ export class KMSubmenu<T> {
   konvaGroup: Group;
   keys: { [K in KeyString]?: KMKey };
   actionSchedulingEnabled: boolean = true;
+  helpModeActive: boolean = false;
   /** The x/y positions this card rests at (accounts for depth offset). */
   readonly restingX: number;
   readonly restingY: number;
+  private helpOverlay?: Konva.Rect;
+  private activeTooltip?: Konva.Group;
+  private tooltipTimer?: number;
 
   constructor(public mode: USQwertyMode<T>,
               public config: SubmenuConfig,
@@ -49,8 +55,8 @@ export class KMSubmenu<T> {
   }
 
 
-  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle): KMKey {
-    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style);
+  private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle, indicator?: KMKeyIndicator): KMKey {
+    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style, indicator);
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
@@ -72,7 +78,9 @@ export class KMSubmenu<T> {
     if (this.keys[key]) {
       this.unhighlightKey(key);
       const kmKey = this.keys[key]!;
-      if (isActionKey(kmKey)) {
+      if (this.helpModeActive) {
+        this.hideTooltip();
+      } else if (isActionKey(kmKey)) {
         kmKey.onKeyUpBeforeRender();
         kmKey.onKeyUp();
       }
@@ -112,6 +120,20 @@ export class KMSubmenu<T> {
 
     this.highlightKey(key);
     const kmKey = this.keys[key]!;
+
+    if (this.helpModeActive) {
+      // In help mode: show tooltip instead of firing actions
+      if (isActionKey(kmKey) && !isSubmenuKey(kmKey)) {
+        this.showTooltip(key, kmKey.label);
+        return; // No action, no repeat
+      }
+      // Submenu navigation still works in help mode
+      if (isSubmenuKey(kmKey)) {
+        this.mode.pushSubmenu(kmKey);
+        return;
+      }
+      return;
+    }
 
     if (isActionKey(kmKey)) {
       kmKey.onKeyDownBeforeRender();
@@ -154,9 +176,9 @@ export class KMSubmenu<T> {
             this.generateActionSubmenuKey(key, config.submenuLabel, config.submenuConfig, config.action, style),
           ]);
         } else if (config instanceof LabeledActionWithRelease) {
-          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease, style)]);
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease, style, 'release')]);
         } else { //if config instanceof LabeledAction
-          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, () => {}, style)]);
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, () => {}, style, 'repeat')]);
         }
       });
 
@@ -200,6 +222,78 @@ export class KMSubmenu<T> {
       }
     }
     return group;
+  }
+
+  private showTooltip(keyString: KeyString, label: string): void {
+    this.hideTooltip();
+    const pos = xAndYForKeys[keyString];
+    if (!pos) return;
+
+    const padding = 6;
+    const tooltipText = new Konva.Text({
+      text: label,
+      fontSize: 13,
+      fontStyle: 'bold',
+      x: padding,
+      y: padding,
+      fill: this.palette?.actionText ?? '#000',
+    });
+
+    const bg = new Konva.Rect({
+      width: tooltipText.width() + padding * 2,
+      height: tooltipText.height() + padding * 2,
+      fill: this.palette?.cardBackgrounds[0] ?? '#fff',
+      stroke: this.palette?.highlightShadowColor ?? '#38bdf8',
+      strokeWidth: 2,
+      cornerRadius: 4,
+    });
+
+    const group = new Konva.Group({
+      x: pos.x,
+      y: pos.y - bg.height() - 4,
+    });
+    group.add(bg);
+    group.add(tooltipText);
+
+    this.konvaGroup.add(group);
+    this.activeTooltip = group;
+
+    this.tooltipTimer = window.setTimeout(() => this.hideTooltip(), 2000);
+  }
+
+  hideTooltip(): void {
+    if (this.tooltipTimer) {
+      window.clearTimeout(this.tooltipTimer);
+      this.tooltipTimer = undefined;
+    }
+    if (this.activeTooltip) {
+      this.activeTooltip.destroy();
+      this.activeTooltip = undefined;
+    }
+  }
+
+  showHelpOverlay(): void {
+    if (this.helpOverlay) return;
+    const { width, height } = getCardDimensions();
+    this.helpOverlay = new Konva.Rect({
+      x: -CARD_PADDING,
+      y: -CARD_PADDING,
+      width: width,
+      height: height,
+      stroke: '#f59e0b', // amber-500
+      strokeWidth: 3,
+      fill: 'rgba(245, 158, 11, 0.06)',
+      cornerRadius: 4,
+      listening: false,
+    });
+    this.konvaGroup.add(this.helpOverlay);
+  }
+
+  hideHelpOverlay(): void {
+    if (this.helpOverlay) {
+      this.helpOverlay.destroy();
+      this.helpOverlay = undefined;
+    }
   }
 
   showAllKeys() {

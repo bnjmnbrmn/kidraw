@@ -77,12 +77,14 @@ export function keyRenderStyleFromPalette(palette: ThemePalette, depth: number =
 // ========== Shared Key Rendering (Composition) ==========
 
 export type KMKeyType = 'action' | 'submenu' | 'actionSubmenu';
+export type KMKeyIndicator = 'repeat' | 'release' | 'none';
 
 export interface KMKeyRenderConfig {
   keyString: KeyString;
   label: string;
   style?: KeyRenderStyle;
   keyType?: KMKeyType;
+  indicator?: KMKeyIndicator;
 }
 
 const CORNER_RADIUS = 8;
@@ -173,6 +175,22 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   });
   konvaGroup.add(actionLabelText);
 
+  // Indicator badge (repeat ↺ or release ↑)
+  const indicator = config.indicator ?? 'none';
+  if (indicator !== 'none') {
+    const indicatorChar = indicator === 'repeat' ? '↺' : '↑';
+    const indicatorText = new Konva.Text({
+      text: indicatorChar,
+      fontSize: 9,
+      x: KEY_WIDTH - 14,
+      y: KEY_HEIGHT - 14,
+      fill: style.actionTextColor,
+      opacity: 0.45,
+      listening: false,
+    });
+    konvaGroup.add(indicatorText);
+  }
+
   return { konvaGroup, keyRect };
 }
 
@@ -192,8 +210,9 @@ export class DefaultKMActionKey<T> implements KMActionKey {
     private readonly _onKeyDownBeforeRender: () => void = () => {},
     private readonly _onKeyUpBeforeRender: () => void = () => {},
     style?: KeyRenderStyle,
+    indicator?: KMKeyIndicator,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'action' });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'action', indicator });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
   }

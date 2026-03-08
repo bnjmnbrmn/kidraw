@@ -35,6 +35,7 @@ import {KeyboardConfigService} from '../services/keyboard-config.service';
 
 import {KMSubmenu} from '../lib/keymenu/keys/kmSubmenu';
 import {KMSubmenuKey} from '../lib/keymenu/keys/kmKey';
+import {DoublePressTracker} from '../lib/keymenu/help/doublePressTracker';
 
 interface ProfileHint {
   readonly key: string;
@@ -71,6 +72,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
+
+  // Help mode state
+  private helpModeState: 'inactive' | 'held' | 'sticky' = 'inactive';
+  private spacebarDoublePress = new DoublePressTracker(325);
+  private spacebarHoldTimer?: number;
+  private readonly SPACEBAR_HOLD_THRESHOLD_MS = 300;
 
   readonly MIN_STEERING_SPEED = 20;
   readonly MAX_STEERING_SPEED = 200;
@@ -167,6 +174,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.insertDragActive = false;
     this.insertNodePending = false;
     this.selectDragHoldActive = false;
+    this.helpModeState = 'inactive';
+    this.clearSpacebarHoldTimer();
+    this.spacebarDoublePress.reset();
     this.keyMenu = new KeyMenu<DACommand>({
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
@@ -424,8 +434,65 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.insertDragActive = false;
     this.insertNodePending = false;
     this.selectDragHoldActive = false;
+    this.resetHelpMode();
     this.refreshActiveKeyPath();
     return true;
+  }
+
+  private handleSpacebarDown(): void {
+    const isDoublePress = this.spacebarDoublePress.onPress();
+
+    if (isDoublePress) {
+      // Double-press toggles sticky mode
+      this.clearSpacebarHoldTimer();
+      if (this.helpModeState === 'sticky') {
+        this.setHelpMode('inactive');
+      } else {
+        this.setHelpMode('sticky');
+      }
+      return;
+    }
+
+    // Start hold timer
+    this.spacebarHoldTimer = window.setTimeout(() => {
+      if (this.helpModeState === 'inactive') {
+        this.setHelpMode('held');
+      }
+    }, this.SPACEBAR_HOLD_THRESHOLD_MS);
+  }
+
+  private handleSpacebarUp(): void {
+    this.spacebarDoublePress.onRelease();
+    this.clearSpacebarHoldTimer();
+
+    if (this.helpModeState === 'held') {
+      this.setHelpMode('inactive');
+    }
+    // sticky stays active on release
+  }
+
+  private setHelpMode(state: 'inactive' | 'held' | 'sticky'): void {
+    this.helpModeState = state;
+    const active = state !== 'inactive';
+    const mode = this.keyMenu.currentMode;
+    if (mode instanceof USQwertyMode) {
+      mode.helpModeActive = active;
+    }
+  }
+
+  private clearSpacebarHoldTimer(): void {
+    if (this.spacebarHoldTimer !== undefined) {
+      window.clearTimeout(this.spacebarHoldTimer);
+      this.spacebarHoldTimer = undefined;
+    }
+  }
+
+  private resetHelpMode(): void {
+    this.clearSpacebarHoldTimer();
+    this.spacebarDoublePress.reset();
+    if (this.helpModeState !== 'inactive') {
+      this.setHelpMode('inactive');
+    }
   }
 
   @HostListener('window:blur')
@@ -452,6 +519,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.directedEdgeActive = false;
     this.insertDragActive = false;
     this.insertNodePending = false;
+    this.resetHelpMode();
   }
 
   private remapEvent(event: KeyboardEvent): KeyboardEvent {
@@ -502,6 +570,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
+    // Spacebar help mode interception (only in normal mode)
+    if (event.key === ' ' && this.keyMenu.currentMode.name === 'normal' && !event.repeat) {
+      event.preventDefault();
+      this.handleSpacebarDown();
+      return;
+    }
+
     if (this.keyMenu.currentMode.name === 'normal') {
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey)) {
         this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL});
@@ -529,6 +604,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
     event = this.remapEvent(event);
+
+    // Spacebar help mode release
+    if (event.key === ' ' && this.keyMenu.currentMode.name === 'normal') {
+      this.handleSpacebarUp();
+      return;
+    }
 
     this.keyMenu.handleKeyUp(event);
     this.refreshActiveKeyPath();
