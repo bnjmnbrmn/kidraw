@@ -17,6 +17,10 @@ npm run watch      # Watch-mode build (development config)
 
 To run a single test file, add `fit` / `fdescribe` in the spec file (focused Jasmine tests), then run `npm test`.
 
+## Git Discipline
+
+**Commit frequently and incrementally.** Each logical unit of work (a new feature, a bug fix, a refactor) should be its own commit. Do not accumulate large batches of unrelated changes. After completing a self-contained piece of work, commit it before moving on. Use `npx ng build` to verify the build is clean before committing.
+
 ## Architecture
 
 ### Component Structure

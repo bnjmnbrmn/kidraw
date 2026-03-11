@@ -1,5 +1,5 @@
 import Konva from 'konva';
-import { KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT } from '../layouts/us-qwerty';
+import { KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, getKeyWidth } from '../layouts/us-qwerty';
 import { USQwertyMode } from '../modes/us-qwerty';
 import { KMSubmenu } from './kmSubmenu';
 import { ThemePalette } from '../../../services/theme.service';
@@ -85,6 +85,8 @@ export interface KMKeyRenderConfig {
   style?: KeyRenderStyle;
   keyType?: KMKeyType;
   indicator?: KMKeyIndicator;
+  keyDisplayLabel?: string;
+  keyWidth?: number;
 }
 
 const CORNER_RADIUS = 8;
@@ -93,6 +95,7 @@ const CHAMFER_SIZE = 12;
 export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Konva.Group; keyRect: Konva.Rect } {
   const style = config.style ?? defaultKeyRenderStyle();
   const keyType = config.keyType ?? 'action';
+  const w = config.keyWidth ?? KEY_WIDTH;
 
   const konvaGroup = new Konva.Group({
     x: xAndYForKeys[config.keyString]!.x,
@@ -100,7 +103,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   });
 
   const keyRect = new Konva.Rect({
-    width: KEY_WIDTH,
+    width: w,
     height: KEY_HEIGHT,
     stroke: style.strokeColor,
     fill: style.fillColor,
@@ -117,8 +120,8 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   if (keyType === 'submenu' || keyType === 'actionSubmenu') {
     const chamfer = new Konva.Line({
       points: [
-        KEY_WIDTH, KEY_HEIGHT - CHAMFER_SIZE,
-        KEY_WIDTH - CHAMFER_SIZE, KEY_HEIGHT,
+        w, KEY_HEIGHT - CHAMFER_SIZE,
+        w - CHAMFER_SIZE, KEY_HEIGHT,
       ],
       stroke: style.strokeColor,
       strokeWidth: 2,
@@ -128,9 +131,9 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     const chamferFill = new Konva.Shape({
       sceneFunc: (ctx, shape) => {
         ctx.beginPath();
-        ctx.moveTo(KEY_WIDTH, KEY_HEIGHT - CHAMFER_SIZE);
-        ctx.lineTo(KEY_WIDTH - CHAMFER_SIZE, KEY_HEIGHT);
-        ctx.lineTo(KEY_WIDTH, KEY_HEIGHT);
+        ctx.moveTo(w, KEY_HEIGHT - CHAMFER_SIZE);
+        ctx.lineTo(w - CHAMFER_SIZE, KEY_HEIGHT);
+        ctx.lineTo(w, KEY_HEIGHT);
         ctx.closePath();
         ctx.fillStrokeShape(shape);
       },
@@ -143,8 +146,8 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   }
 
   const keyLabelText = new Konva.Text({
-    text: config.keyString,
-    width: KEY_WIDTH,
+    text: config.keyDisplayLabel ?? config.keyString,
+    width: w,
     height: 10,
     y: 4,
     align: 'center',
@@ -153,7 +156,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   });
 
   const keyLabelRect = new Konva.Rect({
-    width: KEY_WIDTH,
+    width: w,
     height: keyLabelText.height() + 10,
     fill: style.labelFillColor,
     stroke: style.strokeColor,
@@ -166,7 +169,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
 
   const actionLabelText = new Konva.Text({
     text: config.label,
-    width: KEY_WIDTH - 10,
+    width: w - 10,
     height: KEY_HEIGHT + 20,
     align: 'center',
     verticalAlign: 'middle',
@@ -182,7 +185,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     const indicatorText = new Konva.Text({
       text: indicatorChar,
       fontSize: 9,
-      x: KEY_WIDTH - 14,
+      x: w - 14,
       y: KEY_HEIGHT - 14,
       fill: style.actionTextColor,
       opacity: 0.45,
@@ -211,8 +214,10 @@ export class DefaultKMActionKey<T> implements KMActionKey {
     private readonly _onKeyUpBeforeRender: () => void = () => {},
     style?: KeyRenderStyle,
     indicator?: KMKeyIndicator,
+    keyDisplayLabel?: string,
+    keyWidth?: number,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'action', indicator });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'action', indicator, keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
   }
@@ -259,11 +264,14 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     palette?: ThemePalette,
     heldKeyStrings?: KeyString[],
     hideFingerBlocked?: boolean,
+    keyDisplayLabel?: string,
+    keyboardLayout?: import('../layouts/us-qwerty').KeyboardLayout,
+    keyWidth?: number,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'submenu' });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'submenu', keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout);
   }
 
   get highlight(): boolean {
@@ -313,11 +321,14 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     palette?: ThemePalette,
     heldKeyStrings?: KeyString[],
     hideFingerBlocked?: boolean,
+    keyDisplayLabel?: string,
+    keyboardLayout?: import('../layouts/us-qwerty').KeyboardLayout,
+    keyWidth?: number,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu' });
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout);
   }
 
   get highlight(): boolean {

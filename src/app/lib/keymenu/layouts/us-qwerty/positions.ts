@@ -1,50 +1,68 @@
+import type { keys } from './keyString';
+
 export const KEY_WIDTH = 70;
 export const KEY_HEIGHT = 70;
 export const KEY_MARGIN = 5;
-export const ROW_OFFSETS = [0, 10, 30];
 
-export const rowsAndColsForKeys: { [K in keyof typeof import('./keyString').keys]: { row: number; col: number } } = {
-  'q': {row: 0, col: 0},
-  'w': {row: 0, col: 1},
-  'e': {row: 0, col: 2},
-  'r': {row: 0, col: 3},
-  't': {row: 0, col: 4},
-  'y': {row: 0, col: 5},
-  'u': {row: 0, col: 6},
-  'i': {row: 0, col: 7},
-  'o': {row: 0, col: 8},
-  'p': {row: 0, col: 9},
-  'a': {row: 1, col: 0},
-  's': {row: 1, col: 1},
-  'd': {row: 1, col: 2},
-  'f': {row: 1, col: 3},
-  'g': {row: 1, col: 4},
-  'h': {row: 1, col: 5},
-  'j': {row: 1, col: 6},
-  'k': {row: 1, col: 7},
-  'l': {row: 1, col: 8},
-  ';': {row: 1, col: 9},
-  'z': {row: 2, col: 0},
-  'x': {row: 2, col: 1},
-  'c': {row: 2, col: 2},
-  'v': {row: 2, col: 3},
-  'b': {row: 2, col: 4},
-  'n': {row: 2, col: 5},
-  'm': {row: 2, col: 6},
-  ',': {row: 2, col: 7},
-  '.': {row: 2, col: 8},
-  '/': {row: 2, col: 9}
+type KeyString = keyof typeof keys;
+
+// Per-key width overrides (non-standard keys)
+const KEY_WIDTH_OVERRIDES: Partial<Record<KeyString, number>> = {
+  'Backspace': 100,
+  'Tab': 100,
+  '\\': 70,
+  'CapsLock': 115,
+  'Enter': 130,
+  'Shift': 135,
+  'RShift': 185,
+  'Control': 90,
+  ' ': 370,
 };
 
-export const xAndYForKeys: { [K in keyof typeof import('./keyString').keys]: { x: number; y: number } } = 
-  Object.fromEntries(
-    Object.entries(rowsAndColsForKeys).map(
-      ([key, {row, col}]) =>
-        [
-          key,
-          {
-            x: col * (KEY_WIDTH + KEY_MARGIN) + ROW_OFFSETS[row],
-            y: row * (KEY_HEIGHT + KEY_MARGIN)
-          }
-        ])
-  ) as { [K in keyof typeof import('./keyString').keys]: { x: number; y: number } };
+export function getKeyWidth(keyString: KeyString): number {
+  return KEY_WIDTH_OVERRIDES[keyString] ?? KEY_WIDTH;
+}
+
+// Row definitions: each row has keys in order, positions computed from widths
+type RowDef = { keys: KeyString[]; rowOffset: number };
+
+const ROW_DEFS: RowDef[] = [
+  { keys: ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'], rowOffset: 0 },
+  { keys: ['Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\'], rowOffset: 0 },
+  { keys: ['CapsLock','a','s','d','f','g','h','j','k','l',';',"'",'Enter'], rowOffset: 0 },
+  { keys: ['Shift','z','x','c','v','b','n','m',',','.','/', 'RShift'], rowOffset: 0 },
+];
+
+// Row 4 (bottom modifier row) uses explicit positions (aligned to keys above)
+const BOTTOM_ROW_EXPLICIT: { key: KeyString; x: number }[] = [
+  { key: 'Control', x: 0 },
+  { key: 'Alt', x: 215 },
+  { key: ' ', x: 290 },
+  { key: 'RAlt', x: 665 },
+  { key: 'RControl', x: 740 },
+];
+
+function computePositions(): Record<KeyString, { x: number; y: number }> {
+  const result: Partial<Record<KeyString, { x: number; y: number }>> = {};
+
+  // Rows 0-3: sequential layout based on key widths
+  for (let row = 0; row < ROW_DEFS.length; row++) {
+    const { keys: rowKeys, rowOffset } = ROW_DEFS[row];
+    let x = rowOffset;
+    const y = row * (KEY_HEIGHT + KEY_MARGIN);
+    for (const key of rowKeys) {
+      result[key] = { x, y };
+      x += getKeyWidth(key) + KEY_MARGIN;
+    }
+  }
+
+  // Bottom modifier row: explicit positions
+  const bottomY = ROW_DEFS.length * (KEY_HEIGHT + KEY_MARGIN);
+  for (const { key, x } of BOTTOM_ROW_EXPLICIT) {
+    result[key] = { x, y: bottomY };
+  }
+
+  return result as Record<KeyString, { x: number; y: number }>;
+}
+
+export const xAndYForKeys: { [K in keyof typeof keys]: { x: number; y: number } } = computePositions() as any;

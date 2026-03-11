@@ -7,6 +7,7 @@ import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
 import {resetIdCounter} from './id-generator';
 import {ThemePalette} from '../services/theme.service';
+import {NodeShape, TextOverflowMode} from './command.model';
 
 export class DrawingLayer extends Konva.Layer {
   private readonly daEdgeGroup: Konva.Group;
@@ -25,18 +26,19 @@ export class DrawingLayer extends Konva.Layer {
 
   }
 
-  createNewNode(absoluteX: number, absoluteY: number): DANode {
+  createNewNode(absoluteX: number, absoluteY: number, nodeShape?: NodeShape): DANode {
     // Transform absolute coordinates to drawing layer coordinates (accounting for zoom and pan)
     const layerX = (absoluteX - this.x()) / this.scaleX();
     const layerY = (absoluteY - this.y()) / this.scaleY();
-    
+
     // Calculate position so node center is at the crosshairs position
-    const NODE_WIDTH = 100;
-    const NODE_HEIGHT = 100;
-    const nodeCenterX = layerX - (NODE_WIDTH / 2);
-    const nodeCenterY = layerY - (NODE_HEIGHT / 2);
-    
-    let daNode = new DANode(nodeCenterX, nodeCenterY, "", undefined, this.nodeColors());
+    const isJunction = nodeShape === 'junction';
+    const nodeW = isJunction ? 12 : 100;
+    const nodeH = isJunction ? 12 : 100;
+    const x = layerX - nodeW / 2;
+    const y = layerY - nodeH / 2;
+
+    const daNode = new DANode(x, y, "", undefined, this.nodeColors(), nodeShape);
     this.daNodeGroup.add(daNode.konvaGroup);
     this.daNodes.push(daNode);
     // Select the new node for editing
@@ -60,19 +62,44 @@ export class DrawingLayer extends Konva.Layer {
     return this.daEdges;
   }
 
-  appendTextToSelected(text: string) {
+  appendTextToSelected(text: string): DANode[] {
+    const resized: DANode[] = [];
     this.getSelectedDANodes().forEach(daNode => {
       daNode.label.text(daNode.label.text() + text);
+      if (daNode.applyTextOverflow()) {
+        resized.push(daNode);
+      }
     });
+    return resized;
   }
 
-  deleteLastCharFromSelected() {
+  deleteLastCharFromSelected(): DANode[] {
+    const resized: DANode[] = [];
     this.getSelectedDANodes().forEach(daNode => {
       const currentText = daNode.label.text();
       if (currentText.length > 0) {
         daNode.label.text(currentText.slice(0, -1));
+        if (daNode.applyTextOverflow()) {
+          resized.push(daNode);
+        }
       }
     });
+    return resized;
+  }
+
+  changeNodeShape(node: DANode, newShape: NodeShape): void {
+    node.changeShape(newShape, this.nodeColors() ?? undefined);
+  }
+
+  setTextOverflowModeOnSelected(mode: TextOverflowMode): DANode[] {
+    const resized: DANode[] = [];
+    this.getSelectedDANodes()
+      .filter(n => n.nodeShape !== 'junction')
+      .forEach(daNode => {
+        daNode.textOverflowMode = mode;
+        resized.push(daNode);
+      });
+    return resized;
   }
 
   unselectAll() {
@@ -137,6 +164,11 @@ export class DrawingLayer extends Konva.Layer {
       height: node.NODE_HEIGHT,
       fontSize: node.FONT_SIZE,
       isSelected: node.isSelected,
+      nodeShape: node.nodeShape,
+      textOverflowMode: node.textOverflowMode,
+      baseWidth: node.BASE_WIDTH,
+      baseHeight: node.BASE_HEIGHT,
+      baseFontSize: node.BASE_FONT_SIZE,
     }));
 
     const edges: DAEdgeSnapshot[] = this.daEdges.map(edge => ({
@@ -179,8 +211,9 @@ export class DrawingLayer extends Konva.Layer {
     let maxNumericId = 0;
 
     for (const ns of snapshot.nodes) {
-      const node = new DANode(ns.x, ns.y, ns.text, ns.id);
-      node.restoreState(ns.width, ns.height, ns.fontSize);
+      const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
+      node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+      node.applyTextOverflow();
       node.isSelected = ns.isSelected;
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);

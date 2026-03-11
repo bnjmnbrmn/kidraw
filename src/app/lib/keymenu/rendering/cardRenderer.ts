@@ -1,15 +1,17 @@
 import Konva from 'konva';
-import { KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, ROW_OFFSETS } from '../layouts/us-qwerty';
+import { KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, getKeyWidth, KeyboardLayout, getKeyDisplayLabel } from '../layouts/us-qwerty';
 import { ThemePalette } from '../../../services/theme.service';
 
 const ALL_KEYS: KeyString[] = [
-  'q','w','e','r','t','y','u','i','o','p',
-  'a','s','d','f','g','h','j','k','l',';',
-  'z','x','c','v','b','n','m',',','.','/'
+  '`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace',
+  'Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\',
+  'CapsLock','a','s','d','f','g','h','j','k','l',';',"'",'Enter',
+  'Shift','z','x','c','v','b','n','m',',','.','/', 'RShift',
+  'Control','Alt',' ','RAlt','RControl',
 ];
 
 // Card padding around the key grid
-const CARD_PADDING = 12;
+const CARD_PADDING = 8;
 
 // Diagonal offset per depth level (pixels)
 const DEPTH_OFFSET_X = 3;
@@ -27,10 +29,16 @@ export function getCardBackgroundColor(depth: number, palette: ThemePalette): st
 }
 
 export function getCardDimensions(): { width: number; height: number } {
-  const lastRowLastKey = xAndYForKeys['/'];
+  let maxX = 0;
+  let maxY = 0;
+  for (const [key, pos] of Object.entries(xAndYForKeys) as [KeyString, { x: number; y: number }][]) {
+    const w = getKeyWidth(key);
+    if (pos.x + w > maxX) maxX = pos.x + w;
+    if (pos.y + KEY_HEIGHT > maxY) maxY = pos.y + KEY_HEIGHT;
+  }
   return {
-    width: lastRowLastKey.x + KEY_WIDTH + CARD_PADDING * 2,
-    height: lastRowLastKey.y + KEY_HEIGHT + CARD_PADDING * 2,
+    width: maxX + CARD_PADDING * 2,
+    height: maxY + CARD_PADDING * 2,
   };
 }
 
@@ -71,12 +79,13 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
       // Hole rects — counterclockwise (opposite winding = hole with nonzero rule)
       for (const key of heldKeyStrings) {
         const holePos = xAndYForKeys[key];
+        const holeW = getKeyWidth(key);
         const hx = holePos.x;
         const hy = holePos.y;
         ctx.moveTo(hx, hy);
         ctx.lineTo(hx, hy + KEY_HEIGHT);
-        ctx.lineTo(hx + KEY_WIDTH, hy + KEY_HEIGHT);
-        ctx.lineTo(hx + KEY_WIDTH, hy);
+        ctx.lineTo(hx + holeW, hy + KEY_HEIGHT);
+        ctx.lineTo(hx + holeW, hy);
         ctx.closePath();
       }
       ctx.fillStrokeShape(shape);
@@ -102,10 +111,11 @@ export function createHoleHighlights(config: CardRenderConfig): Konva.Rect[] {
 
   return heldKeyStrings.map(key => {
     const pos = xAndYForKeys[key];
+    const keyW = getKeyWidth(key);
     return new Konva.Rect({
       x: pos.x - inset,
       y: pos.y - inset,
-      width: KEY_WIDTH + borderWidth,
+      width: keyW + borderWidth,
       height: KEY_HEIGHT + borderWidth,
       stroke: highlightColor,
       strokeWidth: borderWidth,
@@ -118,19 +128,37 @@ export function createHoleHighlights(config: CardRenderConfig): Konva.Rect[] {
 export interface BlankKeyConfig {
   keyString: KeyString;
   palette: ThemePalette;
+  keyboardLayout?: KeyboardLayout;
 }
 
 export function createBlankKey(config: BlankKeyConfig): Konva.Group {
   const pos = xAndYForKeys[config.keyString];
+  const keyW = getKeyWidth(config.keyString);
   const group = new Konva.Group({ x: pos.x, y: pos.y });
 
   group.add(new Konva.Rect({
-    width: KEY_WIDTH,
+    width: keyW,
     height: KEY_HEIGHT,
     fill: config.palette.blankKeyFill,
     stroke: config.palette.blankKeyStroke,
     strokeWidth: 1,
-    dash: [4, 4],
+    dash: [3, 6],
+  }));
+
+  // Add key name label
+  const displayLabel = config.keyboardLayout
+    ? getKeyDisplayLabel(config.keyString, config.keyboardLayout)
+    : config.keyString;
+  group.add(new Konva.Text({
+    text: displayLabel,
+    width: keyW,
+    height: KEY_HEIGHT,
+    align: 'center',
+    verticalAlign: 'middle',
+    fontSize: 11,
+    fill: config.palette.keyStrokes[0],
+    opacity: 0.65,
+    listening: false,
   }));
 
   return group;
@@ -138,14 +166,14 @@ export function createBlankKey(config: BlankKeyConfig): Konva.Group {
 
 /** Maps each key to the set of keys sharing the same finger (standard touch typing). */
 const FINGER_GROUPS: KeyString[][] = [
-  ['q', 'a', 'z'],           // left pinky
-  ['w', 's', 'x'],           // left ring
-  ['e', 'd', 'c'],           // left middle
-  ['r', 't', 'f', 'g', 'v', 'b'],  // left index
-  ['y', 'u', 'h', 'j', 'n', 'm'],  // right index
-  ['i', 'k', ','],           // right middle
-  ['o', 'l', '.'],           // right ring
-  ['p', ';', '/'],           // right pinky
+  ['`', '1', 'q', 'a', 'z'],           // left pinky
+  ['2', 'w', 's', 'x'],                // left ring
+  ['3', 'e', 'd', 'c'],                // left middle
+  ['4', '5', 'r', 't', 'f', 'g', 'v', 'b'],  // left index
+  ['6', '7', 'y', 'u', 'h', 'j', 'n', 'm'],  // right index
+  ['8', 'i', 'k', ','],                // right middle
+  ['9', 'o', 'l', '.'],                // right ring
+  ['0', '-', '=', 'p', ';', '/', '[', ']', "'"],  // right pinky
 ];
 
 const KEY_TO_FINGER_GROUP: Map<KeyString, Set<KeyString>> = new Map();

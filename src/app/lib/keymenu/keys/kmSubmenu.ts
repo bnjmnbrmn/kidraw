@@ -1,5 +1,5 @@
 import {USQwertyMode} from "../modes/us-qwerty";
-import {KeyString, SubmenuConfig, rowsAndColsForKeys, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, ROW_OFFSETS} from '../layouts/us-qwerty';
+import {KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, KeyboardLayout, getKeyDisplayLabel, getKeyWidth} from '../layouts/us-qwerty';
 import {
   LabeledAction,
   LabeledActionSubmenuConfig,
@@ -43,7 +43,8 @@ export class KMSubmenu<T> {
               private depth: number = 0,
               private palette?: ThemePalette,
               private heldKeyStrings: KeyString[] = [],
-              private hideFingerBlocked: boolean = false) {
+              private hideFingerBlocked: boolean = false,
+              private keyboardLayout?: KeyboardLayout) {
     const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
     this.restingX = offset.x;
     this.restingY = offset.y;
@@ -55,12 +56,16 @@ export class KMSubmenu<T> {
   }
 
 
+  private getDisplayLabel(keyString: KeyString): string | undefined {
+    return this.keyboardLayout ? getKeyDisplayLabel(keyString, this.keyboardLayout) : undefined;
+  }
+
   private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle, indicator?: KMKeyIndicator): KMKey {
-    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style, indicator);
+    return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style, indicator, this.getDisplayLabel(keyString), getKeyWidth(keyString));
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
-    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked);
+    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString));
   }
 
   private generateActionSubmenuKey(
@@ -70,7 +75,7 @@ export class KMSubmenu<T> {
     action: () => void,
     style?: KeyRenderStyle,
   ): KMKey {
-    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked);
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString));
   }
 
   handleKeyUp(event: KeyboardEvent): void {
@@ -211,7 +216,7 @@ export class KMSubmenu<T> {
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);
       const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings, this.hideFingerBlocked);
       for (const keyString of blankPositions) {
-        group.add(createBlankKey({ keyString, palette: this.palette }));
+        group.add(createBlankKey({ keyString, palette: this.palette, keyboardLayout: this.keyboardLayout }));
       }
     }
 

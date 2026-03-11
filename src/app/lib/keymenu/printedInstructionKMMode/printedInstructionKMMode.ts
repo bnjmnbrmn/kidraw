@@ -5,7 +5,7 @@ import Konva from 'konva';
 import {KeyMenuModeConfig} from '../keyMenuModeConfig';
 import {KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT} from '../layouts/us-qwerty';
 import {ThemePalette} from '../../../services/theme.service';
-import {createCardBackground, createBlankKey, CARD_PADDING} from '../rendering/cardRenderer';
+import {createCardBackground, createBlankKey, getCardDimensions, CARD_PADDING} from '../rendering/cardRenderer';
 
 // Letter keys in QWERTY order (the ones that type characters)
 const LETTER_KEYS: KeyString[] = [
@@ -48,8 +48,9 @@ export class PrintedInstructionKMMode<T> implements KeyMenuMode<T> {
       }));
     }
 
-    this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
-    this.konvaGroup.y(20)
+    const cardDims = getCardDimensions();
+    this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - cardDims.width) / 2 + CARD_PADDING)
+    this.konvaGroup.y((this.keyMenu.containingHTMLElement.offsetHeight - cardDims.height) / 2 + CARD_PADDING)
   }
 
   private buildCardView(palette: ThemePalette) {

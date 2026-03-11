@@ -20,12 +20,19 @@ export interface KeymenuKeyAssignments {
     readonly editSubmenu: KeyString;
     readonly insertSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
+    readonly nodeTypeSubmenu: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
     readonly waypoint: KeyString;
     readonly edge: KeyString;
     readonly label: KeyString;
+  };
+  readonly nodeTypes: {
+    readonly box: KeyString;
+    readonly circle: KeyString;
+    readonly diamond: KeyString;
+    readonly junction: KeyString;
   };
   readonly shared: {
     readonly toggleWaypointVisibility: KeyString;
@@ -45,6 +52,18 @@ export interface KeymenuKeyAssignments {
     readonly toggleWaypoints: KeyString;
     readonly reload: KeyString;
   };
+  readonly edit: {
+    readonly editText: KeyString;
+    readonly overflowSubmenu: KeyString;
+  };
+  readonly overflow: {
+    readonly clip: KeyString;
+    readonly shrinkFont: KeyString;
+    readonly ellipsis: KeyString;
+    readonly widenH: KeyString;
+    readonly widenV: KeyString;
+    readonly widenBoth: KeyString;
+  };
 }
 
 // Original right-hand-dominant layout: movement on right hand (jilk), insert on left (f).
@@ -56,12 +75,19 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     editSubmenu: 'e',
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
+    nodeTypeSubmenu: 'w',
   },
   insert: {
     node: 'j',
     waypoint: 'k',
     edge: 'l',
     label: ';',
+  },
+  nodeTypes: {
+    box: 'u',
+    circle: 'i',
+    diamond: 'o',
+    junction: 'p',
   },
   shared: {
     toggleWaypointVisibility: 'w',
@@ -79,8 +105,10 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     recenterView: 'a',
     recenterCrosshairs: 's',
     toggleWaypoints: 'd',
-    reload: 'r',
+    reload: 'q',
   },
+  edit: {editText: 'r', overflowSubmenu: 't'},
+  overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -92,12 +120,19 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     editSubmenu: 'i',
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
+    nodeTypeSubmenu: 'w',
   },
   insert: {
     node: 'd',     // left-hand keys while left index holds f
     waypoint: 'w',  // avoid g — same finger as f
     edge: 's',
     label: 'e',
+  },
+  nodeTypes: {
+    box: 'j',
+    circle: 'k',
+    diamond: 'l',
+    junction: ';',
   },
   shared: {
     toggleWaypointVisibility: 'w',
@@ -116,6 +151,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     recenterView: 'a',       // left ring — comfortable with pinky on z
     recenterCrosshairs: 's',  // left middle
     toggleWaypoints: 'd',    // left index
-    reload: 'r',             // left index reach up
+    reload: 'q',             // left pinky top row
   },
+  edit: {editText: 'k', overflowSubmenu: 'l'},
+  overflow: {clip: 'j', shrinkFont: 'k', ellipsis: 'l', widenH: 'u', widenV: 'i', widenBoth: 'o'},
 };

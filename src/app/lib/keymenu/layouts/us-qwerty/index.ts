@@ -2,3 +2,4 @@
 export * from './keyString';
 export * from './positions';
 export * from './submenuConfig';
+export * from './displayLabels';

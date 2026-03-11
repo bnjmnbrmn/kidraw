@@ -60,3 +60,45 @@ h1 {
 .swap-label input[type="checkbox"] {
   cursor: pointer;
 }
+
+.settings-dropdown {
+  position: relative;
+}
+
+.settings-dropdown summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  border: 1px solid currentColor;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  line-height: 1.5;
+  list-style: none;
+}
+
+.settings-dropdown summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-dropdown summary::after {
+  content: ' ▾';
+}
+
+.settings-dropdown[open] summary::after {
+  content: ' ▴';
+}
+
+.settings-panel {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  background: var(--kd-header-bg);
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+  white-space: nowrap;
+}

@@ -1,15 +1,17 @@
 import Konva from 'konva';
 import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
-
+import { NodeShape, TextOverflowMode } from './command.model';
 
 export class DANode {
   readonly id: string;
+  private _nodeShape: NodeShape;
+  get nodeShape(): NodeShape { return this._nodeShape; }
   readonly group: Konva.Group;
-  private readonly _rect: Konva.Rect;
+  private _shape: Konva.Shape;
   private readonly _label: Konva.Text;
   private _isSelected: boolean = false;
-  
+
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
   public outgoingEdges: DAEdge[] = [];
@@ -17,6 +19,7 @@ export class DANode {
 
   public readonly DEFAULT_NODE_WIDTH = 100;
   public readonly DEFAULT_NODE_HEIGHT = 100;
+  public readonly JUNCTION_SIZE = 12;
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
   public readonly DEFAULT_FONT_SIZE = 16;
@@ -26,43 +29,122 @@ export class DANode {
   public readonly MIN_FONT_SIZE = 10;
   public readonly MAX_FONT_SIZE = 48;
 
-  private _nodeWidth = this.DEFAULT_NODE_WIDTH;
-  private _nodeHeight = this.DEFAULT_NODE_HEIGHT;
+  private _nodeWidth: number;
+  private _nodeHeight: number;
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
+  private _textOverflowMode: TextOverflowMode = 'clip';
+  private _baseWidth: number = this.DEFAULT_NODE_WIDTH;
+  private _baseHeight: number = this.DEFAULT_NODE_HEIGHT;
+  private _baseFontSize: number = this.DEFAULT_FONT_SIZE;
+
+  private static _measureText: Konva.Text | null = null;
+
   constructor(x: number, y: number, initialText: string, id?: string,
-              colors?: { fill?: string; stroke?: string; text?: string }) {
+              colors?: { fill?: string; stroke?: string; text?: string },
+              nodeShape: NodeShape = 'box') {
     this.id = id ?? nextId();
-    // Create the main group
+    this._nodeShape = nodeShape;
+
+    const isJunction = nodeShape === 'junction';
+    this._nodeWidth = isJunction ? this.JUNCTION_SIZE : this.DEFAULT_NODE_WIDTH;
+    this._nodeHeight = isJunction ? this.JUNCTION_SIZE : this.DEFAULT_NODE_HEIGHT;
+    this._baseWidth = this._nodeWidth;
+    this._baseHeight = this._nodeHeight;
+
     this.group = new Konva.Group({ x, y });
 
-    // Create and configure the rectangle
-    this._rect = new Konva.Rect({
-      width: this.NODE_WIDTH,
-      height: this.NODE_HEIGHT,
-      fill: colors?.fill ?? 'white',
-      stroke: colors?.stroke ?? 'black',
-      strokeWidth: this.STROKE_WIDTH_NORMAL,
-    });
-    this.group.add(this._rect);
+    this._shape = this.createShape(this._nodeWidth, this._nodeHeight, nodeShape, colors);
+    this.group.add(this._shape);
 
-    // Create and configure the label
+    // Label — hidden for junction nodes
     this._label = new Konva.Text({
       text: initialText,
-      width: this.NODE_WIDTH,
-      height: this.NODE_HEIGHT,
-      fontSize: this.FONT_SIZE,
+      width: this._nodeWidth,
+      height: this._nodeHeight,
+      fontSize: this._fontSize,
       align: 'center',
       verticalAlign: 'middle',
       fill: colors?.text,
+      visible: !isJunction,
     });
     this.group.add(this._label);
   }
 
+  private createShape(w: number, h: number, shape: NodeShape,
+                      colors?: { fill?: string; stroke?: string }): Konva.Shape {
+    const fill = colors?.fill ?? 'white';
+    const stroke = colors?.stroke ?? 'black';
+    const sw = this.STROKE_WIDTH_NORMAL;
+
+    switch (shape) {
+      case 'box':
+        return new Konva.Rect({ width: w, height: h, fill, stroke, strokeWidth: sw });
+
+      case 'circle':
+        return new Konva.Ellipse({
+          x: w / 2, y: h / 2,
+          radiusX: w / 2, radiusY: h / 2,
+          fill, stroke, strokeWidth: sw,
+        });
+
+      case 'diamond': {
+        const pts = [w / 2, 0,  w, h / 2,  w / 2, h,  0, h / 2];
+        return new Konva.Line({ points: pts, closed: true, fill, stroke, strokeWidth: sw });
+      }
+
+      case 'junction':
+        return new Konva.Circle({
+          x: w / 2, y: h / 2,
+          radius: w / 2,
+          fill: stroke,   // dot filled with stroke color
+          stroke: 'transparent',
+          strokeWidth: 0,
+        });
+    }
+  }
+
   applyColors(colors: { fill: string; stroke: string; text: string }): void {
-    this._rect.fill(colors.fill);
-    this._rect.stroke(colors.stroke);
-    this._label.fill(colors.text);
+    if (this.nodeShape === 'junction') {
+      (this._shape as Konva.Circle).fill(colors.stroke);
+    } else {
+      this._shape.fill(colors.fill);
+      this._shape.stroke(colors.stroke);
+      this._label.fill(colors.text);
+    }
+  }
+
+  changeShape(newShape: NodeShape, colors?: { fill?: string; stroke?: string; text?: string }): void {
+    const wasJunction = this._nodeShape === 'junction';
+    const isJunction = newShape === 'junction';
+
+    this._shape.destroy();
+    this._nodeShape = newShape;
+
+    if (wasJunction && !isJunction) {
+      this._nodeWidth = this.DEFAULT_NODE_WIDTH;
+      this._nodeHeight = this.DEFAULT_NODE_HEIGHT;
+      this._baseWidth = this.DEFAULT_NODE_WIDTH;
+      this._baseHeight = this.DEFAULT_NODE_HEIGHT;
+    } else if (!wasJunction && isJunction) {
+      this._nodeWidth = this.JUNCTION_SIZE;
+      this._nodeHeight = this.JUNCTION_SIZE;
+      this._baseWidth = this.JUNCTION_SIZE;
+      this._baseHeight = this.JUNCTION_SIZE;
+    }
+
+    this._shape = this.createShape(this._nodeWidth, this._nodeHeight, newShape, colors);
+    this.group.add(this._shape);
+    this._shape.moveToBottom();
+
+    this._label.visible(!isJunction);
+    if (!isJunction) {
+      this.applySize(this._nodeWidth, this._nodeHeight);
+      this._label.fontSize(this._fontSize);
+    }
+
+    // Re-apply selection state to new shape
+    this.isSelected = this._isSelected;
   }
 
   get isSelected(): boolean {
@@ -71,15 +153,24 @@ export class DANode {
 
   set isSelected(value: boolean) {
     this._isSelected = value;
-    this.rect.strokeWidth(this.strokeWidth());
+    if (this.nodeShape !== 'junction') {
+      this._shape.strokeWidth(this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL);
+    } else {
+      // Junction: scale the dot slightly when selected
+      const r = this._isSelected ? this.JUNCTION_SIZE : this.JUNCTION_SIZE / 2;
+      (this._shape as Konva.Circle).radius(r);
+      (this._shape as Konva.Circle).x(this.JUNCTION_SIZE / 2);
+      (this._shape as Konva.Circle).y(this.JUNCTION_SIZE / 2);
+    }
   }
 
-  private strokeWidth() {
-    return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
-  }
-
+  /** Backward-compatible accessor used by tests (always a Rect for box nodes). */
   get rect(): Konva.Rect {
-    return this._rect;
+    return this._shape as Konva.Rect;
+  }
+
+  get shape(): Konva.Shape {
+    return this._shape;
   }
 
   get NODE_WIDTH(): number {
@@ -92,6 +183,18 @@ export class DANode {
 
   get FONT_SIZE(): number {
     return this._fontSize;
+  }
+
+  get BASE_WIDTH(): number {
+    return this._baseWidth;
+  }
+
+  get BASE_HEIGHT(): number {
+    return this._baseHeight;
+  }
+
+  get BASE_FONT_SIZE(): number {
+    return this._baseFontSize;
   }
 
   get label(): Konva.Text {
@@ -119,10 +222,7 @@ export class DANode {
     return [...this.incomingEdges, ...this.outgoingEdges];
   }
 
-  private _rebuildEdgesCache() {
-    // Cache is already valid since we maintain arrays directly
-    // This method exists for future extensibility
-  }
+  private _rebuildEdgesCache() {}
 
   invalidateEdgesCache() {
     this._edgesCacheValid = false;
@@ -154,44 +254,224 @@ export class DANode {
     }
   }
 
-  resizeBy(delta: number): boolean {
-    const nextWidth = this.clamp(this._nodeWidth + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
-    const nextHeight = this.clamp(this._nodeHeight + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
+  get textOverflowMode(): TextOverflowMode {
+    return this._textOverflowMode;
+  }
 
-    if (nextWidth === this._nodeWidth && nextHeight === this._nodeHeight) {
-      return false;
+  set textOverflowMode(mode: TextOverflowMode) {
+    this._textOverflowMode = mode;
+    this.applyTextOverflow();
+  }
+
+  /** Apply overflow logic. Returns true if node dimensions changed (caller must update edges). */
+  applyTextOverflow(): boolean {
+    if (this.nodeShape === 'junction') return false;
+
+    const text = this._label.text();
+    const padding = 8;
+
+    // Reset label wrap/ellipsis settings first
+    this._label.wrap('word');
+    this._label.ellipsis(false);
+
+    switch (this._textOverflowMode) {
+      case 'clip': {
+        const changed = this._nodeWidth !== this._baseWidth || this._nodeHeight !== this._baseHeight || this._fontSize !== this._baseFontSize;
+        this._nodeWidth = this._baseWidth;
+        this._nodeHeight = this._baseHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return changed;
+      }
+
+      case 'shrink-font': {
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._nodeWidth = this._baseWidth;
+        this._nodeHeight = this._baseHeight;
+        this.applySize(this._nodeWidth, this._nodeHeight);
+
+        // Binary search for largest font size that fits vertically
+        let lo = 6;
+        let hi = this._baseFontSize;
+        let best = lo;
+        for (let i = 0; i < 20; i++) {
+          const mid = Math.floor((lo + hi) / 2);
+          const h = this.measureTextHeight(text, this._baseWidth, mid);
+          if (h <= this._baseHeight) {
+            best = mid;
+            lo = mid + 1;
+          } else {
+            hi = mid - 1;
+          }
+        }
+        this._fontSize = best;
+        this._label.fontSize(this._fontSize);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
+
+      case 'ellipsis': {
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._nodeWidth = this._baseWidth;
+        this._nodeHeight = this._baseHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        this._label.wrap('none');
+        this._label.ellipsis(true);
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
+
+      case 'widen-h': {
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        // Measure natural single-line width
+        const naturalWidth = this.measureNaturalWidth(text, this._baseFontSize);
+        this._nodeWidth = Math.max(this._baseWidth, naturalWidth + padding * 2);
+        this._nodeHeight = this._baseHeight;
+        this._label.wrap('none');
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
+
+      case 'widen-v': {
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        this._nodeWidth = this._baseWidth;
+        const measuredH = this.measureTextHeight(text, this._baseWidth, this._baseFontSize);
+        this._nodeHeight = Math.max(this._baseHeight, measuredH + padding * 2);
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
+
+      case 'widen-both': {
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        const phi = 1.618;
+        const MAX_AUTO_WIDTH = 80 * this._baseFontSize * 0.55;
+
+        // Check if text fits in base dimensions
+        const baseH = this.measureTextHeight(text, this._baseWidth, this._baseFontSize);
+        if (baseH <= this._baseHeight) {
+          this._nodeWidth = this._baseWidth;
+          this._nodeHeight = this._baseHeight;
+          this.applySize(this._nodeWidth, this._nodeHeight);
+          return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+        }
+
+        // Binary search for width closest to golden ratio
+        let lo = this.MIN_NODE_SIZE;
+        let hi = MAX_AUTO_WIDTH;
+        let bestW = hi;
+        for (let i = 0; i < 20; i++) {
+          const mid = (lo + hi) / 2;
+          const h = this.measureTextHeight(text, mid, this._baseFontSize);
+          const ratio = h > 0 ? mid / h : Infinity;
+          if (ratio < phi) {
+            lo = mid;
+          } else {
+            bestW = mid;
+            hi = mid;
+          }
+        }
+
+        const finalH = this.measureTextHeight(text, bestW, this._baseFontSize);
+        this._nodeWidth = Math.max(this._baseWidth, bestW);
+        this._nodeHeight = Math.max(this._baseHeight, finalH + padding * 2);
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
     }
+  }
 
-    this._nodeWidth = nextWidth;
-    this._nodeHeight = nextHeight;
+  private measureTextHeight(text: string, width: number, fontSize: number): number {
+    if (!DANode._measureText) {
+      DANode._measureText = new Konva.Text({ visible: false });
+    }
+    DANode._measureText.text(text);
+    DANode._measureText.fontSize(fontSize);
+    DANode._measureText.width(width);
+    DANode._measureText.wrap('word');
+    return DANode._measureText.height();
+  }
 
-    this._rect.width(this._nodeWidth);
-    this._rect.height(this._nodeHeight);
-    this._label.width(this._nodeWidth);
-    this._label.height(this._nodeHeight);
+  private measureNaturalWidth(text: string, fontSize: number): number {
+    if (!DANode._measureText) {
+      DANode._measureText = new Konva.Text({ visible: false });
+    }
+    DANode._measureText.text(text);
+    DANode._measureText.fontSize(fontSize);
+    DANode._measureText.width(0);
+    DANode._measureText.wrap('none');
+    return DANode._measureText.width();
+  }
+
+  resizeBy(delta: number): boolean {
+    if (this.nodeShape === 'junction') return false;
+
+    const nextWidth = this.clamp(this._baseWidth + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
+    const nextHeight = this.clamp(this._baseHeight + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
+
+    if (nextWidth === this._baseWidth && nextHeight === this._baseHeight) return false;
+
+    this._baseWidth = nextWidth;
+    this._baseHeight = nextHeight;
+    this.applyTextOverflow();
     return true;
   }
 
   adjustLabelFontSizeBy(delta: number): boolean {
-    const nextSize = this.clamp(this._fontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
-    if (nextSize === this._fontSize) {
-      return false;
-    }
-
+    if (this.nodeShape === 'junction') return false;
+    const nextSize = this.clamp(this._baseFontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
+    if (nextSize === this._baseFontSize) return false;
+    this._baseFontSize = nextSize;
     this._fontSize = nextSize;
-    this._label.fontSize(this._fontSize);
+    this.applyTextOverflow();
     return true;
   }
 
-  restoreState(width: number, height: number, fontSize: number): void {
+  restoreState(width: number, height: number, fontSize: number, textOverflowMode?: TextOverflowMode, baseWidth?: number, baseHeight?: number, baseFontSize?: number): void {
+    this._baseWidth = baseWidth ?? width;
+    this._baseHeight = baseHeight ?? height;
+    this._baseFontSize = baseFontSize ?? fontSize;
+    this._textOverflowMode = textOverflowMode ?? 'clip';
     this._nodeWidth = width;
     this._nodeHeight = height;
     this._fontSize = fontSize;
-    this._rect.width(width);
-    this._rect.height(height);
-    this._label.width(width);
-    this._label.height(height);
-    this._label.fontSize(fontSize);
+    this.applySize(width, height);
+    if (this.nodeShape !== 'junction') {
+      this._label.fontSize(fontSize);
+    }
+  }
+
+  private applySize(w: number, h: number): void {
+    switch (this.nodeShape) {
+      case 'box':
+        (this._shape as Konva.Rect).width(w);
+        (this._shape as Konva.Rect).height(h);
+        break;
+      case 'circle':
+        (this._shape as Konva.Ellipse).radiusX(w / 2);
+        (this._shape as Konva.Ellipse).radiusY(h / 2);
+        (this._shape as Konva.Ellipse).x(w / 2);
+        (this._shape as Konva.Ellipse).y(h / 2);
+        break;
+      case 'diamond':
+        (this._shape as Konva.Line).points([w / 2, 0,  w, h / 2,  w / 2, h,  0, h / 2]);
+        break;
+      case 'junction':
+        break;
+    }
+    this._label.width(w);
+    this._label.height(h);
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

@@ -1,3 +1,7 @@
+export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction';
+
+export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
+
 export enum DACommandType {
   MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
@@ -54,6 +58,8 @@ export enum DACommandType {
   FINALIZE_DIRECTED_EDGE = 'FINALIZE_DIRECTED_EDGE',
   UNDO = 'UNDO',
   REDO = 'REDO',
+  SET_TEXT_OVERFLOW_MODE = 'SET_TEXT_OVERFLOW_MODE',
+  SET_NODE_SHAPE = 'SET_NODE_SHAPE',
 }
 
 export type DACommand =
@@ -82,7 +88,7 @@ export type DACommand =
   | {kind: DACommandType.DECREASE_SELECTED_NODE_SIZE}
   | {kind: DACommandType.INCREASE_SELECTED_TEXT_SIZE}
   | {kind: DACommandType.DECREASE_SELECTED_TEXT_SIZE}
-  | {kind: DACommandType.CREATE_NEW_NODE}
+  | {kind: DACommandType.CREATE_NEW_NODE; nodeShape?: NodeShape}
   | {kind: DACommandType.INSERT_CHAR, value: string}
   | {kind: DACommandType.EXIT_LABEL_EDIT_MODE}
   | {kind: DACommandType.MULTI_ITEM_SELECT}
@@ -105,9 +111,11 @@ export type DACommand =
   | {kind: DACommandType.ADD_LABEL}
   | {kind: DACommandType.EDIT_SELECTED}
   | {kind: DACommandType.DELETE_LAST_CHAR}
-  | {kind: DACommandType.CREATE_NEW_NODE_DIRECTED, direction: 'up' | 'down' | 'left' | 'right'}
+  | {kind: DACommandType.CREATE_NEW_NODE_DIRECTED; direction: 'up' | 'down' | 'left' | 'right'; nodeShape?: NodeShape}
   | {kind: DACommandType.BEGIN_DIRECTED_EDGE}
   | {kind: DACommandType.SET_EDGE_DESTINATION, direction: 'up' | 'down' | 'left' | 'right'}
   | {kind: DACommandType.FINALIZE_DIRECTED_EDGE}
   | {kind: DACommandType.UNDO}
   | {kind: DACommandType.REDO}
+  | {kind: DACommandType.SET_TEXT_OVERFLOW_MODE; mode: TextOverflowMode}
+  | {kind: DACommandType.SET_NODE_SHAPE; shape: NodeShape}

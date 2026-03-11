@@ -9,22 +9,34 @@
       WP
     </div>
     }
-    <label class="swap-label">
-      <input type="checkbox"
-             tabindex="-1"
-             [checked]="keyboardConfig.capsLockCtrlSwap"
-             (change)="onCapsLockSwapChange($event)">
-      Ctrl/CapsLock swapped
-    </label>
-    <label class="swap-label">
-      <input type="checkbox"
-             tabindex="-1"
-             [checked]="keyboardConfig.hideFingerBlockedKeys"
-             (change)="onHideFingerBlockedChange($event)">
-      Hide same-finger keys
-    </label>
     <button class="theme-toggle" tabindex="-1" (click)="toggleTheme()">
       {{ themeService.theme === 'dark' ? 'Light' : 'Dark' }}
     </button>
+    <details class="settings-dropdown">
+      <summary tabindex="-1">Settings</summary>
+      <div class="settings-panel">
+        <label class="swap-label">
+          Keyboard:
+          <select tabindex="-1" [value]="keyboardConfig.keyboardLayout" (change)="onLayoutChange($event)">
+            <option value="us-windows">US Windows</option>
+            <option value="us-mac">US Mac</option>
+          </select>
+        </label>
+        <label class="swap-label">
+          <input type="checkbox"
+                 tabindex="-1"
+                 [checked]="keyboardConfig.capsLockCtrlSwap"
+                 (change)="onCapsLockSwapChange($event)">
+          Ctrl/CapsLock swapped
+        </label>
+        <label class="swap-label">
+          <input type="checkbox"
+                 tabindex="-1"
+                 [checked]="keyboardConfig.hideFingerBlockedKeys"
+                 (change)="onHideFingerBlockedChange($event)">
+          Hide same-finger keys
+        </label>
+      </div>
+    </details>
   </div>
 </div>

@@ -8,7 +8,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
-import { DACommand, DACommandType } from './command.model';
+import { DACommand, DACommandType, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -49,6 +49,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private textEditSnapshotCaptured = false;
   private directedEdgeSource: DANode | null = null;
   private directedEdgeInProgress: DAEdge | null = null;
+  private _defaultNodeShape: NodeShape = 'box';
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -91,6 +92,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.MULTI_ITEM_SELECT,
     DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
     DACommandType.UNSELECT_ALL,
+    DACommandType.SET_TEXT_OVERFLOW_MODE,
+    DACommandType.SET_NODE_SHAPE,
   ]);
 
 
@@ -277,10 +280,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.decreaseSelectedTextSize();
         break;
       case DACommandType.CREATE_NEW_NODE:
-        this.createNewNode();
+        this.createNewNode(command.nodeShape);
         break;
       case DACommandType.CREATE_NEW_NODE_DIRECTED:
-        this.createNewNodeDirected(command.direction);
+        this.createNewNodeDirected(command.direction, command.nodeShape);
         break;
       case DACommandType.INSERT_CHAR:
         const key = command.value;
@@ -368,6 +371,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.REDO:
         this.handleRedo();
+        break;
+      case DACommandType.SET_TEXT_OVERFLOW_MODE:
+        this.setTextOverflowMode(command.mode);
+        break;
+      case DACommandType.SET_NODE_SHAPE:
+        this.setNodeShape(command.shape);
         break;
       default:
         this.assertNever(command);
@@ -480,12 +489,44 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private insertChar(key: string) {
     this.finishTweens()
     this.crosshairsLayer.hideCrosshairs();
-    this.drawingLayer.appendTextToSelected(key);
+    const resized = this.drawingLayer.appendTextToSelected(key);
+    this.updateEdgesForResizedNodes(resized);
   }
 
   private deleteLastChar() {
     this.finishTweens();
-    this.drawingLayer.deleteLastCharFromSelected();
+    const resized = this.drawingLayer.deleteLastCharFromSelected();
+    this.updateEdgesForResizedNodes(resized);
+  }
+
+  private setTextOverflowMode(mode: TextOverflowMode) {
+    const resized = this.drawingLayer.setTextOverflowModeOnSelected(mode);
+    this.updateEdgesForResizedNodes(resized);
+    this.drawingLayer.batchDraw();
+  }
+
+  private setNodeShape(shape: NodeShape) {
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const targets = selected.length > 0 ? selected : (() => {
+      const hovered = this.getDANodesContainingCrosshairs();
+      return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+    })();
+
+    if (targets.length > 0) {
+      targets.forEach(node => this.drawingLayer.changeNodeShape(node, shape));
+      targets.forEach(node => node.connectedEdges.forEach(e => this.updateEdgePoints(e)));
+      this.drawingLayer.batchDraw();
+    } else {
+      this._defaultNodeShape = shape;
+    }
+  }
+
+  private updateEdgesForResizedNodes(nodes: import('./da-node').DANode[]) {
+    for (const node of nodes) {
+      for (const edge of node.connectedEdges) {
+        this.updateEdgePoints(edge);
+      }
+    }
   }
 
   private connectSelectedNodes() {
@@ -1000,7 +1041,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.zoomLevel.emit(Math.round(currentScale * 100));
   }
 
-  private createNewNode() {
+  private createNewNode(nodeShape?: NodeShape) {
     this.finishTweens();
 
     // Get currently selected nodes (sources for auto-connect edges)
@@ -1011,7 +1052,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllWaypoints();
     this.unselectAllLabels();
 
-    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY());
+    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
 
     // Create edges from each previously selected node to the new node
     for (const srcNode of selectedNodes) {
@@ -1022,7 +1063,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
   }
 
-  private createNewNodeDirected(direction: 'up' | 'down' | 'left' | 'right') {
+  private createNewNodeDirected(direction: 'up' | 'down' | 'left' | 'right', nodeShape?: NodeShape) {
     this.finishTweens();
 
     // Source nodes for auto-connect: selected nodes, OR node under crosshairs as fallback
@@ -1061,7 +1102,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllWaypoints();
     this.unselectAllLabels();
 
-    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY());
+    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
 
     for (const srcNode of sourceNodes) {
       this.drawingLayer.addEdge(srcNode, newNode);

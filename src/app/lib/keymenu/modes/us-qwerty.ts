@@ -1,6 +1,7 @@
 import {KeyMenuMode} from '../keyMenuMode';
 import {KMSubmenu} from '../keys/kmSubmenu';
-import {KeyString, SubmenuConfig} from '../layouts/us-qwerty';
+import {KeyString, SubmenuConfig, KeyboardLayout} from '../layouts/us-qwerty';
+import {getCardDimensions, CARD_PADDING} from '../rendering/cardRenderer';
 import {Group} from 'konva/lib/Group';
 import {KeyMenu} from '../keyMenu';
 import {KMSubmenuKey} from '../keys/kmKey';
@@ -14,7 +15,8 @@ export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<
 
     constructor(public rootSubmenuConfig: SubmenuConfig,
                 public palette?: ThemePalette,
-                public hideFingerBlocked: boolean = false) {}
+                public hideFingerBlocked: boolean = false,
+                public keyboardLayout?: KeyboardLayout) {}
 
     createMode(name: string, keyMenu: KeyMenu<T>): USQwertyMode<T> {
         return new USQwertyMode<T>(name, keyMenu, this);
@@ -30,23 +32,25 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     private _helpModeActive: boolean = false;
     private palette?: ThemePalette;
     private hideFingerBlocked: boolean;
+    private keyboardLayout?: KeyboardLayout;
     private activeTweens: Map<KMSubmenu<T>, Konva.Tween> = new Map();
     /** Track which direction each submenu slid in from, so slide-out reverses it. */
     private slideOrigins: Map<KMSubmenu<T>, SlideOrigin> = new Map();
 
-    private static readonly SLIDE_IN_DURATION = 0.25;  // seconds
-    private static readonly SLIDE_OUT_DURATION = 0.15;
-    private static readonly SLIDE_OFFSET = 400;        // pixels — enough to be fully off-screen vertically
+    private static readonly SLIDE_IN_DURATION = 0.18;  // seconds
+    private static readonly SLIDE_OUT_DURATION = 0.11;
 
     constructor(public name: string, public keyMenu: KeyMenu<T>,
                 config: USQwertyModeConfig<T>) {
         this.konvaGroup = new Group();
         this.palette = config.palette;
         this.hideFingerBlocked = config.hideFingerBlocked;
-        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked));
+        this.keyboardLayout = config.keyboardLayout;
+        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked, this.keyboardLayout));
         this.stackTop.konvaGroup.show();
-        this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - this.konvaGroup.getClientRect().width) / 2)
-        this.konvaGroup.y(20)
+        const cardDims = getCardDimensions();
+        this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - cardDims.width) / 2 + CARD_PADDING)
+        this.konvaGroup.y((this.keyMenu.containingHTMLElement.offsetHeight - cardDims.height) / 2 + CARD_PADDING)
     }
 
     beforeSwitchOut(): void {
@@ -125,6 +129,10 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     submenuKeyStringStack: string[] = [""];
 
     pushSubmenu(submenuKey: KMSubmenuKey) {
+        // Guard: if a mode switch happened during the action callback (beforeSwitchOut set
+        // actionSchedulingEnabled to false), skip the push to avoid stale submenu state.
+        if (!this.actionSchedulingEnabled) return;
+
         const submenu = submenuKey.submenu as KMSubmenu<T>;
         submenu.helpModeActive = this._helpModeActive;
         this.stack.push(submenu);
@@ -145,16 +153,15 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
         const depth = this.stack.length;
         const heldKeys = this.submenuKeyStringStack.slice(1) as KeyString[];
-        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked);
+        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked, this.keyboardLayout);
         this.stack.push(newSubmenu);
         this.slideIn(newSubmenu, 'top');
     }
 
     private slideIn(submenu: KMSubmenu<T>, origin: SlideOrigin) {
         const group = submenu.konvaGroup;
-        const yOffset = origin === 'bottom'
-            ? USQwertyMode.SLIDE_OFFSET
-            : -USQwertyMode.SLIDE_OFFSET;
+        const slideOffset = getCardDimensions().height;
+        const yOffset = origin === 'bottom' ? slideOffset : -slideOffset;
 
         group.moveToTop();
         group.x(submenu.restingX);
@@ -206,9 +213,8 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
             // Slide out in the direction it came from
             const origin = this.slideOrigins.get(submenu) ?? 'bottom';
-            const yOffset = origin === 'bottom'
-                ? USQwertyMode.SLIDE_OFFSET
-                : -USQwertyMode.SLIDE_OFFSET;
+            const slideOffset = getCardDimensions().height;
+            const yOffset = origin === 'bottom' ? slideOffset : -slideOffset;
 
             const group = submenu.konvaGroup;
             const tween = new Konva.Tween({

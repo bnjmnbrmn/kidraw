@@ -23,6 +23,11 @@ export interface DANodeSnapshot {
   height: number;
   fontSize: number;
   isSelected: boolean;
+  nodeShape?: import('./command.model').NodeShape;
+  textOverflowMode?: import('./command.model').TextOverflowMode;
+  baseWidth?: number;
+  baseHeight?: number;
+  baseFontSize?: number;
 }
 
 export interface DAEdgeSnapshot {

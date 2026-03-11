@@ -96,10 +96,10 @@ describe('KeymenuComponent', () => {
     const navSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
     expect(navSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    // 'i' is Edit, 'f' is Insert submenu (vim profile)
-    const editAction = rootConfig['i'] as LabeledAction;
+    // 'i' is Edit (LabeledActionSubmenuConfig), 'f' is Insert submenu (vim profile)
+    const editAction = rootConfig['i'] as LabeledActionSubmenuConfig;
     expect(editAction).toBeDefined();
-    expect(editAction.actionLabel).toBe('Edit');
+    expect(editAction instanceof LabeledActionSubmenuConfig).toBeTrue();
     const insertSubmenu = rootConfig['f'] as LabeledSubmenuConfig;
     expect(insertSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
@@ -151,7 +151,7 @@ describe('KeymenuComponent', () => {
     expect((rootConfig['u'] as LabeledAction).actionLabel).toBe('Move Up');
     // Zoom keys no longer at root level
     expect(rootConfig['i']).toBeUndefined();
-    expect(rootConfig['j'] instanceof LabeledAction).toBeTrue(); // Edit is a simple action
+    expect(rootConfig['j'] instanceof LabeledActionSubmenuConfig).toBeTrue(); // Edit is action+submenu
     expect(rootConfig['k'] instanceof LabeledSubmenuConfig).toBeTrue(); // Insert is a submenu
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
 

@@ -75,8 +75,8 @@ const DARK_PALETTE: ThemePalette = {
   ],
   keyLabelText: '#e2e8f0',  // slate-200
   actionText: '#cbd5e1',    // slate-300
-  blankKeyFill: '#1e293b',  // slate-800
-  blankKeyStroke: '#475569', // slate-600
+  blankKeyFill: '#232f42',  // barely lighter than card bg
+  blankKeyStroke: '#2d3d52', // very dim, just enough to see the key shape
   highlightShadowColor: '#38bdf8', // sky-400
   labelEditCardBackground: '#1e293b',
   labelEditKeyFill: '#334155',
@@ -133,8 +133,8 @@ const LIGHT_PALETTE: ThemePalette = {
   ],
   keyLabelText: '#1e293b',    // slate-800
   actionText: '#1e293b',      // slate-800
-  blankKeyFill: '#f1f5f9',   // slate-100
-  blankKeyStroke: '#cbd5e1',  // slate-300
+  blankKeyFill: '#dde3ec',   // barely darker than card bg
+  blankKeyStroke: '#c8d0da',  // very dim outline
   highlightShadowColor: '#000000',
   labelEditCardBackground: '#e2e8f0',
   labelEditKeyFill: '#ffffff',

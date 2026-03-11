@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { ThemeService } from '../services/theme.service';
 import { KeyboardConfigService } from '../services/keyboard-config.service';
+import { KeyboardLayout } from '../lib/keymenu/layouts/us-qwerty';
 
 @Component({
   selector: 'app-header',
@@ -35,5 +36,10 @@ export class HeaderComponent {
   onHideFingerBlockedChange(event: Event) {
     const checked = (event.target as HTMLInputElement).checked;
     this.keyboardConfig.hideFingerBlockedKeys = checked;
+  }
+
+  onLayoutChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value as KeyboardLayout;
+    this.keyboardConfig.keyboardLayout = value;
   }
 }
