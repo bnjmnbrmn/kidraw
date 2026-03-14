@@ -33,8 +33,6 @@ import {DebugLogService} from '../services/debug-log.service';
 import {ThemeService} from '../services/theme.service';
 import {KeyboardConfigService} from '../services/keyboard-config.service';
 
-import {KMSubmenu} from '../lib/keymenu/keys/kmSubmenu';
-import {KMSubmenuKey} from '../lib/keymenu/keys/kmKey';
 import {DoublePressTracker} from '../lib/keymenu/help/doublePressTracker';
 
 interface ProfileHint {
@@ -197,34 +195,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.refreshActiveKeyPath();
   }
 
-  openInsertSubmenu() {
-    const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-    const keyString = this.keyAssignments.root.insertSubmenu;
-    const currentSubmenu = mode.stackTop;
-    const existingKey = currentSubmenu.keys[keyString];
-
-    if (!existingKey) {
-      console.error(`Key ${keyString} not found in current submenu`);
-      return;
-    }
-
-    // Create the new submenu manually
-    const newSubmenuConfig = this.buildInsertSubmenuConfig();
-    const depth = mode.stack.length;
-    const heldKeys = [...mode.submenuKeyStringStack.slice(1) as KeyString[], keyString as KeyString];
-    const newSubmenu = new KMSubmenu(mode, newSubmenuConfig, depth, this.themeService.palette, heldKeys, this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout);
-
-    // Create a synthetic SubmenuKey that reuses the existing key's visuals
-    const fakeSubmenuKey: KMSubmenuKey = {
-      keyString: keyString,
-      label: existingKey.label,
-      konvaGroup: existingKey.konvaGroup,
-      highlight: existingKey.highlight,
-      submenu: newSubmenu
-    };
-
-    mode.pushSubmenu(fakeSubmenuKey);
-  }
 
   private buildLabelEditModeConfig(): PrintedInstructionKeyMenuModeConfig<DACommand> {
     return new PrintedInstructionKeyMenuModeConfig(

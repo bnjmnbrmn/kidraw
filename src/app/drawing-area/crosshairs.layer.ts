@@ -3,9 +3,9 @@ import {DACrosshairs} from './da-crosshairs.group';
 
 export class CrosshairsLayer extends Konva.Layer {
     readonly crosshairs: DACrosshairs;
-    constructor(private stage: Konva.Stage) {
+    constructor(private stage: Konva.Stage, crosshairsStroke?: string) {
       super();
-      this.crosshairs = new DACrosshairs({ x: stage.width() / 2, y: stage.height() / 2 });
+      this.crosshairs = new DACrosshairs({ x: stage.width() / 2, y: stage.height() / 2 }, crosshairsStroke);
       this.add(this.crosshairs.konvaGroup);
     }
 

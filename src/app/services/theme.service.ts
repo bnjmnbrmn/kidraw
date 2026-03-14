@@ -36,6 +36,8 @@ export interface ThemePalette {
   labelText: string;
   waypointFill: string;
   waypointStroke: string;
+  // Crosshairs
+  crosshairsStroke: string;
   // Instruction text
   instructionText: string;
 }
@@ -95,6 +97,7 @@ const DARK_PALETTE: ThemePalette = {
   labelText: '#e2e8f0',     // slate-200
   waypointFill: '#334155',  // slate-700
   waypointStroke: '#60a5fa',// blue-400
+  crosshairsStroke: '#e2e8f0', // slate-200 — bright on dark bg
   instructionText: '#94a3b8', // slate-400
 };
 
@@ -153,6 +156,7 @@ const LIGHT_PALETTE: ThemePalette = {
   labelText: '#1e293b',      // slate-800
   waypointFill: '#ffffff',
   waypointStroke: '#2563eb', // blue-600
+  crosshairsStroke: '#1e293b', // slate-800 — dark on light bg
   instructionText: '#374151', // gray-700
 };
 

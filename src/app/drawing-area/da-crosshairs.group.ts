@@ -9,20 +9,20 @@ export class DACrosshairs {
   public readonly CROSSHAIRS_OPACITY = .5;
   public readonly HEADING_LENGTH = 34;
 
-  constructor(p: { x: number; y: number }) {
+  constructor(p: { x: number; y: number }, strokeColor: string = 'black') {
     // Create group and position it at the crosshairs position
-    this.group = new Konva.Group({ x: p.x, y: p.y, opacity: .5 });
-    
+    this.group = new Konva.Group({ x: p.x, y: p.y, opacity: .7 });
+
     const horiz = new Konva.Line({
       points: [-this.CROSSHAIRS_LENGTH, 0, this.CROSSHAIRS_LENGTH, 0],
-      stroke: 'black',
+      stroke: strokeColor,
       strokeWidth: this.CROSSHAIRS_STROKE_WIDTH,
     });
     this.group.add(horiz);
-    
+
     const vert = new Konva.Line({
       points: [0, -this.CROSSHAIRS_LENGTH, 0, this.CROSSHAIRS_LENGTH],
-      stroke: 'black',
+      stroke: strokeColor,
       strokeWidth: this.CROSSHAIRS_STROKE_WIDTH,
       opacity: this.CROSSHAIRS_OPACITY
     });

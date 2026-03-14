@@ -112,7 +112,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer = new DrawingLayer();
     this.drawingLayer.palette = this.themeService.palette;
     this.stage.add(this.drawingLayer);
-    this.crosshairsLayer = new CrosshairsLayer(this.stage);
+    this.crosshairsLayer = new CrosshairsLayer(this.stage, this.themeService.palette.crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
     this.crosshairsLayer.setHeading(this.headingRadians);
@@ -1340,49 +1340,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     edge.refreshSegments();
     // Force redraw
     this.drawingLayer.batchDraw();
-  }
-
-  private checkAutoPan() {
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedNodes.length === 0) return;
-
-    const stageWidth = this.stage.width();
-    const stageHeight = this.stage.height();
-    const panDistance = 100;
-    const margin = 50;
-
-    // Get crosshairs position for auto-pan calculations
-    const crosshairsX = this.crosshairsLayer.crosshairs.x;
-    const crosshairsY = this.crosshairsLayer.crosshairs.y;
-
-    let panX = 0;
-    let panY = 0;
-
-    // Check if crosshairs go off screen and set pan values
-    if (crosshairsX < margin) {
-      panX = panDistance; // Pan right
-    } else if (crosshairsX > stageWidth - margin) {
-      panX = -panDistance; // Pan left
-    }
-
-    if (crosshairsY < margin) {
-      panY = panDistance; // Pan down
-    } else if (crosshairsY > stageHeight - margin) {
-      panY = -panDistance; // Pan up
-    }
-
-    // Apply auto-pan if needed
-    if (panX !== 0 || panY !== 0) {
-      const layerX = this.drawingLayer.x();
-      const layerY = this.drawingLayer.y();
-      this.tweens.push(new Konva.Tween({
-        node: this.drawingLayer,
-        duration: this.TWEEN_DURATION,
-        x: layerX + panX,
-        y: layerY + panY,
-        easing: Konva.Easings.Linear
-      }).play());
-    }
   }
 
   private addWaypoint(): void {
