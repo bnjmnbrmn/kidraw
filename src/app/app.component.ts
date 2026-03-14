@@ -1,10 +1,11 @@
-import {Component, ViewChild} from '@angular/core';
+import {Component, inject, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
 import {DACommand} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
+import {DebugLogService} from './services/debug-log.service';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +14,7 @@ import {DANotification} from './drawing-area/da-notification.model';
   styleUrl: './app.component.css'
 })
 export class AppComponent {
+  private log = inject(DebugLogService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
@@ -27,7 +29,7 @@ export class AppComponent {
   }
 
   relayKeymenuCommand(kmCommand: DACommand) {
-    console.log("app component kmCommand: " + JSON.stringify(kmCommand))
+    this.log.log("app component kmCommand: " + JSON.stringify(kmCommand))
     this.commandsSubject.next(kmCommand);
   }
 

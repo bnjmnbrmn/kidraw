@@ -196,7 +196,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private handleCommands(command: DACommand) {
-    console.log("handleCommands - " + JSON.stringify(command));
+    this.log.log("handleCommands - " + JSON.stringify(command));
 
     // Push undo snapshot before mutating commands
     if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind)) {
@@ -472,7 +472,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private exitLabelEditMode() {
     this.finishTweens();
-    console.log("case exit-label-edit-mode")
+    this.log.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.unselectAll();
     this.unselectAllWaypoints();
@@ -610,7 +610,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const newScale = Math.max(oldScale / 2.0, this.MIN_ZOOM);
     let scale: Konva.Vector2d = {x: newScale, y: newScale};
-    console.log("scale", scale);
+    this.log.log("scale", scale);
     this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.TWEEN_DURATION,
@@ -1133,7 +1133,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const maxY = (rect.y + rect.height - layerY) / scale;
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    console.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${scale} layerPos=(${layerX},${layerY})`);
+    this.log.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${scale} layerPos=(${layerX},${layerY})`);
     return { minX, minY, maxX, maxY, cx, cy };
   }
 
@@ -1155,7 +1155,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edges = this.drawingLayer.getDAEdges();
     return edges.filter(edge => {
       const hit = this.edgeIntersectsBox(edge, box);
-      if (hit) console.log(`  edge hit (${edge.waypoints.length} waypoints)`);
+      if (hit) this.log.log(`  edge hit (${edge.waypoints.length} waypoints)`);
       return hit;
     });
   }
@@ -1398,7 +1398,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
           // Place waypoint at the point on this segment closest to crosshairs center
           const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
-          console.log(`addWaypoint: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
+          this.log.log(`addWaypoint: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
           const waypoint = new DAWaypoint(point.x, point.y, undefined, this.drawingLayer.waypointColors());
           edge.addWaypoint(waypoint);
           if (!this.waypointsVisible) {
@@ -1414,7 +1414,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         }
       }
     }
-    console.log('addWaypoint: no edge found under crosshairs');
+    this.log.log('addWaypoint: no edge found under crosshairs');
   }
 
   private addLabel(): void {
@@ -1429,7 +1429,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const p2 = pathPoints[i + 1];
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
           const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
-          console.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
+          this.log.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
           const label = new DALabel(point.x, point.y, 'label', undefined, this.drawingLayer.labelColors());
           edge.addLabel(label);
           this.drawingLayer.batchDraw();
@@ -1438,19 +1438,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         }
       }
     }
-    console.log('addLabel: no edge found under crosshairs');
+    this.log.log('addLabel: no edge found under crosshairs');
   }
 
   private handleEditSelected() {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedLabels = this.getSelectedLabels();
     // Waypoints are not editable, so we don't check for them here.
-    console.log(`handleEditSelected: Nodes=${selectedNodes.length}, Labels=${selectedLabels.length}`);
+    this.log.log(`handleEditSelected: Nodes=${selectedNodes.length}, Labels=${selectedLabels.length}`);
 
     // 1. If selection exists (and is editable), edit it.
     if (selectedNodes.length > 0 ||
         selectedLabels.length > 0) {
-       console.log('  -> Entering edit mode due to existing selection.');
+       this.log.log('  -> Entering edit mode due to existing selection.');
        this.daOut.emit({kind: "started-label-editing-mode"});
        return;
     }
@@ -1460,23 +1460,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const label = this.getLabelUnderCrosshairs();
     if (label) {
-      console.log('  -> Found label under crosshairs. Selecting and editing.');
+      this.log.log('  -> Found label under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
 
     const nodes = this.getDANodesContainingCrosshairs();
-    console.log(`  -> Nodes under crosshairs: ${nodes.length}`);
+    this.log.log(`  -> Nodes under crosshairs: ${nodes.length}`);
     if (nodes.length > 0) {
-      console.log('  -> Found node under crosshairs. Selecting and editing.');
+      this.log.log('  -> Found node under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
 
     // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
-    console.log('  -> Nothing targeted. Edit command ignored.');
+    this.log.log('  -> Nothing targeted. Edit command ignored.');
   }
 
   private updateWaypointVisibility(): void {
@@ -1518,10 +1518,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edges = this.drawingLayer.getDAEdges();
     for (const edge of edges) {
       for (const waypoint of edge.waypoints) {
-        console.log(`  waypoint at (${waypoint.x.toFixed(1)},${waypoint.y.toFixed(1)}) vs box (${box.minX.toFixed(1)},${box.minY.toFixed(1)})-(${box.maxX.toFixed(1)},${box.maxY.toFixed(1)})`);
+        this.log.log(`  waypoint at (${waypoint.x.toFixed(1)},${waypoint.y.toFixed(1)}) vs box (${box.minX.toFixed(1)},${box.minY.toFixed(1)})-(${box.maxX.toFixed(1)},${box.maxY.toFixed(1)})`);
         if (waypoint.x >= box.minX && waypoint.x <= box.maxX &&
             waypoint.y >= box.minY && waypoint.y <= box.maxY) {
-          console.log('  -> waypoint HIT');
+          this.log.log('  -> waypoint HIT');
           return waypoint;
         }
       }
