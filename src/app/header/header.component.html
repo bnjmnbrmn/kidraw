@@ -9,12 +9,16 @@
       WP
     </div>
     }
-    <button class="theme-toggle" tabindex="-1" (click)="toggleTheme()">
-      {{ themeService.theme === 'dark' ? 'Light' : 'Dark' }}
-    </button>
     <details class="settings-dropdown">
       <summary tabindex="-1">Settings</summary>
       <div class="settings-panel">
+        <label class="swap-label">
+          Theme:
+          <select tabindex="-1" [value]="themeService.theme" (change)="onThemeChange($event)">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
         <label class="swap-label">
           Keyboard:
           <select tabindex="-1" [value]="keyboardConfig.keyboardLayout" (change)="onLayoutChange($event)">
@@ -36,6 +40,142 @@
                  (change)="onHideFingerBlockedChange($event)">
           Hide same-finger keys
         </label>
+
+        <hr>
+        <details class="settings-section">
+          <summary>Slide Animation</summary>
+          <div class="settings-group">
+            <label class="swap-label">
+              Delay (ms):
+              <input type="number" tabindex="-1" min="0" max="2000" step="50"
+                     [value]="config.slideAnimation.delayMs"
+                     (change)="onNumberChange('slideAnimation', 'delayMs', $event)">
+            </label>
+            <label class="swap-label">
+              In (s):
+              <input type="number" tabindex="-1" min="0.01" max="3" step="0.05"
+                     [value]="config.slideAnimation.inDurationS"
+                     (change)="onNumberChange('slideAnimation', 'inDurationS', $event)">
+            </label>
+            <label class="swap-label">
+              Out (s):
+              <input type="number" tabindex="-1" min="0.01" max="3" step="0.05"
+                     [value]="config.slideAnimation.outDurationS"
+                     (change)="onNumberChange('slideAnimation', 'outDurationS', $event)">
+            </label>
+          </div>
+        </details>
+
+        <details class="settings-section">
+          <summary>Cursor</summary>
+          <div class="settings-group">
+            <label class="swap-label">
+              Move distance (px):
+              <input type="number" tabindex="-1" min="1" max="200" step="1"
+                     [value]="config.cursor.movementDistance"
+                     (change)="onNumberChange('cursor', 'movementDistance', $event)">
+            </label>
+            <label class="swap-label">
+              Repeat delay (ms):
+              <input type="number" tabindex="-1" min="0" max="1000" step="10"
+                     [value]="config.cursor.initialRepeatDelayMs"
+                     (change)="onNumberChange('cursor', 'initialRepeatDelayMs', $event)">
+            </label>
+            <label class="swap-label">
+              Repeat interval (ms):
+              <input type="number" tabindex="-1" min="10" max="500" step="10"
+                     [value]="config.cursor.repeatIntervalMs"
+                     (change)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
+            </label>
+          </div>
+        </details>
+
+        <details class="settings-section">
+          <summary>Card Depth Offset</summary>
+          <div class="settings-group">
+            <label class="swap-label">
+              X (px):
+              <input type="number" tabindex="-1" min="0" max="30" step="1"
+                     [value]="config.cardDepth.depthOffsetX"
+                     (change)="onNumberChange('cardDepth', 'depthOffsetX', $event)">
+            </label>
+            <label class="swap-label">
+              Y (px):
+              <input type="number" tabindex="-1" min="0" max="30" step="1"
+                     [value]="config.cardDepth.depthOffsetY"
+                     (change)="onNumberChange('cardDepth', 'depthOffsetY', $event)">
+            </label>
+          </div>
+        </details>
+
+        <details class="settings-section">
+          <summary>Card Shadow</summary>
+          <div class="settings-group">
+            <label class="swap-label">
+              Base blur:
+              <input type="number" tabindex="-1" min="0" max="50" step="1"
+                     [value]="config.cardShadow.baseBlur"
+                     (change)="onNumberChange('cardShadow', 'baseBlur', $event)">
+            </label>
+            <label class="swap-label">
+              Base offset:
+              <input type="number" tabindex="-1" min="0" max="30" step="1"
+                     [value]="config.cardShadow.baseOffset"
+                     (change)="onNumberChange('cardShadow', 'baseOffset', $event)">
+            </label>
+            <label class="swap-label">
+              Depth blur step:
+              <input type="number" tabindex="-1" min="0" max="20" step="1"
+                     [value]="config.cardShadow.perDepthBlurIncrement"
+                     (change)="onNumberChange('cardShadow', 'perDepthBlurIncrement', $event)">
+            </label>
+            <label class="swap-label">
+              Depth offset step:
+              <input type="number" tabindex="-1" min="0" max="20" step="1"
+                     [value]="config.cardShadow.perDepthOffsetIncrement"
+                     (change)="onNumberChange('cardShadow', 'perDepthOffsetIncrement', $event)">
+            </label>
+          </div>
+        </details>
+
+        <details class="settings-section">
+          <summary>Colors ({{ themeService.theme }})</summary>
+          <div class="settings-group">
+            @for (field of arrayColorFields; track field.key) {
+              <div class="color-array-row">
+                <span class="color-array-label">{{ field.label }}</span>
+                <div class="color-swatch-row">
+                  @for (i of depthIndices; track i) {
+                    <input type="color" tabindex="-1"
+                           [value]="$any(palette[field.key])[i]"
+                           (change)="onArrayColorChange(field.key, i, $event)"
+                           [title]="field.label + ' depth ' + i">
+                  }
+                </div>
+              </div>
+            }
+            <hr>
+            <label class="swap-label">
+              Card shadow:
+              <input type="text" tabindex="-1" class="text-color-input"
+                     [value]="palette.cardShadowColor"
+                     (change)="onShadowColorChange($event)">
+            </label>
+            @for (field of simpleColorFields; track field.key) {
+              <label class="swap-label">
+                {{ field.label }}:
+                <input type="color" tabindex="-1"
+                       [value]="$any(palette[field.key])"
+                       (change)="onColorChange(field.key, $event)">
+              </label>
+            }
+          </div>
+        </details>
+
+        <hr>
+        <button class="restore-defaults-btn" tabindex="-1" (click)="restoreDefaults()">
+          Restore Defaults
+        </button>
       </div>
     </details>
   </div>

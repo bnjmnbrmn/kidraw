@@ -2,31 +2,41 @@ import Konva from "konva";
 
 export class DACrosshairs {
   readonly group: Konva.Group;
+  private readonly horizLine: Konva.Line;
+  private readonly vertLine: Konva.Line;
+  private readonly selectionCircle: Konva.Circle;
   private readonly headingLine: Konva.Line;
 
   public readonly CROSSHAIRS_LENGTH = 20;
   public readonly CROSSHAIRS_STROKE_WIDTH = 3;
-  public readonly CROSSHAIRS_OPACITY = .5;
   public readonly HEADING_LENGTH = 34;
 
   constructor(p: { x: number; y: number }, strokeColor: string = 'black') {
-    // Create group and position it at the crosshairs position
-    this.group = new Konva.Group({ x: p.x, y: p.y, opacity: .7 });
+    this.group = new Konva.Group({ x: p.x, y: p.y });
 
-    const horiz = new Konva.Line({
+    this.selectionCircle = new Konva.Circle({
+      x: 0,
+      y: 0,
+      radius: this.CROSSHAIRS_LENGTH,
+      stroke: strokeColor,
+      strokeWidth: 1,
+      fill: 'transparent',
+    });
+    this.group.add(this.selectionCircle);
+
+    this.horizLine = new Konva.Line({
       points: [-this.CROSSHAIRS_LENGTH, 0, this.CROSSHAIRS_LENGTH, 0],
       stroke: strokeColor,
       strokeWidth: this.CROSSHAIRS_STROKE_WIDTH,
     });
-    this.group.add(horiz);
+    this.group.add(this.horizLine);
 
-    const vert = new Konva.Line({
+    this.vertLine = new Konva.Line({
       points: [0, -this.CROSSHAIRS_LENGTH, 0, this.CROSSHAIRS_LENGTH],
       stroke: strokeColor,
       strokeWidth: this.CROSSHAIRS_STROKE_WIDTH,
-      opacity: this.CROSSHAIRS_OPACITY
     });
-    this.group.add(vert);
+    this.group.add(this.vertLine);
 
     this.headingLine = new Konva.Line({
       points: [0, 0, 0, -this.HEADING_LENGTH],
@@ -82,5 +92,11 @@ export class DACrosshairs {
 
   setHeadingVisible(visible: boolean) {
     this.headingLine.visible(visible);
+  }
+
+  updateStrokeColor(color: string) {
+    this.horizLine.stroke(color);
+    this.vertLine.stroke(color);
+    this.selectionCircle.stroke(color);
   }
 }

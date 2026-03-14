@@ -22,7 +22,8 @@ import {
   KMKeyIndicator,
 } from './kmKey';
 import {ThemePalette} from '../../../services/theme.service';
-import {createCardBackground, createBlankKey, createHoleHighlights, getBlankKeyPositions, getDepthOffset, CardRenderConfig, getCardDimensions, CARD_PADDING} from '../rendering/cardRenderer';
+import {VisualConfig, DEFAULT_VISUAL_CONFIG} from '../../../services/visual-config.model';
+import {createCardBackground, createBlankKey, getBlankKeyPositions, getDepthOffset, CardRenderConfig, getCardDimensions, CARD_PADDING} from '../rendering/cardRenderer';
 
 
 export class KMSubmenu<T> {
@@ -44,8 +45,10 @@ export class KMSubmenu<T> {
               private palette?: ThemePalette,
               private heldKeyStrings: KeyString[] = [],
               private hideFingerBlocked: boolean = false,
-              private keyboardLayout?: KeyboardLayout) {
-    const offset = palette ? getDepthOffset(depth) : { x: 0, y: 0 };
+              private keyboardLayout?: KeyboardLayout,
+              private capsLockSwap: boolean = false,
+              private visualConfig: VisualConfig = DEFAULT_VISUAL_CONFIG) {
+    const offset = palette ? getDepthOffset(depth, visualConfig.cardDepth) : { x: 0, y: 0 };
     this.restingX = offset.x;
     this.restingY = offset.y;
     const style = palette ? keyRenderStyleFromPalette(palette, depth) : undefined;
@@ -57,7 +60,7 @@ export class KMSubmenu<T> {
 
 
   private getDisplayLabel(keyString: KeyString): string | undefined {
-    return this.keyboardLayout ? getKeyDisplayLabel(keyString, this.keyboardLayout) : undefined;
+    return this.keyboardLayout ? getKeyDisplayLabel(keyString, this.keyboardLayout, this.capsLockSwap) : undefined;
   }
 
   private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle, indicator?: KMKeyIndicator): KMKey {
@@ -65,7 +68,7 @@ export class KMSubmenu<T> {
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
-    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString));
+    return new DefaultKMSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString), this.capsLockSwap, this.visualConfig);
   }
 
   private generateActionSubmenuKey(
@@ -75,7 +78,7 @@ export class KMSubmenu<T> {
     action: () => void,
     style?: KeyRenderStyle,
   ): KMKey {
-    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString));
+    return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString), this.capsLockSwap, this.visualConfig);
   }
 
   handleKeyUp(event: KeyboardEvent): void {
@@ -98,8 +101,14 @@ export class KMSubmenu<T> {
 
 
   scheduledActions: Map<KeyString, number> = new Map();
-  readonly subsequentDelayMS = 100;
-  readonly initialDelayMS = 250;
+
+  private get initialDelayMS(): number {
+    return this.visualConfig.cursor.initialRepeatDelayMs;
+  }
+
+  private get subsequentDelayMS(): number {
+    return this.visualConfig.cursor.repeatIntervalMs;
+  }
 
   private scheduleAction(key: KeyString, action: { (): void }) {
 
@@ -204,19 +213,15 @@ export class KMSubmenu<T> {
         depth: this.depth,
         palette: this.palette,
         heldKeyStrings: this.heldKeyStrings,
+        shadowConfig: this.visualConfig.cardShadow,
       };
       group.add(createCardBackground(cardConfig));
-
-      // Add highlight borders around held-key holes
-      for (const highlight of createHoleHighlights(cardConfig)) {
-        group.add(highlight);
-      }
 
       // Add blank keys for unbound positions
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);
       const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings, this.hideFingerBlocked);
       for (const keyString of blankPositions) {
-        group.add(createBlankKey({ keyString, palette: this.palette, keyboardLayout: this.keyboardLayout }));
+        group.add(createBlankKey({ keyString, palette: this.palette, keyboardLayout: this.keyboardLayout, capsLockSwap: this.capsLockSwap }));
       }
     }
 

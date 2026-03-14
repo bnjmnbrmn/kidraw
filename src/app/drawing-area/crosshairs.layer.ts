@@ -34,4 +34,9 @@ export class CrosshairsLayer extends Konva.Layer {
       this.crosshairs.setHeadingVisible(visible);
       this.batchDraw();
     }
+
+    updateCrosshairsColor(color: string) {
+      this.crosshairs.updateStrokeColor(color);
+      this.batchDraw();
+    }
 }

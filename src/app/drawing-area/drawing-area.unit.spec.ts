@@ -194,7 +194,7 @@ describe('DrawingArea Unit Tests', () => {
       const crosshairs = new DACrosshairs({ x: 0, y: 0 });
       crosshairs.setHeading(Math.PI / 2);
 
-      const headingLine = crosshairs.konvaGroup.getChildren()[2] as Konva.Line;
+      const headingLine = crosshairs.konvaGroup.getChildren()[3] as Konva.Line;
       const points = headingLine.points();
 
       expect(points[0]).toBe(0);
@@ -205,7 +205,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('should toggle heading line visibility', () => {
       const crosshairs = new DACrosshairs({ x: 0, y: 0 });
-      const headingLine = crosshairs.konvaGroup.getChildren()[2] as Konva.Line;
+      const headingLine = crosshairs.konvaGroup.getChildren()[3] as Konva.Line;
 
       expect(headingLine.visible()).toBe(false);
 

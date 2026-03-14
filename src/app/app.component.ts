@@ -19,7 +19,7 @@ export class AppComponent {
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
-  movementSpeed = 50;
+  movementSpeed = 10;
   canEdit = false;
 
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();

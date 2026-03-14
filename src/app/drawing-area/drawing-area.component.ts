@@ -2,6 +2,7 @@ import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnCha
 import { Subscription } from 'rxjs';
 import { DemoDataService } from '../services/demo-data.service';
 import { ThemeService } from '../services/theme.service';
+import { VisualConfigService } from '../services/visual-config.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
@@ -40,7 +41,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private demoDataService = inject(DemoDataService);
   private log = inject(DebugLogService);
   private themeService = inject(ThemeService);
+  private visualConfigService = inject(VisualConfigService);
   private themeSub?: Subscription;
+  private visualSub?: Subscription;
   private waypointsVisible: boolean = false;
   private hasDragged = false;
   private wasAlreadySelectedBeforeDrag = false;
@@ -54,7 +57,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
   public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
-  public readonly CROSSHAIRS_MOVEMENT_DISTANCE = 50;
+  public CROSSHAIRS_MOVEMENT_DISTANCE = 10;
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
@@ -103,16 +106,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       width: this.componentNE.offsetWidth,
       height: this.componentNE.offsetHeight,
     });
-    this.stage.container().style.backgroundColor = this.themeService.palette.drawingStageBackground;
-    this.themeSub = this.themeService.themeChanged$.subscribe(() => {
-      this.stage.container().style.backgroundColor = this.themeService.palette.drawingStageBackground;
-      this.drawingLayer.applyThemeColors(this.themeService.palette);
-    });
+    const effectivePalette = () => this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.stage.container().style.backgroundColor = effectivePalette().drawingStageBackground;
+    const reapplyTheme = () => {
+      const palette = effectivePalette();
+      this.stage.container().style.backgroundColor = palette.drawingStageBackground;
+      this.drawingLayer.applyThemeColors(palette);
+      this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
+    };
+    const reapplyConfig = () => {
+      reapplyTheme();
+      this.CROSSHAIRS_MOVEMENT_DISTANCE = this.visualConfigService.config.cursor.movementDistance;
+    };
+    this.themeSub = this.themeService.themeChanged$.subscribe(reapplyTheme);
+    this.visualSub = this.visualConfigService.configChanged$.subscribe(reapplyConfig);
 
     this.drawingLayer = new DrawingLayer();
-    this.drawingLayer.palette = this.themeService.palette;
+    this.drawingLayer.palette = effectivePalette();
     this.stage.add(this.drawingLayer);
-    this.crosshairsLayer = new CrosshairsLayer(this.stage, this.themeService.palette.crosshairsStroke);
+    this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
     this.crosshairsLayer.setHeading(this.headingRadians);
@@ -122,7 +134,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('demo') as string === 'true') {
       this.demoDataService.createDemoGraph(this.drawingLayer);
-      this.drawingLayer.applyThemeColors(this.themeService.palette);
+      this.drawingLayer.applyThemeColors(effectivePalette());
     }
 
     this.commands.subscribe(this.handleCommands.bind(this));
@@ -144,6 +156,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
+    this.visualSub?.unsubscribe();
   }
 
   private canEdit = false;
@@ -1098,8 +1111,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       anchorY = this.crosshairsLayer.crosshairs.y;
     }
 
-    // Offset of 150 drawing-layer units (100 node + 50 gap), scaled to stage coords
-    const DIRECTED_OFFSET = 150 * this.drawingLayer.scaleX();
+    // Offset of 300 drawing-layer units, scaled to stage coords
+    const DIRECTED_OFFSET = 300 * this.drawingLayer.scaleX();
     const deltaX = direction === 'left' ? -DIRECTED_OFFSET : direction === 'right' ? DIRECTED_OFFSET : 0;
     const deltaY = direction === 'up' ? -DIRECTED_OFFSET : direction === 'down' ? DIRECTED_OFFSET : 0;
 

@@ -32,6 +32,7 @@ import {
 import {DebugLogService} from '../services/debug-log.service';
 import {ThemeService} from '../services/theme.service';
 import {KeyboardConfigService} from '../services/keyboard-config.service';
+import {VisualConfigService} from '../services/visual-config.service';
 
 import {DoublePressTracker} from '../lib/keymenu/help/doublePressTracker';
 
@@ -48,7 +49,7 @@ interface ProfileHint {
 })
 export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
-  @Input() movementSpeed = 50;
+  @Input() movementSpeed = 10;
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
@@ -58,8 +59,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private log = inject(DebugLogService);
   private themeService = inject(ThemeService);
   private keyboardConfig = inject(KeyboardConfigService);
+  private visualConfig = inject(VisualConfigService);
   private themeSub?: Subscription;
   private configSub?: Subscription;
+  private visualSub?: Subscription;
 
   // State: when true, releasing the insert submenu key switches to labelEdit
   private insertDragActive = false;
@@ -157,6 +160,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
       this.rebuildKeyMenu();
     });
+    this.visualSub = this.visualConfig.configChanged$.subscribe(() => {
+      this.rebuildKeyMenu();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -168,6 +174,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.configSub?.unsubscribe();
+    this.visualSub?.unsubscribe();
     if (this.keyMenu) {
       this.keyMenu.destroy();
     }
@@ -186,9 +193,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
       initialModeName: 'normal',
-      stageBackground: this.themeService.palette.keymenuStageBackground,
+      stageBackground: this.visualConfig.getEffectivePalette(this.themeService.theme).keymenuStageBackground,
       modes: {
-        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.themeService.palette, this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout),
+        normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEdit: this.buildLabelEditModeConfig(),
       }
     });
