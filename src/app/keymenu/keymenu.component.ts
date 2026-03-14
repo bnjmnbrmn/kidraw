@@ -67,6 +67,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private insertDragActive = false;
   // Pending-action-on-release: set when a node type key is pressed, cleared by directional action or type key release
   private insertNodePending = false;
+  // When true, releasing the edit submenu key without selecting a child fires EDIT_SELECTED
+  private editPending = false;
   private pendingNodeShape: NodeShape | undefined = undefined;
   private pendingInsertTypeKey: string | undefined = undefined;
   private selectDragHoldActive = false;
@@ -74,6 +76,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
+
+  // Label-edit custom key repeat
+  private labelEditRepeatTimer?: number;
+  private readonly LABEL_EDIT_REPEAT_INITIAL_MS = 300;
+  private readonly LABEL_EDIT_REPEAT_INTERVAL_MS = 30;
 
   // Help mode state
   private helpModeState: 'inactive' | 'held' | 'sticky' = 'inactive';
@@ -175,6 +182,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.insertDragActive = false;
     this.insertNodePending = false;
+    this.editPending = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
@@ -227,7 +235,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return new PrintedInstructionKeyMenuModeConfig(
       'Insert/edit text.  Use Shift-Shift, ESC or Ctrl-[ to return to Normal mode.',
       (keyDownEvent: KeyboardEvent) => {
+        // Block system key repeat — we manage our own
+        if (keyDownEvent.repeat) return;
+
         const key = keyDownEvent.key;
+
+        // Exit keys don't repeat
         if ((key === 'Enter' && keyDownEvent.shiftKey)
           || (key === '[' && keyDownEvent.ctrlKey)
           || key === 'Escape') {
@@ -236,30 +249,41 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
           return;
         }
 
+        // Build a repeatable action for this key, if applicable
+        let action: (() => void) | undefined;
+
         if (key === 'Backspace') {
-          this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR});
-          return;
+          action = () => this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR});
+        } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
+          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
+        } else if (key === 'Enter' && KeyMenu.noModifier(keyDownEvent)) {
+          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\n'});
+        } else if (key === 'Tab' && KeyMenu.noModifier(keyDownEvent)) {
+          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\t'});
         }
 
-        if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
-          this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
-          return;
-        }
+        if (!action) return;
 
-        if (key === 'Enter' && KeyMenu.noModifier(keyDownEvent)) {
-          this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\n'});
-          return;
-        }
-
-        if (key === 'Tab' && KeyMenu.noModifier(keyDownEvent)) {
-          this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\t'});
-        }
+        // Fire immediately, then schedule repeat
+        action();
+        this.clearLabelEditRepeat();
+        this.labelEditRepeatTimer = window.setTimeout(() => {
+          this.labelEditRepeatTimer = window.setInterval(action!, this.LABEL_EDIT_REPEAT_INTERVAL_MS);
+        }, this.LABEL_EDIT_REPEAT_INITIAL_MS);
       },
       () => {
-        // no-op
+        this.clearLabelEditRepeat();
       },
       this.themeService.palette,
     );
+  }
+
+  private clearLabelEditRepeat(): void {
+    if (this.labelEditRepeatTimer !== undefined) {
+      window.clearTimeout(this.labelEditRepeatTimer);
+      window.clearInterval(this.labelEditRepeatTimer);
+      this.labelEditRepeatTimer = undefined;
+    }
   }
 
   private buildRootSubmenuConfig(): SubmenuConfig {
@@ -272,7 +296,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
       [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
 
-      [root.editSubmenu]: new LabeledActionSubmenuConfig('Edit...', this.buildEditSubmenuConfig(), () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
+      [root.editSubmenu]: new LabeledSubmenuConfig('Edit...', this.buildEditSubmenuConfig()),
       [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.nodeTypeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
@@ -284,7 +308,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildEditSubmenuConfig(): SubmenuConfig {
     const edit = this.keyAssignments.edit;
     return {
-      [edit.editText]: new LabeledAction('Edit Text', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
       [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
     } as SubmenuConfig;
   }
@@ -463,9 +486,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
+    this.clearLabelEditRepeat();
     this.keyMenu.switchMode('normal');
     this.insertDragActive = false;
     this.insertNodePending = false;
+    this.editPending = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
@@ -550,10 +575,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       mode.stackTop.unhighlightAllKeys();
       mode.stackTop.stopAllScheduledActions();
     }
+    this.clearLabelEditRepeat();
     this.selectDragHoldActive = false;
     this.directedEdgeActive = false;
     this.insertDragActive = false;
     this.insertNodePending = false;
+    this.editPending = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.resetHelpMode();
@@ -631,6 +658,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
     }
 
+    // Track when the edit submenu key is pressed so tap-to-edit works on keyup
+    if (this.keyMenu.currentMode.name === 'normal' && !event.repeat &&
+        event.key === this.keyAssignments.root.editSubmenu) {
+      this.editPending = true;
+    } else if (this.editPending && event.key !== this.keyAssignments.root.editSubmenu) {
+      // Any child key press cancels tap-to-edit (user is using the submenu)
+      this.editPending = false;
+    }
+
     this.keyMenu.handleKeyDown(event);
     this.refreshActiveKeyPath();
   }
@@ -650,6 +686,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.keyMenu.handleKeyUp(event);
     this.refreshActiveKeyPath();
+
+    // Tap edit submenu key (e) without selecting a child → fire EDIT_SELECTED
+    if (event.key === this.keyAssignments.root.editSubmenu && this.editPending) {
+      this.editPending = false;
+      this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED});
+      return;
+    }
 
     // If insert submenu key (f) is released, handle pending/drag states
     if (event.key === this.keyAssignments.root.insertSubmenu) {

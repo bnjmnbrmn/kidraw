@@ -409,9 +409,9 @@ export class DANode {
     }
     DANode._measureText.text(text);
     DANode._measureText.fontSize(fontSize);
-    DANode._measureText.width(0);
+    DANode._measureText.width('auto' as any);
     DANode._measureText.wrap('none');
-    return DANode._measureText.width();
+    return DANode._measureText.textWidth;
   }
 
   resizeBy(delta: number): boolean {

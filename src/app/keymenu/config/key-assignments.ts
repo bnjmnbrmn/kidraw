@@ -53,7 +53,6 @@ export interface KeymenuKeyAssignments {
     readonly reload: KeyString;
   };
   readonly edit: {
-    readonly editText: KeyString;
     readonly overflowSubmenu: KeyString;
   };
   readonly overflow: {
@@ -107,7 +106,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleWaypoints: 'd',
     reload: 'q',
   },
-  edit: {editText: 'r', overflowSubmenu: 't'},
+  edit: {overflowSubmenu: 'k'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
 };
 
@@ -153,6 +152,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleWaypoints: 'd',    // left index
     reload: 'q',             // left pinky top row
   },
-  edit: {editText: 'k', overflowSubmenu: 'l'},
-  overflow: {clip: 'j', shrinkFont: 'k', ellipsis: 'l', widenH: 'u', widenV: 'i', widenBoth: 'o'},
+  edit: {overflowSubmenu: 'u'},
+  overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
 };

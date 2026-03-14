@@ -500,7 +500,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
-    const resized = this.drawingLayer.setTextOverflowModeOnSelected(mode);
+    const selected = this.drawingLayer.getSelectedDANodes().filter(n => n.nodeShape !== 'junction');
+    const targets = selected.length > 0 ? selected : (() => {
+      const hovered = this.getDANodesContainingCrosshairs().filter(n => n.nodeShape !== 'junction');
+      return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+    })();
+
+    const resized: import('./da-node').DANode[] = [];
+    targets.forEach(node => {
+      node.textOverflowMode = mode;
+      resized.push(node);
+    });
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.batchDraw();
   }
