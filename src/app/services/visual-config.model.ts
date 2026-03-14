@@ -18,6 +18,9 @@ export interface CardShadowConfig {
 
 export interface CursorConfig {
   movementDistance: number;
+  fineDistance: number;
+  mediumDistance: number;
+  largeDistance: number;
   initialRepeatDelayMs: number;
   repeatIntervalMs: number;
 }
@@ -47,6 +50,9 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
   },
   cursor: {
     movementDistance: 10,
+    fineDistance: 5,
+    mediumDistance: 50,
+    largeDistance: 200,
     initialRepeatDelayMs: 0,
     repeatIntervalMs: 100,
   },

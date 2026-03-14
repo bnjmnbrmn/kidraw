@@ -93,8 +93,8 @@ describe('KeymenuComponent', () => {
     expect(rootConfig['y']).toBeUndefined();
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    const navSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
-    expect(navSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    const panSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
+    expect(panSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
     // 'i' is Edit (LabeledSubmenuConfig), 'f' is Insert submenu (vim profile)
     const editAction = rootConfig['i'] as LabeledSubmenuConfig;
@@ -111,16 +111,21 @@ describe('KeymenuComponent', () => {
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
-    // Nav submenu: 'd' is Toggle Waypoints, 'n'/'p' are edge traversal, 'h/j/k/l' are node jump
-    const toggleWaypoints = navSubmenu.submenuConfig['d'] as LabeledAction;
+    // Move-by-node submenu at 't'
+    const moveByNodeSubmenu = rootConfig['t'] as LabeledSubmenuConfig;
+    expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    const toggleWaypoints = moveByNodeSubmenu.submenuConfig['d'] as LabeledAction;
     expect(toggleWaypoints.actionLabel).toBe('Toggle Waypoints');
     toggleWaypoints.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY});
 
-    const nodeLeft = navSubmenu.submenuConfig['h'] as LabeledAction;
+    const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
 
-    const nextEdge = navSubmenu.submenuConfig['n'] as LabeledAction;
+    // Move-by-graph submenu at 'g'
+    const moveByGraphSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
+    expect(moveByGraphSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    const nextEdge = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
     expect(nextEdge.actionLabel).toBe('Next Edge');
   });
 

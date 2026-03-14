@@ -218,16 +218,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     switch (command.kind) {
       case DACommandType.MOVE_CROSSHAIRS_LEFT:
-        this.moveCrosshairsLeft();
+        this.moveCrosshairsLeft(command.distance);
         break;
       case DACommandType.MOVE_CROSSHAIRS_DOWN:
-        this.moveCrosshairsDown();
+        this.moveCrosshairsDown(command.distance);
         break;
       case DACommandType.MOVE_CROSSHAIRS_RIGHT:
-        this.moveCrosshairsRight();
+        this.moveCrosshairsRight(command.distance);
         break;
       case DACommandType.MOVE_CROSSHAIRS_UP:
-        this.moveCrosshairsUp();
+        this.moveCrosshairsUp(command.distance);
         break;
       case DACommandType.STEER_FORWARD:
         this.steerForward();
@@ -344,16 +344,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.checkAndEmitEditState();
         break;
       case DACommandType.DRAG_SELECTED_LEFT:
-        this.dragSelectedLeft();
+        this.dragSelectedLeft(command.distance);
         break;
       case DACommandType.DRAG_SELECTED_RIGHT:
-        this.dragSelectedRight();
+        this.dragSelectedRight(command.distance);
         break;
       case DACommandType.DRAG_SELECTED_UP:
-        this.dragSelectedUp();
+        this.dragSelectedUp(command.distance);
         break;
       case DACommandType.DRAG_SELECTED_DOWN:
-        this.dragSelectedDown();
+        this.dragSelectedDown(command.distance);
         break;
       case DACommandType.ENTER_DRAG_MODE:
         this.enterDragMode();
@@ -390,6 +390,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.SET_NODE_SHAPE:
         this.setNodeShape(command.shape);
+        break;
+      case DACommandType.PAN_LEFT:
+        this.panViewport(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
+        break;
+      case DACommandType.PAN_RIGHT:
+        this.panViewport(-(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
+        break;
+      case DACommandType.PAN_UP:
+        this.panViewport(0, command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE);
+        break;
+      case DACommandType.PAN_DOWN:
+        this.panViewport(0, -(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
         break;
       default:
         this.assertNever(command);
@@ -637,20 +649,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }).play());
   }
 
-  private moveCrosshairsUp() {
-    this.moveCrosshairsBy(0, -this.CROSSHAIRS_MOVEMENT_DISTANCE);
+  private moveCrosshairsUp(distance?: number) {
+    this.moveCrosshairsBy(0, -(distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
   }
 
-  private moveCrosshairsRight() {
-    this.moveCrosshairsBy(this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
+  private moveCrosshairsRight(distance?: number) {
+    this.moveCrosshairsBy((distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
   }
 
-  private moveCrosshairsDown() {
-    this.moveCrosshairsBy(0, this.CROSSHAIRS_MOVEMENT_DISTANCE);
+  private moveCrosshairsDown(distance?: number) {
+    this.moveCrosshairsBy(0, (distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
   }
 
-  private moveCrosshairsLeft() {
-    this.moveCrosshairsBy(-this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
+  private moveCrosshairsLeft(distance?: number) {
+    this.moveCrosshairsBy(-(distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
   }
 
   private moveCrosshairsBy(deltaX: number, deltaY: number) {
@@ -693,6 +705,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         easing: Konva.Easings.Linear,
       }).play());
     }
+  }
+
+  private panViewport(deltaX: number, deltaY: number) {
+    this.finishTweens();
+    this.tweens.push(new Konva.Tween({
+      node: this.drawingLayer,
+      duration: this.CROSSHAIR_MOVEMENT_DURATION,
+      x: this.drawingLayer.x() + deltaX,
+      y: this.drawingLayer.y() + deltaY,
+      easing: Konva.Easings.Linear,
+    }).play());
   }
 
   private steerForward() {
@@ -1263,18 +1286,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     tween.play();
   }
 
-  private dragSelectedLeft()  { this.dragSelected('x', -1); }
-  private dragSelectedRight() { this.dragSelected('x', +1); }
-  private dragSelectedUp()    { this.dragSelected('y', -1); }
-  private dragSelectedDown()  { this.dragSelected('y', +1); }
+  private dragSelectedLeft(distance?: number)  { this.dragSelected('x', -1, distance); }
+  private dragSelectedRight(distance?: number) { this.dragSelected('x', +1, distance); }
+  private dragSelectedUp(distance?: number)    { this.dragSelected('y', -1, distance); }
+  private dragSelectedDown(distance?: number)  { this.dragSelected('y', +1, distance); }
 
-  private dragSelected(axis: 'x' | 'y', sign: 1 | -1) {
+  private dragSelected(axis: 'x' | 'y', sign: 1 | -1, distance?: number) {
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
-    const dragDistance = 50;
+    const dragDistance = distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE;
     const edgeMargin = 60;
 
     // Collect all connected edges to move

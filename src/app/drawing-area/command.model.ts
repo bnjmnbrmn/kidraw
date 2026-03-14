@@ -60,13 +60,17 @@ export enum DACommandType {
   REDO = 'REDO',
   SET_TEXT_OVERFLOW_MODE = 'SET_TEXT_OVERFLOW_MODE',
   SET_NODE_SHAPE = 'SET_NODE_SHAPE',
+  PAN_LEFT = 'PAN_LEFT',
+  PAN_RIGHT = 'PAN_RIGHT',
+  PAN_UP = 'PAN_UP',
+  PAN_DOWN = 'PAN_DOWN',
 }
 
 export type DACommand =
-  | {kind: DACommandType.MOVE_CROSSHAIRS_LEFT}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_UP}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_LEFT; distance?: number}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT; distance?: number}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_UP; distance?: number}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN; distance?: number}
   | {kind: DACommandType.STEER_FORWARD}
   | {kind: DACommandType.STEER_BACKWARD}
   | {kind: DACommandType.STRAFE_LEFT}
@@ -100,10 +104,10 @@ export type DACommand =
   | {kind: DACommandType.RECENTER_CROSSHAIRS}
   | {kind: DACommandType.UNSELECT_ALL}
   | {kind: DACommandType.ENTER_DRAG_MODE}
-  | {kind: DACommandType.DRAG_SELECTED_LEFT}
-  | {kind: DACommandType.DRAG_SELECTED_RIGHT}
-  | {kind: DACommandType.DRAG_SELECTED_UP}
-  | {kind: DACommandType.DRAG_SELECTED_DOWN}
+  | {kind: DACommandType.DRAG_SELECTED_LEFT; distance?: number}
+  | {kind: DACommandType.DRAG_SELECTED_RIGHT; distance?: number}
+  | {kind: DACommandType.DRAG_SELECTED_UP; distance?: number}
+  | {kind: DACommandType.DRAG_SELECTED_DOWN; distance?: number}
   | {kind: DACommandType.EXIT_DRAG_MODE}
   | {kind: DACommandType.ADD_WAYPOINT}
   | {kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY}
@@ -119,3 +123,7 @@ export type DACommand =
   | {kind: DACommandType.REDO}
   | {kind: DACommandType.SET_TEXT_OVERFLOW_MODE; mode: TextOverflowMode}
   | {kind: DACommandType.SET_NODE_SHAPE; shape: NodeShape}
+  | {kind: DACommandType.PAN_LEFT; distance?: number}
+  | {kind: DACommandType.PAN_RIGHT; distance?: number}
+  | {kind: DACommandType.PAN_UP; distance?: number}
+  | {kind: DACommandType.PAN_DOWN; distance?: number}

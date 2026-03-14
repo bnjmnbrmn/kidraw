@@ -87,6 +87,24 @@
                      [value]="config.cursor.repeatIntervalMs"
                      (change)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
             </label>
+            <label class="swap-label">
+              Fine distance (px):
+              <input type="number" tabindex="-1" min="1" max="100" step="1"
+                     [value]="config.cursor.fineDistance"
+                     (change)="onNumberChange('cursor', 'fineDistance', $event)">
+            </label>
+            <label class="swap-label">
+              Medium distance (px):
+              <input type="number" tabindex="-1" min="1" max="500" step="10"
+                     [value]="config.cursor.mediumDistance"
+                     (change)="onNumberChange('cursor', 'mediumDistance', $event)">
+            </label>
+            <label class="swap-label">
+              Large distance (px):
+              <input type="number" tabindex="-1" min="10" max="1000" step="50"
+                     [value]="config.cursor.largeDistance"
+                     (change)="onNumberChange('cursor', 'largeDistance', $event)">
+            </label>
           </div>
         </details>
 

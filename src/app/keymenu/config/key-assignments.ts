@@ -37,20 +37,33 @@ export interface KeymenuKeyAssignments {
   readonly shared: {
     readonly toggleWaypointVisibility: KeyString;
     readonly delete: KeyString;
-    readonly navSubmenu: KeyString;
     readonly select: KeyString;
     readonly undo: KeyString;
   };
-  readonly nav: {
+  readonly speed: {
+    readonly submenu: KeyString;
+    readonly medium: KeyString;
+    readonly large: KeyString;
+  };
+  readonly pan: {
+    readonly submenu: KeyString;
+    readonly medium: KeyString;
+    readonly large: KeyString;
+  };
+  readonly moveByNode: {
+    readonly submenu: KeyString;
     readonly nodeJump: DirectionalKeyAssignments;
     readonly zoomIn: KeyString;
     readonly zoomOut: KeyString;
-    readonly outgoingNext: KeyString;
-    readonly outgoingPrev: KeyString;
     readonly recenterView: KeyString;
     readonly recenterCrosshairs: KeyString;
     readonly toggleWaypoints: KeyString;
     readonly reload: KeyString;
+  };
+  readonly moveByGraph: {
+    readonly submenu: KeyString;
+    readonly outgoingNext: KeyString;
+    readonly outgoingPrev: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -91,20 +104,33 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   shared: {
     toggleWaypointVisibility: 'w',
     delete: 'x',
-    navSubmenu: 'r',
     select: 'c',
     undo: 'u',
   },
-  nav: {
+  speed: {
+    submenu: 'd',
+    medium: 's',
+    large: 'a',
+  },
+  pan: {
+    submenu: 'r',
+    medium: 'e',
+    large: 'w',
+  },
+  moveByNode: {
+    submenu: 't',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
     zoomIn: 'o',
     zoomOut: 'i',
-    outgoingNext: 'n',
-    outgoingPrev: 'p',
     recenterView: 'a',
     recenterCrosshairs: 's',
     toggleWaypoints: 'd',
     reload: 'q',
+  },
+  moveByGraph: {
+    submenu: 'g',
+    outgoingNext: 'n',
+    outgoingPrev: 'p',
   },
   edit: {overflowSubmenu: 'k'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -136,21 +162,33 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   shared: {
     toggleWaypointVisibility: 'w',
     delete: 'x',
-    navSubmenu: 'r',
     select: 'c',
     undo: 'u',
   },
-  nav: {
+  speed: {
+    submenu: 'e',
+    medium: 'w',
+    large: 'q',
+  },
+  pan: {
+    submenu: 'r',
+    medium: 'w',
+    large: 'q',
+  },
+  moveByNode: {
+    submenu: 't',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
     zoomIn: 'i',
     zoomOut: 'o',
-    outgoingNext: 'n',   // clockwise outgoing edge
-    outgoingPrev: 'p',   // anticlockwise outgoing edge
-    // Shift+n / Shift+p for incoming edges (handled in keydown intercept)
-    recenterView: 'a',       // left ring — comfortable with pinky on z
-    recenterCrosshairs: 's',  // left middle
-    toggleWaypoints: 'd',    // left index
-    reload: 'q',             // left pinky top row
+    recenterView: 'a',
+    recenterCrosshairs: 's',
+    toggleWaypoints: 'd',
+    reload: 'q',
+  },
+  moveByGraph: {
+    submenu: 'g',
+    outgoingNext: 'n',
+    outgoingPrev: 'p',
   },
   edit: {overflowSubmenu: 'u'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},

@@ -95,7 +95,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private get dragSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const nav = this.keyAssignments.nav;
+    const mbn = this.keyAssignments.moveByNode;
 
     return {
       [drag.up]: new LabeledAction('Drag Up', () => {
@@ -110,10 +110,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.right]: new LabeledAction('Drag Right', () => {
         this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
       }),
-      [nav.zoomIn]: new LabeledAction('Zoom In', () => {
+      [mbn.zoomIn]: new LabeledAction('Zoom In', () => {
         this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
       }),
-      [nav.zoomOut]: new LabeledAction('Zoom Out', () => {
+      [mbn.zoomOut]: new LabeledAction('Zoom Out', () => {
         this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
       }),
     } as SubmenuConfig;
@@ -128,7 +128,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: movementKeys, action: 'Move up/left/down/right'},
       {key: root.insertSubmenu, action: 'Insert submenu'},
       {key: `${root.selectDragSubmenu} (hold)`, action: 'Select + drag'},
-      {key: shared.navSubmenu, action: 'Nav submenu'},
+      {key: this.keyAssignments.speed.submenu, action: 'Fine move'},
+      {key: this.keyAssignments.pan.submenu, action: 'Pan'},
+      {key: this.keyAssignments.moveByNode.submenu, action: 'Move by node'},
+      {key: this.keyAssignments.moveByGraph.submenu, action: 'Move by graph'},
       {key: shared.select, action: 'Clear selection'},
       {key: shared.delete, action: 'Delete'},
     ];
@@ -362,7 +365,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private buildDirectionalEdgeSubmenuConfig(): SubmenuConfig {
-    const nodeJump = this.keyAssignments.nav.nodeJump;
+    const nodeJump = this.keyAssignments.moveByNode.nodeJump;
 
     const setDestination = (direction: 'up' | 'down' | 'left' | 'right') => () => {
       this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DESTINATION, direction});
@@ -408,35 +411,102 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildSharedUtilityBindings(): SubmenuConfig {
     const shared = this.keyAssignments.shared;
+    const speed = this.keyAssignments.speed;
+    const pan = this.keyAssignments.pan;
+    const mbn = this.keyAssignments.moveByNode;
+    const mbg = this.keyAssignments.moveByGraph;
 
     return {
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
-      [shared.navSubmenu]: new LabeledSubmenuConfig('Nav...', this.buildNavSubmenuConfig()),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
+      [speed.submenu]: new LabeledSubmenuConfig('Fine Move...', this.buildSpeedSubmenuConfig('fine')),
+      [pan.submenu]: new LabeledSubmenuConfig('Pan...', this.buildPanSubmenuConfig('normal')),
+      [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
+      [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
     } as SubmenuConfig;
   }
 
-  private buildNavSubmenuConfig(): SubmenuConfig {
-    const nav = this.keyAssignments.nav;
+  private getSpeedDistance(tier: 'fine' | 'normal' | 'medium' | 'large'): number {
+    const cursor = this.visualConfig.config.cursor;
+    switch (tier) {
+      case 'fine': return cursor.fineDistance;
+      case 'normal': return cursor.movementDistance;
+      case 'medium': return cursor.mediumDistance;
+      case 'large': return cursor.largeDistance;
+    }
+  }
+
+  private buildSpeedSubmenuConfig(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+    const speed = this.keyAssignments.speed;
+    const d = this.getSpeedDistance(tier);
+    const moveWithDistance = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
+      () => this.keyMenuOut.emit({kind, distance: d});
+
+    const config: SubmenuConfig = {
+      [movement.up]: new LabeledAction('Move Up', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_UP)),
+      [movement.left]: new LabeledAction('Move Left', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_LEFT)),
+      [movement.down]: new LabeledAction('Move Down', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_DOWN)),
+      [movement.right]: new LabeledAction('Move Right', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
+    } as SubmenuConfig;
+
+    // Add next tier submenu if not at largest
+    if (tier === 'fine') {
+      (config as any)[speed.medium] = new LabeledSubmenuConfig('Bigger...', this.buildSpeedSubmenuConfig('medium'));
+    } else if (tier === 'medium') {
+      (config as any)[speed.large] = new LabeledSubmenuConfig('Biggest...', this.buildSpeedSubmenuConfig('large'));
+    }
+
+    return config;
+  }
+
+  private buildPanSubmenuConfig(tier: 'normal' | 'medium' | 'large'): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+    const pan = this.keyAssignments.pan;
+    const d = this.getSpeedDistance(tier);
+    const panWithDistance = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
+      () => this.keyMenuOut.emit({kind, distance: d});
+
+    const config: SubmenuConfig = {
+      [movement.up]: new LabeledAction('Pan Up', panWithDistance(DACommandType.PAN_UP)),
+      [movement.left]: new LabeledAction('Pan Left', panWithDistance(DACommandType.PAN_LEFT)),
+      [movement.down]: new LabeledAction('Pan Down', panWithDistance(DACommandType.PAN_DOWN)),
+      [movement.right]: new LabeledAction('Pan Right', panWithDistance(DACommandType.PAN_RIGHT)),
+    } as SubmenuConfig;
+
+    if (tier === 'normal') {
+      (config as any)[pan.medium] = new LabeledSubmenuConfig('Bigger...', this.buildPanSubmenuConfig('medium'));
+    } else if (tier === 'medium') {
+      (config as any)[pan.large] = new LabeledSubmenuConfig('Biggest...', this.buildPanSubmenuConfig('large'));
+    }
+
+    return config;
+  }
+
+  private buildMoveByNodeSubmenuConfig(): SubmenuConfig {
+    const mbn = this.keyAssignments.moveByNode;
 
     return {
-      // Directional node jump
-      [nav.nodeJump.left]: new LabeledAction('Node Left', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT})),
-      [nav.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
-      [nav.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
-      [nav.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
-      // Zoom
-      [nav.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
-      [nav.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
-      // Edge traversal (outgoing; incoming via Shift handled in keydown intercept)
-      [nav.outgoingNext]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
-      [nav.outgoingPrev]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_PREV})),
-      // Utility
-      [nav.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
-      [nav.recenterCrosshairs]: new LabeledAction('Recenter Crosshairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
-      [nav.toggleWaypoints]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
-      [nav.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
+      [mbn.nodeJump.left]: new LabeledAction('Node Left', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT})),
+      [mbn.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
+      [mbn.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
+      [mbn.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
+      [mbn.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
+      [mbn.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      [mbn.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
+      [mbn.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
+      [mbn.toggleWaypoints]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
+      [mbn.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
+    } as SubmenuConfig;
+  }
+
+  private buildMoveByGraphSubmenuConfig(): SubmenuConfig {
+    const mbg = this.keyAssignments.moveByGraph;
+
+    return {
+      [mbg.outgoingNext]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
+      [mbg.outgoingPrev]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_PREV})),
     } as SubmenuConfig;
   }
 
