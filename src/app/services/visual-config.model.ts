@@ -49,7 +49,7 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
     perDepthOffsetIncrement: 4,
   },
   cursor: {
-    movementDistance: 10,
+    movementDistance: 20,
     fineDistance: 5,
     mediumDistance: 50,
     largeDistance: 200,

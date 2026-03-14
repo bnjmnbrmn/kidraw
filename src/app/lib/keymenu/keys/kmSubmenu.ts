@@ -103,11 +103,11 @@ export class KMSubmenu<T> {
   scheduledActions: Map<KeyString, number> = new Map();
 
   private get initialDelayMS(): number {
-    return this.visualConfig.cursor.initialRepeatDelayMs;
+    return this.config._repeatConfig?.initialDelayMs ?? this.visualConfig.cursor.initialRepeatDelayMs;
   }
 
   private get subsequentDelayMS(): number {
-    return this.visualConfig.cursor.repeatIntervalMs;
+    return this.config._repeatConfig?.intervalMs ?? this.visualConfig.cursor.repeatIntervalMs;
   }
 
   private scheduleAction(key: KeyString, action: { (): void }) {
@@ -181,6 +181,7 @@ export class KMSubmenu<T> {
 
     (Object.entries(this.config) as
       [KeyString, SubmenuConfigValue][])
+      .filter(([key]) => !key.startsWith('_'))
       .forEach(([key, config]) => {
         if (config instanceof LabeledSubmenuConfig) {
           keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig, style)]);

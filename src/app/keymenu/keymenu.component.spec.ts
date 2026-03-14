@@ -126,7 +126,7 @@ describe('KeymenuComponent', () => {
     const moveByGraphSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
     expect(moveByGraphSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     const nextEdge = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
-    expect(nextEdge.actionLabel).toBe('Next Edge');
+    expect(nextEdge.actionLabel).toBe('Next Out Edge');
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {

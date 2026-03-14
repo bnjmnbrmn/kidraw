@@ -64,6 +64,8 @@ export enum DACommandType {
   PAN_RIGHT = 'PAN_RIGHT',
   PAN_UP = 'PAN_UP',
   PAN_DOWN = 'PAN_DOWN',
+  SELECT_NEXT_EDGE = 'SELECT_NEXT_EDGE',
+  FOLLOW_SELECTED_EDGE = 'FOLLOW_SELECTED_EDGE',
 }
 
 export type DACommand =
@@ -127,3 +129,5 @@ export type DACommand =
   | {kind: DACommandType.PAN_RIGHT; distance?: number}
   | {kind: DACommandType.PAN_UP; distance?: number}
   | {kind: DACommandType.PAN_DOWN; distance?: number}
+  | {kind: DACommandType.SELECT_NEXT_EDGE; direction: 'outgoing' | 'incoming'}
+  | {kind: DACommandType.FOLLOW_SELECTED_EDGE}

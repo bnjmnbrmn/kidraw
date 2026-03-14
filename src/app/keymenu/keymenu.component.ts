@@ -49,7 +49,7 @@ interface ProfileHint {
 })
 export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
-  @Input() movementSpeed = 10;
+  @Input() movementSpeed = 20;
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
@@ -488,6 +488,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const mbn = this.keyAssignments.moveByNode;
 
     return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       [mbn.nodeJump.left]: new LabeledAction('Node Left', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT})),
       [mbn.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
       [mbn.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
@@ -503,10 +504,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMoveByGraphSubmenuConfig(): SubmenuConfig {
     const mbg = this.keyAssignments.moveByGraph;
+    const movement = this.keyAssignments.movement;
 
     return {
-      [mbg.outgoingNext]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
-      [mbg.outgoingPrev]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_PREV})),
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      [mbg.outgoingNext]: new LabeledAction('Next Out Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'outgoing'})),
+      [mbg.outgoingPrev]: new LabeledAction('Next In Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'incoming'})),
+      [movement.up]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
+      [movement.left]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
+      [movement.down]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
+      [movement.right]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
     } as SubmenuConfig;
   }
 

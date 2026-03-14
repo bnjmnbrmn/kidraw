@@ -31,6 +31,13 @@ export type SubmenuConfigValue =
   | LabeledSubmenuConfig
   | LabeledActionSubmenuConfig;
 
+export interface RepeatConfig {
+  initialDelayMs: number;
+  intervalMs: number;
+}
+
 export type SubmenuConfig = {
   [K in KeyString]?: SubmenuConfigValue
+} & {
+  _repeatConfig?: RepeatConfig;
 }

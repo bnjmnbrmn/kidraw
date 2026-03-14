@@ -57,7 +57,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
   public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
-  public CROSSHAIRS_MOVEMENT_DISTANCE = 10;
+  public CROSSHAIRS_MOVEMENT_DISTANCE = 20;
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
@@ -402,6 +402,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.PAN_DOWN:
         this.panViewport(0, -(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
+        break;
+      case DACommandType.SELECT_NEXT_EDGE:
+        this.selectNextEdge(command.direction);
+        break;
+      case DACommandType.FOLLOW_SELECTED_EDGE:
+        this.followSelectedEdge();
         break;
       default:
         this.assertNever(command);
@@ -952,6 +958,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     indexMap.set(anchorNode, ((currentIndex + step) % candidateEdges.length + candidateEdges.length) % candidateEdges.length);
 
     const targetNode = direction === 'outgoing' ? edge.destNode : edge.srcNode;
+    this.focusNode(targetNode);
+  }
+
+  private selectNextEdge(direction: 'outgoing' | 'incoming') {
+    this.finishTweens();
+
+    const anchorNode = this.getTraversalAnchorNode();
+    if (!anchorNode) return;
+
+    const candidateEdges = direction === 'outgoing' ? anchorNode.outgoingEdges : anchorNode.incomingEdges;
+    if (candidateEdges.length === 0) return;
+
+    // Find currently selected edge to cycle from
+    const currentlySelected = candidateEdges.findIndex(e => e.isSelected);
+    let nextIndex: number;
+    if (currentlySelected >= 0) {
+      nextIndex = (currentlySelected + 1) % candidateEdges.length;
+    } else {
+      nextIndex = 0;
+    }
+
+    // Deselect all edges, select the next one
+    this.drawingLayer.getSelectedDAEdges().forEach(e => e.isSelected = false);
+    candidateEdges[nextIndex].isSelected = true;
+    this.drawingLayer.batchDraw();
+  }
+
+  private followSelectedEdge() {
+    this.finishTweens();
+
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    if (selectedEdges.length === 0) return;
+
+    const edge = selectedEdges[0];
+    // Determine which end to go to: if we're at the source, go to dest; otherwise go to source
+    const anchorNode = this.getTraversalAnchorNode();
+    const targetNode = (anchorNode === edge.srcNode) ? edge.destNode : edge.srcNode;
+
+    // Deselect the edge, focus the target node
+    edge.isSelected = false;
     this.focusNode(targetNode);
   }
 
