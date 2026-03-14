@@ -180,12 +180,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenu.destroy();
     }
 
-    this.insertDragActive = false;
-    this.insertNodePending = false;
-    this.editPending = false;
-    this.pendingNodeShape = undefined;
-    this.pendingInsertTypeKey = undefined;
-    this.selectDragHoldActive = false;
+    this.resetInteractionState();
     this.helpModeState = 'inactive';
     this.clearSpacebarHoldTimer();
     this.spacebarDoublePress.reset();
@@ -276,6 +271,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       },
       this.themeService.palette,
     );
+  }
+
+  private resetInteractionState(): void {
+    this.insertDragActive = false;
+    this.insertNodePending = false;
+    this.editPending = false;
+    this.pendingNodeShape = undefined;
+    this.pendingInsertTypeKey = undefined;
+    this.selectDragHoldActive = false;
   }
 
   private clearLabelEditRepeat(): void {
@@ -488,12 +492,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.clearLabelEditRepeat();
     this.keyMenu.switchMode('normal');
-    this.insertDragActive = false;
-    this.insertNodePending = false;
-    this.editPending = false;
-    this.pendingNodeShape = undefined;
-    this.pendingInsertTypeKey = undefined;
-    this.selectDragHoldActive = false;
+    this.resetInteractionState();
     this.resetHelpMode();
     this.refreshActiveKeyPath();
     return true;
@@ -576,13 +575,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       mode.stackTop.stopAllScheduledActions();
     }
     this.clearLabelEditRepeat();
-    this.selectDragHoldActive = false;
+    this.resetInteractionState();
     this.directedEdgeActive = false;
-    this.insertDragActive = false;
-    this.insertNodePending = false;
-    this.editPending = false;
-    this.pendingNodeShape = undefined;
-    this.pendingInsertTypeKey = undefined;
     this.resetHelpMode();
   }
 
