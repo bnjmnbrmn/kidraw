@@ -11,6 +11,8 @@ export class KeyMenu<T> {
 
   stage: Stage;
   layer: Layer;
+  private modeLabel: Konva.Text;
+  private onModeSwitch?: (newModeName: string) => void;
 
   modesForNames: { [p: string]: KeyMenuMode<T> };
   currentMode: KeyMenuMode<T>;
@@ -27,6 +29,7 @@ export class KeyMenu<T> {
       height: this.containingHTMLElement.clientHeight
     });
     this.stage.container().style.backgroundColor = config.stageBackground ?? 'lightgray'
+    this.onModeSwitch = config.onModeSwitch;
     this.layer = new Layer({});
     this.stage.add(this.layer);
 
@@ -50,6 +53,21 @@ export class KeyMenu<T> {
       mode.konvaGroup.hide();
     })
 
+    // Mode label: sits above all mode groups, shows current mode/submenu name
+    this.modeLabel = new Konva.Text({
+      x: 0,
+      y: 8,
+      width: this.containingHTMLElement.clientWidth,
+      align: 'center',
+      text: '',
+      fontSize: 16,
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      fill: '#888888',
+      listening: false,
+    });
+    this.layer.add(this.modeLabel);
+
     this.currentMode.konvaGroup.show();
   }
 
@@ -62,7 +80,11 @@ export class KeyMenu<T> {
       case 'ShiftRight': return 'RShift';
       case 'ControlRight': return 'RControl';
       case 'AltRight': return 'RAlt';
-      default: return event.key;
+      default: {
+        const k = event.key;
+        if (k.length === 1 && k >= 'A' && k <= 'Z') return k.toLowerCase();
+        return k;
+      }
     }
   }
 
@@ -88,7 +110,13 @@ export class KeyMenu<T> {
       this.currentMode = modeForName;
       this.currentMode.beforeSwitchIn()
       this.currentMode.konvaGroup.show();
+      this.onModeSwitch?.(modeName);
     }
+  }
+
+  updateModeLabel(text: string, color: string) {
+    this.modeLabel.text(text);
+    this.modeLabel.fill(color);
   }
 
   destroy() {

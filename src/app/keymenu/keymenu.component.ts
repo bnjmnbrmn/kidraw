@@ -83,6 +83,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private spacebarHoldTimer?: number;
   private readonly SPACEBAR_HOLD_THRESHOLD_MS = 300;
 
+  /** Normalize event.key so CapsLock uppercase letters match lowercase key assignments. */
+  private static normalizeEventKey(event: KeyboardEvent): string {
+    const k = event.key;
+    if (k.length === 1 && k >= 'A' && k <= 'Z') return k.toLowerCase();
+    return k;
+  }
+
   readonly MIN_STEERING_SPEED = 20;
   readonly MAX_STEERING_SPEED = 200;
   activeKeyPath: string[] = [];
@@ -193,9 +200,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       stageBackground: this.visualConfig.getEffectivePalette(this.themeService.theme).keymenuStageBackground,
       modes: {
         normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        normalCaps: new USQwertyModeConfig(this.buildNormalCapsSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEdit: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
-      }
+      },
+      onModeSwitch: () => this.refreshActiveKeyPath(),
     });
     this.refreshActiveKeyPath();
   }
@@ -258,7 +267,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const capsKey = this.keyboardConfig.capsLockCtrlSwap ? 'Control' : 'CapsLock';
     const ctrlKey = this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control';
     (config as any)[capsKey] = new LabeledAction(capsLabel, () => {
-      this.keyMenu.switchMode(capsTarget);
+      this.switchMode(capsTarget);
     });
     (config as any)[ctrlKey] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
     // Right Control always opens Ctrl submenu regardless of swap setting
@@ -328,6 +337,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.nodeTypeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
       ...this.buildSharedUtilityBindings(),
+    } as SubmenuConfig;
+  }
+
+  private buildNormalCapsSubmenuConfig(): SubmenuConfig {
+    // CapsLock normal mode: nothing works except CapsLock to return to normal mode.
+    // With capsLockCtrlSwap: physical CapsLock sends 'Control', physical Ctrl sends 'CapsLock'
+    const capsKey = this.keyboardConfig.capsLockCtrlSwap ? 'Control' : 'CapsLock';
+    return {
+      [capsKey]: new LabeledAction('normal mode', () => {
+        this.switchMode('normal');
+      }),
     } as SubmenuConfig;
   }
 
@@ -486,8 +506,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
       [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
       [misc.submenu]: new LabeledSubmenuConfig('Misc...', this.buildMiscSubmenuConfig()),
-      [this.keyAssignments.ctrl.submenu]: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
+      // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
+      // Bind "More Ctrl" to the physical Ctrl position
+      [this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control']: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
       'RControl': new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
+      // CapsLock (physical CapsLock position) → NORMAL mode
+      [this.keyboardConfig.capsLockCtrlSwap ? 'Control' : 'CapsLock']: new LabeledAction('NORMAL', () => {
+        this.switchMode('normalCaps');
+      }),
     } as SubmenuConfig;
   }
 
@@ -631,6 +657,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
+  /** Switch keymenu mode and update the mode label. Called by AppComponent. */
+  switchMode(modeName: string): void {
+    this.keyMenu.switchMode(modeName);
+  }
+
   private refreshActiveKeyPath() {
     const currentMode = this.keyMenu.currentMode;
     if (!(currentMode instanceof USQwertyMode)) {
@@ -639,6 +670,54 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     this.activeKeyPath = currentMode.submenuKeyStringStack.filter((key) => key.length > 0);
+    this.updateModeLabel();
+  }
+
+  /** Mode label color mapping — readable on both light and dark themes. */
+  private static readonly MODE_LABEL_COLORS: Record<string, string> = {
+    normal: '#5b9bd5',      // blue
+    normalCaps: '#ed7d31',  // orange
+    labelEdit: '#70ad47',   // green
+    labelEditCaps: '#ed7d31', // orange
+  };
+
+  private updateModeLabel() {
+    const modeName = this.keyMenu.currentMode.name;
+    const color = KeymenuComponent.MODE_LABEL_COLORS[modeName] ?? '#888888';
+
+    // Build display: mode name, then submenu path from active key labels
+    let displayName: string;
+    if (modeName === 'labelEdit') {
+      displayName = 'edit';
+    } else if (modeName === 'labelEditCaps') {
+      displayName = 'EDIT';
+    } else if (modeName === 'normalCaps') {
+      displayName = 'NORMAL';
+    } else {
+      displayName = modeName;
+    }
+
+    // Append submenu breadcrumb if we're deeper than root
+    if (this.activeKeyPath.length > 0) {
+      const currentMode = this.keyMenu.currentMode;
+      if (currentMode instanceof USQwertyMode) {
+        // Get the label of each submenu key from the stack
+        const labels: string[] = [];
+        for (let i = 0; i < currentMode.stack.length - 1; i++) {
+          const submenu = currentMode.stack[i];
+          const nextKey = currentMode.submenuKeyStringStack[i + 1] as KeyString;
+          if (nextKey && submenu.keys[nextKey]) {
+            const keyObj = submenu.keys[nextKey]!
+            labels.push(keyObj.label);
+          }
+        }
+        if (labels.length > 0) {
+          displayName += ' > ' + labels.join(' > ');
+        }
+      }
+    }
+
+    this.keyMenu.updateModeLabel(displayName, color);
   }
 
   private handleDoubleShiftReturnToNormal(event: KeyboardEvent): boolean {
@@ -659,10 +738,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
-    this.keyMenu.switchMode('normal');
+    const targetMode = modeName === 'labelEditCaps' ? 'normalCaps' : 'normal';
+    this.switchMode(targetMode);
     this.resetInteractionState();
     this.resetHelpMode();
-    this.refreshActiveKeyPath();
     return true;
   }
 
@@ -809,16 +888,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenu.currentMode.name === 'labelEditCaps';
 
     if (inLabelEdit) {
+      const capsExit = this.keyMenu.currentMode.name === 'labelEditCaps';
+      const exitTarget = capsExit ? 'normalCaps' : 'normal';
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
         this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
-        this.keyMenu.switchMode('normal');
-        this.refreshActiveKeyPath();
+        this.switchMode(exitTarget);
         return;
       }
       if (event.key === 'Enter' && event.shiftKey) {
         this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
-        this.keyMenu.switchMode('normal');
-        this.refreshActiveKeyPath();
+        this.switchMode(exitTarget);
         return;
       }
     }
@@ -844,10 +923,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // Only at root level — if we're inside a submenu, 'i' may be zoom or something else
     const currentMode = this.keyMenu.currentMode;
     const atRootLevel = currentMode instanceof USQwertyMode && currentMode.stack.length === 1;
+    const eventKey = KeymenuComponent.normalizeEventKey(event);
     if (currentMode.name === 'normal' && !event.repeat && atRootLevel &&
-        event.key === this.keyAssignments.root.editSubmenu) {
+        eventKey === this.keyAssignments.root.editSubmenu) {
       this.editPending = true;
-    } else if (this.editPending && event.key !== this.keyAssignments.root.editSubmenu) {
+    } else if (this.editPending && eventKey !== this.keyAssignments.root.editSubmenu) {
       // Any child key press cancels tap-to-edit (user is using the submenu)
       this.editPending = false;
     }
@@ -872,15 +952,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.keyMenu.handleKeyUp(event);
     this.refreshActiveKeyPath();
 
+    const eventKey = KeymenuComponent.normalizeEventKey(event);
+
     // Tap edit submenu key (e) without selecting a child → fire EDIT_SELECTED
-    if (event.key === this.keyAssignments.root.editSubmenu && this.editPending) {
+    if (eventKey === this.keyAssignments.root.editSubmenu && this.editPending) {
       this.editPending = false;
       this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED});
       return;
     }
 
     // If insert submenu key (f) is released, handle pending/drag states
-    if (event.key === this.keyAssignments.root.insertSubmenu) {
+    if (eventKey === this.keyAssignments.root.insertSubmenu) {
       this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive);
       // If node creation was pending (type key pressed but not released), create the node now
       if (this.insertNodePending) {
@@ -888,14 +970,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.insertNodePending = false;
         this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: this.pendingNodeShape});
         if (this.pendingNodeShape !== 'junction') {
-          this.keyMenu.switchMode('labelEdit');
+          this.switchMode('labelEdit');
         }
         return;
       }
       if (this.insertDragActive) {
         this.insertDragActive = false;
         if (this.pendingNodeShape !== 'junction') {
-          this.keyMenu.switchMode('labelEdit');
+          this.switchMode('labelEdit');
         }
       }
       return;
@@ -903,7 +985,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // Pending node insert: releasing type key without pressing a direction creates node at crosshairs.
     // Only fires if insert submenu key (f) is still held (we're still in the insert context).
-    if (this.insertNodePending && event.key === this.pendingInsertTypeKey) {
+    if (this.insertNodePending && eventKey === this.pendingInsertTypeKey) {
       this.log.log('[keymenu] type key released with pending — creating node at crosshairs');
       this.insertNodePending = false;
       this.insertDragActive = true;
@@ -914,12 +996,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
     }
 
-    if (this.directedEdgeActive && event.key === this.keyAssignments.insert.edge) {
+    if (this.directedEdgeActive && eventKey === this.keyAssignments.insert.edge) {
       this.directedEdgeActive = false;
       this.keyMenuOut.emit({kind: DACommandType.FINALIZE_DIRECTED_EDGE});
     }
 
-    if (this.selectDragHoldActive && event.key === this.keyAssignments.root.selectDragSubmenu) {
+    if (this.selectDragHoldActive && eventKey === this.keyAssignments.root.selectDragSubmenu) {
       this.selectDragHoldActive = false;
       this.keyMenuOut.emit({kind: DACommandType.EXIT_DRAG_MODE});
     }

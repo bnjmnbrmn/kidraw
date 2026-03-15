@@ -11,6 +11,7 @@ export interface KeyMenuConfig<T, ModeName extends string = string> {
   modes: KeyMenuModeConfigs<T, ModeName>;
   initialModeName?: ModeName;
   stageBackground?: string;
+  onModeSwitch?: (newModeName: string) => void;
 }
 
 
