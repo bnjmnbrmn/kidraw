@@ -23,6 +23,8 @@ export interface CursorConfig {
   largeDistance: number;
   initialRepeatDelayMs: number;
   repeatIntervalMs: number;
+  labelEditInitialDelayMs: number;
+  labelEditIntervalMs: number;
 }
 
 export interface VisualConfig {
@@ -55,5 +57,7 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
     largeDistance: 200,
     initialRepeatDelayMs: 0,
     repeatIntervalMs: 100,
+    labelEditInitialDelayMs: 400,
+    labelEditIntervalMs: 50,
   },
 };

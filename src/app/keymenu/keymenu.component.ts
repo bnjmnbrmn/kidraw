@@ -214,9 +214,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildLabelEditSubmenuConfig(capsMode: boolean): SubmenuConfig {
     const insertChar = (ch: string) => new LabeledAction(ch, () =>
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
+    const cursor = this.visualConfig.config.cursor;
 
     const config: SubmenuConfig = {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 30 },
+      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
     } as SubmenuConfig;
 
     // Letter keys
@@ -250,14 +251,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', this.buildShiftSubmenuConfig(capsMode));
 
     // CapsLock toggles uppercase/lowercase mode
+    // With capsLockCtrlSwap: physical CapsLock sends 'Control', physical Ctrl sends 'CapsLock'
+    // Bind based on physical position so CapsLock always toggles caps
     const capsLabel = capsMode ? 'lowercase' : 'UPPERCASE';
     const capsTarget = capsMode ? 'labelEdit' : 'labelEditCaps';
-    (config as any)['CapsLock'] = new LabeledAction(capsLabel, () => {
+    const capsKey = this.keyboardConfig.capsLockCtrlSwap ? 'Control' : 'CapsLock';
+    const ctrlKey = this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control';
+    (config as any)[capsKey] = new LabeledAction(capsLabel, () => {
       this.keyMenu.switchMode(capsTarget);
     });
-
-    // Ctrl submenu (same as normal mode)
-    (config as any)['Control'] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+    (config as any)[ctrlKey] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
 
     return config;
   }
@@ -265,9 +268,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildShiftSubmenuConfig(capsMode: boolean): SubmenuConfig {
     const insertChar = (ch: string) => new LabeledAction(ch, () =>
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
+    const cursor = this.visualConfig.config.cursor;
 
     const config: SubmenuConfig = {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 30 },
+      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
     } as SubmenuConfig;
 
     // Shifted letters (opposite of current caps mode)
