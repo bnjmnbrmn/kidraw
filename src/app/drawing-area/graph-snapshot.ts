@@ -28,6 +28,7 @@ export interface DANodeSnapshot {
   baseWidth?: number;
   baseHeight?: number;
   baseFontSize?: number;
+  pinned?: boolean;
 }
 
 export interface DAEdgeSnapshot {

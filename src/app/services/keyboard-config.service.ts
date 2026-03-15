@@ -28,6 +28,7 @@ export class KeyboardConfigService {
   set capsLockCtrlSwap(value: boolean) {
     this._capsLockCtrlSwap = value;
     localStorage.setItem(CAPSLOCK_KEY, String(value));
+    this._configChanged.next();
   }
 
   get hideFingerBlockedKeys(): boolean {

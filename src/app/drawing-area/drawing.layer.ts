@@ -150,6 +150,30 @@ export class DrawingLayer extends Konva.Layer {
     this.daEdges.push(daEdge);
   }
 
+  clearAll(): void {
+    // Remove all edges first (cleans up node references)
+    while (this.daEdges.length > 0) {
+      this.removeEdge(this.daEdges[this.daEdges.length - 1]);
+    }
+    // Remove all nodes
+    while (this.daNodes.length > 0) {
+      const node = this.daNodes[this.daNodes.length - 1];
+      node.konvaGroup.remove();
+      this.daNodes.pop();
+    }
+    resetIdCounter();
+  }
+
+  addRawNode(node: DANode): void {
+    this.daNodeGroup.add(node.konvaGroup);
+    this.daNodes.push(node);
+  }
+
+  addRawEdge(edge: DAEdge): void {
+    this.daEdgeGroup.add(edge.konvaGroup);
+    this.daEdges.push(edge);
+  }
+
   getDaEdgesIntersectingGroup(group: Konva.Group) {
     return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, group));
   }
@@ -169,6 +193,7 @@ export class DrawingLayer extends Konva.Layer {
       baseWidth: node.BASE_WIDTH,
       baseHeight: node.BASE_HEIGHT,
       baseFontSize: node.BASE_FONT_SIZE,
+      pinned: node.pinned,
     }));
 
     const edges: DAEdgeSnapshot[] = this.daEdges.map(edge => ({
@@ -215,6 +240,7 @@ export class DrawingLayer extends Konva.Layer {
       node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
       node.applyTextOverflow();
       node.isSelected = ns.isSelected;
+      node.pinned = ns.pinned ?? false;
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);
       nodeMap.set(ns.id, node);

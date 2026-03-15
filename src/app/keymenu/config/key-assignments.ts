@@ -76,6 +76,8 @@ export interface KeymenuKeyAssignments {
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
+    readonly layoutSubmenu: KeyString;
+    readonly togglePin: KeyString;
   };
   readonly overflow: {
     readonly clip: KeyString;
@@ -84,6 +86,12 @@ export interface KeymenuKeyAssignments {
     readonly widenH: KeyString;
     readonly widenV: KeyString;
     readonly widenBoth: KeyString;
+  };
+  readonly layout: {
+    readonly forceDirected: KeyString;
+    readonly treeDown: KeyString;
+    readonly treeRight: KeyString;
+    readonly grid: KeyString;
   };
 }
 
@@ -151,8 +159,9 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'm',
     reload: 'r',
   },
-  edit: {overflowSubmenu: 'k'},
+  edit: {overflowSubmenu: 'k', layoutSubmenu: 'l', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
+  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g'},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -219,6 +228,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'm',
     reload: 'r',
   },
-  edit: {overflowSubmenu: 'u'},
+  edit: {overflowSubmenu: 'u', layoutSubmenu: 'l', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
+  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g'},
 };

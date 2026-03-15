@@ -81,8 +81,38 @@ export class KMSubmenu<T> {
     return new DefaultKMActionSubmenuKey(keyString, submenuLabel, this.mode, submenuConfig, action, () => {}, () => {}, () => {}, style, this.depth + 1, this.palette, [...this.heldKeyStrings, keyString], this.hideFingerBlocked, this.getDisplayLabel(keyString), this.keyboardLayout, getKeyWidth(keyString), this.capsLockSwap, this.visualConfig);
   }
 
-  handleKeyUp(event: KeyboardEvent): void {
+  /**
+   * Map a KeyboardEvent to the KeyString used in the submenu config.
+   *
+   * Handles two quirks:
+   * 1. Shift held → browser sends uppercase letters ('H' instead of 'h');
+   *    fall back to lowercase if uppercase has no binding.
+   * 2. Right-side modifier keys share event.key with left-side ('Shift' for
+   *    both); use event.code to resolve to 'RShift' / 'RControl' / 'RAlt'.
+   */
+  private resolveKey(event: KeyboardEvent): KeyString {
+    // Right-side modifiers: prefer 'RShift'/'RControl'/'RAlt' if bound
+    const codeToKeyString: Record<string, KeyString> = {
+      'ShiftRight': 'RShift' as KeyString,
+      'ControlRight': 'RControl' as KeyString,
+      'AltRight': 'RAlt' as KeyString,
+    };
+    const rightKey = codeToKeyString[event.code];
+    if (rightKey && this.keys[rightKey]) return rightKey;
+
     const key = event.key as KeyString;
+    if (this.keys[key]) return key;
+
+    // Uppercase letter fallback (Shift held)
+    if (event.key.length === 1 && event.key >= 'A' && event.key <= 'Z') {
+      const lower = event.key.toLowerCase() as KeyString;
+      if (this.keys[lower]) return lower;
+    }
+    return key;
+  }
+
+  handleKeyUp(event: KeyboardEvent): void {
+    const key = this.resolveKey(event);
     if (this.keys[key]) {
       this.unhighlightKey(key);
       const kmKey = this.keys[key]!;
@@ -122,7 +152,7 @@ export class KMSubmenu<T> {
   }
 
   handleKeyDown(event: KeyboardEvent): void {
-    const key = event.key as KeyString;
+    const key = this.resolveKey(event);
     if (!this.keys[key]) {
       return;
     }

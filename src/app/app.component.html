@@ -1,4 +1,4 @@
-<app-header/>
+<app-header (loadSampleGraph)="onLoadSampleGraph($event)"/>
 
 <app-drawing-area [commands]="commandsSubject.asObservable()"
                   (daOut)="handleDANotification($event)"

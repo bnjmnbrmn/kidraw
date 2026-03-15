@@ -187,3 +187,19 @@ input[type="color"] {
 .restore-defaults-btn:hover {
   opacity: 0.8;
 }
+
+select {
+  background-color: var(--kd-header-bg);
+  color: var(--kd-header-text);
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+select option {
+  background-color: var(--kd-header-bg);
+  color: var(--kd-header-text);
+}

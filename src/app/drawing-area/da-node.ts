@@ -10,7 +10,12 @@ export class DANode {
   readonly group: Konva.Group;
   private _shape: Konva.Shape;
   private readonly _label: Konva.Text;
+  private readonly _cursor: Konva.Line;
+  private _cursorBlinkTimer?: number;
   private _isSelected: boolean = false;
+  private _pinned: boolean = false;
+  private readonly _pinIndicator: Konva.Text;
+  private _showPinIndicator: boolean = false;
 
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
@@ -69,6 +74,26 @@ export class DANode {
       visible: !isJunction,
     });
     this.group.add(this._label);
+
+    // Text cursor — hidden until label edit mode
+    this._cursor = new Konva.Line({
+      points: [0, 0, 0, this._fontSize],
+      stroke: colors?.text ?? 'black',
+      strokeWidth: 2,
+      visible: false,
+    });
+    this.group.add(this._cursor);
+
+    // Pin indicator — small marker at top-right, hidden by default
+    this._pinIndicator = new Konva.Text({
+      text: '\u25A0',
+      fontSize: 10,
+      x: this._nodeWidth - 14,
+      y: 2,
+      fill: colors?.stroke ?? 'black',
+      visible: false,
+    });
+    this.group.add(this._pinIndicator);
   }
 
   private createShape(w: number, h: number, shape: NodeShape,
@@ -112,6 +137,7 @@ export class DANode {
       this._shape.stroke(colors.stroke);
       this._label.fill(colors.text);
     }
+    this._pinIndicator.fill(colors.stroke);
   }
 
   changeShape(newShape: NodeShape, colors?: { fill?: string; stroke?: string; text?: string }): void {
@@ -211,6 +237,78 @@ export class DANode {
 
   zIndex() {
     return this.group.zIndex();
+  }
+
+  get pinned(): boolean {
+    return this._pinned;
+  }
+
+  set pinned(value: boolean) {
+    this._pinned = value;
+    this.updatePinIndicatorVisibility();
+  }
+
+  /** Call when waypoint visibility changes to show/hide pin indicators. */
+  setPinIndicatorVisible(show: boolean): void {
+    this._showPinIndicator = show;
+    this.updatePinIndicatorVisibility();
+  }
+
+  private updatePinIndicatorVisibility(): void {
+    this._pinIndicator.visible(this._pinned && this._showPinIndicator && this._nodeShape !== 'junction');
+  }
+
+  private updatePinIndicatorPosition(): void {
+    this._pinIndicator.x(this._nodeWidth - 14);
+    this._pinIndicator.y(2);
+  }
+
+  /**
+   * Compute the point on this node's shape boundary where a line from
+   * (fromX, fromY) toward the node center intersects the shape.
+   * Returns coordinates in drawing-layer space.
+   */
+  getEdgePoint(fromX: number, fromY: number): { x: number; y: number } {
+    const pos = this.group.position();
+    const hw = this.NODE_WIDTH / 2;
+    const hh = this.NODE_HEIGHT / 2;
+    const cx = pos.x + hw;
+    const cy = pos.y + hh;
+
+    const dx = cx - fromX;
+    const dy = cy - fromY;
+    if (dx === 0 && dy === 0) return { x: cx, y: cy };
+
+    switch (this._nodeShape) {
+      case 'circle': {
+        // Ellipse: (px/rx)^2 + (py/ry)^2 = 1
+        // Direction from center toward fromX,fromY: (-dx, -dy)
+        const rx = hw;
+        const ry = hh;
+        const ndx = -dx;
+        const ndy = -dy;
+        const s = 1 / Math.sqrt((ndx * ndx) / (rx * rx) + (ndy * ndy) / (ry * ry));
+        return { x: cx + s * ndx, y: cy + s * ndy };
+      }
+      case 'diamond': {
+        // Diamond vertices: top (cx, cy-hh), right (cx+hw, cy), bottom (cx, cy+hh), left (cx-hw, cy)
+        // Line from center toward fromX,fromY intersects one of the four edges.
+        // Each edge is at |px/hw| + |py/hh| = 1 in local coords.
+        const ndx = -dx;
+        const ndy = -dy;
+        const s = 1 / (Math.abs(ndx) / hw + Math.abs(ndy) / hh);
+        return { x: cx + s * ndx, y: cy + s * ndy };
+      }
+      default: {
+        // Box (and junction): rectangular intersection
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        const tX = absDx > 0 ? hw / absDx : Infinity;
+        const tY = absDy > 0 ? hh / absDy : Infinity;
+        const t = Math.min(tX, tY);
+        return { x: cx - t * dx, y: cy - t * dy };
+      }
+    }
   }
 
   // Edge management methods
@@ -472,6 +570,46 @@ export class DANode {
     }
     this._label.width(w);
     this._label.height(h);
+    this.updatePinIndicatorPosition();
+  }
+
+  showCursor(): void {
+    if (this.nodeShape === 'junction') return;
+    this.updateCursorPosition();
+    this._cursor.visible(true);
+    this._cursor.opacity(1);
+    this._cursorBlinkTimer = window.setInterval(() => {
+      this._cursor.opacity(this._cursor.opacity() > 0 ? 0 : 1);
+    }, 530);
+  }
+
+  hideCursor(): void {
+    this._cursor.visible(false);
+    if (this._cursorBlinkTimer !== undefined) {
+      window.clearInterval(this._cursorBlinkTimer);
+      this._cursorBlinkTimer = undefined;
+    }
+  }
+
+  updateCursorPosition(): void {
+    const text = this._label.text();
+    // Split by newlines first, then word-wrap the last paragraph
+    const lines = text.split('\n');
+    const lastLine = lines[lines.length - 1] || '';
+
+    // Measure the last line's width
+    const lastLineWidth = this.measureNaturalWidth(lastLine, this._fontSize);
+
+    // For center-aligned text: cursor goes at the right edge of the last line
+    const cursorX = (this._nodeWidth + lastLineWidth) / 2;
+
+    // Measure total text height to find vertical position
+    const totalHeight = this.measureTextHeight(text, this._nodeWidth, this._fontSize);
+    // verticalAlign: 'middle' → text starts at (nodeHeight - totalHeight) / 2
+    const textStartY = (this._nodeHeight - totalHeight) / 2;
+    const cursorY = textStartY + totalHeight - this._fontSize;
+
+    this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

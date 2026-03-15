@@ -2,6 +2,8 @@ export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction';
 
 export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
 
+export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid';
+
 export enum DACommandType {
   MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
@@ -66,6 +68,9 @@ export enum DACommandType {
   PAN_DOWN = 'PAN_DOWN',
   SELECT_NEXT_EDGE = 'SELECT_NEXT_EDGE',
   FOLLOW_SELECTED_EDGE = 'FOLLOW_SELECTED_EDGE',
+  LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
+  TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
+  APPLY_LAYOUT = 'APPLY_LAYOUT',
 }
 
 export type DACommand =
@@ -131,3 +136,6 @@ export type DACommand =
   | {kind: DACommandType.PAN_DOWN; distance?: number}
   | {kind: DACommandType.SELECT_NEXT_EDGE; direction: 'outgoing' | 'incoming'}
   | {kind: DACommandType.FOLLOW_SELECTED_EDGE}
+  | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
+  | {kind: DACommandType.TOGGLE_PIN_SELECTED}
+  | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}

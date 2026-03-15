@@ -12,7 +12,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, LayoutType, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -261,6 +261,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenu.switchMode(capsTarget);
     });
     (config as any)[ctrlKey] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+    // Right Control always opens Ctrl submenu regardless of swap setting
+    (config as any)['RControl'] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
 
     return config;
   }
@@ -334,6 +336,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const edit = this.keyAssignments.edit;
     return {
       [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
+      [edit.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
+      [edit.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
     } as SubmenuConfig;
   }
 
@@ -347,6 +351,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [overflow.widenH]:     new LabeledAction('Widen →',      emit('widen-h')),
       [overflow.widenV]:     new LabeledAction('Widen ↓',      emit('widen-v')),
       [overflow.widenBoth]:  new LabeledAction('Auto Size',    emit('widen-both')),
+    } as SubmenuConfig;
+  }
+
+  private buildLayoutSubmenuConfig(): SubmenuConfig {
+    const layout = this.keyAssignments.layout;
+    const emit = (l: LayoutType) => () => this.keyMenuOut.emit({kind: DACommandType.APPLY_LAYOUT, layout: l});
+    return {
+      [layout.forceDirected]: new LabeledAction('Force Layout', emit('force-directed')),
+      [layout.treeDown]:      new LabeledAction('Tree Down',    emit('tree-down')),
+      [layout.treeRight]:     new LabeledAction('Tree Right',   emit('tree-right')),
+      [layout.grid]:          new LabeledAction('Grid',         emit('grid')),
     } as SubmenuConfig;
   }
 
@@ -472,6 +487,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
       [misc.submenu]: new LabeledSubmenuConfig('Misc...', this.buildMiscSubmenuConfig()),
       [this.keyAssignments.ctrl.submenu]: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
+      'RControl': new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
     } as SubmenuConfig;
   }
 

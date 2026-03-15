@@ -3,7 +3,7 @@ import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject} from 'rxjs';
-import {DACommand} from './drawing-area/command.model';
+import {DACommand, DACommandType} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
 import {DebugLogService} from './services/debug-log.service';
 
@@ -59,5 +59,9 @@ export class AppComponent {
 
   onMovementSpeedChange(speed: number) {
     this.movementSpeed = speed;
+  }
+
+  onLoadSampleGraph(graphId: string) {
+    this.commandsSubject.next({kind: DACommandType.LOAD_SAMPLE_GRAPH, graphId});
   }
 }

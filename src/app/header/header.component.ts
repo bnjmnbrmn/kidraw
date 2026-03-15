@@ -1,9 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, EventEmitter, inject, Output } from '@angular/core';
 import { ThemeService, ThemePalette } from '../services/theme.service';
 import { KeyboardConfigService } from '../services/keyboard-config.service';
 import { KeyboardLayout } from '../lib/keymenu/layouts/us-qwerty';
 import { VisualConfigService } from '../services/visual-config.service';
 import { VisualConfig } from '../services/visual-config.model';
+import { DemoDataService } from '../services/demo-data.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -49,9 +50,12 @@ export class HeaderComponent {
   zoomLevel: number = 100;
   waypointsVisible: boolean = false;
 
+  @Output() loadSampleGraph = new EventEmitter<string>();
+
   themeService = inject(ThemeService);
   keyboardConfig = inject(KeyboardConfigService);
   vc = inject(VisualConfigService);
+  demoData = inject(DemoDataService);
 
   readonly simpleColorFields = SIMPLE_COLOR_FIELDS;
   readonly arrayColorFields = ARRAY_COLOR_FIELDS;
@@ -114,6 +118,16 @@ export class HeaderComponent {
   onShadowColorChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.vc.updatePalette(this.themeService.theme, { cardShadowColor: value });
+  }
+
+  onSampleGraphChange(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const value = select.value;
+    if (value) {
+      this.loadSampleGraph.emit(value);
+      select.value = '';
+      select.blur();
+    }
   }
 
   restoreDefaults() {

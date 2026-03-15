@@ -9,13 +9,14 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
-import { DACommand, DACommandType, NodeShape, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, LayoutType, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
+import { applyLayout } from './graph-layout';
 
 @Component({
   selector: 'app-drawing-area',
@@ -411,6 +412,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.FOLLOW_SELECTED_EDGE:
         this.followSelectedEdge();
         break;
+      case DACommandType.LOAD_SAMPLE_GRAPH:
+        this.loadSampleGraph(command.graphId);
+        break;
+      case DACommandType.TOGGLE_PIN_SELECTED:
+        this.togglePinSelected();
+        break;
+      case DACommandType.APPLY_LAYOUT:
+        this.applyGraphLayout(command.layout);
+        break;
       default:
         this.assertNever(command);
     }
@@ -503,10 +513,43 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+  private loadSampleGraph(graphId: string) {
+    this.finishTweens();
+    this.unselectAllWaypoints();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.demoDataService.loadGraph(graphId, this.drawingLayer);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.drawingLayer.applyThemeColors(palette);
+    this.recenterCrosshairs();
+    this.emitZoomLevel();
+    this.checkAndEmitEditState();
+  }
+
+  private togglePinSelected() {
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const hovered = selected.length > 0 ? selected : this.getDANodesContainingCrosshairs();
+    const targets = hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+    targets.forEach(n => { n.pinned = !n.pinned; });
+    this.drawingLayer.batchDraw();
+  }
+
+  private applyGraphLayout(layout: LayoutType) {
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    const nodes = this.drawingLayer.getDANodes();
+    const edges = this.drawingLayer.getDAEdges();
+    applyLayout(layout, nodes, edges);
+    // Recalculate all edge endpoints after nodes move
+    this.updateEdgesForResizedNodes(nodes);
+    this.drawingLayer.batchDraw();
+  }
+
   private exitLabelEditMode() {
     this.finishTweens();
     this.log.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
+    this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
     this.drawingLayer.unselectAll();
     this.unselectAllWaypoints();
     this.unselectAllLabels();
@@ -524,12 +567,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.hideCrosshairs();
     const resized = this.drawingLayer.appendTextToSelected(key);
     this.updateEdgesForResizedNodes(resized);
+    this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
   }
 
   private deleteLastChar() {
     this.finishTweens();
     const resized = this.drawingLayer.deleteLastCharFromSelected();
     this.updateEdgesForResizedNodes(resized);
+    this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
@@ -1153,6 +1198,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.addEdge(srcNode, newNode);
     }
 
+    newNode.showCursor();
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -1202,6 +1248,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.addEdge(srcNode, newNode);
     }
 
+    newNode.showCursor();
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -1492,6 +1539,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (selectedNodes.length > 0 ||
         selectedLabels.length > 0) {
        this.log.log('  -> Entering edit mode due to existing selection.');
+       selectedNodes.forEach(n => n.showCursor());
        this.daOut.emit({kind: "started-label-editing-mode"});
        return;
     }
@@ -1512,6 +1560,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (nodes.length > 0) {
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
       this.singleItemSelect();
+      this.drawingLayer.getSelectedDANodes().forEach(n => n.showCursor());
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
@@ -1527,6 +1576,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         waypoint.setVisibleForSelection(this.waypointsVisible);
       });
     });
+    // Pin indicators share visibility with waypoints
+    this.drawingLayer.getDANodes().forEach(n => n.setPinIndicatorVisible(this.waypointsVisible));
   }
 
   private toggleWaypointVisibility(): void {

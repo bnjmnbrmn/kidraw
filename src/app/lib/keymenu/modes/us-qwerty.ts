@@ -111,8 +111,17 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.stackTop.handleKeyDown(event)
     }
 
+    private static resolveKeyString(event: KeyboardEvent): KeyString {
+        switch (event.code) {
+            case 'ShiftRight': return 'RShift' as KeyString;
+            case 'ControlRight': return 'RControl' as KeyString;
+            case 'AltRight': return 'RAlt' as KeyString;
+            default: return event.key as KeyString;
+        }
+    }
+
     handleKeyUp(event: KeyboardEvent) {
-        const key = event.key as KeyString;
+        const key = USQwertyMode.resolveKeyString(event);
         this.stackTop.handleKeyUp(event);
 
         if (this.submenuKeyStringStack.includes(key) && this.stack.length > 1) {

@@ -53,18 +53,30 @@ export class KeyMenu<T> {
     this.currentMode.konvaGroup.show();
   }
 
-  handleKeyDown(event: KeyboardEvent) {
-    // console.log("KeyMenu received " + event.key + " down")
+  /**
+   * Resolve a unique tracking key for keysDown: right-side modifiers get
+   * distinct names so that e.g. holding both Shift keys works correctly.
+   */
+  private static resolveTrackingKey(event: KeyboardEvent): string {
+    switch (event.code) {
+      case 'ShiftRight': return 'RShift';
+      case 'ControlRight': return 'RControl';
+      case 'AltRight': return 'RAlt';
+      default: return event.key;
+    }
+  }
 
-    if (!this.keysDown.has(event.key)) {
-      this.keysDown.add(event.key);
+  handleKeyDown(event: KeyboardEvent) {
+    const trackingKey = KeyMenu.resolveTrackingKey(event);
+    if (!this.keysDown.has(trackingKey)) {
+      this.keysDown.add(trackingKey);
       this.currentMode.handleKeyDown(event)
     }
   }
 
   handleKeyUp(event: KeyboardEvent) {
-    // console.log("KeyMenu received " + event.key + " up")
-    this.keysDown.delete(event.key);
+    const trackingKey = KeyMenu.resolveTrackingKey(event);
+    this.keysDown.delete(trackingKey);
     this.currentMode.handleKeyUp(event)
   }
 

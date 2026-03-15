@@ -233,63 +233,11 @@ export class DAEdge {
   }
 
   private calculateNodeEdgePoint(fromX: number, fromY: number, toNode: DANode): { x: number; y: number } {
-    const toPos = toNode.konvaGroup.position();
-    const halfWidth = toNode.NODE_WIDTH / 2;
-    const halfHeight = toNode.NODE_HEIGHT / 2;
-    const toCenterX = toPos.x + halfWidth;
-    const toCenterY = toPos.y + halfHeight;
-    
-    const dx = toCenterX - fromX;
-    const dy = toCenterY - fromY;
-
-    if (dx === 0 && dy === 0) {
-      return { x: toCenterX, y: toCenterY };
-    }
-    
-    // Calculate the intersection point with the destination node
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-    
-    // Determine which edge the line hits first
-    const tX = absDx > 0 ? halfWidth / absDx : Infinity;
-    const tY = absDy > 0 ? halfHeight / absDy : Infinity;
-    const t = Math.min(tX, tY);
-    
-    // Calculate the intersection point (offset from dest center, toward src)
-    const edgeX = toCenterX - t * dx;
-    const edgeY = toCenterY - t * dy;
-    
-    return { x: edgeX, y: edgeY };
+    return toNode.getEdgePoint(fromX, fromY);
   }
 
   private calculateSourceEdgePoint(toX: number, toY: number, fromNode: DANode): { x: number; y: number } {
-    const fromPos = fromNode.konvaGroup.position();
-    const halfWidth = fromNode.NODE_WIDTH / 2;
-    const halfHeight = fromNode.NODE_HEIGHT / 2;
-    const fromCenterX = fromPos.x + halfWidth;
-    const fromCenterY = fromPos.y + halfHeight;
-    
-    const dx = toX - fromCenterX;
-    const dy = toY - fromCenterY;
-
-    if (dx === 0 && dy === 0) {
-      return { x: fromCenterX, y: fromCenterY };
-    }
-    
-    // Calculate the intersection point with the source node
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-    
-    // Determine which edge the line hits first
-    const tX = absDx > 0 ? halfWidth / absDx : Infinity;
-    const tY = absDy > 0 ? halfHeight / absDy : Infinity;
-    const t = Math.min(tX, tY);
-    
-    // Calculate the intersection point (offset from src center, toward dest)
-    const edgeX = fromCenterX + t * dx;
-    const edgeY = fromCenterY + t * dy;
-    
-    return { x: edgeX, y: edgeY };
+    return fromNode.getEdgePoint(toX, toY);
   }
 
   public calculatePoints(srcNode: DANode, destNode: DANode): number[] {
@@ -297,39 +245,13 @@ export class DAEdge {
       return this.buildSelfLoopPoints(srcNode).flatMap((point) => [point.x, point.y]);
     }
 
-    const srcPos = srcNode.konvaGroup.position();
-    const destPos = destNode.konvaGroup.position();
+    const srcCenter = this.getNodeCenter(srcNode);
+    const destCenter = this.getNodeCenter(destNode);
 
-    const srcHalfWidth = srcNode.NODE_WIDTH / 2;
-    const srcHalfHeight = srcNode.NODE_HEIGHT / 2;
-    const destHalfWidth = destNode.NODE_WIDTH / 2;
-    const destHalfHeight = destNode.NODE_HEIGHT / 2;
+    const srcPoint = srcNode.getEdgePoint(destCenter.x, destCenter.y);
+    const destPoint = destNode.getEdgePoint(srcCenter.x, srcCenter.y);
 
-    const srcCenterX = srcPos.x + srcHalfWidth;
-    const srcCenterY = srcPos.y + srcHalfHeight;
-    const destCenterX = destPos.x + destHalfWidth;
-    const destCenterY = destPos.y + destHalfHeight;
-
-    const dx = destCenterX - srcCenterX;
-    const dy = destCenterY - srcCenterY;
-
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    const tSrcX = absDx > 0 ? srcHalfWidth / absDx : Infinity;
-    const tSrcY = absDy > 0 ? srcHalfHeight / absDy : Infinity;
-    const tSrc = Math.min(tSrcX, tSrcY);
-
-    const tDestX = absDx > 0 ? destHalfWidth / absDx : Infinity;
-    const tDestY = absDy > 0 ? destHalfHeight / absDy : Infinity;
-    const tDest = Math.min(tDestX, tDestY);
-
-    const srcX = srcCenterX + tSrc * dx;
-    const srcY = srcCenterY + tSrc * dy;
-    const arrowEndX = destCenterX - tDest * dx;
-    const arrowEndY = destCenterY - tDest * dy;
-
-    return [srcX, srcY, arrowEndX, arrowEndY];
+    return [srcPoint.x, srcPoint.y, destPoint.x, destPoint.y];
   }
 
   private getNodeCenter(node: DANode): {x: number; y: number} {
