@@ -18,11 +18,11 @@ html, body {
 }
 
 :root[data-theme="dark"] {
-  --kd-header-bg: #1e293b;
-  --kd-header-text: #e2e8f0;
-  --kd-drawing-bg: #1e293b;
-  --kd-drawing-canvas-bg: #1e293b;
-  --kd-keymenu-bg: #0f172a;
-  --kd-zoom-bg: rgba(30, 41, 59, 0.8);
-  --kd-zoom-text: #e2e8f0;
+  --kd-header-bg: #111111;
+  --kd-header-text: #f0f0f0;
+  --kd-drawing-bg: #050505;
+  --kd-drawing-canvas-bg: #050505;
+  --kd-keymenu-bg: #111111;
+  --kd-zoom-bg: rgba(17, 17, 17, 0.8);
+  --kd-zoom-text: #f0f0f0;
 }

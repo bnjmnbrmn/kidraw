@@ -3,6 +3,7 @@ import { KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, getKeyWi
 import { USQwertyMode } from '../modes/us-qwerty';
 import { KMSubmenu } from './kmSubmenu';
 import { ThemePalette } from '../../../services/theme.service';
+import { VisualConfig } from '../../../services/visual-config.model';
 
 // ========== Interfaces ==========
 
@@ -267,11 +268,13 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     keyDisplayLabel?: string,
     keyboardLayout?: import('../layouts/us-qwerty').KeyboardLayout,
     keyWidth?: number,
+    capsLockSwap?: boolean,
+    visualConfig?: VisualConfig,
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'submenu', keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout, capsLockSwap ?? false, visualConfig);
   }
 
   get highlight(): boolean {
@@ -283,22 +286,10 @@ export class DefaultKMSubmenuKey<T> implements KMSubmenuKey {
     this.keyRect.shadowEnabled(this._highlight);
   }
 
-  onKeyDown(): void {
-    // Submenu key pressed - this is handled by KMSubmenu.handleKeyDown
-    // which calls mode.pushSubmenu(this)
-  }
-
-  onKeyDownBeforeRender(): void {
-    // Can be used for pre-render logic if needed
-  }
-
-  onKeyUp(): void {
-    // Submenu key released
-  }
-
-  onKeyUpBeforeRender(): void {
-    // Can be used for pre-render logic if needed
-  }
+  onKeyDown(): void {}
+  onKeyDownBeforeRender(): void {}
+  onKeyUp(): void {}
+  onKeyUpBeforeRender(): void {}
 }
 
 export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
@@ -324,11 +315,13 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     keyDisplayLabel?: string,
     keyboardLayout?: import('../layouts/us-qwerty').KeyboardLayout,
     keyWidth?: number,
+    capsLockSwap?: boolean,
+    visualConfig?: VisualConfig,
   ) {
     const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
-    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout);
+    this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout, capsLockSwap ?? false, visualConfig);
   }
 
   get highlight(): boolean {

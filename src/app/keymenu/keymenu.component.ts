@@ -15,7 +15,6 @@ import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
-import {PrintedInstructionKeyMenuModeConfig} from '../lib/keymenu/printedInstructionKMMode/printedInstructionKMMode';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
 import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 import {
@@ -78,11 +77,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
 
-  // Label-edit custom key repeat
-  private labelEditRepeatTimer?: number;
-  private readonly LABEL_EDIT_REPEAT_INITIAL_MS = 300;
-  private readonly LABEL_EDIT_REPEAT_INTERVAL_MS = 30;
-
   // Help mode state
   private helpModeState: 'inactive' | 'held' | 'sticky' = 'inactive';
   private spacebarDoublePress = new DoublePressTracker(325);
@@ -95,7 +89,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private get dragSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const mbn = this.keyAssignments.moveByNode;
+    const pz = this.keyAssignments.panZoom;
 
     return {
       [drag.up]: new LabeledAction('Drag Up', () => {
@@ -110,10 +104,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.right]: new LabeledAction('Drag Right', () => {
         this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT});
       }),
-      [mbn.zoomIn]: new LabeledAction('Zoom In', () => {
+      [pz.zoomIn]: new LabeledAction('Zoom In', () => {
         this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN});
       }),
-      [mbn.zoomOut]: new LabeledAction('Zoom Out', () => {
+      [pz.zoomOut]: new LabeledAction('Zoom Out', () => {
         this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT});
       }),
     } as SubmenuConfig;
@@ -128,8 +122,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: movementKeys, action: 'Move up/left/down/right'},
       {key: root.insertSubmenu, action: 'Insert submenu'},
       {key: `${root.selectDragSubmenu} (hold)`, action: 'Select + drag'},
-      {key: this.keyAssignments.speed.submenu, action: 'Fine move'},
-      {key: this.keyAssignments.pan.submenu, action: 'Pan'},
+      {key: this.keyAssignments.moveSpeed.bigger, action: 'Bigger move'},
+      {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
       {key: this.keyAssignments.moveByNode.submenu, action: 'Move by node'},
       {key: this.keyAssignments.moveByGraph.submenu, action: 'Move by graph'},
       {key: shared.select, action: 'Clear selection'},
@@ -199,58 +193,109 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       stageBackground: this.visualConfig.getEffectivePalette(this.themeService.theme).keymenuStageBackground,
       modes: {
         normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
-        labelEdit: this.buildLabelEditModeConfig(),
+        labelEdit: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
       }
     });
     this.refreshActiveKeyPath();
   }
 
 
-  private buildLabelEditModeConfig(): PrintedInstructionKeyMenuModeConfig<DACommand> {
-    return new PrintedInstructionKeyMenuModeConfig(
-      'Insert/edit text.  Use Shift-Shift, ESC or Ctrl-[ to return to Normal mode.',
-      (keyDownEvent: KeyboardEvent) => {
-        // Block system key repeat — we manage our own
-        if (keyDownEvent.repeat) return;
+  private static readonly SHIFTED_NUMBERS: Record<string, string> = {
+    '1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
+    '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+  };
 
-        const key = keyDownEvent.key;
+  private static readonly SHIFTED_PUNCT: Record<string, string> = {
+    '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|',
+    ';': ':', "'": '"', ',': '<', '.': '>', '/': '?', '`': '~',
+  };
 
-        // Exit keys don't repeat
-        if ((key === 'Enter' && keyDownEvent.shiftKey)
-          || (key === '[' && keyDownEvent.ctrlKey)
-          || key === 'Escape') {
-          this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
-          this.keyMenu.switchMode('normal');
-          return;
-        }
+  private buildLabelEditSubmenuConfig(capsMode: boolean): SubmenuConfig {
+    const insertChar = (ch: string) => new LabeledAction(ch, () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
 
-        // Build a repeatable action for this key, if applicable
-        let action: (() => void) | undefined;
+    const config: SubmenuConfig = {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 30 },
+    } as SubmenuConfig;
 
-        if (key === 'Backspace') {
-          action = () => this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR});
-        } else if (key.length === 1 && key.match(/^[\P{Cc}\P{Cn}\P{Cs}]+$/gu)) {
-          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: key});
-        } else if (key === 'Enter' && KeyMenu.noModifier(keyDownEvent)) {
-          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\n'});
-        } else if (key === 'Tab' && KeyMenu.noModifier(keyDownEvent)) {
-          action = () => this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\t'});
-        }
+    // Letter keys
+    for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
+      const ch = capsMode ? letter.toUpperCase() : letter;
+      (config as any)[letter] = insertChar(ch);
+    }
 
-        if (!action) return;
+    // Number keys
+    for (const digit of '1234567890') {
+      (config as any)[digit] = insertChar(digit);
+    }
 
-        // Fire immediately, then schedule repeat
-        action();
-        this.clearLabelEditRepeat();
-        this.labelEditRepeatTimer = window.setTimeout(() => {
-          this.labelEditRepeatTimer = window.setInterval(action!, this.LABEL_EDIT_REPEAT_INTERVAL_MS);
-        }, this.LABEL_EDIT_REPEAT_INITIAL_MS);
-      },
-      () => {
-        this.clearLabelEditRepeat();
-      },
-      this.themeService.palette,
-    );
+    // Punctuation keys
+    for (const ch of [';', "'", ',', '.', '/', '[', ']', '\\', '`', '-', '=']) {
+      (config as any)[ch] = insertChar(ch);
+    }
+
+    // Special keys
+    (config as any)['Backspace'] = new LabeledAction('Delete', () =>
+      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
+    (config as any)['Enter'] = new LabeledAction('Newline', () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\n'}));
+    (config as any)['Tab'] = new LabeledAction('Tab', () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\t'}));
+    (config as any)[' '] = new LabeledAction('Space', () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ' '}));
+
+    // Shift submenu for shifted characters
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', this.buildShiftSubmenuConfig(capsMode));
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', this.buildShiftSubmenuConfig(capsMode));
+
+    // CapsLock toggles uppercase/lowercase mode
+    const capsLabel = capsMode ? 'lowercase' : 'UPPERCASE';
+    const capsTarget = capsMode ? 'labelEdit' : 'labelEditCaps';
+    (config as any)['CapsLock'] = new LabeledAction(capsLabel, () => {
+      this.keyMenu.switchMode(capsTarget);
+    });
+
+    // Ctrl submenu (same as normal mode)
+    (config as any)['Control'] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+
+    return config;
+  }
+
+  private buildShiftSubmenuConfig(capsMode: boolean): SubmenuConfig {
+    const insertChar = (ch: string) => new LabeledAction(ch, () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
+
+    const config: SubmenuConfig = {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 30 },
+    } as SubmenuConfig;
+
+    // Shifted letters (opposite of current caps mode)
+    for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
+      const ch = capsMode ? letter.toLowerCase() : letter.toUpperCase();
+      (config as any)[letter] = insertChar(ch);
+    }
+
+    // Shifted numbers
+    for (const [key, val] of Object.entries(KeymenuComponent.SHIFTED_NUMBERS)) {
+      (config as any)[key] = insertChar(val);
+    }
+
+    // Shifted punctuation
+    for (const [key, val] of Object.entries(KeymenuComponent.SHIFTED_PUNCT)) {
+      (config as any)[key] = insertChar(val);
+    }
+
+    // Special keys still work in shift submenu
+    (config as any)['Backspace'] = new LabeledAction('Delete', () =>
+      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
+    (config as any)['Tab'] = new LabeledAction('Tab', () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: '\t'}));
+    (config as any)[' '] = new LabeledAction('Space', () =>
+      this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ' '}));
+    // Shift+Enter handled by component interceptor as exit — don't bind Enter here
+
+    return config;
   }
 
   private resetInteractionState(): void {
@@ -260,14 +305,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
-  }
-
-  private clearLabelEditRepeat(): void {
-    if (this.labelEditRepeatTimer !== undefined) {
-      window.clearTimeout(this.labelEditRepeatTimer);
-      window.clearInterval(this.labelEditRepeatTimer);
-      this.labelEditRepeatTimer = undefined;
-    }
   }
 
   private buildRootSubmenuConfig(): SubmenuConfig {
@@ -346,6 +383,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     };
 
     return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       [movement.up]: new LabeledAction('Above', createDirected('up')),
       [movement.down]: new LabeledAction('Below', createDirected('down')),
       [movement.left]: new LabeledAction('Left', createDirected('left')),
@@ -372,6 +410,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     };
 
     return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       [nodeJump.up]: new LabeledAction('Above', setDestination('up')),
       [nodeJump.down]: new LabeledAction('Below', setDestination('down')),
       [nodeJump.left]: new LabeledAction('Left', setDestination('left')),
@@ -393,8 +432,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildSelectSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const zoom = this.keyAssignments.zoom;
-    const shared = this.keyAssignments.shared;
+    const pz = this.keyAssignments.panZoom;
+    const ds = this.keyAssignments.dragSpeed;
     const root = this.keyAssignments.root;
 
     return {
@@ -402,28 +441,33 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.left]: new LabeledAction('Drag Left', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT})),
       [drag.down]: new LabeledAction('Drag Down', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN})),
       [drag.right]: new LabeledAction('Drag Right', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT})),
-      [zoom.out]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
-      [zoom.in]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
-      [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
+      [pz.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
+      [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      [ds.bigger]: new LabeledSubmenuConfig('Bigger Drag...', this.buildDragSpeedSubmenu('medium')),
+      [ds.smaller]: new LabeledSubmenuConfig('Smaller Drag...', this.buildDragSpeedSubmenu('fine')),
       [root.insertSubmenu]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
     } as SubmenuConfig;
   }
 
   private buildSharedUtilityBindings(): SubmenuConfig {
     const shared = this.keyAssignments.shared;
-    const speed = this.keyAssignments.speed;
-    const pan = this.keyAssignments.pan;
+    const moveSpeed = this.keyAssignments.moveSpeed;
+    const panZoom = this.keyAssignments.panZoom;
     const mbn = this.keyAssignments.moveByNode;
     const mbg = this.keyAssignments.moveByGraph;
+    const misc = this.keyAssignments.misc;
 
     return {
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
-      [speed.submenu]: new LabeledSubmenuConfig('Fine Move...', this.buildSpeedSubmenuConfig('fine')),
-      [pan.submenu]: new LabeledSubmenuConfig('Pan...', this.buildPanSubmenuConfig('normal')),
+      [moveSpeed.bigger]: new LabeledSubmenuConfig('Bigger Move...', this.buildMoveSpeedSubmenu('medium')),
+      [moveSpeed.smaller]: new LabeledSubmenuConfig('Smaller Move...', this.buildMoveSpeedSubmenu('fine')),
+      [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
       [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
+      [misc.submenu]: new LabeledSubmenuConfig('Misc...', this.buildMiscSubmenuConfig()),
+      [this.keyAssignments.ctrl.submenu]: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
     } as SubmenuConfig;
   }
 
@@ -437,9 +481,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
   }
 
-  private buildSpeedSubmenuConfig(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+  private buildMoveSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const speed = this.keyAssignments.speed;
+    const speed = this.keyAssignments.moveSpeed;
     const d = this.getSpeedDistance(tier);
     const moveWithDistance = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
@@ -451,34 +495,72 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.right]: new LabeledAction('Move Right', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
     } as SubmenuConfig;
 
-    // Add next tier submenu if not at largest
-    if (tier === 'fine') {
-      (config as any)[speed.medium] = new LabeledSubmenuConfig('Bigger...', this.buildSpeedSubmenuConfig('medium'));
-    } else if (tier === 'medium') {
-      (config as any)[speed.large] = new LabeledSubmenuConfig('Biggest...', this.buildSpeedSubmenuConfig('large'));
+    if (tier === 'medium') {
+      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildMoveSpeedSubmenu('large'));
     }
 
     return config;
   }
 
-  private buildPanSubmenuConfig(tier: 'normal' | 'medium' | 'large'): SubmenuConfig {
+  private buildPanZoomSubmenuConfig(): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const pan = this.keyAssignments.pan;
+    const pz = this.keyAssignments.panZoom;
+    const d = this.getSpeedDistance('normal');
+    const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
+      () => this.keyMenuOut.emit({kind, distance: d});
+
+    return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      [movement.up]: new LabeledAction('Pan Up', panCmd(DACommandType.PAN_UP)),
+      [movement.left]: new LabeledAction('Pan Left', panCmd(DACommandType.PAN_LEFT)),
+      [movement.down]: new LabeledAction('Pan Down', panCmd(DACommandType.PAN_DOWN)),
+      [movement.right]: new LabeledAction('Pan Right', panCmd(DACommandType.PAN_RIGHT)),
+      [pz.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
+      [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      [pz.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
+      [pz.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
+      [pz.speed.bigger]: new LabeledSubmenuConfig('Bigger Pan...', this.buildPanSpeedSubmenu('medium')),
+      [pz.speed.smaller]: new LabeledSubmenuConfig('Smaller Pan...', this.buildPanSpeedSubmenu('fine')),
+    } as SubmenuConfig;
+  }
+
+  private buildPanSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+    const speed = this.keyAssignments.panZoom.speed;
     const d = this.getSpeedDistance(tier);
-    const panWithDistance = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
+    const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
 
     const config: SubmenuConfig = {
-      [movement.up]: new LabeledAction('Pan Up', panWithDistance(DACommandType.PAN_UP)),
-      [movement.left]: new LabeledAction('Pan Left', panWithDistance(DACommandType.PAN_LEFT)),
-      [movement.down]: new LabeledAction('Pan Down', panWithDistance(DACommandType.PAN_DOWN)),
-      [movement.right]: new LabeledAction('Pan Right', panWithDistance(DACommandType.PAN_RIGHT)),
+      [movement.up]: new LabeledAction('Pan Up', panCmd(DACommandType.PAN_UP)),
+      [movement.left]: new LabeledAction('Pan Left', panCmd(DACommandType.PAN_LEFT)),
+      [movement.down]: new LabeledAction('Pan Down', panCmd(DACommandType.PAN_DOWN)),
+      [movement.right]: new LabeledAction('Pan Right', panCmd(DACommandType.PAN_RIGHT)),
     } as SubmenuConfig;
 
-    if (tier === 'normal') {
-      (config as any)[pan.medium] = new LabeledSubmenuConfig('Bigger...', this.buildPanSubmenuConfig('medium'));
-    } else if (tier === 'medium') {
-      (config as any)[pan.large] = new LabeledSubmenuConfig('Biggest...', this.buildPanSubmenuConfig('large'));
+    if (tier === 'medium') {
+      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildPanSpeedSubmenu('large'));
+    }
+
+    return config;
+  }
+
+  private buildDragSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+    const drag = this.keyAssignments.drag;
+    const speed = this.keyAssignments.dragSpeed;
+    const d = this.getSpeedDistance(tier);
+    const dragCmd = (kind: DACommandType.DRAG_SELECTED_UP | DACommandType.DRAG_SELECTED_DOWN | DACommandType.DRAG_SELECTED_LEFT | DACommandType.DRAG_SELECTED_RIGHT) =>
+      () => this.keyMenuOut.emit({kind, distance: d});
+
+    const config: SubmenuConfig = {
+      [drag.up]: new LabeledAction('Drag Up', dragCmd(DACommandType.DRAG_SELECTED_UP)),
+      [drag.left]: new LabeledAction('Drag Left', dragCmd(DACommandType.DRAG_SELECTED_LEFT)),
+      [drag.down]: new LabeledAction('Drag Down', dragCmd(DACommandType.DRAG_SELECTED_DOWN)),
+      [drag.right]: new LabeledAction('Drag Right', dragCmd(DACommandType.DRAG_SELECTED_RIGHT)),
+    } as SubmenuConfig;
+
+    if (tier === 'medium') {
+      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildDragSpeedSubmenu('large'));
     }
 
     return config;
@@ -493,12 +575,24 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbn.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
       [mbn.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
       [mbn.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
-      [mbn.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
-      [mbn.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
-      [mbn.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
-      [mbn.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
       [mbn.toggleWaypoints]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
-      [mbn.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
+    } as SubmenuConfig;
+  }
+
+  private buildMiscSubmenuConfig(): SubmenuConfig {
+    const misc = this.keyAssignments.misc;
+
+    return {
+      [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
+    } as SubmenuConfig;
+  }
+
+  private buildCtrlSubmenuConfig(): SubmenuConfig {
+    return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      'z': new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
+      'r': new LabeledAction('Redo', () => this.keyMenuOut.emit({kind: DACommandType.REDO})),
+      '[': new LabeledAction('Escape', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
     } as SubmenuConfig;
   }
 
@@ -540,11 +634,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return false;
     }
 
-    if (this.keyMenu.currentMode.name === 'labelEdit') {
+    const modeName = this.keyMenu.currentMode.name;
+    if (modeName === 'labelEdit' || modeName === 'labelEditCaps') {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
-    this.clearLabelEditRepeat();
     this.keyMenu.switchMode('normal');
     this.resetInteractionState();
     this.resetHelpMode();
@@ -628,7 +722,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       mode.stackTop.unhighlightAllKeys();
       mode.stackTop.stopAllScheduledActions();
     }
-    this.clearLabelEditRepeat();
     this.resetInteractionState();
     this.directedEdgeActive = false;
     this.resetHelpMode();
@@ -663,7 +756,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     event = this.remapEvent(event);
 
     // Ctrl+Z = Undo, Ctrl+Shift+Z / Ctrl+R = Redo (works in all modes)
-    if (event.ctrlKey && event.key.toLowerCase() === 'z') {
+    // Skip interception when the Ctrl submenu is active so keymenu handles it with visual feedback
+    const ctrlSubmenuActive = this.keyMenu.currentMode instanceof USQwertyMode &&
+      (this.keyMenu.currentMode as USQwertyMode<DACommand>).submenuKeyStringStack.includes('Control' as KeyString);
+    if (event.ctrlKey && !ctrlSubmenuActive && event.key.toLowerCase() === 'z') {
       event.preventDefault();
       if (event.shiftKey) {
         this.keyMenuOut.emit({kind: DACommandType.REDO});
@@ -672,7 +768,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
       return;
     }
-    if (event.ctrlKey && event.key.toLowerCase() === 'r') {
+    if (event.ctrlKey && !ctrlSubmenuActive && event.key.toLowerCase() === 'r') {
       event.preventDefault();
       this.keyMenuOut.emit({kind: DACommandType.REDO});
       return;
@@ -689,8 +785,26 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
+    const inLabelEdit = this.keyMenu.currentMode.name === 'labelEdit' ||
+      this.keyMenu.currentMode.name === 'labelEditCaps';
+
+    if (inLabelEdit) {
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
+        this.keyMenu.switchMode('normal');
+        this.refreshActiveKeyPath();
+        return;
+      }
+      if (event.key === 'Enter' && event.shiftKey) {
+        this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
+        this.keyMenu.switchMode('normal');
+        this.refreshActiveKeyPath();
+        return;
+      }
+    }
+
     if (this.keyMenu.currentMode.name === 'normal') {
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey)) {
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
         this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL});
         return;
       }
@@ -707,7 +821,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     // Track when the edit submenu key is pressed so tap-to-edit works on keyup
-    if (this.keyMenu.currentMode.name === 'normal' && !event.repeat &&
+    // Only at root level — if we're inside a submenu, 'i' may be zoom or something else
+    const currentMode = this.keyMenu.currentMode;
+    const atRootLevel = currentMode instanceof USQwertyMode && currentMode.stack.length === 1;
+    if (currentMode.name === 'normal' && !event.repeat && atRootLevel &&
         event.key === this.keyAssignments.root.editSubmenu) {
       this.editPending = true;
     } else if (this.editPending && event.key !== this.keyAssignments.root.editSubmenu) {

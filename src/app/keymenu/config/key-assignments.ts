@@ -12,6 +12,13 @@ export interface ZoomKeyAssignments {
   readonly in: KeyString;
 }
 
+export interface SpeedModifierKeys {
+  readonly bigger: KeyString;
+  readonly biggest: KeyString;
+  readonly smaller: KeyString;
+  readonly smallest: KeyString;
+}
+
 export interface KeymenuKeyAssignments {
   readonly movement: DirectionalKeyAssignments;
   readonly drag: DirectionalKeyAssignments;
@@ -40,30 +47,32 @@ export interface KeymenuKeyAssignments {
     readonly select: KeyString;
     readonly undo: KeyString;
   };
-  readonly speed: {
+  readonly moveSpeed: SpeedModifierKeys;
+  readonly panZoom: {
     readonly submenu: KeyString;
-    readonly medium: KeyString;
-    readonly large: KeyString;
-  };
-  readonly pan: {
-    readonly submenu: KeyString;
-    readonly medium: KeyString;
-    readonly large: KeyString;
-  };
-  readonly moveByNode: {
-    readonly submenu: KeyString;
-    readonly nodeJump: DirectionalKeyAssignments;
+    readonly speed: SpeedModifierKeys;
     readonly zoomIn: KeyString;
     readonly zoomOut: KeyString;
     readonly recenterView: KeyString;
     readonly recenterCrosshairs: KeyString;
+  };
+  readonly dragSpeed: SpeedModifierKeys;
+  readonly moveByNode: {
+    readonly submenu: KeyString;
+    readonly nodeJump: DirectionalKeyAssignments;
     readonly toggleWaypoints: KeyString;
-    readonly reload: KeyString;
   };
   readonly moveByGraph: {
     readonly submenu: KeyString;
     readonly outgoingNext: KeyString;
     readonly outgoingPrev: KeyString;
+  };
+  readonly ctrl: {
+    readonly submenu: KeyString;
+  };
+  readonly misc: {
+    readonly submenu: KeyString;
+    readonly reload: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -107,30 +116,40 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     select: 'c',
     undo: 'u',
   },
-  speed: {
-    submenu: 'd',
-    medium: 's',
-    large: 'a',
+  moveSpeed: {
+    bigger: 'd',
+    biggest: 's',
+    smaller: 'a',
+    smallest: 'q',
   },
-  pan: {
+  panZoom: {
     submenu: 'r',
-    medium: 'e',
-    large: 'w',
-  },
-  moveByNode: {
-    submenu: 't',
-    nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
+    speed: { bigger: 'e', biggest: 'w', smaller: 'a', smallest: 'q' },
     zoomIn: 'o',
     zoomOut: 'i',
     recenterView: 'a',
     recenterCrosshairs: 's',
+  },
+  dragSpeed: {
+    bigger: 'c',
+    biggest: 'x',
+    smaller: 'z',
+    smallest: 'a',
+  },
+  moveByNode: {
+    submenu: 't',
+    nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
     toggleWaypoints: 'd',
-    reload: 'q',
   },
   moveByGraph: {
     submenu: 'g',
     outgoingNext: 'n',
     outgoingPrev: 'p',
+  },
+  ctrl: {submenu: 'Control'},
+  misc: {
+    submenu: 'm',
+    reload: 'r',
   },
   edit: {overflowSubmenu: 'k'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -148,8 +167,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     nodeTypeSubmenu: 'w',
   },
   insert: {
-    node: 'd',     // left-hand keys while left index holds f
-    waypoint: 'w',  // avoid g — same finger as f
+    node: 'd',
+    waypoint: 'w',
     edge: 's',
     label: 'e',
   },
@@ -165,30 +184,40 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     select: 'c',
     undo: 'u',
   },
-  speed: {
-    submenu: 'e',
-    medium: 'w',
-    large: 'q',
+  moveSpeed: {
+    bigger: 's',
+    biggest: 'a',
+    smaller: 'd',
+    smallest: 's',
   },
-  pan: {
+  panZoom: {
     submenu: 'r',
-    medium: 'w',
-    large: 'q',
+    speed: { bigger: 'w', biggest: 'q', smaller: 'e', smallest: 'w' },
+    zoomIn: 'i',
+    zoomOut: 'o',
+    recenterView: 'y',
+    recenterCrosshairs: 'u',
+  },
+  dragSpeed: {
+    bigger: 'x',
+    biggest: 'z',
+    smaller: 'c',
+    smallest: 'x',
   },
   moveByNode: {
     submenu: 't',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
-    zoomIn: 'i',
-    zoomOut: 'o',
-    recenterView: 'a',
-    recenterCrosshairs: 's',
     toggleWaypoints: 'd',
-    reload: 'q',
   },
   moveByGraph: {
     submenu: 'g',
     outgoingNext: 'n',
     outgoingPrev: 'p',
+  },
+  ctrl: {submenu: 'Control'},
+  misc: {
+    submenu: 'm',
+    reload: 'r',
   },
   edit: {overflowSubmenu: 'u'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},

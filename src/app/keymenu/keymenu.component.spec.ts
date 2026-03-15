@@ -50,19 +50,16 @@ describe('KeymenuComponent', () => {
     expect(selectConfig['n']).toBeUndefined();
   });
 
-  it('should include delete action in select submenu config', () => {
+  it('should include drag speed submenu in select submenu config', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
-    const emitSpy = spyOn(component.keyMenuOut, 'emit');
 
     const selectConfig = (component as any).buildSelectSubmenuConfig() as Record<string, unknown>;
-    const deleteAction = selectConfig['x'] as LabeledAction;
+    // dragSpeed.bigger = 'x' in vim layout
+    const biggerDrag = selectConfig['x'] as LabeledSubmenuConfig;
 
-    expect(deleteAction instanceof LabeledAction).toBeTrue();
-    expect(deleteAction.actionLabel).toBe('Delete');
-
-    deleteAction.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.DELETE});
+    expect(biggerDrag instanceof LabeledSubmenuConfig).toBeTrue();
+    expect(biggerDrag.submenuLabel).toBe('Bigger Drag...');
   });
 
   it('should use hold-select root action to enter drag selection without second select key', () => {
@@ -93,8 +90,16 @@ describe('KeymenuComponent', () => {
     expect(rootConfig['y']).toBeUndefined();
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    const panSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
-    expect(panSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
+    expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    // Zoom should be inside the pan/zoom submenu
+    const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
+    expect(zoomIn instanceof LabeledAction).toBeTrue();
+    expect(zoomIn.actionLabel).toBe('Zoom In');
+
+    // Misc submenu at 'm'
+    const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
+    expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
     // 'i' is Edit (LabeledSubmenuConfig), 'f' is Insert submenu (vim profile)
     const editAction = rootConfig['i'] as LabeledSubmenuConfig;

@@ -32,8 +32,12 @@ const WINDOWS_LABELS: Partial<Record<KeyString, string>> = {
   'RControl': 'Ctrl',
 };
 
-export function getKeyDisplayLabel(keyString: KeyString, layout: KeyboardLayout): string {
+export function getKeyDisplayLabel(keyString: KeyString, layout: KeyboardLayout, capsLockSwap: boolean = false): string {
   const labels = layout === 'us-mac' ? MAC_LABELS : WINDOWS_LABELS;
+  if (capsLockSwap) {
+    if (keyString === 'CapsLock') return labels['Control'] ?? 'Ctrl';
+    if (keyString === 'Control') return labels['CapsLock'] ?? 'Caps';
+  }
   return labels[keyString] ?? keyString;
 }
 

@@ -7,6 +7,7 @@ import {KeyMenu} from '../keyMenu';
 import {KMSubmenuKey} from '../keys/kmKey';
 import {KeyMenuModeConfig} from "../keyMenuModeConfig";
 import {ThemePalette} from '../../../services/theme.service';
+import {VisualConfig, DEFAULT_VISUAL_CONFIG} from '../../../services/visual-config.model';
 import Konva from 'konva';
 
 type SlideOrigin = 'bottom' | 'top';
@@ -16,7 +17,9 @@ export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<
     constructor(public rootSubmenuConfig: SubmenuConfig,
                 public palette?: ThemePalette,
                 public hideFingerBlocked: boolean = false,
-                public keyboardLayout?: KeyboardLayout) {}
+                public keyboardLayout?: KeyboardLayout,
+                public capsLockSwap: boolean = false,
+                public visualConfig: VisualConfig = DEFAULT_VISUAL_CONFIG) {}
 
     createMode(name: string, keyMenu: KeyMenu<T>): USQwertyMode<T> {
         return new USQwertyMode<T>(name, keyMenu, this);
@@ -33,12 +36,12 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     private palette?: ThemePalette;
     private hideFingerBlocked: boolean;
     private keyboardLayout?: KeyboardLayout;
+    private capsLockSwap: boolean;
+    private visualConfig: VisualConfig;
     private activeTweens: Map<KMSubmenu<T>, Konva.Tween> = new Map();
+    private pendingDelays: Map<KMSubmenu<T>, number> = new Map();
     /** Track which direction each submenu slid in from, so slide-out reverses it. */
     private slideOrigins: Map<KMSubmenu<T>, SlideOrigin> = new Map();
-
-    private static readonly SLIDE_IN_DURATION = 0.18;  // seconds
-    private static readonly SLIDE_OUT_DURATION = 0.11;
 
     constructor(public name: string, public keyMenu: KeyMenu<T>,
                 config: USQwertyModeConfig<T>) {
@@ -46,7 +49,9 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.palette = config.palette;
         this.hideFingerBlocked = config.hideFingerBlocked;
         this.keyboardLayout = config.keyboardLayout;
-        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked, this.keyboardLayout));
+        this.capsLockSwap = config.capsLockSwap;
+        this.visualConfig = config.visualConfig;
+        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked, this.keyboardLayout, this.capsLockSwap, this.visualConfig));
         this.stackTop.konvaGroup.show();
         const cardDims = getCardDimensions();
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - cardDims.width) / 2 + CARD_PADDING)
@@ -133,6 +138,9 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         // actionSchedulingEnabled to false), skip the push to avoid stale submenu state.
         if (!this.actionSchedulingEnabled) return;
 
+        // Finish parent's animation instantly so the child doesn't wait
+        this.finishTween(this.stackTop);
+
         const submenu = submenuKey.submenu as KMSubmenu<T>;
         submenu.helpModeActive = this._helpModeActive;
         this.stack.push(submenu);
@@ -153,7 +161,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
         const depth = this.stack.length;
         const heldKeys = this.submenuKeyStringStack.slice(1) as KeyString[];
-        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked, this.keyboardLayout);
+        const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked, this.keyboardLayout, this.capsLockSwap, this.visualConfig);
         this.stack.push(newSubmenu);
         this.slideIn(newSubmenu, 'top');
     }
@@ -166,24 +174,28 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         group.moveToTop();
         group.x(submenu.restingX);
         group.y(submenu.restingY + yOffset);
-        group.opacity(0);
         group.show();
 
         this.cancelTween(submenu);
+        this.cancelDelay(submenu);
         this.slideOrigins.set(submenu, origin);
 
-        const tween = new Konva.Tween({
-            node: group,
-            y: submenu.restingY,
-            opacity: 1,
-            duration: USQwertyMode.SLIDE_IN_DURATION,
-            easing: Konva.Easings.EaseOut,
-            onFinish: () => {
-                this.activeTweens.delete(submenu);
-            }
-        });
-        this.activeTweens.set(submenu, tween);
-        tween.play();
+        const slide = this.visualConfig.slideAnimation;
+        const delayTimer = window.setTimeout(() => {
+            this.pendingDelays.delete(submenu);
+            const tween = new Konva.Tween({
+                node: group,
+                y: submenu.restingY,
+                duration: slide.inDurationS,
+                easing: Konva.Easings.StrongEaseIn,
+                onFinish: () => {
+                    this.activeTweens.delete(submenu);
+                }
+            });
+            this.activeTweens.set(submenu, tween);
+            tween.play();
+        }, slide.delayMs);
+        this.pendingDelays.set(submenu, delayTimer);
     }
 
     popSubmenuAndChildren(keyString: KeyString) {
@@ -208,7 +220,8 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             submenu.unhighlightAllKeys();
             submenu.stopAllScheduledActions();
 
-            // Cancel any existing tween
+            // Cancel any pending delay or existing tween
+            this.cancelDelay(submenu);
             this.cancelTween(submenu);
 
             // Slide out in the direction it came from
@@ -220,14 +233,12 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             const tween = new Konva.Tween({
                 node: group,
                 y: submenu.restingY + yOffset,
-                opacity: 0,
-                duration: USQwertyMode.SLIDE_OUT_DURATION,
-                easing: Konva.Easings.EaseIn,
+                duration: this.visualConfig.slideAnimation.outDurationS,
+                easing: Konva.Easings.StrongEaseOut,
                 onFinish: () => {
                     submenu.hideAllKeys();
                     group.x(submenu.restingX);
                     group.y(submenu.restingY);
-                    group.opacity(1);
                     this.activeTweens.delete(submenu);
                     this.slideOrigins.delete(submenu);
                 }
@@ -242,12 +253,13 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
      * so no ghost cards remain.
      */
     cancelAllTweensAndReset() {
+        this.pendingDelays.forEach((timer) => window.clearTimeout(timer));
+        this.pendingDelays.clear();
         this.activeTweens.forEach((tween, submenu) => {
             tween.destroy();
             submenu.hideAllKeys();
             submenu.konvaGroup.x(submenu.restingX);
             submenu.konvaGroup.y(submenu.restingY);
-            submenu.konvaGroup.opacity(1);
         });
         this.activeTweens.clear();
         this.slideOrigins.clear();
@@ -258,6 +270,26 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         if (existing) {
             existing.destroy();
             this.activeTweens.delete(submenu);
+        }
+    }
+
+    private finishTween(submenu: KMSubmenu<T>) {
+        this.cancelDelay(submenu);
+        const existing = this.activeTweens.get(submenu);
+        if (existing) {
+            existing.finish();
+            this.activeTweens.delete(submenu);
+        } else {
+            // Delay hadn't fired yet — snap to resting position
+            submenu.konvaGroup.y(submenu.restingY);
+        }
+    }
+
+    private cancelDelay(submenu: KMSubmenu<T>) {
+        const timer = this.pendingDelays.get(submenu);
+        if (timer !== undefined) {
+            window.clearTimeout(timer);
+            this.pendingDelays.delete(submenu);
         }
     }
 }

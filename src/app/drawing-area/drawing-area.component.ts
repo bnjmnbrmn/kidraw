@@ -334,6 +334,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.RECENTER_VIEW:
         this.recenterView();
+        this.recenterCrosshairs();
+        this.checkAndEmitEditState();
         break;
       case DACommandType.RECENTER_CROSSHAIRS:
         this.recenterCrosshairs();

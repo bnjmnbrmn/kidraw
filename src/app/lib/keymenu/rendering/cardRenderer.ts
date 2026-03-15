@@ -1,6 +1,7 @@
 import Konva from 'konva';
 import { KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, getKeyWidth, KeyboardLayout, getKeyDisplayLabel } from '../layouts/us-qwerty';
 import { ThemePalette } from '../../../services/theme.service';
+import { CardDepthConfig, CardShadowConfig, DEFAULT_VISUAL_CONFIG } from '../../../services/visual-config.model';
 
 const ALL_KEYS: KeyString[] = [
   '`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace',
@@ -13,14 +14,11 @@ const ALL_KEYS: KeyString[] = [
 // Card padding around the key grid
 const CARD_PADDING = 8;
 
-// Diagonal offset per depth level (pixels)
-const DEPTH_OFFSET_X = 3;
-const DEPTH_OFFSET_Y = 3;
-
 export interface CardRenderConfig {
   depth: number;
   palette: ThemePalette;
   heldKeyStrings?: KeyString[];
+  shadowConfig?: CardShadowConfig;
 }
 
 export function getCardBackgroundColor(depth: number, palette: ThemePalette): string {
@@ -43,8 +41,9 @@ export function getCardDimensions(): { width: number; height: number } {
 }
 
 /** Returns the diagonal offset for a given depth. */
-export function getDepthOffset(depth: number): { x: number; y: number } {
-  return { x: depth * DEPTH_OFFSET_X, y: depth * DEPTH_OFFSET_Y };
+export function getDepthOffset(depth: number, depthConfig?: CardDepthConfig): { x: number; y: number } {
+  const cfg = depthConfig ?? DEFAULT_VISUAL_CONFIG.cardDepth;
+  return { x: depth * cfg.depthOffsetX, y: depth * cfg.depthOffsetY };
 }
 
 /**
@@ -57,10 +56,13 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
   const shadowColor = config.palette.cardShadowColor;
   const heldKeyStrings = (config.heldKeyStrings ?? []).filter(k => xAndYForKeys[k]);
 
+  const sc = config.shadowConfig ?? DEFAULT_VISUAL_CONFIG.cardShadow;
+  const depthShadowBlur = sc.baseBlur + config.depth * sc.perDepthBlurIncrement;
+  const depthShadowOffset = sc.baseOffset + config.depth * sc.perDepthOffsetIncrement;
   const shadowProps = {
     shadowColor: shadowColor,
-    shadowBlur: 8,
-    shadowOffset: { x: 3, y: 3 },
+    shadowBlur: depthShadowBlur,
+    shadowOffset: { x: depthShadowOffset, y: depthShadowOffset },
     shadowOpacity: 1,
     shadowEnabled: true,
   };
@@ -97,38 +99,11 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
   });
 }
 
-/**
- * Creates highlight border rects around held-key holes.
- * Returns an array of Konva.Rect outlines to add on top of the card background.
- */
-export function createHoleHighlights(config: CardRenderConfig): Konva.Rect[] {
-  const heldKeyStrings = (config.heldKeyStrings ?? []).filter(k => xAndYForKeys[k]);
-  if (heldKeyStrings.length === 0) return [];
-
-  const highlightColor = config.palette.highlightShadowColor;
-  const borderWidth = 2;
-  const inset = borderWidth / 2;
-
-  return heldKeyStrings.map(key => {
-    const pos = xAndYForKeys[key];
-    const keyW = getKeyWidth(key);
-    return new Konva.Rect({
-      x: pos.x - inset,
-      y: pos.y - inset,
-      width: keyW + borderWidth,
-      height: KEY_HEIGHT + borderWidth,
-      stroke: highlightColor,
-      strokeWidth: borderWidth,
-      fill: undefined,
-      listening: false,
-    });
-  });
-}
-
 export interface BlankKeyConfig {
   keyString: KeyString;
   palette: ThemePalette;
   keyboardLayout?: KeyboardLayout;
+  capsLockSwap?: boolean;
 }
 
 export function createBlankKey(config: BlankKeyConfig): Konva.Group {
@@ -147,7 +122,7 @@ export function createBlankKey(config: BlankKeyConfig): Konva.Group {
 
   // Add key name label
   const displayLabel = config.keyboardLayout
-    ? getKeyDisplayLabel(config.keyString, config.keyboardLayout)
+    ? getKeyDisplayLabel(config.keyString, config.keyboardLayout, config.capsLockSwap ?? false)
     : config.keyString;
   group.add(new Konva.Text({
     text: displayLabel,
