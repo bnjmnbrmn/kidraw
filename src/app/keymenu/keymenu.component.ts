@@ -662,6 +662,22 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.keyMenu.switchMode(modeName);
   }
 
+  /** Whether the keymenu is currently in a CapsLock mode. */
+  get isCapsMode(): boolean {
+    const name = this.keyMenu.currentMode.name;
+    return name === 'normalCaps' || name === 'labelEditCaps';
+  }
+
+  /** Enter label-edit mode, choosing caps variant if currently in a caps mode. */
+  enterLabelEditMode(): void {
+    this.switchMode(this.isCapsMode ? 'labelEditCaps' : 'labelEdit');
+  }
+
+  /** Exit to normal mode, choosing caps variant if currently in a caps mode. */
+  exitToNormalMode(): void {
+    this.switchMode(this.isCapsMode ? 'normalCaps' : 'normal');
+  }
+
   private refreshActiveKeyPath() {
     const currentMode = this.keyMenu.currentMode;
     if (!(currentMode instanceof USQwertyMode)) {
@@ -685,14 +701,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const modeName = this.keyMenu.currentMode.name;
     const color = KeymenuComponent.MODE_LABEL_COLORS[modeName] ?? '#888888';
 
-    // Build display: mode name, then submenu path from active key labels
+    // Build display: mode name with "/" separator for parent/child modes
     let displayName: string;
     if (modeName === 'labelEdit') {
       displayName = 'edit';
     } else if (modeName === 'labelEditCaps') {
-      displayName = 'EDIT';
+      displayName = 'capslock / edit';
     } else if (modeName === 'normalCaps') {
-      displayName = 'NORMAL';
+      displayName = 'capslock / normal';
     } else {
       displayName = modeName;
     }

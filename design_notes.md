@@ -169,6 +169,29 @@ A repeater is active only while **both**:
 
 ---
 
+## Mode Hierarchy & CapsLock
+
+Modes have a parent/child relationship. The mode label uses "/" to separate parent modes from child modes (e.g., "capslock / normal", "capslock / edit").
+
+The four modes are:
+- **normal** — default navigation mode
+- **capslock / normal** (`normalCaps`) — CapsLock is active; only CapsLock key works (to return to normal)
+- **edit** (`labelEdit`) — text editing with lowercase characters
+- **capslock / edit** (`labelEditCaps`) — text editing with uppercase characters
+
+### CapsLock Mode Transitions
+
+In general, you can return to parent modes from submodes by pressing Escape, Ctrl-[, or double-Shift. The exception is CapsLock: if CapsLock is on, exiting an edit mode goes to "capslock / normal" (not "normal"). Specifically:
+
+- **normal** → press CapsLock → **capslock / normal**
+- **capslock / normal** → press CapsLock → **normal**
+- **edit** → press CapsLock → **capslock / edit**
+- **capslock / edit** → press CapsLock → **edit**
+- **capslock / edit** → Escape / Ctrl-[ / Shift+Enter / double-Shift → **capslock / normal** (preserves caps state)
+- **edit** → Escape / Ctrl-[ / Shift+Enter / double-Shift → **normal**
+
+The invariant: exiting a mode via Escape/Ctrl-[/double-Shift always returns to the parent mode at the same CapsLock level. CapsLock itself toggles between the caps and non-caps variant of the current mode category.
+
 ## Invariants
 
 Things that must **always** hold. Violations are bugs.
@@ -177,11 +200,12 @@ Things that must **always** hold. Violations are bugs.
 2. **Crosshairs stay in bounds**: Movement clamps crosshairs within `edgeMargin` of stage edges; overflow scrolls the drawing layer instead.
 3. **Selection is visual**: A selected item always renders its selected visual state (stroke color, etc.).
 4. **Unselect-all clears everything**: `UNSELECT_ALL` deselects all nodes, edges, waypoints, and labels.
-5. **KeyMenu modes are exclusive**: Exactly one mode (`normal` or `labelEdit`) is active at any time.
+5. **KeyMenu modes are exclusive**: Exactly one mode (`normal`, `normalCaps`, `labelEdit`, or `labelEditCaps`) is active at any time.
 6. **Label edit mode hides crosshairs**: Entering label edit hides the crosshairs; exiting restores them.
 7. **Insert-node auto-connects**: Creating a new node with existing selected nodes creates edges from each selected node to the new node.
 8. **Zoom preserves crosshairs position**: Zooming in/out scales around the crosshairs' current position.
 9. **Key assignments are configurable**: All bindings flow through `KeymenuKeyAssignments`; no hardcoded key literals in action logic.
+10. **CapsLock state is preserved across mode transitions**: Exiting edit mode returns to the caps-matching normal mode (edit→normal, capslock/edit→capslock/normal).
 
 ## Non-Invariants (Explicitly Not Guaranteed)
 
