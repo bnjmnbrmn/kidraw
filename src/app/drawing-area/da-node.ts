@@ -16,6 +16,8 @@ export class DANode {
   private _pinned: boolean = false;
   private readonly _pinIndicator: Konva.Text;
   private _showPinIndicator: boolean = false;
+  private readonly _resizeHandle: Konva.Circle;
+  private _resizeHandleVisible: boolean = false;
 
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
@@ -38,7 +40,7 @@ export class DANode {
   private _nodeHeight: number;
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
-  private _textOverflowMode: TextOverflowMode = 'clip';
+  private _textOverflowMode: TextOverflowMode = 'widen-both';
   private _baseWidth: number = this.DEFAULT_NODE_WIDTH;
   private _baseHeight: number = this.DEFAULT_NODE_HEIGHT;
   private _baseFontSize: number = this.DEFAULT_FONT_SIZE;
@@ -94,6 +96,19 @@ export class DANode {
       visible: false,
     });
     this.group.add(this._pinIndicator);
+
+    // Resize handle — glowing dot at bottom-right corner, hidden by default
+    this._resizeHandle = new Konva.Circle({
+      x: this._nodeWidth,
+      y: this._nodeHeight,
+      radius: 5,
+      fill: colors?.stroke ?? 'white',
+      shadowColor: colors?.stroke ?? 'white',
+      shadowBlur: 10,
+      shadowEnabled: true,
+      visible: false,
+    });
+    this.group.add(this._resizeHandle);
   }
 
   private createShape(w: number, h: number, shape: NodeShape,
@@ -138,6 +153,8 @@ export class DANode {
       this._label.fill(colors.text);
     }
     this._pinIndicator.fill(colors.stroke);
+    this._resizeHandle.fill(colors.stroke);
+    this._resizeHandle.shadowColor(colors.stroke);
   }
 
   changeShape(newShape: NodeShape, colors?: { fill?: string; stroke?: string; text?: string }): void {
@@ -512,6 +529,35 @@ export class DANode {
     return DANode._measureText.textWidth;
   }
 
+  /** Bottom-right corner position in absolute (stage) coordinates. */
+  getBottomRightAbsolute(): { x: number; y: number } {
+    return {
+      x: this.group.x() + this._nodeWidth,
+      y: this.group.y() + this._nodeHeight,
+    };
+  }
+
+  showResizeHandle(): void {
+    if (this._resizeHandleVisible) return;
+    this._resizeHandleVisible = true;
+    this._resizeHandle.visible(true);
+  }
+
+  hideResizeHandle(): void {
+    if (!this._resizeHandleVisible) return;
+    this._resizeHandleVisible = false;
+    this._resizeHandle.visible(false);
+  }
+
+  get resizeHandleVisible(): boolean {
+    return this._resizeHandleVisible;
+  }
+
+  private updateResizeHandlePosition(): void {
+    this._resizeHandle.x(this._nodeWidth);
+    this._resizeHandle.y(this._nodeHeight);
+  }
+
   resizeBy(delta: number): boolean {
     if (this.nodeShape === 'junction') return false;
 
@@ -540,7 +586,7 @@ export class DANode {
     this._baseWidth = baseWidth ?? width;
     this._baseHeight = baseHeight ?? height;
     this._baseFontSize = baseFontSize ?? fontSize;
-    this._textOverflowMode = textOverflowMode ?? 'clip';
+    this._textOverflowMode = textOverflowMode ?? 'widen-both';
     this._nodeWidth = width;
     this._nodeHeight = height;
     this._fontSize = fontSize;
@@ -571,6 +617,7 @@ export class DANode {
     this._label.width(w);
     this._label.height(h);
     this.updatePinIndicatorPosition();
+    this.updateResizeHandlePosition();
   }
 
   showCursor(): void {
@@ -593,18 +640,26 @@ export class DANode {
 
   updateCursorPosition(): void {
     const text = this._label.text();
-    // Split by newlines first, then word-wrap the last paragraph
-    const lines = text.split('\n');
-    const lastLine = lines[lines.length - 1] || '';
 
-    // Measure the last line's width
-    const lastLineWidth = this.measureNaturalWidth(lastLine, this._fontSize);
+    // Use measurement text to get word-wrapped lines matching the label's layout
+    if (!DANode._measureText) {
+      DANode._measureText = new Konva.Text({ visible: false });
+    }
+    DANode._measureText.text(text);
+    DANode._measureText.fontSize(this._fontSize);
+    DANode._measureText.width(this._nodeWidth);
+    DANode._measureText.wrap('word');
 
-    // For center-aligned text: cursor goes at the right edge of the last line
-    const cursorX = (this._nodeWidth + lastLineWidth) / 2;
+    // textArr contains the rendered lines after word-wrapping
+    const textArr: { text: string; width: number; lastInParagraph: boolean }[] =
+      (DANode._measureText as any).textArr ?? [];
+    const lastEntry = textArr.length > 0 ? textArr[textArr.length - 1] : { text: '', width: 0 };
 
-    // Measure total text height to find vertical position
-    const totalHeight = this.measureTextHeight(text, this._nodeWidth, this._fontSize);
+    // For center-aligned text: cursor goes at the right edge of the last rendered line
+    const cursorX = (this._nodeWidth + lastEntry.width) / 2;
+
+    // Total height from the measurement text (already configured with wrap/width/fontSize)
+    const totalHeight = DANode._measureText.height();
     // verticalAlign: 'middle' → text starts at (nodeHeight - totalHeight) / 2
     const textStartY = (this._nodeHeight - totalHeight) / 2;
     const cursorY = textStartY + totalHeight - this._fontSize;

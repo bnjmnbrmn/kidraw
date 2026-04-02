@@ -116,7 +116,14 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
             case 'ShiftRight': return 'RShift' as KeyString;
             case 'ControlRight': return 'RControl' as KeyString;
             case 'AltRight': return 'RAlt' as KeyString;
-            default: return event.key as KeyString;
+            default: {
+                // Normalize uppercase letters (CapsLock or Shift) to lowercase
+                const k = event.key;
+                if (k.length === 1 && k >= 'A' && k <= 'Z') {
+                    return k.toLowerCase() as KeyString;
+                }
+                return k as KeyString;
+            }
         }
     }
 

@@ -90,6 +90,19 @@ export class KMSubmenu<T> {
    * 2. Right-side modifier keys share event.key with left-side ('Shift' for
    *    both); use event.code to resolve to 'RShift' / 'RControl' / 'RAlt'.
    */
+  private static readonly CODE_TO_UNSHIFTED: Record<string, KeyString> = {
+    'Digit1': '1' as KeyString, 'Digit2': '2' as KeyString, 'Digit3': '3' as KeyString,
+    'Digit4': '4' as KeyString, 'Digit5': '5' as KeyString, 'Digit6': '6' as KeyString,
+    'Digit7': '7' as KeyString, 'Digit8': '8' as KeyString, 'Digit9': '9' as KeyString,
+    'Digit0': '0' as KeyString,
+    'Minus': '-' as KeyString, 'Equal': '=' as KeyString,
+    'BracketLeft': '[' as KeyString, 'BracketRight': ']' as KeyString,
+    'Backslash': '\\' as KeyString, 'Semicolon': ';' as KeyString,
+    'Quote': "'" as KeyString, 'Comma': ',' as KeyString,
+    'Period': '.' as KeyString, 'Slash': '/' as KeyString,
+    'Backquote': '`' as KeyString,
+  };
+
   private resolveKey(event: KeyboardEvent): KeyString {
     // Right-side modifiers: prefer 'RShift'/'RControl'/'RAlt' if bound
     const codeToKeyString: Record<string, KeyString> = {
@@ -103,11 +116,16 @@ export class KMSubmenu<T> {
     const key = event.key as KeyString;
     if (this.keys[key]) return key;
 
-    // Uppercase letter fallback (Shift held)
+    // Uppercase letter fallback (Shift or CapsLock)
     if (event.key.length === 1 && event.key >= 'A' && event.key <= 'Z') {
       const lower = event.key.toLowerCase() as KeyString;
       if (this.keys[lower]) return lower;
     }
+
+    // Shifted punctuation/number fallback: use event.code to find the unshifted key
+    const unshifted = KMSubmenu.CODE_TO_UNSHIFTED[event.code];
+    if (unshifted && this.keys[unshifted]) return unshifted;
+
     return key;
   }
 

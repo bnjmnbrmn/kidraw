@@ -54,6 +54,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private directedEdgeSource: DANode | null = null;
   private directedEdgeInProgress: DAEdge | null = null;
   private _defaultNodeShape: NodeShape = 'box';
+  private resizeTargetNode: DANode | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -746,6 +747,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         x: clampedX,
         y: clampedY,
         easing: Konva.Easings.Linear,
+        onFinish: () => this.checkResizeHandleProximity(),
       }).play());
     }
 
@@ -757,6 +759,47 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         y: this.drawingLayer.y() - overflowY,
         easing: Konva.Easings.Linear,
       }).play());
+    }
+  }
+
+  /**
+   * Check if crosshairs are near the bottom-right corner of any node.
+   * If so, show the resize handle on that node.
+   * Called after crosshairs movement completes (on tween finish).
+   */
+  private checkResizeHandleProximity(): void {
+    const PROXIMITY_THRESHOLD = 25; // in drawing-layer units
+
+    // Convert crosshairs position to drawing-layer coordinates
+    const scale = this.drawingLayer.scaleX();
+    const crosshairsX = (this.crosshairsLayer.crosshairs.x - this.drawingLayer.x()) / scale;
+    const crosshairsY = (this.crosshairsLayer.crosshairs.y - this.drawingLayer.y()) / scale;
+
+    let closestNode: DANode | null = null;
+    let closestDist = Infinity;
+
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node.nodeShape === 'junction') continue;
+      const br = node.getBottomRightAbsolute();
+      const dx = crosshairsX - br.x;
+      const dy = crosshairsY - br.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < PROXIMITY_THRESHOLD && dist < closestDist) {
+        closestDist = dist;
+        closestNode = node;
+      }
+    }
+
+    // Update state
+    if (closestNode !== this.resizeTargetNode) {
+      if (this.resizeTargetNode) {
+        this.resizeTargetNode.hideResizeHandle();
+      }
+      this.resizeTargetNode = closestNode;
+      if (this.resizeTargetNode) {
+        this.resizeTargetNode.showResizeHandle();
+      }
+      this.drawingLayer.batchDraw();
     }
   }
 
@@ -1199,6 +1242,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     newNode.showCursor();
+    this.crosshairsLayer.hideCrosshairs();
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -1249,6 +1293,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     newNode.showCursor();
+    this.crosshairsLayer.hideCrosshairs();
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -1381,10 +1426,32 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     tween.play();
   }
 
-  private dragSelectedLeft(distance?: number)  { this.dragSelected('x', -1, distance); }
-  private dragSelectedRight(distance?: number) { this.dragSelected('x', +1, distance); }
-  private dragSelectedUp(distance?: number)    { this.dragSelected('y', -1, distance); }
-  private dragSelectedDown(distance?: number)  { this.dragSelected('y', +1, distance); }
+  private dragSelectedLeft(distance?: number)  {
+    if (this.resizeTargetNode) { this.resizeSelected(-1, distance); return; }
+    this.dragSelected('x', -1, distance);
+  }
+  private dragSelectedRight(distance?: number) {
+    if (this.resizeTargetNode) { this.resizeSelected(1, distance); return; }
+    this.dragSelected('x', +1, distance);
+  }
+  private dragSelectedUp(distance?: number)    {
+    if (this.resizeTargetNode) { this.resizeSelected(-1, distance); return; }
+    this.dragSelected('y', -1, distance);
+  }
+  private dragSelectedDown(distance?: number)  {
+    if (this.resizeTargetNode) { this.resizeSelected(1, distance); return; }
+    this.dragSelected('y', +1, distance);
+  }
+
+  private resizeSelected(sign: 1 | -1, distance?: number) {
+    const node = this.resizeTargetNode;
+    if (!node) return;
+    this.hasDragged = true;
+    const delta = sign * (distance ?? this.NODE_SIZE_STEP);
+    node.resizeBy(delta);
+    this.updateEdgesForResizedNodes([node]);
+    this.drawingLayer.batchDraw();
+  }
 
   private dragSelected(axis: 'x' | 'y', sign: 1 | -1, distance?: number) {
     this.cancelDragAnimation();
@@ -1539,7 +1606,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (selectedNodes.length > 0 ||
         selectedLabels.length > 0) {
        this.log.log('  -> Entering edit mode due to existing selection.');
+       this.crosshairsLayer.hideCrosshairs();
        selectedNodes.forEach(n => n.showCursor());
+       this.drawingLayer.batchDraw();
        this.daOut.emit({kind: "started-label-editing-mode"});
        return;
     }
@@ -1551,6 +1620,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (label) {
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
       this.singleItemSelect();
+      this.crosshairsLayer.hideCrosshairs();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
@@ -1560,7 +1630,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (nodes.length > 0) {
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
       this.singleItemSelect();
+      this.crosshairsLayer.hideCrosshairs();
       this.drawingLayer.getSelectedDANodes().forEach(n => n.showCursor());
+      this.drawingLayer.batchDraw();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
@@ -1778,9 +1850,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Crosshairs stay visible during drag
     this.hasDragged = false;
     this.dragSnapshotCaptured = false;
+    // If resize handle is active, select that node and enter resize drag
+    if (this.resizeTargetNode) {
+      this.drawingLayer.unselectAll();
+      this.resizeTargetNode.isSelected = true;
+    }
   }
 
   private exitDragMode() {
+    if (this.resizeTargetNode) {
+      this.resizeTargetNode.hideResizeHandle();
+      this.resizeTargetNode = null;
+    }
     if (this.hasDragged) {
       this.unselectAll();
       this.checkAndEmitEditState();
