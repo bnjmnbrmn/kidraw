@@ -11,6 +11,7 @@ import {
   Output,
   SimpleChanges,
 } from '@angular/core';
+import Konva from 'konva';
 import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, LayoutType, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
@@ -21,7 +22,7 @@ import {
   LabeledActionSubmenuConfig,
   SubmenuConfig,
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
-import {KeyString} from '../lib/keymenu/layouts/us-qwerty';
+import {KeyString, KEY_HEIGHT, getKeyWidth} from '../lib/keymenu/layouts/us-qwerty';
 import {
   DEFAULT_KEYMENU_KEY_ASSIGNMENTS,
   DirectionalKeyAssignments,
@@ -76,6 +77,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
+  private shiftTimingBar: Konva.Rect | null = null;
+  private shiftTimingTween: Konva.Tween | null = null;
+  private shiftTimingTimeout: number | null = null;
 
   // Help mode state
   private helpModeState: 'inactive' | 'held' | 'sticky' = 'inactive';
@@ -742,12 +746,21 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const isDoubleShift = now - this.lastShiftPressedAt <= this.DOUBLE_SHIFT_INTERVAL_MS;
     this.lastShiftPressedAt = now;
 
+    const modeName = this.keyMenu.currentMode.name;
+    const inLabelEdit = modeName === 'labelEdit' || modeName === 'labelEditCaps';
+
     if (!isDoubleShift) {
+      // First shift press in edit mode — show the timing bar
+      if (inLabelEdit) {
+        this.showShiftTimingBar();
+      }
       return false;
     }
 
-    const modeName = this.keyMenu.currentMode.name;
-    if (modeName === 'labelEdit' || modeName === 'labelEditCaps') {
+    // Double-shift detected — clear timing bar and exit
+    this.clearShiftTimingBar();
+
+    if (inLabelEdit) {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
@@ -756,6 +769,62 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.resetInteractionState();
     this.resetHelpMode();
     return true;
+  }
+
+  private showShiftTimingBar(): void {
+    this.clearShiftTimingBar();
+
+    // Find the Shift key in the active submenu
+    const currentMode = this.keyMenu.currentMode;
+    if (!(currentMode instanceof USQwertyMode)) return;
+    const rootSubmenu = currentMode.stack[0];
+    const shiftKey = rootSubmenu.keys['Shift' as KeyString] ?? rootSubmenu.keys['RShift' as KeyString];
+    if (!shiftKey) return;
+
+    const keyWidth = getKeyWidth('Shift' as KeyString);
+    const barHeight = 4;
+
+    // Create the bar at the bottom of the shift key
+    this.shiftTimingBar = new Konva.Rect({
+      x: 0,
+      y: KEY_HEIGHT - barHeight,
+      width: keyWidth,
+      height: barHeight,
+      fill: '#70ad47',
+      cornerRadius: 2,
+      listening: false,
+    });
+    shiftKey.konvaGroup.add(this.shiftTimingBar);
+
+    // Animate shrinking from full width to 0
+    this.shiftTimingTween = new Konva.Tween({
+      node: this.shiftTimingBar,
+      width: 0,
+      duration: this.DOUBLE_SHIFT_INTERVAL_MS / 1000,
+      easing: Konva.Easings.Linear,
+    });
+    this.shiftTimingTween.play();
+
+    // Auto-remove after interval
+    this.shiftTimingTimeout = window.setTimeout(() => {
+      this.clearShiftTimingBar();
+    }, this.DOUBLE_SHIFT_INTERVAL_MS);
+  }
+
+  private clearShiftTimingBar(): void {
+    if (this.shiftTimingTween) {
+      this.shiftTimingTween.destroy();
+      this.shiftTimingTween = null;
+    }
+    if (this.shiftTimingBar) {
+      this.shiftTimingBar.destroy();
+      this.shiftTimingBar = null;
+      this.keyMenu.layer.batchDraw();
+    }
+    if (this.shiftTimingTimeout !== null) {
+      clearTimeout(this.shiftTimingTimeout);
+      this.shiftTimingTimeout = null;
+    }
   }
 
   private handleSpacebarDown(): void {
