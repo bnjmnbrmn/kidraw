@@ -68,6 +68,7 @@ export enum DACommandType {
   PAN_DOWN = 'PAN_DOWN',
   SELECT_NEXT_EDGE = 'SELECT_NEXT_EDGE',
   FOLLOW_SELECTED_EDGE = 'FOLLOW_SELECTED_EDGE',
+  NAVIGATE_BACK = 'NAVIGATE_BACK',
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
@@ -136,6 +137,7 @@ export type DACommand =
   | {kind: DACommandType.PAN_DOWN; distance?: number}
   | {kind: DACommandType.SELECT_NEXT_EDGE; direction: 'outgoing' | 'incoming'}
   | {kind: DACommandType.FOLLOW_SELECTED_EDGE}
+  | {kind: DACommandType.NAVIGATE_BACK}
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}

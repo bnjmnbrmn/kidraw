@@ -55,6 +55,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private directedEdgeInProgress: DAEdge | null = null;
   private _defaultNodeShape: NodeShape = 'box';
   private resizeTargetNode: DANode | null = null;
+  private navigationHistory: DANode[] = [];
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -412,6 +413,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.FOLLOW_SELECTED_EDGE:
         this.followSelectedEdge();
+        break;
+      case DACommandType.NAVIGATE_BACK:
+        this.navigateBack();
         break;
       case DACommandType.LOAD_SAMPLE_GRAPH:
         this.loadSampleGraph(command.graphId);
@@ -1086,9 +1090,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const anchorNode = this.getTraversalAnchorNode();
     const targetNode = (anchorNode === edge.srcNode) ? edge.destNode : edge.srcNode;
 
+    // Push current node to navigation history before moving
+    if (anchorNode) {
+      this.navigationHistory.push(anchorNode);
+    }
+
     // Deselect the edge, focus the target node
     edge.isSelected = false;
     this.focusNode(targetNode);
+  }
+
+  private navigateBack() {
+    this.finishTweens();
+
+    if (this.navigationHistory.length === 0) return;
+
+    const previousNode = this.navigationHistory.pop()!;
+    this.focusNode(previousNode);
   }
 
   private getTraversalAnchorNode(): DANode | null {

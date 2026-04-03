@@ -66,6 +66,8 @@ export interface KeymenuKeyAssignments {
     readonly submenu: KeyString;
     readonly outgoingNext: KeyString;
     readonly outgoingPrev: KeyString;
+    readonly forwards: KeyString;
+    readonly backwards: KeyString;
   };
   readonly ctrl: {
     readonly submenu: KeyString;
@@ -153,6 +155,8 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'g',
     outgoingNext: 'n',
     outgoingPrev: 'p',
+    forwards: 'k',
+    backwards: 'i',
   },
   ctrl: {submenu: 'Control'},
   misc: {
@@ -222,6 +226,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'g',
     outgoingNext: 'n',
     outgoingPrev: 'p',
+    forwards: 'j',
+    backwards: 'k',
   },
   ctrl: {submenu: 'Control'},
   misc: {

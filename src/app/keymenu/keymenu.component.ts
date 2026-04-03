@@ -644,16 +644,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMoveByGraphSubmenuConfig(): SubmenuConfig {
     const mbg = this.keyAssignments.moveByGraph;
-    const movement = this.keyAssignments.movement;
 
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       [mbg.outgoingNext]: new LabeledAction('Next Out Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'outgoing'})),
       [mbg.outgoingPrev]: new LabeledAction('Next In Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'incoming'})),
-      [movement.up]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
-      [movement.left]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
-      [movement.down]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
-      [movement.right]: new LabeledAction('Follow Edge', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
+      [mbg.forwards]: new LabeledAction('Forwards', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
+      [mbg.backwards]: new LabeledAction('Backwards', () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_BACK})),
     } as SubmenuConfig;
   }
 
