@@ -56,6 +56,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private _defaultNodeShape: NodeShape = 'box';
   private resizeTargetNode: DANode | null = null;
   private navigationHistory: DANode[] = [];
+  private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
+  private gatherRestoreTimeout: number | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -416,6 +418,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.NAVIGATE_BACK:
         this.navigateBack();
+        break;
+      case DACommandType.GATHER_CONNECTED_NODES:
+        this.gatherConnectedNodes();
         break;
       case DACommandType.LOAD_SAMPLE_GRAPH:
         this.loadSampleGraph(command.graphId);
@@ -1114,6 +1119,85 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Auto-select an outgoing edge on the node we returned to
     this.autoSelectEdge(previousNode, 'outgoing');
+  }
+
+  private gatherConnectedNodes(): void {
+    this.finishTweens();
+
+    // If already gathered, restore first
+    if (this.gatheredNodePositions.size > 0) {
+      this.restoreGatheredNodes();
+      return;
+    }
+
+    const anchorNode = this.getTraversalAnchorNode();
+    if (!anchorNode) return;
+
+    // Collect unique connected nodes
+    const connected = new Set<DANode>();
+    for (const edge of anchorNode.outgoingEdges) {
+      if (edge.destNode !== anchorNode) connected.add(edge.destNode);
+    }
+    for (const edge of anchorNode.incomingEdges) {
+      if (edge.srcNode !== anchorNode) connected.add(edge.srcNode);
+    }
+    if (connected.size === 0) return;
+
+    // Save original positions and animate nodes close
+    const anchorX = anchorNode.group.x();
+    const anchorY = anchorNode.group.y();
+    const GATHER_RADIUS = 150;
+
+    let i = 0;
+    const total = connected.size;
+    for (const node of connected) {
+      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
+
+      // Arrange in a circle around the anchor
+      const angle = (2 * Math.PI * i) / total;
+      const targetX = anchorX + Math.cos(angle) * GATHER_RADIUS;
+      const targetY = anchorY + Math.sin(angle) * GATHER_RADIUS;
+
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        x: targetX,
+        y: targetY,
+        duration: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          this.updateEdgesForResizedNodes([node]);
+          this.drawingLayer.batchDraw();
+        },
+      }).play());
+      i++;
+    }
+
+    // Auto-restore after 5 seconds
+    this.gatherRestoreTimeout = window.setTimeout(() => {
+      this.restoreGatheredNodes();
+    }, 5000);
+  }
+
+  private restoreGatheredNodes(): void {
+    if (this.gatherRestoreTimeout !== null) {
+      clearTimeout(this.gatherRestoreTimeout);
+      this.gatherRestoreTimeout = null;
+    }
+
+    for (const [node, pos] of this.gatheredNodePositions) {
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        x: pos.x,
+        y: pos.y,
+        duration: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          this.updateEdgesForResizedNodes([node]);
+          this.drawingLayer.batchDraw();
+        },
+      }).play());
+    }
+    this.gatheredNodePositions.clear();
   }
 
   /** Auto-select the first edge of the given direction on a node, if any. */
