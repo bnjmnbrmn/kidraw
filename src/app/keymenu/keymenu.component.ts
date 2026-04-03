@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, LayoutType, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -339,7 +339,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.editSubmenu]: new LabeledSubmenuConfig('Edit...', this.buildEditSubmenuConfig()),
       [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      [root.nodeTypeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
+      [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
   }
@@ -442,6 +442,72 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [types.circle]:   new LabeledAction('Circle',   emit('circle')),
       [types.diamond]:  new LabeledAction('Diamond',  emit('diamond')),
       [types.junction]: new LabeledAction('Junction', emit('junction')),
+    } as SubmenuConfig;
+  }
+
+  private buildStyleSubmenuConfig(): SubmenuConfig {
+    const style = this.keyAssignments.style;
+    return {
+      [style.shapeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
+      [style.directednessSubmenu]: new LabeledSubmenuConfig('Directedness...', this.buildDirectednessSubmenuConfig()),
+      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style...', this.buildLineStyleSubmenuConfig()),
+      [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
+      [style.defaultsSubmenu]: new LabeledSubmenuConfig('Defaults...', this.buildDefaultsSubmenuConfig()),
+    } as SubmenuConfig;
+  }
+
+  private buildDirectednessSubmenuConfig(): SubmenuConfig {
+    const dir = this.keyAssignments.directedness;
+    const emit = (directedness: EdgeDirectedness) => () =>
+      this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DIRECTEDNESS, directedness});
+    return {
+      [dir.directed]: new LabeledAction('Directed →', emit('directed')),
+      [dir.undirected]: new LabeledAction('Undirected —', emit('undirected')),
+      [dir.bidirectional]: new LabeledAction('Bidirectional ↔', emit('bidirectional')),
+    } as SubmenuConfig;
+  }
+
+  private buildLineStyleSubmenuConfig(): SubmenuConfig {
+    const ls = this.keyAssignments.lineStyles;
+    const emit = (lineStyle: LineStyle) => () =>
+      this.keyMenuOut.emit({kind: DACommandType.SET_LINE_STYLE, lineStyle});
+    return {
+      [ls.solid]: new LabeledAction('Solid ———', emit('solid')),
+      [ls.dashed]: new LabeledAction('Dashed - - -', emit('dashed')),
+      [ls.dotted]: new LabeledAction('Dotted · · ·', emit('dotted')),
+    } as SubmenuConfig;
+  }
+
+  private buildColorSubmenuConfig(): SubmenuConfig {
+    const c = this.keyAssignments.colors;
+    const emit = (color: ItemColor) => () =>
+      this.keyMenuOut.emit({kind: DACommandType.SET_ITEM_COLOR, color});
+    return {
+      [c.default]: new LabeledAction('Default', emit('default')),
+      [c.red]: new LabeledAction('Red', emit('red')),
+      [c.blue]: new LabeledAction('Blue', emit('blue')),
+      [c.green]: new LabeledAction('Green', emit('green')),
+      [c.orange]: new LabeledAction('Orange', emit('orange')),
+      [c.purple]: new LabeledAction('Purple', emit('purple')),
+    } as SubmenuConfig;
+  }
+
+  private buildDefaultsSubmenuConfig(): SubmenuConfig {
+    const dir = this.keyAssignments.directedness;
+    const ls = this.keyAssignments.lineStyles;
+    return {
+      [dir.directed]: new LabeledAction('Default: Directed →', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'directed'})),
+      [dir.undirected]: new LabeledAction('Default: Undirected —', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'undirected'})),
+      [dir.bidirectional]: new LabeledAction('Default: Bidir ↔', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'bidirectional'})),
+      [ls.solid]: new LabeledAction('Default: Solid', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'solid'})),
+      [ls.dashed]: new LabeledAction('Default: Dashed', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dashed'})),
+      [ls.dotted]: new LabeledAction('Default: Dotted', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dotted'})),
     } as SubmenuConfig;
   }
 
