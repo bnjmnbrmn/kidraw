@@ -10,20 +10,73 @@ import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
 
 export class DrawingLayer extends Konva.Layer {
+  private readonly gridGroup: Konva.Group;
   private readonly daEdgeGroup: Konva.Group;
   private readonly daNodeGroup: Konva.Group;
   private readonly daNodes: DANode[] = [];
   private readonly daEdges: DAEdge[] = [];
   private _palette?: ThemePalette;
+  private gridSpacing = 50;
 
   constructor() {
     super();
 
+    this.gridGroup = new Konva.Group({ visible: false, listening: false });
+    this.add(this.gridGroup);
     this.daEdgeGroup = new Konva.Group();
     this.add(this.daEdgeGroup);
     this.daNodeGroup = new Konva.Group();
     this.add(this.daNodeGroup);
 
+  }
+
+  /** Rebuild grid lines to cover the given viewport (in layer coordinates). */
+  rebuildGrid(viewportWidth: number, viewportHeight: number): void {
+    this.gridGroup.destroyChildren();
+    const spacing = this.gridSpacing;
+    const color = this._palette?.keyStrokes?.[0] ?? '#888888';
+
+    // Extend grid well beyond visible area
+    const extent = Math.max(viewportWidth, viewportHeight) * 4;
+    const minCoord = -extent;
+    const maxCoord = extent;
+
+    // Vertical lines
+    for (let x = Math.ceil(minCoord / spacing) * spacing; x <= maxCoord; x += spacing) {
+      this.gridGroup.add(new Konva.Line({
+        points: [x, minCoord, x, maxCoord],
+        stroke: color,
+        strokeWidth: 0.5,
+        opacity: 0.2,
+        listening: false,
+      }));
+    }
+    // Horizontal lines
+    for (let y = Math.ceil(minCoord / spacing) * spacing; y <= maxCoord; y += spacing) {
+      this.gridGroup.add(new Konva.Line({
+        points: [minCoord, y, maxCoord, y],
+        stroke: color,
+        strokeWidth: 0.5,
+        opacity: 0.2,
+        listening: false,
+      }));
+    }
+  }
+
+  showGrid(): void {
+    this.gridGroup.visible(true);
+  }
+
+  hideGrid(): void {
+    this.gridGroup.visible(false);
+  }
+
+  get gridVisible(): boolean {
+    return this.gridGroup.visible();
+  }
+
+  getGridSpacing(): number {
+    return this.gridSpacing;
   }
 
   createNewNode(absoluteX: number, absoluteY: number, nodeShape?: NodeShape): DANode {

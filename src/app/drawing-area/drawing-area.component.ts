@@ -58,6 +58,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navigationHistory: DANode[] = [];
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
   private gatherRestoreTimeout: number | null = null;
+  private gridFadeTimeout: number | null = null;
+  private gridInitialized = false;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -735,8 +737,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
 
-    const targetX = currentX + deltaX;
-    const targetY = currentY + deltaY;
+    // Snap target position to grid in drawing-layer coordinates
+    const scale = this.drawingLayer.scaleX();
+    const gridSpacing = this.drawingLayer.getGridSpacing();
+    const rawTargetX = currentX + deltaX;
+    const rawTargetY = currentY + deltaY;
+
+    // Convert to drawing-layer coords, snap, convert back
+    const dlX = (rawTargetX - this.drawingLayer.x()) / scale;
+    const dlY = (rawTargetY - this.drawingLayer.y()) / scale;
+    const snappedDlX = Math.round(dlX / gridSpacing) * gridSpacing;
+    const snappedDlY = Math.round(dlY / gridSpacing) * gridSpacing;
+    const targetX = snappedDlX * scale + this.drawingLayer.x();
+    const targetY = snappedDlY * scale + this.drawingLayer.y();
 
     const minX = edgeMargin;
     const maxX = this.stage.width() - edgeMargin;
@@ -769,6 +782,54 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         easing: Konva.Easings.Linear,
       }).play());
     }
+
+    // Show grid and indicators on movement, then fade after 5s
+    this.showMovementIndicators();
+  }
+
+  private showMovementIndicators(): void {
+    // Initialize grid on first use
+    if (!this.gridInitialized) {
+      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+      this.gridInitialized = true;
+    }
+
+    // Show grid
+    if (!this.drawingLayer.gridVisible) {
+      this.drawingLayer.showGrid();
+    }
+
+    // Show pins and waypoints temporarily
+    if (!this.waypointsVisible) {
+      this.updateWaypointVisibility(true);
+      this.drawingLayer.batchDraw();
+    }
+
+    // Reset fade timer
+    if (this.gridFadeTimeout !== null) {
+      clearTimeout(this.gridFadeTimeout);
+    }
+    this.gridFadeTimeout = window.setTimeout(() => {
+      this.drawingLayer.hideGrid();
+      // Only hide waypoints if they weren't explicitly toggled on
+      if (!this.waypointsVisible) {
+        this.updateWaypointVisibility(false);
+      }
+      this.drawingLayer.batchDraw();
+      this.gridFadeTimeout = null;
+    }, 5000);
+  }
+
+  /** Update waypoint/pin visibility. If override is given, uses that; otherwise uses this.waypointsVisible. */
+  private updateWaypointVisibility(visible?: boolean): void {
+    const show = visible ?? this.waypointsVisible;
+    const edges = this.drawingLayer.getDAEdges();
+    edges.forEach(edge => {
+      edge.waypoints.forEach(waypoint => {
+        waypoint.setVisibleForSelection(show);
+      });
+    });
+    this.drawingLayer.getDANodes().forEach(n => n.setPinIndicatorVisible(show));
   }
 
   /**
@@ -1757,17 +1818,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
     this.log.log('  -> Nothing targeted. Edit command ignored.');
-  }
-
-  private updateWaypointVisibility(): void {
-    const edges = this.drawingLayer.getDAEdges();
-    edges.forEach(edge => {
-      edge.waypoints.forEach(waypoint => {
-        waypoint.setVisibleForSelection(this.waypointsVisible);
-      });
-    });
-    // Pin indicators share visibility with waypoints
-    this.drawingLayer.getDANodes().forEach(n => n.setPinIndicatorVisible(this.waypointsVisible));
   }
 
   private toggleWaypointVisibility(): void {
