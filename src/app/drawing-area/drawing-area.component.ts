@@ -1088,7 +1088,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edge = selectedEdges[0];
     // Determine which end to go to: if we're at the source, go to dest; otherwise go to source
     const anchorNode = this.getTraversalAnchorNode();
-    const targetNode = (anchorNode === edge.srcNode) ? edge.destNode : edge.srcNode;
+    const wentForward = (anchorNode === edge.srcNode);
+    const targetNode = wentForward ? edge.destNode : edge.srcNode;
 
     // Push current node to navigation history before moving
     if (anchorNode) {
@@ -1098,6 +1099,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Deselect the edge, focus the target node
     edge.isSelected = false;
     this.focusNode(targetNode);
+
+    // Auto-select an edge on the target: outgoing if we went forward, incoming if backward
+    this.autoSelectEdge(targetNode, wentForward ? 'outgoing' : 'incoming');
   }
 
   private navigateBack() {
@@ -1107,6 +1111,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const previousNode = this.navigationHistory.pop()!;
     this.focusNode(previousNode);
+
+    // Auto-select an outgoing edge on the node we returned to
+    this.autoSelectEdge(previousNode, 'outgoing');
+  }
+
+  /** Auto-select the first edge of the given direction on a node, if any. */
+  private autoSelectEdge(node: DANode, direction: 'outgoing' | 'incoming') {
+    const edges = direction === 'outgoing' ? node.outgoingEdges : node.incomingEdges;
+    if (edges.length > 0) {
+      edges[0].isSelected = true;
+      this.drawingLayer.batchDraw();
+    }
   }
 
   private getTraversalAnchorNode(): DANode | null {
