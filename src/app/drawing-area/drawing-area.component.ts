@@ -580,6 +580,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const resized = this.drawingLayer.appendTextToSelected(key);
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
+    // Also insert into selected labels
+    this.getSelectedLabels().forEach(l => l.appendText(key));
+    this.drawingLayer.batchDraw();
   }
 
   private deleteLastChar() {
@@ -587,6 +590,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const resized = this.drawingLayer.deleteLastCharFromSelected();
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
+    // Also delete from selected labels
+    this.getSelectedLabels().forEach(l => l.deleteLastChar());
+    this.drawingLayer.batchDraw();
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
@@ -1636,8 +1642,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
+
+    // If only labels are selected, slide them along their edges
+    const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
+    if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
+      const slideDist = sign * (distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE);
+      selectedLabels.forEach(label => this.slideLabelAlongEdge(label, slideDist));
+      this.drawingLayer.batchDraw();
+      return;
+    }
     const dragDistance = distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE;
     const edgeMargin = 60;
 
@@ -1886,6 +1901,69 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       });
     });
     return selectedLabels;
+  }
+
+  private getEdgeForLabel(label: DALabel): DAEdge | null {
+    for (const edge of this.drawingLayer.getDAEdges()) {
+      if (edge.labels.includes(label)) return edge;
+    }
+    return null;
+  }
+
+  /** Slide a label along its parent edge by the given distance. */
+  private slideLabelAlongEdge(label: DALabel, distance: number): void {
+    const edge = this.getEdgeForLabel(label);
+    if (!edge) return;
+
+    const points = edge.getPathPoints();
+    if (points.length < 2) return;
+
+    // Find which segment the label is currently closest to, and its t parameter
+    let bestSegIdx = 0;
+    let bestT = 0;
+    let bestDist = Infinity;
+    let totalLength = 0;
+    const segLengths: number[] = [];
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const dx = points[i + 1].x - points[i].x;
+      const dy = points[i + 1].y - points[i].y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      segLengths.push(len);
+      totalLength += len;
+
+      // Project label onto this segment
+      if (len === 0) continue;
+      const t = Math.max(0, Math.min(1, ((label.x - points[i].x) * dx + (label.y - points[i].y) * dy) / (len * len)));
+      const projX = points[i].x + t * dx;
+      const projY = points[i].y + t * dy;
+      const d = Math.sqrt((label.x - projX) ** 2 + (label.y - projY) ** 2);
+      if (d < bestDist) {
+        bestDist = d;
+        bestSegIdx = i;
+        bestT = t;
+      }
+    }
+
+    // Convert current position to a distance-along-path
+    let currentDist = 0;
+    for (let i = 0; i < bestSegIdx; i++) currentDist += segLengths[i];
+    currentDist += bestT * segLengths[bestSegIdx];
+
+    // Move along path by distance
+    let newDist = Math.max(0, Math.min(totalLength, currentDist + distance));
+
+    // Convert back to x,y
+    let accumulated = 0;
+    for (let i = 0; i < segLengths.length; i++) {
+      if (accumulated + segLengths[i] >= newDist || i === segLengths.length - 1) {
+        const segT = segLengths[i] > 0 ? (newDist - accumulated) / segLengths[i] : 0;
+        label.x = points[i].x + segT * (points[i + 1].x - points[i].x);
+        label.y = points[i].y + segT * (points[i + 1].y - points[i].y);
+        return;
+      }
+      accumulated += segLengths[i];
+    }
   }
 
   private getLabelUnderCrosshairs(): DALabel | null {

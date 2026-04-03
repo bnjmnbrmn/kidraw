@@ -139,6 +139,18 @@ export class DALabel {
     this.updateAppearance();
   }
 
+  appendText(text: string): void {
+    this._label += text;
+    this._text.text(this._label);
+  }
+
+  deleteLastChar(): void {
+    if (this._label.length > 0) {
+      this._label = this._label.slice(0, -1);
+      this._text.text(this._label);
+    }
+  }
+
   private updateAppearance(): void {
     const strokeColor = this._isSelected ? this.SELECTED_COLOR : this._strokeColor;
     const strokeWidth = this._isSelected ? this.SELECTED_STROKE_WIDTH : this.LABEL_STROKE_WIDTH;
