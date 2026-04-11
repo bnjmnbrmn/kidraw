@@ -1734,12 +1734,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
 
+    // Snap drag distance to grid: move by at least one grid cell
+    const gridSpacing = this.drawingLayer.getGridSpacing();
+    const gridSteps = Math.max(1, Math.round(dragDistance / gridSpacing));
+    const snappedDistance = gridSteps * gridSpacing;
+
     // Store initial positions for all nodes and waypoints
     const initialNodePositions = selectedNodes.map(node => ({
-      node, initial: getNodePos(node), target: getNodePos(node) + sign * dragDistance
+      node, initial: getNodePos(node), target: getNodePos(node) + sign * snappedDistance
     }));
     const initialWaypointPositions = selectedWaypoints.map(wp => ({
-      wp, initial: getWaypointPos(wp), target: getWaypointPos(wp) + sign * dragDistance
+      wp, initial: getWaypointPos(wp), target: getWaypointPos(wp) + sign * snappedDistance
     }));
 
     const duration = this.TWEEN_DURATION * 1000;
@@ -1760,7 +1765,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
       // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
-      const targetCrosshairs = initialCrosshairs + sign * dragDistance * scale * progress;
+      const targetCrosshairs = initialCrosshairs + sign * snappedDistance * scale * progress;
       const clamped = Math.min(Math.max(targetCrosshairs, edgeMargin), stageExtent - edgeMargin);
       const overflow = targetCrosshairs - clamped;
       this.crosshairsLayer.crosshairs.x = axis === 'x' ? clamped : initialCrosshairsX;
