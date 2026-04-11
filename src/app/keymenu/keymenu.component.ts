@@ -601,11 +601,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private getSpeedDistance(tier: 'fine' | 'normal' | 'coarse'): number {
-    const cursor = this.visualConfig.config.cursor;
+    const g = this.visualConfig.config.cursor.gridSpacing;
     switch (tier) {
-      case 'fine': return cursor.gridSpacing * cursor.fineGridFraction;
-      case 'normal': return cursor.gridSpacing;
-      case 'coarse': return cursor.gridSpacing * cursor.coarseGridMultiple;
+      case 'fine': return g / 10;     // 1 sub-grid cell
+      case 'normal': return g;        // 1 major grid cell
+      case 'coarse': return g * 10;   // 10 major grid cells
     }
   }
 
