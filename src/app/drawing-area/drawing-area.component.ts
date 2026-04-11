@@ -1734,18 +1734,41 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
 
-    // Snap drag distance to grid: move by at least one grid cell
+    // Snap target positions to grid (align node centers and waypoints to grid points)
     const gridSpacing = this.drawingLayer.getGridSpacing();
-    const gridSteps = Math.max(1, Math.round(dragDistance / gridSpacing));
-    const snappedDistance = gridSteps * gridSpacing;
+    const snapToGrid = (pos: number) => Math.round(pos / gridSpacing) * gridSpacing;
+    const getNodeCenterOffset = (node: DANode) =>
+      axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;
 
     // Store initial positions for all nodes and waypoints
-    const initialNodePositions = selectedNodes.map(node => ({
-      node, initial: getNodePos(node), target: getNodePos(node) + sign * snappedDistance
-    }));
-    const initialWaypointPositions = selectedWaypoints.map(wp => ({
-      wp, initial: getWaypointPos(wp), target: getWaypointPos(wp) + sign * snappedDistance
-    }));
+    const initialNodePositions = selectedNodes.map(node => {
+      const initial = getNodePos(node);
+      const centerOffset = getNodeCenterOffset(node);
+      const currentCenter = initial + centerOffset;
+      const rawTargetCenter = currentCenter + sign * dragDistance;
+      // Snap center to grid, ensure at least one grid step
+      let snappedCenter = snapToGrid(rawTargetCenter);
+      if (snappedCenter === snapToGrid(currentCenter)) {
+        snappedCenter += sign * gridSpacing;
+      }
+      return { node, initial, target: snappedCenter - centerOffset };
+    });
+    const initialWaypointPositions = selectedWaypoints.map(wp => {
+      const initial = getWaypointPos(wp);
+      const rawTarget = initial + sign * dragDistance;
+      let snappedTarget = snapToGrid(rawTarget);
+      if (snappedTarget === snapToGrid(initial)) {
+        snappedTarget += sign * gridSpacing;
+      }
+      return { wp, initial, target: snappedTarget };
+    });
+
+    // Compute effective distance for crosshairs (use first node or waypoint)
+    const snappedDistance = initialNodePositions.length > 0
+      ? Math.abs(initialNodePositions[0].target - initialNodePositions[0].initial)
+      : initialWaypointPositions.length > 0
+        ? Math.abs(initialWaypointPositions[0].target - initialWaypointPositions[0].initial)
+        : dragDistance;
 
     const duration = this.TWEEN_DURATION * 1000;
     const startTime = Date.now();
