@@ -565,8 +565,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.right]: new LabeledAction('Drag Right', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT})),
       [pz.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
       [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
-      [ds.bigger]: new LabeledSubmenuConfig('Bigger Drag...', this.buildDragSpeedSubmenu('medium')),
-      [ds.smaller]: new LabeledSubmenuConfig('Smaller Drag...', this.buildDragSpeedSubmenu('fine')),
+      [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag...', this.buildDragSpeedSubmenu('coarse')),
+      [ds.smaller]: new LabeledSubmenuConfig('Fine Drag...', this.buildDragSpeedSubmenu('fine')),
       [root.insertSubmenu]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
     } as SubmenuConfig;
   }
@@ -583,8 +583,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
-      [moveSpeed.bigger]: new LabeledSubmenuConfig('Bigger Move...', this.buildMoveSpeedSubmenu('medium')),
-      [moveSpeed.smaller]: new LabeledSubmenuConfig('Smaller Move...', this.buildMoveSpeedSubmenu('fine')),
+      [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
+      [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
       [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
@@ -600,35 +600,27 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private getSpeedDistance(tier: 'fine' | 'normal' | 'medium' | 'large'): number {
+  private getSpeedDistance(tier: 'fine' | 'normal' | 'coarse'): number {
     const cursor = this.visualConfig.config.cursor;
     switch (tier) {
-      case 'fine': return cursor.fineDistance;
-      case 'normal': return cursor.movementDistance;
-      case 'medium': return cursor.mediumDistance;
-      case 'large': return cursor.largeDistance;
+      case 'fine': return cursor.gridSpacing * cursor.fineGridFraction;
+      case 'normal': return cursor.gridSpacing;
+      case 'coarse': return cursor.gridSpacing * cursor.coarseGridMultiple;
     }
   }
 
-  private buildMoveSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+  private buildMoveSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const speed = this.keyAssignments.moveSpeed;
     const d = this.getSpeedDistance(tier);
     const moveWithDistance = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
 
-    const config: SubmenuConfig = {
+    return {
       [movement.up]: new LabeledAction('Move Up', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_UP)),
       [movement.left]: new LabeledAction('Move Left', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_LEFT)),
       [movement.down]: new LabeledAction('Move Down', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_DOWN)),
       [movement.right]: new LabeledAction('Move Right', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
     } as SubmenuConfig;
-
-    if (tier === 'medium') {
-      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildMoveSpeedSubmenu('large'));
-    }
-
-    return config;
   }
 
   private buildPanZoomSubmenuConfig(): SubmenuConfig {
@@ -648,51 +640,37 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [pz.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
       [pz.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
-      [pz.speed.bigger]: new LabeledSubmenuConfig('Bigger Pan...', this.buildPanSpeedSubmenu('medium')),
-      [pz.speed.smaller]: new LabeledSubmenuConfig('Smaller Pan...', this.buildPanSpeedSubmenu('fine')),
+      [pz.speed.bigger]: new LabeledSubmenuConfig('Coarse Pan...', this.buildPanSpeedSubmenu('coarse')),
+      [pz.speed.smaller]: new LabeledSubmenuConfig('Fine Pan...', this.buildPanSpeedSubmenu('fine')),
     } as SubmenuConfig;
   }
 
-  private buildPanSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+  private buildPanSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const speed = this.keyAssignments.panZoom.speed;
     const d = this.getSpeedDistance(tier);
     const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
 
-    const config: SubmenuConfig = {
+    return {
       [movement.up]: new LabeledAction('Pan Up', panCmd(DACommandType.PAN_UP)),
       [movement.left]: new LabeledAction('Pan Left', panCmd(DACommandType.PAN_LEFT)),
       [movement.down]: new LabeledAction('Pan Down', panCmd(DACommandType.PAN_DOWN)),
       [movement.right]: new LabeledAction('Pan Right', panCmd(DACommandType.PAN_RIGHT)),
     } as SubmenuConfig;
-
-    if (tier === 'medium') {
-      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildPanSpeedSubmenu('large'));
-    }
-
-    return config;
   }
 
-  private buildDragSpeedSubmenu(tier: 'fine' | 'medium' | 'large'): SubmenuConfig {
+  private buildDragSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const speed = this.keyAssignments.dragSpeed;
     const d = this.getSpeedDistance(tier);
     const dragCmd = (kind: DACommandType.DRAG_SELECTED_UP | DACommandType.DRAG_SELECTED_DOWN | DACommandType.DRAG_SELECTED_LEFT | DACommandType.DRAG_SELECTED_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
 
-    const config: SubmenuConfig = {
+    return {
       [drag.up]: new LabeledAction('Drag Up', dragCmd(DACommandType.DRAG_SELECTED_UP)),
       [drag.left]: new LabeledAction('Drag Left', dragCmd(DACommandType.DRAG_SELECTED_LEFT)),
       [drag.down]: new LabeledAction('Drag Down', dragCmd(DACommandType.DRAG_SELECTED_DOWN)),
       [drag.right]: new LabeledAction('Drag Right', dragCmd(DACommandType.DRAG_SELECTED_RIGHT)),
     } as SubmenuConfig;
-
-    if (tier === 'medium') {
-      (config as any)[speed.biggest] = new LabeledSubmenuConfig('Biggest...', this.buildDragSpeedSubmenu('large'));
-    }
-
-    return config;
   }
 
   private buildMoveByNodeSubmenuConfig(): SubmenuConfig {

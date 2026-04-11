@@ -66,7 +66,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
   public readonly CROSSHAIR_MOVEMENT_DURATION = .1;
-  public CROSSHAIRS_MOVEMENT_DISTANCE = 20;
+  public CROSSHAIRS_MOVEMENT_DISTANCE = 50; // one grid cell
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
@@ -125,7 +125,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
     const reapplyConfig = () => {
       reapplyTheme();
-      this.CROSSHAIRS_MOVEMENT_DISTANCE = this.visualConfigService.config.cursor.movementDistance;
+      this.CROSSHAIRS_MOVEMENT_DISTANCE = this.visualConfigService.config.cursor.gridSpacing;
     };
     this.themeSub = this.themeService.themeChanged$.subscribe(reapplyTheme);
     this.visualSub = this.visualConfigService.configChanged$.subscribe(reapplyConfig);

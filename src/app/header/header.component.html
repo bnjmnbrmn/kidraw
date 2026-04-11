@@ -76,10 +76,22 @@
           <summary>Cursor</summary>
           <div class="settings-group">
             <label class="swap-label">
-              Move distance (px):
-              <input type="number" tabindex="-1" min="1" max="200" step="1"
-                     [value]="config.cursor.movementDistance"
-                     (change)="onNumberChange('cursor', 'movementDistance', $event)">
+              Grid spacing (px):
+              <input type="number" tabindex="-1" min="10" max="200" step="10"
+                     [value]="config.cursor.gridSpacing"
+                     (change)="onNumberChange('cursor', 'gridSpacing', $event)">
+            </label>
+            <label class="swap-label">
+              Fine fraction:
+              <input type="number" tabindex="-1" min="0.1" max="1" step="0.05"
+                     [value]="config.cursor.fineGridFraction"
+                     (change)="onNumberChange('cursor', 'fineGridFraction', $event)">
+            </label>
+            <label class="swap-label">
+              Coarse multiple:
+              <input type="number" tabindex="-1" min="2" max="10" step="1"
+                     [value]="config.cursor.coarseGridMultiple"
+                     (change)="onNumberChange('cursor', 'coarseGridMultiple', $event)">
             </label>
             <label class="swap-label">
               Repeat delay (ms):
@@ -92,24 +104,6 @@
               <input type="number" tabindex="-1" min="10" max="500" step="10"
                      [value]="config.cursor.repeatIntervalMs"
                      (change)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
-            </label>
-            <label class="swap-label">
-              Fine distance (px):
-              <input type="number" tabindex="-1" min="1" max="100" step="1"
-                     [value]="config.cursor.fineDistance"
-                     (change)="onNumberChange('cursor', 'fineDistance', $event)">
-            </label>
-            <label class="swap-label">
-              Medium distance (px):
-              <input type="number" tabindex="-1" min="1" max="500" step="10"
-                     [value]="config.cursor.mediumDistance"
-                     (change)="onNumberChange('cursor', 'mediumDistance', $event)">
-            </label>
-            <label class="swap-label">
-              Large distance (px):
-              <input type="number" tabindex="-1" min="10" max="1000" step="50"
-                     [value]="config.cursor.largeDistance"
-                     (change)="onNumberChange('cursor', 'largeDistance', $event)">
             </label>
             <label class="swap-label">
               Edit repeat delay (ms):
