@@ -225,6 +225,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.pushUndoSnapshot(command);
     }
 
+    // Show grid and indicators for any spatial/manipulation command
+    if (command.kind !== DACommandType.INSERT_CHAR &&
+        command.kind !== DACommandType.DELETE_LAST_CHAR &&
+        command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
+        command.kind !== DACommandType.EDIT_SELECTED &&
+        command.kind !== DACommandType.REDO) {
+      this.showMovementIndicators();
+    }
+
     switch (command.kind) {
       case DACommandType.MOVE_CROSSHAIRS_LEFT:
         this.moveCrosshairsLeft(command.distance);
@@ -829,12 +838,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Show grid and indicators on movement, then fade after 5s
-    this.showMovementIndicators();
+    this.showMovementIndicators(true);
   }
 
-  private showMovementIndicators(): void {
-    // Rebuild grid each time (adapts spacing to current zoom level)
-    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+  private showMovementIndicators(rebuildGrid = false): void {
+    if (rebuildGrid || !this.gridInitialized) {
+      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+      this.gridInitialized = true;
+    }
 
     // Show grid
     if (!this.drawingLayer.gridVisible) {
