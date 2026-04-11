@@ -774,32 +774,45 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
 
+    // Rebuild grid first so spacing adapts to current zoom
+    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+    this.gridInitialized = true;
+
     // Snap target position to grid in drawing-layer coordinates
     const scale = this.drawingLayer.scaleX();
-    const gridSpacing = this.drawingLayer.getGridSpacing();
+    const majorSpacing = this.drawingLayer.getGridSpacing();
+    const minorSpacing = this.drawingLayer.getSubGridSpacing();
 
     // Current position in drawing-layer coords
     const currentDlX = (currentX - this.drawingLayer.x()) / scale;
     const currentDlY = (currentY - this.drawingLayer.y()) / scale;
 
-    // Move by at least one grid cell in the requested direction
+    // Choose snap grid: use sub-grid for fine movement (delta < 1 major cell in DL coords)
+    const snapGrid = (delta: number) => {
+      const dlDelta = Math.abs(delta) / scale;
+      return dlDelta < majorSpacing * 0.9 ? minorSpacing : majorSpacing;
+    };
+
+    // Move by at least one snap-grid cell in the requested direction
     let snappedDlX: number;
     let snappedDlY: number;
 
     if (deltaX !== 0) {
-      const gridSteps = Math.max(1, Math.round(Math.abs(deltaX) / (gridSpacing * scale)));
-      snappedDlX = Math.round(currentDlX / gridSpacing) * gridSpacing
-        + gridSteps * gridSpacing * Math.sign(deltaX);
+      const spacing = snapGrid(deltaX);
+      const gridSteps = Math.max(1, Math.round(Math.abs(deltaX) / (spacing * scale)));
+      snappedDlX = Math.round(currentDlX / spacing) * spacing
+        + gridSteps * spacing * Math.sign(deltaX);
     } else {
-      snappedDlX = Math.round(currentDlX / gridSpacing) * gridSpacing;
+      snappedDlX = Math.round(currentDlX / majorSpacing) * majorSpacing;
     }
 
     if (deltaY !== 0) {
-      const gridSteps = Math.max(1, Math.round(Math.abs(deltaY) / (gridSpacing * scale)));
-      snappedDlY = Math.round(currentDlY / gridSpacing) * gridSpacing
-        + gridSteps * gridSpacing * Math.sign(deltaY);
+      const spacing = snapGrid(deltaY);
+      const gridSteps = Math.max(1, Math.round(Math.abs(deltaY) / (spacing * scale)));
+      snappedDlY = Math.round(currentDlY / spacing) * spacing
+        + gridSteps * spacing * Math.sign(deltaY);
     } else {
-      snappedDlY = Math.round(currentDlY / gridSpacing) * gridSpacing;
+      snappedDlY = Math.round(currentDlY / majorSpacing) * majorSpacing;
     }
 
     const targetX = snappedDlX * scale + this.drawingLayer.x();
@@ -838,14 +851,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Show grid and indicators on movement, then fade after 5s
-    this.showMovementIndicators(true);
+    this.showMovementIndicators();
   }
 
-  private showMovementIndicators(rebuildGrid = false): void {
-    if (rebuildGrid || !this.gridInitialized) {
-      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
-      this.gridInitialized = true;
-    }
+  private showMovementIndicators(): void {
+    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+    this.gridInitialized = true;
 
     // Show grid
     if (!this.drawingLayer.gridVisible) {
@@ -1735,7 +1746,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
 
     // Snap target positions to grid (align node centers and waypoints to grid points)
-    const gridSpacing = this.drawingLayer.getGridSpacing();
+    // Use sub-grid for fine drag (distance < 1 major cell)
+    const majorSpacing = this.drawingLayer.getGridSpacing();
+    const minorSpacing = this.drawingLayer.getSubGridSpacing();
+    const gridSpacing = dragDistance < majorSpacing * 0.9 ? minorSpacing : majorSpacing;
     const snapToGrid = (pos: number) => Math.round(pos / gridSpacing) * gridSpacing;
     const getNodeCenterOffset = (node: DANode) =>
       axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;

@@ -17,6 +17,8 @@ export class DrawingLayer extends Konva.Layer {
   private readonly daEdges: DAEdge[] = [];
   private _palette?: ThemePalette;
   private gridSpacing = 50;
+  private _currentMajorSpacing = 50;
+  private _currentMinorSpacing = 5;
 
   constructor() {
     super();
@@ -30,51 +32,73 @@ export class DrawingLayer extends Konva.Layer {
 
   }
 
-  /** Rebuild grid lines to cover the given viewport (in layer coordinates).
-   *  Adapts spacing to zoom level so lines stay visually useful. */
+  /** Rebuild grid lines to cover the given viewport.
+   *  Major grid adapts by factors of 10 to keep ~10-20 major squares across the viewport.
+   *  Minor (sub-grid) lines are always 1/10th of the major spacing. */
   rebuildGrid(viewportWidth: number, viewportHeight: number): void {
     this.gridGroup.destroyChildren();
     const scale = this.scaleX();
 
-    // Adapt grid spacing to zoom: keep screen-space gap between 30–80px
-    const baseSpacing = this.gridSpacing; // 50
-    let spacing = baseSpacing;
-    const screenGap = spacing * scale;
-    if (screenGap < 30) {
-      // Zoomed out: double spacing until lines are far enough apart
-      while (spacing * scale < 30) spacing *= 2;
-    } else if (screenGap > 80) {
-      // Zoomed in: halve spacing until lines are close enough
-      while (spacing * scale > 80 && spacing > 10) spacing /= 2;
-    }
+    // Viewport width in drawing-layer coordinates
+    const viewportDLWidth = viewportWidth / scale;
+
+    // We want roughly 10–20 major grid squares across the viewport.
+    // Target: ~15 squares → target spacing = viewportDLWidth / 15.
+    // Round to nearest power of 10 so spacing jumps in decades.
+    const targetSpacing = viewportDLWidth / 15;
+    const majorSpacing = Math.pow(10, Math.round(Math.log10(targetSpacing)));
+    const minorSpacing = majorSpacing / 10;
+
+    this._currentMajorSpacing = majorSpacing;
+    this._currentMinorSpacing = minorSpacing;
 
     const color = this._palette?.keyStrokes?.[0] ?? '#888888';
-    // Thicker, more opaque lines that stay visible
-    const strokeWidth = 1 / scale; // constant screen-space thickness
-    const opacity = 0.35;
+
+    // Constant screen-space thickness
+    const majorStrokeWidth = 1 / scale;
+    const minorStrokeWidth = 0.5 / scale;
 
     // Extend grid well beyond visible area
-    const extent = Math.max(viewportWidth, viewportHeight) * 4;
+    const extent = Math.max(viewportWidth, viewportHeight) * 4 / scale;
     const minCoord = -extent;
     const maxCoord = extent;
 
-    // Vertical lines
-    for (let x = Math.ceil(minCoord / spacing) * spacing; x <= maxCoord; x += spacing) {
+    // Minor grid lines (sub-grid)
+    for (let x = Math.ceil(minCoord / minorSpacing) * minorSpacing; x <= maxCoord; x += minorSpacing) {
       this.gridGroup.add(new Konva.Line({
         points: [x, minCoord, x, maxCoord],
         stroke: color,
-        strokeWidth,
-        opacity,
+        strokeWidth: minorStrokeWidth,
+        opacity: 0.15,
         listening: false,
       }));
     }
-    // Horizontal lines
-    for (let y = Math.ceil(minCoord / spacing) * spacing; y <= maxCoord; y += spacing) {
+    for (let y = Math.ceil(minCoord / minorSpacing) * minorSpacing; y <= maxCoord; y += minorSpacing) {
       this.gridGroup.add(new Konva.Line({
         points: [minCoord, y, maxCoord, y],
         stroke: color,
-        strokeWidth,
-        opacity,
+        strokeWidth: minorStrokeWidth,
+        opacity: 0.15,
+        listening: false,
+      }));
+    }
+
+    // Major grid lines (drawn on top of minor)
+    for (let x = Math.ceil(minCoord / majorSpacing) * majorSpacing; x <= maxCoord; x += majorSpacing) {
+      this.gridGroup.add(new Konva.Line({
+        points: [x, minCoord, x, maxCoord],
+        stroke: color,
+        strokeWidth: majorStrokeWidth,
+        opacity: 0.4,
+        listening: false,
+      }));
+    }
+    for (let y = Math.ceil(minCoord / majorSpacing) * majorSpacing; y <= maxCoord; y += majorSpacing) {
+      this.gridGroup.add(new Konva.Line({
+        points: [minCoord, y, maxCoord, y],
+        stroke: color,
+        strokeWidth: majorStrokeWidth,
+        opacity: 0.4,
         listening: false,
       }));
     }
@@ -93,7 +117,11 @@ export class DrawingLayer extends Konva.Layer {
   }
 
   getGridSpacing(): number {
-    return this.gridSpacing;
+    return this._currentMajorSpacing;
+  }
+
+  getSubGridSpacing(): number {
+    return this._currentMinorSpacing;
   }
 
   createNewNode(absoluteX: number, absoluteY: number, nodeShape?: NodeShape): DANode {
