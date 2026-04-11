@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
-import { DACommand, DACommandType, EdgeDirectedness, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -236,16 +236,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     switch (command.kind) {
       case DACommandType.MOVE_CROSSHAIRS_LEFT:
-        this.moveCrosshairsLeft(command.distance);
+        this.moveCrosshairsLeft(command.gridTier);
         break;
       case DACommandType.MOVE_CROSSHAIRS_DOWN:
-        this.moveCrosshairsDown(command.distance);
+        this.moveCrosshairsDown(command.gridTier);
         break;
       case DACommandType.MOVE_CROSSHAIRS_RIGHT:
-        this.moveCrosshairsRight(command.distance);
+        this.moveCrosshairsRight(command.gridTier);
         break;
       case DACommandType.MOVE_CROSSHAIRS_UP:
-        this.moveCrosshairsUp(command.distance);
+        this.moveCrosshairsUp(command.gridTier);
         break;
       case DACommandType.STEER_FORWARD:
         this.steerForward();
@@ -364,16 +364,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.checkAndEmitEditState();
         break;
       case DACommandType.DRAG_SELECTED_LEFT:
-        this.dragSelectedLeft(command.distance);
+        this.dragSelectedLeft(command.gridTier);
         break;
       case DACommandType.DRAG_SELECTED_RIGHT:
-        this.dragSelectedRight(command.distance);
+        this.dragSelectedRight(command.gridTier);
         break;
       case DACommandType.DRAG_SELECTED_UP:
-        this.dragSelectedUp(command.distance);
+        this.dragSelectedUp(command.gridTier);
         break;
       case DACommandType.DRAG_SELECTED_DOWN:
-        this.dragSelectedDown(command.distance);
+        this.dragSelectedDown(command.gridTier);
         break;
       case DACommandType.ENTER_DRAG_MODE:
         this.enterDragMode();
@@ -751,72 +751,60 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }).play());
   }
 
-  private moveCrosshairsUp(distance?: number) {
-    this.moveCrosshairsBy(0, -(distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
+  private moveCrosshairsUp(tier?: GridTier) {
+    this.moveCrosshairsBy(0, -1, tier ?? 'normal');
   }
 
-  private moveCrosshairsRight(distance?: number) {
-    this.moveCrosshairsBy((distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
+  private moveCrosshairsRight(tier?: GridTier) {
+    this.moveCrosshairsBy(1, 0, tier ?? 'normal');
   }
 
-  private moveCrosshairsDown(distance?: number) {
-    this.moveCrosshairsBy(0, (distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
+  private moveCrosshairsDown(tier?: GridTier) {
+    this.moveCrosshairsBy(0, 1, tier ?? 'normal');
   }
 
-  private moveCrosshairsLeft(distance?: number) {
-    this.moveCrosshairsBy(-(distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
+  private moveCrosshairsLeft(tier?: GridTier) {
+    this.moveCrosshairsBy(-1, 0, tier ?? 'normal');
   }
 
-  private moveCrosshairsBy(deltaX: number, deltaY: number) {
+  private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier) {
     this.finishTweens();
 
     const edgeMargin = 60;
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
 
-    // Rebuild grid first so spacing adapts to current zoom
-    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
-    this.gridInitialized = true;
+    let targetX: number;
+    let targetY: number;
 
-    // Snap target position to grid in drawing-layer coordinates
-    const scale = this.drawingLayer.scaleX();
-    const majorSpacing = this.drawingLayer.getGridSpacing();
-    const minorSpacing = this.drawingLayer.getSubGridSpacing();
+    if (tier) {
+      // Grid-snapped movement: deltaX/Y are direction signs (-1, 0, +1)
+      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+      this.gridInitialized = true;
 
-    // Current position in drawing-layer coords
-    const currentDlX = (currentX - this.drawingLayer.x()) / scale;
-    const currentDlY = (currentY - this.drawingLayer.y()) / scale;
+      const scale = this.drawingLayer.scaleX();
+      const majorSpacing = this.drawingLayer.getGridSpacing();
+      const minorSpacing = this.drawingLayer.getSubGridSpacing();
+      const currentDlX = (currentX - this.drawingLayer.x()) / scale;
+      const currentDlY = (currentY - this.drawingLayer.y()) / scale;
 
-    // Choose snap grid: use sub-grid for fine movement (delta < 1 major cell in DL coords)
-    const snapGrid = (delta: number) => {
-      const dlDelta = Math.abs(delta) / scale;
-      return dlDelta < majorSpacing * 0.9 ? minorSpacing : majorSpacing;
-    };
+      const spacing = tier === 'fine' ? minorSpacing : majorSpacing;
+      const steps = tier === 'coarse' ? 10 : 1;
 
-    // Move by at least one snap-grid cell in the requested direction
-    let snappedDlX: number;
-    let snappedDlY: number;
+      const snappedDlX = deltaX !== 0
+        ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
+        : Math.round(currentDlX / spacing) * spacing;
+      const snappedDlY = deltaY !== 0
+        ? Math.round(currentDlY / spacing) * spacing + steps * spacing * Math.sign(deltaY)
+        : Math.round(currentDlY / spacing) * spacing;
 
-    if (deltaX !== 0) {
-      const spacing = snapGrid(deltaX);
-      const gridSteps = Math.max(1, Math.round(Math.abs(deltaX) / (spacing * scale)));
-      snappedDlX = Math.round(currentDlX / spacing) * spacing
-        + gridSteps * spacing * Math.sign(deltaX);
+      targetX = snappedDlX * scale + this.drawingLayer.x();
+      targetY = snappedDlY * scale + this.drawingLayer.y();
     } else {
-      snappedDlX = Math.round(currentDlX / majorSpacing) * majorSpacing;
+      // Raw pixel movement (focusNode, moveByNode, zoom, etc.)
+      targetX = currentX + deltaX;
+      targetY = currentY + deltaY;
     }
-
-    if (deltaY !== 0) {
-      const spacing = snapGrid(deltaY);
-      const gridSteps = Math.max(1, Math.round(Math.abs(deltaY) / (spacing * scale)));
-      snappedDlY = Math.round(currentDlY / spacing) * spacing
-        + gridSteps * spacing * Math.sign(deltaY);
-    } else {
-      snappedDlY = Math.round(currentDlY / majorSpacing) * majorSpacing;
-    }
-
-    const targetX = snappedDlX * scale + this.drawingLayer.x();
-    const targetY = snappedDlY * scale + this.drawingLayer.y();
 
     const minX = edgeMargin;
     const maxX = this.stage.width() - edgeMargin;
@@ -1677,34 +1665,34 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     tween.play();
   }
 
-  private dragSelectedLeft(distance?: number)  {
-    if (this.resizeTargetNode) { this.resizeSelected(-1, distance); return; }
-    this.dragSelected('x', -1, distance);
+  private dragSelectedLeft(tier?: GridTier)  {
+    if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
+    this.dragSelected('x', -1, tier);
   }
-  private dragSelectedRight(distance?: number) {
-    if (this.resizeTargetNode) { this.resizeSelected(1, distance); return; }
-    this.dragSelected('x', +1, distance);
+  private dragSelectedRight(tier?: GridTier) {
+    if (this.resizeTargetNode) { this.resizeSelected(1); return; }
+    this.dragSelected('x', +1, tier);
   }
-  private dragSelectedUp(distance?: number)    {
-    if (this.resizeTargetNode) { this.resizeSelected(-1, distance); return; }
-    this.dragSelected('y', -1, distance);
+  private dragSelectedUp(tier?: GridTier)    {
+    if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
+    this.dragSelected('y', -1, tier);
   }
-  private dragSelectedDown(distance?: number)  {
-    if (this.resizeTargetNode) { this.resizeSelected(1, distance); return; }
-    this.dragSelected('y', +1, distance);
+  private dragSelectedDown(tier?: GridTier)  {
+    if (this.resizeTargetNode) { this.resizeSelected(1); return; }
+    this.dragSelected('y', +1, tier);
   }
 
-  private resizeSelected(sign: 1 | -1, distance?: number) {
+  private resizeSelected(sign: 1 | -1) {
     const node = this.resizeTargetNode;
     if (!node) return;
     this.hasDragged = true;
-    const delta = sign * (distance ?? this.NODE_SIZE_STEP);
+    const delta = sign * this.NODE_SIZE_STEP;
     node.resizeBy(delta);
     this.updateEdgesForResizedNodes([node]);
     this.drawingLayer.batchDraw();
   }
 
-  private dragSelected(axis: 'x' | 'y', sign: 1 | -1, distance?: number) {
+  private dragSelected(axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
@@ -1714,13 +1702,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.getSelectedWaypoints();
     if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
-      const slideDist = sign * (distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE);
+      const majorSpacing = this.drawingLayer.getGridSpacing();
+      const slideDist = sign * majorSpacing;
       selectedLabels.forEach(label => this.slideLabelAlongEdge(label, slideDist));
       this.drawingLayer.batchDraw();
       return;
     }
-    const dragDistance = distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE;
     const edgeMargin = 60;
+    const effectiveTier = tier ?? 'normal';
 
     // Collect all connected edges to move
     const edgesToMove = new Set<DAEdge>();
@@ -1745,11 +1734,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
 
-    // Snap target positions to grid (align node centers and waypoints to grid points)
-    // Use sub-grid for fine drag (distance < 1 major cell)
+    // Snap target positions to grid based on tier
     const majorSpacing = this.drawingLayer.getGridSpacing();
     const minorSpacing = this.drawingLayer.getSubGridSpacing();
-    const gridSpacing = dragDistance < majorSpacing * 0.9 ? minorSpacing : majorSpacing;
+    const gridSpacing = effectiveTier === 'fine' ? minorSpacing : majorSpacing;
+    const steps = effectiveTier === 'coarse' ? 10 : 1;
     const snapToGrid = (pos: number) => Math.round(pos / gridSpacing) * gridSpacing;
     const getNodeCenterOffset = (node: DANode) =>
       axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;
@@ -1759,21 +1748,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const initial = getNodePos(node);
       const centerOffset = getNodeCenterOffset(node);
       const currentCenter = initial + centerOffset;
-      const rawTargetCenter = currentCenter + sign * dragDistance;
-      // Snap center to grid, ensure at least one grid step
-      let snappedCenter = snapToGrid(rawTargetCenter);
-      if (snappedCenter === snapToGrid(currentCenter)) {
-        snappedCenter += sign * gridSpacing;
-      }
+      const snappedCenter = snapToGrid(currentCenter) + sign * steps * gridSpacing;
       return { node, initial, target: snappedCenter - centerOffset };
     });
     const initialWaypointPositions = selectedWaypoints.map(wp => {
       const initial = getWaypointPos(wp);
-      const rawTarget = initial + sign * dragDistance;
-      let snappedTarget = snapToGrid(rawTarget);
-      if (snappedTarget === snapToGrid(initial)) {
-        snappedTarget += sign * gridSpacing;
-      }
+      const snappedTarget = snapToGrid(initial) + sign * steps * gridSpacing;
       return { wp, initial, target: snappedTarget };
     });
 
@@ -1782,7 +1762,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ? Math.abs(initialNodePositions[0].target - initialNodePositions[0].initial)
       : initialWaypointPositions.length > 0
         ? Math.abs(initialWaypointPositions[0].target - initialWaypointPositions[0].initial)
-        : dragDistance;
+        : steps * gridSpacing;
 
     const duration = this.TWEEN_DURATION * 1000;
     const startTime = Date.now();

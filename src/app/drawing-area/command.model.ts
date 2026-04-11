@@ -4,6 +4,12 @@ export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' |
 
 export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid';
 
+export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
+
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
+
+export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purple';
+
 export enum DACommandType {
   MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
@@ -70,16 +76,23 @@ export enum DACommandType {
   FOLLOW_SELECTED_EDGE = 'FOLLOW_SELECTED_EDGE',
   NAVIGATE_BACK = 'NAVIGATE_BACK',
   GATHER_CONNECTED_NODES = 'GATHER_CONNECTED_NODES',
+  SET_EDGE_DIRECTEDNESS = 'SET_EDGE_DIRECTEDNESS',
+  SET_LINE_STYLE = 'SET_LINE_STYLE',
+  SET_ITEM_COLOR = 'SET_ITEM_COLOR',
+  SET_DEFAULT_EDGE_DIRECTEDNESS = 'SET_DEFAULT_EDGE_DIRECTEDNESS',
+  SET_DEFAULT_LINE_STYLE = 'SET_DEFAULT_LINE_STYLE',
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
 }
 
+export type GridTier = 'fine' | 'normal' | 'coarse';
+
 export type DACommand =
-  | {kind: DACommandType.MOVE_CROSSHAIRS_LEFT; distance?: number}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT; distance?: number}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_UP; distance?: number}
-  | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN; distance?: number}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_LEFT; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_UP; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.STEER_FORWARD}
   | {kind: DACommandType.STEER_BACKWARD}
   | {kind: DACommandType.STRAFE_LEFT}
@@ -113,10 +126,10 @@ export type DACommand =
   | {kind: DACommandType.RECENTER_CROSSHAIRS}
   | {kind: DACommandType.UNSELECT_ALL}
   | {kind: DACommandType.ENTER_DRAG_MODE}
-  | {kind: DACommandType.DRAG_SELECTED_LEFT; distance?: number}
-  | {kind: DACommandType.DRAG_SELECTED_RIGHT; distance?: number}
-  | {kind: DACommandType.DRAG_SELECTED_UP; distance?: number}
-  | {kind: DACommandType.DRAG_SELECTED_DOWN; distance?: number}
+  | {kind: DACommandType.DRAG_SELECTED_LEFT; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.DRAG_SELECTED_RIGHT; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.DRAG_SELECTED_UP; distance?: number; gridTier?: GridTier}
+  | {kind: DACommandType.DRAG_SELECTED_DOWN; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.EXIT_DRAG_MODE}
   | {kind: DACommandType.ADD_WAYPOINT}
   | {kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY}
@@ -140,6 +153,11 @@ export type DACommand =
   | {kind: DACommandType.FOLLOW_SELECTED_EDGE}
   | {kind: DACommandType.NAVIGATE_BACK}
   | {kind: DACommandType.GATHER_CONNECTED_NODES}
+  | {kind: DACommandType.SET_EDGE_DIRECTEDNESS; directedness: EdgeDirectedness}
+  | {kind: DACommandType.SET_LINE_STYLE; lineStyle: LineStyle}
+  | {kind: DACommandType.SET_ITEM_COLOR; color: ItemColor}
+  | {kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS; directedness: EdgeDirectedness}
+  | {kind: DACommandType.SET_DEFAULT_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}

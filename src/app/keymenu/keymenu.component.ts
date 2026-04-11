@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -600,35 +600,25 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private getSpeedDistance(tier: 'fine' | 'normal' | 'coarse'): number {
-    const g = this.visualConfig.config.cursor.gridSpacing;
-    switch (tier) {
-      case 'fine': return g / 10;     // 1 sub-grid cell
-      case 'normal': return g;        // 1 major grid cell
-      case 'coarse': return g * 10;   // 10 major grid cells
-    }
-  }
-
-  private buildMoveSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
+  private buildMoveSpeedSubmenu(tier: GridTier): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const d = this.getSpeedDistance(tier);
-    const moveWithDistance = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
-      () => this.keyMenuOut.emit({kind, distance: d});
+    const move = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
+      () => this.keyMenuOut.emit({kind, gridTier: tier});
 
     return {
-      [movement.up]: new LabeledAction('Move Up', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_UP)),
-      [movement.left]: new LabeledAction('Move Left', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_LEFT)),
-      [movement.down]: new LabeledAction('Move Down', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_DOWN)),
-      [movement.right]: new LabeledAction('Move Right', moveWithDistance(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
+      [movement.up]: new LabeledAction('Move Up', move(DACommandType.MOVE_CROSSHAIRS_UP)),
+      [movement.left]: new LabeledAction('Move Left', move(DACommandType.MOVE_CROSSHAIRS_LEFT)),
+      [movement.down]: new LabeledAction('Move Down', move(DACommandType.MOVE_CROSSHAIRS_DOWN)),
+      [movement.right]: new LabeledAction('Move Right', move(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
     } as SubmenuConfig;
   }
 
   private buildPanZoomSubmenuConfig(): SubmenuConfig {
     const movement = this.keyAssignments.movement;
     const pz = this.keyAssignments.panZoom;
-    const d = this.getSpeedDistance('normal');
+    const g = this.visualConfig.config.cursor.gridSpacing;
     const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
-      () => this.keyMenuOut.emit({kind, distance: d});
+      () => this.keyMenuOut.emit({kind, distance: g});
 
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
@@ -647,7 +637,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildPanSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
     const movement = this.keyAssignments.movement;
-    const d = this.getSpeedDistance(tier);
+    const g = this.visualConfig.config.cursor.gridSpacing;
+    const d = tier === 'fine' ? g / 10 : g * 10;
     const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
       () => this.keyMenuOut.emit({kind, distance: d});
 
@@ -659,11 +650,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildDragSpeedSubmenu(tier: 'fine' | 'coarse'): SubmenuConfig {
+  private buildDragSpeedSubmenu(tier: GridTier): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const d = this.getSpeedDistance(tier);
     const dragCmd = (kind: DACommandType.DRAG_SELECTED_UP | DACommandType.DRAG_SELECTED_DOWN | DACommandType.DRAG_SELECTED_LEFT | DACommandType.DRAG_SELECTED_RIGHT) =>
-      () => this.keyMenuOut.emit({kind, distance: d});
+      () => this.keyMenuOut.emit({kind, gridTier: tier});
 
     return {
       [drag.up]: new LabeledAction('Drag Up', dragCmd(DACommandType.DRAG_SELECTED_UP)),
