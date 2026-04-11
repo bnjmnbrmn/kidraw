@@ -5,7 +5,11 @@ export class CrosshairsLayer extends Konva.Layer {
     readonly crosshairs: DACrosshairs;
     constructor(private stage: Konva.Stage, crosshairsStroke?: string) {
       super();
-      this.crosshairs = new DACrosshairs({ x: stage.width() / 2, y: stage.height() / 2 }, crosshairsStroke);
+      // Snap initial position to grid (spacing=50) so first inserted node aligns
+      const gridSpacing = 50;
+      const x = Math.round((stage.width() / 2) / gridSpacing) * gridSpacing;
+      const y = Math.round((stage.height() / 2) / gridSpacing) * gridSpacing;
+      this.crosshairs = new DACrosshairs({ x, y }, crosshairsStroke);
       this.add(this.crosshairs.konvaGroup);
     }
 
