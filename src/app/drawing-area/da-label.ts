@@ -40,9 +40,9 @@ export class DALabel {
       y: -this.RECT_HEIGHT / 2,
       width: this.RECT_WIDTH,
       height: this.RECT_HEIGHT,
-      stroke: this._strokeColor,
-      strokeWidth: this.LABEL_STROKE_WIDTH,
-      fill: this._fillColor,
+      stroke: 'transparent',
+      strokeWidth: 0,
+      fill: 'transparent',
     });
 
     this._text = new Konva.Text({
@@ -152,10 +152,14 @@ export class DALabel {
   }
 
   private updateAppearance(): void {
-    const strokeColor = this._isSelected ? this.SELECTED_COLOR : this._strokeColor;
-    const strokeWidth = this._isSelected ? this.SELECTED_STROKE_WIDTH : this.LABEL_STROKE_WIDTH;
-
-    this._rect.stroke(strokeColor);
-    this._rect.strokeWidth(strokeWidth);
+    if (this._isSelected) {
+      this._rect.stroke(this.SELECTED_COLOR);
+      this._rect.strokeWidth(this.SELECTED_STROKE_WIDTH);
+      this._rect.fill(this._fillColor);
+    } else {
+      this._rect.stroke('transparent');
+      this._rect.strokeWidth(0);
+      this._rect.fill('transparent');
+    }
   }
 }

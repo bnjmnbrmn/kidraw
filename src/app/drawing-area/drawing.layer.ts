@@ -30,11 +30,28 @@ export class DrawingLayer extends Konva.Layer {
 
   }
 
-  /** Rebuild grid lines to cover the given viewport (in layer coordinates). */
+  /** Rebuild grid lines to cover the given viewport (in layer coordinates).
+   *  Adapts spacing to zoom level so lines stay visually useful. */
   rebuildGrid(viewportWidth: number, viewportHeight: number): void {
     this.gridGroup.destroyChildren();
-    const spacing = this.gridSpacing;
+    const scale = this.scaleX();
+
+    // Adapt grid spacing to zoom: keep screen-space gap between 30–80px
+    const baseSpacing = this.gridSpacing; // 50
+    let spacing = baseSpacing;
+    const screenGap = spacing * scale;
+    if (screenGap < 30) {
+      // Zoomed out: double spacing until lines are far enough apart
+      while (spacing * scale < 30) spacing *= 2;
+    } else if (screenGap > 80) {
+      // Zoomed in: halve spacing until lines are close enough
+      while (spacing * scale > 80 && spacing > 10) spacing /= 2;
+    }
+
     const color = this._palette?.keyStrokes?.[0] ?? '#888888';
+    // Thicker, more opaque lines that stay visible
+    const strokeWidth = 1 / scale; // constant screen-space thickness
+    const opacity = 0.35;
 
     // Extend grid well beyond visible area
     const extent = Math.max(viewportWidth, viewportHeight) * 4;
@@ -46,8 +63,8 @@ export class DrawingLayer extends Konva.Layer {
       this.gridGroup.add(new Konva.Line({
         points: [x, minCoord, x, maxCoord],
         stroke: color,
-        strokeWidth: 0.5,
-        opacity: 0.2,
+        strokeWidth,
+        opacity,
         listening: false,
       }));
     }
@@ -56,8 +73,8 @@ export class DrawingLayer extends Konva.Layer {
       this.gridGroup.add(new Konva.Line({
         points: [minCoord, y, maxCoord, y],
         stroke: color,
-        strokeWidth: 0.5,
-        opacity: 0.2,
+        strokeWidth,
+        opacity,
         listening: false,
       }));
     }
@@ -370,12 +387,12 @@ export class DrawingLayer extends Konva.Layer {
     });
   }
 
-  private nodeColors() {
+  nodeColors() {
     if (!this._palette) return undefined;
     return { fill: this._palette.nodeFill, stroke: this._palette.nodeStroke, text: this._palette.nodeText };
   }
 
-  private edgeColors() {
+  edgeColors() {
     if (!this._palette) return undefined;
     return { stroke: this._palette.edgeStroke, fill: this._palette.edgeFill };
   }

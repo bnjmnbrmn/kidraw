@@ -76,7 +76,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private directedEdgeActive = false;
   private lastShiftPressedAt = 0;
 
-  private readonly DOUBLE_SHIFT_INTERVAL_MS = 325;
+  private readonly DOUBLE_SHIFT_INTERVAL_MS = 3000;
   private shiftTimingBar: Konva.Rect | null = null;
   private shiftTimingTween: Konva.Tween | null = null;
   private shiftTimingTimeout: number | null = null;
@@ -493,20 +493,33 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private buildDefaultsSubmenuConfig(): SubmenuConfig {
+    const style = this.keyAssignments.style;
+    return {
+      [style.directednessSubmenu]: new LabeledSubmenuConfig('Default Dir...', this.buildDefaultDirectednessSubmenuConfig()),
+      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Default Line...', this.buildDefaultLineStyleSubmenuConfig()),
+    } as SubmenuConfig;
+  }
+
+  private buildDefaultDirectednessSubmenuConfig(): SubmenuConfig {
     const dir = this.keyAssignments.directedness;
+    return {
+      [dir.directed]: new LabeledAction('Directed →', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'directed'})),
+      [dir.undirected]: new LabeledAction('Undirected —', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'undirected'})),
+      [dir.bidirectional]: new LabeledAction('Bidir ↔', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'bidirectional'})),
+    } as SubmenuConfig;
+  }
+
+  private buildDefaultLineStyleSubmenuConfig(): SubmenuConfig {
     const ls = this.keyAssignments.lineStyles;
     return {
-      [dir.directed]: new LabeledAction('Default: Directed →', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'directed'})),
-      [dir.undirected]: new LabeledAction('Default: Undirected —', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'undirected'})),
-      [dir.bidirectional]: new LabeledAction('Default: Bidir ↔', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'bidirectional'})),
-      [ls.solid]: new LabeledAction('Default: Solid', () =>
+      [ls.solid]: new LabeledAction('Solid ———', () =>
         this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'solid'})),
-      [ls.dashed]: new LabeledAction('Default: Dashed', () =>
+      [ls.dashed]: new LabeledAction('Dashed - - -', () =>
         this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dashed'})),
-      [ls.dotted]: new LabeledAction('Default: Dotted', () =>
+      [ls.dotted]: new LabeledAction('Dotted · · ·', () =>
         this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dotted'})),
     } as SubmenuConfig;
   }

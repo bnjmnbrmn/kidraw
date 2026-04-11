@@ -436,18 +436,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.applyGraphLayout(command.layout);
         break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
+        this.log.log('[style] setEdgeDirectedness:', command.directedness);
         this.setEdgeDirectedness(command.directedness);
         break;
       case DACommandType.SET_LINE_STYLE:
+        this.log.log('[style] setLineStyle:', command.lineStyle);
         this.setLineStyle(command.lineStyle);
         break;
       case DACommandType.SET_ITEM_COLOR:
+        this.log.log('[style] setItemColor:', command.color);
         this.setItemColor(command.color);
         break;
       case DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS:
+        this.log.log('[style] setDefaultEdgeDirectedness:', command.directedness);
         this._defaultEdgeDirectedness = command.directedness;
         break;
       case DACommandType.SET_DEFAULT_LINE_STYLE:
+        this.log.log('[style] setDefaultLineStyle:', command.lineStyle);
         this._defaultLineStyle = command.lineStyle;
         break;
       default:
@@ -828,11 +833,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private showMovementIndicators(): void {
-    // Initialize grid on first use
-    if (!this.gridInitialized) {
-      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
-      this.gridInitialized = true;
-    }
+    // Rebuild grid each time (adapts spacing to current zoom level)
+    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
 
     // Show grid
     if (!this.drawingLayer.gridVisible) {
@@ -1165,9 +1167,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
 
     const anchorNode = this.getTraversalAnchorNode();
+    this.log.log('[selectNextEdge]', direction, 'anchorNode:', anchorNode?.id ?? 'null');
     if (!anchorNode) return;
 
     const candidateEdges = direction === 'outgoing' ? anchorNode.outgoingEdges : anchorNode.incomingEdges;
+    this.log.log('[selectNextEdge]', direction, 'candidates:', candidateEdges.length,
+      candidateEdges.map(e => `${e.id}(${e.srcNode.id}->${e.destNode.id})`));
     if (candidateEdges.length === 0) return;
 
     // Find currently selected edge to cycle from
@@ -1189,6 +1194,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
 
     const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    this.log.log('[followSelectedEdge] selectedEdges:', selectedEdges.length);
     if (selectedEdges.length === 0) return;
 
     const edge = selectedEdges[0];
@@ -1196,6 +1202,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const anchorNode = this.getTraversalAnchorNode();
     const wentForward = (anchorNode === edge.srcNode);
     const targetNode = wentForward ? edge.destNode : edge.srcNode;
+    this.log.log('[followSelectedEdge] edge:', edge.id, 'anchor:', anchorNode?.id, 'target:', targetNode.id, 'forward:', wentForward);
 
     // Push current node to navigation history before moving
     if (anchorNode) {
@@ -1313,14 +1320,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private getTraversalAnchorNode(): DANode | null {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     if (selectedNodes.length > 0) {
+      this.log.log('[getTraversalAnchorNode] selected:', selectedNodes[0].id);
       return selectedNodes[0];
     }
 
     const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
     if (nodesUnderCrosshairs.length > 0) {
+      this.log.log('[getTraversalAnchorNode] under crosshairs:', nodesUnderCrosshairs[0].id);
       return nodesUnderCrosshairs[0];
     }
 
+    this.log.log('[getTraversalAnchorNode] no anchor node found');
     return null;
   }
 
@@ -2006,8 +2016,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edges = this.drawingLayer.getDAEdges();
     for (const edge of edges) {
       for (const label of edge.labels) {
-        if (label.x >= box.minX && label.x <= box.maxX &&
-            label.y >= box.minY && label.y <= box.maxY) {
+        // Check overlap between crosshairs bbox and label bounding rect
+        const labelLeft = label.x - label.RECT_WIDTH / 2;
+        const labelRight = label.x + label.RECT_WIDTH / 2;
+        const labelTop = label.y - label.RECT_HEIGHT / 2;
+        const labelBottom = label.y + label.RECT_HEIGHT / 2;
+
+        const overlaps = labelRight >= box.minX && labelLeft <= box.maxX &&
+                         labelBottom >= box.minY && labelTop <= box.maxY;
+        if (overlaps) {
           return label;
         }
       }
