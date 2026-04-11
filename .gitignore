@@ -47,3 +47,4 @@ src/**/*.js.map
 # E2E test output
 test-e2e-output/
 debug-*.js
+tools/debug.log

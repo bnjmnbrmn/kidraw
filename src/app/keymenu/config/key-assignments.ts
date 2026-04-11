@@ -27,7 +27,7 @@ export interface KeymenuKeyAssignments {
     readonly editSubmenu: KeyString;
     readonly insertSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
-    readonly nodeTypeSubmenu: KeyString;
+    readonly styleSubmenu: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
@@ -40,6 +40,31 @@ export interface KeymenuKeyAssignments {
     readonly circle: KeyString;
     readonly diamond: KeyString;
     readonly junction: KeyString;
+  };
+  readonly style: {
+    readonly shapeSubmenu: KeyString;
+    readonly directednessSubmenu: KeyString;
+    readonly lineStyleSubmenu: KeyString;
+    readonly colorSubmenu: KeyString;
+    readonly defaultsSubmenu: KeyString;
+  };
+  readonly directedness: {
+    readonly directed: KeyString;
+    readonly undirected: KeyString;
+    readonly bidirectional: KeyString;
+  };
+  readonly lineStyles: {
+    readonly solid: KeyString;
+    readonly dashed: KeyString;
+    readonly dotted: KeyString;
+  };
+  readonly colors: {
+    readonly default: KeyString;
+    readonly red: KeyString;
+    readonly blue: KeyString;
+    readonly green: KeyString;
+    readonly orange: KeyString;
+    readonly purple: KeyString;
   };
   readonly shared: {
     readonly toggleWaypointVisibility: KeyString;
@@ -107,7 +132,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     editSubmenu: 'e',
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
-    nodeTypeSubmenu: 'w',
+    styleSubmenu: 'w',
   },
   insert: {
     node: 'j',
@@ -120,6 +145,31 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     circle: 'i',
     diamond: 'o',
     junction: 'p',
+  },
+  style: {
+    shapeSubmenu: 's',
+    directednessSubmenu: 'd',
+    lineStyleSubmenu: 'l',
+    colorSubmenu: 'c',
+    defaultsSubmenu: 'f',
+  },
+  directedness: {
+    directed: 'd',
+    undirected: 'u',
+    bidirectional: 'b',
+  },
+  lineStyles: {
+    solid: 's',
+    dashed: 'd',
+    dotted: 'o',
+  },
+  colors: {
+    default: 'd',
+    red: 'r',
+    blue: 'b',
+    green: 'g',
+    orange: 'o',
+    purple: 'p',
   },
   shared: {
     toggleWaypointVisibility: 'w',
@@ -179,7 +229,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     editSubmenu: 'i',
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
-    nodeTypeSubmenu: 'w',
+    styleSubmenu: 'w',
   },
   insert: {
     node: 'd',
@@ -192,6 +242,31 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     circle: 'k',
     diamond: 'l',
     junction: ';',
+  },
+  style: {
+    shapeSubmenu: 's',
+    directednessSubmenu: 'd',
+    lineStyleSubmenu: 'l',
+    colorSubmenu: 'c',
+    defaultsSubmenu: 'f',
+  },
+  directedness: {
+    directed: 'd',
+    undirected: 'u',
+    bidirectional: 'b',
+  },
+  lineStyles: {
+    solid: 's',
+    dashed: 'd',
+    dotted: 'o',
+  },
+  colors: {
+    default: 'd',
+    red: 'r',
+    blue: 'b',
+    green: 'g',
+    orange: 'o',
+    purple: 'p',
   },
   shared: {
     toggleWaypointVisibility: 'w',

@@ -3,6 +3,7 @@ import {DANode} from './da-node';
 import {DAWaypoint} from './da-waypoint';
 import {DALabel} from './da-label';
 import {nextId} from './id-generator';
+import {EdgeDirectedness, LineStyle} from './command.model';
 
 export class DAEdge {
   readonly id: string;
@@ -22,6 +23,8 @@ export class DAEdge {
 
   private _strokeColor: string = 'black';
   private _fillColor: string = 'black';
+  private _directedness: EdgeDirectedness = 'directed';
+  private _lineStyle: LineStyle = 'solid';
 
   constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
               colors?: { stroke?: string; fill?: string }) {
@@ -62,6 +65,43 @@ export class DAEdge {
 
   private stroke() {
     return this._strokeColor;
+  }
+
+  get directedness(): EdgeDirectedness {
+    return this._directedness;
+  }
+
+  set directedness(value: EdgeDirectedness) {
+    this._directedness = value;
+    this.applyDirectedness();
+  }
+
+  get lineStyle(): LineStyle {
+    return this._lineStyle;
+  }
+
+  set lineStyle(value: LineStyle) {
+    this._lineStyle = value;
+    this.applyLineStyle();
+  }
+
+  private applyDirectedness(): void {
+    const pointerLength = this._directedness === 'undirected' ? 0 : this.POINTER_LENGTH;
+    const pointerWidth = this._directedness === 'undirected' ? 0 : this.POINTER_WIDTH;
+    this._line.pointerLength(pointerLength);
+    this._line.pointerWidth(pointerWidth);
+    // For bidirectional, we'd need a second arrowhead at the source — handled in updateSegments
+    this.updateSegments();
+  }
+
+  private applyLineStyle(): void {
+    const dash = this._lineStyle === 'dashed' ? [10, 5] : this._lineStyle === 'dotted' ? [2, 4] : [];
+    this._line.dash(dash);
+    this._line.dashEnabled(dash.length > 0);
+    this._segments.forEach(segment => {
+      segment.dash(dash);
+      segment.dashEnabled(dash.length > 0);
+    });
   }
 
   applyColors(colors: { stroke: string; fill: string }): void {
@@ -151,18 +191,30 @@ export class DAEdge {
     // Create segments between waypoints
     const points = this.getAllSegmentPoints();
     
+    const pointerLength = this._directedness === 'undirected' ? 0 : this.POINTER_LENGTH;
+    const pointerWidth = this._directedness === 'undirected' ? 0 : this.POINTER_WIDTH;
+    const dash = this._lineStyle === 'dashed' ? [10, 5] : this._lineStyle === 'dotted' ? [2, 4] : [];
+    const dashEnabled = dash.length > 0;
+
     for (let i = 0; i < points.length - 1; i++) {
+      const isFirstSegment = i === 0;
       const isLastSegment = i === points.length - 2;
-      
-      if (isLastSegment) {
-        // Last segment with arrow - use Konva.Arrow
+      const needsArrow = (isLastSegment && this._directedness !== 'undirected') ||
+                         (isFirstSegment && this._directedness === 'bidirectional');
+
+      if (needsArrow) {
+        // Segment with arrow pointer
+        const segPoints = isFirstSegment && this._directedness === 'bidirectional' && !isLastSegment
+          ? [points[i + 1].x, points[i + 1].y, points[i].x, points[i].y]  // Reverse for source arrow
+          : [points[i].x, points[i].y, points[i + 1].x, points[i + 1].y];
         const segment = new Konva.Arrow({
-          points: [points[i].x, points[i].y, points[i + 1].x, points[i + 1].y],
+          points: segPoints,
           stroke: this.stroke(),
           strokeWidth: this.strokeWidth(),
           fill: this._fillColor,
-          pointerLength: this.POINTER_LENGTH,
-          pointerWidth: this.POINTER_WIDTH,
+          pointerLength,
+          pointerWidth,
+          dash, dashEnabled,
           tension: 0,
           lineCap: 'round',
           lineJoin: 'round'
@@ -175,6 +227,7 @@ export class DAEdge {
           points: [points[i].x, points[i].y, points[i + 1].x, points[i + 1].y],
           stroke: this.stroke(),
           strokeWidth: this.strokeWidth(),
+          dash, dashEnabled,
           tension: 0,
           lineCap: 'round',
           lineJoin: 'round'
