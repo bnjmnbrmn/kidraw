@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
-import { DACommand, DACommandType, LayoutType, NodeShape, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -54,6 +54,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private directedEdgeSource: DANode | null = null;
   private directedEdgeInProgress: DAEdge | null = null;
   private _defaultNodeShape: NodeShape = 'box';
+  private _defaultEdgeDirectedness: EdgeDirectedness = 'directed';
+  private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   private navigationHistory: DANode[] = [];
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
@@ -433,6 +435,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_LAYOUT:
         this.applyGraphLayout(command.layout);
         break;
+      case DACommandType.SET_EDGE_DIRECTEDNESS:
+        this.setEdgeDirectedness(command.directedness);
+        break;
+      case DACommandType.SET_LINE_STYLE:
+        this.setLineStyle(command.lineStyle);
+        break;
+      case DACommandType.SET_ITEM_COLOR:
+        this.setItemColor(command.color);
+        break;
+      case DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS:
+        this._defaultEdgeDirectedness = command.directedness;
+        break;
+      case DACommandType.SET_DEFAULT_LINE_STYLE:
+        this._defaultLineStyle = command.lineStyle;
+        break;
       default:
         this.assertNever(command);
     }
@@ -746,14 +763,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Snap target position to grid in drawing-layer coordinates
     const scale = this.drawingLayer.scaleX();
     const gridSpacing = this.drawingLayer.getGridSpacing();
-    const rawTargetX = currentX + deltaX;
-    const rawTargetY = currentY + deltaY;
 
-    // Convert to drawing-layer coords, snap, convert back
-    const dlX = (rawTargetX - this.drawingLayer.x()) / scale;
-    const dlY = (rawTargetY - this.drawingLayer.y()) / scale;
-    const snappedDlX = Math.round(dlX / gridSpacing) * gridSpacing;
-    const snappedDlY = Math.round(dlY / gridSpacing) * gridSpacing;
+    // Current position in drawing-layer coords
+    const currentDlX = (currentX - this.drawingLayer.x()) / scale;
+    const currentDlY = (currentY - this.drawingLayer.y()) / scale;
+
+    // Move by at least one grid cell in the requested direction
+    let snappedDlX: number;
+    let snappedDlY: number;
+
+    if (deltaX !== 0) {
+      const gridSteps = Math.max(1, Math.round(Math.abs(deltaX) / (gridSpacing * scale)));
+      snappedDlX = Math.round(currentDlX / gridSpacing) * gridSpacing
+        + gridSteps * gridSpacing * Math.sign(deltaX);
+    } else {
+      snappedDlX = Math.round(currentDlX / gridSpacing) * gridSpacing;
+    }
+
+    if (deltaY !== 0) {
+      const gridSteps = Math.max(1, Math.round(Math.abs(deltaY) / (gridSpacing * scale)));
+      snappedDlY = Math.round(currentDlY / gridSpacing) * gridSpacing
+        + gridSteps * gridSpacing * Math.sign(deltaY);
+    } else {
+      snappedDlY = Math.round(currentDlY / gridSpacing) * gridSpacing;
+    }
+
     const targetX = snappedDlX * scale + this.drawingLayer.x();
     const targetY = snappedDlY * scale + this.drawingLayer.y();
 
@@ -2139,6 +2173,70 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       topEdge.isSelected = !topEdge.isSelected;
       return;
     }
+  }
+
+  private setEdgeDirectedness(directedness: EdgeDirectedness): void {
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    if (selectedEdges.length > 0) {
+      selectedEdges.forEach(e => e.directedness = directedness);
+    } else {
+      // Apply to edges under crosshairs
+      const box = this.getCrosshairsBBoxInDrawingLayer();
+      for (const edge of this.drawingLayer.getDAEdges()) {
+        const points = edge.getPathPoints();
+        for (let i = 0; i < points.length - 1; i++) {
+          if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
+            edge.directedness = directedness;
+            break;
+          }
+        }
+      }
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  private setLineStyle(lineStyle: LineStyle): void {
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    if (selectedEdges.length > 0) {
+      selectedEdges.forEach(e => e.lineStyle = lineStyle);
+    } else {
+      const box = this.getCrosshairsBBoxInDrawingLayer();
+      for (const edge of this.drawingLayer.getDAEdges()) {
+        const points = edge.getPathPoints();
+        for (let i = 0; i < points.length - 1; i++) {
+          if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
+            edge.lineStyle = lineStyle;
+            break;
+          }
+        }
+      }
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  private setItemColor(color: ItemColor): void {
+    const COLOR_MAP: Record<ItemColor, {node: {fill: string; stroke: string; text: string}; edge: {stroke: string; fill: string}}> = {
+      'default': {node: this.drawingLayer.nodeColors()!, edge: this.drawingLayer.edgeColors()!},
+      'red': {node: {fill: '#ffcccc', stroke: '#cc0000', text: '#660000'}, edge: {stroke: '#cc0000', fill: '#cc0000'}},
+      'blue': {node: {fill: '#cce0ff', stroke: '#0066cc', text: '#003366'}, edge: {stroke: '#0066cc', fill: '#0066cc'}},
+      'green': {node: {fill: '#ccffcc', stroke: '#009900', text: '#004d00'}, edge: {stroke: '#009900', fill: '#009900'}},
+      'orange': {node: {fill: '#ffe0cc', stroke: '#cc6600', text: '#663300'}, edge: {stroke: '#cc6600', fill: '#cc6600'}},
+      'purple': {node: {fill: '#e0ccff', stroke: '#6600cc', text: '#330066'}, edge: {stroke: '#6600cc', fill: '#6600cc'}},
+    };
+    const colors = COLOR_MAP[color];
+    if (!colors) return;
+
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    selectedNodes.forEach(n => n.applyColors(colors.node));
+
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    selectedEdges.forEach(e => e.applyColors(colors.edge));
+
+    this.drawingLayer.batchDraw();
+  }
+
+  private lineSegmentIntersectsBox(p1: {x: number; y: number}, p2: {x: number; y: number}, box: {minX: number; minY: number; maxX: number; maxY: number}): boolean {
+    return lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY);
   }
 
 }
