@@ -580,11 +580,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private applyGraphLayout(layout: LayoutType) {
     this.finishTweens();
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const nodes = this.drawingLayer.getDANodes();
-    const edges = this.drawingLayer.getDAEdges();
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedNodes = allNodes.filter(n => n.isSelected);
+    const nodes = selectedNodes.length > 0 ? selectedNodes : allNodes;
+    const nodeSet = new Set(nodes);
+    const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
+
     applyLayout(layout, nodes, edges);
     // Recalculate all edge endpoints after nodes move
-    this.updateEdgesForResizedNodes(nodes);
+    this.updateEdgesForResizedNodes(allNodes);
     this.drawingLayer.batchDraw();
   }
 

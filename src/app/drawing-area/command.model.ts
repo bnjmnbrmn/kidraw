@@ -2,7 +2,7 @@ export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction';
 
 export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
 
-export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid';
+export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid' | 'circular' | 'radial';
 
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 

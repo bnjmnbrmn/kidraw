@@ -31,6 +31,12 @@ export function applyLayout(
     case 'grid':
       positions = gridLayout(movable, spacing);
       break;
+    case 'circular':
+      positions = circularLayout(nodes, edges, movable, spacing);
+      break;
+    case 'radial':
+      positions = radialLayout(nodes, edges, movable, spacing);
+      break;
   }
 
   for (const p of positions) {
@@ -237,4 +243,131 @@ function gridLayout(movable: DANode[], spacing: number): NodePos[] {
     x: cx - totalW / 2 + (i % cols) * spacing,
     y: cy - totalH / 2 + Math.floor(i / cols) * spacing,
   }));
+}
+
+function circularLayout(
+  allNodes: DANode[],
+  edges: DAEdge[],
+  movable: DANode[],
+  spacing: number,
+): NodePos[] {
+  // Order nodes by graph traversal (BFS from roots) so connected nodes sit near each other
+  const children = new Map<DANode, DANode[]>();
+  const incomingCount = new Map<DANode, number>();
+  for (const n of allNodes) {
+    children.set(n, []);
+    incomingCount.set(n, 0);
+  }
+  for (const e of edges) {
+    children.get(e.srcNode)!.push(e.destNode);
+    incomingCount.set(e.destNode, (incomingCount.get(e.destNode) ?? 0) + 1);
+  }
+
+  const roots = allNodes.filter(n => (incomingCount.get(n) ?? 0) === 0);
+  const startNodes = roots.length > 0 ? roots : [allNodes[0]];
+
+  const order: DANode[] = [];
+  const visited = new Set<DANode>();
+  const queue: DANode[] = [...startNodes];
+  for (const r of startNodes) visited.add(r);
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    order.push(node);
+    for (const child of children.get(node) ?? []) {
+      if (!visited.has(child)) {
+        visited.add(child);
+        queue.push(child);
+      }
+    }
+  }
+  for (const n of allNodes) {
+    if (!visited.has(n)) order.push(n);
+  }
+
+  const movableSet = new Set(movable);
+  const movableOrdered = order.filter(n => movableSet.has(n));
+
+  // Center around average of all nodes
+  let cx = 0, cy = 0;
+  for (const n of allNodes) {
+    cx += n.konvaGroup.x();
+    cy += n.konvaGroup.y();
+  }
+  cx /= allNodes.length;
+  cy /= allNodes.length;
+
+  const radius = (spacing * movableOrdered.length) / (2 * Math.PI);
+  return movableOrdered.map((node, i) => {
+    const angle = (2 * Math.PI * i) / movableOrdered.length - Math.PI / 2;
+    return { node, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  });
+}
+
+function radialLayout(
+  allNodes: DANode[],
+  edges: DAEdge[],
+  movable: DANode[],
+  spacing: number,
+): NodePos[] {
+  // Build adjacency
+  const children = new Map<DANode, DANode[]>();
+  const incomingCount = new Map<DANode, number>();
+  for (const n of allNodes) {
+    children.set(n, []);
+    incomingCount.set(n, 0);
+  }
+  for (const e of edges) {
+    children.get(e.srcNode)!.push(e.destNode);
+    incomingCount.set(e.destNode, (incomingCount.get(e.destNode) ?? 0) + 1);
+  }
+
+  const roots = allNodes.filter(n => (incomingCount.get(n) ?? 0) === 0);
+  if (roots.length === 0) roots.push(allNodes[0]);
+
+  // BFS to assign levels
+  const level = new Map<DANode, number>();
+  const queue: DANode[] = [...roots];
+  roots.forEach(r => level.set(r, 0));
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    const lvl = level.get(node)!;
+    for (const child of children.get(node) ?? []) {
+      if (!level.has(child)) {
+        level.set(child, lvl + 1);
+        queue.push(child);
+      }
+    }
+  }
+  for (const n of allNodes) {
+    if (!level.has(n)) level.set(n, 0);
+  }
+
+  // Group movable nodes by level
+  const movableSet = new Set(movable);
+  const levels = new Map<number, DANode[]>();
+  for (const n of movable) {
+    const lvl = level.get(n)!;
+    if (!levels.has(lvl)) levels.set(lvl, []);
+    levels.get(lvl)!.push(n);
+  }
+
+  // Center around average of all nodes
+  let cx = 0, cy = 0;
+  for (const n of allNodes) {
+    cx += n.konvaGroup.x();
+    cy += n.konvaGroup.y();
+  }
+  cx /= allNodes.length;
+  cy /= allNodes.length;
+
+  const positions: NodePos[] = [];
+  for (const [lvl, nodesAtLevel] of levels) {
+    const radius = lvl === 0 ? 0 : lvl * spacing;
+    const count = nodesAtLevel.length;
+    nodesAtLevel.forEach((node, i) => {
+      const angle = count === 1 ? -Math.PI / 2 : (2 * Math.PI * i) / count - Math.PI / 2;
+      positions.push({ node, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) });
+    });
+  }
+  return positions;
 }

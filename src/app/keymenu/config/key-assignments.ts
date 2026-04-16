@@ -28,6 +28,7 @@ export interface KeymenuKeyAssignments {
     readonly insertSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
     readonly styleSubmenu: KeyString;
+    readonly layoutSubmenu: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
@@ -104,7 +105,6 @@ export interface KeymenuKeyAssignments {
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
-    readonly layoutSubmenu: KeyString;
     readonly togglePin: KeyString;
   };
   readonly overflow: {
@@ -120,6 +120,8 @@ export interface KeymenuKeyAssignments {
     readonly treeDown: KeyString;
     readonly treeRight: KeyString;
     readonly grid: KeyString;
+    readonly circular: KeyString;
+    readonly radial: KeyString;
   };
 }
 
@@ -133,6 +135,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
+    layoutSubmenu: 'b',
   },
   insert: {
     node: 'j',
@@ -215,9 +218,9 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'm',
     reload: 'r',
   },
-  edit: {overflowSubmenu: 'k', layoutSubmenu: 'l', togglePin: 'p'},
+  edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
-  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g'},
+  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g', circular: 'c', radial: 'v'},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -230,6 +233,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     insertSubmenu: 'f',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
+    layoutSubmenu: 'b',
   },
   insert: {
     node: 'd',
@@ -312,7 +316,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'm',
     reload: 'r',
   },
-  edit: {overflowSubmenu: 'u', layoutSubmenu: 'l', togglePin: 'p'},
+  edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
-  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g'},
+  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g', circular: 'c', radial: 'v'},
 };

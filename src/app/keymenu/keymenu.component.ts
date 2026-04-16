@@ -340,6 +340,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
+      [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
   }
@@ -360,7 +361,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const edit = this.keyAssignments.edit;
     return {
       [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
-      [edit.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [edit.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
     } as SubmenuConfig;
   }
@@ -382,10 +382,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const layout = this.keyAssignments.layout;
     const emit = (l: LayoutType) => () => this.keyMenuOut.emit({kind: DACommandType.APPLY_LAYOUT, layout: l});
     return {
-      [layout.forceDirected]: new LabeledAction('Force Layout', emit('force-directed')),
-      [layout.treeDown]:      new LabeledAction('Tree Down',    emit('tree-down')),
-      [layout.treeRight]:     new LabeledAction('Tree Right',   emit('tree-right')),
-      [layout.grid]:          new LabeledAction('Grid',         emit('grid')),
+      [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
+      [layout.treeDown]:      new LabeledAction('Tree ↓',   emit('tree-down')),
+      [layout.treeRight]:     new LabeledAction('Tree →',   emit('tree-right')),
+      [layout.grid]:          new LabeledAction('Grid',     emit('grid')),
+      [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
+      [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
     } as SubmenuConfig;
   }
 
