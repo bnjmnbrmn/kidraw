@@ -220,7 +220,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
-  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g', circular: 'c', radial: 'v'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u'},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -318,5 +318,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
-  layout: {forceDirected: 'f', treeDown: 'd', treeRight: 'r', grid: 'g', circular: 'c', radial: 'v'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u'},
 };
