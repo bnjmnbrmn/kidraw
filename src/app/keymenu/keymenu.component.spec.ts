@@ -59,7 +59,7 @@ describe('KeymenuComponent', () => {
     const biggerDrag = selectConfig['x'] as LabeledSubmenuConfig;
 
     expect(biggerDrag instanceof LabeledSubmenuConfig).toBeTrue();
-    expect(biggerDrag.submenuLabel).toBe('Bigger Drag...');
+    expect(biggerDrag.submenuLabel).toBe('Coarse Drag...');
   });
 
   it('should use hold-select root action to enter drag selection without second select key', () => {

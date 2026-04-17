@@ -16,7 +16,7 @@ import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
-import { applyLayout } from './graph-layout';
+import { applyLayout, routeEdgesAroundNodes } from './graph-layout';
 
 @Component({
   selector: 'app-drawing-area',
@@ -591,6 +591,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     applyLayout(layout, nodes, edges);
     // Recalculate all edge endpoints after nodes move
     this.updateEdgesForResizedNodes(allNodes);
+    // Reroute edges around intermediate nodes, applying current theme/visibility
+    const newWaypoints = routeEdgesAroundNodes(edges, allNodes);
+    const wc = this.drawingLayer.waypointColors();
+    for (const wp of newWaypoints) {
+      if (wc) wp.applyColors(wc);
+      wp.setVisibleForSelection(this.waypointsVisible);
+    }
     this.drawingLayer.batchDraw();
   }
 

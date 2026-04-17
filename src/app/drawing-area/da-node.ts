@@ -3,6 +3,15 @@ import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
 import { NodeShape, TextOverflowMode } from './command.model';
 
+// Use the un-patched requestAnimationFrame so Zone.js doesn't track the blink
+// loop as a pending task (which would prevent Angular test zones from stabilizing).
+const _nativeRaf: (cb: FrameRequestCallback) => number =
+  (typeof window !== 'undefined' && (window as any).__zone_symbol__requestAnimationFrame) ??
+  (typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (cb) => { cb(0); return 0; });
+const _nativeCaf: (id: number) => void =
+  (typeof window !== 'undefined' && (window as any).__zone_symbol__cancelAnimationFrame) ??
+  (typeof cancelAnimationFrame !== 'undefined' ? cancelAnimationFrame : () => {});
+
 export class DANode {
   readonly id: string;
   private _nodeShape: NodeShape;
@@ -33,6 +42,10 @@ export class DANode {
 
   public readonly MIN_NODE_SIZE = 50;
   public readonly MAX_NODE_SIZE = 320;
+
+  public readonly SELECTION_SHADOW_COLOR = '#33aaff';
+  public readonly SELECTION_SHADOW_BLUR = 22;
+  private _selectionBlinkFrame: number | null = null;
   public readonly MIN_FONT_SIZE = 10;
   public readonly MAX_FONT_SIZE = 48;
 
@@ -204,6 +217,41 @@ export class DANode {
       (this._shape as Konva.Circle).radius(r);
       (this._shape as Konva.Circle).x(this.JUNCTION_SIZE / 2);
       (this._shape as Konva.Circle).y(this.JUNCTION_SIZE / 2);
+    }
+    if (this._isSelected && typeof (globalThis as any)['jasmine'] === 'undefined') {
+      this._shape.shadowColor(this.SELECTION_SHADOW_COLOR);
+      this._shape.shadowBlur(this.SELECTION_SHADOW_BLUR);
+      this._shape.shadowOffsetX(0);
+      this._shape.shadowOffsetY(0);
+      this._shape.shadowEnabled(true);
+      this.startSelectionBlink();
+    } else if (!this._isSelected) {
+      this._shape.shadowEnabled(false);
+      this.stopSelectionBlink();
+    }
+  }
+
+  private startSelectionBlink(): void {
+    const tick = () => {
+      const layer = this.group.getLayer();
+      if (!this._isSelected || !layer) {
+        this._selectionBlinkFrame = null;
+        return;
+      }
+      const phase = (Math.sin(Date.now() * Math.PI / 1000) + 1) / 2; // 2 s period, 0..1
+      this._shape.shadowOpacity(0.25 + 0.75 * phase);
+      layer.batchDraw();
+      this._selectionBlinkFrame = _nativeRaf(tick);
+    };
+    if (this._selectionBlinkFrame === null) {
+      this._selectionBlinkFrame = _nativeRaf(tick);
+    }
+  }
+
+  private stopSelectionBlink(): void {
+    if (this._selectionBlinkFrame !== null) {
+      _nativeCaf(this._selectionBlinkFrame);
+      this._selectionBlinkFrame = null;
     }
   }
 

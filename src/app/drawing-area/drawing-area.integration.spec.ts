@@ -36,10 +36,12 @@ describe('DrawingArea Integration Tests', () => {
       expect(edge1Points.length).toBe(4);
       
       // Should connect from right edge of node1 to left edge of node2
-      expect(Math.abs(edge1Points[0] - 200)).toBeLessThanOrEqual(5); // Source X
-      expect(Math.abs(edge1Points[1] - 150)).toBeLessThanOrEqual(5); // Source Y
-      expect(Math.abs(edge1Points[2] - 300)).toBeLessThanOrEqual(5); // Dest X
-      expect(Math.abs(edge1Points[3] - 150)).toBeLessThanOrEqual(5); // Dest Y
+      const w = node1.DEFAULT_NODE_WIDTH;
+      const h = node1.DEFAULT_NODE_HEIGHT;
+      expect(Math.abs(edge1Points[0] - (100 + w))).toBeLessThanOrEqual(5); // Source X (right edge)
+      expect(Math.abs(edge1Points[1] - (100 + h / 2))).toBeLessThanOrEqual(5); // Source Y (center)
+      expect(Math.abs(edge1Points[2] - 300)).toBeLessThanOrEqual(5); // Dest X (left edge)
+      expect(Math.abs(edge1Points[3] - (100 + h / 2))).toBeLessThanOrEqual(5); // Dest Y (center)
     });
 
     it('should handle zoom and pan transformations', () => {

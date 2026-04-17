@@ -108,12 +108,14 @@ describe('DrawingArea Unit Tests', () => {
       
       const points = edge.line.points();
       expect(points.length).toBe(4);
-      
+
       // Should connect from right edge of src to left edge of dest
-      expect(Math.abs(points[0] - 100)).toBeLessThanOrEqual(1); // Source X (right edge)
-      expect(Math.abs(points[1] - 50)).toBeLessThanOrEqual(1);   // Source Y (center)
-      expect(Math.abs(points[2] - 200)).toBeLessThanOrEqual(1); // Dest X (left edge)
-      expect(Math.abs(points[3] - 50)).toBeLessThanOrEqual(1);   // Dest Y (center)
+      const w = srcNode.DEFAULT_NODE_WIDTH;
+      const h = srcNode.DEFAULT_NODE_HEIGHT;
+      expect(Math.abs(points[0] - w)).toBeLessThanOrEqual(1);        // Source X (right edge)
+      expect(Math.abs(points[1] - h / 2)).toBeLessThanOrEqual(1);    // Source Y (center)
+      expect(Math.abs(points[2] - 200)).toBeLessThanOrEqual(1);       // Dest X (left edge)
+      expect(Math.abs(points[3] - h / 2)).toBeLessThanOrEqual(1);    // Dest Y (center)
     });
 
     it('should handle selection state correctly', () => {

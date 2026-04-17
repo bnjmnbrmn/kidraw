@@ -129,14 +129,15 @@ export class DrawingLayer extends Konva.Layer {
     const layerX = (absoluteX - this.x()) / this.scaleX();
     const layerY = (absoluteY - this.y()) / this.scaleY();
 
-    // Calculate position so node center is at the crosshairs position
-    const isJunction = nodeShape === 'junction';
-    const nodeW = isJunction ? 12 : 100;
-    const nodeH = isJunction ? 12 : 100;
+    // Create node first so we can read its actual size constants
+    const daNode = new DANode(0, 0, "", undefined, this.nodeColors(), nodeShape);
+    const nodeW = daNode.NODE_WIDTH;
+    const nodeH = daNode.NODE_HEIGHT;
+    // Position so node center is at the crosshairs position
     const x = layerX - nodeW / 2;
     const y = layerY - nodeH / 2;
-
-    const daNode = new DANode(x, y, "", undefined, this.nodeColors(), nodeShape);
+    daNode.konvaGroup.x(x);
+    daNode.konvaGroup.y(y);
     this.daNodeGroup.add(daNode.konvaGroup);
     this.daNodes.push(daNode);
     // Select the new node for editing
