@@ -24,8 +24,8 @@ export class DANode {
   public outgoingEdges: DAEdge[] = [];
   private _edgesCacheValid = false;
 
-  public readonly DEFAULT_NODE_WIDTH = 100;
-  public readonly DEFAULT_NODE_HEIGHT = 100;
+  public readonly DEFAULT_NODE_WIDTH = 120;
+  public readonly DEFAULT_NODE_HEIGHT = 120;
   public readonly JUNCTION_SIZE = 12;
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
