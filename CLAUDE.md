@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Development Status
+
+**Read `dev-status.md` at the start of every session.** It is the authoritative document for where development currently stands: recently completed work, known bugs, planned next steps, and the edge-routing research plan. It supersedes `next.txt`, `project-todos.md`, and `improvement-ideas.md`.
+
 ## Project Overview
 
 **kidraw** is a keyboard-first diagramming tool built with Angular 19 and Konva (canvas library). The core design philosophy is that all interaction happens via keyboard — the mouse is secondary. Users navigate a crosshairs cursor on a canvas to create and manipulate a directed graph of nodes and edges.
