@@ -73,11 +73,11 @@ The current hand-rolled routing in `graph-layout.ts` is producing incorrect resu
 
 **Terminology:** KiDraw's "waypoints" are called **bends** or **bend points** in the literature. Edges with them are **polylines**. The problem of minimizing their count is **bend minimization**.
 
-**Two distinct problems — KiDraw is Problem B:**
-- **Problem A (Auto-layout):** Rearrange node positions AND route edges. Libraries: ELK, cola.js, Graphviz.
-- **Problem B (Edge routing only, nodes fixed):** Nodes already placed by the user; route edges around them without moving nodes. Library: **libavoid**.
+**Two distinct problems — KiDraw does both:**
+- **Problem A (Auto-layout):** Rearrange node positions AND route edges. KiDraw already has 6 layout algorithms (`b` key: force-directed, tree ↓/→, grid, circular, radial) that move nodes. Libraries: ELK, cola.js, Graphviz.
+- **Problem B (Edge routing only, nodes fixed):** Nodes already placed by the user; route edges around them without moving nodes. This is the interactive case — after the user has manually arranged things, or as a live update when nodes move. Library: **libavoid**.
 
-KiDraw is primarily Problem B — users place nodes manually and want edges to route intelligently around them.
+Both are relevant: Problem A when triggering a layout command; Problem B continuously as the user places and moves nodes by hand.
 
 **Library decisions:**
 
