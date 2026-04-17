@@ -69,37 +69,64 @@ Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenChec
 ### Context
 The current hand-rolled routing in `graph-layout.ts` is producing incorrect results (too many waypoints, stale waypoints on redo). The right approach is to use a well-tested graph layout library.
 
-### Research direction (pending — bot remote research not yet committed)
-The bot remote was expected to contain research on edge routing algorithms and libraries. As of 2026-04-17, `bot/main` is identical to `origin/main`. When the research lands, merge it and update this section.
+### Research summary (from `meta-project/notes/graph-layout-research.md`, 2026-04-17)
 
-Known relevant libraries:
-- **dagre** — JavaScript graph layout (hierarchical/Sugiyama). No waypoint minimization.
-- **elkjs** — Eclipse Layout Kernel compiled to JS. Supports orthogonal routing, bend minimization, and is widely used. Runs in the browser.
-- **WASM + C++ (e.g., OGDF, Adaptagrams/libavoid)** — `libavoid` (part of Adaptagrams/Dunnart) is specifically designed for connector routing with obstacle avoidance and bend minimization. `OGDF` has full layout + routing support. Both are C++ and would require compiling to WASM.
+**Terminology:** KiDraw's "waypoints" are called **bends** or **bend points** in the literature. Edges with them are **polylines**. The problem of minimizing their count is **bend minimization**.
 
-### Proposed plan (to be refined once research arrives)
+**Two distinct problems — KiDraw is Problem B:**
+- **Problem A (Auto-layout):** Rearrange node positions AND route edges. Libraries: ELK, cola.js, Graphviz.
+- **Problem B (Edge routing only, nodes fixed):** Nodes already placed by the user; route edges around them without moving nodes. Library: **libavoid**.
 
-**Phase 1: Remove broken routing, keep layout only**
-- Remove the `routeEdgesAroundNodes()` call from `applyGraphLayout` for now.
-- The layout algorithms themselves (force-directed, tree, grid, etc.) are fine; only the routing is broken.
-- Leaves edges as straight lines after layout — correct but no obstacle avoidance.
+KiDraw is primarily Problem B — users place nodes manually and want edges to route intelligently around them.
 
-**Phase 2: Evaluate elkjs**
-- `elkjs` is the lowest-friction option (pure JS, well-maintained, used in draw.io and VS Code diagrams).
-- Prototype: after layout, pass the node positions and edge list to ELK's `elk.layout()` with an orthogonal or polyline routing strategy; read back the bend points as waypoints.
-- Assess quality vs. complexity.
+**Library decisions:**
 
-**Phase 3: Evaluate WASM approach (if elkjs is insufficient)**
-- `libavoid` (Adaptagrams) is specifically designed for dynamic connector routing. It supports: obstacle avoidance, bend minimization, nudging parallel connectors apart.
-- Would require: building libavoid to WASM (Emscripten), writing a thin JS/TS binding, integrating into the Angular build.
-- Estimated complexity: medium-high (WASM build pipeline, C++ interop).
-- Consider: is a WASM binary acceptable for a web app? Bundle size impact?
+| Library | Fit | Notes |
+|---------|-----|-------|
+| **libavoid-js** ⭐ | Problem B (edge routing) | WASM port of C++ libavoid. Obstacle avoidance, bend minimization, crossing minimization, parallel edge nudging. `segmentPenalty`, `crossingPenalty`, `shapeBufferDistance` are configurable. LGPL-2.1. Actively maintained (v0.4.5, April 2025). |
+| **elkjs** ⭐ | Problem A (auto-layout) | Eclipse Layout Kernel. Full layout + routing (orthogonal, polyline, spline). Good for future "arrange everything" feature. |
+| **dagre** ✗ | — | Unmaintained since 2018. ELK is strictly better. Do not use. |
+| **cola.js** | Problem A (organic) | Constraint-based, non-hierarchical. Good for overlap removal; combine with libavoid for routing. |
+| **Graphviz** | All-or-nothing | Takes full control; not suitable for fixed-node routing. |
 
-**Phase 4: Distinguish auto-placed vs. user-placed waypoints**
-- Add a flag `DAWaypoint.autoPlaced: boolean`.
-- Auto-placed waypoints are cleared and re-generated on each layout run.
+**libavoid-js integration sketch:**
+1. Register all nodes as obstacles (bounding boxes + `shapeBufferDistance` clearance)
+2. Register all edges as connectors (src node → dest node)
+3. Call `router.processTransaction()` — libavoid computes routes
+4. Read back bend points per connector → create `DAWaypoint`s
+5. Supports incremental rerouting when a node moves (no full recompute needed)
+
+**Crossing vs. bends tradeoff:** tune `crossingPenalty` vs. `segmentPenalty` — more weight on crossing penalty = fewer crossings, more bends; vice versa.
+
+### Proposed plan
+
+**Phase 1: Remove broken routing, keep layout only** _(do first)_
+- Remove the `routeEdgesAroundNodes()` call from `applyGraphLayout`.
+- Layout algorithms (force-directed, tree, grid, etc.) are fine; only the routing is broken.
+- Leaves edges as straight lines after layout — correct, no obstacle avoidance.
+
+**Phase 2: Distinguish auto-placed vs. user-placed waypoints**
+- Add `DAWaypoint.autoPlaced: boolean` flag.
+- Auto-placed waypoints are cleared and re-generated each layout run.
 - User-placed waypoints are preserved.
-- This is needed regardless of which routing library we use.
+- Required regardless of which routing library is used.
+
+**Phase 3: Integrate libavoid-js for edge routing (Problem B)**
+- `npm install libavoid-js`
+- After layout, call libavoid to route all edges around node obstacles.
+- Map libavoid bend points → auto-placed `DAWaypoint`s.
+- Also call on node move/create/delete to keep routing live.
+- Assess WASM loading (async init), bundle size, and routing quality.
+
+**Phase 4: Integrate ELK for auto-layout mode (Problem A)**
+- `npm install elkjs`
+- When user triggers a layout command, use ELK to compute node positions + edge routes together.
+- ELK's POLYLINE or SPLINE routing gives cleaner results than the hand-rolled algorithms.
+- Replace/augment the existing 6 layout algorithms.
+
+**Phase 5: Smooth edges (splines)**
+- Optionally render polyline bends as Bezier curves (standard smoothing of control points).
+- ELK can emit spline control points directly; libavoid polylines can be post-processed.
 
 ---
 
