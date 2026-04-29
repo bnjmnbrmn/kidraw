@@ -788,7 +788,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private handleDoubleShiftReturnToNormal(event: KeyboardEvent): boolean {
-    if (event.key !== 'Shift' || event.repeat) {
+    if (event.key !== 'Shift') {
+      if (!event.repeat) {
+        this.lastShiftPressedAt = 0;
+        this.clearShiftTimingBar();
+      }
+      return false;
+    }
+    if (event.repeat) {
       return false;
     }
 
