@@ -7,7 +7,6 @@ import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
-import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
@@ -16,7 +15,7 @@ import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
-import { applyLayout, routeEdgesAroundNodes } from './graph-layout';
+import { applyLayout } from './graph-layout';
 
 @Component({
   selector: 'app-drawing-area',
@@ -29,7 +28,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   @Input({required: true}) commands!: Observable<DACommand>;
   @Output() daOut = new EventEmitter<DANotification>()
   @Output() zoomLevel = new EventEmitter<number>()
-  @Output() waypointsVisibleChange = new EventEmitter<boolean>()
   @Output() movementSpeedChange = new EventEmitter<number>()
   @Output() canEditChange = new EventEmitter<boolean>();
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -45,7 +43,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private visualConfigService = inject(VisualConfigService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
-  private waypointsVisible: boolean = false;
   private hasDragged = false;
   private wasAlreadySelectedBeforeDrag = false;
   private undoRedoService = new UndoRedoService();
@@ -88,7 +85,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.BEGIN_DIRECTED_EDGE,
     DACommandType.SET_EDGE_DESTINATION,
-    DACommandType.ADD_WAYPOINT,
     DACommandType.ADD_LABEL,
     DACommandType.DELETE,
     DACommandType.INSERT_CHAR,
@@ -177,8 +173,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let canEditNow = hasSelection;
 
     if (!canEditNow) {
-      // Check hover if no selection
-      // Waypoints don't have editable text, so don't trigger edit state
       const label = this.getLabelUnderCrosshairs();
       if (label) canEditNow = true;
       else {
@@ -381,12 +375,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.EXIT_DRAG_MODE:
         this.exitDragMode();
         break;
-      case DACommandType.ADD_WAYPOINT:
-        this.addWaypoint();
-        break;
-      case DACommandType.TOGGLE_WAYPOINT_VISIBILITY:
-        this.toggleWaypointVisibility();
-        break;
       case DACommandType.ADD_LABEL:
         this.addLabel();
         break;
@@ -482,9 +470,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private isTopItemSelected(): boolean {
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) return waypointUnderCrosshairs.isSelected;
-
     const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
     if (daNodesContainingCrosshairs.length > 0) {
       const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
@@ -501,12 +486,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private ensureTopItemSelected() {
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) {
-      waypointUnderCrosshairs.isSelected = true;
-      return;
-    }
-
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
 
     if (daNodesContainingCrosshairs.length > 0) {
@@ -527,14 +506,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
-
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) {
-      waypointUnderCrosshairs.isSelected = true;
-      return;
-    }
 
     const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
     if (labelUnderCrosshairs) {
@@ -558,7 +530,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private loadSampleGraph(graphId: string) {
     this.finishTweens();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
     this.undoRedoService.clear();
     this.demoDataService.loadGraph(graphId, this.drawingLayer);
@@ -589,15 +560,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
 
     applyLayout(layout, nodes, edges);
-    // Recalculate all edge endpoints after nodes move
     this.updateEdgesForResizedNodes(allNodes);
-    // Reroute edges around intermediate nodes, applying current theme/visibility
-    const newWaypoints = routeEdgesAroundNodes(edges, allNodes);
-    const wc = this.drawingLayer.waypointColors();
-    for (const wp of newWaypoints) {
-      if (wc) wp.applyColors(wc);
-      wp.setVisibleForSelection(this.waypointsVisible);
-    }
     this.drawingLayer.batchDraw();
   }
 
@@ -607,14 +570,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
   }
 
   private unselectAll() {
     this.finishTweens();
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
   }
 
@@ -859,16 +820,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
     this.gridInitialized = true;
 
-    // Show grid
+    // Show grid + pin indicators + invisible nodes
     if (!this.drawingLayer.gridVisible) {
       this.drawingLayer.showGrid();
     }
-
-    // Show pins and waypoints temporarily
-    if (!this.waypointsVisible) {
-      this.updateWaypointVisibility(true);
-      this.drawingLayer.batchDraw();
-    }
+    this.setGridIndicatorsVisible(true);
+    this.drawingLayer.batchDraw();
 
     // Reset fade timer
     if (this.gridFadeTimeout !== null) {
@@ -876,25 +833,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.gridFadeTimeout = window.setTimeout(() => {
       this.drawingLayer.hideGrid();
-      // Only hide waypoints if they weren't explicitly toggled on
-      if (!this.waypointsVisible) {
-        this.updateWaypointVisibility(false);
-      }
+      this.setGridIndicatorsVisible(false);
       this.drawingLayer.batchDraw();
       this.gridFadeTimeout = null;
     }, 5000);
   }
 
-  /** Update waypoint/pin visibility. If override is given, uses that; otherwise uses this.waypointsVisible. */
-  private updateWaypointVisibility(visible?: boolean): void {
-    const show = visible ?? this.waypointsVisible;
-    const edges = this.drawingLayer.getDAEdges();
-    edges.forEach(edge => {
-      edge.waypoints.forEach(waypoint => {
-        waypoint.setVisibleForSelection(show);
-      });
+  /** Toggle invisible-style nodes and pin indicators alongside grid display. */
+  private setGridIndicatorsVisible(show: boolean): void {
+    this.drawingLayer.getDANodes().forEach(node => {
+      node.setInvisibleVisibleForGrid(show);
+      node.setPinIndicatorVisible(show);
     });
-    this.drawingLayer.getDANodes().forEach(n => n.setPinIndicatorVisible(show));
   }
 
   /**
@@ -1359,7 +1309,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private focusNode(node: DANode) {
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
     node.isSelected = true;
 
@@ -1483,7 +1432,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Unselect all before creating (new node will auto-select)
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
 
     const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
@@ -1535,7 +1483,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
 
     this.drawingLayer.unselectAll();
-    this.unselectAllWaypoints();
     this.unselectAllLabels();
 
     const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
@@ -1581,11 +1528,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const box = this.getCrosshairsBBoxInDrawingLayer();
 
     const edges = this.drawingLayer.getDAEdges();
-    return edges.filter(edge => {
-      const hit = this.edgeIntersectsBox(edge, box);
-      if (hit) this.log.log(`  edge hit (${edge.waypoints.length} waypoints)`);
-      return hit;
-    });
+    return edges.filter(edge => this.edgeIntersectsBox(edge, box));
   }
 
 
@@ -1713,8 +1656,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // If only labels are selected, slide them along their edges
     const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const selectedWaypoints = this.getSelectedWaypoints();
-    if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
+    if (selectedLabels.length > 0 && selectedNodes.length === 0) {
       const majorSpacing = this.drawingLayer.getGridSpacing();
       const slideDist = sign * majorSpacing;
       selectedLabels.forEach(label => this.slideLabelAlongEdge(label, slideDist));
@@ -1729,9 +1671,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     selectedNodes.forEach(node => {
       node.connectedEdges.forEach(edge => edgesToMove.add(edge));
     });
-    selectedWaypoints.forEach(waypoint => {
-      this.getEdgesContainingWaypoint(waypoint).forEach(edge => edgesToMove.add(edge));
-    });
 
     // Store initial crosshairs position
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
@@ -1740,8 +1679,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Axis-specific accessors
     const getNodePos = (node: DANode) => axis === 'x' ? node.group.x() : node.group.y();
     const setNodePos = (node: DANode, v: number) => axis === 'x' ? node.group.x(v) : node.group.y(v);
-    const getWaypointPos = (wp: DAWaypoint) => axis === 'x' ? wp.x : wp.y;
-    const setWaypointPos = (wp: DAWaypoint, v: number) => { if (axis === 'x') wp.x = v; else wp.y = v; };
     const initialCrosshairs = axis === 'x' ? initialCrosshairsX : initialCrosshairsY;
     const stageExtent = axis === 'x' ? this.stage.width() : this.stage.height();
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
@@ -1756,7 +1693,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const getNodeCenterOffset = (node: DANode) =>
       axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;
 
-    // Store initial positions for all nodes and waypoints
+    // Store initial positions for all nodes
     const initialNodePositions = selectedNodes.map(node => {
       const initial = getNodePos(node);
       const centerOffset = getNodeCenterOffset(node);
@@ -1764,18 +1701,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const snappedCenter = snapToGrid(currentCenter) + sign * steps * gridSpacing;
       return { node, initial, target: snappedCenter - centerOffset };
     });
-    const initialWaypointPositions = selectedWaypoints.map(wp => {
-      const initial = getWaypointPos(wp);
-      const snappedTarget = snapToGrid(initial) + sign * steps * gridSpacing;
-      return { wp, initial, target: snappedTarget };
-    });
 
-    // Compute effective distance for crosshairs (use first node or waypoint)
+    // Compute effective distance for crosshairs (use first node, else nominal step)
     const snappedDistance = initialNodePositions.length > 0
       ? Math.abs(initialNodePositions[0].target - initialNodePositions[0].initial)
-      : initialWaypointPositions.length > 0
-        ? Math.abs(initialWaypointPositions[0].target - initialWaypointPositions[0].initial)
-        : steps * gridSpacing;
+      : steps * gridSpacing;
 
     const duration = this.TWEEN_DURATION * 1000;
     const startTime = Date.now();
@@ -1787,9 +1717,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
       initialNodePositions.forEach(({ node, initial, target }) => {
         setNodePos(node, initial + (target - initial) * progress);
-      });
-      initialWaypointPositions.forEach(({ wp, initial, target }) => {
-        setWaypointPos(wp, initial + (target - initial) * progress);
       });
       edgesToMove.forEach(edge => this.updateEdgePoints(edge));
 
@@ -1819,41 +1746,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private updateEdgePoints(edge: DAEdge) {
     const points = edge.calculatePoints(edge.srcNode, edge.destNode);
     edge._line.points(points);
-    edge.refreshSegments();
-    // Force redraw
     this.drawingLayer.batchDraw();
-  }
-
-  private addWaypoint(): void {
-    const box = this.getCrosshairsBBoxInDrawingLayer();
-
-    const edges: DAEdge[] = this.drawingLayer.getDAEdges();
-
-    for (const edge of edges) {
-      const pathPoints = edge.getPathPoints();
-      for (let i = 0; i < pathPoints.length - 1; i++) {
-        const p1 = pathPoints[i];
-        const p2 = pathPoints[i + 1];
-        if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
-          // Place waypoint at the point on this segment closest to crosshairs center
-          const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
-          this.log.log(`addWaypoint: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
-          const waypoint = new DAWaypoint(point.x, point.y, undefined, this.drawingLayer.waypointColors());
-          edge.addWaypoint(waypoint);
-          if (!this.waypointsVisible) {
-            this.waypointsVisible = true;
-            this.updateWaypointVisibility();
-            this.emitWaypointVisibility();
-          } else {
-            waypoint.setVisibleForSelection(true);
-          }
-          this.drawingLayer.batchDraw();
-          this.unselectAll();
-          return;
-        }
-      }
-    }
-    this.log.log('addWaypoint: no edge found under crosshairs');
   }
 
   private addLabel(): void {
@@ -1883,7 +1776,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private handleEditSelected() {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedLabels = this.getSelectedLabels();
-    // Waypoints are not editable, so we don't check for them here.
     this.log.log(`handleEditSelected: Nodes=${selectedNodes.length}, Labels=${selectedLabels.length}`);
 
     // 1. If selection exists (and is editable), edit it.
@@ -1898,8 +1790,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // 2. If no selection, check under crosshairs for editable items.
-    // Waypoints are ignored.
-
     const label = this.getLabelUnderCrosshairs();
     if (label) {
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
@@ -1923,61 +1813,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
     this.log.log('  -> Nothing targeted. Edit command ignored.');
-  }
-
-  private toggleWaypointVisibility(): void {
-    this.waypointsVisible = !this.waypointsVisible;
-    this.updateWaypointVisibility();
-    this.drawingLayer.batchDraw();
-    this.emitWaypointVisibility();
-  }
-
-  private emitWaypointVisibility(): void {
-    this.waypointsVisibleChange.emit(this.waypointsVisible);
-  }
-
-  private getSelectedWaypoints(): DAWaypoint[] {
-    const selectedWaypoints: DAWaypoint[] = [];
-    const edges = this.drawingLayer.getDAEdges();
-    edges.forEach(edge => {
-      edge.waypoints.forEach(waypoint => {
-        if (waypoint.isSelected) {
-          selectedWaypoints.push(waypoint);
-        }
-      });
-    });
-    return selectedWaypoints;
-  }
-
-  private getWaypointUnderCrosshairs(): DAWaypoint | null {
-    const box = this.getCrosshairsBBoxInDrawingLayer();
-
-    const edges = this.drawingLayer.getDAEdges();
-    for (const edge of edges) {
-      for (const waypoint of edge.waypoints) {
-        this.log.log(`  waypoint at (${waypoint.x.toFixed(1)},${waypoint.y.toFixed(1)}) vs box (${box.minX.toFixed(1)},${box.minY.toFixed(1)})-(${box.maxX.toFixed(1)},${box.maxY.toFixed(1)})`);
-        if (waypoint.x >= box.minX && waypoint.x <= box.maxX &&
-            waypoint.y >= box.minY && waypoint.y <= box.maxY) {
-          this.log.log('  -> waypoint HIT');
-          return waypoint;
-        }
-      }
-    }
-    return null;
-  }
-
-  private unselectAllWaypoints(): void {
-    const edges = this.drawingLayer.getDAEdges();
-    edges.forEach(edge => {
-      edge.waypoints.forEach(waypoint => {
-        waypoint.isSelected = false;
-      });
-    });
-  }
-
-  private getEdgesContainingWaypoint(waypoint: DAWaypoint): DAEdge[] {
-    const edges = this.drawingLayer.getDAEdges();
-    return edges.filter(edge => edge.waypoints.includes(waypoint));
   }
 
   private getSelectedLabels(): DALabel[] {
@@ -2098,7 +1933,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const snapshot = this.undoRedoService.undo(currentState);
     if (snapshot) {
       this.drawingLayer.restoreGraph(snapshot);
-      this.updateWaypointVisibility();
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();
       this.daOut.emit({kind: "exit-label-editing-mode"});
@@ -2113,7 +1947,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const snapshot = this.undoRedoService.redo(currentState);
     if (snapshot) {
       this.drawingLayer.restoreGraph(snapshot);
-      this.updateWaypointVisibility();
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();
       this.daOut.emit({kind: "exit-label-editing-mode"});
@@ -2123,7 +1956,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private deleteSelected(): void {
-    // Priority: nodes > edges > waypoints > crosshairs
+    // Priority: nodes > edges > labels > crosshairs
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     if (selectedNodes.length > 0) {
       selectedNodes.forEach(node => this.drawingLayer.removeNode(node));
@@ -2134,16 +1967,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedEdges = this.drawingLayer.getSelectedDAEdges();
     if (selectedEdges.length > 0) {
       selectedEdges.forEach(edge => this.drawingLayer.removeEdge(edge));
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const selectedWaypoints = this.getSelectedWaypoints();
-    if (selectedWaypoints.length > 0) {
-      selectedWaypoints.forEach(waypoint => {
-        const edges = this.getEdgesContainingWaypoint(waypoint);
-        edges.forEach(edge => edge.removeWaypoint(waypoint));
-      });
       this.drawingLayer.batchDraw();
       return;
     }
@@ -2169,14 +1992,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()[0];
     if (edgeUnderCrosshairs) {
       this.drawingLayer.removeEdge(edgeUnderCrosshairs);
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) {
-      const edges = this.getEdgesContainingWaypoint(waypointUnderCrosshairs);
-      edges.forEach(edge => edge.removeWaypoint(waypointUnderCrosshairs));
       this.drawingLayer.batchDraw();
       return;
     }
@@ -2217,12 +2032,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private toggleTopItemSelection() {
-    const waypointUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (waypointUnderCrosshairs) {
-      waypointUnderCrosshairs.isSelected = !waypointUnderCrosshairs.isSelected;
-      return;
-    }
-
     const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
     if (daNodesContainingCrosshairs.length > 0) {
       const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);

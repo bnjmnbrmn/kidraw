@@ -1,8 +1,6 @@
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
-import { DAWaypoint } from './da-waypoint';
 import { LayoutType } from './command.model';
-import { lineSegmentIntersectsRect } from './utils';
 
 interface NodePos {
   node: DANode;
@@ -326,22 +324,55 @@ function radialLayout(
   const roots = allNodes.filter(n => (incomingCount.get(n) ?? 0) === 0);
   if (roots.length === 0) roots.push(allNodes[0]);
 
-  // BFS to assign levels
+  // Directed BFS to assign levels, recording BFS-spanning-tree parents
   const level = new Map<DANode, number>();
+  const bfsParent = new Map<DANode, DANode | null>();
   const queue: DANode[] = [...roots];
-  roots.forEach(r => level.set(r, 0));
+  roots.forEach(r => { level.set(r, 0); bfsParent.set(r, null); });
   while (queue.length > 0) {
     const node = queue.shift()!;
     const lvl = level.get(node)!;
     for (const child of children.get(node) ?? []) {
       if (!level.has(child)) {
         level.set(child, lvl + 1);
+        bfsParent.set(child, node);
         queue.push(child);
       }
     }
   }
+
+  // Second pass: undirected BFS from already-assigned nodes — reaches cycle nodes
+  // that are adjacent to the main tree.
+  let undirectedChanged = true;
+  while (undirectedChanged) {
+    undirectedChanged = false;
+    for (const n of allNodes) {
+      if (level.has(n)) continue;
+      for (const e of edges) {
+        if (e.srcNode === n && level.has(e.destNode)) {
+          level.set(n, level.get(e.destNode)! + 1);
+          bfsParent.set(n, e.destNode);
+          undirectedChanged = true;
+          break;
+        }
+        if (e.destNode === n && level.has(e.srcNode)) {
+          level.set(n, level.get(e.srcNode)! + 1);
+          bfsParent.set(n, e.srcNode);
+          undirectedChanged = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // Final fallback: isolated cycle components get placed beyond the tree's outermost ring
+  // rather than at level 0 (which would mix them with true roots and cause cross-edges).
+  const maxTreeLevel = level.size > 0 ? Math.max(...Array.from(level.values())) : 0;
   for (const n of allNodes) {
-    if (!level.has(n)) level.set(n, 0);
+    if (!level.has(n)) {
+      level.set(n, maxTreeLevel + 1);
+      bfsParent.set(n, null);
+    }
   }
 
   // Group movable nodes by level
@@ -362,156 +393,46 @@ function radialLayout(
   cx /= allNodes.length;
   cy /= allNodes.length;
 
+  // Only use the centre point when there's a single root; otherwise shift every
+  // level out by one ring so multiple level-0 nodes don't stack at (cx, cy).
+  const hasUniqueCenter = (levels.get(0)?.length ?? 0) === 1;
+
+  // Assign angles to level-0 nodes evenly; then for each subsequent level sort
+  // nodes by their parent's angle so children land near their parents rather than
+  // potentially on the opposite side of the circle (which causes long cross-edges).
+  const nodeAngle = new Map<DANode, number>();
+  const level0Nodes = levels.get(0) ?? [];
+  level0Nodes.forEach((node, i) => {
+    nodeAngle.set(node, level0Nodes.length === 1
+      ? -Math.PI / 2
+      : (2 * Math.PI * i) / level0Nodes.length - Math.PI / 2);
+  });
+
+  const maxLevel = Math.max(...Array.from(levels.keys()));
+  for (let lvl = 1; lvl <= maxLevel; lvl++) {
+    const nodesAtLevel = [...(levels.get(lvl) ?? [])];
+    nodesAtLevel.sort((a, b) => {
+      const pa = bfsParent.get(a), pb = bfsParent.get(b);
+      const aa = pa && nodeAngle.has(pa) ? nodeAngle.get(pa)! : Infinity;
+      const ab = pb && nodeAngle.has(pb) ? nodeAngle.get(pb)! : Infinity;
+      return aa - ab;
+    });
+    levels.set(lvl, nodesAtLevel); // write sorted order back
+    nodesAtLevel.forEach((node, i) => {
+      nodeAngle.set(node, nodesAtLevel.length === 1
+        ? -Math.PI / 2
+        : (2 * Math.PI * i) / nodesAtLevel.length - Math.PI / 2);
+    });
+  }
+
   const positions: NodePos[] = [];
   for (const [lvl, nodesAtLevel] of levels) {
-    const radius = lvl === 0 ? 0 : lvl * spacing;
-    const count = nodesAtLevel.length;
-    nodesAtLevel.forEach((node, i) => {
-      const angle = count === 1 ? -Math.PI / 2 : (2 * Math.PI * i) / count - Math.PI / 2;
+    const ring = hasUniqueCenter ? lvl : lvl + 1;
+    const radius = ring === 0 ? 0 : ring * spacing;
+    nodesAtLevel.forEach(node => {
+      const angle = nodeAngle.get(node)!;
       positions.push({ node, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) });
     });
   }
   return positions;
-}
-
-// ---------------------------------------------------------------------------
-// Edge routing — adds waypoints so edges avoid intermediate nodes
-// ---------------------------------------------------------------------------
-
-interface RoutePoint { x: number; y: number; }
-
-/** After layout, reroute edges around any nodes they pass through.
- *  Clears existing waypoints on each edge and adds bypass waypoints.
- *  Returns the newly created waypoints so the caller can apply colors/visibility. */
-export function routeEdgesAroundNodes(
-  edges: DAEdge[],
-  allNodes: DANode[],
-  margin = 20,
-): DAWaypoint[] {
-  const created: DAWaypoint[] = [];
-
-  for (const edge of edges) {
-    if (edge.srcNode === edge.destNode) continue;
-
-    // Clear existing waypoints
-    for (const wp of [...edge.waypoints]) {
-      edge.removeWaypoint(wp);
-    }
-
-    const src = edge.srcNode;
-    const dest = edge.destNode;
-    const obstacles = allNodes.filter(n => n !== src && n !== dest);
-    const p0 = routeNodeCenter(src);
-    const p1 = routeNodeCenter(dest);
-    const path = routedPath(p0, p1, obstacles, margin);
-
-    for (let i = 1; i < path.length - 1; i++) {
-      const wp = new DAWaypoint(path[i].x, path[i].y);
-      edge.addWaypoint(wp);
-      created.push(wp);
-    }
-  }
-
-  return created;
-}
-
-function routeNodeCenter(node: DANode): RoutePoint {
-  return {
-    x: node.konvaGroup.x() + node.NODE_WIDTH / 2,
-    y: node.konvaGroup.y() + node.NODE_HEIGHT / 2,
-  };
-}
-
-/** Iteratively inserts bypass points until no segment passes through any obstacle. */
-function routedPath(
-  p0: RoutePoint, p1: RoutePoint, obstacles: DANode[], margin: number,
-): RoutePoint[] {
-  let path: RoutePoint[] = [p0, p1];
-
-  for (let iter = 0; iter < 8; iter++) {
-    let changed = false;
-    const next: RoutePoint[] = [path[0]];
-
-    for (let i = 0; i < path.length - 1; i++) {
-      const a = path[i];
-      const b = path[i + 1];
-      const blocker = firstBlocker(a, b, obstacles, margin);
-      if (blocker) {
-        changed = true;
-        next.push(bypassPoint(a, b, blocker, obstacles, margin));
-      }
-      next.push(b);
-    }
-
-    path = next;
-    if (!changed) break;
-  }
-
-  return path;
-}
-
-/** Returns the first node (by t-value) whose expanded bounds the segment a→b enters. */
-function firstBlocker(
-  a: RoutePoint, b: RoutePoint, obstacles: DANode[], margin: number,
-): DANode | null {
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-  let best: DANode | null = null;
-  let bestT = Infinity;
-
-  for (const n of obstacles) {
-    const minX = n.konvaGroup.x() - margin;
-    const minY = n.konvaGroup.y() - margin;
-    const maxX = n.konvaGroup.x() + n.NODE_WIDTH + margin;
-    const maxY = n.konvaGroup.y() + n.NODE_HEIGHT + margin;
-    if (!lineSegmentIntersectsRect(a.x, a.y, b.x, b.y, minX, minY, maxX, maxY)) continue;
-
-    const c = routeNodeCenter(n);
-    const t = lenSq > 0 ? ((c.x - a.x) * dx + (c.y - a.y) * dy) / lenSq : 0;
-    if (t < bestT) { bestT = t; best = n; }
-  }
-
-  return best;
-}
-
-/** Computes a single waypoint that routes segment a→b around the blocker. */
-function bypassPoint(
-  a: RoutePoint, b: RoutePoint, blocker: DANode, obstacles: DANode[], margin: number,
-): RoutePoint {
-  const c = routeNodeCenter(blocker);
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 1) return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-
-  // Left-perpendicular unit vector of a→b
-  const px = -dy / len, py = dx / len;
-
-  // Signed perpendicular distance from line a→b to blocker center
-  const d = (c.x - a.x) * px + (c.y - a.y) * py;
-
-  // Projection of blocker center onto segment (clamped away from endpoints)
-  const t = Math.max(0.15, Math.min(0.85, ((c.x - a.x) * dx + (c.y - a.y) * dy) / (len * len)));
-  const projX = a.x + t * dx, projY = a.y + t * dy;
-
-  // Clearance: bounding-circle radius of the blocker + margin
-  const hd = Math.sqrt((blocker.NODE_WIDTH / 2) ** 2 + (blocker.NODE_HEIGHT / 2) ** 2);
-  const offset = Math.abs(d) + hd + margin;
-
-  // Two candidate bypass points — same side as blocker center, and opposite side
-  const side = d >= 0 ? 1 : -1;
-  const bp1: RoutePoint = { x: projX + side * offset * px, y: projY + side * offset * py };
-  const bp2: RoutePoint = { x: projX - side * offset * px, y: projY - side * offset * py };
-
-  const inAny = (pt: RoutePoint) => obstacles.some(n =>
-    pt.x >= n.konvaGroup.x() - margin && pt.x <= n.konvaGroup.x() + n.NODE_WIDTH + margin &&
-    pt.y >= n.konvaGroup.y() - margin && pt.y <= n.konvaGroup.y() + n.NODE_HEIGHT + margin,
-  );
-
-  if (inAny(bp1) && !inAny(bp2)) return bp2;
-  if (!inAny(bp1) && inAny(bp2)) return bp1;
-
-  // Both clear (or both blocked): pick shorter total detour
-  const pathLen = (pt: RoutePoint) =>
-    Math.hypot(pt.x - a.x, pt.y - a.y) + Math.hypot(pt.x - b.x, pt.y - b.y);
-  return pathLen(bp1) <= pathLen(bp2) ? bp1 : bp2;
 }

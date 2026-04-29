@@ -388,6 +388,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.grid]:          new LabeledAction('Grid',     emit('grid')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
+      [layout.chargedSpringEdges]: new LabeledAction('Charged Spring Edges', () => {
+        // Phase 3 will wire up the physics sim; key is reserved here so the binding is stable.
+      }),
     } as SubmenuConfig;
   }
 
@@ -401,8 +404,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.pendingInsertTypeKey = insert.node;
         this.insertNodePending = true;
       }),
-      [insert.waypoint]: new LabeledAction('...Waypoint', () => {
-        this.keyMenuOut.emit({kind: DACommandType.ADD_WAYPOINT});
+      [insert.invisibleNode]: new LabeledAction('...Invisible', () => {
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: 'invisible'});
       }),
       [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
         this.directedEdgeActive = true;
@@ -674,7 +677,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbn.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
       [mbn.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
       [mbn.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
-      [mbn.toggleWaypoints]: new LabeledAction('Toggle Waypoints', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY})),
     } as SubmenuConfig;
   }
 

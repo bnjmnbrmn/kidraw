@@ -51,12 +51,6 @@ export class AppComponent {
     }
   }
 
-  onWaypointsVisibleChange(visible: boolean) {
-    if (this.headerComponent) {
-      this.headerComponent.onWaypointsVisibleChange(visible);
-    }
-  }
-
   onMovementSpeedChange(speed: number) {
     this.movementSpeed = speed;
   }

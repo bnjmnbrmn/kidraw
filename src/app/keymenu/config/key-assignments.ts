@@ -32,7 +32,7 @@ export interface KeymenuKeyAssignments {
   };
   readonly insert: {
     readonly node: KeyString;
-    readonly waypoint: KeyString;
+    readonly invisibleNode: KeyString;
     readonly edge: KeyString;
     readonly label: KeyString;
   };
@@ -41,6 +41,7 @@ export interface KeymenuKeyAssignments {
     readonly circle: KeyString;
     readonly diamond: KeyString;
     readonly junction: KeyString;
+    readonly invisible: KeyString;
   };
   readonly style: {
     readonly shapeSubmenu: KeyString;
@@ -68,7 +69,6 @@ export interface KeymenuKeyAssignments {
     readonly purple: KeyString;
   };
   readonly shared: {
-    readonly toggleWaypointVisibility: KeyString;
     readonly delete: KeyString;
     readonly select: KeyString;
     readonly undo: KeyString;
@@ -86,7 +86,6 @@ export interface KeymenuKeyAssignments {
   readonly moveByNode: {
     readonly submenu: KeyString;
     readonly nodeJump: DirectionalKeyAssignments;
-    readonly toggleWaypoints: KeyString;
   };
   readonly moveByGraph: {
     readonly submenu: KeyString;
@@ -122,6 +121,7 @@ export interface KeymenuKeyAssignments {
     readonly grid: KeyString;
     readonly circular: KeyString;
     readonly radial: KeyString;
+    readonly chargedSpringEdges: KeyString;
   };
 }
 
@@ -139,7 +139,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   insert: {
     node: 'j',
-    waypoint: 'k',
+    invisibleNode: 'k',
     edge: 'l',
     label: ';',
   },
@@ -148,6 +148,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     circle: 'i',
     diamond: 'o',
     junction: 'p',
+    invisible: 'k',
   },
   style: {
     shapeSubmenu: 's',
@@ -175,7 +176,6 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     purple: 'p',
   },
   shared: {
-    toggleWaypointVisibility: 'w',
     delete: 'x',
     select: 'c',
     undo: 'u',
@@ -203,7 +203,6 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 't',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
-    toggleWaypoints: 'd',
   },
   moveByGraph: {
     submenu: 'g',
@@ -220,7 +219,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p'},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -237,7 +236,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   insert: {
     node: 'd',
-    waypoint: 'w',
+    invisibleNode: 'w',
     edge: 's',
     label: 'e',
   },
@@ -246,6 +245,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     circle: 'k',
     diamond: 'l',
     junction: ';',
+    invisible: 'w',
   },
   style: {
     shapeSubmenu: 's',
@@ -273,7 +273,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     purple: 'p',
   },
   shared: {
-    toggleWaypointVisibility: 'w',
     delete: 'x',
     select: 'c',
     undo: 'u',
@@ -301,7 +300,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 't',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
-    toggleWaypoints: 'd',
   },
   moveByGraph: {
     submenu: 'g',
@@ -318,5 +316,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p'},
 };

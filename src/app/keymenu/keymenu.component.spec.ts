@@ -119,11 +119,6 @@ describe('KeymenuComponent', () => {
     // Move-by-node submenu at 't'
     const moveByNodeSubmenu = rootConfig['t'] as LabeledSubmenuConfig;
     expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
-    const toggleWaypoints = moveByNodeSubmenu.submenuConfig['d'] as LabeledAction;
-    expect(toggleWaypoints.actionLabel).toBe('Toggle Waypoints');
-    toggleWaypoints.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY});
-
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
 

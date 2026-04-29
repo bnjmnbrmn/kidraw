@@ -26,8 +26,6 @@ export interface ThemePalette {
   labelFill: string;
   labelStroke: string;
   labelText: string;
-  waypointFill: string;
-  waypointStroke: string;
   crosshairsStroke: string;
   instructionText: string;
 }
@@ -57,8 +55,6 @@ export const DEFAULT_DARK_PALETTE: ThemePalette = {
   labelFill: '#1a1a1a',
   labelStroke: '#c0c0c0',
   labelText: '#f0f0f0',
-  waypointFill: '#1a1a1a',
-  waypointStroke: '#c0c0c0',
   crosshairsStroke: '#f0f0f0',
   instructionText: '#b0b0b0',
 };
@@ -88,8 +84,6 @@ export const DEFAULT_LIGHT_PALETTE: ThemePalette = {
   labelFill: '#ffffff',
   labelStroke: '#2563eb',
   labelText: '#1e293b',
-  waypointFill: '#ffffff',
-  waypointStroke: '#2563eb',
   crosshairsStroke: '#1e293b',
   instructionText: '#374151',
 };

@@ -31,6 +31,9 @@ export class DemoDataService {
     { id: 'classes', label: 'Kidraw Classes' },
     { id: 'files', label: 'Project Files' },
     { id: 'modes', label: 'Mode / Shortcut Hierarchy' },
+    { id: 'nudge-multi', label: '∥ Multi-edges' },
+    { id: 'nudge-fan', label: '∥ Fan-out' },
+    { id: 'nudge-converge', label: '∥ Converge' },
   ];
 
   loadGraph(graphId: string, drawingLayer: DrawingLayer): void {
@@ -48,6 +51,9 @@ export class DemoDataService {
       case 'classes': return dl => this.buildClassDiagram(dl);
       case 'files': return dl => this.buildFileDiagram(dl);
       case 'modes': return dl => this.buildModeDiagram(dl);
+      case 'nudge-multi': return dl => this.buildNudgeMulti(dl);
+      case 'nudge-fan': return dl => this.buildNudgeFan(dl);
+      case 'nudge-converge': return dl => this.buildNudgeConverge(dl);
       default: return undefined;
     }
   }
@@ -100,7 +106,7 @@ export class DemoDataService {
       // Domain objects row
       { x: col1, y: row3, text: 'DANode' },                // 8
       { x: col2, y: row3, text: 'DAEdge' },                // 9
-      { x: col2 + 150, y: row3, text: 'DAWaypoint' },      // 10
+      { x: col2 + 150, y: row3, text: 'DACommand' },       // 10
       { x: col3, y: row3, text: 'USQwertyMode' },          // 11
       { x: col4, y: row3, text: 'DACrosshairs' },          // 12
       // Lower row
@@ -125,10 +131,11 @@ export class DemoDataService {
       { src: 5, dest: 12 },
       // KeyMenu → USQwertyMode
       { src: 6, dest: 11 },
-      // DAEdge → DANode, DAWaypoint, DALabel
+      // DAEdge → DANode, DALabel
       { src: 9, dest: 8 },
-      { src: 9, dest: 10 },
       { src: 9, dest: 13 },
+      // KeymenuComponent → DACommand
+      { src: 2, dest: 10 },
       // USQwertyMode → KMSubmenu
       { src: 11, dest: 14 },
       // KMSubmenu → KMKey
@@ -207,7 +214,7 @@ export class DemoDataService {
       { x: col3 + 70, y: row2, text: 'Shape...\n(t)' },      // 9
       // Insert children
       { x: col1 - 170, y: row3, text: 'Node\n(d)' },         // 10
-      { x: col1 - 60, y: row3, text: 'Waypoint\n(w)' },      // 11
+      { x: col1 - 60, y: row3, text: 'Invisible\n(w)' },     // 11
       { x: col1 + 50, y: row3, text: 'Edge\n(e)' },          // 12
       { x: col1 + 150, y: row3, text: 'Label\n(l)' },        // 13
       // Edit children
@@ -244,6 +251,80 @@ export class DemoDataService {
       // Label edit submenus
       { src: 1, dest: 17 },
       { src: 1, dest: 18 },
+    ]);
+  }
+
+  // --- Nudge experiment graphs ---
+
+  /** Four pairs of nodes, each connected by 2–4 parallel edges. */
+  private buildNudgeMulti(dl: DrawingLayer): void {
+    this.buildFromDefs(dl, [
+      // Pair 1: 2 edges
+      { x: 100, y: 80,  text: 'A' },
+      { x: 350, y: 80,  text: 'B' },
+      // Pair 2: 3 edges
+      { x: 100, y: 220, text: 'C' },
+      { x: 350, y: 220, text: 'D' },
+      // Pair 3: 4 edges
+      { x: 100, y: 370, text: 'E' },
+      { x: 350, y: 370, text: 'F' },
+      // Pair 4: 2 edges going back the other way (undirected feel)
+      { x: 100, y: 510, text: 'G' },
+      { x: 350, y: 510, text: 'H' },
+    ], [
+      { src: 0, dest: 1 }, { src: 0, dest: 1 },
+      { src: 2, dest: 3 }, { src: 2, dest: 3 }, { src: 2, dest: 3 },
+      { src: 4, dest: 5 }, { src: 4, dest: 5 }, { src: 4, dest: 5 }, { src: 4, dest: 5 },
+      { src: 6, dest: 7 }, { src: 7, dest: 6 },
+    ]);
+  }
+
+  /** A hub node with 8 outgoing edges to destinations arranged in a semicircle.
+   *  Several destinations are closely spaced, creating near-parallel edges leaving
+   *  the hub. Tests the fan-out case. */
+  private buildNudgeFan(dl: DrawingLayer): void {
+    const cx = 250, cy = 300, r = 200;
+    // Hub
+    const nodes: NodeDef[] = [{ x: cx, y: cy, text: 'Hub' }];
+    // 8 destinations spread across a semicircle (left half, so edges fan leftward)
+    const count = 8;
+    for (let i = 0; i < count; i++) {
+      const angle = Math.PI * (0.15 + 0.7 * i / (count - 1));
+      nodes.push({
+        x: Math.round(cx - r * Math.cos(angle)),
+        y: Math.round(cy - r * Math.sin(angle)),
+        text: String.fromCharCode(65 + i),
+      });
+    }
+    const edges: EdgeDef[] = nodes.slice(1).map((_, i) => ({ src: 0, dest: i + 1 }));
+    this.buildFromDefs(dl, nodes, edges);
+  }
+
+  /** Two clusters of source nodes, all funneling through a narrow bottleneck pair,
+   *  then spreading to destination nodes. Tests edges that share a long parallel
+   *  stretch in the middle. */
+  private buildNudgeConverge(dl: DrawingLayer): void {
+    this.buildFromDefs(dl, [
+      // Left sources (spread vertically)
+      { x: 60,  y: 80,  text: 'S1' },
+      { x: 60,  y: 180, text: 'S2' },
+      { x: 60,  y: 280, text: 'S3' },
+      { x: 60,  y: 380, text: 'S4' },
+      // Bottleneck pair
+      { x: 280, y: 180, text: 'In' },
+      { x: 280, y: 280, text: 'Out' },
+      // Right destinations (spread vertically)
+      { x: 500, y: 80,  text: 'D1' },
+      { x: 500, y: 180, text: 'D2' },
+      { x: 500, y: 280, text: 'D3' },
+      { x: 500, y: 380, text: 'D4' },
+    ], [
+      // All sources → In
+      { src: 0, dest: 4 }, { src: 1, dest: 4 }, { src: 2, dest: 4 }, { src: 3, dest: 4 },
+      // In → Out
+      { src: 4, dest: 5 },
+      // Out → all destinations
+      { src: 5, dest: 6 }, { src: 5, dest: 7 }, { src: 5, dest: 8 }, { src: 5, dest: 9 },
     ]);
   }
 

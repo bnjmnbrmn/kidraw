@@ -4,11 +4,6 @@
     <div class="zoom-indicator">
       Zoom: {{ zoomLevel }}%
     </div>
-    @if (waypointsVisible) {
-    <div class="waypoint-indicator">
-      WP
-    </div>
-    }
     <select class="sample-graph-select" tabindex="-1" (change)="onSampleGraphChange($event)">
       <option value="">Load Sample...</option>
       @for (graph of demoData.sampleGraphs; track graph.id) {

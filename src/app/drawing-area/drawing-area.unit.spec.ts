@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
-import { DAWaypoint } from './da-waypoint';
 import { DALabel } from './da-label';
 import { DACrosshairs } from './da-crosshairs.group';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
@@ -430,81 +429,7 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
-  describe('DAWaypoint', () => {
-    it('should create waypoint at correct position', () => {
-      const wp = new DAWaypoint(100, 200);
-      expect(wp.x).toBe(100);
-      expect(wp.y).toBe(200);
-      expect(wp.isSelected).toBe(false);
-    });
-
-    it('should start hidden', () => {
-      const wp = new DAWaypoint(100, 200);
-      expect(wp.group.visible()).toBe(false);
-    });
-
-    it('should become visible when selected', () => {
-      const wp = new DAWaypoint(100, 200);
-      wp.isSelected = true;
-      expect(wp.group.visible()).toBe(true);
-      expect(wp.isSelected).toBe(true);
-    });
-
-    it('should become visible via setVisibleForSelection(true)', () => {
-      const wp = new DAWaypoint(100, 200);
-      wp.setVisibleForSelection(true);
-      expect(wp.group.visible()).toBe(true);
-    });
-
-    it('should hide when setVisibleForSelection(false) and not selected', () => {
-      const wp = new DAWaypoint(100, 200);
-      wp.setVisibleForSelection(true);
-      wp.setVisibleForSelection(false);
-      expect(wp.group.visible()).toBe(false);
-    });
-
-    it('should stay visible when setVisibleForSelection(false) but is selected', () => {
-      const wp = new DAWaypoint(100, 200);
-      wp.isSelected = true;
-      wp.setVisibleForSelection(false);
-      expect(wp.group.visible()).toBe(true);
-    });
-
-    it('should update position', () => {
-      const wp = new DAWaypoint(100, 200);
-      wp.x = 300;
-      wp.y = 400;
-      expect(wp.x).toBe(300);
-      expect(wp.y).toBe(400);
-    });
-  });
-
-  describe('DAEdge with waypoints', () => {
-    it('should add waypoint to edge', () => {
-      const src = new DANode(0, 0, 'A');
-      const dest = new DANode(200, 0, 'B');
-      const edge = new DAEdge(src, dest, '');
-      const wp = new DAWaypoint(100, 50);
-      edge.addWaypoint(wp);
-      expect(edge.waypoints.length).toBe(1);
-      expect(edge.waypoints[0]).toBe(wp);
-    });
-
-    it('should sort waypoints by position along edge', () => {
-      const src = new DANode(0, 0, 'A');
-      const dest = new DANode(400, 0, 'B');
-      const edge = new DAEdge(src, dest, '');
-      const wp1 = new DAWaypoint(300, 25);
-      const wp2 = new DAWaypoint(100, 25);
-      const wp3 = new DAWaypoint(200, 25);
-      edge.addWaypoint(wp1);
-      edge.addWaypoint(wp2);
-      edge.addWaypoint(wp3);
-      expect(edge.waypoints[0]).toBe(wp2);
-      expect(edge.waypoints[1]).toBe(wp3);
-      expect(edge.waypoints[2]).toBe(wp1);
-    });
-
+  describe('DAEdge', () => {
     it('should update selection style on main line', () => {
       const src = new DANode(0, 0, 'A');
       const dest = new DANode(200, 0, 'B');
@@ -514,28 +439,12 @@ describe('DrawingArea Unit Tests', () => {
       expect(edge.line.strokeWidth()).toBe(edge.STROKE_WIDTH_SELECTED);
     });
 
-    it('should remove waypoint from edge', () => {
-      const src = new DANode(0, 0, 'A');
-      const dest = new DANode(200, 0, 'B');
-      const edge = new DAEdge(src, dest, '');
-      const wp = new DAWaypoint(100, 50);
-      edge.addWaypoint(wp);
-      expect(edge.waypoints.length).toBe(1);
-      edge.removeWaypoint(wp);
-      expect(edge.waypoints.length).toBe(0);
-    });
-
-    it('should return path points including waypoints', () => {
+    it('should return src+dest path points', () => {
       const src = new DANode(0, 0, 'A');
       const dest = new DANode(400, 0, 'B');
       const edge = new DAEdge(src, dest, '');
-      const wp = new DAWaypoint(200, 100);
-      edge.addWaypoint(wp);
       const points = edge.getPathPoints();
-      // src edge point, waypoint, dest edge point
-      expect(points.length).toBe(3);
-      expect(points[1].x).toBe(200);
-      expect(points[1].y).toBe(100);
+      expect(points.length).toBe(2);
     });
   });
 
@@ -621,20 +530,6 @@ describe('DrawingArea Unit Tests', () => {
       expect(edge.labels.length).toBe(0);
     });
 
-    it('should not affect waypoints when adding/removing labels', () => {
-      const src = new DANode(0, 0, 'A');
-      const dest = new DANode(200, 0, 'B');
-      const edge = new DAEdge(src, dest, '');
-      const wp = new DAWaypoint(100, 50);
-      const label = new DALabel(100, -20, 'tag');
-      edge.addWaypoint(wp);
-      edge.addLabel(label);
-      expect(edge.waypoints.length).toBe(1);
-      expect(edge.labels.length).toBe(1);
-      edge.removeLabel(label);
-      expect(edge.waypoints.length).toBe(1);
-      expect(edge.labels.length).toBe(0);
-    });
   });
 
   describe('DrawingLayer removal', () => {

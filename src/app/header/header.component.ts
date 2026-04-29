@@ -27,8 +27,6 @@ const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
   { key: 'labelFill', label: 'Label fill' },
   { key: 'labelStroke', label: 'Label stroke' },
   { key: 'labelText', label: 'Label text' },
-  { key: 'waypointFill', label: 'Waypoint fill' },
-  { key: 'waypointStroke', label: 'Waypoint stroke' },
   { key: 'crosshairsStroke', label: 'Crosshairs' },
   { key: 'instructionText', label: 'Instruction text' },
 ];
@@ -48,7 +46,6 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 })
 export class HeaderComponent {
   zoomLevel: number = 100;
-  waypointsVisible: boolean = false;
 
   @Output() loadSampleGraph = new EventEmitter<string>();
 
@@ -63,10 +60,6 @@ export class HeaderComponent {
 
   onZoomLevelChange(level: number) {
     this.zoomLevel = level;
-  }
-
-  onWaypointsVisibleChange(visible: boolean) {
-    this.waypointsVisible = visible;
   }
 
   onThemeChange(event: Event) {
@@ -132,5 +125,9 @@ export class HeaderComponent {
 
   restoreDefaults() {
     this.vc.resetToDefaults();
+  }
+
+  toNum(event: Event): number {
+    return parseFloat((event.target as HTMLInputElement).value);
   }
 }

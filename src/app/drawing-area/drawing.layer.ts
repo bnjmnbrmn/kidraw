@@ -1,7 +1,6 @@
 import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAEdge} from './da-edge';
-import {DAWaypoint} from './da-waypoint';
 import {DALabel} from './da-label';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
@@ -300,12 +299,6 @@ export class DrawingLayer extends Konva.Layer {
       srcNodeId: edge.srcNode.id,
       destNodeId: edge.destNode.id,
       isSelected: edge.isSelected,
-      waypoints: edge.waypoints.map(wp => ({
-        id: wp.id,
-        x: wp.x,
-        y: wp.y,
-        isSelected: wp.isSelected,
-      })),
       labels: edge.labels.map(lbl => ({
         id: lbl.id,
         x: lbl.x,
@@ -361,15 +354,6 @@ export class DrawingLayer extends Konva.Layer {
       const num = parseInt(es.id.replace('da-', ''), 10);
       if (!isNaN(num) && num > maxNumericId) maxNumericId = num;
 
-      // Restore waypoints
-      for (const ws of es.waypoints) {
-        const wp = new DAWaypoint(ws.x, ws.y, ws.id);
-        wp.isSelected = ws.isSelected;
-        edge.addWaypoint(wp);
-        const wpNum = parseInt(ws.id.replace('da-', ''), 10);
-        if (!isNaN(wpNum) && wpNum > maxNumericId) maxNumericId = wpNum;
-      }
-
       // Restore labels
       for (const ls of es.labels) {
         const lbl = new DALabel(ls.x, ls.y, ls.text, ls.id);
@@ -385,7 +369,6 @@ export class DrawingLayer extends Konva.Layer {
       // Update edge visual
       const points = edge.calculatePoints(srcNode, destNode);
       edge._line.points(points);
-      edge.refreshSegments();
     }
 
     // Reset ID counter above max used ID
@@ -406,12 +389,10 @@ export class DrawingLayer extends Konva.Layer {
     const nc = { fill: palette.nodeFill, stroke: palette.nodeStroke, text: palette.nodeText };
     const ec = { stroke: palette.edgeStroke, fill: palette.edgeFill };
     const lc = { fill: palette.labelFill, stroke: palette.labelStroke, text: palette.labelText };
-    const wc = { fill: palette.waypointFill, stroke: palette.waypointStroke };
 
     this.daNodes.forEach(n => n.applyColors(nc));
     this.daEdges.forEach(e => {
       e.applyColors(ec);
-      e.waypoints.forEach(w => w.applyColors(wc));
       e.labels.forEach(l => l.applyColors(lc));
     });
   }
@@ -424,11 +405,6 @@ export class DrawingLayer extends Konva.Layer {
   edgeColors() {
     if (!this._palette) return undefined;
     return { stroke: this._palette.edgeStroke, fill: this._palette.edgeFill };
-  }
-
-  waypointColors() {
-    if (!this._palette) return undefined;
-    return { fill: this._palette.waypointFill, stroke: this._palette.waypointStroke };
   }
 
   labelColors() {

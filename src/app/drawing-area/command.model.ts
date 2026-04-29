@@ -1,4 +1,4 @@
-export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction';
+export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction' | 'invisible';
 
 export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
 
@@ -53,8 +53,6 @@ export enum DACommandType {
   DRAG_SELECTED_UP = 'DRAG_SELECTED_UP',
   DRAG_SELECTED_DOWN = 'DRAG_SELECTED_DOWN',
   EXIT_DRAG_MODE = 'EXIT_DRAG_MODE',
-  ADD_WAYPOINT = 'ADD_WAYPOINT',
-  TOGGLE_WAYPOINT_VISIBILITY = 'TOGGLE_WAYPOINT_VISIBILITY',
   DELETE = 'DELETE',
   ADD_LABEL = 'ADD_LABEL',
   OPEN_INSERT_SUBMENU = 'OPEN_INSERT_SUBMENU',
@@ -131,8 +129,6 @@ export type DACommand =
   | {kind: DACommandType.DRAG_SELECTED_UP; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.DRAG_SELECTED_DOWN; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.EXIT_DRAG_MODE}
-  | {kind: DACommandType.ADD_WAYPOINT}
-  | {kind: DACommandType.TOGGLE_WAYPOINT_VISIBILITY}
   | {kind: DACommandType.DELETE}
   | {kind: DACommandType.ADD_LABEL}
   | {kind: DACommandType.EDIT_SELECTED}

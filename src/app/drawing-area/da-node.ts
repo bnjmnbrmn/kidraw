@@ -36,9 +36,12 @@ export class DANode {
   public readonly DEFAULT_NODE_WIDTH = 120;
   public readonly DEFAULT_NODE_HEIGHT = 120;
   public readonly JUNCTION_SIZE = 12;
+  public readonly INVISIBLE_SIZE = 16;
+  public readonly INVISIBLE_DOT_RADIUS = 8;
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
   public readonly DEFAULT_FONT_SIZE = 16;
+  private _invisibleVisibleForGrid = false;
 
   public readonly MIN_NODE_SIZE = 50;
   public readonly MAX_NODE_SIZE = 320;
@@ -67,8 +70,12 @@ export class DANode {
     this._nodeShape = nodeShape;
 
     const isJunction = nodeShape === 'junction';
-    this._nodeWidth = isJunction ? this.JUNCTION_SIZE : this.DEFAULT_NODE_WIDTH;
-    this._nodeHeight = isJunction ? this.JUNCTION_SIZE : this.DEFAULT_NODE_HEIGHT;
+    const isInvisible = nodeShape === 'invisible';
+    const labelless = isJunction || isInvisible;
+    this._nodeWidth = isJunction ? this.JUNCTION_SIZE :
+                      isInvisible ? this.INVISIBLE_SIZE : this.DEFAULT_NODE_WIDTH;
+    this._nodeHeight = isJunction ? this.JUNCTION_SIZE :
+                       isInvisible ? this.INVISIBLE_SIZE : this.DEFAULT_NODE_HEIGHT;
     this._baseWidth = this._nodeWidth;
     this._baseHeight = this._nodeHeight;
 
@@ -76,8 +83,11 @@ export class DANode {
 
     this._shape = this.createShape(this._nodeWidth, this._nodeHeight, nodeShape, colors);
     this.group.add(this._shape);
+    if (isInvisible) {
+      this._shape.visible(false);
+    }
 
-    // Label — hidden for junction nodes
+    // Label — hidden for junction and invisible nodes
     this._label = new Konva.Text({
       text: initialText,
       width: this._nodeWidth,
@@ -86,7 +96,7 @@ export class DANode {
       align: 'center',
       verticalAlign: 'middle',
       fill: colors?.text,
-      visible: !isJunction,
+      visible: !labelless,
     });
     this.group.add(this._label);
 
@@ -154,12 +164,24 @@ export class DANode {
           stroke: 'transparent',
           strokeWidth: 0,
         });
+
+      case 'invisible':
+        return new Konva.Circle({
+          x: w / 2, y: h / 2,
+          radius: this.INVISIBLE_DOT_RADIUS,
+          fill,
+          stroke,
+          strokeWidth: sw,
+        });
     }
   }
 
   applyColors(colors: { fill: string; stroke: string; text: string }): void {
     if (this.nodeShape === 'junction') {
       (this._shape as Konva.Circle).fill(colors.stroke);
+    } else if (this.nodeShape === 'invisible') {
+      this._shape.fill(colors.fill);
+      this._shape.stroke(colors.stroke);
     } else {
       this._shape.fill(colors.fill);
       this._shape.stroke(colors.stroke);
@@ -171,32 +193,45 @@ export class DANode {
   }
 
   changeShape(newShape: NodeShape, colors?: { fill?: string; stroke?: string; text?: string }): void {
-    const wasJunction = this._nodeShape === 'junction';
+    const wasFixed = this._nodeShape === 'junction' || this._nodeShape === 'invisible';
+    const isFixed = newShape === 'junction' || newShape === 'invisible';
     const isJunction = newShape === 'junction';
+    const isInvisible = newShape === 'invisible';
 
     this._shape.destroy();
     this._nodeShape = newShape;
 
-    if (wasJunction && !isJunction) {
+    if (wasFixed && !isFixed) {
       this._nodeWidth = this.DEFAULT_NODE_WIDTH;
       this._nodeHeight = this.DEFAULT_NODE_HEIGHT;
       this._baseWidth = this.DEFAULT_NODE_WIDTH;
       this._baseHeight = this.DEFAULT_NODE_HEIGHT;
-    } else if (!wasJunction && isJunction) {
-      this._nodeWidth = this.JUNCTION_SIZE;
-      this._nodeHeight = this.JUNCTION_SIZE;
-      this._baseWidth = this.JUNCTION_SIZE;
-      this._baseHeight = this.JUNCTION_SIZE;
+    } else if (!wasFixed && isFixed) {
+      const fixedSize = isJunction ? this.JUNCTION_SIZE : this.INVISIBLE_SIZE;
+      this._nodeWidth = fixedSize;
+      this._nodeHeight = fixedSize;
+      this._baseWidth = fixedSize;
+      this._baseHeight = fixedSize;
+    } else if (wasFixed && isFixed) {
+      const fixedSize = isJunction ? this.JUNCTION_SIZE : this.INVISIBLE_SIZE;
+      this._nodeWidth = fixedSize;
+      this._nodeHeight = fixedSize;
+      this._baseWidth = fixedSize;
+      this._baseHeight = fixedSize;
     }
 
     this._shape = this.createShape(this._nodeWidth, this._nodeHeight, newShape, colors);
     this.group.add(this._shape);
     this._shape.moveToBottom();
 
-    this._label.visible(!isJunction);
-    if (!isJunction) {
+    this._label.visible(!isFixed);
+    if (!isFixed) {
       this.applySize(this._nodeWidth, this._nodeHeight);
       this._label.fontSize(this._fontSize);
+    }
+
+    if (isInvisible) {
+      this.applyInvisibleVisibility();
     }
 
     // Re-apply selection state to new shape
@@ -209,14 +244,16 @@ export class DANode {
 
   set isSelected(value: boolean) {
     this._isSelected = value;
-    if (this.nodeShape !== 'junction') {
-      this._shape.strokeWidth(this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL);
-    } else {
-      // Junction: scale the dot slightly when selected
+    if (this.nodeShape === 'junction') {
       const r = this._isSelected ? this.JUNCTION_SIZE : this.JUNCTION_SIZE / 2;
       (this._shape as Konva.Circle).radius(r);
       (this._shape as Konva.Circle).x(this.JUNCTION_SIZE / 2);
       (this._shape as Konva.Circle).y(this.JUNCTION_SIZE / 2);
+    } else {
+      this._shape.strokeWidth(this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL);
+    }
+    if (this.nodeShape === 'invisible') {
+      this.applyInvisibleVisibility();
     }
     if (this._isSelected && typeof (globalThis as any)['jasmine'] === 'undefined') {
       this._shape.shadowColor(this.SELECTION_SHADOW_COLOR);
@@ -229,6 +266,20 @@ export class DANode {
       this._shape.shadowEnabled(false);
       this.stopSelectionBlink();
     }
+  }
+
+  /** Toggle whether invisible-style nodes render as a small dot when not selected.
+   *  No-op for non-invisible nodes. */
+  setInvisibleVisibleForGrid(visible: boolean): void {
+    this._invisibleVisibleForGrid = visible;
+    if (this.nodeShape === 'invisible') {
+      this.applyInvisibleVisibility();
+    }
+  }
+
+  private applyInvisibleVisibility(): void {
+    if (this.nodeShape !== 'invisible') return;
+    this._shape.visible(this._isSelected || this._invisibleVisibleForGrid);
   }
 
   private startSelectionBlink(): void {
@@ -313,14 +364,14 @@ export class DANode {
     this.updatePinIndicatorVisibility();
   }
 
-  /** Call when waypoint visibility changes to show/hide pin indicators. */
   setPinIndicatorVisible(show: boolean): void {
     this._showPinIndicator = show;
     this.updatePinIndicatorVisibility();
   }
 
   private updatePinIndicatorVisibility(): void {
-    this._pinIndicator.visible(this._pinned && this._showPinIndicator && this._nodeShape !== 'junction');
+    const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
+    this._pinIndicator.visible(this._pinned && this._showPinIndicator && eligible);
   }
 
   private updatePinIndicatorPosition(): void {
@@ -345,6 +396,9 @@ export class DANode {
     if (dx === 0 && dy === 0) return { x: cx, y: cy };
 
     switch (this._nodeShape) {
+      case 'invisible':
+        // Invisible-style nodes are points: connect right at the center.
+        return { x: cx, y: cy };
       case 'circle': {
         // Ellipse: (px/rx)^2 + (py/ry)^2 = 1
         // Direction from center toward fromX,fromY: (-dx, -dy)
@@ -428,7 +482,7 @@ export class DANode {
 
   /** Apply overflow logic. Returns true if node dimensions changed (caller must update edges). */
   applyTextOverflow(): boolean {
-    if (this.nodeShape === 'junction') return false;
+    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
 
     const text = this._label.text();
     const padding = 8;
@@ -607,7 +661,7 @@ export class DANode {
   }
 
   resizeBy(delta: number): boolean {
-    if (this.nodeShape === 'junction') return false;
+    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
 
     const nextWidth = this.clamp(this._baseWidth + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
     const nextHeight = this.clamp(this._baseHeight + delta, this.MIN_NODE_SIZE, this.MAX_NODE_SIZE);
@@ -621,7 +675,7 @@ export class DANode {
   }
 
   adjustLabelFontSizeBy(delta: number): boolean {
-    if (this.nodeShape === 'junction') return false;
+    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
     const nextSize = this.clamp(this._baseFontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
     if (nextSize === this._baseFontSize) return false;
     this._baseFontSize = nextSize;
@@ -639,7 +693,7 @@ export class DANode {
     this._nodeHeight = height;
     this._fontSize = fontSize;
     this.applySize(width, height);
-    if (this.nodeShape !== 'junction') {
+    if (this.nodeShape !== 'junction' && this.nodeShape !== 'invisible') {
       this._label.fontSize(fontSize);
     }
   }
@@ -661,6 +715,10 @@ export class DANode {
         break;
       case 'junction':
         break;
+      case 'invisible':
+        (this._shape as Konva.Circle).x(w / 2);
+        (this._shape as Konva.Circle).y(h / 2);
+        break;
     }
     this._label.width(w);
     this._label.height(h);
@@ -669,7 +727,7 @@ export class DANode {
   }
 
   showCursor(): void {
-    if (this.nodeShape === 'junction') return;
+    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return;
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);

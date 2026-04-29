@@ -1,10 +1,3 @@
-export interface DAWaypointSnapshot {
-  id: string;
-  x: number;
-  y: number;
-  isSelected: boolean;
-}
-
 export interface DALabelSnapshot {
   id: string;
   x: number;
@@ -36,7 +29,6 @@ export interface DAEdgeSnapshot {
   srcNodeId: string;
   destNodeId: string;
   isSelected: boolean;
-  waypoints: DAWaypointSnapshot[];
   labels: DALabelSnapshot[];
 }
 
