@@ -30,6 +30,7 @@ export interface DAEdgeSnapshot {
   destNodeId: string;
   isSelected: boolean;
   labels: DALabelSnapshot[];
+  controlPoints?: {x: number; y: number}[];
 }
 
 export interface GraphSnapshot {

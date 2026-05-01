@@ -22,6 +22,7 @@ export class DAEdge {
   private _fillColor: string = 'black';
   private _directedness: EdgeDirectedness = 'directed';
   private _lineStyle: LineStyle = 'solid';
+  private _controlPoints: {x: number; y: number}[] = [];
 
   constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
               colors?: { stroke?: string; fill?: string }) {
@@ -122,21 +123,69 @@ export class DAEdge {
   }
 
   /** Returns the polyline points the edge currently renders along.
-   *  Phase 1: just src and dest endpoints; Phase 2 will insert control points. */
+   *  Endpoints aim toward the nearest control point (or the far node center if there are none),
+   *  so the perimeter intersection stays correct on bent edges. */
   getPathPoints(): { x: number; y: number }[] {
     if (this.srcNode === this.destNode) {
       return this.buildSelfLoopPoints(this.srcNode);
     }
-    const srcCenter = this.getNodeCenter(this.srcNode);
-    const destCenter = this.getNodeCenter(this.destNode);
+    const srcAimTarget = this._controlPoints.length > 0
+      ? this._controlPoints[0]
+      : this.getNodeCenter(this.destNode);
+    const destAimTarget = this._controlPoints.length > 0
+      ? this._controlPoints[this._controlPoints.length - 1]
+      : this.getNodeCenter(this.srcNode);
     return [
-      this.srcNode.getEdgePoint(destCenter.x, destCenter.y),
-      this.destNode.getEdgePoint(srcCenter.x, srcCenter.y),
+      this.srcNode.getEdgePoint(srcAimTarget.x, srcAimTarget.y),
+      ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
+      this.destNode.getEdgePoint(destAimTarget.x, destAimTarget.y),
     ];
   }
 
   public calculatePoints(srcNode: DANode, destNode: DANode): number[] {
     return this.getPathPoints().flatMap(p => [p.x, p.y]);
+  }
+
+  /** Internal bend points between the src and dest endpoints (the "beads" the
+   *  charged-spring sim moves). Empty array means the edge is a straight line. */
+  get controlPoints(): readonly {x: number; y: number}[] {
+    return this._controlPoints;
+  }
+
+  setControlPoints(points: {x: number; y: number}[]): void {
+    this._controlPoints = points.map(p => ({x: p.x, y: p.y}));
+    this.refreshGeometry();
+  }
+
+  clearControlPoints(): void {
+    if (this._controlPoints.length === 0) return;
+    this._controlPoints = [];
+    this.refreshGeometry();
+  }
+
+  /** Place `count` control points evenly along the straight src→dest line.
+   *  Used as starting positions for the physics sim. No-op for self-loops. */
+  initializeStraightControlPoints(count: number): void {
+    if (this.srcNode === this.destNode || count <= 0) {
+      this.clearControlPoints();
+      return;
+    }
+    const srcCenter = this.getNodeCenter(this.srcNode);
+    const destCenter = this.getNodeCenter(this.destNode);
+    const a = this.srcNode.getEdgePoint(destCenter.x, destCenter.y);
+    const b = this.destNode.getEdgePoint(srcCenter.x, srcCenter.y);
+    const pts: {x: number; y: number}[] = [];
+    for (let i = 1; i <= count; i++) {
+      const t = i / (count + 1);
+      pts.push({x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t});
+    }
+    this.setControlPoints(pts);
+  }
+
+  /** Recompute the rendered Konva.Arrow points from current node positions
+   *  and control points. Cheaper than recreating the edge. */
+  refreshGeometry(): void {
+    this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
   }
 
   private getNodeCenter(node: DANode): {x: number; y: number} {

@@ -446,6 +446,68 @@ describe('DrawingArea Unit Tests', () => {
       const points = edge.getPathPoints();
       expect(points.length).toBe(2);
     });
+
+    it('should weave control points between src and dest endpoints', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.setControlPoints([{x: 200, y: 80}, {x: 300, y: -40}]);
+      const points = edge.getPathPoints();
+      expect(points.length).toBe(4);
+      expect(points[1]).toEqual({x: 200, y: 80});
+      expect(points[2]).toEqual({x: 300, y: -40});
+    });
+
+    it('should aim src endpoint toward first control point when bent', () => {
+      // Node at origin, dest far right, control point above the line:
+      // the src endpoint should leave from the top edge (toward the bend), not the right edge.
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.setControlPoints([{x: 100, y: -200}]);
+      const points = edge.getPathPoints();
+      const w = src.DEFAULT_NODE_WIDTH;
+      const h = src.DEFAULT_NODE_HEIGHT;
+      // Top-edge exit: y near 0 (top), x somewhere in [0, w]
+      expect(points[0].y).toBeLessThanOrEqual(1);
+      expect(points[0].x).toBeGreaterThanOrEqual(0);
+      expect(points[0].x).toBeLessThanOrEqual(w);
+      expect(points[0].y).toBeLessThan(h / 2);
+    });
+
+    it('should evenly space control points along straight line', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.initializeStraightControlPoints(3);
+      const cps = edge.controlPoints;
+      expect(cps.length).toBe(3);
+      // Should be roughly evenly spaced between the two perimeter endpoints
+      expect(cps[0].x).toBeLessThan(cps[1].x);
+      expect(cps[1].x).toBeLessThan(cps[2].x);
+      // y stays on the horizontal line
+      cps.forEach(p => expect(Math.abs(p.y - src.DEFAULT_NODE_HEIGHT / 2)).toBeLessThanOrEqual(1));
+    });
+
+    it('clearControlPoints resets to straight line', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.setControlPoints([{x: 200, y: 80}]);
+      expect(edge.getPathPoints().length).toBe(3);
+      edge.clearControlPoints();
+      expect(edge.getPathPoints().length).toBe(2);
+      expect(edge.controlPoints.length).toBe(0);
+    });
+
+    it('refreshGeometry rewrites Konva.Arrow points', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.setControlPoints([{x: 200, y: 80}]);
+      // setControlPoints already calls refreshGeometry → Konva line should have 6 numbers
+      expect(edge.line.points().length).toBe(6);
+    });
   });
 
   describe('DALabel', () => {

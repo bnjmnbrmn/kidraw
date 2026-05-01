@@ -307,6 +307,9 @@ export class DrawingLayer extends Konva.Layer {
         fontSize: lbl.fontSize,
         isSelected: lbl.isSelected,
       })),
+      controlPoints: edge.controlPoints.length > 0
+        ? edge.controlPoints.map(p => ({x: p.x, y: p.y}))
+        : undefined,
     }));
 
     return { nodes, edges };
@@ -348,6 +351,9 @@ export class DrawingLayer extends Konva.Layer {
 
       const edge = new DAEdge(srcNode, destNode, '', es.id);
       edge.isSelected = es.isSelected;
+      if (es.controlPoints && es.controlPoints.length > 0) {
+        edge.setControlPoints(es.controlPoints);
+      }
       this.daEdgeGroup.add(edge.konvaGroup);
       this.daEdges.push(edge);
 
@@ -367,8 +373,7 @@ export class DrawingLayer extends Konva.Layer {
       }
 
       // Update edge visual
-      const points = edge.calculatePoints(srcNode, destNode);
-      edge._line.points(points);
+      edge.refreshGeometry();
     }
 
     // Reset ID counter above max used ID

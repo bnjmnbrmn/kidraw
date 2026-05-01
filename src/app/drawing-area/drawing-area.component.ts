@@ -1744,8 +1744,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private updateEdgePoints(edge: DAEdge) {
-    const points = edge.calculatePoints(edge.srcNode, edge.destNode);
-    edge._line.points(points);
+    edge.refreshGeometry();
     this.drawingLayer.batchDraw();
   }
 
