@@ -389,7 +389,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
       [layout.chargedSpringEdges]: new LabeledAction('Charged Spring Edges', () => {
-        // Phase 3 will wire up the physics sim; key is reserved here so the binding is stable.
+        this.keyMenuOut.emit({kind: DACommandType.APPLY_CHARGED_SPRING_EDGES});
       }),
     } as SubmenuConfig;
   }

@@ -16,6 +16,7 @@ import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
+import { applyChargedSpringEdges } from './charged-spring-edges';
 
 @Component({
   selector: 'app-drawing-area',
@@ -432,6 +433,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_LAYOUT:
         this.applyGraphLayout(command.layout);
         break;
+      case DACommandType.APPLY_CHARGED_SPRING_EDGES:
+        this.applyChargedSpringEdges();
+        break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
         this.log.log('[style] setEdgeDirectedness:', command.directedness);
         this.setEdgeDirectedness(command.directedness);
@@ -561,6 +565,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     applyLayout(layout, nodes, edges);
     this.updateEdgesForResizedNodes(allNodes);
+    this.drawingLayer.batchDraw();
+  }
+
+  private applyChargedSpringEdges() {
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+
+    applyChargedSpringEdges(allNodes, edges);
     this.drawingLayer.batchDraw();
   }
 

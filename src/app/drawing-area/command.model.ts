@@ -82,6 +82,7 @@ export enum DACommandType {
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
+  APPLY_CHARGED_SPRING_EDGES = 'APPLY_CHARGED_SPRING_EDGES',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -157,3 +158,4 @@ export type DACommand =
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
+  | {kind: DACommandType.APPLY_CHARGED_SPRING_EDGES}

@@ -1,4 +1,4 @@
-# kidraw — Development Status (2026-04-17)
+# kidraw — Development Status (2026-05-01)
 
 > **For Claude Code:** Read this file at the start of every session to understand where development stands. It supersedes `next.txt`, `project-todos.md`, and `improvement-ideas.md` as the authoritative current-state document.
 
@@ -42,13 +42,11 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 ## Known bugs
 
-### Layout / edge routing bugs (introduced in recent session)
-1. **Too many waypoints on some edges** — the iterative bypass algorithm sometimes inserts excessive waypoints (e.g., 8+ on a single edge) rather than finding a clean path.
-2. **Waypoints not cleared on redo layout** — `routeEdgesAroundNodes()` clears existing waypoints at the start of each call, but this only affects the subset of edges passed in. If `routeEdgesAroundNodes` is called with a filtered edge set (e.g., edges between selected nodes only), waypoints on other edges are not cleared. On repeated layout calls the stale waypoints remain.
-3. **Unpinned waypoints survive across layout calls** — user-placed waypoints on edges should probably be removed (or flagged as auto-placed) before auto-routing re-runs. There is currently no distinction between user-placed and auto-placed waypoints.
+(The earlier waypoint / `routeEdgesAroundNodes` bugs are resolved — that
+code was removed in Phase 1; charged-spring edges replaced it.)
 
 ### Known pre-existing failures (tests)
-Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenCheckedError` — `movementSpeed` initializes to `20` in `AppComponent` but `DrawingAreaComponent` emits `50` on first render. Not caused by recent changes. Current counts: **3 FAILED, 94 SUCCESS**.
+Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenCheckedError` — `movementSpeed` initializes to `20` in `AppComponent` but `DrawingAreaComponent` emits `50` on first render. Not caused by recent changes. Current counts: **3 FAILED, 92 SUCCESS**.
 
 ---
 
@@ -64,69 +62,48 @@ Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenChec
 
 ---
 
-## Plan: Proper edge routing (replacing current buggy approach)
+## Charged-spring edge routing (Phases 1–3 complete)
 
-### Context
-The current hand-rolled routing in `graph-layout.ts` is producing incorrect results (too many waypoints, stale waypoints on redo). The right approach is to use a well-tested graph layout library.
+The earlier libavoid-js / ELK plan was abandoned in favor of an in-house
+charged-spring physics simulation that lives in `charged-spring-edges.ts`.
+No external routing library is used.
 
-### Research summary (from `meta-project/notes/graph-layout-research.md`, 2026-04-17)
+- **Phase 1** (commit `dd2c087`): Dropped the `DAWaypoint` concept, added
+  `invisible` node shape (small dot, only visible with the grid), retired the
+  segment-nudging / "elastic" routing experiments. `DAEdge` simplified to a
+  plain `Konva.Arrow` between two nodes; reserved `b → p` as the future
+  "Charged Spring Edges" key.
+- **Phase 2** (commit `27b1f03`): Added `_controlPoints` to `DAEdge`. The
+  rendered polyline now interleaves control points between the src and dest
+  perimeter endpoints, with each endpoint projected toward its nearest
+  control point so bent edges still meet the node perimeter cleanly.
+  Snapshot/restore round-trips control points. New API:
+  `controlPoints`, `setControlPoints`, `clearControlPoints`,
+  `initializeStraightControlPoints(n)`, `refreshGeometry`.
+- **Phase 3**: Wired up the physics simulation. Pressing `b → p`
+  triggers `APPLY_CHARGED_SPRING_EDGES`, which calls
+  `applyChargedSpringEdges(nodes, edges)` in `charged-spring-edges.ts`.
+  - For each non-self-loop edge: seed N beads (default 8) evenly along
+    the straight line, then run an iterative sim (default 240 iterations).
+  - Per-bead forces: smoothing pull toward the midpoint of the two
+    neighbors (springs), inverse-square repulsion from non-incident node
+    bounding boxes (charges), and a perpendicular kick when a bead is
+    inside an obstacle (symmetry-breaking — pushes the polyline off the
+    line rather than along it). Velocity capped per step for stability.
+  - After the sim, each edge's `controlPoints` is set to the surviving
+    bead positions; near-collinear beads are pruned.
+  - If any edges are selected, only those are routed; otherwise all edges.
 
-**Terminology:** KiDraw's "waypoints" are called **bends** or **bend points** in the literature. Edges with them are **polylines**. The problem of minimizing their count is **bend minimization**.
+Tunables live in `DEFAULT_OPTIONS` in `charged-spring-edges.ts`:
+`beadsPerEdge`, `iterations`, `smoothingK`, `chargeK`, `insideKickK`,
+`damping`, `dt`, `clearance`, `pruneEpsilon`, `maxVelocity`.
 
-**Two distinct problems — KiDraw does both:**
-- **Problem A (Auto-layout):** Rearrange node positions AND route edges. KiDraw already has 6 layout algorithms (`b` key: force-directed, tree ↓/→, grid, circular, radial) that move nodes. Libraries: ELK, cola.js, Graphviz.
-- **Problem B (Edge routing only, nodes fixed):** Nodes already placed by the user; route edges around them without moving nodes. This is the interactive case — after the user has manually arranged things, or as a live update when nodes move. Library: **libavoid**.
-
-Both are relevant: Problem A when triggering a layout command; Problem B continuously as the user places and moves nodes by hand.
-
-**Library decisions:**
-
-| Library | Fit | Notes |
-|---------|-----|-------|
-| **libavoid-js** ⭐ | Problem B (edge routing) | WASM port of C++ libavoid. Obstacle avoidance, bend minimization, crossing minimization, parallel edge nudging. `segmentPenalty`, `crossingPenalty`, `shapeBufferDistance` are configurable. LGPL-2.1. Actively maintained (v0.4.5, April 2025). |
-| **elkjs** ⭐ | Problem A (auto-layout) | Eclipse Layout Kernel. Full layout + routing (orthogonal, polyline, spline). Good for future "arrange everything" feature. |
-| **dagre** ✗ | — | Unmaintained since 2018. ELK is strictly better. Do not use. |
-| **cola.js** | Problem A (organic) | Constraint-based, non-hierarchical. Good for overlap removal; combine with libavoid for routing. |
-| **Graphviz** | All-or-nothing | Takes full control; not suitable for fixed-node routing. |
-
-**libavoid-js integration sketch:**
-1. Register all nodes as obstacles (bounding boxes + `shapeBufferDistance` clearance)
-2. Register all edges as connectors (src node → dest node)
-3. Call `router.processTransaction()` — libavoid computes routes
-4. Read back bend points per connector → create `DAWaypoint`s
-5. Supports incremental rerouting when a node moves (no full recompute needed)
-
-**Crossing vs. bends tradeoff:** tune `crossingPenalty` vs. `segmentPenalty` — more weight on crossing penalty = fewer crossings, more bends; vice versa.
-
-### Proposed plan
-
-**Phase 1: Remove broken routing, keep layout only** _(do first)_
-- Remove the `routeEdgesAroundNodes()` call from `applyGraphLayout`.
-- Layout algorithms (force-directed, tree, grid, etc.) are fine; only the routing is broken.
-- Leaves edges as straight lines after layout — correct, no obstacle avoidance.
-
-**Phase 2: Distinguish auto-placed vs. user-placed waypoints**
-- Add `DAWaypoint.autoPlaced: boolean` flag.
-- Auto-placed waypoints are cleared and re-generated each layout run.
-- User-placed waypoints are preserved.
-- Required regardless of which routing library is used.
-
-**Phase 3: Integrate libavoid-js for edge routing (Problem B)**
-- `npm install libavoid-js`
-- After layout, call libavoid to route all edges around node obstacles.
-- Map libavoid bend points → auto-placed `DAWaypoint`s.
-- Also call on node move/create/delete to keep routing live.
-- Assess WASM loading (async init), bundle size, and routing quality.
-
-**Phase 4: Integrate ELK for auto-layout mode (Problem A)**
-- `npm install elkjs`
-- When user triggers a layout command, use ELK to compute node positions + edge routes together.
-- ELK's POLYLINE or SPLINE routing gives cleaner results than the hand-rolled algorithms.
-- Replace/augment the existing 6 layout algorithms.
-
-**Phase 5: Smooth edges (splines)**
-- Optionally render polyline bends as Bezier curves (standard smoothing of control points).
-- ELK can emit spline control points directly; libavoid polylines can be post-processed.
+### Possible follow-ups
+- Smooth the bent polyline as a Bezier curve (post-process control points).
+- Apply the sim live as nodes move/are created, not just on `b → p`.
+- Distinguish user-placed vs. sim-placed control points so a user can pin
+  a bend that the next sim run won't override.
+- Parallel-edge nudging when multiple edges share the same node pair.
 
 ---
 
@@ -143,11 +120,6 @@ Both are relevant: Problem A when triggering a layout command; Problem B continu
 - Node shapes `box`, `circle`, `diamond`, `junction` are implemented.
 - `junction` is a filled dot for T-junctions / edges from nowhere.
 - **Still TODO**: insert-time node type selection submenu. Currently only `box` is created on insert; shape can be changed afterward via the style submenu.
-
-### Fix layout bugs (see Known bugs above)
-- Fix waypoint accumulation on repeated layout runs.
-- Implement `autoPlaced` flag on waypoints.
-- Decide on routing library (elkjs vs. WASM) per the plan above.
 
 ### Other queued items
 - **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color).
@@ -175,7 +147,8 @@ Both are relevant: Problem A when triggering a layout command; Problem B continu
 | `src/app/drawing-area/drawing.layer.ts` | Konva layer holding nodes and edges |
 | `src/app/drawing-area/da-node.ts` | Node domain object (shape, label, selection, shadow/blink) |
 | `src/app/drawing-area/da-edge.ts` | Edge domain object (line, waypoints, labels) |
-| `src/app/drawing-area/graph-layout.ts` | Layout algorithms + (buggy) edge routing |
+| `src/app/drawing-area/graph-layout.ts` | Node-positioning layout algorithms (force-directed, tree, grid, circular, radial) |
+| `src/app/drawing-area/charged-spring-edges.ts` | Charged-spring physics sim that routes edges around node obstacles |
 | `src/app/drawing-area/command.model.ts` | `DACommand` discriminated union + `DACommandType` enum |
 | `src/app/keymenu/keymenu.component.ts` | Wires key assignments → `DACommand` emissions |
 | `src/app/keymenu/config/key-assignments.ts` | Default and VIM key assignment configs |
