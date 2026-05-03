@@ -6,6 +6,11 @@ interface Bead {
   y: number;
   vx: number;
   vy: number;
+  /** The bead's seed position (straight-line, lane-offset). The anchor
+   *  force pulls each bead gently back toward this point so a chain that
+   *  has nothing to oppose cross-edge repulsion can't drift unboundedly. */
+  restX: number;
+  restY: number;
 }
 
 interface Obstacle {
@@ -43,6 +48,11 @@ export interface ChargedSpringOptions {
   edgeRepulsionK: number;
   /** Cutoff distance for cross-edge bead repulsion (beyond this, no force). */
   edgeRepulsionMaxDist: number;
+  /** Hooke-style pull toward each bead's straight-line lane-offset rest
+   *  position. Without it, chains drift unboundedly under cross-edge or
+   *  one-sided obstacle pressure. With it, lanes are a stable equilibrium
+   *  and obstacles still locally deflect the chain. */
+  anchorK: number;
 }
 
 export const DEFAULT_OPTIONS: ChargedSpringOptions = {
@@ -56,9 +66,10 @@ export const DEFAULT_OPTIONS: ChargedSpringOptions = {
   clearance: 16,
   pruneEpsilon: 1.5,
   maxVelocity: 30,
-  laneSpacing: 18,
-  edgeRepulsionK: 250,
-  edgeRepulsionMaxDist: 80,
+  laneSpacing: 22,
+  edgeRepulsionK: 80,
+  edgeRepulsionMaxDist: 60,
+  anchorK: 0.06,
 };
 
 interface EdgeSim {
@@ -111,12 +122,12 @@ export function applyChargedSpringEdges(
 
     const start = path[0];
     const end = path[path.length - 1];
-    const beads: Bead[] = path.slice(1, -1).map(p => ({x: p.x, y: p.y, vx: 0, vy: 0}));
-
     const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
-    if (offset.x !== 0 || offset.y !== 0) {
-      for (const b of beads) { b.x += offset.x; b.y += offset.y; }
-    }
+    const beads: Bead[] = path.slice(1, -1).map(p => {
+      const x = p.x + offset.x;
+      const y = p.y + offset.y;
+      return {x, y, vx: 0, vy: 0, restX: x, restY: y};
+    });
 
     const incident = new Set([edge.srcNode, edge.destNode]);
     const edgeObstacles: Obstacle[] = [];
@@ -220,6 +231,10 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         const midY = (left.y + right.y) / 2;
         let fx = opts.smoothingK * (midX - b.x);
         let fy = opts.smoothingK * (midY - b.y);
+
+        // Anchor: gentle pull back toward the seed lane position.
+        fx += opts.anchorK * (b.restX - b.x);
+        fy += opts.anchorK * (b.restY - b.y);
 
         const edx = right.x - left.x;
         const edy = right.y - left.y;
