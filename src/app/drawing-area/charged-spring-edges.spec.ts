@@ -37,12 +37,14 @@ describe('chargedSpringEdges', () => {
     const cleared = path.some(p => p.y < -8 || p.y > 128);
     expect(cleared).withContext(`path: ${JSON.stringify(path)}`).toBe(true);
 
-    // Sanity: the start endpoint sits on node A's perimeter (x ∈ [0, 120]),
-    // the end endpoint on B's perimeter (x ∈ [800, 920]).
-    expect(path[0].x).toBeGreaterThanOrEqual(0);
-    expect(path[0].x).toBeLessThanOrEqual(120);
-    expect(path[path.length - 1].x).toBeGreaterThanOrEqual(800);
-    expect(path[path.length - 1].x).toBeLessThanOrEqual(920);
+    // Sanity: the start endpoint sits on node A's perimeter (plus a small
+    // arrow-standoff push along the line direction), and the end endpoint
+    // on B's perimeter (minus the same).
+    const standoffSlack = 8; // ARROW_STANDOFF=3 plus a couple px of slack
+    expect(path[0].x).toBeGreaterThanOrEqual(-standoffSlack);
+    expect(path[0].x).toBeLessThanOrEqual(120 + standoffSlack);
+    expect(path[path.length - 1].x).toBeGreaterThanOrEqual(800 - standoffSlack);
+    expect(path[path.length - 1].x).toBeLessThanOrEqual(920 + standoffSlack);
 
     // No bead should sit inside the obstacle's bounding box.
     edge.controlPoints.forEach(p => {

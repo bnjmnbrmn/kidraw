@@ -17,6 +17,13 @@ export class DAEdge {
   public readonly STROKE_WIDTH_NORMAL = 2;
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
+  /** Pull the rendered endpoint out from the node perimeter by this many
+   *  pixels along the last segment direction. Konva.Arrow draws the tip at
+   *  the last point and the base ±POINTER_WIDTH/2 perpendicular; on bent
+   *  edges that approach the destination at a shallow angle, one base
+   *  corner can extend behind the node face and get hidden by the node
+   *  fill. A small standoff keeps the arrowhead clearly outside. */
+  public readonly ARROW_STANDOFF = 3;
 
   private _strokeColor: string = 'black';
   private _fillColor: string = 'black';
@@ -124,7 +131,9 @@ export class DAEdge {
 
   /** Returns the polyline points the edge currently renders along.
    *  Endpoints aim toward the nearest control point (or the far node center if there are none),
-   *  so the perimeter intersection stays correct on bent edges. */
+   *  so the perimeter intersection stays correct on bent edges. Each endpoint
+   *  is pulled outward by ARROW_STANDOFF along the line direction so the
+   *  arrowhead base does not clip behind the node face on shallow angles. */
   getPathPoints(): { x: number; y: number }[] {
     if (this.srcNode === this.destNode) {
       return this.buildSelfLoopPoints(this.srcNode);
@@ -135,11 +144,24 @@ export class DAEdge {
     const destAimTarget = this._controlPoints.length > 0
       ? this._controlPoints[this._controlPoints.length - 1]
       : this.getNodeCenter(this.srcNode);
+    const srcEdge = this.srcNode.getEdgePoint(srcAimTarget.x, srcAimTarget.y);
+    const destEdge = this.destNode.getEdgePoint(destAimTarget.x, destAimTarget.y);
     return [
-      this.srcNode.getEdgePoint(srcAimTarget.x, srcAimTarget.y),
+      this.applyArrowStandoff(srcEdge, srcAimTarget),
       ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
-      this.destNode.getEdgePoint(destAimTarget.x, destAimTarget.y),
+      this.applyArrowStandoff(destEdge, destAimTarget),
     ];
+  }
+
+  /** Push a perimeter endpoint outward (toward `aim`, i.e., along the
+   *  last segment direction away from the node) by ARROW_STANDOFF. */
+  private applyArrowStandoff(endpoint: {x: number; y: number}, aim: {x: number; y: number}): {x: number; y: number} {
+    const dx = aim.x - endpoint.x;
+    const dy = aim.y - endpoint.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1e-6) return endpoint;
+    const k = this.ARROW_STANDOFF / dist;
+    return {x: endpoint.x + dx * k, y: endpoint.y + dy * k};
   }
 
   public calculatePoints(srcNode: DANode, destNode: DANode): number[] {

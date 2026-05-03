@@ -104,17 +104,20 @@ describe('DrawingArea Unit Tests', () => {
       const srcNode = new DANode(0, 0, 'src');
       const destNode = new DANode(200, 0, 'dest');
       const edge = new DAEdge(srcNode, destNode, 'test');
-      
+
       const points = edge.line.points();
       expect(points.length).toBe(4);
 
-      // Should connect from right edge of src to left edge of dest
+      // Endpoints are pulled outward from the perimeter by ARROW_STANDOFF
+      // along the line direction so the arrowhead doesn't clip behind the
+      // node face on shallow approaches.
       const w = srcNode.DEFAULT_NODE_WIDTH;
       const h = srcNode.DEFAULT_NODE_HEIGHT;
-      expect(Math.abs(points[0] - w)).toBeLessThanOrEqual(1);        // Source X (right edge)
-      expect(Math.abs(points[1] - h / 2)).toBeLessThanOrEqual(1);    // Source Y (center)
-      expect(Math.abs(points[2] - 200)).toBeLessThanOrEqual(1);       // Dest X (left edge)
-      expect(Math.abs(points[3] - h / 2)).toBeLessThanOrEqual(1);    // Dest Y (center)
+      const standoff = edge.ARROW_STANDOFF;
+      expect(Math.abs(points[0] - (w + standoff))).toBeLessThanOrEqual(1);
+      expect(Math.abs(points[1] - h / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(points[2] - (200 - standoff))).toBeLessThanOrEqual(1);
+      expect(Math.abs(points[3] - h / 2)).toBeLessThanOrEqual(1);
     });
 
     it('should handle selection state correctly', () => {
