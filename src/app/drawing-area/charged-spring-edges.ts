@@ -238,10 +238,18 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
     for (let s = 0; s < states.length; s++) {
       const st = states[s];
       const beads = st.beads;
-      for (let i = 0; i < beads.length; i++) {
+      // The first and last beads are PINNED at their seed positions
+      // (which sit exactly on the centerline thanks to the sin ramp
+      // touching zero at the endpoints). They act as fixed boundary
+      // conditions so the chain meets the perimeter perpendicular to
+      // the node face, the perimeter point lands at the face midpoint,
+      // and the arrowhead approaches head-on without clipping. Trying
+      // to enforce this with a strong anchor force runs into the
+      // mass-spring-damper stability limit and oscillates instead.
+      for (let i = 1; i < beads.length - 1; i++) {
         const b = beads[i];
-        const left = i === 0 ? st.start : beads[i - 1];
-        const right = i === beads.length - 1 ? st.end : beads[i + 1];
+        const left = beads[i - 1];
+        const right = beads[i + 1];
 
         const midX = (left.x + right.x) / 2;
         const midY = (left.y + right.y) / 2;
@@ -249,17 +257,11 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         let fy = opts.smoothingK * (midY - b.y);
 
         // Anchor: pull each bead toward its seed lane-offset position.
-        // End beads (which sit on the centerline) are anchored very
-        // strongly so they don't drift under one-sided obstacle or
-        // cross-edge pressure. A drifted end bead would put the
-        // perimeter point off-center on the face, produce a steep
-        // first/last segment, and break the perpendicular approach
-        // that keeps the arrowhead from clipping behind the face.
+        // Beads near the chain ends still get a moderate boost so
+        // bend-onset is gradual and meets the pinned end smoothly.
         const distFromEnd = Math.min(i, beads.length - 1 - i);
-        const anchorBoost = distFromEnd === 0 ? 20
-                          : distFromEnd === 1 ? 8
-                          : distFromEnd === 2 ? 3
-                          : distFromEnd === 3 ? 1.4
+        const anchorBoost = distFromEnd === 1 ? 3
+                          : distFromEnd === 2 ? 1.6
                           : 1;
         const localAnchorK = opts.anchorK * anchorBoost;
         fx += localAnchorK * (b.restX - b.x);
@@ -309,9 +311,13 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
     }
 
     // Apply velocities now that all forces have been computed against
-    // a consistent snapshot of bead positions.
+    // a consistent snapshot of bead positions. End beads (i=0 and i=N-1)
+    // are pinned; their velocities never get touched, so this no-ops on
+    // them, but skip explicitly for clarity.
     for (const st of states) {
-      for (const b of st.beads) {
+      const beads = st.beads;
+      for (let i = 1; i < beads.length - 1; i++) {
+        const b = beads[i];
         b.x += b.vx * opts.dt;
         b.y += b.vy * opts.dt;
       }
