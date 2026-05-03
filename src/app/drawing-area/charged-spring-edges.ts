@@ -70,13 +70,21 @@ export const DEFAULT_OPTIONS: ChargedSpringOptions = {
   pruneEpsilon: 0.3,
   maxVelocity: 30,
   laneSpacing: 22,
-  edgeRepulsionK: 80,
+  // Cross-edge bead repulsion is disabled by default. The lane-seed
+  // offsets plus the anchor are enough to keep parallel siblings
+  // separated, and adding bead-bead inverse-square forces between
+  // edges destabilizes dense groups (4+ parallels) — the chain folds
+  // back on itself when sibling beads push each other past their
+  // chain neighbors. Re-enable for crossing non-sibling edges if that
+  // case becomes important.
+  edgeRepulsionK: 0,
   edgeRepulsionMaxDist: 60,
-  // Stronger anchor: equilibrium displacement under a constant external force
-  // F is F / anchorK. At 0.15, a typical 1.5-unit obstacle/cross-edge force
-  // produces only ~10 px drift — enough to feel the obstacle, not enough to
-  // run away from the lane.
-  anchorK: 0.15,
+  // Anchor strength. With damping=0.78 and dt=1.0, the discrete spring is
+  // stable up to K ≈ 2.56; we sit well below that. Equilibrium displacement
+  // under a constant external force F is F / localAnchorK, so K=0.4 with the
+  // distFromEnd boosts below caps drift at ~1-3 px even under typical
+  // obstacle/cross-edge pressure.
+  anchorK: 0.4,
 };
 
 interface EdgeSim {
@@ -262,8 +270,9 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         let fy = opts.smoothingK * (midY - b.y);
 
         // Anchor: pull each bead toward its seed lane-offset position.
-        // Beads near the chain ends still get a moderate boost so
-        // bend-onset is gradual and meets the pinned end smoothly.
+        // Beads near the chain ends still get a boost so bend-onset is
+        // gradual and meets the pinned end smoothly. Stable as long as
+        // localAnchorK * dt² < 2 / damping ≈ 2.56.
         const distFromEnd = Math.min(i, beads.length - 1 - i);
         const anchorBoost = distFromEnd === 1 ? 3
                           : distFromEnd === 2 ? 1.6
