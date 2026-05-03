@@ -88,4 +88,52 @@ describe('chargedSpringEdges', () => {
     // After pruning the count can only be ≤ seed count.
     expect(edge.controlPoints.length).toBeLessThanOrEqual(4);
   });
+
+  it('separates same-direction parallel edges into distinct lanes', () => {
+    const a = new DANode(0, 0, 'A');
+    const b = new DANode(600, 0, 'B');
+    const e1 = new DAEdge(a, b, '');
+    const e2 = new DAEdge(a, b, '');
+    const e3 = new DAEdge(a, b, '');
+
+    applyChargedSpringEdges([a, b], [e1, e2, e3]);
+
+    // Pick a representative bead at roughly the midpoint of each edge.
+    const midOf = (e: typeof e1) => {
+      const cps = e.controlPoints;
+      // After pruning some edges may have fewer beads; fall back to the path point.
+      if (cps.length > 0) return cps[Math.floor(cps.length / 2)];
+      const path = e.getPathPoints();
+      return path[Math.floor(path.length / 2)];
+    };
+    const m1 = midOf(e1);
+    const m2 = midOf(e2);
+    const m3 = midOf(e3);
+
+    // Edges go horizontally (a → b), so lane separation shows up as y-offset.
+    const ys = [m1.y, m2.y, m3.y].sort((p, q) => p - q);
+    expect(ys[2] - ys[0]).toBeGreaterThan(15); // total spread > one laneSpacing
+  });
+
+  it('places opposing bidirectional edges on opposite sides of the line', () => {
+    const a = new DANode(0, 0, 'A');
+    const b = new DANode(600, 0, 'B');
+    const fwd = new DAEdge(a, b, '');
+    const back = new DAEdge(b, a, '');
+
+    applyChargedSpringEdges([a, b], [fwd, back]);
+
+    const midY = (e: typeof fwd) => {
+      const cps = e.controlPoints;
+      if (cps.length > 0) return cps[Math.floor(cps.length / 2)].y;
+      const path = e.getPathPoints();
+      return path[Math.floor(path.length / 2)].y;
+    };
+    const yFwd = midY(fwd);
+    const yBack = midY(back);
+
+    // Opposite signs (relative to the y-midline of node A, which is 60).
+    const midline = a.DEFAULT_NODE_HEIGHT / 2;
+    expect((yFwd - midline) * (yBack - midline)).toBeLessThan(0);
+  });
 });

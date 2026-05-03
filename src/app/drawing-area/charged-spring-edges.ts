@@ -33,44 +33,90 @@ export interface ChargedSpringOptions {
   pruneEpsilon: number;
   /** Velocity cap per axis to keep numerics stable when beads sit inside obstacles. */
   maxVelocity: number;
+  /** Initial perpendicular offset between sibling edges (edges sharing the same
+   *  unordered {src, dest} pair). The k-th edge in a group of N gets offset
+   *  (k − (N−1)/2) × laneSpacing along the canonical perpendicular. Bidirectional
+   *  pairs and same-direction parallels both spread into distinct lanes. */
+  laneSpacing: number;
+  /** Inverse-square repulsion constant between beads on different edges. Lets
+   *  edges actively push each other apart mid-sim, not just at initialization. */
+  edgeRepulsionK: number;
+  /** Cutoff distance for cross-edge bead repulsion (beyond this, no force). */
+  edgeRepulsionMaxDist: number;
 }
 
 export const DEFAULT_OPTIONS: ChargedSpringOptions = {
-  beadsPerEdge: 8,
-  iterations: 240,
-  smoothingK: 0.35,
+  beadsPerEdge: 16,
+  iterations: 400,
+  smoothingK: 0.4,
   chargeK: 9000,
   insideKickK: 80,
-  damping: 0.72,
+  damping: 0.78,
   dt: 1.0,
   clearance: 16,
   pruneEpsilon: 1.5,
   maxVelocity: 30,
+  laneSpacing: 18,
+  edgeRepulsionK: 250,
+  edgeRepulsionMaxDist: 80,
 };
+
+interface EdgeSim {
+  edge: DAEdge;
+  start: {x: number; y: number};
+  end: {x: number; y: number};
+  beads: Bead[];
+  obstacles: Obstacle[];
+}
 
 /** Run a charged-spring simulation on every non-self-loop edge in `edges`,
  *  populating each edge's controlPoints with the bend points that emerge.
  *
- *  Beads are connected to their neighbors by a smoothing pull (toward the
- *  midpoint of the two neighbors) and are repelled by every node in `nodes`
- *  except the edge's own src/dest. */
+ *  Forces per bead:
+ *  - Smoothing: pulled toward the midpoint of its two neighbors (or
+ *    toward the perimeter endpoint at the chain ends).
+ *  - Obstacle: inverse-square repulsion from every node bounding box
+ *    except the edge's own src/dest, with a perpendicular kick when a
+ *    bead is trapped inside an obstacle.
+ *  - Cross-edge: inverse-square repulsion from beads on *other* edges
+ *    (cutoff at edgeRepulsionMaxDist), so parallel siblings push apart.
+ *
+ *  Edges sharing the same unordered {src, dest} pair are seeded at
+ *  perpendicular lane offsets so the sim starts with parallels separated
+ *  rather than stacked. */
 export function applyChargedSpringEdges(
   nodes: DANode[],
   edges: DAEdge[],
   opts: ChargedSpringOptions = DEFAULT_OPTIONS,
+  log?: (msg: string) => void,
 ): void {
   const obstacles = buildObstacleMap(nodes, opts.clearance);
+  log?.(`[charged-spring] start: ${nodes.length} nodes, ${edges.length} edges, ${opts.beadsPerEdge} beads/edge, ${opts.iterations} iters`);
+  for (const n of nodes) {
+    log?.(`[charged-spring]   node ${n.id} pos=(${n.konvaGroup.x().toFixed(0)},${n.konvaGroup.y().toFixed(0)}) size=${n.NODE_WIDTH}x${n.NODE_HEIGHT}`);
+  }
 
+  const groups = groupEdgesByUnorderedPair(edges);
+
+  const states: EdgeSim[] = [];
   for (const edge of edges) {
-    if (edge.srcNode === edge.destNode) continue;
+    if (edge.srcNode === edge.destNode) {
+      log?.(`[charged-spring] edge ${edge.id} is self-loop — skipped`);
+      continue;
+    }
 
     edge.initializeStraightControlPoints(opts.beadsPerEdge);
     const path = edge.getPathPoints();
     if (path.length < 3) continue;
 
-    const startEndpoint = path[0];
-    const endEndpoint = path[path.length - 1];
+    const start = path[0];
+    const end = path[path.length - 1];
     const beads: Bead[] = path.slice(1, -1).map(p => ({x: p.x, y: p.y, vx: 0, vy: 0}));
+
+    const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
+    if (offset.x !== 0 || offset.y !== 0) {
+      for (const b of beads) { b.x += offset.x; b.y += offset.y; }
+    }
 
     const incident = new Set([edge.srcNode, edge.destNode]);
     const edgeObstacles: Obstacle[] = [];
@@ -78,10 +124,68 @@ export function applyChargedSpringEdges(
       if (!incident.has(n)) edgeObstacles.push(ob);
     }
 
-    simulate(beads, startEndpoint, endEndpoint, edgeObstacles, opts);
-
-    edge.setControlPoints(prune(beads, startEndpoint, endEndpoint, opts.pruneEpsilon));
+    states.push({edge, start, end, beads, obstacles: edgeObstacles});
   }
+
+  simulateAll(states, opts);
+
+  for (const st of states) {
+    const kept = prune(st.beads, st.start, st.end, opts.pruneEpsilon);
+    st.edge.setControlPoints(kept);
+    if (log) {
+      const startStr = `(${st.start.x.toFixed(0)},${st.start.y.toFixed(0)})`;
+      const endStr = `(${st.end.x.toFixed(0)},${st.end.y.toFixed(0)})`;
+      const beadStr = kept.map(p => `(${p.x.toFixed(0)},${p.y.toFixed(0)})`).join(' ');
+      log(`[charged-spring] edge ${st.edge.id} ${st.edge.srcNode.id}→${st.edge.destNode.id}: start=${startStr} end=${endStr} obstacles=${st.obstacles.length} beads(${kept.length}/${opts.beadsPerEdge})=${beadStr || '∅'}`);
+    }
+  }
+  log?.(`[charged-spring] done`);
+}
+
+interface EdgeGroup {
+  /** Canonical perpendicular: rotate (b - a) by +90°, where a is the node with
+   *  the lexicographically smaller id. Same direction for every edge in the
+   *  group so lane offsets land on a consistent global axis. */
+  perpX: number;
+  perpY: number;
+  edges: DAEdge[];
+}
+
+function groupEdgesByUnorderedPair(edges: DAEdge[]): Map<DAEdge, EdgeGroup> {
+  const byKey = new Map<string, DAEdge[]>();
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    const key = canonicalPairKey(e.srcNode.id, e.destNode.id);
+    let arr = byKey.get(key);
+    if (!arr) { arr = []; byKey.set(key, arr); }
+    arr.push(e);
+  }
+
+  const result = new Map<DAEdge, EdgeGroup>();
+  for (const arr of byKey.values()) {
+    const sample = arr[0];
+    const lowerIsSrc = sample.srcNode.id < sample.destNode.id;
+    const a = lowerIsSrc ? sample.srcNode : sample.destNode;
+    const b = lowerIsSrc ? sample.destNode : sample.srcNode;
+    const dx = (b.konvaGroup.x() + b.NODE_WIDTH / 2) - (a.konvaGroup.x() + a.NODE_WIDTH / 2);
+    const dy = (b.konvaGroup.y() + b.NODE_HEIGHT / 2) - (a.konvaGroup.y() + a.NODE_HEIGHT / 2);
+    const len = Math.hypot(dx, dy) || 1;
+    const group: EdgeGroup = {perpX: -dy / len, perpY: dx / len, edges: arr};
+    for (const e of arr) result.set(e, group);
+  }
+  return result;
+}
+
+function canonicalPairKey(idA: string, idB: string): string {
+  return idA < idB ? `${idA}|${idB}` : `${idB}|${idA}`;
+}
+
+function laneOffsetVector(edge: DAEdge, groups: Map<DAEdge, EdgeGroup>, spacing: number): {x: number; y: number} {
+  const group = groups.get(edge);
+  if (!group || group.edges.length < 2) return {x: 0, y: 0};
+  const idx = group.edges.indexOf(edge);
+  const mag = (idx - (group.edges.length - 1) / 2) * spacing;
+  return {x: group.perpX * mag, y: group.perpY * mag};
 }
 
 function buildObstacleMap(nodes: DANode[], clearance: number): Map<DANode, Obstacle> {
@@ -99,52 +203,74 @@ function buildObstacleMap(nodes: DANode[], clearance: number): Map<DANode, Obsta
   return map;
 }
 
-function simulate(
-  beads: Bead[],
-  start: {x: number; y: number},
-  end: {x: number; y: number},
-  obstacles: Obstacle[],
-  opts: ChargedSpringOptions,
-): void {
+function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
+  const edgeRepulsionMaxDistSq = opts.edgeRepulsionMaxDist * opts.edgeRepulsionMaxDist;
+
   for (let iter = 0; iter < opts.iterations; iter++) {
-    for (let i = 0; i < beads.length; i++) {
-      const b = beads[i];
-      const left = i === 0 ? start : beads[i - 1];
-      const right = i === beads.length - 1 ? end : beads[i + 1];
+    // Compute forces on every bead (positions stay frozen this iteration).
+    for (let s = 0; s < states.length; s++) {
+      const st = states[s];
+      const beads = st.beads;
+      for (let i = 0; i < beads.length; i++) {
+        const b = beads[i];
+        const left = i === 0 ? st.start : beads[i - 1];
+        const right = i === beads.length - 1 ? st.end : beads[i + 1];
 
-      const midX = (left.x + right.x) / 2;
-      const midY = (left.y + right.y) / 2;
-      let fx = opts.smoothingK * (midX - b.x);
-      let fy = opts.smoothingK * (midY - b.y);
+        const midX = (left.x + right.x) / 2;
+        const midY = (left.y + right.y) / 2;
+        let fx = opts.smoothingK * (midX - b.x);
+        let fy = opts.smoothingK * (midY - b.y);
 
-      // Unit perpendicular to the local edge direction (left → right).
-      // Used to push beads off the line when they're trapped inside an obstacle.
-      const edx = right.x - left.x;
-      const edy = right.y - left.y;
-      const elen = Math.hypot(edx, edy) || 1;
-      const perpX = -edy / elen;
-      const perpY = edx / elen;
+        const edx = right.x - left.x;
+        const edy = right.y - left.y;
+        const elen = Math.hypot(edx, edy) || 1;
+        const perpX = -edy / elen;
+        const perpY = edx / elen;
 
-      for (const ob of obstacles) {
-        const f = obstacleForce(b.x, b.y, ob, opts.chargeK, opts.insideKickK, perpX, perpY);
-        fx += f.fx;
-        fy += f.fy;
+        for (const ob of st.obstacles) {
+          const f = obstacleForce(b.x, b.y, ob, opts.chargeK, opts.insideKickK, perpX, perpY);
+          fx += f.fx;
+          fy += f.fy;
+        }
+
+        // Cross-edge bead repulsion: every bead on every other edge pushes
+        // this bead away with inverse-square falloff, capped at a cutoff
+        // distance. Keeps parallel siblings spread out at equilibrium.
+        for (let s2 = 0; s2 < states.length; s2++) {
+          if (s2 === s) continue;
+          const others = states[s2].beads;
+          for (let j = 0; j < others.length; j++) {
+            const o = others[j];
+            const ddx = b.x - o.x;
+            const ddy = b.y - o.y;
+            const dsq = ddx * ddx + ddy * ddy;
+            if (dsq < 1e-6 || dsq > edgeRepulsionMaxDistSq) continue;
+            const d = Math.sqrt(dsq);
+            const force = opts.edgeRepulsionK / dsq;
+            fx += (ddx / d) * force;
+            fy += (ddy / d) * force;
+          }
+        }
+
+        let vx = (b.vx + fx * opts.dt) * opts.damping;
+        let vy = (b.vy + fy * opts.dt) * opts.damping;
+        const speed = Math.hypot(vx, vy);
+        if (speed > opts.maxVelocity) {
+          vx = (vx / speed) * opts.maxVelocity;
+          vy = (vy / speed) * opts.maxVelocity;
+        }
+        b.vx = vx;
+        b.vy = vy;
       }
-
-      let vx = (b.vx + fx * opts.dt) * opts.damping;
-      let vy = (b.vy + fy * opts.dt) * opts.damping;
-      const speed = Math.hypot(vx, vy);
-      if (speed > opts.maxVelocity) {
-        vx = (vx / speed) * opts.maxVelocity;
-        vy = (vy / speed) * opts.maxVelocity;
-      }
-      b.vx = vx;
-      b.vy = vy;
     }
 
-    for (const b of beads) {
-      b.x += b.vx * opts.dt;
-      b.y += b.vy * opts.dt;
+    // Apply velocities now that all forces have been computed against
+    // a consistent snapshot of bead positions.
+    for (const st of states) {
+      for (const b of st.beads) {
+        b.x += b.vx * opts.dt;
+        b.y += b.vy * opts.dt;
+      }
     }
   }
 }

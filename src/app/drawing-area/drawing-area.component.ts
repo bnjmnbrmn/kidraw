@@ -577,7 +577,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedEdges = allEdges.filter(e => e.isSelected);
     const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
 
-    applyChargedSpringEdges(allNodes, edges);
+    applyChargedSpringEdges(allNodes, edges, undefined, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
   }
 
