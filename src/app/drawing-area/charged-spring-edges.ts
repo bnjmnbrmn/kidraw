@@ -249,14 +249,17 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         let fy = opts.smoothingK * (midY - b.y);
 
         // Anchor: pull each bead toward its seed lane-offset position.
-        // End beads (which sit on the centerline) are anchored more
-        // strongly so they don't drift under one-sided obstacle pressure.
-        // A drifted end bead would put the perimeter point off-center on
-        // the face and produce a steep first/last segment.
+        // End beads (which sit on the centerline) are anchored very
+        // strongly so they don't drift under one-sided obstacle or
+        // cross-edge pressure. A drifted end bead would put the
+        // perimeter point off-center on the face, produce a steep
+        // first/last segment, and break the perpendicular approach
+        // that keeps the arrowhead from clipping behind the face.
         const distFromEnd = Math.min(i, beads.length - 1 - i);
-        const anchorBoost = distFromEnd === 0 ? 6
-                          : distFromEnd === 1 ? 3
-                          : distFromEnd === 2 ? 1.6
+        const anchorBoost = distFromEnd === 0 ? 20
+                          : distFromEnd === 1 ? 8
+                          : distFromEnd === 2 ? 3
+                          : distFromEnd === 3 ? 1.4
                           : 1;
         const localAnchorK = opts.anchorK * anchorBoost;
         fx += localAnchorK * (b.restX - b.x);
