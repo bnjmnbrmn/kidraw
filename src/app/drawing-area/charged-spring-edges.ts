@@ -129,17 +129,22 @@ export function applyChargedSpringEdges(
 
     const start = path[0];
     const end = path[path.length - 1];
-    // Lane offset is applied as a sinusoidal "bow" profile: zero at the
-    // first AND last beads (so they sit on the centerline, perimeter
-    // points land on the face midpoint, and the arrowhead approaches the
-    // node perpendicular to its face) and full magnitude in the middle.
-    // Using t = i / (numBeads - 1) makes ramp(0) = ramp(numBeads-1) = 0.
+    // Lane offset is applied as a sin² bow profile: zero at the first and
+    // last beads (so they sit on the centerline — perimeter projects to
+    // the face midpoint, arrow approaches perpendicular), and full lane
+    // offset only in the middle. The squared sin gives much softer
+    // shoulders than plain sin: bead 1 ends up under 1 px from the line
+    // even at full lane spacing, so the segment leaving the perimeter is
+    // nearly along the edge axis and curves into the lane gradually
+    // through the middle of the chain. Plain sin produces ~21% offset
+    // at bead 1, which makes the first segment look kinky.
     const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
     const inner = path.slice(1, -1);
     const numBeads = inner.length;
     const beads: Bead[] = inner.map((p, i) => {
       const t = numBeads > 1 ? i / (numBeads - 1) : 0.5;
-      const ramp = Math.sin(Math.PI * t);
+      const sinT = Math.sin(Math.PI * t);
+      const ramp = sinT * sinT;
       const x = p.x + offset.x * ramp;
       const y = p.y + offset.y * ramp;
       return {x, y, vx: 0, vy: 0, restX: x, restY: y};
