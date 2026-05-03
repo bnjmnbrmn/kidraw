@@ -57,19 +57,26 @@ export interface ChargedSpringOptions {
 
 export const DEFAULT_OPTIONS: ChargedSpringOptions = {
   beadsPerEdge: 16,
-  iterations: 400,
+  iterations: 300,
   smoothingK: 0.4,
   chargeK: 9000,
   insideKickK: 80,
   damping: 0.78,
   dt: 1.0,
   clearance: 16,
-  pruneEpsilon: 1.5,
+  // Keep nearly all beads — pruning the chain to a few "key" bends produces
+  // long polyline segments that look angular when rendered as straight lines.
+  // A dense chain of short segments reads as a smoother curve.
+  pruneEpsilon: 0.3,
   maxVelocity: 30,
   laneSpacing: 22,
   edgeRepulsionK: 80,
   edgeRepulsionMaxDist: 60,
-  anchorK: 0.06,
+  // Stronger anchor: equilibrium displacement under a constant external force
+  // F is F / anchorK. At 0.15, a typical 1.5-unit obstacle/cross-edge force
+  // produces only ~10 px drift — enough to feel the obstacle, not enough to
+  // run away from the lane.
+  anchorK: 0.15,
 };
 
 interface EdgeSim {
@@ -122,10 +129,19 @@ export function applyChargedSpringEdges(
 
     const start = path[0];
     const end = path[path.length - 1];
+    // Lane offset is applied as a sinusoidal "bow" profile: zero at the
+    // chain endpoints (so the chain meets the perimeter cleanly) and full
+    // magnitude in the middle. This gives parallel siblings a smooth
+    // curved rest shape rather than a flat-offset chain that has to
+    // jump from the line at the perimeter to the lane at bead 0.
     const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
-    const beads: Bead[] = path.slice(1, -1).map(p => {
-      const x = p.x + offset.x;
-      const y = p.y + offset.y;
+    const inner = path.slice(1, -1);
+    const numBeads = inner.length;
+    const beads: Bead[] = inner.map((p, i) => {
+      const t = (i + 1) / (numBeads + 1);
+      const ramp = Math.sin(Math.PI * t);
+      const x = p.x + offset.x * ramp;
+      const y = p.y + offset.y * ramp;
       return {x, y, vx: 0, vy: 0, restX: x, restY: y};
     });
 
