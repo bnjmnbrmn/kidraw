@@ -18,12 +18,11 @@ export class DAEdge {
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
   /** Pull the rendered endpoint out from the node perimeter by this many
-   *  pixels along the last segment direction. Konva.Arrow draws the tip at
-   *  the last point and the base ±POINTER_WIDTH/2 perpendicular; on bent
-   *  edges that approach the destination at a shallow angle, one base
-   *  corner can extend behind the node face and get hidden by the node
-   *  fill. A small standoff keeps the arrowhead clearly outside. */
-  public readonly ARROW_STANDOFF = 3;
+   *  pixels along the last segment direction. Set to 0 once the sim started
+   *  pinning end beads on the line so edges approach the node perpendicular
+   *  to the face — at that approach the arrowhead doesn't clip behind the
+   *  face, so a standoff is no longer needed (and the user noticed the gap). */
+  public readonly ARROW_STANDOFF = 0;
 
   private _strokeColor: string = 'black';
   private _fillColor: string = 'black';

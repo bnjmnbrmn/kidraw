@@ -130,15 +130,15 @@ export function applyChargedSpringEdges(
     const start = path[0];
     const end = path[path.length - 1];
     // Lane offset is applied as a sinusoidal "bow" profile: zero at the
-    // chain endpoints (so the chain meets the perimeter cleanly) and full
-    // magnitude in the middle. This gives parallel siblings a smooth
-    // curved rest shape rather than a flat-offset chain that has to
-    // jump from the line at the perimeter to the lane at bead 0.
+    // first AND last beads (so they sit on the centerline, perimeter
+    // points land on the face midpoint, and the arrowhead approaches the
+    // node perpendicular to its face) and full magnitude in the middle.
+    // Using t = i / (numBeads - 1) makes ramp(0) = ramp(numBeads-1) = 0.
     const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
     const inner = path.slice(1, -1);
     const numBeads = inner.length;
     const beads: Bead[] = inner.map((p, i) => {
-      const t = (i + 1) / (numBeads + 1);
+      const t = numBeads > 1 ? i / (numBeads - 1) : 0.5;
       const ramp = Math.sin(Math.PI * t);
       const x = p.x + offset.x * ramp;
       const y = p.y + offset.y * ramp;
@@ -248,9 +248,19 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         let fx = opts.smoothingK * (midX - b.x);
         let fy = opts.smoothingK * (midY - b.y);
 
-        // Anchor: gentle pull back toward the seed lane position.
-        fx += opts.anchorK * (b.restX - b.x);
-        fy += opts.anchorK * (b.restY - b.y);
+        // Anchor: pull each bead toward its seed lane-offset position.
+        // End beads (which sit on the centerline) are anchored more
+        // strongly so they don't drift under one-sided obstacle pressure.
+        // A drifted end bead would put the perimeter point off-center on
+        // the face and produce a steep first/last segment.
+        const distFromEnd = Math.min(i, beads.length - 1 - i);
+        const anchorBoost = distFromEnd === 0 ? 6
+                          : distFromEnd === 1 ? 3
+                          : distFromEnd === 2 ? 1.6
+                          : 1;
+        const localAnchorK = opts.anchorK * anchorBoost;
+        fx += localAnchorK * (b.restX - b.x);
+        fy += localAnchorK * (b.restY - b.y);
 
         const edx = right.x - left.x;
         const edy = right.y - left.y;
