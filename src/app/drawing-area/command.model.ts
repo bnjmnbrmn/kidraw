@@ -83,6 +83,7 @@ export enum DACommandType {
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_CHARGED_SPRING_EDGES = 'APPLY_CHARGED_SPRING_EDGES',
+  APPLY_BEZIER_ROUTE_EDGES = 'APPLY_BEZIER_ROUTE_EDGES',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -159,3 +160,4 @@ export type DACommand =
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_CHARGED_SPRING_EDGES}
+  | {kind: DACommandType.APPLY_BEZIER_ROUTE_EDGES}

@@ -17,6 +17,7 @@ import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
 import { applyChargedSpringEdges } from './charged-spring-edges';
+import { applyBezierRouteEdges } from './bezier-route-edges';
 
 @Component({
   selector: 'app-drawing-area',
@@ -436,6 +437,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_CHARGED_SPRING_EDGES:
         this.applyChargedSpringEdges();
         break;
+      case DACommandType.APPLY_BEZIER_ROUTE_EDGES:
+        this.applyBezierRouteEdges();
+        break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
         this.log.log('[style] setEdgeDirectedness:', command.directedness);
         this.setEdgeDirectedness(command.directedness);
@@ -577,7 +581,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedEdges = allEdges.filter(e => e.isSelected);
     const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
 
+    // Force polyline rendering on every edge we're about to route. Without
+    // this, an edge that was previously Bezier-routed would still render
+    // smooth even though its control points are now physics-sim positions.
+    edges.forEach(e => e.setSmoothRendering(false));
     applyChargedSpringEdges(allNodes, edges, undefined, msg => this.log.log(msg));
+    this.drawingLayer.batchDraw();
+  }
+
+  private applyBezierRouteEdges() {
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+
+    applyBezierRouteEdges(allNodes, edges, undefined, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
   }
 

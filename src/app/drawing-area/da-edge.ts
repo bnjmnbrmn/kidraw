@@ -29,6 +29,12 @@ export class DAEdge {
   private _directedness: EdgeDirectedness = 'directed';
   private _lineStyle: LineStyle = 'solid';
   private _controlPoints: {x: number; y: number}[] = [];
+  /** Konva.Arrow's tension: 0 renders the points as a polyline (charged-spring
+   *  routing). > 0 renders them as a smooth Catmull-Rom-derived curve through
+   *  the same points (Bezier routing). Konva tracks the curve tangent for the
+   *  arrowhead automatically. */
+  private _renderTension: number = 0;
+  public readonly SMOOTH_TENSION = 0.5;
 
   constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
               colors?: { stroke?: string; fill?: string }) {
@@ -207,6 +213,18 @@ export class DAEdge {
    *  and control points. Cheaper than recreating the edge. */
   refreshGeometry(): void {
     this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
+  }
+
+  /** Toggle between polyline rendering (charged-spring) and smooth-curve
+   *  rendering (Bezier-style spline through the control points). The
+   *  underlying control points and arrow geometry are unchanged. */
+  setSmoothRendering(smooth: boolean): void {
+    this._renderTension = smooth ? this.SMOOTH_TENSION : 0;
+    this._line.tension(this._renderTension);
+  }
+
+  get smoothRendering(): boolean {
+    return this._renderTension > 0;
   }
 
   private getNodeCenter(node: DANode): {x: number; y: number} {
