@@ -2,6 +2,7 @@ import {Component, inject, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
+import {TuningPanelComponent} from './tuning-panel/tuning-panel.component';
 import {Subject} from 'rxjs';
 import {DACommand, DACommandType} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
@@ -9,7 +10,7 @@ import {DebugLogService} from './services/debug-log.service';
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent],
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, TuningPanelComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

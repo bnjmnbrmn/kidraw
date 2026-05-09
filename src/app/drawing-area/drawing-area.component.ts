@@ -18,6 +18,7 @@ import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
 import { applyChargedSpringEdges } from './charged-spring-edges';
 import { applyBezierRouteEdges } from './bezier-route-edges';
+import { TuningOptionsService } from '../services/tuning-options.service';
 
 @Component({
   selector: 'app-drawing-area',
@@ -43,6 +44,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private log = inject(DebugLogService);
   private themeService = inject(ThemeService);
   private visualConfigService = inject(VisualConfigService);
+  private tuning = inject(TuningOptionsService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -585,7 +587,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // this, an edge that was previously Bezier-routed would still render
     // smooth even though its control points are now physics-sim positions.
     edges.forEach(e => e.setSmoothRendering(false));
-    applyChargedSpringEdges(allNodes, edges, undefined, msg => this.log.log(msg));
+    applyChargedSpringEdges(allNodes, edges, this.tuning.chargedSpring, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
   }
 
@@ -598,7 +600,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedEdges = allEdges.filter(e => e.isSelected);
     const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
 
-    applyBezierRouteEdges(allNodes, edges, undefined, msg => this.log.log(msg));
+    applyBezierRouteEdges(allNodes, edges, this.tuning.bezierRoute, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
   }
 

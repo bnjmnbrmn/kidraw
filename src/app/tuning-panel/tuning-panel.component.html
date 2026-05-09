@@ -1,0 +1,44 @@
+@if (!collapsed) {
+  <div class="panel">
+    <div class="header">
+      <span class="title">Routing tuning</span>
+      <button class="collapse" (click)="toggleCollapsed()" title="Collapse">−</button>
+    </div>
+
+    <details open>
+      <summary>Bezier route (b → ;)</summary>
+      @for (s of bezierSliders; track s.key) {
+        <div class="row">
+          <label>{{ s.label }}</label>
+          <input type="range"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onSliderChange(s, $event)" />
+          <input type="number"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onNumberChange(s, $event)" />
+        </div>
+      }
+    </details>
+
+    <details>
+      <summary>Charged spring (b → p)</summary>
+      @for (s of chargedSpringSliders; track s.key) {
+        <div class="row">
+          <label>{{ s.label }}</label>
+          <input type="range"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onSliderChange(s, $event)" />
+          <input type="number"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onNumberChange(s, $event)" />
+        </div>
+      }
+    </details>
+  </div>
+} @else {
+  <button class="reopen" (click)="toggleCollapsed()" title="Expand routing tuning">⚙</button>
+}

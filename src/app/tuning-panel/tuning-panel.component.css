@@ -1,0 +1,85 @@
+:host {
+  position: fixed;
+  top: 56px;
+  right: 8px;
+  z-index: 1000;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.panel {
+  background: rgba(245, 245, 250, 0.96);
+  border: 1px solid #aaa;
+  border-radius: 6px;
+  padding: 6px;
+  width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.title {
+  font-weight: bold;
+}
+
+.collapse, .reopen {
+  cursor: pointer;
+  border: 1px solid #888;
+  background: #fff;
+  width: 22px;
+  height: 22px;
+  line-height: 18px;
+  border-radius: 4px;
+  text-align: center;
+  padding: 0;
+}
+
+.reopen {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+}
+
+details {
+  margin-top: 4px;
+  border-top: 1px solid #ccc;
+  padding-top: 4px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: bold;
+  padding: 2px 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 110px 1fr 50px;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0;
+}
+
+.row label {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row input[type="range"] {
+  width: 100%;
+}
+
+.row input[type="number"] {
+  width: 50px;
+  font-size: 10px;
+  padding: 1px 2px;
+}

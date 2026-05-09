@@ -37,8 +37,8 @@ export interface BezierRouteOptions {
 }
 
 export const DEFAULT_OPTIONS: BezierRouteOptions = {
-  maxControlPoints: 4,
-  minImprovementPerPoint: 50,
+  maxControlPoints: 2,
+  minImprovementPerPoint: 150,
   obstaclePenaltyK: 8,
   lengthPenaltyK: 1.0,
   clearance: 18,
