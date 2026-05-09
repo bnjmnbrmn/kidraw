@@ -136,7 +136,12 @@ function routeOneEdge(
     if (!ins) break;
 
     const trialMiddle = insertMiddleInOrder(middleCps, ins, start, end);
-    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, opts);
+    // Clamp the freshly-inserted cp into the lane band before optimization
+    // so the seed itself is never crossing a sibling.
+    for (const cp of trialMiddle) {
+      clampToLaneBand(cp, start, end, offsetMag, opts.laneSpacing);
+    }
+    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, offsetMag, opts);
     const trialCost = computeCurveCost(start, buildFull(trialMiddle), end, obstacles, opts);
 
     if (cost - trialCost >= opts.minImprovementPerPoint) {
@@ -148,6 +153,32 @@ function routeOneEdge(
   }
 
   return buildFull(middleCps);
+}
+
+/** Project a middle cp's perpendicular offset (relative to the canonical
+ *  start→end line) into its lane band so siblings can't cross. The band
+ *  is centered on the edge's lane offset and is `laneSpacing` wide. The
+ *  cp's tangential (along-line) component is left untouched. */
+function clampToLaneBand(
+  cp: Pt, start: Pt, end: Pt, laneCenterMag: number, laneSpacing: number,
+): void {
+  if (laneSpacing <= 0) return;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const perpX = -dy / len;
+  const perpY = dx / len;
+  const proj = (cp.x - start.x) * perpX + (cp.y - start.y) * perpY;
+  const halfWidth = laneSpacing / 2;
+  const minProj = laneCenterMag - halfWidth;
+  const maxProj = laneCenterMag + halfWidth;
+  let delta = 0;
+  if (proj < minProj) delta = minProj - proj;
+  else if (proj > maxProj) delta = maxProj - proj;
+  if (delta !== 0) {
+    cp.x += perpX * delta;
+    cp.y += perpY * delta;
+  }
 }
 
 /** Insert a new control point into the middle-cp list, ordered by
@@ -173,7 +204,8 @@ function insertMiddleInOrder(middle: Pt[], newCp: Pt, start: Pt, end: Pt): Pt[] 
 
 function optimizeMiddleCps(
   middle: Pt[], anchorNear: Pt | null, anchorFar: Pt | null,
-  start: Pt, end: Pt, obstacles: Obstacle[], opts: BezierRouteOptions,
+  start: Pt, end: Pt, obstacles: Obstacle[],
+  laneCenterMag: number, opts: BezierRouteOptions,
 ): void {
   if (middle.length === 0) return;
 
@@ -202,6 +234,18 @@ function optimizeMiddleCps(
     let attempts = 0;
     while (attempts < 4) {
       const trial = middle.map((p, i) => ({x: p.x - grad[i].x * step, y: p.y - grad[i].y * step}));
+      // Hard sibling-anti-crossing constraint: clamp each cp's perpendicular
+      // component back into its lane band (laneCenterMag ± laneSpacing/2)
+      // before evaluating cost. Combined with re-sorting along the chain
+      // direction, this keeps siblings from swapping lanes mid-chain.
+      for (const t of trial) {
+        clampToLaneBand(t, start, end, laneCenterMag, opts.laneSpacing);
+      }
+      // Re-sort along the chain direction so the polyline never folds back
+      // on itself. Gradient descent is free to move cps tangentially as well
+      // as perpendicularly, and without this they can swap order — the
+      // resulting folded curve is what reads visually as a sibling crossing.
+      sortByLineProjection(trial, start, end);
       const trialCost = computeCurveCost(start, buildFull(trial), end, obstacles, opts);
       if (trialCost < baseCost) {
         for (let i = 0; i < middle.length; i++) {
@@ -214,6 +258,17 @@ function optimizeMiddleCps(
       attempts++;
     }
   }
+}
+
+function sortByLineProjection(pts: Pt[], start: Pt, end: Pt): void {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len2 = dx * dx + dy * dy || 1;
+  pts.sort((a, b) => {
+    const pa = ((a.x - start.x) * dx + (a.y - start.y) * dy) / len2;
+    const pb = ((b.x - start.x) * dx + (b.y - start.y) * dy) / len2;
+    return pa - pb;
+  });
 }
 
 /** Find the worst-cost sample on the current curve and propose a new

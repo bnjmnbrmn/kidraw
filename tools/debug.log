@@ -2287,3 +2287,665 @@ handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
 [charged-spring] edge da-18 da-7→da-8: start=(220,570) end=(350,570) obstacles=6 beads(6/16)=(228,559) (235,562) (250,565) (320,565) (335,562) (342,559)
 [charged-spring] edge da-19 da-8→da-7: start=(350,570) end=(220,570) obstacles=6 beads(5/16)=(342,581) (320,587) (258,588) (250,587) (228,581)
 [charged-spring] done
+2026-05-09T11:05:38.840Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(1278.5,378.5) max(1321.5,421.5) scale=1 layerPos=(0,0)
+2026-05-09T11:05:41.460Z app component kmCommand: {"kind":"RECENTER_VIEW"}
+handleCommands - {"kind":"RECENTER_VIEW"}
+crosshairs bbox (local): min(263.5,333.5) max(306.5,376.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:05:46.151Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(236,129) (334,129)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(236,151) (334,151)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(236,258) (334,258)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(236,302) (334,302)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(236,397) (334,397)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(236,419) (334,419)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(236,441) (334,441)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(236,463) (334,463)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(236,559) (334,559)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(334,559) (236,559)
+[bezier-route] done
+2026-05-09T11:05:49.538Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"circular"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"circular"}
+2026-05-09T11:05:52.603Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (311,411) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (315,357) (215,418) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:05:55.618Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (311,411) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (315,357) (215,418) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:00.682Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(480,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(13/16)=(328,175) (333,193) (338,211) (342,230) (347,249) (356,273) (378,310) (386,326) (393,343) (413,397) (421,415) (430,434) (443,452)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(9/16)=(307,183) (320,220) (325,238) (332,258) (340,278) (366,334) (396,405) (413,443) (422,461)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(15/16)=(453,262) (437,281) (428,299) (421,317) (409,353) (402,371) (396,387) (388,403) (377,419) (363,439) (354,464) (349,485) (346,503) (342,521) (338,540)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(11/16)=(433,253) (422,272) (405,309) (384,363) (376,380) (368,397) (348,435) (340,456) (334,476) (329,495) (318,531)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/16)=(412,245) (386,301) (356,373) (331,428) (323,448) (304,504) (297,523)
+[charged-spring] edge da-14 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(15/16)=(474,418) (456,421) (437,423) (419,425) (397,429) (367,441) (350,458) (336,467) (321,474) (305,481) (287,486) (252,497) (233,501) (215,527) (196,533)
+[charged-spring] edge da-15 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(13/16)=(465,398) (447,403) (429,408) (410,412) (391,417) (367,425) (330,447) (314,456) (297,463) (243,483) (225,491) (205,500) (188,513)
+[charged-spring] edge da-16 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(8/16)=(457,377) (420,390) (382,402) (362,410) (306,436) (235,466) (197,483) (179,492)
+[charged-spring] edge da-17 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(6/16)=(449,357) (412,371) (374,384) (335,400) (208,455) (171,472)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(4/16)=(47,287) (48,276) (62,243) (68,234)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(2/16)=(89,243) (67,296)
+[charged-spring] done
+2026-05-09T11:11:19.105Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (311,411) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (315,357) (215,418) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:19.362Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (311,411) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (315,357) (215,418) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:36.087Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:11:36.285Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:11:36.904Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:37.407Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:38.674Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:11:38.879Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:11:39.046Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:11:39.720Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:11:40.451Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:41.039Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:11:42.658Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:11:42.950Z app component kmCommand: {"kind":"DRAG_SELECTED_DOWN"}
+handleCommands - {"kind":"DRAG_SELECTED_DOWN"}
+2026-05-09T11:11:43.501Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:43.717Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:43.848Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:43.989Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.080Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.217Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.349Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.440Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.549Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:44.712Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:11:45.282Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:45.697Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:46.256Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(-361.1,523.5) max(-318.1,566.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:11:47.782Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (316,412) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-203,475) (14,494)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-205,497) (12,516)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-207,519) (10,538)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-209,541) (8,560)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:47.982Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (316,412) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-203,475) (14,494)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-205,497) (12,516)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-207,519) (10,538)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-209,541) (8,560)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:50.263Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:50.500Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:50.621Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:50.744Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:51.070Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:51.335Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:11:51.704Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:11:53.207Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:11:53.595Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:53.805Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:53.930Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:54.024Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:54.129Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:54.212Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:11:54.725Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(793.5,578.5) max(836.5,621.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:11:56.390Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(558,259) (742,498)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(523,286) (707,525)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-203,475) (14,494)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-205,497) (12,516)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-207,519) (10,538)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-209,541) (8,560)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:11:56.590Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(558,259) (742,498)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(523,286) (707,525)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-203,475) (14,494)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-205,497) (12,516)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-207,519) (10,538)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-209,541) (8,560)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:12:03.498Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:12:03.727Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:12:04.141Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:12:04.633Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:12:04.987Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:12:05.194Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:12:05.657Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:12:06.296Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:12:08.414Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:10.047Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+2026-05-09T11:12:11.539Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:12.763Z app component kmCommand: {"kind":"DRAG_SELECTED_DOWN"}
+handleCommands - {"kind":"DRAG_SELECTED_DOWN"}
+2026-05-09T11:12:13.360Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(578.5,478.5) max(621.5,521.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:12:13.498Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:12:14.000Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(778.5,228.5) max(821.5,271.5) scale=1 layerPos=(0,0)
+2026-05-09T11:12:14.539Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"circular"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"circular"}
+2026-05-09T11:12:14.986Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(480,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(13/16)=(328,175) (333,193) (338,211) (342,230) (347,249) (356,273) (378,310) (386,326) (393,343) (413,397) (421,415) (430,434) (443,452)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(9/16)=(307,183) (320,220) (325,238) (332,258) (340,278) (366,334) (396,405) (413,443) (422,461)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(15/16)=(453,262) (437,281) (428,299) (421,317) (409,353) (402,371) (396,387) (388,403) (377,419) (363,439) (354,464) (349,485) (346,503) (342,521) (338,540)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(11/16)=(433,253) (422,272) (405,309) (384,363) (376,380) (368,397) (348,435) (340,456) (334,476) (329,495) (318,531)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/16)=(412,245) (386,301) (356,373) (331,428) (323,448) (304,504) (297,523)
+[charged-spring] edge da-14 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(15/16)=(474,418) (456,421) (437,423) (419,425) (397,429) (367,441) (350,458) (336,467) (321,474) (305,481) (287,486) (252,497) (233,501) (215,527) (196,533)
+[charged-spring] edge da-15 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(13/16)=(465,398) (447,403) (429,408) (410,412) (391,417) (367,425) (330,447) (314,456) (297,463) (243,483) (225,491) (205,500) (188,513)
+[charged-spring] edge da-16 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(8/16)=(457,377) (420,390) (382,402) (362,410) (306,436) (235,466) (197,483) (179,492)
+[charged-spring] edge da-17 da-5→da-6: start=(480,380) end=(165,510) obstacles=6 beads(6/16)=(449,357) (412,371) (374,384) (335,400) (208,455) (171,472)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(4/16)=(47,287) (48,276) (62,243) (68,234)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(2/16)=(89,243) (67,296)
+[charged-spring] done
+2026-05-09T11:12:15.696Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:17.805Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+2026-05-09T11:12:27.287Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:27.434Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:12:28.008Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:28.110Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+2026-05-09T11:12:29.478Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:12:30.127Z app component kmCommand: {"kind":"DRAG_SELECTED_DOWN"}
+handleCommands - {"kind":"DRAG_SELECTED_DOWN"}
+2026-05-09T11:12:30.779Z app component kmCommand: {"kind":"DRAG_SELECTED_UP"}
+handleCommands - {"kind":"DRAG_SELECTED_UP"}
+2026-05-09T11:12:31.493Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(578.5,378.5) max(621.5,421.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:13:11.096Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:11.477Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:11.685Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:11.858Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:12.058Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:12.320Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:12.697Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:13:12.930Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:13:13.411Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:13:13.707Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:13:15.296Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:13:16.007Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:13:18.483Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+2026-05-09T11:13:18.950Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+2026-05-09T11:13:19.146Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+2026-05-09T11:13:19.272Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP","gridTier":"fine"}
+2026-05-09T11:13:19.508Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+2026-05-09T11:13:19.715Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+2026-05-09T11:13:19.884Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+2026-05-09T11:13:20.169Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+2026-05-09T11:13:21.352Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+crosshairs bbox (local): min(38.5,238.5) max(81.5,281.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(38.5,238.5) max(81.5,281.5) scale=1 layerPos=(995,53.5)
+crosshairs bbox (local): min(38.5,238.5) max(81.5,281.5) scale=1 layerPos=(995,53.5)
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:13:21.948Z app component kmCommand: {"kind":"DRAG_SELECTED_RIGHT"}
+handleCommands - {"kind":"DRAG_SELECTED_RIGHT"}
+2026-05-09T11:13:22.892Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(138.5,238.5) max(181.5,281.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:13:23.060Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:23.720Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:13:24.055Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:13:24.592Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:13:25.309Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:13:26.070Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:13:26.632Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:13:37.574Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"force-directed"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"force-directed"}
+2026-05-09T11:13:37.770Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"force-directed"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"force-directed"}
+2026-05-09T11:13:41.570Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(511,157) (502,176)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(490,148) (482,167)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(1284,564) (1281,571)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(1243,548) (1240,556)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-412,967) (-412,970)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-434,971) (-434,974)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-456,976) (-455,978)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-477,980) (-477,982)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(-350,-194) (-343,-219)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(-343,-219) (-350,-194)
+[bezier-route] done
+2026-05-09T11:13:41.766Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(511,157) (502,176)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(490,148) (482,167)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(1284,564) (1281,571)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(1243,548) (1240,556)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-412,967) (-412,970)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-434,971) (-434,974)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-456,976) (-455,978)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-477,980) (-477,982)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(-350,-194) (-343,-219)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(-343,-219) (-350,-194)
+[bezier-route] done
+2026-05-09T11:13:46.175Z app component kmCommand: {"kind":"ZOOM_OUT"}
+handleCommands - {"kind":"ZOOM_OUT"}
+scale {"x":0.5,"y":0.5}
+2026-05-09T11:13:52.641Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(469,29) size=120x120
+[charged-spring]   node da-2 pos=(404,174) size=120x120
+[charged-spring]   node da-3 pos=(1227,435) size=120x120
+[charged-spring]   node da-4 pos=(1177,565) size=120x120
+[charged-spring]   node da-5 pos=(-516,853) size=120x120
+[charged-spring]   node da-6 pos=(-493,977) size=120x120
+[charged-spring]   node da-7 pos=(-417,-187) size=120x120
+[charged-spring]   node da-8 pos=(-375,-341) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(502,149) end=(491,174) obstacles=6 beads(4/16)=(511,155) (511,160) (505,174) (501,177)
+[charged-spring] edge da-10 da-1→da-2: start=(502,149) end=(491,174) obstacles=6 beads(4/16)=(491,146) (487,149) (481,163) (481,168)
+[charged-spring] edge da-11 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(4/16)=(1284,563) (1287,566) (1285,572) (1281,572)
+[charged-spring] edge da-12 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(0/16)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(4/16)=(1243,548) (1240,548) (1237,554) (1240,556)
+[charged-spring] edge da-14 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(1/16)=(-412,971)
+[charged-spring] edge da-15 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(2/16)=(-433,972) (-433,975)
+[charged-spring] edge da-16 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(2/16)=(-457,976) (-456,979)
+[charged-spring] edge da-17 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(1/16)=(-477,983)
+[charged-spring] edge da-18 da-7→da-8: start=(-341,-187) end=(-332,-221) obstacles=6 beads(4/16)=(-351,-192) (-351,-198) (-346,-217) (-343,-222)
+[charged-spring] edge da-19 da-8→da-7: start=(-332,-221) end=(-341,-187) obstacles=6 beads(4/16)=(-321,-216) (-321,-210) (-326,-191) (-329,-186)
+[charged-spring] done
+2026-05-09T11:13:52.882Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(469,29) size=120x120
+[charged-spring]   node da-2 pos=(404,174) size=120x120
+[charged-spring]   node da-3 pos=(1227,435) size=120x120
+[charged-spring]   node da-4 pos=(1177,565) size=120x120
+[charged-spring]   node da-5 pos=(-516,853) size=120x120
+[charged-spring]   node da-6 pos=(-493,977) size=120x120
+[charged-spring]   node da-7 pos=(-417,-187) size=120x120
+[charged-spring]   node da-8 pos=(-375,-341) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(502,149) end=(491,174) obstacles=6 beads(4/16)=(511,155) (511,160) (505,174) (501,177)
+[charged-spring] edge da-10 da-1→da-2: start=(502,149) end=(491,174) obstacles=6 beads(4/16)=(491,146) (487,149) (481,163) (481,168)
+[charged-spring] edge da-11 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(4/16)=(1284,563) (1287,566) (1285,572) (1281,572)
+[charged-spring] edge da-12 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(0/16)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(1264,555) end=(1260,565) obstacles=6 beads(4/16)=(1243,548) (1240,548) (1237,554) (1240,556)
+[charged-spring] edge da-14 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(1/16)=(-412,971)
+[charged-spring] edge da-15 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(2/16)=(-433,972) (-433,975)
+[charged-spring] edge da-16 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(2/16)=(-457,976) (-456,979)
+[charged-spring] edge da-17 da-5→da-6: start=(-445,973) end=(-444,977) obstacles=6 beads(1/16)=(-477,983)
+[charged-spring] edge da-18 da-7→da-8: start=(-341,-187) end=(-332,-221) obstacles=6 beads(4/16)=(-351,-192) (-351,-198) (-346,-217) (-343,-222)
+[charged-spring] edge da-19 da-8→da-7: start=(-332,-221) end=(-341,-187) obstacles=6 beads(4/16)=(-321,-216) (-321,-210) (-326,-191) (-329,-186)
+[charged-spring] done
+2026-05-09T11:13:54.102Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(511,157) (502,176)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(490,148) (482,167)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(1284,564) (1281,571)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(1243,548) (1240,556)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-412,967) (-412,970)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-434,971) (-434,974)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-456,976) (-455,978)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-477,980) (-477,982)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(-350,-194) (-343,-219)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(-343,-219) (-350,-194)
+[bezier-route] done
+2026-05-09T11:13:54.274Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(511,157) (502,176)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(490,148) (482,167)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(1284,564) (1281,571)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(1243,548) (1240,556)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-412,967) (-412,970)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-434,971) (-434,974)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-456,976) (-455,978)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-477,980) (-477,982)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(-350,-194) (-343,-219)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(-343,-219) (-350,-194)
+[bezier-route] done
+2026-05-09T11:13:58.813Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"radial"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"radial"}
+2026-05-09T11:14:01.234Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(233,104) (233,43)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(255,104) (255,43)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(495,492) (535,516)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(473,531) (513,554)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(21,540) (-19,563)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(10,521) (-30,544)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-1,502) (-41,525)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-12,483) (-52,506)
+[bezier-route] edge da-18 da-7→da-8: cps(5)=(255,-37) (45,-401) (119,-109) (78,-30) (255,784)
+[bezier-route] edge da-19 da-8→da-7: cps(3)=(255,784) (906,134) (255,-37)
+[bezier-route] done
+2026-05-09T11:14:01.450Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(233,104) (233,43)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(255,104) (255,43)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(495,492) (535,516)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(473,531) (513,554)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(21,540) (-19,563)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(10,521) (-30,544)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-1,502) (-41,525)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-12,483) (-52,506)
+[bezier-route] edge da-18 da-7→da-8: cps(5)=(255,-37) (45,-401) (119,-109) (78,-30) (255,784)
+[bezier-route] edge da-19 da-8→da-7: cps(3)=(255,784) (906,134) (255,-37)
+[bezier-route] done
+2026-05-09T11:14:02.586Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(233,104) (233,43)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(255,104) (255,43)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(495,492) (535,516)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(473,531) (513,554)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(21,540) (-19,563)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(10,521) (-30,544)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-1,502) (-41,525)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-12,483) (-52,506)
+[bezier-route] edge da-18 da-7→da-8: cps(5)=(255,-37) (45,-401) (119,-109) (78,-30) (255,784)
+[bezier-route] edge da-19 da-8→da-7: cps(3)=(255,784) (906,134) (255,-37)
+[bezier-route] done
+2026-05-09T11:14:17.617Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:14:17.800Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:14:18.480Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:14:18.982Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT"}
+2026-05-09T11:14:20.953Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+2026-05-09T11:14:21.116Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+2026-05-09T11:14:21.316Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+2026-05-09T11:14:21.818Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+2026-05-09T11:14:26.137Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT","gridTier":"fine"}
+2026-05-09T11:14:26.821Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_LEFT","gridTier":"fine"}
+2026-05-09T11:14:42.056Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:14:42.234Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:14:42.852Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:14:43.096Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:14:43.569Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:14:43.753Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_UP"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_UP"}
+2026-05-09T11:14:44.219Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:14:44.403Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:14:44.687Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_DOWN"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_DOWN"}
+2026-05-09T11:16:23.735Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(778.5,228.5) max(821.5,271.5) scale=1 layerPos=(0,0)
+2026-05-09T11:16:24.275Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"circular"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"circular"}
+2026-05-09T11:16:24.754Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(5)=(455,426) (395,439) (211,515) (270,491) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:18:35.472Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(778.5,228.5) max(821.5,271.5) scale=1 layerPos=(0,0)
+2026-05-09T11:18:35.990Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"circular"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"circular"}
+2026-05-09T11:18:36.449Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (394,439) (217,513) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
