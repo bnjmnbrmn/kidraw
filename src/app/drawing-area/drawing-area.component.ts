@@ -1,5 +1,6 @@
 import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import { Subscription } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { DemoDataService } from '../services/demo-data.service';
 import { ThemeService } from '../services/theme.service';
 import { VisualConfigService } from '../services/visual-config.service';
@@ -163,9 +164,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   ngOnChanges(changes: SimpleChanges): void {
   }
 
+  /** Most recently applied routing — used by the auto-reroute subscription
+   *  so a slider change only re-runs the routing the user is currently
+   *  looking at. null until the user has applied any routing. */
+  private lastAppliedRouting: 'charged-spring' | 'bezier-route' | null = null;
+  private tuningSub?: Subscription;
+
+  ngOnInit(): void {
+    // Auto-reroute when a slider for the active routing changes. Debounced
+    // so dragging a slider doesn't fire a routing per pixel of movement.
+    this.tuningSub = this.tuning.changes
+      .pipe(debounceTime(120))
+      .subscribe(group => {
+        if (this.lastAppliedRouting !== group) return;
+        if (group === 'charged-spring') this.applyChargedSpringEdges(true);
+        else if (group === 'bezier-route') this.applyBezierRouteEdges(true);
+      });
+  }
+
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
+    this.tuningSub?.unsubscribe();
   }
 
   private canEdit = false;
@@ -574,9 +594,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  private applyChargedSpringEdges() {
+  /** @param skipUndo true when invoked by the auto-reroute subscription
+   *  in response to a slider change — pushing an undo snapshot per slider
+   *  tick would spam the undo stack. */
+  private applyChargedSpringEdges(skipUndo: boolean = false) {
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    if (!skipUndo) {
+      this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    }
     const allNodes = this.drawingLayer.getDANodes();
     const allEdges = this.drawingLayer.getDAEdges();
 
@@ -589,11 +614,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     edges.forEach(e => e.setSmoothRendering(false));
     applyChargedSpringEdges(allNodes, edges, this.tuning.chargedSpring, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'charged-spring';
   }
 
-  private applyBezierRouteEdges() {
+  private applyBezierRouteEdges(skipUndo: boolean = false) {
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    if (!skipUndo) {
+      this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    }
     const allNodes = this.drawingLayer.getDANodes();
     const allEdges = this.drawingLayer.getDAEdges();
 
@@ -602,6 +630,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     applyBezierRouteEdges(allNodes, edges, this.tuning.bezierRoute, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'bezier-route';
   }
 
   private exitLabelEditMode() {
