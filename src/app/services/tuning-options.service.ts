@@ -8,11 +8,15 @@ import {
   BezierRouteOptions,
   DEFAULT_OPTIONS as BEZIER_DEFAULTS,
 } from '../drawing-area/bezier-route-edges';
+import {
+  BezierFitOptions,
+  DEFAULT_OPTIONS as BEZIER_FIT_DEFAULTS,
+} from '../drawing-area/bezier-fit-route-edges';
 
 /** A single tunable parameter in the slider UI: where it comes from
  *  (what routing/options group), its label, value range, and increment. */
 export interface TuningSlider {
-  group: 'charged-spring' | 'bezier-route';
+  group: 'charged-spring' | 'bezier-route' | 'bezier-fit';
   key: string;
   label: string;
   min: number;
@@ -28,14 +32,17 @@ export class TuningOptionsService {
    *  by the slider panel. */
   readonly chargedSpring: ChargedSpringOptions = { ...CHARGED_SPRING_DEFAULTS };
   readonly bezierRoute: BezierRouteOptions = { ...BEZIER_DEFAULTS };
+  readonly bezierFit: BezierFitOptions = { ...BEZIER_FIT_DEFAULTS };
 
   /** Emits whenever any value changes. Subscribers (e.g. the drawing-area
    *  to auto-reroute) can react. The payload is which group changed. */
-  readonly changes = new Subject<'charged-spring' | 'bezier-route'>();
+  readonly changes = new Subject<'charged-spring' | 'bezier-route' | 'bezier-fit'>();
 
   /** The set of sliders rendered in the panel. Range/step/label are tuned
    *  by hand to match the defaults' working ranges. */
   readonly sliders: TuningSlider[] = [
+    // Hybrid (charged-spring → Bezier-fit)
+    { group: 'bezier-fit', key: 'dpTolerance', label: 'DP tolerance (px)', min: 0, max: 30, step: 0.1 },
     // Bezier
     { group: 'bezier-route', key: 'maxControlPoints', label: 'Max control points', min: 0, max: 8, step: 1, integer: true },
     { group: 'bezier-route', key: 'minImprovementPerPoint', label: 'Min improvement / point', min: 0, max: 500, step: 5 },
@@ -63,16 +70,23 @@ export class TuningOptionsService {
     { group: 'charged-spring', key: 'anchorK', label: 'Anchor K', min: 0, max: 2.5, step: 0.02 },
   ];
 
+  private optionsObjFor(group: TuningSlider['group']): any {
+    switch (group) {
+      case 'charged-spring': return this.chargedSpring;
+      case 'bezier-route': return this.bezierRoute;
+      case 'bezier-fit': return this.bezierFit;
+    }
+  }
+
   getValue(s: TuningSlider): number {
-    const obj = s.group === 'charged-spring' ? this.chargedSpring : this.bezierRoute;
-    return (obj as any)[s.key];
+    return this.optionsObjFor(s.group)[s.key];
   }
 
   setValue(s: TuningSlider, value: number): void {
-    const obj = s.group === 'charged-spring' ? this.chargedSpring : this.bezierRoute;
+    const obj = this.optionsObjFor(s.group);
     const v = s.integer ? Math.round(value) : value;
-    if ((obj as any)[s.key] === v) return;
-    (obj as any)[s.key] = v;
+    if (obj[s.key] === v) return;
+    obj[s.key] = v;
     this.changes.next(s.group);
   }
 }

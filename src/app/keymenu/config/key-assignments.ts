@@ -123,6 +123,7 @@ export interface KeymenuKeyAssignments {
     readonly radial: KeyString;
     readonly chargedSpringEdges: KeyString;
     readonly bezierRouteEdges: KeyString;
+    readonly bezierFitChargedSpringEdges: KeyString;
   };
 }
 
@@ -220,7 +221,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';', bezierFitChargedSpringEdges: "'"},
 };
 
 // Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
@@ -317,5 +318,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';', bezierFitChargedSpringEdges: "'"},
 };

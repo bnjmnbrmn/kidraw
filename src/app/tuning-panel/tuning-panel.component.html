@@ -6,6 +6,24 @@
     </div>
 
     <details open>
+      <summary>Hybrid CS+Bezier (b → ')</summary>
+      @for (s of bezierFitSliders; track s.key) {
+        <div class="row">
+          <label>{{ s.label }}</label>
+          <input type="range"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onSliderChange(s, $event)" />
+          <input type="number"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onNumberChange(s, $event)" />
+        </div>
+      }
+      <div class="hint">Uses charged-spring sliders below for the underlying physics sim.</div>
+    </details>
+
+    <details>
       <summary>Bezier route (b → ;)</summary>
       @for (s of bezierSliders; track s.key) {
         <div class="row">

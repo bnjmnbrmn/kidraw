@@ -83,3 +83,11 @@ summary {
   font-size: 10px;
   padding: 1px 2px;
 }
+
+.hint {
+  font-size: 9px;
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+  padding: 2px 0;
+}

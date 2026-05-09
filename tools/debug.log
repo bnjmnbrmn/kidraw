@@ -3252,3 +3252,1776 @@ handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
 [bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
 [bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
 [bezier-route] done
+2026-05-09T11:36:24.306Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(1278.5,378.5) max(1321.5,421.5) scale=1 layerPos=(0,0)
+2026-05-09T11:36:26.600Z app component kmCommand: {"kind":"RECENTER_VIEW"}
+handleCommands - {"kind":"RECENTER_VIEW"}
+crosshairs bbox (local): min(263.5,333.5) max(306.5,376.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:36:30.130Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 2 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(236,129) (334,129)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(236,151) (334,151)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(236,258) (334,258)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(236,302) (334,302)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(236,397) (334,397)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(236,419) (334,419)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(236,441) (334,441)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(236,463) (334,463)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(236,559) (334,559)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(334,559) (236,559)
+[bezier-route] done
+2026-05-09T11:36:32.442Z app component kmCommand: {"kind":"APPLY_LAYOUT","layout":"circular"}
+handleCommands - {"kind":"APPLY_LAYOUT","layout":"circular"}
+2026-05-09T11:36:33.511Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 2 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(4)=(455,426) (394,439) (217,513) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:36:41.730Z [bezier-route] start: 8 nodes, 11 edges, max 1 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(455,426) (385,443) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:36:42.498Z [bezier-route] start: 8 nodes, 11 edges, max 0 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(455,426) (215,525)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(446,406) (207,505)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(438,385) (198,484)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(429,365) (190,464)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:36:56.226Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:36:56.451Z app component kmCommand: {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+handleCommands - {"kind":"MOVE_CROSSHAIRS_RIGHT"}
+2026-05-09T11:36:57.345Z app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:36:58.202Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:58.534Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:58.765Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:58.938Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:59.118Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:59.280Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:59.489Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:59.674Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:36:59.991Z app component kmCommand: {"kind":"DRAG_SELECTED_LEFT"}
+handleCommands - {"kind":"DRAG_SELECTED_LEFT"}
+2026-05-09T11:37:00.897Z app component kmCommand: {"kind":"EXIT_DRAG_MODE"}
+handleCommands - {"kind":"EXIT_DRAG_MODE"}
+crosshairs bbox (local): min(-461.1,378.5) max(-418.1,421.5) scale=1 layerPos=(995,53.5)
+2026-05-09T11:37:03.194Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 0 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-283,362) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:37:03.390Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 0 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-283,362) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:37:04.690Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(11/16)=(328,175) (333,193) (339,211) (343,230) (348,250) (358,273) (381,310) (390,326) (414,379) (436,434) (443,452)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(7/16)=(307,183) (320,220) (333,258) (341,279) (368,334) (400,405) (422,461)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(12/16)=(453,262) (432,317) (408,371) (401,387) (392,403) (381,418) (365,437) (355,464) (350,484) (347,503) (343,521) (338,540)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(9/16)=(411,309) (387,363) (379,380) (370,397) (350,435) (341,456) (335,476) (330,494) (318,531)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/16)=(412,245) (390,301) (358,372) (332,428) (324,448) (304,504) (297,523)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(9/16)=(-306,353) (-151,410) (-129,418) (-109,427) (-90,438) (-68,454) (-38,465) (10,471) (33,475)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/16)=(-314,374) (-158,431) (-136,439) (-115,449) (-70,471) (-44,479) (3,490) (26,495)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/16)=(-321,395) (-165,452) (-121,470) (-75,488) (-51,497) (19,516)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(5/16)=(-328,416) (-127,490) (-81,508) (-58,516) (11,537)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(4/16)=(47,287) (48,276) (62,243) (68,234)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(2/16)=(89,243) (67,296)
+[charged-spring] done
+2026-05-09T11:37:06.462Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(11/16)=(328,175) (333,193) (339,211) (343,230) (348,250) (358,273) (381,310) (390,326) (414,379) (436,434) (443,452)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(7/16)=(307,183) (320,220) (333,258) (341,279) (368,334) (400,405) (422,461)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(12/16)=(453,262) (432,317) (408,371) (401,387) (392,403) (381,418) (365,437) (355,464) (350,484) (347,503) (343,521) (338,540)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(9/16)=(411,309) (387,363) (379,380) (370,397) (350,435) (341,456) (335,476) (330,494) (318,531)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/16)=(412,245) (390,301) (358,372) (332,428) (324,448) (304,504) (297,523)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(9/16)=(-306,353) (-151,410) (-129,418) (-109,427) (-90,438) (-68,454) (-38,465) (10,471) (33,475)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/16)=(-314,374) (-158,431) (-136,439) (-115,449) (-70,471) (-44,479) (3,490) (26,495)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/16)=(-321,395) (-165,452) (-121,470) (-75,488) (-51,497) (19,516)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(5/16)=(-328,416) (-127,490) (-81,508) (-58,516) (11,537)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(4/16)=(47,287) (48,276) (62,243) (68,234)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(2/16)=(89,243) (67,296)
+[charged-spring] done
+2026-05-09T11:37:06.670Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(11/16)=(328,175) (333,193) (339,211) (343,230) (348,250) (358,273) (381,310) (390,326) (414,379) (436,434) (443,452)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(7/16)=(307,183) (320,220) (333,258) (341,279) (368,334) (400,405) (422,461)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(12/16)=(453,262) (432,317) (408,371) (401,387) (392,403) (381,418) (365,437) (355,464) (350,484) (347,503) (343,521) (338,540)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(9/16)=(411,309) (387,363) (379,380) (370,397) (350,435) (341,456) (335,476) (330,494) (318,531)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/16)=(412,245) (390,301) (358,372) (332,428) (324,448) (304,504) (297,523)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(9/16)=(-306,353) (-151,410) (-129,418) (-109,427) (-90,438) (-68,454) (-38,465) (10,471) (33,475)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/16)=(-314,374) (-158,431) (-136,439) (-115,449) (-70,471) (-44,479) (3,490) (26,495)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/16)=(-321,395) (-165,452) (-121,470) (-75,488) (-51,497) (19,516)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(5/16)=(-328,416) (-127,490) (-81,508) (-58,516) (11,537)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(4/16)=(47,287) (48,276) (62,243) (68,234)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(2/16)=(89,243) (67,296)
+[charged-spring] done
+2026-05-09T11:37:31.269Z [charged-spring] start: 8 nodes, 11 edges, 993 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(5/993)=(320,156) (323,152) (459,469) (454,470) (450,471)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(4/993)=(300,165) (291,165) (427,482) (430,479)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(8/993)=(460,244) (472,245) (391,431) (383,436) (366,460) (333,565) (332,561) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/993)=(443,234) (305,557) (308,552)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(4/993)=(420,227) (415,222) (278,541) (290,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/993)=(-329,345) (-328,335) (-74,429) (-70,435) (-45,453) (61,481) (58,481) (56,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/993)=(-336,366) (-340,363) (-341,362) (55,508) (51,505) (48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(9/993)=(-343,387) (-346,388) (-349,388) (-107,479) (-106,480) (-105,480) (46,533) (43,529) (41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/993)=(-351,408) (-357,417) (31,559) (32,559) (33,552) (33,545)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(52/993)=(45,291) (36,290) (33,266) (33,266) (33,266) (33,265) (33,266) (33,266) (32,266) (33,265) (33,264) (34,264) (33,264) (33,266) (33,266) (33,264) (35,264) (34,264) (33,264) (33,265) (34,264) (33,265) (33,263) (33,264) (34,259) (38,259) (38,253) (39,252) (38,249) (40,249) (39,249) (40,249) (41,249) (40,248) (42,249) (42,248) (39,247) (39,247) (41,247) (41,248) (40,247) (41,247) (40,247) (41,246) (43,241) (43,240) (43,240) (43,239) (44,240) (57,222) (63,224) (70,231)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(68/993)=(90,239) (98,240) (100,264) (100,265) (101,264) (99,264) (100,265) (101,264) (99,265) (101,264) (100,265) (100,264) (100,265) (99,266) (100,266) (100,265) (100,265) (98,269) (99,270) (98,270) (98,269) (98,270) (98,270) (98,270) (99,270) (98,270) (99,271) (95,273) (95,273) (95,273) (95,273) (95,273) (95,274) (95,275) (96,276) (96,277) (96,277) (96,277) (95,277) (92,281) (93,281) (93,281) (93,282) (94,283) (93,282) (94,283) (93,283) (92,286) (92,286) (91,286) (92,287) (91,287) (91,287) (91,287) (90,287) (90,289) (90,288) (90,288) (90,289) (90,289) (90,288) (90,289) (90,289) (90,289) (90,289) (77,307) (71,304) (65,299)
+[charged-spring] done
+app component kmCommand: {"kind":"MULTI_ITEM_SELECT"}
+handleCommands - {"kind":"MULTI_ITEM_SELECT"}
+app component kmCommand: {"kind":"ENTER_DRAG_MODE"}
+handleCommands - {"kind":"ENTER_DRAG_MODE"}
+2026-05-09T11:38:47.257Z [charged-spring] start: 8 nodes, 11 edges, 993 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(459,469)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(429,480)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(5/993)=(460,244) (390,431) (383,436) (333,563) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/993)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/993)=(278,541) (290,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/993)=(-329,345) (-73,430) (-70,435) (-45,453) (58,481) (56,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/993)=(-336,366) (48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/993)=(-343,387) (44,531) (41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/993)=(-351,408) (32,559) (33,545)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(8/993)=(45,291) (33,264) (35,264) (35,259) (39,247) (41,248) (57,222) (70,231)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(4/993)=(101,265) (99,270) (98,270) (76,307)
+[charged-spring] done
+2026-05-09T11:39:39.343Z [charged-spring] start: 8 nodes, 11 edges, 993 beads/edge, 930 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(450,471)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(430,479)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/993)=(390,431) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/993)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/993)=(284,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/993)=(-73,430) (56,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(33,552)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/993)=(63,225)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/993)=(71,305)
+[charged-spring] done
+2026-05-09T11:40:28.737Z [charged-spring] start: 8 nodes, 11 edges, 993 beads/edge, 930 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(450,471)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(430,479)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/993)=(386,433) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/993)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/993)=(284,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/993)=(-71,433) (56,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(33,552)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/993)=(64,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/993)=(71,304)
+[charged-spring] done
+2026-05-09T11:40:54.379Z [charged-spring] start: 8 nodes, 11 edges, 993 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(450,471)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/993)=(430,479)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/993)=(386,433) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/993)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/993)=(284,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/993)=(-71,433) (56,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/993)=(33,552)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/993)=(64,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/993)=(70,303)
+[charged-spring] done
+2026-05-09T11:41:14.623Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(450,470)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(430,478)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(331,557)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(290,540)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(54,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(47,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(40,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(32,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(70,231)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(65,299)
+[charged-spring] done
+2026-05-09T11:41:20.848Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(70,231)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(66,299)
+[charged-spring] done
+2026-05-09T11:41:54.109Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-71,444) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(66,228)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(66,299)
+[charged-spring] done
+2026-05-09T11:41:54.762Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(388,431) (371,446) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(286,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-72,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,553)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(60,225)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,302)
+[charged-spring] done
+2026-05-09T11:42:20.842Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(388,428) (369,445) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-78,430) (-65,447) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(60,225)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,301)
+[charged-spring] done
+2026-05-09T11:42:21.254Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(388,428) (369,445) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-78,431) (-66,447) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:21.930Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(453,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(388,425) (368,442) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-80,431) (-67,449) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,225)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,301)
+[charged-spring] done
+2026-05-09T11:42:26.426Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(453,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(389,425) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-79,433) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:26.782Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(453,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(390,425) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-79,432) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,557)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,303)
+[charged-spring] done
+2026-05-09T11:42:29.978Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(13/123)=(393,423) (387,422) (386,434) (364,423) (368,473) (340,472) (364,475) (346,474) (359,480) (352,481) (360,482) (352,482) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(286,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(12/123)=(-81,431) (-39,478) (-37,451) (-44,474) (-36,455) (-36,464) (-21,468) (-16,461) (8,471) (-4,462) (14,469) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(13/123)=(-66,471) (-62,489) (-53,467) (-61,475) (-41,469) (-53,484) (-3,497) (-2,485) (4,495) (12,494) (19,507) (20,500) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(12/123)=(-83,493) (-84,509) (-51,506) (-46,503) (-48,516) (-42,507) (-45,517) (-27,508) (-27,519) (-10,519) (-12,523) (38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-20,552) (10,552) (29,551)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(64,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,301)
+[charged-spring] done
+2026-05-09T11:42:30.410Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(17/123)=(395,429) (387,418) (389,444) (379,422) (381,435) (375,427) (380,441) (342,475) (363,483) (367,476) (336,477) (359,484) (345,483) (363,490) (349,490) (356,501) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(13/123)=(356,416) (346,413) (358,419) (346,438) (352,437) (343,451) (335,437) (353,448) (320,447) (341,455) (337,468) (325,469) (327,480)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(18/123)=(-90,423) (-77,430) (-85,440) (-68,437) (-82,460) (-64,446) (-52,473) (-28,450) (-26,480) (-30,455) (-26,473) (-14,462) (-15,477) (-4,479) (7,462) (9,474) (11,466) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(19/123)=(-111,454) (-88,463) (-84,460) (-72,477) (-64,458) (-60,477) (-64,469) (-71,480) (-55,475) (-55,483) (-52,473) (-44,494) (-47,476) (-27,486) (10,483) (-10,499) (9,503) (1,486) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/123)=(-93,488) (-38,511) (-18,503) (-27,513) (-24,527) (-27,514) (3,520) (38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,553)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(28/123)=(33,259) (41,261) (33,258) (41,260) (32,256) (42,259) (32,255) (42,258) (32,254) (43,257) (32,252) (43,256) (32,251) (43,255) (33,250) (44,254) (33,249) (44,253) (34,248) (45,253) (36,248) (45,251) (36,247) (46,251) (37,246) (45,249) (38,245) (64,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(32/123)=(98,268) (91,267) (98,270) (91,268) (99,272) (90,269) (100,272) (90,270) (98,273) (89,271) (98,274) (89,272) (98,276) (89,273) (99,277) (89,273) (99,278) (88,274) (98,279) (88,275) (96,279) (87,276) (95,280) (87,277) (95,281) (86,278) (95,282) (86,279) (93,283) (86,280) (93,283) (71,302)
+[charged-spring] done
+2026-05-09T11:42:32.830Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(10/123)=(395,427) (390,420) (387,425) (323,418) (387,443) (371,446) (341,469) (359,472) (345,484) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(17/123)=(361,417) (374,423) (367,436) (359,426) (349,437) (325,441) (340,452) (353,449) (342,441) (331,456) (346,455) (345,463) (337,454) (331,470) (340,453) (315,471) (322,467)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(13/123)=(-85,424) (-87,429) (-75,426) (-83,432) (-63,440) (-61,476) (-55,473) (-52,509) (-61,458) (-32,493) (-19,465) (-1,466) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(22/123)=(-87,465) (-86,458) (-84,468) (-81,459) (-79,472) (-76,460) (-74,475) (-53,446) (-60,472) (-49,474) (-37,489) (-43,491) (-44,449) (-31,471) (-10,488) (-32,481) (-18,491) (-10,487) (-23,476) (-5,483) (-1,491) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(36,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(19/123)=(35,253) (41,255) (37,252) (43,254) (37,251) (43,253) (38,250) (43,252) (38,248) (45,250) (38,247) (46,250) (37,246) (48,249) (39,245) (48,248) (40,244) (48,247) (63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(9/123)=(96,274) (91,272) (94,276) (89,277) (95,280) (85,280) (92,283) (85,281) (71,302)
+[charged-spring] done
+2026-05-09T11:42:36.242Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(10/123)=(398,428) (389,418) (363,477) (346,467) (365,476) (350,479) (359,471) (350,478) (354,475) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(4/123)=(354,428) (343,456) (350,455) (345,445)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(4/123)=(310,431) (318,450) (304,450) (285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(11/123)=(-87,424) (-81,434) (-67,437) (-70,460) (-43,451) (-42,464) (-28,465) (-24,459) (-23,470) (-8,464) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(8/123)=(-83,462) (-78,470) (-71,468) (-69,474) (-55,485) (-26,488) (-23,495) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(36,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(25,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(2/123)=(39,248) (63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,301)
+[charged-spring] done
+2026-05-09T11:42:41.430Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(7/123)=(391,422) (367,430) (366,462) (356,467) (367,482) (344,474) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(10/123)=(360,407) (354,426) (335,423) (343,448) (337,454) (332,444) (339,455) (324,442) (337,459) (325,451)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(10/123)=(-73,425) (-94,440) (-70,436) (-74,463) (-30,462) (-18,477) (-11,460) (-1,471) (0,466) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(18/123)=(-77,470) (-79,455) (-82,471) (-66,476) (-69,463) (-56,483) (-43,483) (-51,475) (-43,475) (-39,487) (-44,473) (-35,490) (-42,485) (-38,491) (-28,483) (-29,490) (-20,497) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(10/123)=(-101,485) (-101,480) (-84,490) (-92,491) (-67,504) (-59,494) (-60,508) (-46,498) (-61,503) (38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-89,526) (25,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(15/123)=(34,260) (40,263) (34,259) (41,255) (37,249) (43,252) (38,248) (43,250) (39,247) (45,249) (39,245) (46,247) (41,244) (47,246) (63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(10/123)=(98,267) (93,266) (95,275) (90,274) (94,277) (88,277) (95,280) (87,277) (92,284) (71,302)
+[charged-spring] done
+2026-05-09T11:42:42.042Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(49/123)=(434,358) (427,361) (410,398) (408,392) (400,409) (394,399) (402,404) (395,409) (392,398) (395,418) (401,415) (393,421) (394,407) (384,422) (392,416) (383,451) (357,436) (373,427) (375,498) (350,481) (355,490) (345,502) (339,500) (354,493) (350,511) (314,486) (340,490) (311,505) (355,494) (353,468) (332,515) (357,521) (341,519) (341,510) (350,503) (339,488) (341,504) (354,512) (330,510) (341,521) (352,500) (354,511) (340,531) (345,533) (313,556) (330,565) (350,544) (338,562) (330,554)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(49/123)=(392,354) (382,360) (388,365) (379,368) (382,364) (371,371) (373,377) (385,369) (383,391) (380,376) (352,399) (360,402) (353,405) (349,420) (356,433) (348,439) (361,440) (352,428) (337,462) (360,455) (342,443) (356,443) (339,453) (362,448) (341,458) (346,467) (329,468) (340,452) (348,464) (325,494) (331,468) (372,475) (333,489) (349,463) (330,482) (336,450) (371,507) (334,502) (328,515) (319,509) (329,516) (323,525) (326,528) (309,543) (298,536) (315,540) (308,504) (325,545) (313,540)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(46/123)=(346,353) (346,370) (339,365) (337,388) (328,385) (325,404) (330,396) (321,400) (331,409) (320,416) (333,395) (332,403) (323,399) (316,427) (321,443) (300,444) (321,424) (325,427) (307,456) (281,466) (301,462) (308,450) (306,439) (311,448) (299,462) (290,487) (290,466) (283,471) (294,492) (287,520) (307,492) (286,501) (268,495) (283,501) (282,506) (274,496) (294,491) (269,492) (276,520) (264,528) (269,516) (281,551) (268,517) (298,546) (281,559) (291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(53/123)=(-200,373) (-160,387) (-153,400) (-153,393) (-139,391) (-137,397) (-130,393) (-119,400) (-106,406) (-96,402) (-100,418) (-115,399) (-121,402) (-83,444) (-87,415) (-122,418) (-86,430) (-108,439) (-101,409) (-119,414) (-103,421) (-84,411) (-60,448) (-45,452) (-70,465) (-48,440) (-89,453) (-85,483) (-60,449) (-23,462) (-40,470) (-82,431) (-43,477) (-32,478) (3,453) (-31,461) (-1,462) (13,471) (6,453) (8,482) (27,455) (32,488) (15,475) (31,483) (50,473) (35,474) (39,477) (45,463) (27,486) (82,484) (63,468) (74,482) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(65/123)=(-226,404) (-225,399) (-214,408) (-197,415) (-183,421) (-184,427) (-171,431) (-170,421) (-178,417) (-172,424) (-177,430) (-164,438) (-151,414) (-165,433) (-154,430) (-160,448) (-96,447) (-120,431) (-97,412) (-96,443) (-121,448) (-104,441) (-98,449) (-74,425) (-98,432) (-110,482) (-92,430) (-94,456) (-108,469) (-123,446) (-89,454) (-79,508) (-91,483) (-87,470) (-67,474) (-55,485) (-49,481) (-19,498) (-17,475) (-5,482) (-28,510) (-18,483) (-17,511) (3,480) (-5,484) (-32,458) (-7,497) (-37,463) (-25,488) (-21,476) (1,517) (6,494) (36,491) (29,479) (11,481) (6,524) (24,509) (2,501) (16,495) (24,488) (25,498) (60,489) (68,497) (36,517) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(61/123)=(-196,449) (-191,444) (-194,449) (-186,451) (-193,449) (-187,457) (-151,462) (-157,465) (-158,460) (-149,471) (-141,469) (-156,455) (-168,455) (-147,468) (-112,435) (-136,453) (-96,471) (-115,485) (-134,466) (-127,489) (-140,478) (-128,469) (-125,490) (-115,473) (-125,497) (-117,486) (-116,460) (-74,503) (-78,483) (-71,502) (-106,488) (-49,494) (-44,492) (-48,521) (-37,504) (-60,476) (-62,505) (-37,500) (-44,511) (-31,531) (-42,504) (-37,494) (-68,505) (-65,524) (-8,513) (-20,505) (-26,511) (-38,508) (-32,518) (-4,528) (2,509) (-15,504) (-15,521) (1,536) (28,519) (32,526) (12,529) (42,534) (32,543) (15,531) (20,537)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(53/123)=(-194,482) (-191,473) (-181,485) (-171,483) (-178,487) (-168,486) (-168,495) (-155,496) (-133,506) (-147,500) (-132,499) (-132,507) (-109,523) (-122,521) (-108,532) (-122,500) (-120,520) (-104,519) (-115,509) (-72,520) (-93,510) (-78,527) (-85,504) (-97,523) (-58,522) (-89,529) (-78,545) (-54,547) (-62,528) (-76,552) (-41,535) (-78,551) (-59,529) (-45,555) (-26,551) (-25,540) (-23,556) (-19,554) (-25,540) (-10,546) (-22,570) (13,552) (-9,546) (15,548) (12,562) (3,556) (8,538) (41,595) (32,547) (13,535) (16,527) (39,520) (31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(12/123)=(41,262) (33,256) (47,255) (39,249) (49,255) (41,245) (49,249) (39,239) (49,244) (44,238) (49,240) (63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(9/123)=(99,261) (93,261) (100,264) (91,262) (101,266) (89,262) (102,268) (90,288) (71,303)
+[charged-spring] done
+2026-05-09T11:42:44.214Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,426) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-80,433) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:46.534Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,426) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-80,433) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:47.006Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,426) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-80,433) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:48.146Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,427) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-80,433) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:42:55.084Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(2/123)=(353,285) (453,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(389,413) (352,443) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(284,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-92,432) (-62,469) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,528)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(25,556)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(70,302)
+[charged-spring] done
+2026-05-09T11:42:57.734Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(286,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-72,440) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,554)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:00.562Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(286,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,553)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:03.498Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(28,550)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(66,299)
+[charged-spring] done
+2026-05-09T11:43:05.262Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(453,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(286,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-70,440) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,526)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,556)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(60,225)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:05.698Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,459)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(386,430) (334,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(283,534)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-317,338) (-74,435) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-326,367) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-338,392) (37,526)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-346,421) (20,556) (31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(57,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(74,303)
+[charged-spring] done
+2026-05-09T11:43:17.416Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(288,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-317,343) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-343,418) (24,548) (31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(72,303)
+[charged-spring] done
+2026-05-09T11:43:20.854Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-317,345) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-342,416) (31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(67,229)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(68,301)
+[charged-spring] done
+2026-05-09T11:43:24.150Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(291,539)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-317,346) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-341,415) (31,544)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(67,229)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(68,301)
+[charged-spring] done
+2026-05-09T11:43:26.338Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(289,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-317,343) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-343,417) (28,546)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,227)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(69,301)
+[charged-spring] done
+2026-05-09T11:43:27.710Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(457,459)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(470,260) (385,431) (334,557)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(4/123)=(-317,338) (-76,434) (-55,452) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-330,366) (46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-339,392) (37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-347,422) (20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(74,303)
+[charged-spring] done
+2026-05-09T11:43:47.707Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(449,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(38,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(24,555)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(63,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:49.626Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(4/123)=(326,160) (365,274) (457,456) (453,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(3/123)=(293,174) (424,474) (429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(5/123)=(470,254) (392,425) (379,436) (366,456) (336,557)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(309,548) (311,547)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/123)=(416,229) (281,531) (285,536)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(6/123)=(-323,342) (-317,338) (-79,431) (-65,445) (-43,456) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-332,366) (45,504)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/123)=(-340,390) (32,529) (37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(4/123)=(-349,414) (-347,422) (17,558) (24,555)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(76,304)
+[charged-spring] done
+2026-05-09T11:43:52.322Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:56.302Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:43:59.114Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:00.934Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:01.990Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:02.534Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:03.662Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,431) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:08.158Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 550 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,430) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:10.702Z [charged-spring] start: 8 nodes, 11 edges, 123 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(456,462)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/123)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/123)=(385,430) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/123)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/123)=(282,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/123)=(-76,434) (53,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(37,527)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/123)=(20,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/123)=(59,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/123)=(71,302)
+[charged-spring] done
+2026-05-09T11:44:12.586Z [charged-spring] start: 8 nodes, 11 edges, 90 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/90)=(452,464)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/90)=(429,476)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/90)=(381,431) (332,555)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/90)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/90)=(285,531)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/90)=(-312,341) (52,481)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/90)=(44,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/90)=(34,525)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/90)=(-341,423) (15,554) (30,543)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/90)=(60,226)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/90)=(70,301)
+[charged-spring] done
+2026-05-09T11:44:14.254Z [charged-spring] start: 8 nodes, 11 edges, 134 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/134)=(456,463)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/134)=(429,477)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/134)=(389,429) (331,556)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/134)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/134)=(282,534)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/134)=(-73,436) (53,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/134)=(46,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/134)=(37,528)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/134)=(22,558)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/134)=(58,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/134)=(75,304)
+[charged-spring] done
+2026-05-09T11:44:15.622Z [charged-spring] start: 8 nodes, 11 edges, 255 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/255)=(459,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/255)=(430,478)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/255)=(398,431) (339,566) (331,557)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/255)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/255)=(270,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/255)=(-77,427) (58,479)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/255)=(-335,367) (-94,454) (47,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/255)=(46,532) (40,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/255)=(24,563)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/255)=(56,222)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/255)=(77,306)
+[charged-spring] done
+2026-05-09T11:44:22.703Z [charged-spring] start: 8 nodes, 11 edges, 652 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/652)=(464,468)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/652)=(425,482)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/652)=(409,428) (341,579) (330,558)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/652)=(450,221) (307,547)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/652)=(420,227) (255,551) (290,541)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(4/652)=(-328,346) (-66,420) (73,476) (55,482)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(4/652)=(-336,366) (-338,355) (43,506) (48,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(7/652)=(-344,393) (-358,395) (-302,402) (-189,455) (-105,482) (69,550) (41,524)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/652)=(-350,408) (19,565) (33,545)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/652)=(57,222)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/652)=(77,306)
+[charged-spring] done
+2026-05-09T11:44:24.022Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(459,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(430,478)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(397,431) (338,565) (331,557)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(271,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(-77,427) (58,479)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-335,367) (-99,451) (47,503)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(46,532) (40,523)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(24,563)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,222)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,305)
+[charged-spring] done
+2026-05-09T11:44:32.721Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(424,480)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(400,433) (373,457) (342,561)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,533)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(-72,414) (60,465)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(48,502)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(40,536) (38,529)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,570)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(57,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:44:33.962Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(403,432) (388,441) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(268,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(-71,414) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(49,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,573)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:44:46.699Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/244)=(403,432) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(268,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/244)=(-73,412) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(49,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(39,537)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(17,575)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,305)
+[charged-spring] done
+2026-05-09T11:44:49.782Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 330 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(403,432) (389,441) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-38,448) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(49,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,573)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:26.923Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 200 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(401,433) (378,450) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-44,446) (62,466)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(50,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,573)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:28.790Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 240 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(403,432) (386,443) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-43,447) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(50,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,573)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:30.714Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 570 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(402,432) (386,443) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-37,447) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(49,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,573)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:33.474Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 840 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(402,432) (386,443) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-37,447) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(50,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,572)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:37.018Z [charged-spring] start: 8 nodes, 11 edges, 244 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(460,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/244)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/244)=(402,432) (386,443) (344,562)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(0/244)=∅
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/244)=(269,532)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/244)=(-73,411) (-37,447) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(50,501)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(38,536)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(1/244)=(20,572)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/244)=(56,224)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/244)=(77,304)
+[charged-spring] done
+2026-05-09T11:45:57.625Z [charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(462,466)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,434) (346,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(306,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(2/432)=(256,533) (277,535)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(-74,401) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-48,469) (41,504) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(46,539) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(15,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(55,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+2026-05-09T11:46:13.085Z [charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(466,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,429) (345,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(305,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(257,527)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-77,408) (64,468) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-45,475) (41,507) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(51,547) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(15,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(54,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+2026-05-09T11:46:23.852Z [charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(466,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,429) (345,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(305,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(257,527)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(4/432)=(-77,408) (-35,452) (64,468) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-45,475) (41,507) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(51,547) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(15,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(54,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+2026-05-09T11:46:34.360Z [charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(466,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,429) (345,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(305,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(257,527)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-77,408) (64,468) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-44,475) (42,507) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(51,547) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(16,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(54,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+2026-05-09T11:47:02.716Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 0 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-283,362) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:47:02.950Z app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 0 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(2)=(-283,362) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:47:53.684Z [bezier-route] start: 8 nodes, 11 edges, max 4 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:47:55.642Z [bezier-route] start: 8 nodes, 11 edges, max 6 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:48:00.994Z [bezier-route] start: 8 nodes, 11 edges, max 6 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(3)=(445,281) (369,450) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:48:01.582Z [bezier-route] start: 8 nodes, 11 edges, max 6 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:48:03.350Z [bezier-route] start: 8 nodes, 11 edges, max 6 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:48:16.497Z [bezier-route] start: 8 nodes, 11 edges, max 7 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T11:48:16.718Z [bezier-route] start: 8 nodes, 11 edges, max 8 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T12:03:20.765Z app component kmCommand: {"kind":"EDIT_SELECTED"}
+handleCommands - {"kind":"EDIT_SELECTED"}
+handleEditSelected: Nodes=1, Labels=0
+  -> Entering edit mode due to existing selection.
+app component kmCommand: {"kind":"INSERT_CHAR","value":"'"}
+handleCommands - {"kind":"INSERT_CHAR","value":"'"}
+2026-05-09T12:03:21.686Z app component kmCommand: {"kind":"DELETE_LAST_CHAR"}
+handleCommands - {"kind":"DELETE_LAST_CHAR"}
+2026-05-09T12:03:21.952Z app component kmCommand: {"kind":"EXIT_LABEL_EDIT_MODE"}
+handleCommands - {"kind":"EXIT_LABEL_EDIT_MODE"}
+case exit-label-edit-mode
+2026-05-09T12:03:22.215Z app component kmCommand: {"kind":"UNSELECT_ALL"}
+handleCommands - {"kind":"UNSELECT_ALL"}
+crosshairs bbox (local): min(-461.1,378.5) max(-418.1,421.5) scale=1 layerPos=(995,53.5)
+2026-05-09T12:22:34.798Z app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(466,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,429) (345,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(305,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(257,527)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-77,408) (64,468) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-44,475) (42,507) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(51,547) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(16,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(54,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+app component kmCommand: {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_CHARGED_SPRING_EDGES"}
+[charged-spring] start: 8 nodes, 11 edges, 432 beads/edge, 1110 iters
+[charged-spring]   node da-1 pos=(225,40) size=120x120
+[charged-spring]   node da-2 pos=(405,475) size=120x120
+[charged-spring]   node da-3 pos=(405,115) size=120x120
+[charged-spring]   node da-4 pos=(225,550) size=120x120
+[charged-spring]   node da-5 pos=(-460,295) size=120x120
+[charged-spring]   node da-6 pos=(45,475) size=120x120
+[charged-spring]   node da-7 pos=(-30,295) size=120x120
+[charged-spring]   node da-8 pos=(45,115) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(466,465)
+[charged-spring] edge da-10 da-1→da-2: start=(310,160) end=(440,475) obstacles=6 beads(1/432)=(423,481)
+[charged-spring] edge da-11 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(3/432)=(408,429) (345,568) (343,563)
+[charged-spring] edge da-12 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(305,549)
+[charged-spring] edge da-13 da-3→da-4: start=(440,235) end=(310,550) obstacles=6 beads(1/432)=(257,527)
+[charged-spring] edge da-14 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-77,408) (64,468) (62,462)
+[charged-spring] edge da-15 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(3/432)=(-44,475) (42,507) (50,496)
+[charged-spring] edge da-16 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(51,547) (38,530)
+[charged-spring] edge da-17 da-5→da-6: start=(-340,376) end=(45,514) obstacles=6 beads(2/432)=(16,572) (26,564)
+[charged-spring] edge da-18 da-7→da-8: start=(55,295) end=(80,235) obstacles=6 beads(1/432)=(54,223)
+[charged-spring] edge da-19 da-8→da-7: start=(80,235) end=(55,295) obstacles=6 beads(1/432)=(78,305)
+[charged-spring] done
+app component kmCommand: {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_ROUTE_EDGES"}
+[bezier-route] start: 8 nodes, 11 edges, max 8 cp/edge
+[bezier-route] edge da-9 da-1→da-2: cps(2)=(336,194) (435,433)
+[bezier-route] edge da-10 da-1→da-2: cps(2)=(315,202) (414,442)
+[bezier-route] edge da-11 da-3→da-4: cps(2)=(445,281) (346,520)
+[bezier-route] edge da-12 da-3→da-4: cps(0)=∅ (straight)
+[bezier-route] edge da-13 da-3→da-4: cps(2)=(404,264) (305,503)
+[bezier-route] edge da-14 da-5→da-6: cps(3)=(-283,362) (-58,449) (10,466)
+[bezier-route] edge da-15 da-5→da-6: cps(2)=(-290,383) (2,487)
+[bezier-route] edge da-16 da-5→da-6: cps(2)=(-298,403) (-5,508)
+[bezier-route] edge da-17 da-5→da-6: cps(2)=(-305,424) (-12,528)
+[bezier-route] edge da-18 da-7→da-8: cps(2)=(48,284) (67,238)
+[bezier-route] edge da-19 da-8→da-7: cps(2)=(67,238) (48,284)
+[bezier-route] done
+2026-05-09T12:30:45.912Z handleCommands - {"kind":"LOAD_SAMPLE_GRAPH","graphId":"nudge-multi"}
+crosshairs bbox (local): min(778.5,228.5) max(821.5,271.5) scale=1 layerPos=(0,0)
+2026-05-09T12:30:46.494Z app component kmCommand: {"kind":"APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES"}
+handleCommands - {"kind":"APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES"}
+[bezier-fit] start: 11 edges, dpTolerance=3
+[charged-spring] start: 8 nodes, 11 edges, 16 beads/edge, 300 iters
+[charged-spring]   node da-1 pos=(100,80) size=120x120
+[charged-spring]   node da-2 pos=(350,80) size=120x120
+[charged-spring]   node da-3 pos=(100,220) size=120x120
+[charged-spring]   node da-4 pos=(350,220) size=120x120
+[charged-spring]   node da-5 pos=(100,370) size=120x120
+[charged-spring]   node da-6 pos=(350,370) size=120x120
+[charged-spring]   node da-7 pos=(100,510) size=120x120
+[charged-spring]   node da-8 pos=(350,510) size=120x120
+[charged-spring] edge da-9 da-1→da-2: start=(220,140) end=(350,140) obstacles=6 beads(16/16)=(228,129) (235,127) (242,125) (250,123) (258,122) (265,122) (273,122) (281,122) (289,122) (297,122) (305,122) (312,122) (320,123) (328,125) (335,127) (342,129)
+[charged-spring] edge da-10 da-1→da-2: start=(220,140) end=(350,140) obstacles=6 beads(16/16)=(228,151) (235,148) (242,146) (250,145) (258,144) (266,145) (274,145) (281,145) (289,145) (296,145) (304,145) (312,144) (320,145) (328,146) (335,148) (342,151)
+[charged-spring] edge da-11 da-3→da-4: start=(220,280) end=(350,280) obstacles=6 beads(16/16)=(228,258) (234,260) (242,261) (250,262) (259,261) (267,260) (274,259) (281,259) (289,259) (296,259) (303,260) (311,261) (320,262) (328,261) (336,260) (342,258)
+[charged-spring] edge da-12 da-3→da-4: start=(220,280) end=(350,280) obstacles=6 beads(16/16)=(228,280) (234,280) (241,280) (249,280) (257,280) (265,280) (273,280) (281,280) (289,280) (297,280) (305,280) (313,280) (321,280) (329,280) (336,280) (342,280)
+[charged-spring] edge da-13 da-3→da-4: start=(220,280) end=(350,280) obstacles=6 beads(16/16)=(228,302) (234,301) (242,300) (250,299) (258,300) (266,300) (274,300) (281,301) (289,301) (296,300) (304,300) (312,300) (320,299) (328,300) (336,301) (342,302)
+[charged-spring] edge da-14 da-5→da-6: start=(220,430) end=(350,430) obstacles=6 beads(16/16)=(228,397) (234,400) (242,401) (250,402) (259,401) (267,401) (274,400) (281,400) (289,400) (296,400) (303,401) (311,401) (320,402) (328,401) (336,400) (342,397)
+[charged-spring] edge da-15 da-5→da-6: start=(220,430) end=(350,430) obstacles=6 beads(16/16)=(228,419) (234,420) (241,420) (249,420) (257,420) (265,420) (273,420) (281,420) (289,420) (297,420) (305,420) (313,420) (321,420) (329,420) (336,420) (342,419)
+[charged-spring] edge da-16 da-5→da-6: start=(220,430) end=(350,430) obstacles=6 beads(16/16)=(228,441) (234,440) (241,439) (249,439) (258,439) (266,440) (274,440) (281,440) (289,440) (296,440) (304,440) (312,439) (321,439) (329,439) (336,440) (342,441)
+[charged-spring] edge da-17 da-5→da-6: start=(220,430) end=(350,430) obstacles=6 beads(16/16)=(228,463) (234,459) (243,457) (252,457) (261,458) (268,460) (275,461) (282,461) (288,461) (295,461) (302,460) (309,458) (318,457) (327,457) (336,459) (342,463)
+[charged-spring] edge da-18 da-7→da-8: start=(220,570) end=(350,570) obstacles=6 beads(16/16)=(228,559) (235,562) (242,564) (250,565) (258,566) (266,565) (274,565) (281,565) (289,565) (296,565) (304,565) (312,566) (320,565) (328,564) (335,562) (342,559)
+[charged-spring] edge da-19 da-8→da-7: start=(350,570) end=(220,570) obstacles=6 beads(16/16)=(342,581) (335,583) (328,585) (320,587) (312,588) (305,588) (297,588) (289,588) (281,588) (273,588) (265,588) (258,588) (250,587) (242,585) (235,583) (228,581)
+[charged-spring] done
+[bezier-fit] edge da-9 da-1→da-2: 16 → 4 cps
+[bezier-fit] edge da-10 da-1→da-2: 16 → 4 cps
+[bezier-fit] edge da-11 da-3→da-4: 16 → 3 cps
+[bezier-fit] edge da-12 da-3→da-4: 16 → 2 cps
+[bezier-fit] edge da-13 da-3→da-4: 16 → 2 cps
+[bezier-fit] edge da-14 da-5→da-6: 16 → 4 cps
+[bezier-fit] edge da-15 da-5→da-6: 16 → 2 cps
+[bezier-fit] edge da-16 da-5→da-6: 16 → 2 cps
+[bezier-fit] edge da-17 da-5→da-6: 16 → 5 cps
+[bezier-fit] edge da-18 da-7→da-8: 16 → 4 cps
+[bezier-fit] edge da-19 da-8→da-7: 16 → 4 cps
+[bezier-fit] done

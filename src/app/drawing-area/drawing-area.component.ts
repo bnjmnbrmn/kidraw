@@ -19,6 +19,7 @@ import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
 import { applyChargedSpringEdges } from './charged-spring-edges';
 import { applyBezierRouteEdges } from './bezier-route-edges';
+import { applyBezierFitChargedSpringEdges } from './bezier-fit-route-edges';
 import { TuningOptionsService } from '../services/tuning-options.service';
 
 @Component({
@@ -167,18 +168,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Most recently applied routing — used by the auto-reroute subscription
    *  so a slider change only re-runs the routing the user is currently
    *  looking at. null until the user has applied any routing. */
-  private lastAppliedRouting: 'charged-spring' | 'bezier-route' | null = null;
+  private lastAppliedRouting: 'charged-spring' | 'bezier-route' | 'bezier-fit' | null = null;
   private tuningSub?: Subscription;
 
   ngOnInit(): void {
-    // Auto-reroute when a slider for the active routing changes. Debounced
-    // so dragging a slider doesn't fire a routing per pixel of movement.
+    // Auto-reroute when a slider relevant to the active routing changes.
+    // Debounced so dragging a slider doesn't fire a routing per pixel of
+    // movement. The hybrid 'bezier-fit' routing reads BOTH charged-spring
+    // and bezier-fit options, so it should re-run on either group.
     this.tuningSub = this.tuning.changes
       .pipe(debounceTime(120))
       .subscribe(group => {
-        if (this.lastAppliedRouting !== group) return;
-        if (group === 'charged-spring') this.applyChargedSpringEdges(true);
-        else if (group === 'bezier-route') this.applyBezierRouteEdges(true);
+        const lr = this.lastAppliedRouting;
+        if (lr === 'charged-spring' && group === 'charged-spring') {
+          this.applyChargedSpringEdges(true);
+        } else if (lr === 'bezier-route' && group === 'bezier-route') {
+          this.applyBezierRouteEdges(true);
+        } else if (lr === 'bezier-fit' && (group === 'bezier-fit' || group === 'charged-spring')) {
+          this.applyBezierFitChargedSpringEdges(true);
+        }
       });
   }
 
@@ -462,6 +470,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_BEZIER_ROUTE_EDGES:
         this.applyBezierRouteEdges();
         break;
+      case DACommandType.APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES:
+        this.applyBezierFitChargedSpringEdges();
+        break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
         this.log.log('[style] setEdgeDirectedness:', command.directedness);
         this.setEdgeDirectedness(command.directedness);
@@ -631,6 +642,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     applyBezierRouteEdges(allNodes, edges, this.tuning.bezierRoute, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'bezier-route';
+  }
+
+  private applyBezierFitChargedSpringEdges(skipUndo: boolean = false) {
+    this.finishTweens();
+    if (!skipUndo) {
+      this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    }
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+
+    applyBezierFitChargedSpringEdges(
+      allNodes, edges,
+      this.tuning.bezierFit, this.tuning.chargedSpring,
+      msg => this.log.log(msg),
+    );
+    this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'bezier-fit';
   }
 
   private exitLabelEditMode() {

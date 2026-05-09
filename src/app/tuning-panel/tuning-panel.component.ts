@@ -20,6 +20,10 @@ export class TuningPanelComponent {
     return this.tuning.sliders.filter(s => s.group === 'charged-spring');
   }
 
+  get bezierFitSliders(): TuningSlider[] {
+    return this.tuning.sliders.filter(s => s.group === 'bezier-fit');
+  }
+
   onSliderChange(slider: TuningSlider, event: Event): void {
     const value = parseFloat((event.target as HTMLInputElement).value);
     if (Number.isNaN(value)) return;
