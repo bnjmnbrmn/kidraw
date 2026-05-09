@@ -70,14 +70,13 @@ export const DEFAULT_OPTIONS: ChargedSpringOptions = {
   pruneEpsilon: 0.3,
   maxVelocity: 30,
   laneSpacing: 22,
-  // Cross-edge bead repulsion is disabled by default. The lane-seed
-  // offsets plus the anchor are enough to keep parallel siblings
-  // separated, and adding bead-bead inverse-square forces between
-  // edges destabilizes dense groups (4+ parallels) — the chain folds
-  // back on itself when sibling beads push each other past their
-  // chain neighbors. Re-enable for crossing non-sibling edges if that
-  // case becomes important.
-  edgeRepulsionK: 0,
+  // Sibling-scoped cross-edge bead repulsion: only beads on edges in the
+  // same {src, dest} parallel-sibling group push this bead. Lane offsets
+  // alone don't prevent siblings from crossing in the middle of the chain
+  // when an obstacle deflects them asymmetrically — this force keeps each
+  // sibling in its own lane mid-chain. Scoped to siblings only because
+  // a global all-pairs repulsion destabilized dense (4+) groups.
+  edgeRepulsionK: 50,
   edgeRepulsionMaxDist: 60,
   // Anchor strength. With damping=0.78 and dt=1.0, the discrete spring is
   // stable up to K ≈ 2.56; we sit well below that. Equilibrium displacement
@@ -93,6 +92,11 @@ interface EdgeSim {
   end: {x: number; y: number};
   beads: Bead[];
   obstacles: Obstacle[];
+  /** Indices into states[] of edges in the same parallel-sibling group
+   *  (same unordered {src, dest} pair). Used to scope cross-edge bead
+   *  repulsion: siblings push each other to prevent crossings, but
+   *  unrelated edges don't (which would cause 4-group instability). */
+  siblingIndices: number[];
 }
 
 /** Run a charged-spring simulation on every non-self-loop edge in `edges`,
@@ -156,7 +160,19 @@ export function applyChargedSpringEdges(
       if (!incident.has(n)) edgeObstacles.push(ob);
     }
 
-    states.push({edge, start, end, beads, obstacles: edgeObstacles});
+    states.push({edge, start, end, beads, obstacles: edgeObstacles, siblingIndices: []});
+  }
+
+  // Now that every state's index is known, populate siblingIndices.
+  for (let i = 0; i < states.length; i++) {
+    const myGroup = groups.get(states[i].edge);
+    if (!myGroup) continue;
+    for (let j = 0; j < states.length; j++) {
+      if (i === j) continue;
+      if (groups.get(states[j].edge) === myGroup) {
+        states[i].siblingIndices.push(j);
+      }
+    }
   }
 
   simulateAll(states, opts);
@@ -285,11 +301,14 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
           fy += f.fy;
         }
 
-        // Cross-edge bead repulsion: every bead on every other edge pushes
-        // this bead away with inverse-square falloff, capped at a cutoff
-        // distance. Keeps parallel siblings spread out at equilibrium.
-        for (let s2 = 0; s2 < states.length; s2++) {
-          if (s2 === s) continue;
+        // Sibling-scoped cross-edge bead repulsion: only beads on edges in
+        // the same {src, dest} parallel-sibling group push this bead away.
+        // Unrelated edges in the graph don't repel — that's what was
+        // destabilizing 4-groups before, where every edge pushed every other
+        // edge and the inner beads got squeezed past their chain neighbors.
+        // Keeping the force scoped to siblings prevents lane crossings within
+        // a group without the global instability.
+        for (const s2 of st.siblingIndices) {
           const others = states[s2].beads;
           for (let j = 0; j < others.length; j++) {
             const o = others[j];
