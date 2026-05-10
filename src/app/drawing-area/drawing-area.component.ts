@@ -91,6 +91,41 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private outgoingTraversalIndexByNode = new Map<DANode, number>();
   private incomingTraversalIndexByNode = new Map<DANode, number>();
 
+  private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
+    DACommandType.CREATE_NEW_NODE,
+    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.CONNECT_SELECTED_NODES,
+    DACommandType.FINALIZE_DIRECTED_EDGE,
+    DACommandType.ADD_LABEL,
+    DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
+    DACommandType.MULTI_ITEM_SELECT,
+    DACommandType.UNSELECT_ALL,
+    DACommandType.DELETE,
+    DACommandType.UNDO,
+    DACommandType.REDO,
+    DACommandType.SNAP_TO_NEAREST_NODE,
+    DACommandType.SNAP_TO_NODE_LEFT,
+    DACommandType.SNAP_TO_NODE_RIGHT,
+    DACommandType.SNAP_TO_NODE_UP,
+    DACommandType.SNAP_TO_NODE_DOWN,
+    DACommandType.TRAVERSE_OUTGOING_NEXT,
+    DACommandType.TRAVERSE_OUTGOING_PREV,
+    DACommandType.TRAVERSE_INCOMING_NEXT,
+    DACommandType.TRAVERSE_INCOMING_PREV,
+    DACommandType.FOLLOW_SELECTED_EDGE,
+    DACommandType.NAVIGATE_BACK,
+    DACommandType.GATHER_CONNECTED_NODES,
+    DACommandType.LOAD_SAMPLE_GRAPH,
+    DACommandType.LOAD_GRAPH,
+    DACommandType.NEW_GRAPH,
+    DACommandType.EXIT_LABEL_EDIT_MODE,
+    DACommandType.RECENTER_VIEW,
+    DACommandType.RECENTER_CROSSHAIRS,
+    DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS,
+    DACommandType.SET_DEFAULT_LINE_STYLE,
+    DACommandType.SET_NODE_SHAPE,
+  ]);
+
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
     DACommandType.CREATE_NEW_NODE_DIRECTED,
@@ -172,9 +207,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this._beforeUnloadHandler = () => this.saveGraphToStorage();
     window.addEventListener('beforeunload', this._beforeUnloadHandler);
 
-    // Emit initial zoom level
+    // Emit initial zoom level and context state
     this.emitZoomLevel();
     this.emitMovementSpeed();
+    this.emitContextState();
 
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
@@ -567,6 +603,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.assertNever(command);
     }
 
+    if (DrawingAreaComponent.CONTEXT_AFFECTING_COMMANDS.has(command.kind)) {
+      this.emitContextState();
+    }
   }
 
   assertNever(x: never): never {
@@ -1206,6 +1245,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private emitMovementSpeed() {
     this.movementSpeedChange.emit(this.steeringMoveDistance);
+  }
+
+  private emitContextState(): void {
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    const selectedLabels = this.getSelectedLabels();
+    const parts: string[] = [];
+    if (selectedNodes.length > 0) parts.push(`${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''}`);
+    if (selectedEdges.length > 0) parts.push(`${selectedEdges.length} edge${selectedEdges.length !== 1 ? 's' : ''}`);
+    if (selectedLabels.length > 0) parts.push(`${selectedLabels.length} label${selectedLabels.length !== 1 ? 's' : ''}`);
+    this.daOut.emit({
+      kind: 'context-state-update',
+      selectionSummary: parts.join(', '),
+      defaultNodeShape: this._defaultNodeShape,
+      defaultEdgeDirectedness: this._defaultEdgeDirectedness,
+      defaultLineStyle: this._defaultLineStyle,
+    });
   }
 
   private normalizeHeading(angleRadians: number): number {

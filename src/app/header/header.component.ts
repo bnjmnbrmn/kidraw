@@ -5,6 +5,7 @@ import { KeyboardLayout } from '../lib/keymenu/layouts/us-qwerty';
 import { VisualConfigService } from '../services/visual-config.service';
 import { VisualConfig } from '../services/visual-config.model';
 import { DemoDataService } from '../services/demo-data.service';
+import { EdgeDirectedness, LineStyle, NodeShape } from '../drawing-area/command.model';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -47,6 +48,36 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 export class HeaderComponent {
   zoomLevel: number = 100;
   mode: 'normal' | 'labelEdit' = 'normal';
+  selectionSummary: string = '';
+  defaultNodeShape: NodeShape = 'box';
+  defaultEdgeDirectedness: EdgeDirectedness = 'directed';
+  defaultLineStyle: LineStyle = 'solid';
+
+  get directednessSymbol(): string {
+    switch (this.defaultEdgeDirectedness) {
+      case 'directed': return '→';
+      case 'undirected': return '—';
+      case 'bidirectional': return '↔';
+    }
+  }
+
+  get nodeShapeLabel(): string {
+    switch (this.defaultNodeShape) {
+      case 'box': return 'Box';
+      case 'circle': return 'Circle';
+      case 'diamond': return 'Diamond';
+      case 'junction': return '•';
+      case 'invisible': return 'Invis';
+    }
+  }
+
+  get lineStyleSymbol(): string {
+    switch (this.defaultLineStyle) {
+      case 'solid': return '—';
+      case 'dashed': return '- -';
+      case 'dotted': return '···';
+    }
+  }
 
   @Output() loadSampleGraph = new EventEmitter<string>();
 

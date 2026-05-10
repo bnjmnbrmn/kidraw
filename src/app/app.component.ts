@@ -64,6 +64,14 @@ export class AppComponent implements OnInit, OnDestroy {
         this.keymenuComponent.exitToNormalMode();
         if (this.headerComponent) this.headerComponent.mode = 'normal';
         break;
+      case "context-state-update":
+        if (this.headerComponent) {
+          this.headerComponent.selectionSummary = daNotification.selectionSummary;
+          this.headerComponent.defaultNodeShape = daNotification.defaultNodeShape;
+          this.headerComponent.defaultEdgeDirectedness = daNotification.defaultEdgeDirectedness;
+          this.headerComponent.defaultLineStyle = daNotification.defaultLineStyle;
+        }
+        break;
     }
   }
 

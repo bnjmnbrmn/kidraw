@@ -7,6 +7,14 @@
     @if (mode === 'labelEdit') {
       <div class="mode-badge">Label Edit</div>
     }
+    <div class="context-strip">
+      @if (selectionSummary) {
+        <span class="selection-chip">{{ selectionSummary }}</span>
+      }
+      <span class="defaults-chip" title="Default node shape">{{ nodeShapeLabel }}</span>
+      <span class="defaults-chip" title="Default edge direction">{{ directednessSymbol }}</span>
+      <span class="defaults-chip" title="Default line style">{{ lineStyleSymbol }}</span>
+    </div>
     <select class="sample-graph-select" tabindex="-1" (change)="onSampleGraphChange($event)">
       <option value="">Load Sample...</option>
       @for (graph of demoData.sampleGraphs; track graph.id) {
