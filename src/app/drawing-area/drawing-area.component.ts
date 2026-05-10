@@ -622,11 +622,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
     if (labelUnderCrosshairs) {
       labelUnderCrosshairs.isSelected = true;
+      this.drawingLayer.batchDraw();
       return;
     }
 
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-
     if (daNodesContainingCrosshairs.length > 0) {
       daNodesContainingCrosshairs[0].isSelected = true;
       return;
@@ -635,6 +635,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
     if (daEdgesContainingCrosshairs.length > 0) {
       daEdgesContainingCrosshairs[0].isSelected = true;
+      this.drawingLayer.batchDraw();
       return;
     }
   }
