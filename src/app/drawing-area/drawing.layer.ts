@@ -310,6 +310,8 @@ export class DrawingLayer extends Konva.Layer {
       controlPoints: edge.controlPoints.length > 0
         ? edge.controlPoints.map(p => ({x: p.x, y: p.y}))
         : undefined,
+      directedness: edge.directedness !== 'directed' ? edge.directedness : undefined,
+      lineStyle: edge.lineStyle !== 'solid' ? edge.lineStyle : undefined,
     }));
 
     return { nodes, edges };
@@ -354,6 +356,8 @@ export class DrawingLayer extends Konva.Layer {
       if (es.controlPoints && es.controlPoints.length > 0) {
         edge.setControlPoints(es.controlPoints);
       }
+      if (es.directedness) edge.directedness = es.directedness;
+      if (es.lineStyle) edge.lineStyle = es.lineStyle;
       this.daEdgeGroup.add(edge.konvaGroup);
       this.daEdges.push(edge);
 

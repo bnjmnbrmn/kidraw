@@ -31,6 +31,8 @@ export interface DAEdgeSnapshot {
   isSelected: boolean;
   labels: DALabelSnapshot[];
   controlPoints?: {x: number; y: number}[];
+  directedness?: import('./command.model').EdgeDirectedness;
+  lineStyle?: import('./command.model').LineStyle;
 }
 
 export interface GraphSnapshot {
