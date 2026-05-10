@@ -38,7 +38,11 @@ Notes from a codebase review session. Organized into UI/UX ideas and process/arc
 
 - **Undo/redo indicators**: Show in the header whether undo/redo are available (e.g., subtle stack depth count). Helps users know if they have history to go back to.
 
-- **Mode indicator**: Show the current keymenu mode (normal/labelEdit) in the header. When in label edit mode, show what's being edited.
+- **Mode indicator**: ✅ Done — purple "LABEL EDIT" badge shows in header when in label-edit mode.
+
+- **"What's selected" indicator** — small text in header showing "3 nodes selected" or "edge selected" or "nothing selected". Would help users understand keymenu context (actions apply to selection vs defaults).
+
+- **Default shape/directedness display** — when nothing is selected, show the current default node shape and edge directedness in the header as small chips (e.g., "Box  →"). Removing mystery about what pressing the insert key will create.
 
 ---
 
