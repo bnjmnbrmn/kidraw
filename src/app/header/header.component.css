@@ -194,6 +194,15 @@ input[type="color"] {
   gap: 0.3rem;
 }
 
+.graph-stats-chip {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+  opacity: 0.4;
+  font-family: monospace;
+}
+
 .selection-chip {
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;

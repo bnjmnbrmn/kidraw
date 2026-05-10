@@ -67,6 +67,8 @@ export class AppComponent implements OnInit, OnDestroy {
       case "context-state-update":
         if (this.headerComponent) {
           this.headerComponent.selectionSummary = daNotification.selectionSummary;
+          this.headerComponent.totalNodes = daNotification.totalNodes;
+          this.headerComponent.totalEdges = daNotification.totalEdges;
           this.headerComponent.defaultNodeShape = daNotification.defaultNodeShape;
           this.headerComponent.defaultEdgeDirectedness = daNotification.defaultEdgeDirectedness;
           this.headerComponent.defaultLineStyle = daNotification.defaultLineStyle;

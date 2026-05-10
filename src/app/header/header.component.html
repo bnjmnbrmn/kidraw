@@ -10,6 +10,8 @@
     <div class="context-strip">
       @if (selectionSummary) {
         <span class="selection-chip">{{ selectionSummary }}</span>
+      } @else {
+        <span class="graph-stats-chip" title="Total nodes · edges in graph">{{ graphStats }}</span>
       }
       <span class="defaults-chip" title="Default node shape">{{ nodeShapeLabel }}</span>
       <span class="defaults-chip" title="Default edge direction">{{ directednessSymbol }}</span>

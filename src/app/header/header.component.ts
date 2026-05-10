@@ -49,11 +49,21 @@ export class HeaderComponent {
   zoomLevel: number = 100;
   mode: 'normal' | 'labelEdit' = 'normal';
   selectionSummary: string = '';
+  totalNodes: number = 0;
+  totalEdges: number = 0;
   defaultNodeShape: NodeShape = 'box';
   defaultEdgeDirectedness: EdgeDirectedness = 'directed';
   defaultLineStyle: LineStyle = 'solid';
   canUndo: boolean = false;
   canRedo: boolean = false;
+
+  get graphStats(): string {
+    if (this.totalNodes === 0 && this.totalEdges === 0) return 'empty';
+    const parts: string[] = [];
+    if (this.totalNodes > 0) parts.push(`${this.totalNodes}n`);
+    if (this.totalEdges > 0) parts.push(`${this.totalEdges}e`);
+    return parts.join(' ');
+  }
 
   get directednessSymbol(): string {
     switch (this.defaultEdgeDirectedness) {

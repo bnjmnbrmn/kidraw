@@ -1258,6 +1258,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({
       kind: 'context-state-update',
       selectionSummary: parts.join(', '),
+      totalNodes: this.drawingLayer.getDANodes().length,
+      totalEdges: this.drawingLayer.getDAEdges().length,
       defaultNodeShape: this._defaultNodeShape,
       defaultEdgeDirectedness: this._defaultEdgeDirectedness,
       defaultLineStyle: this._defaultLineStyle,
