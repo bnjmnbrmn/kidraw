@@ -680,6 +680,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private newGraph(): void {
+    const hasContent = this.drawingLayer.getDANodes().length > 0 || this.drawingLayer.getDAEdges().length > 0;
+    if (hasContent && !window.confirm('Start a new graph? This will clear the current diagram.')) return;
     this.finishTweens();
     this.unselectAllLabels();
     this.undoRedoService.clear();
