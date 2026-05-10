@@ -714,8 +714,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      [mbg.outgoingNext]: new LabeledAction('Next Out Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'outgoing'})),
-      [mbg.outgoingPrev]: new LabeledAction('Next In Edge', () => this.keyMenuOut.emit({kind: DACommandType.SELECT_NEXT_EDGE, direction: 'incoming'})),
+      [mbg.outgoingNext]: new LabeledAction('Jump Outgoing', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
+      [mbg.outgoingPrev]: new LabeledAction('Jump Incoming', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT})),
       [mbg.forwards]: new LabeledAction('Forwards', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
       [mbg.backwards]: new LabeledAction('Backwards', () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_BACK})),
       [mbg.gather]: new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
