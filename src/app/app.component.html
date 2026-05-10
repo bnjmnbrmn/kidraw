@@ -11,6 +11,7 @@
   [movementSpeed]="movementSpeed"
   [canEdit]="canEdit"
   [keyAssignments]="keyAssignments"
-  (keyMenuOut)="relayKeymenuCommand($event)"/>
+  (keyMenuOut)="relayKeymenuCommand($event)"
+  (labelEditModeOut)="handleLabelEditModeChange($event)"/>
 
 <app-tuning-panel/>

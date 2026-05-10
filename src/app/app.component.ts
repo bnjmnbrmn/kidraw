@@ -53,6 +53,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.commandsSubject.next(kmCommand);
   }
 
+  handleLabelEditModeChange(subMode: 'insert' | 'vimNormal') {
+    if (this.headerComponent) {
+      this.headerComponent.mode = subMode === 'vimNormal' ? 'labelEditVimNormal' : 'labelEdit';
+    }
+  }
+
   handleDANotification(daNotification: DANotification) {
 
     switch (daNotification.kind) {

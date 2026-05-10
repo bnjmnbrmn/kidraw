@@ -47,7 +47,7 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 })
 export class HeaderComponent {
   zoomLevel: number = 100;
-  mode: 'normal' | 'labelEdit' = 'normal';
+  mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' = 'normal';
   selectionSummary: string = '';
   totalNodes: number = 0;
   totalEdges: number = 0;

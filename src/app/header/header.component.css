@@ -249,6 +249,11 @@ input[type="color"] {
   text-transform: uppercase;
 }
 
+.vim-normal-badge {
+  background-color: #b45309;
+  color: #fef3c7;
+}
+
 select {
   background-color: var(--kd-header-bg);
   color: var(--kd-header-text);

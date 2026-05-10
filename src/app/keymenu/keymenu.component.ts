@@ -53,6 +53,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
+  @Output() labelEditModeOut = new EventEmitter<'insert' | 'vimNormal'>();
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -207,6 +208,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         normalCaps: new USQwertyModeConfig(this.buildNormalCapsSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEdit: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        labelEditVimNormal: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        labelEditVimNormalCaps: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
       },
       onModeSwitch: () => this.refreshActiveKeyPath(),
     });
@@ -276,6 +279,33 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     (config as any)[ctrlKey] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
     // Right Control always opens Ctrl submenu regardless of swap setting
     (config as any)['RControl'] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+
+    return config;
+  }
+
+  private buildLabelEditVimNormalSubmenuConfig(capsMode: boolean): SubmenuConfig {
+    const goInsert = () => {
+      this.switchMode(capsMode ? 'labelEditCaps' : 'labelEdit');
+      this.labelEditModeOut.emit('insert');
+    };
+    const config: SubmenuConfig = {} as SubmenuConfig;
+
+    // i → insert before cursor (return to insert mode)
+    (config as any)['i'] = new LabeledAction('insert', goInsert);
+    // a → append (return to insert mode — will be "after cursor" when cursor tracking is added)
+    (config as any)['a'] = new LabeledAction('append', goInsert);
+
+    // hjkl movement (visible on card; actual cursor movement not yet implemented)
+    (config as any)['h'] = new LabeledAction('←', () => {});
+    (config as any)['j'] = new LabeledAction('↓', () => {});
+    (config as any)['k'] = new LabeledAction('↑', () => {});
+    (config as any)['l'] = new LabeledAction('→', () => {});
+
+    // x → delete char under cursor (same as Backspace until cursor tracking is added)
+    (config as any)['x'] = new LabeledAction('del char', () =>
+      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
+    (config as any)['Backspace'] = new LabeledAction('delete', () =>
+      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
 
     return config;
   }
@@ -741,7 +771,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   /** Whether the keymenu is currently in a CapsLock mode. */
   get isCapsMode(): boolean {
     const name = this.keyMenu.currentMode.name;
-    return name === 'normalCaps' || name === 'labelEditCaps';
+    return name === 'normalCaps' || name === 'labelEditCaps' || name === 'labelEditVimNormalCaps';
   }
 
   /** Enter label-edit mode, choosing caps variant if currently in a caps mode. */
@@ -767,10 +797,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   /** Mode label color mapping — readable on both light and dark themes. */
   private static readonly MODE_LABEL_COLORS: Record<string, string> = {
-    normal: '#5b9bd5',      // blue
-    normalCaps: '#ed7d31',  // orange
-    labelEdit: '#70ad47',   // green
-    labelEditCaps: '#ed7d31', // orange
+    normal: '#5b9bd5',              // blue
+    normalCaps: '#ed7d31',          // orange
+    labelEdit: '#70ad47',           // green
+    labelEditCaps: '#ed7d31',       // orange
+    labelEditVimNormal: '#ffd966',  // yellow
+    labelEditVimNormalCaps: '#ed7d31', // orange
   };
 
   private updateModeLabel() {
@@ -783,6 +815,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'edit';
     } else if (modeName === 'labelEditCaps') {
       displayName = 'capslock / edit';
+    } else if (modeName === 'labelEditVimNormal') {
+      displayName = 'edit: normal';
+    } else if (modeName === 'labelEditVimNormalCaps') {
+      displayName = 'capslock / edit: normal';
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
     } else {
@@ -829,7 +865,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.lastShiftPressedAt = now;
 
     const modeName = this.keyMenu.currentMode.name;
-    const inLabelEdit = modeName === 'labelEdit' || modeName === 'labelEditCaps';
+    const inLabelEdit = modeName === 'labelEdit' || modeName === 'labelEditCaps'
+      || modeName === 'labelEditVimNormal' || modeName === 'labelEditVimNormalCaps';
 
     if (!isDoubleShift) {
       // First shift press in edit mode — show the timing bar
@@ -846,7 +883,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
-    const targetMode = modeName === 'labelEditCaps' ? 'normalCaps' : 'normal';
+    const targetMode = (modeName === 'labelEditCaps' || modeName === 'labelEditVimNormalCaps') ? 'normalCaps' : 'normal';
     this.switchMode(targetMode);
     this.resetInteractionState();
     this.resetHelpMode();
@@ -1048,20 +1085,31 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
-    const inLabelEdit = this.keyMenu.currentMode.name === 'labelEdit' ||
-      this.keyMenu.currentMode.name === 'labelEditCaps';
+    const currentModeName = this.keyMenu.currentMode.name;
+    const inLabelEdit = currentModeName === 'labelEdit' || currentModeName === 'labelEditCaps';
+    const inLabelEditVimNormal = currentModeName === 'labelEditVimNormal' || currentModeName === 'labelEditVimNormalCaps';
 
     if (inLabelEdit) {
-      const capsExit = this.keyMenu.currentMode.name === 'labelEditCaps';
-      const exitTarget = capsExit ? 'normalCaps' : 'normal';
+      const capsMode = currentModeName === 'labelEditCaps';
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
-        this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
-        this.switchMode(exitTarget);
+        // First Escape in insert mode → enter vim-normal mode within label edit
+        this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
+        this.labelEditModeOut.emit('vimNormal');
         return;
       }
       if (event.key === 'Enter' && event.shiftKey) {
         this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
-        this.switchMode(exitTarget);
+        this.switchMode(capsMode ? 'normalCaps' : 'normal');
+        return;
+      }
+    }
+
+    if (inLabelEditVimNormal) {
+      const capsMode = currentModeName === 'labelEditVimNormalCaps';
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        // Second Escape → exit label edit entirely
+        this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
+        this.switchMode(capsMode ? 'normalCaps' : 'normal');
         return;
       }
     }
