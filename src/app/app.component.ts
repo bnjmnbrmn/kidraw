@@ -39,9 +39,11 @@ export class AppComponent {
     switch (daNotification.kind) {
       case "started-label-editing-mode":
         this.keymenuComponent.enterLabelEditMode();
+        if (this.headerComponent) this.headerComponent.mode = 'labelEdit';
         break;
       case "exit-label-editing-mode":
         this.keymenuComponent.exitToNormalMode();
+        if (this.headerComponent) this.headerComponent.mode = 'normal';
         break;
     }
   }

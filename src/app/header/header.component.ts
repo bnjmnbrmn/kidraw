@@ -46,6 +46,7 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 })
 export class HeaderComponent {
   zoomLevel: number = 100;
+  mode: 'normal' | 'labelEdit' = 'normal';
 
   @Output() loadSampleGraph = new EventEmitter<string>();
 

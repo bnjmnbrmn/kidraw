@@ -188,6 +188,17 @@ input[type="color"] {
   opacity: 0.8;
 }
 
+.mode-badge {
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.25rem;
+  background-color: #a855f7;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 select {
   background-color: var(--kd-header-bg);
   color: var(--kd-header-text);
