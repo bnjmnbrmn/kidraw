@@ -1,4 +1,4 @@
-# kidraw — Development Status (2026-05-01)
+# kidraw — Development Status (2026-05-10)
 
 > **For Claude Code:** Read this file at the start of every session to understand where development stands. It supersedes `next.txt`, `project-todos.md`, and `improvement-ideas.md` as the authoritative current-state document.
 
@@ -16,10 +16,16 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 - Pinned nodes (`TOGGLE_PIN_SELECTED`) stay in place during layout.
 - Keys are on the right hand (accounts for vim-layout `f`-key index-finger conflict).
 
-### Edge routing after layout (buggy — see below)
-- `routeEdgesAroundNodes()` in `graph-layout.ts` iteratively inserts `DAWaypoint`s to bypass obstacles.
-- Algorithm: for each edge segment, find the first node whose bounding box it enters; insert a perpendicular bypass point clear of that node; repeat up to 8 times per edge.
-- Routing is applied automatically every time a layout command runs.
+### Multiple physics-based edge routing algorithms (`b` submenu)
+- **Charged Spring** (`b→p`): Charged-spring physics sim in `charged-spring-edges.ts`. Nodes as charged obstacles, edges as spring chains. Parallel-edge separation. Sibling repulsion.
+- **Bezier Route** (`b→;`): Pure Bezier curve routing in `bezier-route-edges.ts`.
+- **Bezier Fit + Charged Spring** (`b→'`): Charged-spring sim first, then Bezier-fit post-process.
+- **Flexible Wire** (`b→/`): Adaptive bead count via remeshing; rubber-band physics; tautness force.
+- **Weighted Chain** (`b→.`): PBD rigid-segment constraints; endpoint weight toward node center.
+- Tuning panel (slider panel accessible from header) with live re-run on slider change.
+- A/B testing infrastructure: 📷 snapshot button, side-by-side compare, export JSON.
+- Routing quality metrics overlay (crossings, clearance, curvature, composite score).
+- All routing triggered by `APPLY_*_EDGES` commands; run on selected edges or all edges.
 
 ### Selection highlight
 - Selected nodes display a bright blue shadow (`#33aaff`, blur 22) plus a slow 2-second sinusoidal blink via `requestAnimationFrame`.
@@ -50,60 +56,36 @@ Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenChec
 
 ---
 
-## Known UX issues (from `next.txt`)
+## Known UX issues
 
 - **Quick settings panel idea** — switching between "move by node" / "graph move" modes requires holding a key; a persistent settings panel (sidebar or similar) might be preferable for mode-like settings (edge directedness, node shape, color, line style, font). Orthogonal to the keymenu, not a submenu.
 - **Style submenu (`w` → `s`) UX unclear** — user is unsure how to use it; may need better discoverability or docs.
-- **Double-shift timing too fast** — double-shift timeout should be lengthened to ~3 seconds.
 - **Grid lines too faint when zoomed out** — consider making grid opacity or thickness depend on zoom level.
-- **Labels not selectable / not editable via keyboard** — labels on edges appear to have broken selection. Also they should not show visible boxes by default.
-- **"Next edge out" not working** — `TRAVERSE_OUTGOING_NEXT` appears broken; needs debugging.
 - **Gather feature needs work** — should be recursive and push away nodes; relates to applying layouts more generally.
+- **New graph confirmation** — pressing `m→n` silently discards current work (no undo after clear). Should confirm before clearing.
 
 ---
 
-## Charged-spring edge routing (Phases 1–3 complete)
+## Edge routing architecture
 
-The earlier libavoid-js / ELK plan was abandoned in favor of an in-house
-charged-spring physics simulation that lives in `charged-spring-edges.ts`.
-No external routing library is used.
+No external routing library. All routing is in-house physics / geometry.
 
-- **Phase 1** (commit `dd2c087`): Dropped the `DAWaypoint` concept, added
-  `invisible` node shape (small dot, only visible with the grid), retired the
-  segment-nudging / "elastic" routing experiments. `DAEdge` simplified to a
-  plain `Konva.Arrow` between two nodes; reserved `b → p` as the future
-  "Charged Spring Edges" key.
-- **Phase 2** (commit `27b1f03`): Added `_controlPoints` to `DAEdge`. The
-  rendered polyline now interleaves control points between the src and dest
-  perimeter endpoints, with each endpoint projected toward its nearest
-  control point so bent edges still meet the node perimeter cleanly.
-  Snapshot/restore round-trips control points. New API:
-  `controlPoints`, `setControlPoints`, `clearControlPoints`,
-  `initializeStraightControlPoints(n)`, `refreshGeometry`.
-- **Phase 3**: Wired up the physics simulation. Pressing `b → p`
-  triggers `APPLY_CHARGED_SPRING_EDGES`, which calls
-  `applyChargedSpringEdges(nodes, edges)` in `charged-spring-edges.ts`.
-  - For each non-self-loop edge: seed N beads (default 8) evenly along
-    the straight line, then run an iterative sim (default 240 iterations).
-  - Per-bead forces: smoothing pull toward the midpoint of the two
-    neighbors (springs), inverse-square repulsion from non-incident node
-    bounding boxes (charges), and a perpendicular kick when a bead is
-    inside an obstacle (symmetry-breaking — pushes the polyline off the
-    line rather than along it). Velocity capped per step for stability.
-  - After the sim, each edge's `controlPoints` is set to the surviving
-    bead positions; near-collinear beads are pruned.
-  - If any edges are selected, only those are routed; otherwise all edges.
+`DAEdge` uses `_controlPoints: {x,y}[]` (internal bend points). Setting control points recomputes the `Konva.Arrow` polyline. Snapshot/restore round-trips control points.
 
-Tunables live in `DEFAULT_OPTIONS` in `charged-spring-edges.ts`:
-`beadsPerEdge`, `iterations`, `smoothingK`, `chargeK`, `insideKickK`,
-`damping`, `dt`, `clearance`, `pruneEpsilon`, `maxVelocity`.
+Routing files in `src/app/drawing-area/`:
+- `charged-spring-edges.ts` — spring-charge bead physics sim
+- `bezier-route-edges.ts` — pure Bezier curve routing
+- `bezier-fit-route-edges.ts` — charged-spring + Bezier-fit post-process
+- `flexible-wire-edges.ts` — adaptive bead count, remeshing, tautness force
+- `weighted-chain-edges.ts` — PBD rigid-segment constraints
+- `edge-routing-metrics.ts` — quality metrics (crossings, clearance, curvature)
+
+Tuning sliders panel auto-reruns the last-used routing on every slider change.
 
 ### Possible follow-ups
-- Smooth the bent polyline as a Bezier curve (post-process control points).
-- Apply the sim live as nodes move/are created, not just on `b → p`.
-- Distinguish user-placed vs. sim-placed control points so a user can pin
-  a bend that the next sim run won't override.
-- Parallel-edge nudging when multiple edges share the same node pair.
+- Live re-routing as nodes move (not just on `b → *` commands).
+- Distinguish user-placed vs. sim-placed control points (pin a bend).
+- Export routing parameters as a reusable config preset.
 
 ---
 
@@ -123,14 +105,17 @@ Tunables live in `DEFAULT_OPTIONS` in `charged-spring-edges.ts`:
 
 ### Other queued items
 - **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color).
-- **Labels selectable/editable** — fix keyboard-driven label selection and ensure no visible boxes by default.
-- **"Next edge out" traversal bug** — debug `TRAVERSE_OUTGOING_NEXT`.
-- **Double-shift timeout** — lengthen to ~3 seconds.
+- **Label edit mode overhaul** — show all keys in label edit mode, not just letters.
 - **Grid line visibility at low zoom** — investigate opacity / thickness scaling.
-- **Save/load graphs** — serialization to localStorage.
-- **Bezier / smooth-bend edges** — currently only straight segments.
-- **Self-linking edges** — need 3 waypoints.
+- **Self-linking edges** — need control points forming a loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
+- **New-graph confirmation** — prompt before clearing work.
+
+### Recently completed (2026-05-10 session)
+- **Graph save/load to localStorage** — `m→s` save, `m→l` load, `m→n` new graph. Auto-saves on page unload; auto-loads on startup. (`kidraw_graph_v1` localStorage key.)
+- **Edge style persisted in snapshots** — `directedness` and `lineStyle` now serialized in `DAEdgeSnapshot`. Previously lost on undo/redo.
+- **Graph traversal fixed** — `g→n` and `g→p` now emit `TRAVERSE_OUTGOING_NEXT` and `TRAVERSE_INCOMING_NEXT` (direct node jump), replacing broken `SELECT_NEXT_EDGE` calls.
+- **Label/edge selection render fix** — `batchDraw()` was missing after selecting a label or edge; the canvas silently didn't redraw.
 
 ### Real-world acceptance tests (not automated)
 - Build a vim commit-history diagram (test graph navigation + labeling).
