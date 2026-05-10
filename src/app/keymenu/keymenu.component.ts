@@ -408,15 +408,23 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildInsertSubmenuConfig(): SubmenuConfig {
     const insert = this.keyAssignments.insert;
+    const types = this.keyAssignments.nodeTypes;
+    const dirSubmenu = this.buildDirectionalInsertSubmenuConfig();
 
-    return {
-      [insert.node]: new LabeledActionSubmenuConfig('Node', this.buildDirectionalInsertSubmenuConfig(), () => {
+    const makeShapeEntry = (shape: NodeShape | undefined, label: string) =>
+      new LabeledActionSubmenuConfig(label, dirSubmenu, () => {
         if (this.insertDragActive) return;
-        this.pendingNodeShape = undefined;
+        this.pendingNodeShape = shape;
         this.pendingInsertTypeKey = insert.node;
         this.insertNodePending = true;
-      }),
-      [insert.invisibleNode]: new LabeledAction('...Invisible', () => {
+      });
+
+    return {
+      [insert.node]:        makeShapeEntry(undefined,   'Box →'),
+      [types.circle]:       makeShapeEntry('circle',    'Circle →'),
+      [types.diamond]:      makeShapeEntry('diamond',   'Diamond →'),
+      [types.junction]:     makeShapeEntry('junction',  'Junction →'),
+      [insert.invisibleNode]: new LabeledAction('Invisible', () => {
         this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: 'invisible'});
       }),
       [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
