@@ -110,7 +110,7 @@ Tuning sliders panel auto-reruns the last-used routing on every slider change.
 - **Parallel edges** — multiple edges between same pair of nodes.
 
 ### Recently completed (2026-05-10 session, third pass)
-- **Header context strip** — New chips in the header show: selected items ("2 nodes", "1 edge"), active defaults (node shape, edge direction, line style), and undo/redo availability (dim when unavailable, bright when available). Emitted via `context-state-update` DANotification on any context-affecting command.
+- **Header context strip** — New chips in the header always show: active defaults (node shape, edge direction, line style) and undo/redo availability indicators. When something is selected, a blue chip shows the selection summary (e.g. "2 nodes, 1 edge"). When nothing is selected, a subtle chip shows total graph size ("3n 5e" or "empty"). Emitted via `context-state-update` DANotification on any context-affecting command.
 - **DALabel theme-aware selection** — Selected label border now uses the theme-aware `_strokeColor` (set by `applyColors`) instead of hardcoded `'darkblue'`.
 
 ### Recently completed (2026-05-10 session, second pass)
