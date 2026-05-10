@@ -9,9 +9,7 @@ export class DALabel {
   private readonly _text: Konva.Text;
   private _label: string;
 
-  public readonly LABEL_COLOR = 'blue';
   public readonly LABEL_STROKE_WIDTH = 2;
-  public readonly SELECTED_COLOR = 'darkblue';
   public readonly SELECTED_STROKE_WIDTH = 3;
   public readonly RECT_WIDTH = 50;
   public readonly RECT_HEIGHT = 30;
@@ -23,7 +21,7 @@ export class DALabel {
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
   private _fillColor: string = 'white';
-  private _strokeColor: string = this.LABEL_COLOR;
+  private _strokeColor: string = 'blue';
   private _textColor: string = 'black';
 
   constructor(x: number, y: number, label: string, id?: string,
@@ -153,7 +151,7 @@ export class DALabel {
 
   private updateAppearance(): void {
     if (this._isSelected) {
-      this._rect.stroke(this.SELECTED_COLOR);
+      this._rect.stroke(this._strokeColor);
       this._rect.strokeWidth(this.SELECTED_STROKE_WIDTH);
       this._rect.fill(this._fillColor);
     } else {
