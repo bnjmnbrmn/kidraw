@@ -5,6 +5,44 @@
       <button class="collapse" (click)="toggleCollapsed()" title="Collapse">−</button>
     </div>
 
+    @if (metricsService.metrics$ | async; as m) {
+      <div class="metrics">
+        <div class="metric-row metric-header">
+          <span class="metric-label">Composite</span>
+          <span class="metric-value" [class.fail]="m.hardFailCount > 0">{{ formatComposite(m) }}</span>
+          <button class="snap-btn" (click)="takeSnapshot()" title="Save snapshot">📷</button>
+        </div>
+        <div class="metric-row" [class.fail]="m.edgesThroughNodes > 0">
+          <span class="metric-label">Edges thru nodes</span>
+          <span class="metric-value">{{ m.edgesThroughNodes }}</span>
+        </div>
+        <div class="metric-row" [class.fail]="m.siblingCrossings > 0">
+          <span class="metric-label">Sibling crossings</span>
+          <span class="metric-value">{{ m.siblingCrossings }}</span>
+        </div>
+        <div class="metric-row" [class.fail]="m.selfIntersections > 0">
+          <span class="metric-label">Self-intersections</span>
+          <span class="metric-value">{{ m.selfIntersections }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Total length</span>
+          <span class="metric-value">{{ formatNum(m.totalLength, 0) }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Total curvature</span>
+          <span class="metric-value">{{ formatNum(m.totalCurvature, 2) }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Max bulge ratio</span>
+          <span class="metric-value">{{ formatNum(m.maxBulgeRatio, 3) }}</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">Min clearance</span>
+          <span class="metric-value">{{ formatNum(m.minObstacleClearance, 1) }}</span>
+        </div>
+      </div>
+    }
+
     <details open>
       <summary>Hybrid CS+Bezier (b → ')</summary>
       @for (s of bezierFitSliders; track s.key) {
@@ -41,6 +79,40 @@
     </details>
 
     <details>
+      <summary>Weighted chain (b → .)</summary>
+      @for (s of weightedChainSliders; track s.key) {
+        <div class="row">
+          <label>{{ s.label }}</label>
+          <input type="range"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onSliderChange(s, $event)" />
+          <input type="number"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onNumberChange(s, $event)" />
+        </div>
+      }
+    </details>
+
+    <details>
+      <summary>Flexible wire (b → /)</summary>
+      @for (s of flexibleWireSliders; track s.key) {
+        <div class="row">
+          <label>{{ s.label }}</label>
+          <input type="range"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onSliderChange(s, $event)" />
+          <input type="number"
+                 [min]="s.min" [max]="s.max" [step]="s.step"
+                 [value]="tuning.getValue(s)"
+                 (input)="onNumberChange(s, $event)" />
+        </div>
+      }
+    </details>
+
+    <details>
       <summary>Charged spring (b → p)</summary>
       @for (s of chargedSpringSliders; track s.key) {
         <div class="row">
@@ -56,7 +128,75 @@
         </div>
       }
     </details>
+
+    @if ((abTesting.snapshots$ | async); as snaps) {
+      @if (snaps.length > 0) {
+        <details open>
+          <summary>Snapshots ({{ snaps.length }})</summary>
+          <div class="snap-actions">
+            <button (click)="openCompare()"
+                    [disabled]="!selectedAId || !selectedBId || selectedAId === selectedBId">
+              Compare A↔B
+            </button>
+            <button (click)="exportPicks()" title="Download picks as JSON">↓ picks</button>
+            <button (click)="exportFull()" title="Download snapshots+picks">↓ all</button>
+          </div>
+          @for (s of snaps; track trackSnap($index, s)) {
+            <div class="snap-row"
+                 [class.snap-a]="selectedAId === s.id"
+                 [class.snap-b]="selectedBId === s.id">
+              <img [src]="s.pngDataUrl" class="snap-thumb" [alt]="s.label" />
+              <div class="snap-meta">
+                <div class="snap-label">{{ s.label }}</div>
+                <div class="snap-buttons">
+                  <button (click)="selectForA(s.id)"
+                          [class.active]="selectedAId === s.id">A</button>
+                  <button (click)="selectForB(s.id)"
+                          [class.active]="selectedBId === s.id">B</button>
+                  <button (click)="removeSnapshot(s.id)" class="snap-del" title="Delete">×</button>
+                </div>
+              </div>
+            </div>
+          }
+        </details>
+      }
+    }
+
+    @if ((abTesting.picks$ | async); as picks) {
+      @if (picks.length > 0) {
+        <div class="picks-summary">{{ picks.length }} pick{{ picks.length === 1 ? '' : 's' }} recorded</div>
+      }
+    }
   </div>
+
+  @if ((abTesting.compare$ | async); as cmp) {
+    <div class="compare-overlay" (click)="abTesting.closeCompare()">
+      <div class="compare-modal" (click)="$event.stopPropagation()">
+        <div class="compare-header">
+          <span>A/B Compare</span>
+          <button class="compare-close" (click)="abTesting.closeCompare()">×</button>
+        </div>
+        <div class="compare-body">
+          <div class="compare-side">
+            <img [src]="cmp.a.pngDataUrl" />
+            <div class="compare-meta">{{ cmp.a.label }}</div>
+            <button class="pick-btn"
+                    (click)="abTesting.recordPick(cmp.a.id, cmp.b.id); abTesting.closeCompare()">
+              Pick A (←)
+            </button>
+          </div>
+          <div class="compare-side">
+            <img [src]="cmp.b.pngDataUrl" />
+            <div class="compare-meta">{{ cmp.b.label }}</div>
+            <button class="pick-btn"
+                    (click)="abTesting.recordPick(cmp.b.id, cmp.a.id); abTesting.closeCompare()">
+              Pick B (→)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 } @else {
   <button class="reopen" (click)="toggleCollapsed()" title="Expand routing tuning">⚙</button>
 }

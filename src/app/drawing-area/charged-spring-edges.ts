@@ -53,6 +53,14 @@ export interface ChargedSpringOptions {
    *  one-sided obstacle pressure. With it, lanes are a stable equilibrium
    *  and obstacles still locally deflect the chain. */
   anchorK: number;
+  /** Number of beads from each end over which obstacle-charge and
+   *  sibling-repulsion charge are tapered to zero. End beads sit near
+   *  their own node's face (often close to neighboring nodes) and at the
+   *  point where parallel siblings converge — full-strength charge there
+   *  pushes them sideways unnecessarily. Smoothstep ramp from 0 at the
+   *  pinned ends to 1 at distFromEnd >= chargeRampLength. Set to 0 or 1
+   *  to disable. */
+  chargeRampLength: number;
 }
 
 export const DEFAULT_OPTIONS: ChargedSpringOptions = {
@@ -84,6 +92,7 @@ export const DEFAULT_OPTIONS: ChargedSpringOptions = {
   // distFromEnd boosts below caps drift at ~1-3 px even under typical
   // obstacle/cross-edge pressure.
   anchorK: 0.4,
+  chargeRampLength: 5,
 };
 
 interface EdgeSim {
@@ -289,6 +298,20 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         fx += localAnchorK * (b.restX - b.x);
         fy += localAnchorK * (b.restY - b.y);
 
+        // End-tapered charge: smoothstep from 0 at pinned ends to 1 at
+        // distFromEnd >= chargeRampLength. Applied to both obstacle and
+        // sibling-cross-edge repulsion so end beads can sit close to the
+        // node face without being pushed sideways by neighboring nodes or
+        // converging siblings.
+        let chargeScale = 1;
+        if (opts.chargeRampLength > 0) {
+          const t = Math.min(distFromEnd / opts.chargeRampLength, 1);
+          chargeScale = t * t * (3 - 2 * t);
+        }
+        const localChargeK = opts.chargeK * chargeScale;
+        const localInsideKickK = opts.insideKickK * chargeScale;
+        const localEdgeRepulsionK = opts.edgeRepulsionK * chargeScale;
+
         const edx = right.x - left.x;
         const edy = right.y - left.y;
         const elen = Math.hypot(edx, edy) || 1;
@@ -296,7 +319,7 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
         const perpY = edx / elen;
 
         for (const ob of st.obstacles) {
-          const f = obstacleForce(b.x, b.y, ob, opts.chargeK, opts.insideKickK, perpX, perpY);
+          const f = obstacleForce(b.x, b.y, ob, localChargeK, localInsideKickK, perpX, perpY);
           fx += f.fx;
           fy += f.fy;
         }
@@ -317,7 +340,7 @@ function simulateAll(states: EdgeSim[], opts: ChargedSpringOptions): void {
             const dsq = ddx * ddx + ddy * ddy;
             if (dsq < 1e-6 || dsq > edgeRepulsionMaxDistSq) continue;
             const d = Math.sqrt(dsq);
-            const force = opts.edgeRepulsionK / dsq;
+            const force = localEdgeRepulsionK / dsq;
             fx += (ddx / d) * force;
             fy += (ddy / d) * force;
           }

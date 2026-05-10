@@ -20,7 +20,11 @@ import { applyLayout } from './graph-layout';
 import { applyChargedSpringEdges } from './charged-spring-edges';
 import { applyBezierRouteEdges } from './bezier-route-edges';
 import { applyBezierFitChargedSpringEdges } from './bezier-fit-route-edges';
+import { applyFlexibleWireEdges } from './flexible-wire-edges';
+import { applyWeightedChainEdges } from './weighted-chain-edges';
 import { TuningOptionsService } from '../services/tuning-options.service';
+import { RoutingMetricsService } from '../services/routing-metrics.service';
+import { ABTestingService, SnapshotPayload } from '../services/ab-testing.service';
 
 @Component({
   selector: 'app-drawing-area',
@@ -47,6 +51,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private themeService = inject(ThemeService);
   private visualConfigService = inject(VisualConfigService);
   private tuning = inject(TuningOptionsService);
+  private metrics = inject(RoutingMetricsService);
+  private abTesting = inject(ABTestingService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -168,7 +174,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Most recently applied routing — used by the auto-reroute subscription
    *  so a slider change only re-runs the routing the user is currently
    *  looking at. null until the user has applied any routing. */
-  private lastAppliedRouting: 'charged-spring' | 'bezier-route' | 'bezier-fit' | null = null;
+  private lastAppliedRouting: 'charged-spring' | 'bezier-route' | 'bezier-fit' | 'flexible-wire' | 'weighted-chain' | null = null;
   private tuningSub?: Subscription;
 
   ngOnInit(): void {
@@ -186,8 +192,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           this.applyBezierRouteEdges(true);
         } else if (lr === 'bezier-fit' && (group === 'bezier-fit' || group === 'charged-spring')) {
           this.applyBezierFitChargedSpringEdges(true);
+        } else if (lr === 'flexible-wire' && group === 'flexible-wire') {
+          this.applyFlexibleWireEdges(true);
+        } else if (lr === 'weighted-chain' && group === 'weighted-chain') {
+          this.applyWeightedChainEdges(true);
         }
       });
+
+    // Provide a snapshot-capture function to the A/B service. It captures
+    // the current Konva stage as PNG along with the active routing's
+    // metadata. Called on demand when the user clicks "Snapshot".
+    this.abTesting.registerCapture((): SnapshotPayload | null => {
+      const m = this.metrics.metrics$.value;
+      if (!m) return null;
+      const algo = this.lastAppliedRouting ?? 'unknown';
+      let params: Record<string, any> = {};
+      switch (algo) {
+        case 'charged-spring': params = { ...this.tuning.chargedSpring }; break;
+        case 'bezier-route': params = { ...this.tuning.bezierRoute }; break;
+        case 'bezier-fit': params = { ...this.tuning.bezierFit, _cs: { ...this.tuning.chargedSpring } }; break;
+        case 'flexible-wire': params = { ...this.tuning.flexibleWire }; break;
+        case 'weighted-chain': params = { ...this.tuning.weightedChain }; break;
+      }
+      return {
+        algorithm: algo,
+        params,
+        metrics: m,
+        pngDataUrl: this.stage.toDataURL({pixelRatio: 1}),
+        graphSerialized: JSON.stringify(this.drawingLayer.serializeGraph()),
+      };
+    });
   }
 
   ngOnDestroy(): void {
@@ -473,6 +507,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES:
         this.applyBezierFitChargedSpringEdges();
         break;
+      case DACommandType.APPLY_FLEXIBLE_WIRE_EDGES:
+        this.applyFlexibleWireEdges();
+        break;
+      case DACommandType.APPLY_WEIGHTED_CHAIN_EDGES:
+        this.applyWeightedChainEdges();
+        break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
         this.log.log('[style] setEdgeDirectedness:', command.directedness);
         this.setEdgeDirectedness(command.directedness);
@@ -626,6 +666,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     applyChargedSpringEdges(allNodes, edges, this.tuning.chargedSpring, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'charged-spring';
+    this.metrics.compute(allNodes, allEdges);
   }
 
   private applyBezierRouteEdges(skipUndo: boolean = false) {
@@ -642,6 +683,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     applyBezierRouteEdges(allNodes, edges, this.tuning.bezierRoute, msg => this.log.log(msg));
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'bezier-route';
+    this.metrics.compute(allNodes, allEdges);
   }
 
   private applyBezierFitChargedSpringEdges(skipUndo: boolean = false) {
@@ -662,6 +704,43 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     );
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'bezier-fit';
+    this.metrics.compute(allNodes, allEdges);
+  }
+
+  private applyFlexibleWireEdges(skipUndo: boolean = false) {
+    this.finishTweens();
+    if (!skipUndo) {
+      this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    }
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+
+    edges.forEach(e => e.setSmoothRendering(false));
+    applyFlexibleWireEdges(allNodes, edges, this.tuning.flexibleWire, msg => this.log.log(msg));
+    this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'flexible-wire';
+    this.metrics.compute(allNodes, allEdges);
+  }
+
+  private applyWeightedChainEdges(skipUndo: boolean = false) {
+    this.finishTweens();
+    if (!skipUndo) {
+      this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    }
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+
+    edges.forEach(e => e.setSmoothRendering(false));
+    applyWeightedChainEdges(allNodes, edges, this.tuning.weightedChain, msg => this.log.log(msg));
+    this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'weighted-chain';
+    this.metrics.compute(allNodes, allEdges);
   }
 
   private exitLabelEditMode() {

@@ -91,3 +91,221 @@ summary {
   margin-top: 4px;
   padding: 2px 0;
 }
+
+.metrics {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  padding: 1px 0;
+}
+
+.metric-row.fail {
+  color: #c00;
+  font-weight: bold;
+}
+
+.metric-row .metric-value.fail {
+  color: #c00;
+  font-weight: bold;
+}
+
+.metric-label {
+  color: #444;
+}
+
+.metric-value {
+  font-family: monospace;
+}
+
+.metric-header {
+  align-items: center;
+}
+
+.snap-btn {
+  margin-left: 6px;
+  border: 1px solid #888;
+  background: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 11px;
+}
+
+.snap-actions {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.snap-actions button {
+  font-size: 10px;
+  padding: 2px 6px;
+  border: 1px solid #888;
+  background: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.snap-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.snap-row {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  margin: 2px 0;
+}
+
+.snap-row.snap-a { border-color: #2a7; background: rgba(42, 119, 0, 0.08); }
+.snap-row.snap-b { border-color: #27a; background: rgba(42, 119, 170, 0.08); }
+
+.snap-thumb {
+  width: 80px;
+  height: auto;
+  border: 1px solid #ccc;
+  flex-shrink: 0;
+}
+
+.snap-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 9px;
+  flex: 1;
+  min-width: 0;
+}
+
+.snap-label {
+  word-break: break-all;
+  line-height: 1.2;
+}
+
+.snap-buttons {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.snap-buttons button {
+  font-size: 10px;
+  width: 22px;
+  height: 18px;
+  border: 1px solid #888;
+  background: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.snap-buttons button.active {
+  background: #2a7;
+  color: #fff;
+  border-color: #2a7;
+}
+
+.snap-buttons button.active.snap-del { background: #c33; border-color: #c33; }
+.snap-del { color: #c33; }
+
+.picks-summary {
+  font-size: 10px;
+  color: #666;
+  font-style: italic;
+  margin-top: 4px;
+  text-align: center;
+}
+
+.compare-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  font-family: sans-serif;
+}
+
+.compare-modal {
+  background: #fff;
+  border-radius: 8px;
+  width: 90vw;
+  max-width: 1200px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.compare-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #ccc;
+  font-weight: bold;
+}
+
+.compare-close {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.compare-body {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.compare-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.compare-side img {
+  flex: 1;
+  width: 100%;
+  object-fit: contain;
+  border: 1px solid #ccc;
+  background: #f8f8f8;
+  min-height: 0;
+}
+
+.compare-meta {
+  font-size: 11px;
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.pick-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid #2a7;
+  background: #2a7;
+  color: #fff;
+  border-radius: 4px;
+}
+
+.pick-btn:hover {
+  background: #1c5;
+}

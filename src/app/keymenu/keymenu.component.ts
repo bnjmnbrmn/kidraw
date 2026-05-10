@@ -397,6 +397,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.bezierFitChargedSpringEdges]: new LabeledAction('Hybrid CS+Bezier', () => {
         this.keyMenuOut.emit({kind: DACommandType.APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES});
       }),
+      [layout.flexibleWireEdges]: new LabeledAction('Flexible Wire', () => {
+        this.keyMenuOut.emit({kind: DACommandType.APPLY_FLEXIBLE_WIRE_EDGES});
+      }),
+      [layout.weightedChainEdges]: new LabeledAction('Weighted Chain', () => {
+        this.keyMenuOut.emit({kind: DACommandType.APPLY_WEIGHTED_CHAIN_EDGES});
+      }),
     } as SubmenuConfig;
   }
 
