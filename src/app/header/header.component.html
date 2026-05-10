@@ -31,6 +31,13 @@
           </select>
         </label>
         <label class="swap-label">
+          Key Profile:
+          <select tabindex="-1" [value]="keyboardConfig.keyProfile" (change)="onKeyProfileChange($event)">
+            <option value="vim">Vim (hjkl)</option>
+            <option value="default">Default (ijkl)</option>
+          </select>
+        </label>
+        <label class="swap-label">
           <input type="checkbox"
                  tabindex="-1"
                  [checked]="keyboardConfig.capsLockCtrlSwap"

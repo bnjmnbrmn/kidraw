@@ -1,6 +1,6 @@
 import { Component, EventEmitter, inject, Output } from '@angular/core';
 import { ThemeService, ThemePalette } from '../services/theme.service';
-import { KeyboardConfigService } from '../services/keyboard-config.service';
+import { KeyboardConfigService, KeyProfile } from '../services/keyboard-config.service';
 import { KeyboardLayout } from '../lib/keymenu/layouts/us-qwerty';
 import { VisualConfigService } from '../services/visual-config.service';
 import { VisualConfig } from '../services/visual-config.model';
@@ -81,6 +81,11 @@ export class HeaderComponent {
   onLayoutChange(event: Event) {
     const value = (event.target as HTMLSelectElement).value as KeyboardLayout;
     this.keyboardConfig.keyboardLayout = value;
+  }
+
+  onKeyProfileChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value as KeyProfile;
+    this.keyboardConfig.keyProfile = value;
   }
 
   get config(): VisualConfig {
