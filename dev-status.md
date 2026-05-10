@@ -52,7 +52,7 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 code was removed in Phase 1; charged-spring edges replaced it.)
 
 ### Known pre-existing failures (tests)
-Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenCheckedError` — `movementSpeed` initializes to `20` in `AppComponent` but `DrawingAreaComponent` emits `50` on first render. Not caused by recent changes. Current counts: **3 FAILED, 92 SUCCESS**.
+NG0100 fixed — `movementSpeed` now initialized to `50` in `AppComponent`. Current test counts unknown (no Chrome in CI environment; `npx ng test` requires a browser binary).
 
 ---
 
@@ -62,7 +62,7 @@ Three `AppComponent` tests fail with `NG0100 ExpressionChangedAfterItHasBeenChec
 - **Style submenu (`w` → `s`) UX unclear** — user is unsure how to use it; may need better discoverability or docs.
 - **Grid lines too faint when zoomed out** — consider making grid opacity or thickness depend on zoom level.
 - **Gather feature needs work** — should be recursive and push away nodes; relates to applying layouts more generally.
-- **New graph confirmation** — pressing `m→n` silently discards current work (no undo after clear). Should confirm before clearing.
+- **New graph confirmation** — ✅ done: prompts with `window.confirm()` when the graph is non-empty.
 
 ---
 
@@ -98,20 +98,26 @@ Tuning sliders panel auto-reruns the last-used routing on every slider change.
 - Vim command bar (`:` in vim-normal mode) — placement in card layout TBD.
 - Use the same `cardRenderer` infrastructure as `USQwertyMode`.
 
-### Node type submenu at insert time (partially done)
+### Node type submenu at insert time (done)
 - Node shapes `box`, `circle`, `diamond`, `junction` are implemented.
 - `junction` is a filled dot for T-junctions / edges from nowhere.
-- **Still TODO**: insert-time node type selection submenu. Currently only `box` is created on insert; shape can be changed afterward via the style submenu.
+- Insert submenu now shows Box/Circle/Diamond/Junction — each opens the directional sub-submenu with the shape pre-set via `pendingNodeShape`.
 
 ### Other queued items
 - **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color).
 - **Label edit mode overhaul** — show all keys in label edit mode, not just letters.
-- **Grid line visibility at low zoom** — investigate opacity / thickness scaling.
 - **Self-linking edges** — need control points forming a loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
-- **New-graph confirmation** — prompt before clearing work.
 
-### Recently completed (2026-05-10 session)
+### Recently completed (2026-05-10 session, second pass)
+- **New-graph confirmation** — `m→n` now prompts before clearing a non-empty graph.
+- **Insert-time shape selection** — Insert submenu (`f →`) now shows Box/Circle/Diamond/Junction. Each opens the directional insert sub-submenu with the chosen shape pre-set.
+- **Label Edit mode indicator in header** — A purple "LABEL EDIT" badge appears in the header when in label-edit mode.
+- **Grid visibility at low zoom** — Minor grid lines are suppressed when screen-space spacing < 8 px; major opacity bumps from 0.4 → 0.55. Minor opacity increased 0.15 → 0.20.
+- **Keyboard profile switcher** — Settings panel now has a "Key Profile" dropdown (Vim / Default), persisted to localStorage. Live rebuild; no page reload needed.
+- **NG0100 fix** — `movementSpeed` in AppComponent initialized to 50 (matching DrawingAreaComponent's first emission), eliminating ExpressionChangedAfterItHasBeenCheckedError in tests.
+
+### Recently completed (2026-05-10 session, first pass)
 - **Graph save/load to localStorage** — `m→s` save, `m→l` load, `m→n` new graph. Auto-saves on page unload; auto-loads on startup. (`kidraw_graph_v1` localStorage key.)
 - **Edge style persisted in snapshots** — `directedness` and `lineStyle` now serialized in `DAEdgeSnapshot`. Previously lost on undo/redo.
 - **Graph traversal fixed** — `g→n` and `g→p` now emit `TRAVERSE_OUTGOING_NEXT` and `TRAVERSE_INCOMING_NEXT` (direct node jump), replacing broken `SELECT_NEXT_EDGE` calls.
