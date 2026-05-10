@@ -697,6 +697,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return {
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
+      [misc.saveGraph]: new LabeledAction('Save Graph', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_GRAPH})),
+      [misc.loadGraph]: new LabeledAction('Load Graph', () => this.keyMenuOut.emit({kind: DACommandType.LOAD_GRAPH})),
+      [misc.newGraph]: new LabeledAction('New Graph', () => this.keyMenuOut.emit({kind: DACommandType.NEW_GRAPH})),
     } as SubmenuConfig;
   }
 

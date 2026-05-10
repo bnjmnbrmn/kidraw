@@ -152,9 +152,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (urlParams.get('demo') as string === 'true') {
       this.demoDataService.createDemoGraph(this.drawingLayer);
       this.drawingLayer.applyThemeColors(effectivePalette());
+    } else {
+      // Auto-load last saved graph on startup
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) {
+        try {
+          const snapshot = JSON.parse(raw);
+          this.drawingLayer.restoreGraph(snapshot);
+          this.drawingLayer.applyThemeColors(effectivePalette());
+        } catch {
+          // Ignore corrupt stored data
+        }
+      }
     }
 
     this.commands.subscribe(this.handleCommands.bind(this));
+
+    // Auto-save on page unload
+    this._beforeUnloadHandler = () => this.saveGraphToStorage();
+    window.addEventListener('beforeunload', this._beforeUnloadHandler);
 
     // Emit initial zoom level
     this.emitZoomLevel();
@@ -224,10 +240,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
+  private _beforeUnloadHandler?: () => void;
+
   ngOnDestroy(): void {
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
     this.tuningSub?.unsubscribe();
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+    }
   }
 
   private canEdit = false;
@@ -492,6 +513,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.LOAD_SAMPLE_GRAPH:
         this.loadSampleGraph(command.graphId);
         break;
+      case DACommandType.SAVE_GRAPH:
+        this.saveGraphToStorage();
+        break;
+      case DACommandType.LOAD_GRAPH:
+        this.loadGraphFromStorage();
+        break;
+      case DACommandType.NEW_GRAPH:
+        this.newGraph();
+        break;
       case DACommandType.TOGGLE_PIN_SELECTED:
         this.togglePinSelected();
         break;
@@ -616,6 +646,43 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.demoDataService.loadGraph(graphId, this.drawingLayer);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
+    this.recenterCrosshairs();
+    this.emitZoomLevel();
+    this.checkAndEmitEditState();
+  }
+
+  private readonly STORAGE_KEY = 'kidraw_graph_v1';
+
+  private saveGraphToStorage(): void {
+    this.finishTweens();
+    const snapshot = this.drawingLayer.serializeGraph();
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(snapshot));
+  }
+
+  private loadGraphFromStorage(): void {
+    const raw = localStorage.getItem(this.STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const snapshot = JSON.parse(raw);
+      this.finishTweens();
+      this.unselectAllLabels();
+      this.undoRedoService.clear();
+      this.drawingLayer.restoreGraph(snapshot);
+      const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+      this.drawingLayer.applyThemeColors(palette);
+      this.recenterCrosshairs();
+      this.emitZoomLevel();
+      this.checkAndEmitEditState();
+    } catch {
+      // Corrupted or incompatible stored data — ignore silently
+    }
+  }
+
+  private newGraph(): void {
+    this.finishTweens();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.drawingLayer.restoreGraph({ nodes: [], edges: [] });
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
