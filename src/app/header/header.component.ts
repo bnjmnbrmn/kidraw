@@ -52,6 +52,8 @@ export class HeaderComponent {
   defaultNodeShape: NodeShape = 'box';
   defaultEdgeDirectedness: EdgeDirectedness = 'directed';
   defaultLineStyle: LineStyle = 'solid';
+  canUndo: boolean = false;
+  canRedo: boolean = false;
 
   get directednessSymbol(): string {
     switch (this.defaultEdgeDirectedness) {

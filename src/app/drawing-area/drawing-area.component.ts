@@ -1261,6 +1261,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       defaultNodeShape: this._defaultNodeShape,
       defaultEdgeDirectedness: this._defaultEdgeDirectedness,
       defaultLineStyle: this._defaultLineStyle,
+      canUndo: this.undoRedoService.canUndo,
+      canRedo: this.undoRedoService.canRedo,
     });
   }
 

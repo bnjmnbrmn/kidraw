@@ -70,6 +70,8 @@ export class AppComponent implements OnInit, OnDestroy {
           this.headerComponent.defaultNodeShape = daNotification.defaultNodeShape;
           this.headerComponent.defaultEdgeDirectedness = daNotification.defaultEdgeDirectedness;
           this.headerComponent.defaultLineStyle = daNotification.defaultLineStyle;
+          this.headerComponent.canUndo = daNotification.canUndo;
+          this.headerComponent.canRedo = daNotification.canRedo;
         }
         break;
     }

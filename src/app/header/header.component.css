@@ -215,6 +215,20 @@ input[type="color"] {
   text-align: center;
 }
 
+.undo-chip {
+  font-size: 0.85rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  border: 1px solid currentColor;
+  opacity: 0.25;
+  transition: opacity 0.15s;
+  cursor: default;
+}
+
+.undo-chip.available {
+  opacity: 0.7;
+}
+
 .mode-badge {
   font-size: 0.75rem;
   font-weight: bold;

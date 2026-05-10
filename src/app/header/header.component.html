@@ -14,6 +14,8 @@
       <span class="defaults-chip" title="Default node shape">{{ nodeShapeLabel }}</span>
       <span class="defaults-chip" title="Default edge direction">{{ directednessSymbol }}</span>
       <span class="defaults-chip" title="Default line style">{{ lineStyleSymbol }}</span>
+      <span class="undo-chip" [class.available]="canUndo" title="Undo available (u / Ctrl+Z)">↩</span>
+      <span class="undo-chip" [class.available]="canRedo" title="Redo available (Ctrl+Shift+Z / Ctrl+R)">↪</span>
     </div>
     <select class="sample-graph-select" tabindex="-1" (change)="onSampleGraphChange($event)">
       <option value="">Load Sample...</option>
