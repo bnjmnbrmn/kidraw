@@ -42,7 +42,17 @@ Notes from a codebase review session. Organized into UI/UX ideas and process/arc
 
 - **"What's selected" indicator** — small text in header showing "3 nodes selected" or "edge selected" or "nothing selected". Would help users understand keymenu context (actions apply to selection vs defaults).
 
-- **Default shape/directedness display** — when nothing is selected, show the current default node shape and edge directedness in the header as small chips (e.g., "Box  →"). Removing mystery about what pressing the insert key will create.
+- **Default shape/directedness display** — ✅ Done: chips in context strip show current defaults (shape, directedness, line style).
+
+- **Graph size display** — ✅ Done: when nothing selected, shows total node/edge count (e.g. "3n 5e" or "empty").
+
+- **Undo/redo availability** — ✅ Done: ↩ / ↪ arrows in header dim/brighten based on undo/redo history depth.
+
+- **Selection indicator** — ✅ Done: shows selected item count (e.g. "2 nodes", "1 edge") as a blue chip when something is selected.
+
+- **Style submenu discoverability** — The `w` submenu works but users may not know they need an edge selected (or crosshairs over an edge) for directedness/line-style changes to apply. Consider: subtle toast or status message when a style command has no target.
+
+- **Label edit exit hint** — The "Label Edit" badge doesn't explain how to exit. Could add a tooltip or a subtle "(double-Shift to exit)" hint next to the badge. Or add a visible "Escape" key to the keymenu card layout.
 
 ---
 
