@@ -82,6 +82,11 @@ export class AppComponent implements OnInit, OnDestroy {
           this.headerComponent.canRedo = daNotification.canRedo;
         }
         break;
+      case "status-message":
+        if (this.headerComponent) {
+          this.headerComponent.showStatusMessage(daNotification.message);
+        }
+        break;
     }
   }
 

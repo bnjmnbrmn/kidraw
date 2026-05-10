@@ -254,6 +254,16 @@ input[type="color"] {
   color: #fef3c7;
 }
 
+.status-message {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 0.25rem;
+  background-color: var(--kd-header-bg);
+  color: var(--kd-header-text);
+  border: 1px solid currentColor;
+  opacity: 0.85;
+}
+
 select {
   background-color: var(--kd-header-bg);
   color: var(--kd-header-text);

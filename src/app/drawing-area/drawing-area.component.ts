@@ -2362,14 +2362,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } else {
       // Apply to edges under crosshairs
       const box = this.getCrosshairsBBoxInDrawingLayer();
+      let applied = false;
       for (const edge of this.drawingLayer.getDAEdges()) {
         const points = edge.getPathPoints();
         for (let i = 0; i < points.length - 1; i++) {
           if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
             edge.directedness = directedness;
+            applied = true;
             break;
           }
         }
+      }
+      if (!applied) {
+        this.daOut.emit({kind: 'status-message', message: 'Select or hover an edge to change directedness'});
+        return;
       }
     }
     this.drawingLayer.batchDraw();
@@ -2381,14 +2387,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       selectedEdges.forEach(e => e.lineStyle = lineStyle);
     } else {
       const box = this.getCrosshairsBBoxInDrawingLayer();
+      let applied = false;
       for (const edge of this.drawingLayer.getDAEdges()) {
         const points = edge.getPathPoints();
         for (let i = 0; i < points.length - 1; i++) {
           if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
             edge.lineStyle = lineStyle;
+            applied = true;
             break;
           }
         }
+      }
+      if (!applied) {
+        this.daOut.emit({kind: 'status-message', message: 'Select or hover an edge to change line style'});
+        return;
       }
     }
     this.drawingLayer.batchDraw();
@@ -2407,9 +2419,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!colors) return;
 
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    selectedNodes.forEach(n => n.applyColors(colors.node));
-
     const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+
+    if (selectedNodes.length === 0 && selectedEdges.length === 0) {
+      this.daOut.emit({kind: 'status-message', message: 'Select a node or edge to change color'});
+      return;
+    }
+
+    selectedNodes.forEach(n => n.applyColors(colors.node));
     selectedEdges.forEach(e => e.applyColors(colors.edge));
 
     this.drawingLayer.batchDraw();

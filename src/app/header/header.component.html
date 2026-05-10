@@ -10,6 +10,9 @@
     @if (mode === 'labelEditVimNormal') {
       <div class="mode-badge vim-normal-badge">Label Edit (N)</div>
     }
+    @if (statusMessage) {
+      <div class="status-message">{{ statusMessage }}</div>
+    }
     <div class="context-strip">
       @if (selectionSummary) {
         <span class="selection-chip">{{ selectionSummary }}</span>

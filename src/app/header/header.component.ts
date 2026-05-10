@@ -48,6 +48,8 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 export class HeaderComponent {
   zoomLevel: number = 100;
   mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' = 'normal';
+  statusMessage: string = '';
+  private statusMessageTimer?: number;
   selectionSummary: string = '';
   totalNodes: number = 0;
   totalEdges: number = 0;
@@ -101,6 +103,14 @@ export class HeaderComponent {
   readonly simpleColorFields = SIMPLE_COLOR_FIELDS;
   readonly arrayColorFields = ARRAY_COLOR_FIELDS;
   readonly depthIndices = [0, 1, 2, 3, 4, 5];
+
+  showStatusMessage(message: string, durationMs = 2500): void {
+    this.statusMessage = message;
+    if (this.statusMessageTimer) window.clearTimeout(this.statusMessageTimer);
+    this.statusMessageTimer = window.setTimeout(() => {
+      this.statusMessage = '';
+    }, durationMs);
+  }
 
   onZoomLevelChange(level: number) {
     this.zoomLevel = level;
