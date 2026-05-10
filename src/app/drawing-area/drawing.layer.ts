@@ -62,33 +62,40 @@ export class DrawingLayer extends Konva.Layer {
     const minCoord = -extent;
     const maxCoord = extent;
 
-    // Minor grid lines (sub-grid)
-    for (let x = Math.ceil(minCoord / minorSpacing) * minorSpacing; x <= maxCoord; x += minorSpacing) {
-      this.gridGroup.add(new Konva.Line({
-        points: [x, minCoord, x, maxCoord],
-        stroke: color,
-        strokeWidth: minorStrokeWidth,
-        opacity: 0.15,
-        listening: false,
-      }));
-    }
-    for (let y = Math.ceil(minCoord / minorSpacing) * minorSpacing; y <= maxCoord; y += minorSpacing) {
-      this.gridGroup.add(new Konva.Line({
-        points: [minCoord, y, maxCoord, y],
-        stroke: color,
-        strokeWidth: minorStrokeWidth,
-        opacity: 0.15,
-        listening: false,
-      }));
+    // Skip minor lines when they'd be too close together on screen (<8 px apart)
+    // — avoids visual clutter and wasted draw calls at low zoom
+    const minorScreenSpacing = minorSpacing * scale;
+    const drawMinor = minorScreenSpacing >= 8;
+
+    if (drawMinor) {
+      for (let x = Math.ceil(minCoord / minorSpacing) * minorSpacing; x <= maxCoord; x += minorSpacing) {
+        this.gridGroup.add(new Konva.Line({
+          points: [x, minCoord, x, maxCoord],
+          stroke: color,
+          strokeWidth: minorStrokeWidth,
+          opacity: 0.2,
+          listening: false,
+        }));
+      }
+      for (let y = Math.ceil(minCoord / minorSpacing) * minorSpacing; y <= maxCoord; y += minorSpacing) {
+        this.gridGroup.add(new Konva.Line({
+          points: [minCoord, y, maxCoord, y],
+          stroke: color,
+          strokeWidth: minorStrokeWidth,
+          opacity: 0.2,
+          listening: false,
+        }));
+      }
     }
 
-    // Major grid lines (drawn on top of minor)
+    // Major grid lines — slightly more visible when minor lines are hidden
+    const majorOpacity = drawMinor ? 0.4 : 0.55;
     for (let x = Math.ceil(minCoord / majorSpacing) * majorSpacing; x <= maxCoord; x += majorSpacing) {
       this.gridGroup.add(new Konva.Line({
         points: [x, minCoord, x, maxCoord],
         stroke: color,
         strokeWidth: majorStrokeWidth,
-        opacity: 0.4,
+        opacity: majorOpacity,
         listening: false,
       }));
     }
@@ -97,7 +104,7 @@ export class DrawingLayer extends Konva.Layer {
         points: [minCoord, y, maxCoord, y],
         stroke: color,
         strokeWidth: majorStrokeWidth,
-        opacity: 0.4,
+        opacity: majorOpacity,
         listening: false,
       }));
     }
