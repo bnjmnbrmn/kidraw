@@ -23,7 +23,7 @@ export class AppComponent implements OnInit, OnDestroy {
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
-  movementSpeed = 20;
+  movementSpeed = 50;
   canEdit = false;
   keyAssignments: KeymenuKeyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
 
