@@ -109,6 +109,10 @@ Tuning sliders panel auto-reruns the last-used routing on every slider change.
 - **Self-linking edges** — need control points forming a loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
 
+### Recently completed (2026-05-10 session, third pass)
+- **Header context strip** — New chips in the header show: selected items ("2 nodes", "1 edge"), active defaults (node shape, edge direction, line style), and undo/redo availability (dim when unavailable, bright when available). Emitted via `context-state-update` DANotification on any context-affecting command.
+- **DALabel theme-aware selection** — Selected label border now uses the theme-aware `_strokeColor` (set by `applyColors`) instead of hardcoded `'darkblue'`.
+
 ### Recently completed (2026-05-10 session, second pass)
 - **New-graph confirmation** — `m→n` now prompts before clearing a non-empty graph.
 - **Insert-time shape selection** — Insert submenu (`f →`) now shows Box/Circle/Diamond/Junction. Each opens the directional insert sub-submenu with the chosen shape pre-set.
