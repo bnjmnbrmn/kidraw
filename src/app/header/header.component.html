@@ -5,10 +5,10 @@
       Zoom: {{ zoomLevel }}%
     </div>
     @if (mode === 'labelEdit') {
-      <div class="mode-badge">Label Edit</div>
+      <div class="mode-badge" title="Esc → vim normal · ⇧⇧ → exit">Label Edit</div>
     }
     @if (mode === 'labelEditVimNormal') {
-      <div class="mode-badge vim-normal-badge">Label Edit (N)</div>
+      <div class="mode-badge vim-normal-badge" title="i/a → insert · Esc → exit label edit">Label Edit (N)</div>
     }
     @if (statusMessage) {
       <div class="status-message">{{ statusMessage }}</div>
