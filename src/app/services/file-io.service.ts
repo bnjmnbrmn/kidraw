@@ -9,7 +9,8 @@ import { Injectable } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class FileIoService {
-  static readonly KIDRAW_ACCEPT = '.kidraw.json,.kidraw.yaml,.kidraw.yml,.json,.yaml,.yml';
+  static readonly KIDRAW_ACCEPT =
+    '.kidraw.json,.kidraw.yaml,.kidraw.yml,.kidraw.zip,.json,.yaml,.yml,.zip';
   static readonly STYLE_ACCEPT = '.kd-style.json,.kd-style.yaml,.kd-style.yml,.json,.yaml,.yml';
 
   /**
@@ -54,6 +55,60 @@ export class FileIoService {
     });
   }
 
+  /**
+   * Open a file picker and read the selected file as bytes.
+   * Returns null if the user cancels.
+   */
+  async openBinaryFile(accept: string): Promise<OpenedBinaryFile | null> {
+    return new Promise(resolve => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = accept;
+      input.style.display = 'none';
+
+      let settled = false;
+      const settle = (value: OpenedBinaryFile | null) => {
+        if (settled) return;
+        settled = true;
+        if (input.parentNode) input.parentNode.removeChild(input);
+        resolve(value);
+      };
+
+      input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) { settle(null); return; }
+        try {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          settle({ name: file.name, bytes });
+        } catch {
+          settle(null);
+        }
+      });
+      input.addEventListener('cancel', () => settle(null));
+      window.addEventListener('focus', () => {
+        setTimeout(() => settle(null), 200);
+      }, { once: true });
+
+      document.body.appendChild(input);
+      input.click();
+    });
+  }
+
+  /** Trigger a browser download for a binary blob. */
+  saveBinary(filename: string, bytes: Uint8Array, mimeType: string = 'application/octet-stream'): void {
+    // Wrap in ArrayBuffer for Blob (some browsers reject Uint8Array directly).
+    const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
   /** Trigger a browser download with the given filename + content. */
   saveAs(filename: string, content: string, mimeType: string = inferMimeType(filename)): void {
     const blob = new Blob([content], { type: mimeType });
@@ -73,6 +128,11 @@ export class FileIoService {
 export interface OpenedFile {
   name: string;
   content: string;
+}
+
+export interface OpenedBinaryFile {
+  name: string;
+  bytes: Uint8Array;
 }
 
 function inferMimeType(filename: string): string {

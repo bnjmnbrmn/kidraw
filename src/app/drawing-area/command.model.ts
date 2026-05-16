@@ -85,6 +85,7 @@ export enum DACommandType {
   NEW_GRAPH = 'NEW_GRAPH',
   OPEN_FILE = 'OPEN_FILE',
   SAVE_FILE_AS = 'SAVE_FILE_AS',
+  EXPORT_ZIP = 'EXPORT_ZIP',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_CHARGED_SPRING_EDGES = 'APPLY_CHARGED_SPRING_EDGES',
@@ -170,6 +171,7 @@ export type DACommand =
   | {kind: DACommandType.NEW_GRAPH}
   | {kind: DACommandType.OPEN_FILE}
   | {kind: DACommandType.SAVE_FILE_AS}
+  | {kind: DACommandType.EXPORT_ZIP}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_CHARGED_SPRING_EDGES}

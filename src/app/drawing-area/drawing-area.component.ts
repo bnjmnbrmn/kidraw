@@ -38,11 +38,28 @@ import {
   KidrawStyleSet,
   inlineToStyleSet,
 } from '../lib/file-format/types';
+import { resolveAndApplyToGraph, ImportResolver } from '../lib/file-format/resolver';
+import {
+  findManifest,
+  isKidrawFile,
+  packZip,
+  PackedFile,
+  unpackZip,
+} from '../lib/file-format/zip-bundle';
+import {
+  parseStyleSetByFilename,
+  serializeStyleSetByFilename,
+} from '../lib/file-format/parser';
 
 function defaultGraphFilename(): string {
   const stamp = new Date().toISOString().slice(0, 10);
   // YAML is the default save format.
   return `kidraw-${stamp}.kidraw.yaml`;
+}
+
+/** Strip leading "./" and normalize separators for archive-relative paths. */
+function normalizeArchivePath(p: string): string {
+  return p.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\\/g, '/');
 }
 
 @Component({
@@ -585,6 +602,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.SAVE_FILE_AS:
         this.saveFileAs();
         break;
+      case DACommandType.EXPORT_ZIP:
+        this.exportZip();
+        break;
       case DACommandType.TOGGLE_PIN_SELECTED:
         this.togglePinSelected();
         break;
@@ -744,26 +764,76 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private async openFile(): Promise<void> {
-    const opened = await this.fileIo.openTextFile(FileIoService.KIDRAW_ACCEPT);
+    const accept = FileIoService.KIDRAW_ACCEPT;
+    // Try the binary open path first so we transparently handle zips.
+    const opened = await this.fileIo.openBinaryFile(accept);
     if (!opened) return;
 
-    const parsed = parseGraphDocByFilename(opened.content, opened.name);
+    const lower = opened.name.toLowerCase();
+    const isZip = lower.endsWith('.zip');
+
+    let manifestText: string;
+    let manifestName: string;
+    let styleResolver: ImportResolver;
+
+    if (isZip) {
+      let unpacked: PackedFile[];
+      try {
+        unpacked = unpackZip(opened.bytes);
+      } catch (e) {
+        window.alert(`Could not unpack ${opened.name}:\n\n${(e as Error).message}`);
+        return;
+      }
+      const manifest = findManifest(unpacked);
+      if (!manifest) {
+        window.alert(`${opened.name} doesn't contain a .kidraw.{json,yaml} manifest file.`);
+        return;
+      }
+      manifestText = manifest.content;
+      manifestName = manifest.name;
+      // Build a path-aware resolver from the zip contents. Treats archive
+      // paths as flat sibling lookups (strip leading "./" and trailing slashes).
+      const byPath = new Map<string, PackedFile>();
+      for (const f of unpacked) byPath.set(normalizeArchivePath(f.name), f);
+      styleResolver = (path: string) => {
+        const found = byPath.get(normalizeArchivePath(path));
+        if (!found) return null;
+        const parsed = parseStyleSetByFilename(found.content, found.name);
+        return parsed.ok ? parsed.value : null;
+      };
+    } else {
+      manifestText = new TextDecoder().decode(opened.bytes);
+      manifestName = opened.name;
+      // No FSA-API yet, so external paths can't be resolved when the file
+      // came from outside a zip. We warn and skip.
+      styleResolver = (path: string) => {
+        console.warn(`External style "${path}" not resolvable without a zip or FSA handle; skipping.`);
+        return null;
+      };
+    }
+
+    const parsed = parseGraphDocByFilename(manifestText, manifestName);
     if (!parsed.ok) {
-      window.alert(`Could not open ${opened.name}:\n\n${parsed.error}`);
+      window.alert(`Could not open ${manifestName}:\n\n${parsed.error}`);
       return;
     }
 
-    // Phase 4: only inline styles are resolved. External path references are
-    // skipped with a console warning; prompt-on-miss UI comes in a later phase.
-    const firstStyle = parsed.value.styles[0];
+    // Pick the first top-level style as the active display; fall back to
+    // an empty resolved style if there are none.
+    const firstRef = parsed.value.styles[0];
     let resolvedStyle: KidrawStyleSet;
-    if (firstStyle === undefined) {
-      resolvedStyle = { kdStyle: 1 };
-    } else if (typeof firstStyle === 'string') {
-      console.warn(`External style "${firstStyle}" not yet resolvable; using empty style.`);
+    if (firstRef === undefined) {
       resolvedStyle = { kdStyle: 1 };
     } else {
-      resolvedStyle = inlineToStyleSet(firstStyle);
+      const rootStyle = typeof firstRef === 'string'
+        ? styleResolver(firstRef) ?? { kdStyle: 1 }
+        : firstRef;
+      const resolved = resolveAndApplyToGraph(parsed.value, rootStyle, styleResolver);
+      if (!resolved.ok) {
+        window.alert(`Could not resolve styles for ${manifestName}:\n\n${resolved.error}`);
+        return;
+      }
+      resolvedStyle = resolved.value;
     }
 
     const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
@@ -776,6 +846,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
+  }
+
+  private exportZip(): void {
+    this.finishTweens();
+    const snapshot = this.drawingLayer.serializeGraph();
+    const { doc, style } = snapshotToFiles(snapshot);
+
+    // Multi-file zip: one .kidraw.yaml manifest + one .kd-style.yaml sibling.
+    const stylePath = './graph.kd-style.yaml';
+    doc.styles = [stylePath];
+
+    const manifestName = 'graph.kidraw.yaml';
+    const styleName = 'graph.kd-style.yaml';
+
+    const files: PackedFile[] = [
+      { name: manifestName, content: serializeGraphDocByFilename(doc, manifestName) },
+      { name: styleName, content: serializeStyleSetByFilename(style, styleName) },
+    ];
+
+    const bytes = packZip(files);
+    const stamp = new Date().toISOString().slice(0, 10);
+    this.fileIo.saveBinary(`kidraw-${stamp}.kidraw.zip`, bytes, 'application/zip');
   }
 
   private saveFileAs(): void {

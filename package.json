@@ -20,6 +20,7 @@
     "@angular/router": "^19.2.0",
     "@types/js-yaml": "^4.0.9",
     "@types/puppeteer": "^7.0.4",
+    "fflate": "^0.8.3",
     "js-yaml": "^4.1.1",
     "konva": "^9.3.20",
     "rxjs": "~7.8.0",

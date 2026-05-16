@@ -106,6 +106,7 @@ export interface KeymenuKeyAssignments {
     readonly newGraph: KeyString;
     readonly openFile: KeyString;
     readonly saveFileAs: KeyString;
+    readonly exportZip: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -230,6 +231,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     newGraph: 'n',
     openFile: 'o',
     saveFileAs: 'a',
+    exportZip: 'z',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -332,6 +334,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     newGraph: 'n',
     openFile: 'o',
     saveFileAs: 'a',
+    exportZip: 'z',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
