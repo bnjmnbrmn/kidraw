@@ -113,6 +113,8 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 
 ### Recently completed (2026-05-16 session)
 - **File format design finalized** — HTML/CSS-style split documented in `kidraw-file-format.md`. Graph documents (`*.kidraw.json` / `.yaml`) carry semantics only; style sets (`*.kd-style.json` / `.yaml`) carry all presentation and compose via relative-path `imports` + cascade. One top-level style active at a time; first in `styles` array is the default display. Path resolution via prompt-on-miss; zip bundle for distribution; optional File System Access API on Chromium.
+- **Serialization plan written** — `serialization-plan.md` locks in YAML default, inline styles allowed, prompt-for-both on first save, v1→v2 localStorage migration, Open + Import both supported. 10-phase rollout.
+- **Phase 1: Format primitives implemented** — `src/app/lib/file-format/` with `types.ts` (KidrawGraphDoc, KidrawStyleSet, InlineStyleSet, StyleRef union, StyleProps/Node/Edge variants, ParseResult), `parser.ts` (parse + serialize for JSON, full structural validation), and `parser.spec.ts` (16/16 tests passing). Pure functions — no Angular deps; safely additive. Includes cross-reference validation (edges reject unknown node IDs).
 - **Docs relocated from `meta-project`** — `kidraw-file-format.md`, `graph-layout-research.md`, and `demo-video-research.md` moved into the kidraw repo so the project is self-contained.
 
 ### Recently completed (2026-05-10 session, third pass)
