@@ -25,6 +25,7 @@ import { applyWeightedChainEdges } from './weighted-chain-edges';
 import { TuningOptionsService } from '../services/tuning-options.service';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { ABTestingService, SnapshotPayload } from '../services/ab-testing.service';
+import { DraftStorageService } from '../services/draft-storage.service';
 
 @Component({
   selector: 'app-drawing-area',
@@ -53,6 +54,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private tuning = inject(TuningOptionsService);
   private metrics = inject(RoutingMetricsService);
   private abTesting = inject(ABTestingService);
+  private draftStorage = inject(DraftStorageService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -188,11 +190,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.demoDataService.createDemoGraph(this.drawingLayer);
       this.drawingLayer.applyThemeColors(effectivePalette());
     } else {
-      // Auto-load last saved graph on startup
-      const raw = localStorage.getItem(this.STORAGE_KEY);
-      if (raw) {
+      // Restore the localStorage draft (v2 schema; auto-migrates v1).
+      const draft = this.draftStorage.load();
+      if (draft) {
         try {
-          const snapshot = JSON.parse(raw);
+          const snapshot = this.draftStorage.draftToSnapshot(draft);
           this.drawingLayer.restoreGraph(snapshot);
           this.drawingLayer.applyThemeColors(effectivePalette());
         } catch {
@@ -691,19 +693,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
   }
 
-  private readonly STORAGE_KEY = 'kidraw_graph_v1';
-
   private saveGraphToStorage(): void {
     this.finishTweens();
     const snapshot = this.drawingLayer.serializeGraph();
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(snapshot));
+    this.draftStorage.saveSnapshot(snapshot);
   }
 
   private loadGraphFromStorage(): void {
-    const raw = localStorage.getItem(this.STORAGE_KEY);
-    if (!raw) return;
+    const draft = this.draftStorage.load();
+    if (!draft) return;
     try {
-      const snapshot = JSON.parse(raw);
+      const snapshot = this.draftStorage.draftToSnapshot(draft);
       this.finishTweens();
       this.unselectAllLabels();
       this.undoRedoService.clear();
