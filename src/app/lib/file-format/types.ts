@@ -51,7 +51,7 @@ export interface EdgeLabel {
 export interface KidrawStyleSet {
   kdStyle: 1;
   imports?: string[];
-  tagStyles?: { [tag: string]: StyleProps };
+  tagStyles?: { [tag: string]: TagStyleProps };
   nodes?: { [nodeId: string]: NodeStyleProps };
   edges?: { [edgeId: string]: EdgeStyleProps };
   view?: Viewport;
@@ -66,7 +66,7 @@ export interface KidrawStyleSet {
 export interface InlineStyleSet {
   name: string;
   imports?: string[];
-  tagStyles?: { [tag: string]: StyleProps };
+  tagStyles?: { [tag: string]: TagStyleProps };
   nodes?: { [nodeId: string]: NodeStyleProps };
   edges?: { [edgeId: string]: EdgeStyleProps };
   view?: Viewport;
@@ -86,6 +86,12 @@ export interface StyleProps {
   fontSize?: number;
   opacity?: number;
 }
+
+/**
+ * Values inside `tagStyles`. A tag can be applied to either a node or an
+ * edge, so its rule may legally carry any element-applicable property.
+ */
+export type TagStyleProps = NodeStyleProps & EdgeStyleProps;
 
 export interface NodeStyleProps extends StyleProps {
   x?: number;
