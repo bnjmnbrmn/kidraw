@@ -765,7 +765,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private async openFile(): Promise<void> {
     const accept = FileIoService.KIDRAW_ACCEPT;
-    // Try the binary open path first so we transparently handle zips.
     const opened = await this.fileIo.openBinaryFile(accept);
     if (!opened) return;
 
@@ -791,8 +790,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
       manifestText = manifest.content;
       manifestName = manifest.name;
-      // Build a path-aware resolver from the zip contents. Treats archive
-      // paths as flat sibling lookups (strip leading "./" and trailing slashes).
       const byPath = new Map<string, PackedFile>();
       for (const f of unpacked) byPath.set(normalizeArchivePath(f.name), f);
       styleResolver = (path: string) => {
@@ -804,12 +801,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } else {
       manifestText = new TextDecoder().decode(opened.bytes);
       manifestName = opened.name;
-      // No FSA-API yet, so external paths can't be resolved when the file
-      // came from outside a zip. We warn and skip.
-      styleResolver = (path: string) => {
-        console.warn(`External style "${path}" not resolvable without a zip or FSA handle; skipping.`);
-        return null;
-      };
+      styleResolver = (_path: string) => null; // pre-populated cache below
     }
 
     const parsed = parseGraphDocByFilename(manifestText, manifestName);
@@ -818,8 +810,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    // Pick the first top-level style as the active display; fall back to
-    // an empty resolved style if there are none.
+    // For plain (non-zip) opens, prompt-on-miss to gather any external
+    // style files referenced by the graph (top-level + transitive imports).
+    if (!isZip) {
+      const cache = new Map<string, KidrawStyleSet>();
+      const declined = new Set<string>();
+      await this.gatherExternalStyles(parsed.value.styles, cache, declined);
+      styleResolver = (path: string) => cache.get(normalizeArchivePath(path)) ?? null;
+    }
+
     const firstRef = parsed.value.styles[0];
     let resolvedStyle: KidrawStyleSet;
     if (firstRef === undefined) {
@@ -846,6 +845,62 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
+  }
+
+  /**
+   * For every external (path-string) style reference in `styles[]` —
+   * top-level and recursive imports — prompt the user to locate the file
+   * via the OS picker. Builds out `cache` keyed by normalized requested path.
+   * If the user declines a prompt, the path is added to `declined` so we
+   * don't ask again in the same open.
+   */
+  private async gatherExternalStyles(
+    refs: ReadonlyArray<string | InlineStyleSet>,
+    cache: Map<string, KidrawStyleSet>,
+    declined: Set<string>,
+  ): Promise<void> {
+    for (const ref of refs) {
+      if (typeof ref === 'string') {
+        await this.gatherExternalPath(ref, cache, declined);
+      } else {
+        // Inline style — still recurse into its imports (paths inside it).
+        for (const importPath of ref.imports ?? []) {
+          await this.gatherExternalPath(importPath, cache, declined);
+        }
+      }
+    }
+  }
+
+  private async gatherExternalPath(
+    path: string,
+    cache: Map<string, KidrawStyleSet>,
+    declined: Set<string>,
+  ): Promise<void> {
+    const key = normalizeArchivePath(path);
+    if (cache.has(key) || declined.has(key)) return;
+
+    const ok = window.confirm(`Locate referenced style file "${path}"?`);
+    if (!ok) {
+      declined.add(key);
+      return;
+    }
+    const file = await this.fileIo.openTextFile(FileIoService.STYLE_ACCEPT);
+    if (!file) {
+      declined.add(key);
+      return;
+    }
+    const parsed = parseStyleSetByFilename(file.content, file.name);
+    if (!parsed.ok) {
+      window.alert(`Could not parse ${file.name}:\n\n${parsed.error}`);
+      declined.add(key);
+      return;
+    }
+    cache.set(key, parsed.value);
+
+    // Recurse into this style's own imports.
+    for (const importPath of parsed.value.imports ?? []) {
+      await this.gatherExternalPath(importPath, cache, declined);
+    }
   }
 
   private exportZip(): void {
