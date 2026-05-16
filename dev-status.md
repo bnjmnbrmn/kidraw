@@ -1,4 +1,4 @@
-# kidraw — Development Status (2026-05-10)
+# kidraw — Development Status (2026-05-16)
 
 > **For Claude Code:** Read this file at the start of every session to understand where development stands. It supersedes `next.txt`, `project-todos.md`, and `improvement-ideas.md` as the authoritative current-state document.
 
@@ -48,6 +48,8 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 ## Known bugs
 
+- **Bezier-route anti-parallel edges overlap** — in `bezier-route-edges.ts` (`b → ;`), A→B and B→A render as a single line because the lane-offset logic keys parallels by *ordered* (src, dest) pair. Fix: switch to the unordered `canonicalPairKey` used by charged-spring / flexible-wire / weighted-chain.
+
 (The earlier waypoint / `routeEdgesAroundNodes` bugs are resolved — that
 code was removed in Phase 1; charged-spring edges replaced it.)
 
@@ -87,27 +89,31 @@ Tuning sliders panel auto-reruns the last-used routing on every slider change.
 - Distinguish user-placed vs. sim-placed control points (pin a bend).
 - Export routing parameters as a reusable config preset.
 
+See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a candidate near-term integration for obstacle-avoiding polyline routing, and the polyline-nudging R&D plan (endpoint propagation, iterative stability, dynamic angular spacing).
+
 ---
 
 ## TODO / planned work
 
-### Label edit mode overhaul (high priority)
-- Render label-edit mode like normal mode: card-based layout showing all keys (number row, modifiers, Backspace, Enter, etc.) not just letter keys.
-- Vim keybindings: Escape/Ctrl-[ once → vim normal mode; twice → kidraw normal mode.
-- Emacs keybindings option.
-- Vim command bar (`:` in vim-normal mode) — placement in card layout TBD.
-- Use the same `cardRenderer` infrastructure as `USQwertyMode`.
+### Current focus
 
-### Node type submenu at insert time (done)
-- Node shapes `box`, `circle`, `diamond`, `junction` are implemented.
-- `junction` is a filled dot for T-junctions / edges from nowhere.
-- Insert submenu now shows Box/Circle/Diamond/Junction — each opens the directional sub-submenu with the shape pre-set via `pendingNodeShape`.
+**1. Serialization / file format.** Design is finalized in `kidraw-file-format.md` — HTML/CSS-style split: `*.kidraw.json` / `*.kidraw.yaml` carry graph semantics only; `*.kd-style.json` / `*.kd-style.yaml` carry presentation and compose via relative-path imports + CSS-like cascade. The graph document lists one or more top-level styles; only one is active at a time (first entry = default). Implementation work: parser/serializer, file-picker UI, prompt-on-miss for relative paths, zip-bundle export. Replaces or supplements the current `localStorage` `kidraw_graph_v1` save/load.
+
+**2. Edge routing — auto-layout quality.** Five custom physics-based routers already work (`b → *`); the next push is making auto-routing genuinely good. Near-term option (`graph-layout-research.md`): integrate `libavoid-js` (WASM, obstacle-avoiding polyline routing) — maps directly to existing waypoints. Longer-term R&D: polyline nudging — endpoint propagation, iterative stability, dynamic angular spacing (a potential KiDraw differentiator since libavoid's nudging is orthogonal-only). Also queued: auto-tuning parameter sweeps on benchmark graphs (per memory notes), and fixing the bezier anti-parallel overlap bug.
 
 ### Other queued items
-- **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color).
-- **Label edit mode overhaul** — show all keys in label edit mode, not just letters.
+
+- **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color, line style, font). Orthogonal to keymenu modes.
+- **Style submenu (`w → s`) UX** — user unsure how to use it; needs discoverability work or docs.
+- **Shift-shift timing** — slow to ~3 seconds; current value feels too aggressive.
 - **Self-linking edges** — need control points forming a loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
+- **Gather feature** — should be recursive and push away nodes; relates to applying layouts more generally.
+- **Label edit mode overhaul** *(deprioritized — design needs revisiting)*. Earlier idea was a card-based renderer with vim/emacs keybindings and a vim command bar. Revisit once serialization and routing land.
+
+### Recently completed (2026-05-16 session)
+- **File format design finalized** — HTML/CSS-style split documented in `kidraw-file-format.md`. Graph documents (`*.kidraw.json` / `.yaml`) carry semantics only; style sets (`*.kd-style.json` / `.yaml`) carry all presentation and compose via relative-path `imports` + cascade. One top-level style active at a time; first in `styles` array is the default display. Path resolution via prompt-on-miss; zip bundle for distribution; optional File System Access API on Chromium.
+- **Docs relocated from `meta-project`** — `kidraw-file-format.md`, `graph-layout-research.md`, and `demo-video-research.md` moved into the kidraw repo so the project is self-contained.
 
 ### Recently completed (2026-05-10 session, third pass)
 - **Header context strip** — New chips in the header always show: active defaults (node shape, edge direction, line style) and undo/redo availability indicators. When something is selected, a blue chip shows the selection summary (e.g. "2 nodes, 1 edge"). When nothing is selected, a subtle chip shows total graph size ("3n 5e" or "empty"). Emitted via `context-state-update` DANotification on any context-affecting command.
@@ -148,6 +154,9 @@ Tuning sliders panel auto-reruns the last-used routing on every slider change.
 | `src/app/keymenu/keymenu.component.ts` | Wires key assignments → `DACommand` emissions |
 | `src/app/keymenu/config/key-assignments.ts` | Default and VIM key assignment configs |
 | `dev-status.md` | **This file** — authoritative current-state document |
+| `kidraw-file-format.md` | Graph document + style-set file format spec (HTML/CSS-style split) |
+| `graph-layout-research.md` | Edge routing research; recommends `libavoid-js` + polyline-nudging R&D plan |
+| `demo-video-research.md` | Demo video tooling research (FocuSee for manual, Playwright for scripted) |
 | `design_notes.md` | Architecture invariants and design rationale |
 | `project-todos.md` | Backlog (partially superseded by this file) |
 | `improvement-ideas.md` | UX and architecture ideas from review session |
