@@ -1,3 +1,4 @@
+import * as yaml from 'js-yaml';
 import {
   EdgeDirected,
   EdgeSemantics,
@@ -79,6 +80,59 @@ export function serializeStyleSetJson(
   opts: { pretty?: boolean } = {},
 ): string {
   return JSON.stringify(style, null, opts.pretty === false ? 0 : 2);
+}
+
+// ─── Public: YAML parse / serialize ──────────────────────────────────────
+
+export function parseGraphDocYaml(text: string): ParseResult<KidrawGraphDoc> {
+  let raw: unknown;
+  try {
+    raw = yaml.load(text);
+  } catch (e) {
+    return fail(`Invalid YAML: ${(e as Error).message}`);
+  }
+  return validateGraphDoc(raw);
+}
+
+export function parseStyleSetYaml(text: string): ParseResult<KidrawStyleSet> {
+  let raw: unknown;
+  try {
+    raw = yaml.load(text);
+  } catch (e) {
+    return fail(`Invalid YAML: ${(e as Error).message}`);
+  }
+  return validateStyleSet(raw);
+}
+
+export function serializeGraphDocYaml(doc: KidrawGraphDoc): string {
+  return yaml.dump(doc, { indent: 2, lineWidth: 100, noRefs: true });
+}
+
+export function serializeStyleSetYaml(style: KidrawStyleSet): string {
+  return yaml.dump(style, { indent: 2, lineWidth: 100, noRefs: true });
+}
+
+// ─── Extension-based dispatch ────────────────────────────────────────────
+
+export function parseGraphDocByFilename(text: string, filename: string): ParseResult<KidrawGraphDoc> {
+  return isYamlFilename(filename) ? parseGraphDocYaml(text) : parseGraphDocJson(text);
+}
+
+export function parseStyleSetByFilename(text: string, filename: string): ParseResult<KidrawStyleSet> {
+  return isYamlFilename(filename) ? parseStyleSetYaml(text) : parseStyleSetJson(text);
+}
+
+export function serializeGraphDocByFilename(doc: KidrawGraphDoc, filename: string): string {
+  return isYamlFilename(filename) ? serializeGraphDocYaml(doc) : serializeGraphDocJson(doc);
+}
+
+export function serializeStyleSetByFilename(style: KidrawStyleSet, filename: string): string {
+  return isYamlFilename(filename) ? serializeStyleSetYaml(style) : serializeStyleSetJson(style);
+}
+
+export function isYamlFilename(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return lower.endsWith('.yaml') || lower.endsWith('.yml');
 }
 
 // ─── Validation ───────────────────────────────────────────────────────────

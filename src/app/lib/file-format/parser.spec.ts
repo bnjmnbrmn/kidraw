@@ -1,8 +1,15 @@
 import {
+  isYamlFilename,
+  parseGraphDocByFilename,
   parseGraphDocJson,
+  parseGraphDocYaml,
   parseStyleSetJson,
+  parseStyleSetYaml,
+  serializeGraphDocByFilename,
   serializeGraphDocJson,
+  serializeGraphDocYaml,
   serializeStyleSetJson,
+  serializeStyleSetYaml,
   validateInlineStyleSet,
 } from './parser';
 import { KidrawGraphDoc, KidrawStyleSet, isInlineStyleSet, styleRefId } from './types';
@@ -195,6 +202,64 @@ describe('file-format parser', () => {
     const parsed = parseStyleSetJson(serialized);
     expect(parsed.ok).toBe(true);
     if (parsed.ok) expect(parsed.value).toEqual(style);
+  });
+
+  // ─── YAML support ───────────────────────────────────────────────────────
+
+  it('round-trips a graph document through YAML serialize/parse', () => {
+    const doc: KidrawGraphDoc = {
+      kidraw: 1,
+      styles: ['./theme.kd-style.yaml'],
+      semantics: {
+        nodes: { 'auth-service': { label: 'Auth', tags: ['backend'] } },
+        edges: {},
+      },
+    };
+    const text = serializeGraphDocYaml(doc);
+    expect(text).toContain('kidraw: 1');
+    const parsed = parseGraphDocYaml(text);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(doc);
+  });
+
+  it('round-trips a style set through YAML serialize/parse', () => {
+    const style: KidrawStyleSet = {
+      kdStyle: 1,
+      imports: ['./base.kd-style.yaml'],
+      nodes: { n1: { x: 50, y: 100, shape: 'circle' } },
+    };
+    const text = serializeStyleSetYaml(style);
+    const parsed = parseStyleSetYaml(text);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value).toEqual(style);
+  });
+
+  it('rejects malformed YAML with a descriptive error', () => {
+    const result = parseGraphDocYaml('kidraw: 1\nstyles: [\n  invalid');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('Invalid YAML');
+  });
+
+  it('isYamlFilename detects .yaml, .yml, and rejects .json', () => {
+    expect(isYamlFilename('foo.kidraw.yaml')).toBe(true);
+    expect(isYamlFilename('foo.kidraw.YML')).toBe(true);
+    expect(isYamlFilename('foo.kidraw.json')).toBe(false);
+    expect(isYamlFilename('something.txt')).toBe(false);
+  });
+
+  it('parseGraphDocByFilename dispatches by extension', () => {
+    const yamlDoc = 'kidraw: 1\nstyles: []\nsemantics:\n  nodes: {}\n  edges: {}\n';
+    const jsonDoc = '{"kidraw":1,"styles":[],"semantics":{"nodes":{},"edges":{}}}';
+    expect(parseGraphDocByFilename(yamlDoc, 'foo.kidraw.yaml').ok).toBe(true);
+    expect(parseGraphDocByFilename(jsonDoc, 'foo.kidraw.json').ok).toBe(true);
+  });
+
+  it('serializeGraphDocByFilename writes YAML when filename is .yaml', () => {
+    const doc: KidrawGraphDoc = { kidraw: 1, styles: [], semantics: { nodes: {}, edges: {} } };
+    const yamlOut = serializeGraphDocByFilename(doc, 'foo.kidraw.yaml');
+    const jsonOut = serializeGraphDocByFilename(doc, 'foo.kidraw.json');
+    expect(yamlOut).not.toContain('"kidraw"');
+    expect(jsonOut).toContain('"kidraw"');
   });
 
   it('serializeGraphDocJson respects pretty=false for compact output', () => {

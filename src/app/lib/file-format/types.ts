@@ -137,3 +137,9 @@ export function isInlineStyleSet(ref: StyleRef): ref is InlineStyleSet {
 export function styleRefId(ref: StyleRef): string {
   return typeof ref === 'string' ? ref : ref.name;
 }
+
+/** Convert an InlineStyleSet body to a standalone KidrawStyleSet (strip the name, add kdStyle marker). */
+export function inlineToStyleSet(inline: InlineStyleSet): KidrawStyleSet {
+  const { name: _name, ...body } = inline;
+  return { kdStyle: 1, ...body };
+}

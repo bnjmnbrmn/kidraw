@@ -26,6 +26,24 @@ import { TuningOptionsService } from '../services/tuning-options.service';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { ABTestingService, SnapshotPayload } from '../services/ab-testing.service';
 import { DraftStorageService } from '../services/draft-storage.service';
+import { FileIoService } from '../services/file-io.service';
+import {
+  isYamlFilename,
+  parseGraphDocByFilename,
+  serializeGraphDocByFilename,
+} from '../lib/file-format/parser';
+import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
+import {
+  InlineStyleSet,
+  KidrawStyleSet,
+  inlineToStyleSet,
+} from '../lib/file-format/types';
+
+function defaultGraphFilename(): string {
+  const stamp = new Date().toISOString().slice(0, 10);
+  // YAML is the default save format.
+  return `kidraw-${stamp}.kidraw.yaml`;
+}
 
 @Component({
   selector: 'app-drawing-area',
@@ -55,6 +73,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private metrics = inject(RoutingMetricsService);
   private abTesting = inject(ABTestingService);
   private draftStorage = inject(DraftStorageService);
+  private fileIo = inject(FileIoService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -560,6 +579,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.NEW_GRAPH:
         this.newGraph();
         break;
+      case DACommandType.OPEN_FILE:
+        void this.openFile();
+        break;
+      case DACommandType.SAVE_FILE_AS:
+        this.saveFileAs();
+        break;
       case DACommandType.TOGGLE_PIN_SELECTED:
         this.togglePinSelected();
         break;
@@ -716,6 +741,64 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } catch {
       // Corrupted or incompatible stored data — ignore silently
     }
+  }
+
+  private async openFile(): Promise<void> {
+    const opened = await this.fileIo.openTextFile(FileIoService.KIDRAW_ACCEPT);
+    if (!opened) return;
+
+    const parsed = parseGraphDocByFilename(opened.content, opened.name);
+    if (!parsed.ok) {
+      window.alert(`Could not open ${opened.name}:\n\n${parsed.error}`);
+      return;
+    }
+
+    // Phase 4: only inline styles are resolved. External path references are
+    // skipped with a console warning; prompt-on-miss UI comes in a later phase.
+    const firstStyle = parsed.value.styles[0];
+    let resolvedStyle: KidrawStyleSet;
+    if (firstStyle === undefined) {
+      resolvedStyle = { kdStyle: 1 };
+    } else if (typeof firstStyle === 'string') {
+      console.warn(`External style "${firstStyle}" not yet resolvable; using empty style.`);
+      resolvedStyle = { kdStyle: 1 };
+    } else {
+      resolvedStyle = inlineToStyleSet(firstStyle);
+    }
+
+    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
+    this.finishTweens();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.drawingLayer.restoreGraph(snapshot);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.drawingLayer.applyThemeColors(palette);
+    this.recenterCrosshairs();
+    this.emitZoomLevel();
+    this.checkAndEmitEditState();
+  }
+
+  private saveFileAs(): void {
+    this.finishTweens();
+    const snapshot = this.drawingLayer.serializeGraph();
+    const { doc, style } = snapshotToFiles(snapshot);
+
+    // Single-file save: embed the style inline so the result is fully
+    // self-contained. (Multi-file save will land in a later phase.)
+    const inline: InlineStyleSet = {
+      name: 'default',
+      ...(style.nodes ? { nodes: style.nodes } : {}),
+      ...(style.edges ? { edges: style.edges } : {}),
+      ...(style.imports ? { imports: style.imports } : {}),
+      ...(style.tagStyles ? { tagStyles: style.tagStyles } : {}),
+      ...(style.view ? { view: style.view } : {}),
+    };
+    doc.styles = [inline];
+
+    const filename = defaultGraphFilename();
+    const content = serializeGraphDocByFilename(doc, filename);
+    const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
+    this.fileIo.saveAs(filename, content, mime);
   }
 
   private newGraph(): void {

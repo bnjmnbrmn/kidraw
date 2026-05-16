@@ -738,6 +738,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.saveGraph]: new LabeledAction('Save Graph', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_GRAPH})),
       [misc.loadGraph]: new LabeledAction('Load Graph', () => this.keyMenuOut.emit({kind: DACommandType.LOAD_GRAPH})),
       [misc.newGraph]: new LabeledAction('New Graph', () => this.keyMenuOut.emit({kind: DACommandType.NEW_GRAPH})),
+      [misc.openFile]: new LabeledAction('Open File…', () => this.keyMenuOut.emit({kind: DACommandType.OPEN_FILE})),
+      [misc.saveFileAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
     } as SubmenuConfig;
   }
 

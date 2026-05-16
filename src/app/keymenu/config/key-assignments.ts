@@ -104,6 +104,8 @@ export interface KeymenuKeyAssignments {
     readonly saveGraph: KeyString;
     readonly loadGraph: KeyString;
     readonly newGraph: KeyString;
+    readonly openFile: KeyString;
+    readonly saveFileAs: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -226,6 +228,8 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     saveGraph: 's',
     loadGraph: 'l',
     newGraph: 'n',
+    openFile: 'o',
+    saveFileAs: 'a',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -326,6 +330,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     saveGraph: 's',
     loadGraph: 'l',
     newGraph: 'n',
+    openFile: 'o',
+    saveFileAs: 'a',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
