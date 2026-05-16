@@ -17,6 +17,7 @@ A graph document references one or more style sets via relative paths. Each top-
 - **IDs**: kebab-case slugs (`auth-service`, `auth-reads-users`). Auto-suggested from labels; user-overridable. One definition site per ID → Go-to-Definition + Find-References work in editors.
 - **Directedness is semantic**: `undirected | directed | bidirectional` — lives in the graph document.
 - **All visual styling lives in style sets** — colors, stroke widths, dash patterns, arrowheads, positions, sizes, fonts, viewport. The graph document is presentation-free.
+- **Styles are referenced or inlined**: a `styles[]` entry in the graph document is either a relative path (external file) or an object (inline style set, with a required `name` field). See *Inline style sets* below.
 - **Nodes and edges have three text fields** in the graph document:
   - `label` — short display name (shown on canvas)
   - `description` — longer detail (tooltip, side panel, export)
@@ -44,6 +45,30 @@ When the user selects a top-level style, the loader:
 2. Concatenates rules in source order.
 3. Applies cascade: later rules override earlier for the same selector; element-specific beats tagStyles.
 4. Returns a flat resolved style map.
+
+## Inline style sets
+
+A `styles[]` entry in the graph document can be either a relative path (string) or an inline style-set body (object). Inline entries must include a `name` field — used as the display's identifier in the UI, since there's no filename to derive one from.
+
+```json
+{
+  "styles": [
+    "./overview-light.kd-style.json",
+    {
+      "name": "quick-tweak",
+      "imports": ["./theme-dark.kd-style.json"],
+      "nodes": { "auth-service": { "fontSize": 18 } }
+    }
+  ]
+}
+```
+
+Inline styles follow the same composition rules as external ones: they can `imports` other files, participate in the cascade, and act as top-level displays. They cannot be referenced from other files (no path to them).
+
+**When to use which:**
+
+- **External** — any style set worth naming, sharing, reusing across graphs, or versioning separately. The default choice.
+- **Inline** — one-off tweaks, quick experiments, or when keeping the graph in a single portable file matters more than reusability.
 
 ## Naming convention
 

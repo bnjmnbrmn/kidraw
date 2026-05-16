@@ -97,7 +97,7 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 
 ### Current focus
 
-**1. Serialization / file format.** Design is finalized in `kidraw-file-format.md` — HTML/CSS-style split: `*.kidraw.json` / `*.kidraw.yaml` carry graph semantics only; `*.kd-style.json` / `*.kd-style.yaml` carry presentation and compose via relative-path imports + CSS-like cascade. The graph document lists one or more top-level styles; only one is active at a time (first entry = default). Implementation work: parser/serializer, file-picker UI, prompt-on-miss for relative paths, zip-bundle export. Replaces or supplements the current `localStorage` `kidraw_graph_v1` save/load.
+**1. Serialization / file format.** Design is finalized in `kidraw-file-format.md` — HTML/CSS-style split: `*.kidraw.json` / `*.kidraw.yaml` carry graph semantics only; `*.kd-style.json` / `*.kd-style.yaml` carry presentation and compose via relative-path imports + CSS-like cascade. The graph document lists one or more top-level styles (path or inline object); only one is active at a time (first entry = default). Implementation plan in `serialization-plan.md` — command surface (`m → s/a/o/i/e/n/d`), save model, storage layers, v1→v2 localStorage migration, phased rollout.
 
 **2. Edge routing — auto-layout quality.** Five custom physics-based routers already work (`b → *`); the next push is making auto-routing genuinely good. Near-term option (`graph-layout-research.md`): integrate `libavoid-js` (WASM, obstacle-avoiding polyline routing) — maps directly to existing waypoints. Longer-term R&D: polyline nudging — endpoint propagation, iterative stability, dynamic angular spacing (a potential KiDraw differentiator since libavoid's nudging is orthogonal-only). Also queued: auto-tuning parameter sweeps on benchmark graphs (per memory notes), and fixing the bezier anti-parallel overlap bug.
 
@@ -155,6 +155,7 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 | `src/app/keymenu/config/key-assignments.ts` | Default and VIM key assignment configs |
 | `dev-status.md` | **This file** — authoritative current-state document |
 | `kidraw-file-format.md` | Graph document + style-set file format spec (HTML/CSS-style split) |
+| `serialization-plan.md` | Serialization/I/O implementation plan — command surface, save model, storage, phases |
 | `graph-layout-research.md` | Edge routing research; recommends `libavoid-js` + polyline-nudging R&D plan |
 | `demo-video-research.md` | Demo video tooling research (FocuSee for manual, Playwright for scripted) |
 | `design_notes.md` | Architecture invariants and design rationale |
