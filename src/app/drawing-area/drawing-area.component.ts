@@ -1016,6 +1016,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
     this.undoRedoService.clear();
     this.drawingLayer.restoreGraph({ nodes: [], edges: [] });
+    // Drop any open-file context so display cycling doesn't reference the
+    // previously-loaded doc after a fresh-start.
+    this.openedDoc = null;
+    this.openedStyleResolver = null;
+    this.activeStyleIndex = 0;
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
