@@ -741,6 +741,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.openFile]: new LabeledAction('Open File…', () => this.keyMenuOut.emit({kind: DACommandType.OPEN_FILE})),
       [misc.saveFileAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
       [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
+      [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
     } as SubmenuConfig;
   }
 

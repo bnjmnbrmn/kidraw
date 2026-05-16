@@ -107,6 +107,7 @@ export interface KeymenuKeyAssignments {
     readonly openFile: KeyString;
     readonly saveFileAs: KeyString;
     readonly exportZip: KeyString;
+    readonly cycleDisplay: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -232,6 +233,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     openFile: 'o',
     saveFileAs: 'a',
     exportZip: 'z',
+    cycleDisplay: 'd',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -335,6 +337,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     openFile: 'o',
     saveFileAs: 'a',
     exportZip: 'z',
+    cycleDisplay: 'd',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},

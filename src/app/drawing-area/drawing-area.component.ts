@@ -35,8 +35,11 @@ import {
 import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
 import {
   InlineStyleSet,
+  KidrawGraphDoc,
   KidrawStyleSet,
+  StyleRef,
   inlineToStyleSet,
+  styleRefId,
 } from '../lib/file-format/types';
 import { resolveAndApplyToGraph, ImportResolver } from '../lib/file-format/resolver';
 import {
@@ -91,6 +94,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private abTesting = inject(ABTestingService);
   private draftStorage = inject(DraftStorageService);
   private fileIo = inject(FileIoService);
+  /** The graph doc + style resolver from the most-recent Open. Used to
+   *  switch between top-level displays after the file is loaded. */
+  private openedDoc: KidrawGraphDoc | null = null;
+  private openedStyleResolver: ImportResolver | null = null;
+  private activeStyleIndex = 0;
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -605,6 +613,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.EXPORT_ZIP:
         this.exportZip();
         break;
+      case DACommandType.CYCLE_DISPLAY:
+        this.cycleDisplay();
+        break;
       case DACommandType.TOGGLE_PIN_SELECTED:
         this.togglePinSelected();
         break;
@@ -819,21 +830,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       styleResolver = (path: string) => cache.get(normalizeArchivePath(path)) ?? null;
     }
 
-    const firstRef = parsed.value.styles[0];
-    let resolvedStyle: KidrawStyleSet;
-    if (firstRef === undefined) {
-      resolvedStyle = { kdStyle: 1 };
-    } else {
-      const rootStyle = typeof firstRef === 'string'
-        ? styleResolver(firstRef) ?? { kdStyle: 1 }
-        : firstRef;
-      const resolved = resolveAndApplyToGraph(parsed.value, rootStyle, styleResolver);
-      if (!resolved.ok) {
-        window.alert(`Could not resolve styles for ${manifestName}:\n\n${resolved.error}`);
-        return;
-      }
-      resolvedStyle = resolved.value;
-    }
+    const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, styleResolver);
+    if (resolvedStyle === null) return;
+
+    // Save open-state so the user can cycle through other displays later.
+    this.openedDoc = parsed.value;
+    this.openedStyleResolver = styleResolver;
+    this.activeStyleIndex = 0;
 
     const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
     this.finishTweens();
@@ -845,6 +848,64 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
+
+    this.emitDisplayStatus(parsed.value);
+  }
+
+  private cycleDisplay(): void {
+    if (!this.openedDoc || !this.openedStyleResolver) {
+      this.daOut.emit({ kind: 'status-message', message: 'Open a graph file first to cycle displays.' });
+      return;
+    }
+    const styles = this.openedDoc.styles;
+    if (styles.length <= 1) {
+      this.daOut.emit({ kind: 'status-message', message: `Only one display in this graph (${styleRefId(styles[0])}).` });
+      return;
+    }
+    this.activeStyleIndex = (this.activeStyleIndex + 1) % styles.length;
+    const resolvedStyle = this.resolveStyleAtIndex(this.openedDoc, this.activeStyleIndex, this.openedStyleResolver);
+    if (resolvedStyle === null) return;
+
+    const snapshot = filesToSnapshot(this.openedDoc, resolvedStyle);
+    this.finishTweens();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.drawingLayer.restoreGraph(snapshot);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.drawingLayer.applyThemeColors(palette);
+    this.emitZoomLevel();
+    this.checkAndEmitEditState();
+
+    this.emitDisplayStatus(this.openedDoc);
+  }
+
+  /** Resolve styles[index] into a cascaded KidrawStyleSet (or null if it errors). */
+  private resolveStyleAtIndex(
+    doc: KidrawGraphDoc,
+    index: number,
+    resolver: ImportResolver,
+  ): KidrawStyleSet | null {
+    const ref = doc.styles[index];
+    if (ref === undefined) return { kdStyle: 1 };
+    const rootStyle = typeof ref === 'string'
+      ? resolver(ref) ?? { kdStyle: 1 }
+      : ref;
+    const resolved = resolveAndApplyToGraph(doc, rootStyle, resolver);
+    if (!resolved.ok) {
+      window.alert(`Could not resolve display ${styleRefId(ref)}:\n\n${resolved.error}`);
+      return null;
+    }
+    return resolved.value;
+  }
+
+  private emitDisplayStatus(doc: KidrawGraphDoc): void {
+    if (doc.styles.length === 0) return;
+    const name = styleRefId(doc.styles[this.activeStyleIndex]);
+    const total = doc.styles.length;
+    const message = total > 1
+      ? `Display: ${name} (${this.activeStyleIndex + 1}/${total})`
+      : `Display: ${name}`;
+    this.daOut.emit({ kind: 'status-message', message });
   }
 
   /**
