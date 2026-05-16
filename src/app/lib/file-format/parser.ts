@@ -25,6 +25,16 @@ const SHAPE_VALUES: ReadonlySet<string> = new Set([
   'circle',
   'diamond',
   'junction',
+  'invisible',
+]);
+
+const TEXT_OVERFLOW_VALUES: ReadonlySet<string> = new Set([
+  'clip',
+  'shrink-font',
+  'ellipsis',
+  'widen-h',
+  'widen-v',
+  'widen-both',
 ]);
 
 const LINE_STYLE_VALUES: ReadonlySet<string> = new Set([
@@ -183,7 +193,10 @@ function validateNodeStyleProps(raw: unknown, label: string): ParseResult<{}> {
     }
   }
   if (raw['shape'] !== undefined && !SHAPE_VALUES.has(raw['shape'] as string)) {
-    return fail(`${label}.shape must be one of: box, circle, diamond, junction`);
+    return fail(`${label}.shape must be one of: box, circle, diamond, junction, invisible`);
+  }
+  if (raw['textOverflow'] !== undefined && !TEXT_OVERFLOW_VALUES.has(raw['textOverflow'] as string)) {
+    return fail(`${label}.textOverflow must be one of: clip, shrink-font, ellipsis, widen-h, widen-v, widen-both`);
   }
   return ok({});
 }

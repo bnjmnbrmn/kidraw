@@ -93,9 +93,18 @@ export interface NodeStyleProps extends StyleProps {
   w?: number;
   h?: number;
   shape?: NodeShapeName;
+  textOverflow?: TextOverflowName;
 }
 
-export type NodeShapeName = 'box' | 'circle' | 'diamond' | 'junction';
+export type NodeShapeName = 'box' | 'circle' | 'diamond' | 'junction' | 'invisible';
+
+export type TextOverflowName =
+  | 'clip'
+  | 'shrink-font'
+  | 'ellipsis'
+  | 'widen-h'
+  | 'widen-v'
+  | 'widen-both';
 
 export interface EdgeStyleProps extends StyleProps {
   lineStyle?: LineStyleName;
