@@ -73,6 +73,9 @@ export interface KeymenuKeyAssignments {
     readonly select: KeyString;
     readonly undo: KeyString;
   };
+  readonly select: {
+    readonly editItem: KeyString;
+  };
   readonly moveSpeed: SpeedModifierKeys;
   readonly panZoom: {
     readonly submenu: KeyString;
@@ -108,6 +111,7 @@ export interface KeymenuKeyAssignments {
     readonly saveFileAs: KeyString;
     readonly exportZip: KeyString;
     readonly cycleDisplay: KeyString;
+    readonly toggleKeyProfile: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -191,6 +195,9 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     select: 'c',
     undo: 'u',
   },
+  select: {
+    editItem: ';',
+  },
   moveSpeed: {
     bigger: 'd',
     biggest: 's',
@@ -201,9 +208,9 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'r',
     speed: { bigger: 'e', biggest: 'w', smaller: 'a', smallest: 'q' },
     zoomIn: 'o',
-    zoomOut: 'i',
-    recenterView: 'a',
-    recenterCrosshairs: 's',
+    zoomOut: 'u',
+    recenterView: 'h',
+    recenterCrosshairs: 'q',
   },
   dragSpeed: {
     bigger: 'c',
@@ -229,11 +236,12 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     reload: 'r',
     saveGraph: 's',
     loadGraph: 'l',
-    newGraph: 'n',
-    openFile: 'o',
+    newGraph: 'g',
+    openFile: 'f',
     saveFileAs: 'a',
     exportZip: 'z',
     cycleDisplay: 'd',
+    toggleKeyProfile: 'p',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -254,16 +262,16 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   insert: {
     node: 'd',
-    invisibleNode: 'w',
+    invisibleNode: 'i',
     edge: 's',
-    label: 'e',
+    label: 'a',
   },
   nodeTypes: {
     box: 'b',
     circle: 'k',
     diamond: 'l',
     junction: ';',
-    invisible: 'w',
+    invisible: 'i',
   },
   style: {
     shapeSubmenu: 'n',
@@ -295,15 +303,18 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     select: 'c',
     undo: 'u',
   },
+  select: {
+    editItem: ';',
+  },
   moveSpeed: {
     bigger: 's',
     biggest: 'a',
     smaller: 'd',
-    smallest: 's',
+    smallest: 'q',
   },
   panZoom: {
     submenu: 'r',
-    speed: { bigger: 'w', biggest: 'q', smaller: 'e', smallest: 'w' },
+    speed: { bigger: 'w', biggest: 'q', smaller: 'e', smallest: 'd' },
     zoomIn: 'i',
     zoomOut: 'o',
     recenterView: 'y',
@@ -313,7 +324,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     bigger: 'x',
     biggest: 'z',
     smaller: 'c',
-    smallest: 'x',
+    smallest: 'a',
   },
   moveByNode: {
     submenu: 't',
@@ -333,11 +344,12 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     reload: 'r',
     saveGraph: 's',
     loadGraph: 'l',
-    newGraph: 'n',
-    openFile: 'o',
+    newGraph: 'g',
+    openFile: 'f',
     saveFileAs: 'a',
     exportZip: 'z',
     cycleDisplay: 'd',
+    toggleKeyProfile: 'p',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},

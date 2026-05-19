@@ -611,7 +611,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const drag = this.keyAssignments.drag;
     const pz = this.keyAssignments.panZoom;
     const ds = this.keyAssignments.dragSpeed;
-    const root = this.keyAssignments.root;
+    const select = this.keyAssignments.select;
 
     return {
       [drag.up]: new LabeledAction('Drag Up', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP})),
@@ -622,7 +622,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag...', this.buildDragSpeedSubmenu('coarse')),
       [ds.smaller]: new LabeledSubmenuConfig('Fine Drag...', this.buildDragSpeedSubmenu('fine')),
-      [root.insertSubmenu]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
+      [select.editItem]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
     } as SubmenuConfig;
   }
 
@@ -732,6 +732,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMiscSubmenuConfig(): SubmenuConfig {
     const misc = this.keyAssignments.misc;
+    const otherProfileLabel = this.keyboardConfig.keyProfile === 'vim' ? 'Default keys' : 'Vim keys';
 
     return {
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
@@ -742,6 +743,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.saveFileAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
       [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
       [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
+      [misc.toggleKeyProfile]: new LabeledAction(`→ ${otherProfileLabel}`, () => {
+        this.keyboardConfig.keyProfile = this.keyboardConfig.keyProfile === 'vim' ? 'default' : 'vim';
+      }),
     } as SubmenuConfig;
   }
 
