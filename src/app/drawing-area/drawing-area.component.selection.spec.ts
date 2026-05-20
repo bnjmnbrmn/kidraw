@@ -8,6 +8,7 @@ describe('DrawingAreaComponent selection priority', () => {
     component.tweens = [];
     component.drawingLayer = {
       unselectAll: jasmine.createSpy('unselectAll'),
+      getDAWaypoints: () => [],
     };
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.getDAEdgesContainingCrosshairs = () => [];

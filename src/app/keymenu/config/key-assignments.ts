@@ -35,6 +35,7 @@ export interface KeymenuKeyAssignments {
     readonly invisibleNode: KeyString;
     readonly edge: KeyString;
     readonly label: KeyString;
+    readonly waypoint: KeyString;
   };
   readonly nodeTypes: {
     readonly box: KeyString;
@@ -157,6 +158,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     invisibleNode: 'k',
     edge: 'l',
     label: ';',
+    waypoint: 'n',
   },
   nodeTypes: {
     box: 'b',
@@ -265,6 +267,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     invisibleNode: 'i',
     edge: 's',
     label: 'a',
+    waypoint: 'p',
   },
   nodeTypes: {
     box: 'b',

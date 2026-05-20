@@ -67,6 +67,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   // State: when true, releasing the insert submenu key switches to labelEdit
   private insertDragActive = false;
+  // True between waypoint insert and insert-submenu key release. Like
+  // insertDragActive but skips the labelEdit transition on release (waypoints
+  // have no text).
+  private waypointDragActive = false;
   // Pending-action-on-release: set when a node type key is pressed, cleared by directional action or type key release
   private insertNodePending = false;
   // When true, releasing the edit submenu key without selecting a child fires EDIT_SELECTED
@@ -349,6 +353,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private resetInteractionState(): void {
     this.insertDragActive = false;
+    this.waypointDragActive = false;
     this.insertNodePending = false;
     this.editPending = false;
     this.pendingNodeShape = undefined;
@@ -463,6 +468,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }),
       [insert.label]: new LabeledAction('...Label', () => {
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
+      }),
+      [insert.waypoint]: new LabeledAction('Waypoint', () => {
+        this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT});
+        this.waypointDragActive = true;
+        const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
+        mode.actionSchedulingEnabled = false;
+        mode.replaceTopSubmenu(this.dragSubmenuConfig);
+        queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
       }),
     } as SubmenuConfig;
   }
@@ -1183,7 +1196,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // If insert submenu key (f) is released, handle pending/drag states
     if (eventKey === this.keyAssignments.root.insertSubmenu) {
-      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive);
+      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
       // If node creation was pending (type key pressed but not released), create the node now
       if (this.insertNodePending) {
         this.log.log('[keymenu] f released before type key — creating node at crosshairs');
@@ -1192,6 +1205,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         if (this.pendingNodeShape !== 'junction') {
           this.switchMode('labelEdit');
         }
+        return;
+      }
+      if (this.waypointDragActive) {
+        this.waypointDragActive = false;
+        // Waypoints have no text — just exit drag, no labelEdit transition.
         return;
       }
       if (this.insertDragActive) {

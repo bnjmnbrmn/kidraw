@@ -273,6 +273,12 @@ function validateEdgeStyleProps(raw: unknown, label: string): ParseResult<{}> {
       if (!isObject(w) || typeof w['x'] !== 'number' || typeof w['y'] !== 'number') {
         return fail(`${label}.waypoints[${i}] must have numeric x, y`);
       }
+      if (w['id'] !== undefined && typeof w['id'] !== 'string') {
+        return fail(`${label}.waypoints[${i}].id must be a string`);
+      }
+      if (w['pinned'] !== undefined && typeof w['pinned'] !== 'boolean') {
+        return fail(`${label}.waypoints[${i}].pinned must be a boolean`);
+      }
     }
   }
   return ok({});

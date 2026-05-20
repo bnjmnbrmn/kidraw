@@ -80,7 +80,12 @@ export function snapshotToFiles(
     const sp: EdgeStyleProps = {};
     if (e.lineStyle) sp.lineStyle = e.lineStyle;
     if (e.controlPoints && e.controlPoints.length > 0) {
-      sp.waypoints = e.controlPoints.map(p => ({ x: p.x, y: p.y }));
+      sp.waypoints = e.controlPoints.map(p => ({
+        x: p.x,
+        y: p.y,
+        ...(p.waypointId ? {id: p.waypointId} : {}),
+        ...(p.pinned ? {pinned: true} : {}),
+      }));
     }
     if (e.labels && e.labels.length > 0) {
       // Snapshot stores absolute label positions; the file format calls these
@@ -152,7 +157,12 @@ export function filesToSnapshot(
       labels,
     };
     if (sp.waypoints && sp.waypoints.length > 0) {
-      edge.controlPoints = sp.waypoints.map(p => ({ x: p.x, y: p.y }));
+      edge.controlPoints = sp.waypoints.map(p => ({
+        x: p.x,
+        y: p.y,
+        ...(p.id ? {waypointId: p.id} : {}),
+        ...(p.pinned ? {pinned: true} : {}),
+      }));
     }
     if (sem.directed) edge.directedness = sem.directed;
     if (sp.lineStyle) edge.lineStyle = sp.lineStyle;

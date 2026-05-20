@@ -114,8 +114,19 @@ export type TextOverflowName =
 
 export interface EdgeStyleProps extends StyleProps {
   lineStyle?: LineStyleName;
-  waypoints?: { x: number; y: number }[];
+  waypoints?: WaypointSpec[];
   labelOffsets?: { dx: number; dy: number }[];
+}
+
+/** A bend point on an edge. Plain router-generated points use just `x`/`y`;
+ *  user-placed waypoints additionally carry `id` (stable identifier so undo/
+ *  redo and reload preserve identity) and `pinned` (routers preserve the
+ *  position when re-routing). */
+export interface WaypointSpec {
+  x: number;
+  y: number;
+  id?: string;
+  pinned?: boolean;
 }
 
 export type LineStyleName = 'solid' | 'dashed' | 'dotted';

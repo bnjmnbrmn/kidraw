@@ -2,6 +2,7 @@ import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAEdge} from './da-edge';
 import {DALabel} from './da-label';
+import {DAWaypoint} from './da-waypoint';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
 import {resetIdCounter} from './id-generator';
@@ -167,6 +168,19 @@ export class DrawingLayer extends Konva.Layer {
     return this.daEdges;
   }
 
+  getDAWaypoints(): DAWaypoint[] {
+    return this.daEdges.flatMap(e => e.waypoints);
+  }
+
+  getSelectedDAWaypoints(): DAWaypoint[] {
+    return this.getDAWaypoints().filter(wp => wp.isSelected);
+  }
+
+  /** Edge that owns the given waypoint, or undefined if not found. */
+  findEdgeForWaypoint(wp: DAWaypoint): DAEdge | undefined {
+    return this.daEdges.find(e => e.waypoints.includes(wp));
+  }
+
   appendTextToSelected(text: string): DANode[] {
     const resized: DANode[] = [];
     this.getSelectedDANodes().forEach(daNode => {
@@ -213,6 +227,9 @@ export class DrawingLayer extends Konva.Layer {
     });
     this.getSelectedDAEdges().forEach(daEdge => {
       daEdge.isSelected = false;
+    });
+    this.getSelectedDAWaypoints().forEach(wp => {
+      wp.isSelected = false;
     });
   }
 
@@ -315,7 +332,12 @@ export class DrawingLayer extends Konva.Layer {
         isSelected: lbl.isSelected,
       })),
       controlPoints: edge.controlPoints.length > 0
-        ? edge.controlPoints.map(p => ({x: p.x, y: p.y}))
+        ? edge.controlPoints.map(p => ({
+            x: p.x,
+            y: p.y,
+            ...(p.waypointId ? {waypointId: p.waypointId} : {}),
+            ...(p.pinned ? {pinned: true} : {}),
+          }))
         : undefined,
       directedness: edge.directedness !== 'directed' ? edge.directedness : undefined,
       lineStyle: edge.lineStyle !== 'solid' ? edge.lineStyle : undefined,
@@ -361,7 +383,7 @@ export class DrawingLayer extends Konva.Layer {
       const edge = new DAEdge(srcNode, destNode, '', es.id);
       edge.isSelected = es.isSelected;
       if (es.controlPoints && es.controlPoints.length > 0) {
-        edge.setControlPoints(es.controlPoints);
+        edge.restoreControlPoints(es.controlPoints);
       }
       if (es.directedness) edge.directedness = es.directedness;
       if (es.lineStyle) edge.lineStyle = es.lineStyle;

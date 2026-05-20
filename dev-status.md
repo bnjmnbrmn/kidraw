@@ -10,6 +10,13 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 ## Recently completed (all on `main`, pushed to both `origin` and `bot` remotes)
 
+### Waypoints (re-introduced)
+- `DAWaypoint` Konva entity is back (`src/app/drawing-area/da-waypoint.ts`): selectable small circle that lives inside its parent `DAEdge`'s group and mirrors one entry of the edge's `_controlPoints` array.
+- Insert key: `f → n` (default) / `f → p` (vim, mnemonic "point"). Finds the nearest edge to the crosshairs and splices a new bend point at the insertion index that minimizes total polyline length increase; the new waypoint is selected and the keymenu enters drag-submenu mode (parallel to node-insert), so the user can press hjkl while still holding `f` to fine-position it. Releasing `f` exits drag without entering label-edit (waypoints have no text).
+- Pinning: routers (`b → *`) preserve pinned waypoints by re-merging them into the freshly-routed bead sequence in `DAEdge.setControlPoints`. Unpinned waypoints are dropped on the next router run. Toggle pin via the existing edit-submenu pin shortcut (default `e → p`, vim `i → p`); pinned waypoints render with a gold fill.
+- Drag/select/delete: waypoints participate in `SINGLE_ITEM_TOGGLE_SELECT`, `UNSELECT_ALL`, `DELETE`, and `DRAG_SELECTED_*` (waypoint-only drag path moves selected waypoints by a grid step; no tween).
+- Persistence: `DAEdgeSnapshot.controlPoints` now optionally carries `waypointId` and `pinned`; `restoreControlPoints` preserves these on load/undo. File format `EdgeStyleProps.waypoints` uses the same shape (`WaypointSpec`).
+
 ### Graph layout algorithms (`b` key)
 - Six algorithms under a held submenu on `b`: Force-directed, Tree ↓, Tree →, Grid, Circular, Radial.
 - Layout applies to selected nodes if any are selected; otherwise all nodes.
@@ -50,8 +57,9 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 - **Bezier-route anti-parallel edges overlap** — in `bezier-route-edges.ts` (`b → ;`), A→B and B→A render as a single line because the lane-offset logic keys parallels by *ordered* (src, dest) pair. Fix: switch to the unordered `canonicalPairKey` used by charged-spring / flexible-wire / weighted-chain.
 
-(The earlier waypoint / `routeEdgesAroundNodes` bugs are resolved — that
-code was removed in Phase 1; charged-spring edges replaced it.)
+(The earlier `routeEdgesAroundNodes`-style waypoint code is gone — charged-spring
+replaced it in Phase 1. User-placed waypoints have since been **re-introduced**
+as a separate feature; see "Waypoints (re-introduced)" below.)
 
 ### Known pre-existing failures (tests)
 NG0100 fixed — `movementSpeed` now initialized to `50` in `AppComponent`. Current test counts unknown (no Chrome in CI environment; `npx ng test` requires a browser binary).

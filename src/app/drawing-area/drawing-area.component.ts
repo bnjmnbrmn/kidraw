@@ -9,6 +9,7 @@ import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
+import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
@@ -175,11 +176,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
     DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.BEGIN_DIRECTED_EDGE,
     DACommandType.SET_EDGE_DESTINATION,
     DACommandType.ADD_LABEL,
     DACommandType.DELETE,
+    DACommandType.TOGGLE_PIN_SELECTED,
     DACommandType.INSERT_CHAR,
     DACommandType.DELETE_LAST_CHAR,
     DACommandType.INCREASE_SELECTED_NODE_SIZE,
@@ -479,6 +482,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CREATE_NEW_NODE_DIRECTED:
         this.createNewNodeDirected(command.direction, command.nodeShape);
         break;
+      case DACommandType.INSERT_WAYPOINT:
+        this.insertWaypointAtCrosshairs();
+        this.checkAndEmitEditState();
+        break;
       case DACommandType.INSERT_CHAR:
         const key = command.value;
         this.insertChar(key);
@@ -678,6 +685,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private isTopItemSelected(): boolean {
+    const wp = this.getWaypointUnderCrosshairs();
+    if (wp) return wp.isSelected;
+
     const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
     if (daNodesContainingCrosshairs.length > 0) {
       const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
@@ -694,6 +704,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private ensureTopItemSelected() {
+    const wp = this.getWaypointUnderCrosshairs();
+    if (wp) {
+      wp.isSelected = true;
+      return;
+    }
+
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
 
     if (daNodesContainingCrosshairs.length > 0) {
@@ -723,6 +739,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (wpUnderCrosshairs) {
+      wpUnderCrosshairs.isSelected = true;
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
     if (daNodesContainingCrosshairs.length > 0) {
       daNodesContainingCrosshairs[0].isSelected = true;
@@ -735,6 +758,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.batchDraw();
       return;
     }
+  }
+
+  /** Waypoint whose center is within its radius of the crosshairs (in layer
+   *  coords). Returns the closest waypoint to the crosshairs if multiple are
+   *  in range; undefined if none. */
+  private getWaypointUnderCrosshairs(): DAWaypoint | undefined {
+    const wps = this.drawingLayer.getDAWaypoints();
+    if (wps.length === 0) return undefined;
+    const pt = this.crosshairsInLayerCoords();
+    const candidates = wps
+      .map(wp => ({wp, d: wp.distanceTo(pt)}))
+      .filter(c => c.d <= c.wp.RADIUS + 4);
+    if (candidates.length === 0) return undefined;
+    candidates.sort((a, b) => a.d - b.d);
+    return candidates[0].wp;
   }
 
   private loadSampleGraph(graphId: string) {
@@ -1027,6 +1065,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private togglePinSelected() {
+    // Waypoints take priority — if any are selected (or hovered under
+    // crosshairs), pin/unpin them. Otherwise fall through to node pinning.
+    const selectedWps = this.drawingLayer.getSelectedDAWaypoints();
+    if (selectedWps.length > 0) {
+      const newPinned = !selectedWps.every(wp => wp.pinned);
+      selectedWps.forEach(wp => {
+        const edge = this.drawingLayer.findEdgeForWaypoint(wp);
+        edge?.setWaypointPinned(wp, newPinned);
+      });
+      this.drawingLayer.batchDraw();
+      return;
+    }
+    const hoveredWp = this.getWaypointUnderCrosshairs();
+    if (hoveredWp) {
+      const edge = this.drawingLayer.findEdgeForWaypoint(hoveredWp);
+      edge?.setWaypointPinned(hoveredWp, !hoveredWp.pinned);
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const selected = this.drawingLayer.getSelectedDANodes();
     const hovered = selected.length > 0 ? selected : this.getDANodesContainingCrosshairs();
     const targets = hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
@@ -2029,6 +2087,54 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.zoomLevel.emit(Math.round(currentScale * 100));
   }
 
+  /** Insert a user waypoint at the crosshairs onto the nearest edge.
+   *  "Nearest" means smallest perpendicular distance from the crosshairs
+   *  to any segment of any edge's polyline. The waypoint is placed at the
+   *  crosshairs position (not snapped to the edge line), so it bends the
+   *  polyline through that point. */
+  private insertWaypointAtCrosshairs(): void {
+    this.finishTweens();
+    const layerPt = this.crosshairsInLayerCoords();
+    const nearest = this.findNearestEdgeFromPoint(layerPt);
+    if (!nearest) {
+      this.daOut.emit({kind: 'status-message', message: 'No edge to attach waypoint to'});
+      return;
+    }
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    const wp = nearest.insertWaypoint(layerPt);
+    wp.isSelected = true;
+    this.drawingLayer.batchDraw();
+  }
+
+  private crosshairsInLayerCoords(): {x: number; y: number} {
+    const scale = this.drawingLayer.scaleX();
+    return {
+      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
+      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
+    };
+  }
+
+  /** Edge with smallest distance from `point` to any of its polyline segments.
+   *  Returns undefined if no edges exist. */
+  private findNearestEdgeFromPoint(point: {x: number; y: number}): DAEdge | undefined {
+    const edges = this.drawingLayer.getDAEdges();
+    let best: DAEdge | undefined;
+    let bestDist = Infinity;
+    for (const edge of edges) {
+      const pts = edge.getPathPoints();
+      for (let i = 0; i < pts.length - 1; i++) {
+        const closest = closestPointOnSeg(point.x, point.y, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+        const d = Math.hypot(closest.x - point.x, closest.y - point.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = edge;
+        }
+      }
+    }
+    return best;
+  }
+
   private createNewNode(nodeShape?: NodeShape) {
     this.finishTweens();
 
@@ -2261,10 +2367,30 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // If only labels are selected, slide them along their edges
     const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedLabels.length > 0 && selectedNodes.length === 0) {
+    const selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
+    if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
       const majorSpacing = this.drawingLayer.getGridSpacing();
       const slideDist = sign * majorSpacing;
       selectedLabels.forEach(label => this.slideLabelAlongEdge(label, slideDist));
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    // Waypoint-only drag: nudge each selected waypoint by one grid step.
+    // No tween/crosshair-pan; waypoint moves are pointwise and snappy.
+    if (selectedWaypoints.length > 0 && selectedNodes.length === 0) {
+      const majorSpacing = this.drawingLayer.getGridSpacing();
+      const minorSpacing = this.drawingLayer.getSubGridSpacing();
+      const effectiveTier = tier ?? 'normal';
+      const gridSpacing = effectiveTier === 'fine' ? minorSpacing : majorSpacing;
+      const steps = effectiveTier === 'coarse' ? 10 : 1;
+      const delta = sign * steps * gridSpacing;
+      const dx = axis === 'x' ? delta : 0;
+      const dy = axis === 'y' ? delta : 0;
+      selectedWaypoints.forEach(wp => {
+        const edge = this.drawingLayer.findEdgeForWaypoint(wp);
+        edge?.moveWaypoint(wp, dx, dy);
+      });
       this.drawingLayer.batchDraw();
       return;
     }
@@ -2560,7 +2686,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private deleteSelected(): void {
-    // Priority: nodes > edges > labels > crosshairs
+    // Priority: waypoints > nodes > edges > labels > crosshairs
+    const selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
+    if (selectedWaypoints.length > 0) {
+      selectedWaypoints.forEach(wp => {
+        const edge = this.drawingLayer.findEdgeForWaypoint(wp);
+        edge?.removeWaypoint(wp);
+      });
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     if (selectedNodes.length > 0) {
       selectedNodes.forEach(node => this.drawingLayer.removeNode(node));
@@ -2586,6 +2722,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Nothing selected: delete item under crosshairs
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
+    if (wpUnderCrosshairs) {
+      const edge = this.drawingLayer.findEdgeForWaypoint(wpUnderCrosshairs);
+      edge?.removeWaypoint(wpUnderCrosshairs);
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const nodeUnderCrosshairs = this.getDANodesContainingCrosshairs()[0];
     if (nodeUnderCrosshairs) {
       this.drawingLayer.removeNode(nodeUnderCrosshairs);

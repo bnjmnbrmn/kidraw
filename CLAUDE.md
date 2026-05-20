@@ -49,7 +49,7 @@ AppComponent                        # Shell: routes commands between keymenu and
 Domain objects:
 - **`DANode`** — Konva Group with a Rect + Text. Tracks `incomingEdges`/`outgoingEdges`. Supports resize and font size adjustment.
 - **`DAEdge`** — Arrow/line between two `DANode`s. Recalculates endpoints from node geometry when nodes move.
-- **`DAWaypoint`** — Geometry-only bend point on an edge (no text).
+- **`DAWaypoint`** — User-placed bend point on an edge. Selectable; can be pinned (routers preserve pinned positions). Mirrors one entry in the parent edge's `_controlPoints` (which carries `waypointId` + `pinned` markers for user waypoints; plain router-generated beads have neither).
 - **`DALabel`** — Text annotation on an edge.
 
 Commands arrive as a discriminated union (`DACommandType` enum in `command.model.ts`). `DrawingAreaComponent` handles each command in a large `switch` statement.
