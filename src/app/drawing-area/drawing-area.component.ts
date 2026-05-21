@@ -132,11 +132,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_STEERING_SPEED = 200;
   public readonly NODE_SIZE_STEP = 20;
   public readonly TEXT_SIZE_STEP = 2;
-  /** Extra layer-coord distance (beyond a waypoint's radius) within which a
-   *  waypoint counts as "close by" for single-item selection. Larger than the
-   *  proximity used for editing/deleting so it's easy to grab a waypoint
-   *  sitting on an edge. */
-  public readonly WAYPOINT_SELECT_TOLERANCE = 24;
 
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
@@ -734,14 +729,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-
-    // Remember the waypoint selected before this command. A nearby waypoint is
-    // preferred over an edge, but once it is already selected a repeat press
-    // falls through to the edge underneath it.
-    const previouslySelectedWaypoint = this.drawingLayer
-      .getDAWaypoints()
-      .find(wp => wp.isSelected);
-
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
@@ -752,8 +739,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs(this.WAYPOINT_SELECT_TOLERANCE);
-    if (wpUnderCrosshairs && wpUnderCrosshairs !== previouslySelectedWaypoint) {
+    // A waypoint is selectable (in preference to its edge) whenever it even
+    // partially overlaps the crosshairs' selection circle.
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs(this.crosshairsCircleRadiusInLayerCoords());
+    if (wpUnderCrosshairs) {
       wpUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
       return;
@@ -771,6 +760,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.batchDraw();
       return;
     }
+  }
+
+  /** Radius of the crosshairs' selection circle expressed in drawing-layer
+   *  coordinates. The circle is drawn unscaled on the crosshairs layer, so its
+   *  effective size relative to the drawing layer changes with zoom. */
+  private crosshairsCircleRadiusInLayerCoords(): number {
+    return this.crosshairsLayer.crosshairs.CROSSHAIRS_LENGTH / this.drawingLayer.scaleX();
   }
 
   /** Waypoint whose center is within `RADIUS + extraTolerance` of the

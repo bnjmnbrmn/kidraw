@@ -9,9 +9,11 @@ describe('DrawingAreaComponent selection priority', () => {
     component.drawingLayer = {
       unselectAll: jasmine.createSpy('unselectAll'),
       getDAWaypoints: () => [],
+      batchDraw: jasmine.createSpy('batchDraw'),
     };
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.getDAEdgesContainingCrosshairs = () => [];
+    component.crosshairsCircleRadiusInLayerCoords = () => 20;
     return component;
   }
 
