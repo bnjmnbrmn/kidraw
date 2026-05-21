@@ -132,6 +132,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_STEERING_SPEED = 200;
   public readonly NODE_SIZE_STEP = 20;
   public readonly TEXT_SIZE_STEP = 2;
+  /** Extra layer-coord distance (beyond a waypoint's radius) within which a
+   *  waypoint counts as "close by" for single-item selection. Larger than the
+   *  proximity used for editing/deleting so it's easy to grab a waypoint
+   *  sitting on an edge. */
+  public readonly WAYPOINT_SELECT_TOLERANCE = 24;
 
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
@@ -729,6 +734,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
+
+    // Remember the waypoint selected before this command. A nearby waypoint is
+    // preferred over an edge, but once it is already selected a repeat press
+    // falls through to the edge underneath it.
+    const previouslySelectedWaypoint = this.drawingLayer
+      .getDAWaypoints()
+      .find(wp => wp.isSelected);
+
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
@@ -739,8 +752,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (wpUnderCrosshairs) {
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs(this.WAYPOINT_SELECT_TOLERANCE);
+    if (wpUnderCrosshairs && wpUnderCrosshairs !== previouslySelectedWaypoint) {
       wpUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
       return;
@@ -760,16 +773,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  /** Waypoint whose center is within its radius of the crosshairs (in layer
-   *  coords). Returns the closest waypoint to the crosshairs if multiple are
-   *  in range; undefined if none. */
-  private getWaypointUnderCrosshairs(): DAWaypoint | undefined {
+  /** Waypoint whose center is within `RADIUS + extraTolerance` of the
+   *  crosshairs (in layer coords). Returns the closest waypoint to the
+   *  crosshairs if multiple are in range; undefined if none. */
+  private getWaypointUnderCrosshairs(extraTolerance: number = 4): DAWaypoint | undefined {
     const wps = this.drawingLayer.getDAWaypoints();
     if (wps.length === 0) return undefined;
     const pt = this.crosshairsInLayerCoords();
     const candidates = wps
       .map(wp => ({wp, d: wp.distanceTo(pt)}))
-      .filter(c => c.d <= c.wp.RADIUS + 4);
+      .filter(c => c.d <= c.wp.RADIUS + extraTolerance);
     if (candidates.length === 0) return undefined;
     candidates.sort((a, b) => a.d - b.d);
     return candidates[0].wp;
@@ -1404,8 +1417,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const currentDlX = (currentX - this.drawingLayer.x()) / scale;
       const currentDlY = (currentY - this.drawingLayer.y()) / scale;
 
-      const spacing = tier === 'fine' ? minorSpacing : majorSpacing;
-      const steps = tier === 'coarse' ? 10 : 1;
+      // 'normal' movement is half a major cell, snapped to the minor grid
+      // (minorSpacing is 1/10th of majorSpacing, so 5 minor steps == half a
+      // major cell). 'fine' is one minor cell; 'coarse' is ten major cells.
+      let spacing: number;
+      let steps: number;
+      if (tier === 'fine') {
+        spacing = minorSpacing;
+        steps = 1;
+      } else if (tier === 'coarse') {
+        spacing = majorSpacing;
+        steps = 10;
+      } else {
+        spacing = minorSpacing;
+        steps = 5;
+      }
 
       const snappedDlX = deltaX !== 0
         ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
