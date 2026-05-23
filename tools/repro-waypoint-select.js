@@ -60,19 +60,26 @@ async function main() {
       results.push(trySelect('MULTI_ITEM_SELECT', off));
     }
 
-    // Double-press toggle on the waypoint: first press selects, second deselects.
-    const togglePresses = [];
+    // Double-tap `vv`: each tap of `v` press-and-releases, emitting
+    // MULTI_ITEM_SELECT + ENTER_DRAG_MODE on press and EXIT_DRAG_MODE on
+    // release. Over a waypoint, the second tap should toggle it off.
+    const vvTaps = [];
     dl.unselectAll();
     place({ x: wp.x + 10, y: wp.y });
+    const vTap = () => {
+      c.handleCommands({ kind: 'MULTI_ITEM_SELECT' });
+      c.handleCommands({ kind: 'ENTER_DRAG_MODE' });
+      c.handleCommands({ kind: 'EXIT_DRAG_MODE' });
+    };
     for (let i = 1; i <= 3; i++) {
-      c.handleCommands({ kind: 'SINGLE_ITEM_TOGGLE_SELECT' });
-      togglePresses.push({
-        press: i,
+      vTap();
+      vvTaps.push({
+        tap: i,
         waypointSelected: wp.isSelected,
         edgesSelected: dl.getDAEdges().filter(e => e.isSelected).length,
       });
     }
-    return { wpPos, results, togglePresses };
+    return { wpPos, results, vvTaps };
   });
 
   console.log(JSON.stringify(report, null, 2));

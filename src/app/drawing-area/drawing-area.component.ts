@@ -729,33 +729,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
-
-    // A waypoint is selectable (in preference to its edge) whenever it even
-    // partially overlaps the crosshairs' selection circle. Resolved before
-    // clearing selection so we can detect the "already selected" case for the
-    // waypoint toggle below.
-    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
-    const wpUnderCrosshairs = labelUnderCrosshairs ? undefined : this.getWaypointUnderCrosshairs();
-
-    // True toggle for waypoints: a second press with the same waypoint still
-    // selected deselects it (rather than re-selecting or falling through to
-    // the edge underneath).
-    if (wpUnderCrosshairs && wpUnderCrosshairs.isSelected) {
-      this.drawingLayer.unselectAll();
-      this.unselectAllLabels();
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
+    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
     if (labelUnderCrosshairs) {
       labelUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
       return;
     }
 
+    // A waypoint is selectable (in preference to its edge) whenever it even
+    // partially overlaps the crosshairs' selection circle.
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (wpUnderCrosshairs) {
       wpUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
@@ -2819,6 +2805,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private toggleTopItemSelection() {
+    // Same priority as the rest of the waypoint hit-tests: a waypoint
+    // overlapping the crosshairs circle wins over the edge underneath it.
+    const wp = this.getWaypointUnderCrosshairs();
+    if (wp) {
+      wp.isSelected = !wp.isSelected;
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
     if (daNodesContainingCrosshairs.length > 0) {
       const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
