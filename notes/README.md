@@ -76,6 +76,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Graph management UI](idea-graph-management-ui.md)
 - [Real-world test cases (acceptance diagrams)](idea-real-world-test-cases.md)
 - [Infrastructure (deployment, analytics, CI/CD)](idea-infrastructure-deploy.md)
+- [In-app keystroke overlay (`?showKeys=true`)](idea-keystroke-overlay.md)
 - [Longer-term ambitions](idea-longer-term.md)
 
 ## Bugs
@@ -89,7 +90,16 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 
 _Investigations into options we haven't committed to. One per file, prefixed `research-`._
 
-(none yet)
+**Edge routing:**
+
+- [Edge routing — terminology and two-problem framing](research-edge-routing-overview.md) — bends / polylines / obstacle avoidance, plus the auto-layout-vs-route-only distinction and the charged-wire-spring model.
+- [libavoid-js as the near-term integration](research-libavoid-integration.md)
+- [Polyline segment nudging — kidraw R&D plan](research-polyline-nudging.md)
+- [Other layout libraries](research-other-layout-libraries.md) — ELK, cola.js, Graphviz, dagre, yFiles.
+
+**Demos:**
+
+- [Demo video creation (manual + automated paths)](research-demo-video.md)
 
 ## Process
 
