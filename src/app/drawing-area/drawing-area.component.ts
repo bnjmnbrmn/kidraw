@@ -741,7 +741,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // A waypoint is selectable (in preference to its edge) whenever it even
     // partially overlaps the crosshairs' selection circle.
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs(this.crosshairsCircleRadiusInLayerCoords());
+    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (wpUnderCrosshairs) {
       wpUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
@@ -769,16 +769,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.crosshairsLayer.crosshairs.CROSSHAIRS_LENGTH / this.drawingLayer.scaleX();
   }
 
-  /** Waypoint whose center is within `RADIUS + extraTolerance` of the
-   *  crosshairs (in layer coords). Returns the closest waypoint to the
-   *  crosshairs if multiple are in range; undefined if none. */
-  private getWaypointUnderCrosshairs(extraTolerance: number = 4): DAWaypoint | undefined {
+  /** Waypoint overlapping the crosshairs' selection circle — i.e. whose dot
+   *  comes within `RADIUS` + the circle's radius of the crosshairs center (all
+   *  in layer coords). Returns the closest such waypoint, or undefined if none.
+   *  Used by every waypoint hit-test (select, select+drag, pin, delete) so they
+   *  all share the same generous targeting. */
+  private getWaypointUnderCrosshairs(): DAWaypoint | undefined {
     const wps = this.drawingLayer.getDAWaypoints();
     if (wps.length === 0) return undefined;
     const pt = this.crosshairsInLayerCoords();
+    const tolerance = this.crosshairsCircleRadiusInLayerCoords();
     const candidates = wps
       .map(wp => ({wp, d: wp.distanceTo(pt)}))
-      .filter(c => c.d <= c.wp.RADIUS + extraTolerance);
+      .filter(c => c.d <= c.wp.RADIUS + tolerance);
     if (candidates.length === 0) return undefined;
     candidates.sort((a, b) => a.d - b.d);
     return candidates[0].wp;
