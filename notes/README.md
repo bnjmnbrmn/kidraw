@@ -14,7 +14,7 @@ The top-level [`dev-status.md`](../dev-status.md) is the short current-state poi
 
 _What we chose and why. Stable until explicitly revised._
 
-(none yet — to be populated as we migrate)
+- [Vim is the canonical key profile](vim-is-canonical-profile.md) — `ijkl` is the secondary profile; never reintroduce the name `default`.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 
-(none yet)
+- [Bezier-route anti-parallel edges overlap](bug-bezier-antiparallel-overlap.md) — `b → ;` renders A→B and B→A as one line; lane key needs to switch to unordered.
 
 ## Research
 
