@@ -116,4 +116,4 @@ _Workflow rules and retrospective lessons._
 
 ## Agents
 
-See [`agents/`](agents/) for the per-agent home files (mandate, scope, rubric, workflow). [`AGENTS.md`](../AGENTS.md) at the repo root lists them with one-line descriptions.
+See [`agents/README.md`](agents/README.md) for the agent roster (two-axis framing + full list with links). Each agent's home file under [`agents/`](agents/) carries its mandate, scope, invariants/rubric, workflow, and pointers into the shared zettelkasten. [`AGENTS.md`](../AGENTS.md) at the repo root summarises the roster with one-line descriptions and shows how to invoke each from Claude Code or Codex.
