@@ -2112,22 +2112,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.zoomLevel.emit(Math.round(currentScale * 100));
   }
 
-  /** Insert a user waypoint at the crosshairs onto the nearest edge.
-   *  "Nearest" means smallest perpendicular distance from the crosshairs
-   *  to any segment of any edge's polyline. The waypoint is placed at the
-   *  crosshairs position (not snapped to the edge line), so it bends the
-   *  polyline through that point. */
+  /** Insert a user waypoint onto the nearest edge, snapping it to the closest
+   *  point on that edge's existing rendered polyline so the line shape doesn't
+   *  change. "Nearest" means smallest perpendicular distance from the
+   *  crosshairs to any segment of any edge's polyline; the snapped point is
+   *  that closest point on that segment. */
   private insertWaypointAtCrosshairs(): void {
     this.finishTweens();
     const layerPt = this.crosshairsInLayerCoords();
-    const nearest = this.findNearestEdgeFromPoint(layerPt);
+    const nearest = this.findNearestEdgeSnap(layerPt);
     if (!nearest) {
       this.daOut.emit({kind: 'status-message', message: 'No edge to attach waypoint to'});
       return;
     }
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
-    const wp = nearest.insertWaypoint(layerPt);
+    const wp = nearest.edge.insertWaypointAt(nearest.point, nearest.segmentIndex);
     wp.isSelected = true;
     this.drawingLayer.batchDraw();
   }
@@ -2140,11 +2140,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
-  /** Edge with smallest distance from `point` to any of its polyline segments.
-   *  Returns undefined if no edges exist. */
-  private findNearestEdgeFromPoint(point: {x: number; y: number}): DAEdge | undefined {
+  /** Edge whose polyline comes closest to `point`, plus the snapped closest
+   *  point on that polyline and the segment index it lies on. `segmentIndex`
+   *  is the index into `_controlPoints` at which a new waypoint should be
+   *  spliced to split the chosen segment (segment 0 splits before the first
+   *  control point; segment k splits between cp[k-1] and cp[k]). Returns
+   *  undefined if no edges exist. */
+  private findNearestEdgeSnap(point: {x: number; y: number}):
+      {edge: DAEdge; point: {x: number; y: number}; segmentIndex: number} | undefined {
     const edges = this.drawingLayer.getDAEdges();
-    let best: DAEdge | undefined;
+    let bestEdge: DAEdge | undefined;
+    let bestSnap: {x: number; y: number} | undefined;
+    let bestSeg = 0;
     let bestDist = Infinity;
     for (const edge of edges) {
       const pts = edge.getPathPoints();
@@ -2153,11 +2160,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const d = Math.hypot(closest.x - point.x, closest.y - point.y);
         if (d < bestDist) {
           bestDist = d;
-          best = edge;
+          bestEdge = edge;
+          bestSnap = closest;
+          bestSeg = i;
         }
       }
     }
-    return best;
+    if (!bestEdge || !bestSnap) return undefined;
+    return {edge: bestEdge, point: bestSnap, segmentIndex: bestSeg};
   }
 
   private createNewNode(nodeShape?: NodeShape) {

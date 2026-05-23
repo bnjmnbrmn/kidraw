@@ -226,11 +226,26 @@ export class DAEdge {
 
   /** Insert a user-placed waypoint at `point`, choosing the index in the
    *  polyline that minimizes the total path-length increase. Returns the
-   *  new `DAWaypoint` glyph (caller is responsible for adding it to the
-   *  Konva layer/group via `attachWaypointGlyph`). */
+   *  new `DAWaypoint` glyph. */
   insertWaypoint(point: {x: number; y: number}): DAWaypoint {
     const cps = [...this._controlPoints];
     const idx = bestInsertionIndex(this.srcAnchor(), this.destAnchor(), cps, point);
+    return this.spliceWaypoint(cps, point, idx);
+  }
+
+  /** Insert a user-placed waypoint at `point` at the given control-point
+   *  index. Used when the caller already knows exactly which polyline segment
+   *  to split — e.g. when snapping a new waypoint onto the existing rendered
+   *  path so the line shape doesn't change. `index` is the position in the
+   *  `_controlPoints` array (0..length), which maps 1:1 to segments in
+   *  `getPathPoints()`. */
+  insertWaypointAt(point: {x: number; y: number}, index: number): DAWaypoint {
+    const cps = [...this._controlPoints];
+    const clamped = Math.max(0, Math.min(index, cps.length));
+    return this.spliceWaypoint(cps, point, clamped);
+  }
+
+  private spliceWaypoint(cps: EdgeControlPoint[], point: {x: number; y: number}, idx: number): DAWaypoint {
     const cp: EdgeControlPoint = {
       x: point.x,
       y: point.y,
