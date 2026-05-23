@@ -36,76 +36,31 @@ npx ng build                                          # production build / type-
 
 **Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`.
 
-## Architecture
-
-### Component structure
+## Architecture (one-page summary)
 
 ```
-AppComponent                        # Shell: routes commands between keymenu and drawing-area
-├── HeaderComponent                 # Displays zoom level, waypoint visibility, etc.
-├── DrawingAreaComponent            # Konva canvas (nodes, edges, crosshairs)
-└── KeymenuComponent                # Keyboard overlay (Konva canvas on top)
+AppComponent                 # shell: routes commands between keymenu and drawing-area
+├── HeaderComponent          # zoom level, mode badge, settings, status messages
+├── DrawingAreaComponent     # Konva canvas (nodes, edges, waypoints, labels, crosshairs)
+└── KeymenuComponent         # keyboard overlay (separate Konva canvas on top)
 ```
 
-**Communication pattern:**
-- `KeymenuComponent` emits `DACommand` → `AppComponent` → `DrawingAreaComponent` via an RxJS `Subject<DACommand>`.
-- `DrawingAreaComponent` emits `DANotification` back up to `AppComponent`, which then calls methods on `KeymenuComponent` directly (e.g. to switch modes or open submenus).
+**Communication pattern.** `KeymenuComponent` emits `DACommand` → `AppComponent` → `DrawingAreaComponent` via an RxJS `Subject<DACommand>`. `DrawingAreaComponent` emits `DANotification` back; `AppComponent` calls keymenu methods directly for mode switches.
 
-### Drawing area (`src/app/drawing-area/`)
+**Konva layers.** `DrawingLayer` (nodes + edges) and `CrosshairsLayer` (always on top).
 
-`DrawingAreaComponent` owns a Konva `Stage` with two layers:
+**Undo/redo.** Full graph snapshot serialization (`graph-snapshot.ts` + `undo-redo.service.ts`).
 
-- **`DrawingLayer`** (`drawing.layer.ts`) — extends `Konva.Layer`. Contains `daEdgeGroup` (z-below) and `daNodeGroup` (z-above). Holds arrays of `DANode`, `DAEdge`, `DAWaypoint`, `DALabel`. Handles coordinate transforms for zoom/pan.
-- **`CrosshairsLayer`** (`crosshairs.layer.ts`) — separate layer always on top; contains the `DACrosshairs` group (a crosshair reticle + optional heading arrow).
+**Key binding rule.** All key bindings flow through `KeymenuKeyAssignments`; **no hardcoded key literals** in action logic.
 
-Domain objects:
+For the full picture, read the architecture notes in order:
 
-- **`DANode`** — Konva Group with a Rect + Text. Tracks `incomingEdges`/`outgoingEdges`. Supports resize and font size adjustment.
-- **`DAEdge`** — Arrow/line between two `DANode`s. Recalculates endpoints from node geometry when nodes move.
-- **`DAWaypoint`** — User-placed bend point on an edge. Selectable; can be pinned (routers preserve pinned positions). Mirrors one entry in the parent edge's `_controlPoints` (which carries `waypointId` + `pinned` markers for user waypoints; plain router-generated beads have neither).
-- **`DALabel`** — Text annotation on an edge.
-
-Commands arrive as a discriminated union (`DACommandType` enum in `command.model.ts`). `DrawingAreaComponent` handles each command in a large `switch` statement.
-
-### KeyMenu system (`src/app/lib/keymenu/`)
-
-The keymenu is a visual keyboard overlay (Konva canvas) that maps physical keys to actions. Key concepts:
-
-- **`KeyMenu<T>`** — top-level container. Owns named `KeyMenuMode`s, tracks the current mode, routes `keydown`/`keyup` events.
-- **`KeyMenuMode`** — interface for a mode (e.g. `normal`, `labelEdit`). Two implementations:
-  - **`USQwertyMode`** — the main interactive mode. Maintains a stack of `KMSubmenu`s. Pressing a submenu-trigger key pushes a new submenu; releasing it pops back up. The "active submenu" is always the top of the stack.
-  - **`PrintedInstructionKeyMenuModeConfig`** — used for `labelEdit` mode: shows a text instruction and passes all key events to a handler.
-- **`KMSubmenu`** — a set of `KMKey`s for a layout position on the keyboard. Handles key highlighting and auto-repeat scheduling (initial delay 250ms, repeat every 100ms).
-- **`KMKey`** types: action-only, submenu-only, or both (SubmenuAction). A SubmenuAction key fires its action on press AND opens a child submenu while held.
-
-Key assignment configuration lives in `src/app/keymenu/config/key-assignments.ts` as the `KeymenuKeyAssignments` interface + two profile constants: `VIM_KEYMENU_KEY_ASSIGNMENTS` (the default, hjkl-based) and `IJKL_KEYMENU_KEY_ASSIGNMENTS` (the original ijkl layout, selectable from the header). **No hardcoded key literals** should appear in action logic — always reference `this.keyAssignments.*`.
-
-`KeymenuComponent` (`src/app/keymenu/keymenu.component.ts`) wires together the key assignment config and emits `DACommand` objects. It builds the `KeyMenu` instance in `rebuildKeyMenu()` with two modes: `normal` (USQwerty) and `labelEdit`.
-
-### Special interaction flows
-
-- **Insert+drag**: holding the insert submenu key (`f`), then pressing a node/waypoint/etc key, creates the entity and transitions the submenu to a drag submenu. Releasing the insert key switches to `labelEdit` mode automatically.
-- **Select+drag**: holding the select-drag key (`v`) triggers `MULTI_ITEM_SELECT` + `ENTER_DRAG_MODE`; releasing it emits `EXIT_DRAG_MODE`. A second tap of `v` while a waypoint / node / edge is already selected toggles it off (via `toggleTopItemSelection`).
-- **Double-Shift**: always returns to `normal` mode from any state.
-- **Escape / Ctrl-[**: in `normal` mode, unselects all; in `labelEdit` mode, exits label editing.
-
-### Design invariants
-
-1. Crosshairs always exist and stay within `edgeMargin` of stage edges (overflow scrolls the drawing layer).
-2. A selected item always renders its selected visual state.
-3. `UNSELECT_ALL` deselects everything (nodes, edges, waypoints, labels).
-4. Exactly one keymenu mode (`normal` or `labelEdit`) is active at any time.
-5. Entering label edit hides crosshairs; exiting restores them.
-6. Creating a new node with existing selected nodes auto-creates edges from each selected node to the new node.
-7. Zoom scales around the crosshairs' current position.
-8. All key bindings flow through `KeymenuKeyAssignments`; no hardcoded key literals in action logic.
-9. Any waypoint hit-test uses `getWaypointUnderCrosshairs()`, whose tolerance is the crosshairs' selection-circle radius (in layer coords) — *every* selection/pin/delete path shares the same "partial overlap with the circle" rule.
-
-### What is intentionally non-stable
-
-Key assignments, submenu nesting depth, movement distances, zoom step factor, visual styling, tween durations, and label edit entry/exit triggers are all tuning parameters subject to change.
-
-> **Note:** these architecture sections will be atomized into `notes/architecture-*.md` and `notes/decision-*.md` files in a later migration step. Until then they live here for both Claude (via `CLAUDE.md` → `@AGENTS.md`) and Codex (which reads this file directly).
+- [`notes/architecture-key-profiles.md`](notes/architecture-key-profiles.md) — the vim (default) and ijkl profiles; the profile-multiplicity contract.
+- [`notes/architecture-keymenu-model.md`](notes/architecture-keymenu-model.md) — definitions, transition types, invariants I1–I3 for the keymenu state machine.
+- [`notes/architecture-mode-hierarchy.md`](notes/architecture-mode-hierarchy.md) — the four modes (`normal`, `capslock / normal`, `edit`, `capslock / edit`) and how they nest.
+- [`notes/architecture-invariants.md`](notes/architecture-invariants.md) — the 11 invariants + the explicit list of tunable (non-invariant) parameters.
+- [`notes/decision-interaction-model.md`](notes/decision-interaction-model.md) — held-key modes + waypoints vs labels.
+- [`notes/philosophy-keyboard-first.md`](notes/philosophy-keyboard-first.md) — the design thesis.
 
 ## Agents
 
