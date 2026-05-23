@@ -10,23 +10,35 @@ The top-level [`dev-status.md`](../dev-status.md) is the short current-state poi
 - **Writing:** when you learn something that should outlive the current session, add an atomic note here. One fact per file. Link related notes with plain markdown. Don't duplicate — link.
 - **Agent prompts** live in [`agents/`](agents/). They reference notes from here; notes never reference agent files.
 
+## Philosophy
+
+_The thesis kidraw is built on._
+
+- [Keyboard-first philosophy and ergonomic goals](philosophy-keyboard-first.md) — keyboard-first, home-row centric, select→act→reset, opposite-hand principle.
+
 ## Decisions
 
 _What we chose and why. Stable until explicitly revised._
 
 - [Vim is the canonical key profile](vim-is-canonical-profile.md) — `ijkl` is the secondary profile; never reintroduce the name `default`.
+- [Held-key modes + waypoints vs labels](decision-interaction-model.md) — the core interaction model: Add+Drag / Select+Drag / Move / Delete held keys, plus the waypoint-vs-label distinction.
 
 ## Architecture
 
 _How the code is organized. Component boundaries, layer model, invariants._
 
-(none yet)
+- [Key-assignment profiles](architecture-key-profiles.md) — vim (default) and ijkl; the profile-multiplicity contract.
+- [Keymenu system model](architecture-keymenu-model.md) — definitions, transition types, invariants I1–I3.
+- [Mode hierarchy and CapsLock transitions](architecture-mode-hierarchy.md) — the four modes and how they nest.
+- [Design invariants and non-invariants](architecture-invariants.md) — the 11 invariants + the explicit list of tunable parameters.
 
 ## Ideas / backlog
 
 _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
-(none yet)
+- [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)
+- [Left-hand-dominant profile](idea-left-hand-profile.md)
+- [Visualize greyed-out submenu options](idea-greyed-submenu-options.md)
 
 ## Bugs
 
