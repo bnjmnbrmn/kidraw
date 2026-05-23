@@ -98,7 +98,15 @@ The project work is divided across specialist agents. Each has a canonical home 
 
 ## Worktree isolation
 
-Each implementer agent works in its own git worktree to allow parallel work without conflict. Port collisions on `ng serve` are avoided via `tools/worktree-port.sh` (TBD) which hands out a deterministic free port per worktree. Docker is deferred until port assignment proves insufficient.
+Each implementer agent works in its own git worktree to allow parallel work without conflict. Port collisions on `ng serve` are avoided via [`tools/worktree-port.sh`](tools/worktree-port.sh) — it hashes the worktree's absolute path into a stable port in `[4200, 4249]`, falling back through the slot range if the desired port is bound.
+
+Usage from inside any worktree:
+
+```bash
+npx ng serve --port "$(tools/worktree-port.sh)"
+```
+
+Docker is deferred until port assignment proves insufficient.
 
 Reviewers have read access across sibling implementer worktrees and their own scratch worktree for experiments. QA runs in its own worktree but cannot read sibling worktrees' `src/**`.
 
