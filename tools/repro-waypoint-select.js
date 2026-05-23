@@ -59,7 +59,20 @@ async function main() {
       results.push(trySelect('SINGLE_ITEM_TOGGLE_SELECT', off));
       results.push(trySelect('MULTI_ITEM_SELECT', off));
     }
-    return { wpPos, results };
+
+    // Double-press toggle on the waypoint: first press selects, second deselects.
+    const togglePresses = [];
+    dl.unselectAll();
+    place({ x: wp.x + 10, y: wp.y });
+    for (let i = 1; i <= 3; i++) {
+      c.handleCommands({ kind: 'SINGLE_ITEM_TOGGLE_SELECT' });
+      togglePresses.push({
+        press: i,
+        waypointSelected: wp.isSelected,
+        edgesSelected: dl.getDAEdges().filter(e => e.isSelected).length,
+      });
+    }
+    return { wpPos, results, togglePresses };
   });
 
   console.log(JSON.stringify(report, null, 2));

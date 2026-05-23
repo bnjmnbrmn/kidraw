@@ -729,19 +729,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private singleItemSelect() {
     this.tweens.forEach(t => t.finish());
     this.tweens = [];
+
+    // A waypoint is selectable (in preference to its edge) whenever it even
+    // partially overlaps the crosshairs' selection circle. Resolved before
+    // clearing selection so we can detect the "already selected" case for the
+    // waypoint toggle below.
+    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
+    const wpUnderCrosshairs = labelUnderCrosshairs ? undefined : this.getWaypointUnderCrosshairs();
+
+    // True toggle for waypoints: a second press with the same waypoint still
+    // selected deselects it (rather than re-selecting or falling through to
+    // the edge underneath).
+    if (wpUnderCrosshairs && wpUnderCrosshairs.isSelected) {
+      this.drawingLayer.unselectAll();
+      this.unselectAllLabels();
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
-    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
     if (labelUnderCrosshairs) {
       labelUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
       return;
     }
 
-    // A waypoint is selectable (in preference to its edge) whenever it even
-    // partially overlaps the crosshairs' selection circle.
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
     if (wpUnderCrosshairs) {
       wpUnderCrosshairs.isSelected = true;
       this.drawingLayer.batchDraw();
