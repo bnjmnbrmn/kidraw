@@ -8,7 +8,7 @@ import {DACommand, DACommandType} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
 import {DebugLogService} from './services/debug-log.service';
 import {KeyboardConfigService} from './services/keyboard-config.service';
-import {KeymenuKeyAssignments, DEFAULT_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
+import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
 
 @Component({
   selector: 'app-root',
@@ -41,7 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private profileToAssignments(profile: string): KeymenuKeyAssignments {
-    return profile === 'default' ? DEFAULT_KEYMENU_KEY_ASSIGNMENTS : VIM_KEYMENU_KEY_ASSIGNMENTS;
+    return profile === 'ijkl' ? IJKL_KEYMENU_KEY_ASSIGNMENTS : VIM_KEYMENU_KEY_ASSIGNMENTS;
   }
 
   onCanEditChange(canEdit: boolean) {

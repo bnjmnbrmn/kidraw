@@ -24,7 +24,6 @@ import {
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
 import {KeyString, KEY_HEIGHT, getKeyWidth} from '../lib/keymenu/layouts/us-qwerty';
 import {
-  DEFAULT_KEYMENU_KEY_ASSIGNMENTS,
   DirectionalKeyAssignments,
   KeymenuKeyAssignments,
   VIM_KEYMENU_KEY_ASSIGNMENTS,
@@ -745,7 +744,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMiscSubmenuConfig(): SubmenuConfig {
     const misc = this.keyAssignments.misc;
-    const otherProfileLabel = this.keyboardConfig.keyProfile === 'vim' ? 'Default keys' : 'Vim keys';
+    const otherProfileLabel = this.keyboardConfig.keyProfile === 'vim' ? 'IJKL keys' : 'Vim keys';
 
     return {
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
@@ -757,7 +756,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
       [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
       [misc.toggleKeyProfile]: new LabeledAction(`→ ${otherProfileLabel}`, () => {
-        this.keyboardConfig.keyProfile = this.keyboardConfig.keyProfile === 'vim' ? 'default' : 'vim';
+        this.keyboardConfig.keyProfile = this.keyboardConfig.keyProfile === 'vim' ? 'ijkl' : 'vim';
       }),
     } as SubmenuConfig;
   }

@@ -1,6 +1,26 @@
-# kidraw — Development Status (2026-05-16)
+# kidraw — Development Status (2026-05-23)
 
 > **For Claude Code:** Read this file at the start of every session to understand where development stands. It supersedes `next.txt`, `project-todos.md`, and `improvement-ideas.md` as the authoritative current-state document.
+
+---
+
+## Recently completed (2026-05-21 → 2026-05-23 session)
+
+All changes on `main`. Build clean; 159/159 tests pass.
+
+### Waypoint selection UX overhaul
+- **Crosshairs-circle tolerance for every waypoint hit-test.** `getWaypointUnderCrosshairs` no longer takes a tolerance argument; it always uses the crosshairs' selection-circle radius (in layer coords, scaled by zoom). A waypoint is selectable / pin-target / delete-target whenever it even partially overlaps the visible crosshairs circle. This fixed the original "I can't grab waypoints" pain.
+- **Five hit-test call sites now share that tolerance:** `singleItemSelect` (`c`), `isTopItemSelected` + `ensureTopItemSelected` (the `v` select+drag path), pin fall-through, delete fall-through. Pre-fix, only `c` got the wide tolerance — `v` was using `RADIUS + 4` and silently grabbing the edge underneath.
+- **Waypoint toggle on `vv`.** Tap-v-twice over an already-selected waypoint deselects it (rather than re-selecting it or falling through to the edge). Implemented by adding a waypoint case at the top of `toggleTopItemSelection`, the existing quick-tap handler that already toggled nodes and edges.
+- **Snap new waypoints onto the existing polyline.** `insertWaypointAtCrosshairs` finds the closest point on the nearest edge's rendered polyline and inserts the new control point at that snapped point, at the matching segment index. Line shape is preserved on insert; the user introduces a bend by dragging (the insert-drag submenu the flow already enters). `findNearestEdgeFromPoint` → `findNearestEdgeSnap` (returns `{edge, point, segmentIndex}`). New `DAEdge.insertWaypointAt(point, index)` splits a specific segment; the older `insertWaypoint(point)` (best-length-increase heuristic) is still around but no longer the primary call. This also fixed a second bug: with existing waypoints, `bestInsertionIndex`'s src/dest anchors degenerated to the first/last control point, so a new waypoint near a node end would still get spliced near the middle.
+- **Half-cell crosshairs step at the `normal` tier.** `moveCrosshairsBy`'s `'normal'` tier is now 5 minor steps (snapped to the minor grid) instead of 10 — so the crosshairs land closer to a waypoint without dropping to the `fine` tier.
+- **Repro tooling.** `tools/repro-waypoint-select.js` exercises both selection paths (and the `vv` toggle) by dispatching real commands via `window.ng.getComponent`. `tools/repro-second-waypoint.js` confirms the snap-to-polyline behavior.
+
+### Key profile renaming
+- The previously-named `default` profile is now called `ijkl` (after its movement keys). **Vim is the canonical default**; new users get it without any localStorage. The IJKL profile stays selectable from the header dropdown and via the misc-submenu toggle (`m → p`).
+- `DEFAULT_KEYMENU_KEY_ASSIGNMENTS` → `IJKL_KEYMENU_KEY_ASSIGNMENTS`. `KeyProfile = 'vim' | 'default'` → `KeyProfile = 'vim' | 'ijkl'`. The service migrates any old `'default'` localStorage value to `'ijkl'` transparently.
+
+---
 
 ## What kidraw is
 
@@ -12,8 +32,8 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 ### Waypoints (re-introduced)
 - `DAWaypoint` Konva entity is back (`src/app/drawing-area/da-waypoint.ts`): selectable small circle that lives inside its parent `DAEdge`'s group and mirrors one entry of the edge's `_controlPoints` array.
-- Insert key: `f → n` (default) / `f → p` (vim, mnemonic "point"). Finds the nearest edge to the crosshairs and splices a new bend point at the insertion index that minimizes total polyline length increase; the new waypoint is selected and the keymenu enters drag-submenu mode (parallel to node-insert), so the user can press hjkl while still holding `f` to fine-position it. Releasing `f` exits drag without entering label-edit (waypoints have no text).
-- Pinning: routers (`b → *`) preserve pinned waypoints by re-merging them into the freshly-routed bead sequence in `DAEdge.setControlPoints`. Unpinned waypoints are dropped on the next router run. Toggle pin via the existing edit-submenu pin shortcut (default `e → p`, vim `i → p`); pinned waypoints render with a gold fill.
+- Insert key: `f → p` (vim, mnemonic "point") / `f → n` (ijkl). Snaps the new waypoint onto the closest point on the nearest edge's existing polyline at the matching segment index, so the line shape doesn't change on insert. The waypoint is selected and the keymenu enters drag-submenu mode, so the user can move it (introducing a bend) while still holding `f`. Releasing `f` exits drag without entering label-edit (waypoints have no text). See the 2026-05-23 section for the snap-vs-bend history.
+- Pinning: routers (`b → *`) preserve pinned waypoints by re-merging them into the freshly-routed bead sequence in `DAEdge.setControlPoints`. Unpinned waypoints are dropped on the next router run. Toggle pin via the existing edit-submenu pin shortcut (vim `i → p`, ijkl `e → p`); pinned waypoints render with a gold fill.
 - Drag/select/delete: waypoints participate in `SINGLE_ITEM_TOGGLE_SELECT`, `UNSELECT_ALL`, `DELETE`, and `DRAG_SELECTED_*` (waypoint-only drag path moves selected waypoints by a grid step; no tween).
 - Persistence: `DAEdgeSnapshot.controlPoints` now optionally carries `waypointId` and `pinned`; `restoreControlPoints` preserves these on load/undo. File format `EdgeStyleProps.waypoints` uses the same shape (`WaypointSpec`).
 
@@ -189,7 +209,7 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 - Two Konva layers: `DrawingLayer` (nodes + edges) and `CrosshairsLayer` (always on top).
 - Undo/redo via full graph snapshot serialization (`graph-snapshot.ts` + `undo-redo.service.ts`).
 - All key bindings flow through `KeymenuKeyAssignments`; no hardcoded key literals in action logic.
-- Key assignments interface: `KeymenuKeyAssignments` in `key-assignments.ts`. Two configs: `DEFAULT_KEYMENU_KEY_ASSIGNMENTS` (vim-ish: `hjkl` movement, `f` insert, `v` select+drag) and `VIM_KEYMENU_KEY_ASSIGNMENTS`.
+- Key assignments interface: `KeymenuKeyAssignments` in `key-assignments.ts`. Two profiles: `VIM_KEYMENU_KEY_ASSIGNMENTS` (the default — `hjkl` movement, `f` insert, `i` edit, `v` select+drag) and `IJKL_KEYMENU_KEY_ASSIGNMENTS` (the original right-hand-dominant layout — `ijkl` movement, `f` insert, `e` edit, selectable from the header dropdown).
 
 ---
 

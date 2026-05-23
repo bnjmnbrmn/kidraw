@@ -65,7 +65,7 @@ The keymenu is a visual keyboard overlay (Konva canvas) that maps physical keys 
 - **`KMSubmenu`** — a set of `KMKey`s for a layout position on the keyboard. Handles key highlighting and auto-repeat scheduling (initial delay 250ms, repeat every 100ms).
 - **`KMKey`** types: action-only, submenu-only, or both (SubmenuAction). A SubmenuAction key fires its action on press AND opens a child submenu while held.
 
-Key assignment configuration lives in `src/app/keymenu/config/key-assignments.ts` as the `KeymenuKeyAssignments` interface + `DEFAULT_KEYMENU_KEY_ASSIGNMENTS`. **No hardcoded key literals** should appear in action logic — always reference `this.keyAssignments.*`.
+Key assignment configuration lives in `src/app/keymenu/config/key-assignments.ts` as the `KeymenuKeyAssignments` interface + two profile constants: `VIM_KEYMENU_KEY_ASSIGNMENTS` (the default, hjkl-based) and `IJKL_KEYMENU_KEY_ASSIGNMENTS` (the original ijkl layout, selectable from the header). **No hardcoded key literals** should appear in action logic — always reference `this.keyAssignments.*`.
 
 `KeymenuComponent` (`src/app/keymenu/keymenu.component.ts`) wires together the key assignment config and emits `DACommand` objects. It builds the `KeyMenu` instance in `rebuildKeyMenu()` with two modes: `normal` (USQwerty) and `labelEdit`.
 

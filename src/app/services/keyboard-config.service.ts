@@ -7,7 +7,7 @@ const FINGER_HIDE_KEY = 'kidraw-hide-finger-keys';
 const LAYOUT_KEY = 'kidraw-keyboard-layout';
 const PROFILE_KEY = 'kidraw-key-profile';
 
-export type KeyProfile = 'vim' | 'default';
+export type KeyProfile = 'vim' | 'ijkl';
 
 @Injectable({ providedIn: 'root' })
 export class KeyboardConfigService {
@@ -23,8 +23,9 @@ export class KeyboardConfigService {
     this._hideFingerBlockedKeys = localStorage.getItem(FINGER_HIDE_KEY) === 'true';
     const stored = localStorage.getItem(LAYOUT_KEY);
     this._keyboardLayout = (stored === 'us-mac' || stored === 'us-windows') ? stored : detectKeyboardLayout();
+    // Default to 'vim'. Old 'default' value (pre-rename) maps to 'ijkl'.
     const storedProfile = localStorage.getItem(PROFILE_KEY);
-    this._keyProfile = (storedProfile === 'vim' || storedProfile === 'default') ? storedProfile : 'vim';
+    this._keyProfile = storedProfile === 'ijkl' || storedProfile === 'default' ? 'ijkl' : 'vim';
   }
 
   get capsLockCtrlSwap(): boolean {

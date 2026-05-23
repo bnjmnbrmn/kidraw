@@ -3,7 +3,7 @@ import {
   KeymenuComponent,
 } from './keymenu.component';
 import {
-  DEFAULT_KEYMENU_KEY_ASSIGNMENTS,
+  IJKL_KEYMENU_KEY_ASSIGNMENTS,
   KeymenuKeyAssignments,
 } from './config/key-assignments';
 import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
@@ -134,18 +134,18 @@ describe('KeymenuComponent', () => {
     const component = fixture.componentInstance;
 
     const customAssignments: KeymenuKeyAssignments = {
-      ...DEFAULT_KEYMENU_KEY_ASSIGNMENTS,
+      ...IJKL_KEYMENU_KEY_ASSIGNMENTS,
       movement: {up: 'u', left: 'y', down: 'o', right: 'p'},
       drag: {up: 'u', left: 'y', down: 'o', right: 'p'},
       zoom: {out: 'i', in: 'j'},
       root: {
-        ...DEFAULT_KEYMENU_KEY_ASSIGNMENTS.root,
+        ...IJKL_KEYMENU_KEY_ASSIGNMENTS.root,
         editSubmenu: 'j',
         insertSubmenu: 'k',
         selectDragSubmenu: 'l',
       },
       shared: {
-        ...DEFAULT_KEYMENU_KEY_ASSIGNMENTS.shared,
+        ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,
         undo: 'n',
       },
     };

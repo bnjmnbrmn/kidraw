@@ -141,8 +141,10 @@ export interface KeymenuKeyAssignments {
   };
 }
 
-// Original right-hand-dominant layout: movement on right hand (jilk), insert on left (f).
-export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
+// IJKL profile: movement on i/j/k/l (right hand, index-finger-centered),
+// insert submenu on `f` (left hand). The original key layout, kept as a
+// secondary profile after Vim became the default.
+export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'i', left: 'j', down: 'k', right: 'l'},
   drag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   zoom: {out: 'p', in: 'y'},
@@ -250,7 +252,7 @@ export const DEFAULT_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';', bezierFitChargedSpringEdges: "'", flexibleWireEdges: '/', weightedChainEdges: '.'},
 };
 
-// Vim-inspired layout: hjkl movement, f for insert submenu, i for edit.
+// Vim profile (the default): hjkl movement, f for insert submenu, i for edit.
 export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
