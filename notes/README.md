@@ -45,6 +45,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Keymenu visual polish](idea-keymenu-visual-polish.md)
 - [Keymenu discoverability](idea-keymenu-discoverability.md)
 - [Keymenu as a reusable library](idea-keymenu-as-library.md)
+- [Alternative class hierarchies for the keymenu](idea-keymenu-class-hierarchy.md)
 - [Shift-shift timing](idea-shift-shift-timing.md)
 - [Label-edit mode overhaul](idea-label-edit-overhaul.md)
 
@@ -100,6 +101,12 @@ _Investigations into options we haven't committed to. One per file, prefixed `re
 **Demos:**
 
 - [Demo video creation (manual + automated paths)](research-demo-video.md)
+
+## Reference
+
+_Static catalogs / tables you look up rather than read end-to-end._
+
+- [Valid / workable key combinations](valid-key-combos.md) — manual chord catalog for the keymenu.
 
 ## Process
 
