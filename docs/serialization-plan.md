@@ -1,11 +1,11 @@
 # KiDraw Serialization & I/O Plan
 
-_Started 2026-05-16. Companion to `kidraw-file-format.md` — the format spec; this is the implementation plan._
+_Started 2026-05-16. Companion to [`file-format.md`](file-format.md) — the format spec; this is the implementation plan._
 
 ## Locked-in decisions (2026-05-16)
 
 - **YAML default** for new files (`.kidraw.yaml`, `.kd-style.yaml`). JSON is fully supported; users pick at save time via the file extension.
-- **Inline styles permitted** alongside external file references (see `kidraw-file-format.md` → *Inline style sets*).
+- **Inline styles permitted** alongside external file references (see [`file-format.md`](file-format.md) → *Inline style sets*).
 - **First save of a brand-new graph** prompts for both a graph-doc location and an initial style-set location in a single flow.
 - **Silent migration** of any existing `kidraw_graph_v1` localStorage payload to the new v2 draft schema on first load.
 - **Open and Import are both supported.** Open replaces the session; Import adds a style set to the current graph.

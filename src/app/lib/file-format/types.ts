@@ -1,5 +1,5 @@
 /**
- * KiDraw file-format types. See kidraw-file-format.md.
+ * KiDraw file-format types. See docs/file-format.md.
  *
  * Two kinds of files:
  *   - Graph document (*.kidraw.json / .yaml): semantic content only.

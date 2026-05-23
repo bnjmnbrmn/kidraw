@@ -3,7 +3,7 @@
  *
  * Given a top-level style (external or inline) + a way to resolve its
  * imports, produce a single merged KidrawStyleSet representing the
- * cascaded result. See kidraw-file-format.md → "How style sets compose".
+ * cascaded result. See docs/file-format.md → "How style sets compose".
  *
  * Rules:
  *   - Depth-first import walk.
