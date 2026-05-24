@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>routing-eval viewer</title>
+<link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>routing-eval</h1>
+    <span id="run-label" class="muted">loading run…</span>
+    <span class="grow"></span>
+    <button id="download-feedback">Download feedback JSON</button>
+  </div>
+  <div class="row">
+    <button id="prev-btn">◀ Prev</button>
+    <span id="cell-position" class="muted">0/0</span>
+    <button id="next-btn">Next ▶</button>
+    <span class="grow"></span>
+    <span class="muted">arrow keys / j k / 1–5 rating</span>
+  </div>
+</header>
+
+<main>
+  <section id="viewer-pane">
+    <object id="svg-frame" type="image/svg+xml" data="about:blank" aria-label="rendered routing"></object>
+  </section>
+
+  <aside id="info-pane">
+    <h2 id="algo-name">algorithm</h2>
+    <h3 id="scenario-name">scenario</h3>
+    <p id="scenario-desc" class="muted">description</p>
+
+    <h4>Status</h4>
+    <p id="cell-status">—</p>
+
+    <h4>Metrics</h4>
+    <table id="metrics-table"><tbody></tbody></table>
+
+    <h4>Your rating</h4>
+    <div id="rating-row">
+      <button class="rating-btn" data-rating="1" title="1 — unusable">1</button>
+      <button class="rating-btn" data-rating="2" title="2 — poor">2</button>
+      <button class="rating-btn" data-rating="3" title="3 — ok">3</button>
+      <button class="rating-btn" data-rating="4" title="4 — good">4</button>
+      <button class="rating-btn" data-rating="5" title="5 — excellent">5</button>
+      <button id="rating-clear" title="clear rating">×</button>
+    </div>
+    <textarea id="rating-comment" placeholder="optional comment about this cell (e.g. specific flaw)"></textarea>
+
+    <h4>Progress</h4>
+    <p id="rating-progress" class="muted">0 / 0 rated</p>
+  </aside>
+</main>
+
+<!-- TODO: side-by-side mode (round 2+). Layout already separates viewer-pane
+     from info-pane; the second pane can become a duplicate viewer-pane and
+     the info-pane shrinks beneath. State (currentCell / ratings) is already
+     stored per-cell so the duplication is mostly visual. -->
+
+<script src="viewer.js" type="module"></script>
+</body>
+</html>
