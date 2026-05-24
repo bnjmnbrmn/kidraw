@@ -1,0 +1,246 @@
+{
+  "runTimestamp": "20260524-075433-rms",
+  "ratedAt": "2026-05-24T16:30:42.604Z",
+  "cells": {
+    "charged-spring|anti-parallel": {
+      "rating": 4,
+      "comment": "If we add labels to the edges, they may be too close together."
+    },
+    "charged-spring|self-loop": {
+      "rating": 3,
+      "comment": "Ok.  I actually wish these were curves rather than straight line segments"
+    },
+    "charged-spring|multi-parallel": {
+      "rating": 4,
+      "comment": ""
+    },
+    "charged-spring|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|mesh-3x3": {
+      "rating": 3,
+      "comment": "I actually wish the curves were straight lines in this case.  Things are far enough apart."
+    },
+    "charged-spring|hub-spoke": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|dense": {
+      "rating": 1,
+      "comment": "main problem is too many wiggles.  Also, we might want to try to avoid having three line segments intersect close to each other."
+    },
+    "charged-spring|sparse": {
+      "rating": 1,
+      "comment": "Too many wiggles/not smooth enough.  Also, the angle at intersections should be wide (maybe between 30 and 150 degrees.  It's hard to tell which input to an intersection goes with which output of an intersection."
+    },
+    "bezier-route|anti-parallel": {
+      "rating": 1,
+      "comment": "Overlapping"
+    },
+    "bezier-route|self-loop": {
+      "rating": 5,
+      "comment": "Great.  More circular would probably also be good."
+    },
+    "bezier-route|multi-parallel": {
+      "rating": 4,
+      "comment": "This is good.  Might just want the default for these to be to have edges a little further away.  This might apply to previous layout versions of this graph that I've rated."
+    },
+    "bezier-route|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|mesh-3x3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|hub-spoke": {
+      "rating": 1,
+      "comment": "Overlap--can't tell we are dealing with to antiparallel edges rather than bidirectional one."
+    },
+    "bezier-route|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|dense": {
+      "rating": 1,
+      "comment": "There are some really weird paths that go way out of their ways.  We should probalby also switch out this example for one where the nodes don't touch each other (spread things out a bit more).  Also have the anti-parallel looking like bidirectional issue again."
+    },
+    "bezier-route|sparse": {
+      "rating": 1,
+      "comment": "Edges are going behind nodes.  Also, more weird, out of the way routes."
+    },
+    "bezier-fit-charged-spring|anti-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|self-loop": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|multi-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|mesh-3x3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|hub-spoke": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|dense": {
+      "rating": 1,
+      "comment": "Too wiggly.  Also, I'm noticing that it looks like some of the arrowheads don't point along the tangent to the edge's curve."
+    },
+    "bezier-fit-charged-spring|sparse": {
+      "rating": 1,
+      "comment": ""
+    },
+    "flexible-wire|anti-parallel": {
+      "rating": 2,
+      "comment": ""
+    },
+    "flexible-wire|self-loop": {
+      "rating": 3,
+      "comment": ""
+    },
+    "flexible-wire|multi-parallel": {
+      "rating": 2,
+      "comment": ""
+    },
+    "flexible-wire|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|mesh-3x3": {
+      "rating": 2,
+      "comment": "some minor weirdness here."
+    },
+    "flexible-wire|hub-spoke": {
+      "rating": 2,
+      "comment": ""
+    },
+    "flexible-wire|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|dense": {
+      "rating": 1,
+      "comment": ""
+    },
+    "flexible-wire|sparse": {
+      "rating": 1,
+      "comment": ""
+    },
+    "weighted-chain|anti-parallel": {
+      "rating": 2,
+      "comment": ""
+    },
+    "weighted-chain|self-loop": {
+      "rating": 3,
+      "comment": ""
+    },
+    "weighted-chain|multi-parallel": {
+      "rating": 2,
+      "comment": ""
+    },
+    "weighted-chain|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|tree-5": {
+      "rating": 3,
+      "comment": ""
+    },
+    "weighted-chain|mesh-3x3": {
+      "rating": 3,
+      "comment": ""
+    },
+    "weighted-chain|hub-spoke": {
+      "rating": 1,
+      "comment": "looks like bidirectional (edge overlap)."
+    },
+    "weighted-chain|cycle-4": {
+      "rating": 3,
+      "comment": "I prefer the straight edges between the nodes for this one."
+    },
+    "weighted-chain|dense": {
+      "rating": 1,
+      "comment": "wiggles"
+    },
+    "weighted-chain|sparse": {
+      "rating": 1,
+      "comment": ""
+    }
+  }
+}
