@@ -113,6 +113,7 @@ _Static catalogs / tables you look up rather than read end-to-end._
 _Workflow rules and retrospective lessons._
 
 - [Workflow lessons](process-workflow-lessons.md) — what works, what to be careful about, suggested phase ordering for new features.
+- [Parallel worktree dispatch failure modes](process-parallel-worktree-dispatch.md) — stale base, cwd confusion, budget exhaustion, auto-cleanup; recovery checklist + mitigations.
 
 ## Agents
 
