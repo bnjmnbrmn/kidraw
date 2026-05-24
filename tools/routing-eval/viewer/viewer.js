@@ -125,8 +125,17 @@ function setRating(rating) {
 function clearRating() {
   const c = state.manifest.cells[state.cellIdx];
   const k = cellKey(c);
-  if (state.ratings[k]) {
-    delete state.ratings[k];
+  const existing = state.ratings[k];
+  if (existing) {
+    // Preserve any typed comment; only the rating is cleared. If the entry
+    // had no comment either, drop it entirely so progress + downloads stay
+    // tidy.
+    const comment = existing.comment ?? '';
+    if (comment) {
+      state.ratings[k] = { rating: null, comment };
+    } else {
+      delete state.ratings[k];
+    }
     saveRatingsToLocalStorage();
   }
   renderRatingControls();
