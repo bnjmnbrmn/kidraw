@@ -50,6 +50,12 @@ export const DEFAULT_OPTIONS: BezierRouteOptions = {
 };
 
 interface EdgeGroup {
+  /** Canonical perpendicular: rotate (b - a) by +90°, where a is the node
+   *  with the lexicographically smaller id. Same direction for every edge in
+   *  the group so lane offsets land on a consistent global axis regardless
+   *  of an individual edge's src→dest direction. This is the fix for the
+   *  anti-parallel overlap bug — using each edge's local perpendicular
+   *  caused A→B and B→A to push to the same side and overlap. */
   perpX: number;
   perpY: number;
   edges: DAEdge[];
@@ -79,7 +85,8 @@ export function applyBezierRouteEdges(
     const start = straightPath[0];
     const end = straightPath[straightPath.length - 1];
 
-    const offsetMag = laneOffsetMagnitude(edge, groups, opts.laneSpacing);
+    const group = groups.get(edge);
+    const lane = laneInfo(edge, group, opts.laneSpacing);
 
     const incident = new Set([edge.srcNode, edge.destNode]);
     const edgeObstacles: Obstacle[] = [];
@@ -87,7 +94,7 @@ export function applyBezierRouteEdges(
       if (!incident.has(n)) edgeObstacles.push(ob);
     }
 
-    const cps = routeOneEdge(start, end, edgeObstacles, offsetMag, opts);
+    const cps = routeOneEdge(start, end, edgeObstacles, lane, opts);
 
     edge.setControlPoints(cps);
     edge.setSmoothRendering(true);
@@ -100,9 +107,36 @@ export function applyBezierRouteEdges(
   log?.(`[bezier-route] done`);
 }
 
+/** Per-edge lane data computed from its parallel-sibling group:
+ *
+ *  - `perpX, perpY` is the canonical perpendicular (shared by every member
+ *    of the group, derived from the lower-id endpoint's outgoing direction).
+ *    Using the canonical perp rather than the edge-local perp is what makes
+ *    A→B and B→A land on opposite sides instead of the same side.
+ *  - `offset` is the signed lane offset along that perpendicular.
+ *  - `clampToBand` is true only when there are siblings to keep apart.
+ *    Singleton edges (no parallels) must NOT be clamped to a thin band, or
+ *    they cannot bend around obstacles — they end up routed straight through
+ *    node bodies. */
+interface LaneInfo {
+  perpX: number;
+  perpY: number;
+  offset: number;
+  clampToBand: boolean;
+}
+
+function laneInfo(edge: DAEdge, group: EdgeGroup | undefined, spacing: number): LaneInfo {
+  if (!group || group.edges.length < 2) {
+    return {perpX: 0, perpY: 0, offset: 0, clampToBand: false};
+  }
+  const idx = group.edges.indexOf(edge);
+  const offset = (idx - (group.edges.length - 1) / 2) * spacing;
+  return {perpX: group.perpX, perpY: group.perpY, offset, clampToBand: true};
+}
+
 function routeOneEdge(
   start: Pt, end: Pt, obstacles: Obstacle[],
-  offsetMag: number, opts: BezierRouteOptions,
+  lane: LaneInfo, opts: BezierRouteOptions,
 ): Pt[] {
   // Build lane-anchor cps near the chain ends. They serve two roles:
   //  - Anchor the perimeter projection so parallel siblings exit each face
@@ -113,17 +147,23 @@ function routeOneEdge(
   const ANCHOR_T_FAR = 0.88;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const perpX = -dy / len;
-  const perpY = dx / len;
-  const anchorNear = offsetMag !== 0 ? {
-    x: start.x + dx * ANCHOR_T_NEAR + perpX * offsetMag,
-    y: start.y + dy * ANCHOR_T_NEAR + perpY * offsetMag,
+  const offX = lane.perpX * lane.offset;
+  const offY = lane.perpY * lane.offset;
+  const anchorNear = lane.offset !== 0 ? {
+    x: start.x + dx * ANCHOR_T_NEAR + offX,
+    y: start.y + dy * ANCHOR_T_NEAR + offY,
   } : null;
-  const anchorFar = offsetMag !== 0 ? {
-    x: start.x + dx * ANCHOR_T_FAR + perpX * offsetMag,
-    y: start.y + dy * ANCHOR_T_FAR + perpY * offsetMag,
+  const anchorFar = lane.offset !== 0 ? {
+    x: start.x + dx * ANCHOR_T_FAR + offX,
+    y: start.y + dy * ANCHOR_T_FAR + offY,
   } : null;
+
+  // Singleton edges need a soft corridor cap to keep gradient descent from
+  // flinging cps hundreds of pixels off-canvas. The corridor is wide enough
+  // to bend around any single obstacle (biggest obstacle half-dim + a fudge)
+  // but not so wide that the optimizer can run away unboundedly. Siblings
+  // are already constrained by clampToLaneBand, so they don't need this.
+  const corridorCap = lane.clampToBand ? 0 : computeCorridorCap(obstacles, opts);
 
   const buildFull = (middle: Pt[]): Pt[] =>
     anchorNear && anchorFar ? [anchorNear, ...middle, anchorFar] : [...middle];
@@ -136,12 +176,16 @@ function routeOneEdge(
     if (!ins) break;
 
     const trialMiddle = insertMiddleInOrder(middleCps, ins, start, end);
-    // Clamp the freshly-inserted cp into the lane band before optimization
-    // so the seed itself is never crossing a sibling.
+    // Clamp the freshly-inserted cp into its band before optimization
+    // so the seed itself is never crossing a sibling or running off canvas.
     for (const cp of trialMiddle) {
-      clampToLaneBand(cp, start, end, offsetMag, opts.laneSpacing);
+      if (lane.clampToBand) {
+        clampToLaneBand(cp, start, lane, opts.laneSpacing);
+      } else if (corridorCap > 0) {
+        clampToChordCorridor(cp, start, end, corridorCap);
+      }
     }
-    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, offsetMag, opts);
+    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, lane, corridorCap, opts);
     const trialCost = computeCurveCost(start, buildFull(trialMiddle), end, obstacles, opts);
 
     if (cost - trialCost >= opts.minImprovementPerPoint) {
@@ -155,27 +199,67 @@ function routeOneEdge(
   return buildFull(middleCps);
 }
 
-/** Project a middle cp's perpendicular offset (relative to the canonical
- *  start→end line) into its lane band so siblings can't cross. The band
- *  is centered on the edge's lane offset and is `laneSpacing` wide. The
- *  cp's tangential (along-line) component is left untouched. */
+/** Pick a perpendicular cap distance for the singleton-edge corridor:
+ *  generous enough that a curve can bend around the biggest obstacle but
+ *  small enough that gradient descent can't run away off-canvas. We add a
+ *  fudge of 2× clearance so the corridor wall sits well past the biggest
+ *  obstacle's clearance band. */
+function computeCorridorCap(obstacles: Obstacle[], opts: BezierRouteOptions): number {
+  let maxHalfDim = 0;
+  for (const ob of obstacles) {
+    const hw = (ob.maxX - ob.minX) / 2;
+    const hh = (ob.maxY - ob.minY) / 2;
+    if (hw > maxHalfDim) maxHalfDim = hw;
+    if (hh > maxHalfDim) maxHalfDim = hh;
+  }
+  // Fallback: if there are no obstacles, use a small cap so a singleton
+  // with no constraints simply stays straight.
+  if (maxHalfDim <= 0) return Math.max(opts.laneSpacing, opts.clearance * 2);
+  return maxHalfDim + 2 * opts.clearance;
+}
+
+/** Project a middle cp's perpendicular offset (along the group's canonical
+ *  perpendicular) into its lane band so siblings can't cross. The band is
+ *  centered on the edge's lane offset and is `laneSpacing` wide. The cp's
+ *  tangential component is left untouched. Only meaningful for edges in a
+ *  parallel-sibling group; singleton edges skip the clamp entirely. */
 function clampToLaneBand(
-  cp: Pt, start: Pt, end: Pt, laneCenterMag: number, laneSpacing: number,
+  cp: Pt, start: Pt, lane: LaneInfo, laneSpacing: number,
 ): void {
   if (laneSpacing <= 0) return;
+  const proj = (cp.x - start.x) * lane.perpX + (cp.y - start.y) * lane.perpY;
+  const halfWidth = laneSpacing / 2;
+  const minProj = lane.offset - halfWidth;
+  const maxProj = lane.offset + halfWidth;
+  let delta = 0;
+  if (proj < minProj) delta = minProj - proj;
+  else if (proj > maxProj) delta = maxProj - proj;
+  if (delta !== 0) {
+    cp.x += lane.perpX * delta;
+    cp.y += lane.perpY * delta;
+  }
+}
+
+/** Clamp a cp's perpendicular distance from the start→end chord to within
+ *  ±maxPerp. This is the singleton-edge analog of clampToLaneBand: it stops
+ *  gradient descent from flinging cps hundreds of pixels off-canvas while
+ *  still letting them bend far enough around any obstacle. */
+function clampToChordCorridor(
+  cp: Pt, start: Pt, end: Pt, maxPerp: number,
+): void {
+  if (maxPerp <= 0) return;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const len = Math.hypot(dx, dy) || 1;
   const perpX = -dy / len;
   const perpY = dx / len;
   const proj = (cp.x - start.x) * perpX + (cp.y - start.y) * perpY;
-  const halfWidth = laneSpacing / 2;
-  const minProj = laneCenterMag - halfWidth;
-  const maxProj = laneCenterMag + halfWidth;
-  let delta = 0;
-  if (proj < minProj) delta = minProj - proj;
-  else if (proj > maxProj) delta = maxProj - proj;
-  if (delta !== 0) {
+  if (proj > maxPerp) {
+    const delta = maxPerp - proj;
+    cp.x += perpX * delta;
+    cp.y += perpY * delta;
+  } else if (proj < -maxPerp) {
+    const delta = -maxPerp - proj;
     cp.x += perpX * delta;
     cp.y += perpY * delta;
   }
@@ -205,7 +289,7 @@ function insertMiddleInOrder(middle: Pt[], newCp: Pt, start: Pt, end: Pt): Pt[] 
 function optimizeMiddleCps(
   middle: Pt[], anchorNear: Pt | null, anchorFar: Pt | null,
   start: Pt, end: Pt, obstacles: Obstacle[],
-  laneCenterMag: number, opts: BezierRouteOptions,
+  lane: LaneInfo, corridorCap: number, opts: BezierRouteOptions,
 ): void {
   if (middle.length === 0) return;
 
@@ -235,11 +319,19 @@ function optimizeMiddleCps(
     while (attempts < 4) {
       const trial = middle.map((p, i) => ({x: p.x - grad[i].x * step, y: p.y - grad[i].y * step}));
       // Hard sibling-anti-crossing constraint: clamp each cp's perpendicular
-      // component back into its lane band (laneCenterMag ± laneSpacing/2)
+      // component back into its lane band (lane.offset ± laneSpacing/2)
       // before evaluating cost. Combined with re-sorting along the chain
       // direction, this keeps siblings from swapping lanes mid-chain.
-      for (const t of trial) {
-        clampToLaneBand(t, start, end, laneCenterMag, opts.laneSpacing);
+      // Singletons use a wider corridor cap so they can bend around obstacles
+      // without running off-canvas.
+      if (lane.clampToBand) {
+        for (const t of trial) {
+          clampToLaneBand(t, start, lane, opts.laneSpacing);
+        }
+      } else if (corridorCap > 0) {
+        for (const t of trial) {
+          clampToChordCorridor(t, start, end, corridorCap);
+        }
       }
       // Re-sort along the chain direction so the polyline never folds back
       // on itself. Gradient descent is free to move cps tangentially as well
@@ -318,17 +410,16 @@ function findWorstSampleAndDisplace(
   const sign = proj >= 0 ? 1 : -1;
 
   // Push the new cp out from the obstacle far enough that the sample
-  // moves clear of the clearance band. The displacement is the obstacle's
-  // perpendicular penetration plus the clearance, in the perpendicular
-  // direction away from it.
-  const obstacleCenterX = (worstObstacle.minX + worstObstacle.maxX) / 2;
-  const obstacleCenterY = (worstObstacle.minY + worstObstacle.maxY) / 2;
+  // moves clear of the clearance band. The displacement is the larger of
+  // the obstacle half-dim plus clearance (enough to clear it laterally)
+  // and a small extra. The previous formula used the sample's distance to
+  // the obstacle center, which could be huge when the sample sat on the
+  // far side of a distant obstacle — that displacement then flung cps
+  // hundreds of pixels off-canvas. Capping to a fixed clearance-derived
+  // amount keeps the seed near the obstacle it's trying to avoid.
   const obstacleHalfWidth = (worstObstacle.maxX - worstObstacle.minX) / 2;
   const obstacleHalfHeight = (worstObstacle.maxY - worstObstacle.minY) / 2;
-  const displacement = Math.max(
-    obstacleHalfWidth, obstacleHalfHeight,
-    Math.hypot(s.x - obstacleCenterX, s.y - obstacleCenterY),
-  );
+  const displacement = Math.max(obstacleHalfWidth, obstacleHalfHeight) + c;
   return {
     x: s.x + perpX * sign * displacement,
     y: s.y + perpY * sign * displacement,
@@ -423,8 +514,7 @@ function groupEdgesByUnorderedPair(edges: DAEdge[]): Map<DAEdge, EdgeGroup> {
   const byKey = new Map<string, DAEdge[]>();
   for (const e of edges) {
     if (e.srcNode === e.destNode) continue;
-    const ids = [e.srcNode.id, e.destNode.id].sort();
-    const key = `${ids[0]}|${ids[1]}`;
+    const key = canonicalPairKey(e.srcNode.id, e.destNode.id);
     let arr = byKey.get(key);
     if (!arr) { arr = []; byKey.set(key, arr); }
     arr.push(e);
@@ -444,10 +534,7 @@ function groupEdgesByUnorderedPair(edges: DAEdge[]): Map<DAEdge, EdgeGroup> {
   return result;
 }
 
-function laneOffsetMagnitude(edge: DAEdge, groups: Map<DAEdge, EdgeGroup>, spacing: number): number {
-  const g = groups.get(edge);
-  if (!g || g.edges.length < 2) return 0;
-  const idx = g.edges.indexOf(edge);
-  return (idx - (g.edges.length - 1) / 2) * spacing;
+function canonicalPairKey(idA: string, idB: string): string {
+  return idA < idB ? `${idA}|${idB}` : `${idB}|${idA}`;
 }
 
