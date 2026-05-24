@@ -50,6 +50,12 @@ export const DEFAULT_OPTIONS: BezierRouteOptions = {
 };
 
 interface EdgeGroup {
+  /** Canonical perpendicular: rotate (b - a) by +90°, where a is the node
+   *  with the lexicographically smaller id. Same direction for every edge in
+   *  the group so lane offsets land on a consistent global axis regardless
+   *  of an individual edge's src→dest direction. This is the fix for the
+   *  anti-parallel overlap bug — using each edge's local perpendicular
+   *  caused A→B and B→A to push to the same side and overlap. */
   perpX: number;
   perpY: number;
   edges: DAEdge[];
@@ -79,7 +85,8 @@ export function applyBezierRouteEdges(
     const start = straightPath[0];
     const end = straightPath[straightPath.length - 1];
 
-    const offsetMag = laneOffsetMagnitude(edge, groups, opts.laneSpacing);
+    const group = groups.get(edge);
+    const lane = laneInfo(edge, group, opts.laneSpacing);
 
     const incident = new Set([edge.srcNode, edge.destNode]);
     const edgeObstacles: Obstacle[] = [];
@@ -87,7 +94,7 @@ export function applyBezierRouteEdges(
       if (!incident.has(n)) edgeObstacles.push(ob);
     }
 
-    const cps = routeOneEdge(start, end, edgeObstacles, offsetMag, opts);
+    const cps = routeOneEdge(start, end, edgeObstacles, lane, opts);
 
     edge.setControlPoints(cps);
     edge.setSmoothRendering(true);
@@ -100,9 +107,32 @@ export function applyBezierRouteEdges(
   log?.(`[bezier-route] done`);
 }
 
+/** Per-edge lane data computed from its parallel-sibling group:
+ *
+ *  - `perpX, perpY` is the canonical perpendicular (shared by every member
+ *    of the group, derived from the lower-id endpoint's outgoing direction).
+ *    Using the canonical perp rather than the edge-local perp is what makes
+ *    A→B and B→A land on opposite sides instead of the same side. This is
+ *    the fix for the anti-parallel overlap bug.
+ *  - `offset` is the signed lane offset along that perpendicular. */
+interface LaneInfo {
+  perpX: number;
+  perpY: number;
+  offset: number;
+}
+
+function laneInfo(edge: DAEdge, group: EdgeGroup | undefined, spacing: number): LaneInfo {
+  if (!group) return {perpX: 0, perpY: 0, offset: 0};
+  const idx = group.edges.indexOf(edge);
+  // Singleton edges (length < 2) get offset = 0 but still carry the group's
+  // canonical perpendicular so the clamp band is well-defined.
+  const offset = group.edges.length < 2 ? 0 : (idx - (group.edges.length - 1) / 2) * spacing;
+  return {perpX: group.perpX, perpY: group.perpY, offset};
+}
+
 function routeOneEdge(
   start: Pt, end: Pt, obstacles: Obstacle[],
-  offsetMag: number, opts: BezierRouteOptions,
+  lane: LaneInfo, opts: BezierRouteOptions,
 ): Pt[] {
   // Build lane-anchor cps near the chain ends. They serve two roles:
   //  - Anchor the perimeter projection so parallel siblings exit each face
@@ -113,16 +143,15 @@ function routeOneEdge(
   const ANCHOR_T_FAR = 0.88;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const perpX = -dy / len;
-  const perpY = dx / len;
-  const anchorNear = offsetMag !== 0 ? {
-    x: start.x + dx * ANCHOR_T_NEAR + perpX * offsetMag,
-    y: start.y + dy * ANCHOR_T_NEAR + perpY * offsetMag,
+  const offX = lane.perpX * lane.offset;
+  const offY = lane.perpY * lane.offset;
+  const anchorNear = lane.offset !== 0 ? {
+    x: start.x + dx * ANCHOR_T_NEAR + offX,
+    y: start.y + dy * ANCHOR_T_NEAR + offY,
   } : null;
-  const anchorFar = offsetMag !== 0 ? {
-    x: start.x + dx * ANCHOR_T_FAR + perpX * offsetMag,
-    y: start.y + dy * ANCHOR_T_FAR + perpY * offsetMag,
+  const anchorFar = lane.offset !== 0 ? {
+    x: start.x + dx * ANCHOR_T_FAR + offX,
+    y: start.y + dy * ANCHOR_T_FAR + offY,
   } : null;
 
   const buildFull = (middle: Pt[]): Pt[] =>
@@ -139,9 +168,9 @@ function routeOneEdge(
     // Clamp the freshly-inserted cp into the lane band before optimization
     // so the seed itself is never crossing a sibling.
     for (const cp of trialMiddle) {
-      clampToLaneBand(cp, start, end, offsetMag, opts.laneSpacing);
+      clampToLaneBand(cp, start, lane, opts.laneSpacing);
     }
-    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, offsetMag, opts);
+    optimizeMiddleCps(trialMiddle, anchorNear, anchorFar, start, end, obstacles, lane, opts);
     const trialCost = computeCurveCost(start, buildFull(trialMiddle), end, obstacles, opts);
 
     if (cost - trialCost >= opts.minImprovementPerPoint) {
@@ -155,29 +184,24 @@ function routeOneEdge(
   return buildFull(middleCps);
 }
 
-/** Project a middle cp's perpendicular offset (relative to the canonical
- *  start→end line) into its lane band so siblings can't cross. The band
- *  is centered on the edge's lane offset and is `laneSpacing` wide. The
- *  cp's tangential (along-line) component is left untouched. */
+/** Project a middle cp's perpendicular offset (along the group's canonical
+ *  perpendicular) into its lane band so siblings can't cross. The band is
+ *  centered on the edge's lane offset and is `laneSpacing` wide. The cp's
+ *  tangential component is left untouched. */
 function clampToLaneBand(
-  cp: Pt, start: Pt, end: Pt, laneCenterMag: number, laneSpacing: number,
+  cp: Pt, start: Pt, lane: LaneInfo, laneSpacing: number,
 ): void {
   if (laneSpacing <= 0) return;
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const perpX = -dy / len;
-  const perpY = dx / len;
-  const proj = (cp.x - start.x) * perpX + (cp.y - start.y) * perpY;
+  const proj = (cp.x - start.x) * lane.perpX + (cp.y - start.y) * lane.perpY;
   const halfWidth = laneSpacing / 2;
-  const minProj = laneCenterMag - halfWidth;
-  const maxProj = laneCenterMag + halfWidth;
+  const minProj = lane.offset - halfWidth;
+  const maxProj = lane.offset + halfWidth;
   let delta = 0;
   if (proj < minProj) delta = minProj - proj;
   else if (proj > maxProj) delta = maxProj - proj;
   if (delta !== 0) {
-    cp.x += perpX * delta;
-    cp.y += perpY * delta;
+    cp.x += lane.perpX * delta;
+    cp.y += lane.perpY * delta;
   }
 }
 
@@ -205,7 +229,7 @@ function insertMiddleInOrder(middle: Pt[], newCp: Pt, start: Pt, end: Pt): Pt[] 
 function optimizeMiddleCps(
   middle: Pt[], anchorNear: Pt | null, anchorFar: Pt | null,
   start: Pt, end: Pt, obstacles: Obstacle[],
-  laneCenterMag: number, opts: BezierRouteOptions,
+  lane: LaneInfo, opts: BezierRouteOptions,
 ): void {
   if (middle.length === 0) return;
 
@@ -235,11 +259,11 @@ function optimizeMiddleCps(
     while (attempts < 4) {
       const trial = middle.map((p, i) => ({x: p.x - grad[i].x * step, y: p.y - grad[i].y * step}));
       // Hard sibling-anti-crossing constraint: clamp each cp's perpendicular
-      // component back into its lane band (laneCenterMag ± laneSpacing/2)
+      // component back into its lane band (lane.offset ± laneSpacing/2)
       // before evaluating cost. Combined with re-sorting along the chain
       // direction, this keeps siblings from swapping lanes mid-chain.
       for (const t of trial) {
-        clampToLaneBand(t, start, end, laneCenterMag, opts.laneSpacing);
+        clampToLaneBand(t, start, lane, opts.laneSpacing);
       }
       // Re-sort along the chain direction so the polyline never folds back
       // on itself. Gradient descent is free to move cps tangentially as well
@@ -423,8 +447,7 @@ function groupEdgesByUnorderedPair(edges: DAEdge[]): Map<DAEdge, EdgeGroup> {
   const byKey = new Map<string, DAEdge[]>();
   for (const e of edges) {
     if (e.srcNode === e.destNode) continue;
-    const ids = [e.srcNode.id, e.destNode.id].sort();
-    const key = `${ids[0]}|${ids[1]}`;
+    const key = canonicalPairKey(e.srcNode.id, e.destNode.id);
     let arr = byKey.get(key);
     if (!arr) { arr = []; byKey.set(key, arr); }
     arr.push(e);
@@ -444,10 +467,7 @@ function groupEdgesByUnorderedPair(edges: DAEdge[]): Map<DAEdge, EdgeGroup> {
   return result;
 }
 
-function laneOffsetMagnitude(edge: DAEdge, groups: Map<DAEdge, EdgeGroup>, spacing: number): number {
-  const g = groups.get(edge);
-  if (!g || g.edges.length < 2) return 0;
-  const idx = g.edges.indexOf(edge);
-  return (idx - (g.edges.length - 1) / 2) * spacing;
+function canonicalPairKey(idA: string, idB: string): string {
+  return idA < idB ? `${idA}|${idB}` : `${idB}|${idA}`;
 }
 
