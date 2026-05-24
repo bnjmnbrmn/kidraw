@@ -1,0 +1,246 @@
+{
+  "runTimestamp": "20260524-163438-sb1",
+  "ratedAt": "2026-05-24T20:56:00.345Z",
+  "cells": {
+    "charged-spring|anti-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|self-loop": {
+      "rating": 4,
+      "comment": ""
+    },
+    "charged-spring|multi-parallel": {
+      "rating": 4,
+      "comment": ""
+    },
+    "charged-spring|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|mesh-3x3": {
+      "rating": 3,
+      "comment": ""
+    },
+    "charged-spring|hub-spoke": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "charged-spring|dense": {
+      "rating": 2,
+      "comment": ""
+    },
+    "charged-spring|sparse": {
+      "rating": 2,
+      "comment": ""
+    },
+    "bezier-route|anti-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|self-loop": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|multi-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|mesh-3x3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|hub-spoke": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-route|dense": {
+      "rating": 4,
+      "comment": "this is pretty good, except that some of the intersections are too close together"
+    },
+    "bezier-route|sparse": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|anti-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|self-loop": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|multi-parallel": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|mesh-3x3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|hub-spoke": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "bezier-fit-charged-spring|dense": {
+      "rating": 2,
+      "comment": "n8 to n10 is too wiggly."
+    },
+    "bezier-fit-charged-spring|sparse": {
+      "rating": 2,
+      "comment": "too wiggly"
+    },
+    "flexible-wire|anti-parallel": {
+      "rating": 2,
+      "comment": "too wiggly/jaggedy"
+    },
+    "flexible-wire|self-loop": {
+      "rating": 4,
+      "comment": ""
+    },
+    "flexible-wire|multi-parallel": {
+      "rating": 2,
+      "comment": ""
+    },
+    "flexible-wire|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|tree-5": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|mesh-3x3": {
+      "rating": 2,
+      "comment": "There's some weird back and forth  on some of these edges.  Also, no need to be curved here."
+    },
+    "flexible-wire|hub-spoke": {
+      "rating": 1,
+      "comment": "Arrowhead problem not completely solved.  Some extra wiggle."
+    },
+    "flexible-wire|cycle-4": {
+      "rating": 5,
+      "comment": ""
+    },
+    "flexible-wire|dense": {
+      "rating": 2,
+      "comment": "some wiggle/jaggedyness .  Also, these triple intersections again."
+    },
+    "flexible-wire|sparse": {
+      "rating": 2,
+      "comment": ""
+    },
+    "weighted-chain|anti-parallel": {
+      "rating": 1,
+      "comment": ""
+    },
+    "weighted-chain|self-loop": {
+      "rating": 4,
+      "comment": ""
+    },
+    "weighted-chain|multi-parallel": {
+      "rating": 1,
+      "comment": ""
+    },
+    "weighted-chain|fan-out-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|fan-in-8": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|line-3": {
+      "rating": 5,
+      "comment": ""
+    },
+    "weighted-chain|tree-5": {
+      "rating": 3,
+      "comment": ""
+    },
+    "weighted-chain|mesh-3x3": {
+      "rating": 3,
+      "comment": ""
+    },
+    "weighted-chain|hub-spoke": {
+      "rating": 1,
+      "comment": "Overlapping edges"
+    },
+    "weighted-chain|cycle-4": {
+      "rating": 3,
+      "comment": "straight edges would probably be better"
+    },
+    "weighted-chain|dense": {
+      "rating": 1,
+      "comment": "crazy kinks"
+    },
+    "weighted-chain|sparse": {
+      "rating": 2,
+      "comment": ""
+    }
+  }
+}
