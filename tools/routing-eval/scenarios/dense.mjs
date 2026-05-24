@@ -1,12 +1,28 @@
 import { placeNode, connect } from './_helpers.mjs';
 
+// Rationale: Round-1 feedback flagged this scenario as having nodes that
+// felt visually crowded ("we should switch out this example for one where
+// the nodes don't touch each other") and as forcing routers into wiggly,
+// crammed paths between adjacent ring nodes. The original ring radius
+// (320 px with 120 px boxes) left only ~40 px of axis-aligned gap between
+// adjacent boxes — small enough that chord/anti-parallel edges had to
+// thread through narrow slots near the ring, producing the visual mess.
+//
+// Fix: widen the ring (radius 460 around a 560,560 centre) so the
+// minimum axis-aligned gap between adjacent boxes is ~110 px. Edge
+// topology is unchanged — still 24 edges with a mix of ring,
+// long-haul chords, anti-parallel pairs, a near-parallel duplicate,
+// and short skip-one edges — so the scenario keeps stressing routers
+// for the right reasons (lots of edges, mixed parallel groups) rather
+// than for the wrong reason (boxes shoulder-to-shoulder).
+
 export const name = 'dense';
-export const description = '12 nodes on a circle with ring edges, a few chords, and a couple of anti-parallel pairs (24 edges). The stress test — many obstacles, many parallel/anti-parallel groups in one frame.';
+export const description = '12 nodes on a wide circle (radius 460) with ring edges, six chords, two anti-parallel pairs, a near-parallel duplicate, and three skip-one edges (24 edges total). The stress test — many edges and parallel/anti-parallel groups in one frame, but nodes are well-separated so any wiggles come from routing pressure, not node overlap.';
 
 export function build({ DANode, DAEdge }) {
-  const cx = 500;
-  const cy = 450;
-  const radius = 320;
+  const cx = 560;
+  const cy = 560;
+  const radius = 460;
   const N = 12;
   const nodes = [];
   for (let i = 0; i < N; i++) {
