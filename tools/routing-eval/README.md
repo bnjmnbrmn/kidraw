@@ -211,9 +211,39 @@ Round-2 agents should:
 3. Decide whether the fix is a tuning change (round 2a) or a structural
    change (round 2b — needs a `notes/bug-*.md`).
 
+## Parameter sweeps (sweep.mjs)
+
+The sibling script `tools/routing-eval/sweep.mjs` runs each algorithm at
+several values of a single tuning knob across the low-rated scenarios
+from `feedback/`. Output layout:
+
+```
+tools/routing-eval/runs/<timestamp>/sweep/<algorithm>/<scenario>/<param>=<value>/
+  routing.svg
+  metrics.json
+  geometry.json
+tools/routing-eval/runs/<timestamp>/sweep/sweep-manifest.json
+tools/routing-eval/runs/<timestamp>/sweep/index.html         # static grid viewer
+```
+
+Open the grid viewer (one `<object>` per cell, rows of values per
+scenario per algorithm) with:
+
+```bash
+python3 -m http.server -d tools/routing-eval/runs/<ts>/sweep 8766
+# then open http://localhost:8766/index.html
+```
+
+The sweep plan (which knob, which values, which scenarios) is hand-
+picked in `sweep.mjs`'s `SWEEP_PLAN` constant based on the virtue/vice
+comments in each `*-edges.ts` file and the latest round's feedback.
+See `notes/algo-<name>.md` for per-algorithm sweep results and
+recommended defaults.
+
 ## Deferred to round 2+
 
-- Tuning automation / parameter sweeps.
+- Automated default-fitting (the sweeps above are hand-picked; nothing
+  picks a winner programmatically yet).
 - Per-graph vs. universal-default investigation.
 - Flaw write-ups beyond the bug already in `dev-status.md`.
 - Router bug fixes (file a `notes/bug-<slug>.md` if you spot one).
