@@ -8,6 +8,28 @@ A keyboard-first diagramming tool (Angular 19 + Konva canvas). All primary inter
 
 ---
 
+## Routing-algorithm characterization harness (2026-05-24)
+
+Round-1 infrastructure for evaluating the five edge-routing algorithms
+sits in [`tools/routing-eval/`](tools/routing-eval/README.md). It runs
+every router against a 12-scenario battery with default tuning, dumps
+per-cell SVG snapshots + metrics JSON + raw geometry, and serves the
+results in a static viewer where a human rates each cell 1–5 with a
+comment. The next round of agents reads
+`tools/routing-eval/feedback/feedback-<run>.json` and acts on it (tuning
+sweeps, bug fixes, algorithm-vs-graph correlations).
+
+- Harness: `node tools/routing-eval/run.mjs` (or `npm run routing-eval`).
+- Viewer: `python3 -m http.server -d tools/routing-eval/viewer 8765`.
+- Full layout, metric definitions, scenario list:
+  [`tools/routing-eval/README.md`](tools/routing-eval/README.md).
+
+The routers are called as pure functions by aliasing `./da-node` and
+`./da-edge` (the Konva-bound DA layer) to harness-local fakes at
+esbuild-bundle time — no runtime modification of the routers themselves.
+
+---
+
 ## Recently completed (all on `main`, pushed to both `origin` and `bot` remotes)
 
 ### Waypoints (re-introduced)
