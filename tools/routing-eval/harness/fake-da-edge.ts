@@ -80,8 +80,14 @@ export class DAEdge {
   }
 
   setControlPoints(points: { x: number; y: number }[]): void {
-    // The live impl merges pinned waypoints back in here; the harness never
-    // creates pinned waypoints, so the merge is a no-op and we just replace.
+    // Intentional simplification: the live DAEdge.setControlPoints (see
+    // src/app/drawing-area/da-edge.ts) filters existing `pinned` control
+    // points and re-splices them via `mergePinnedIntoSequence`. The harness
+    // never constructs pinned waypoints (no `waypointId`/`pinned` ever set),
+    // and no current router reads `cp.pinned` / `cp.waypointId`. If a future
+    // router starts honoring pinned entries we must mirror that merge here —
+    // otherwise pinned beads injected by that router would be silently
+    // dropped on every setControlPoints call.
     this._controlPoints = points.map(p => ({ x: p.x, y: p.y }));
   }
 
@@ -96,11 +102,6 @@ export class DAEdge {
     this.smoothRendering = smooth;
   }
 
-  /** Used by some downstream helpers; not strictly required by the routers,
-   *  but harmless to have. */
-  refreshGeometry(): void {
-    // no-op in the harness
-  }
 }
 
 function nodeCenter(node: DANode): { x: number; y: number } {

@@ -48,17 +48,27 @@ export const Routers = {
     defaults: BEZIER_ROUTE_DEFAULTS as any,
   },
   'bezier-fit-charged-spring': {
-    // bezier-fit takes two option objects (fit + charged-spring) so we wrap
-    // it into a single-options entry to fit the uniform router interface.
-    apply: (nodes: any, edges: any, _opts: any, log?: (msg: string) => void) =>
+    // bezier-fit takes two option objects (fit + charged-spring), so we
+    // bundle them under one `defaults` envelope to fit the uniform router
+    // interface. Round 2 (parameter sweeps) overrides either side by
+    // passing a merged `{ fit, cs }` object as the third arg.
+    apply: (
+      nodes: any,
+      edges: any,
+      opts: { fit: any; cs: any },
+      log?: (msg: string) => void,
+    ) =>
       applyBezierFitChargedSpringEdges(
         nodes,
         edges,
-        BEZIER_FIT_DEFAULTS as any,
-        CHARGED_SPRING_DEFAULTS as any,
+        opts.fit,
+        opts.cs,
         log,
       ),
-    defaults: { ...BEZIER_FIT_DEFAULTS } as any,
+    defaults: {
+      fit: { ...BEZIER_FIT_DEFAULTS },
+      cs: { ...CHARGED_SPRING_DEFAULTS },
+    } as any,
   },
   'flexible-wire': {
     apply: applyFlexibleWireEdges as any,

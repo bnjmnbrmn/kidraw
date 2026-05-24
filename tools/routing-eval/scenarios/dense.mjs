@@ -1,7 +1,7 @@
 import { placeNode, connect } from './_helpers.mjs';
 
 export const name = 'dense';
-export const description = '12 nodes on a circle with ring edges, a few chords, and a couple of anti-parallel pairs (~26 edges). The stress test — many obstacles, many parallel/anti-parallel groups in one frame.';
+export const description = '12 nodes on a circle with ring edges, a few chords, and a couple of anti-parallel pairs (24 edges). The stress test — many obstacles, many parallel/anti-parallel groups in one frame.';
 
 export function build({ DANode, DAEdge }) {
   const cx = 500;

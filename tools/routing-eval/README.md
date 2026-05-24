@@ -58,7 +58,7 @@ The `manifest.json` is the index the viewer reads. Format:
 
 ```json
 {
-  "timestamp": "20260524-061500",
+  "timestamp": "20260524-061500-a3k",
   "algorithms": ["charged-spring", "flexible-wire", ...],
   "scenarios":  [{"name": "anti-parallel", "description": "..."}, ...],
   "cells": [
@@ -68,6 +68,10 @@ The `manifest.json` is the index the viewer reads. Format:
   ]
 }
 ```
+
+The 3-character suffix (`-a3k`) is a random tag appended to the
+`YYYYMMDD-HHMMSS` stem to keep same-second reruns from overwriting
+each other's run dir.
 
 ## Launch the viewer
 
@@ -165,8 +169,8 @@ current battery:
 
 ### Stress cases
 
-- **dense** — 12 nodes in a circle, ~24 edges including some chords
-  and a few parallels.
+- **dense** — 12 nodes in a circle, 24 edges (12 ring + 6 chords +
+  2 anti-parallel + 1 near-parallel duplicate + 3 skip-one).
 - **sparse** — 12 nodes in a 4×3 grid with only 5 long-span edges.
 
 ## How round 2 reads feedback
@@ -177,15 +181,25 @@ Round-2 agents should:
 
    ```json
    {
-     "runTimestamp": "20260524-061500",
+     "runTimestamp": "20260524-061500-a3k",
      "ratedAt": "2026-05-24T06:23:11.000Z",
      "cells": {
        "charged-spring|anti-parallel": {"rating": 5, "comment": "..."},
        "bezier-route|anti-parallel":   {"rating": 1, "comment": "anti-parallel collapse"},
+       "flexible-wire|mesh-3x3":       {"comment": "looks fine but want a second look"},
+       "weighted-chain|hub-spoke":     {"rating": null, "comment": "was a 2; un-rated to revisit"},
        ...
      }
    }
    ```
+
+   `rating` is optional and may be `null`. Comment-only cells (no
+   `rating` key at all) are written when a reviewer types a comment
+   before assigning a star value. Cleared cells (`rating: null`) keep
+   the comment around when the reviewer presses *Clear* on a previously
+   rated cell. The viewer's progress counter only counts cells whose
+   `rating` is a number — comment-only and cleared cells show up in
+   the JSON but not in the count.
 
 2. Cross-reference each low-rated cell with the corresponding
    `metrics.json` and `geometry.json` to confirm which metric (or

@@ -10,7 +10,7 @@
 //   node tools/routing-eval/run.mjs [--algorithm <name>] [--scenario <name>] [--force-bundle]
 
 import { createRequire } from 'node:module';
-import { mkdirSync, writeFileSync, rmSync, existsSync, symlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,6 +52,14 @@ function parseArgs(argv) {
 }
 
 function pad(n) { return String(n).padStart(2, '0'); }
+function randomSuffix() {
+  // 3 lowercase-alphanumeric chars. Cheap collision insurance for reruns
+  // that land in the same second; we don't need crypto-grade randomness.
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let s = '';
+  for (let i = 0; i < 3; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
 function timestamp() {
   const d = new Date();
   return (
@@ -60,7 +68,8 @@ function timestamp() {
     `${pad(d.getDate())}-` +
     `${pad(d.getHours())}` +
     `${pad(d.getMinutes())}` +
-    `${pad(d.getSeconds())}`
+    `${pad(d.getSeconds())}-` +
+    randomSuffix()
   );
 }
 
@@ -127,7 +136,7 @@ function updateLatestSymlink(target) {
   try { rmSync(link, { force: true }); } catch {}
   try {
     symlinkSync(target, link, 'dir');
-  } catch (err) {
+  } catch {
     // Symlink failed (Windows without dev mode, sandbox, etc.). Fall back
     // to a tiny `latest.txt` pointer the viewer can read instead.
     writeFileSync(join(RUNS_ROOT, 'latest.txt'), target + '\n', 'utf8');
