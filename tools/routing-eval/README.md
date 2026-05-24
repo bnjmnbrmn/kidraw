@@ -76,9 +76,13 @@ each other's run dir.
 ## Launch the viewer
 
 ```bash
-python3 -m http.server -d tools/routing-eval/viewer 8765
-# then open http://localhost:8765/
+python3 -m http.server -d tools/routing-eval 8765
+# then open http://localhost:8765/viewer/
 ```
+
+(Serve from `tools/routing-eval/`, not `tools/routing-eval/viewer/` — the
+viewer fetches `../runs/...` and `python -m http.server` blocks paths that
+escape its document root.)
 
 The viewer auto-loads the newest run via `runs/latest/manifest.json`.
 Use `?run=<timestamp>` to pin to a specific run.
