@@ -103,8 +103,17 @@ export const DEFAULT_OPTIONS: WeightedChainOptions = {
 
 interface EdgeSim {
   edge: DAEdge;
-  sourceCenter: {x: number; y: number};
-  destCenter: {x: number; y: number};
+  /** Endpoint-force target for bead-0. This is the source node's center
+   *  shifted along the group's canonical perpendicular by the edge's signed
+   *  lane offset. Each parallel sibling thus gravitates to its OWN lane
+   *  inside the source-side hole, instead of all chains being pulled to a
+   *  common center point (which collapsed anti-parallel pairs into the same
+   *  line — see notes/bug-bezier-antiparallel-overlap.md for the analogous
+   *  fix in bezier-route). */
+  sourceTarget: {x: number; y: number};
+  /** Endpoint-force target for bead-(N-1). Same lane shift as sourceTarget,
+   *  applied at the destination node's center. */
+  destTarget: {x: number; y: number};
   sourceBox: Obstacle;
   destBox: Obstacle;
   beads: Bead[];
@@ -149,8 +158,9 @@ export function applyWeightedChainEdges(
     const N = Math.max(4, Math.ceil(baseCount * opts.initialSlackFactor) + 1);
 
     // Lane offset perpendicular to chord, applied uniformly to all beads.
-    // The end beads start AT the node centers — they're already "in the hole"
-    // and ready to be pulled deeper by the endpoint force.
+    // The end beads start AT the lane-offset center — they're already "in the
+    // hole" and ready to be pulled deeper by the endpoint force toward that
+    // same lane-offset point (sourceTarget / destTarget below).
     const offset = laneOffsetVector(edge, groups, opts.laneSpacing);
 
     const beads: Bead[] = [];
@@ -173,7 +183,9 @@ export function applyWeightedChainEdges(
       if (!incident.has(n)) edgeObstacles.push(ob);
     }
 
-    states.push({edge, sourceCenter, destCenter, sourceBox, destBox, beads, obstacles: edgeObstacles});
+    const sourceTarget = {x: sourceCenter.x + offset.x, y: sourceCenter.y + offset.y};
+    const destTarget = {x: destCenter.x + offset.x, y: destCenter.y + offset.y};
+    states.push({edge, sourceTarget, destTarget, sourceBox, destBox, beads, obstacles: edgeObstacles});
   }
 
   simulateAll(states, opts);
@@ -206,14 +218,14 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
         let fx = 0, fy = 0;
 
         if (i === 0) {
-          const dx = st.sourceCenter.x - b.x;
-          const dy = st.sourceCenter.y - b.y;
+          const dx = st.sourceTarget.x - b.x;
+          const dy = st.sourceTarget.y - b.y;
           const d = Math.hypot(dx, dy) || 1;
           fx += opts.endpointForce * dx / d;
           fy += opts.endpointForce * dy / d;
         } else if (i === beads.length - 1) {
-          const dx = st.destCenter.x - b.x;
-          const dy = st.destCenter.y - b.y;
+          const dx = st.destTarget.x - b.x;
+          const dy = st.destTarget.y - b.y;
           const d = Math.hypot(dx, dy) || 1;
           fx += opts.endpointForce * dx / d;
           fy += opts.endpointForce * dy / d;
