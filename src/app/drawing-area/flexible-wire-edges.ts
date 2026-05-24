@@ -191,6 +191,16 @@ export function applyFlexibleWireEdges(
   simulateAll(states, opts);
 
   for (const st of states) {
+    // Sort beads by chord projection before pruning/output. The simulation
+    // does NOT preserve chord-monotonic bead order: cross-edge repulsion,
+    // smoothing, and segment-spring forces can shuffle interior beads past
+    // each other along the chord, especially at the chain ends near crowded
+    // nodes (hub-spoke is the canonical failure). Without sorting, the
+    // emitted polyline shows a backward zigzag right before the arrowhead,
+    // and Konva.Arrow's orientation (derived from the last two points)
+    // picks up the wrong tangent — surfacing in feedback as "arrowhead
+    // problem not completely solved" (see notes/bug-arrowhead-tangent.md).
+    sortByChordProjection(st.beads, st.start, st.end);
     const kept = prune(st.beads, st.start, st.end, opts.pruneEpsilon);
     st.edge.setControlPoints(kept);
     if (log) {
@@ -505,4 +515,27 @@ function perpDistance(px: number, py: number, ax: number, ay: number, bx: number
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1e-6) return Math.hypot(px - ax, py - ay);
   return Math.abs((dx * (ay - py)) - ((ax - px) * dy)) / len;
+}
+
+/** Sort beads in-place by their projection onto the start→end chord. The
+ *  sim is free to push beads past each other along the chord (perpendicular
+ *  motion has no order to preserve, but tangential motion does), and an
+ *  out-of-order bead at the chain end produces a visible backward zigzag in
+ *  the rendered polyline. Sorting just before output is the cheapest fix —
+ *  it leaves the per-iteration physics untouched but guarantees a clean,
+ *  monotonic polyline. Mirrors the analogous `sortByLineProjection` in
+ *  bezier-route-edges.ts. */
+function sortByChordProjection(
+  beads: Bead[],
+  start: {x: number; y: number},
+  end: {x: number; y: number},
+): void {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len2 = dx * dx + dy * dy || 1;
+  beads.sort((a, b) => {
+    const pa = ((a.x - start.x) * dx + (a.y - start.y) * dy) / len2;
+    const pb = ((b.x - start.x) * dx + (b.y - start.y) * dy) / len2;
+    return pa - pb;
+  });
 }
