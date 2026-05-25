@@ -33,7 +33,7 @@ function parseArgs(argv) {
         `  --force-bundle        Rebuild the bundled routers even if cached.\n` +
         `  --help                Show this help.\n\n` +
         `Algorithms: charged-spring, bezier-route, bezier-fit-charged-spring,\n` +
-        `            flexible-wire, weighted-chain\n` +
+        `            flexible-wire, weighted-chain, bezier-fit-weighted-chain\n` +
         `Scenarios:  ${ALL_SCENARIOS.map(s => s.name).join(', ')}`,
       );
       process.exit(0);

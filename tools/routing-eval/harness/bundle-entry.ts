@@ -31,6 +31,12 @@ import {
 } from '../../../src/app/drawing-area/weighted-chain-edges';
 
 import {
+  applyBezierFitWeightedChainEdges,
+  DEFAULT_OPTIONS as BEZIER_FIT_WC_DEFAULTS,
+  DEFAULT_WC_OPTIONS as BEZIER_FIT_WC_BASE_DEFAULTS,
+} from '../../../src/app/drawing-area/bezier-fit-weighted-chain-edges';
+
+import {
   computeRoutingMetrics,
   DEFAULT_WEIGHTS as METRIC_DEFAULTS,
 } from '../../../src/app/drawing-area/edge-routing-metrics';
@@ -77,6 +83,27 @@ export const Routers = {
   'weighted-chain': {
     apply: applyWeightedChainEdges as any,
     defaults: WEIGHTED_CHAIN_DEFAULTS as any,
+  },
+  'bezier-fit-weighted-chain': {
+    // Same two-object pattern as bezier-fit-charged-spring: the fit step's
+    // options + the underlying weighted-chain options live under one envelope.
+    apply: (
+      nodes: any,
+      edges: any,
+      opts: { fit: any; wc: any },
+      log?: (msg: string) => void,
+    ) =>
+      applyBezierFitWeightedChainEdges(
+        nodes,
+        edges,
+        opts.fit,
+        opts.wc,
+        log,
+      ),
+    defaults: {
+      fit: { ...BEZIER_FIT_WC_DEFAULTS },
+      wc: { ...BEZIER_FIT_WC_BASE_DEFAULTS },
+    } as any,
   },
 };
 
