@@ -32,8 +32,7 @@ function parseArgs(argv) {
         `  --scenario <name>     Run only this scenario.\n` +
         `  --force-bundle        Rebuild the bundled routers even if cached.\n` +
         `  --help                Show this help.\n\n` +
-        `Algorithms: charged-spring, bezier-route, bezier-fit-charged-spring,\n` +
-        `            flexible-wire, weighted-chain, bezier-fit-weighted-chain\n` +
+        `Algorithms: bezier-fit-weighted-chain\n` +
         `Scenarios:  ${ALL_SCENARIOS.map(s => s.name).join(', ')}`,
       );
       process.exit(0);
@@ -288,7 +287,8 @@ async function main() {
 
   console.log(`routing-eval: ${cells.length} cells written → ${runDir}`);
   console.log(`routing-eval: launch the viewer with:`);
-  console.log(`  python3 -m http.server -d ${resolve(__dirname, 'viewer')} 8765`);
+  console.log(`  python3 -m http.server -d ${__dirname} 8765`);
+  console.log(`  then open http://localhost:8765/viewer/`);
 }
 
 main().catch(err => {

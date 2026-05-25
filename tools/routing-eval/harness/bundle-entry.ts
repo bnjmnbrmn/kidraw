@@ -4,31 +4,12 @@
 //
 // The esbuild build script substitutes our fake-da-node / fake-da-edge for
 // the real ones via an `alias` map (see build-bundle.mjs).
-
-import {
-  applyChargedSpringEdges,
-  DEFAULT_OPTIONS as CHARGED_SPRING_DEFAULTS,
-} from '../../../src/app/drawing-area/charged-spring-edges';
-
-import {
-  applyBezierRouteEdges,
-  DEFAULT_OPTIONS as BEZIER_ROUTE_DEFAULTS,
-} from '../../../src/app/drawing-area/bezier-route-edges';
-
-import {
-  applyBezierFitChargedSpringEdges,
-  DEFAULT_OPTIONS as BEZIER_FIT_DEFAULTS,
-} from '../../../src/app/drawing-area/bezier-fit-route-edges';
-
-import {
-  applyFlexibleWireEdges,
-  DEFAULT_OPTIONS as FLEXIBLE_WIRE_DEFAULTS,
-} from '../../../src/app/drawing-area/flexible-wire-edges';
-
-import {
-  applyWeightedChainEdges,
-  DEFAULT_OPTIONS as WEIGHTED_CHAIN_DEFAULTS,
-} from '../../../src/app/drawing-area/weighted-chain-edges';
+//
+// Only bezier-fit-weighted-chain is exposed. The 5 other routing algorithms
+// were removed in commit df50448 (see tag `pre-routing-consolidation` for
+// the prior state). The bf-wc algorithm's weighted-chain physics base is
+// imported transitively through bezier-fit-weighted-chain-edges.ts; we
+// don't need a separate registration for weighted-chain here.
 
 import {
   applyBezierFitWeightedChainEdges,
@@ -45,48 +26,10 @@ import { DANode } from './fake-da-node';
 import { DAEdge } from './fake-da-edge';
 
 export const Routers = {
-  'charged-spring': {
-    apply: applyChargedSpringEdges as any,
-    defaults: CHARGED_SPRING_DEFAULTS as any,
-  },
-  'bezier-route': {
-    apply: applyBezierRouteEdges as any,
-    defaults: BEZIER_ROUTE_DEFAULTS as any,
-  },
-  'bezier-fit-charged-spring': {
-    // bezier-fit takes two option objects (fit + charged-spring), so we
-    // bundle them under one `defaults` envelope to fit the uniform router
-    // interface. Round 2 (parameter sweeps) overrides either side by
-    // passing a merged `{ fit, cs }` object as the third arg.
-    apply: (
-      nodes: any,
-      edges: any,
-      opts: { fit: any; cs: any },
-      log?: (msg: string) => void,
-    ) =>
-      applyBezierFitChargedSpringEdges(
-        nodes,
-        edges,
-        opts.fit,
-        opts.cs,
-        log,
-      ),
-    defaults: {
-      fit: { ...BEZIER_FIT_DEFAULTS },
-      cs: { ...CHARGED_SPRING_DEFAULTS },
-    } as any,
-  },
-  'flexible-wire': {
-    apply: applyFlexibleWireEdges as any,
-    defaults: FLEXIBLE_WIRE_DEFAULTS as any,
-  },
-  'weighted-chain': {
-    apply: applyWeightedChainEdges as any,
-    defaults: WEIGHTED_CHAIN_DEFAULTS as any,
-  },
   'bezier-fit-weighted-chain': {
-    // Same two-object pattern as bezier-fit-charged-spring: the fit step's
-    // options + the underlying weighted-chain options live under one envelope.
+    // The fit step's options + the underlying weighted-chain options live
+    // under one envelope so the runner can override either side without
+    // changing the uniform router-call shape.
     apply: (
       nodes: any,
       edges: any,

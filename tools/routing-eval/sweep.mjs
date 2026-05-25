@@ -37,58 +37,23 @@ const RUNS_ROOT = join(__dirname, 'runs');
 
 // --- Sweep plan ----------------------------------------------------------
 //
-// Round 2 feedback (feedback-20260524-163438-sb1.json) flagged "wiggles /
-// kinks / jaggedness" on several dense + sparse cells. For each algorithm we
-// pick the single knob most plausibly responsible (per the virtue/vice
-// comments in the corresponding *-edges.ts file) and sweep it across 4
-// values that bracket the current default. bezier-route is intentionally
-// omitted: its round-2 ratings are uniformly 5 except dense (r=4, "some
-// intersections too close" — a structural complaint not a tuning knob).
+// After consolidation only bezier-fit-weighted-chain remains. This sweep
+// covers its two primary knobs separately for the headline scenarios; a
+// joint dp × seg grid is more useful and lives in tune-bf-wc.mjs.
 
 const SWEEP_PLAN = {
-  'charged-spring': {
-    // smoothingK is the Laplacian-smoother gain. Higher = beads pulled harder
-    // toward midpoint of neighbors = visually smoother chain. The default 0.4
-    // was tuned against simpler graphs; round-2 dense+sparse are wiggly.
-    param: 'smoothingK',
-    values: [0.2, 0.4, 0.7, 1.0],
-    scenarios: ['dense', 'sparse'],
-    setOption: (defaults, v) => ({ ...defaults, smoothingK: v }),
-  },
-  'bezier-fit-charged-spring': {
-    // dpTolerance is the Douglas-Peucker simplification threshold (px). The
-    // header comment is explicit: "Lower = more control points, closer to
-    // physics result. Higher = simpler chain, cruder approximation." Wiggles
-    // = too many preserved bends. The default 3 is conservative; sweep up.
+  'bezier-fit-weighted-chain': {
+    // fit.dpTolerance is the Douglas-Peucker simplification threshold (px).
+    // Lower = more control points, closer to the underlying chain. Higher =
+    // simpler curve, cruder approximation. Wiggles on dense come from too
+    // many preserved bends.
     param: 'fit.dpTolerance',
     values: [1, 3, 8, 16],
     scenarios: ['dense', 'sparse'],
     setOption: (defaults, v) => ({
       fit: { ...defaults.fit, dpTolerance: v },
-      cs: { ...defaults.cs },
+      wc: { ...defaults.wc },
     }),
-  },
-  'flexible-wire': {
-    // tautnessK pulls each bead toward its perpendicular projection on the
-    // chord between the two pinned endpoints. The header comment: "Higher
-    // values make the wire taut: deflections only occur where obstacles push
-    // the chain off the chord." That's exactly the anti-wiggle lever.
-    param: 'tautnessK',
-    values: [0.0, 0.3, 0.8, 1.5],
-    scenarios: ['anti-parallel', 'mesh-3x3', 'dense'],
-    setOption: (defaults, v) => ({ ...defaults, tautnessK: v }),
-  },
-  'weighted-chain': {
-    // segmentLength=0.5 px makes the chain enormously bead-dense (a 400px
-    // edge gets ~800 beads at the initial slack factor). PBD's per-bead
-    // constraint projection plus charge forces can produce tiny per-bead
-    // wobbles that read as "kinks" — round-2 dense literally got "crazy
-    // kinks" at r=1. Coarsening the chain should smooth that out at the
-    // cost of less obstacle-hugging precision.
-    param: 'segmentLength',
-    values: [0.5, 4, 12, 24],
-    scenarios: ['dense', 'sparse', 'hub-spoke'],
-    setOption: (defaults, v) => ({ ...defaults, segmentLength: v }),
   },
 };
 
