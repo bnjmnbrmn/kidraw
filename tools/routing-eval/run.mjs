@@ -224,6 +224,7 @@ async function main() {
         minObstacleClearance: baseMetrics.minObstacleClearance,
         minEdgeEdgeClearance: baseMetrics.minEdgeEdgeClearance,
         nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
+        minCrossingAngleDeg: baseMetrics.minCrossingAngleDeg,
         compositeScore: baseMetrics.composite,
         hardFailCount: baseMetrics.hardFailCount,
       };

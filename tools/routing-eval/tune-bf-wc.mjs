@@ -174,6 +174,7 @@ async function main() {
           minObstacleClearance: Number(baseMetrics.minObstacleClearance.toFixed(2)),
           minEdgeEdgeClearance: Number(baseMetrics.minEdgeEdgeClearance.toFixed(2)),
           nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
+          minCrossingAngleDeg: Number(baseMetrics.minCrossingAngleDeg.toFixed(2)),
           maxBulgeRatio: Number(baseMetrics.maxBulgeRatio.toFixed(3)),
           hardFailCount: baseMetrics.hardFailCount,
         };

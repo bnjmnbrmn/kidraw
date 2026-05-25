@@ -18,6 +18,7 @@ export interface RoutingMetrics {
   minObstacleClearance: number;       // closest non-incident node bbox; clamped
   minEdgeEdgeClearance: number;       // closest other-edge (no shared endpoint); clamped
   nonSiblingCrossings: number;        // count; soft penalty (some are unavoidable on dense graphs)
+  minCrossingAngleDeg: number;        // smallest acute angle (deg) at any non-sibling crossing; clamped to cap
   // Composite.
   hardFailCount: number;
   composite: number;
@@ -30,6 +31,7 @@ export interface MetricWeights {
   minObstacleClearance: number;
   minEdgeEdgeClearance: number;
   nonSiblingCrossings: number;
+  minCrossingAngleDeg: number;
 }
 
 /** Default weights — hand-tuned starting point. Phase 2b's pairwise
@@ -44,6 +46,7 @@ export const DEFAULT_WEIGHTS: MetricWeights = {
   minObstacleClearance: 0.5,
   minEdgeEdgeClearance: 0.5,
   nonSiblingCrossings: -5,
+  minCrossingAngleDeg: 1,
 };
 
 /** Saturation caps for the two clearance metrics, in pixels. Beyond these
@@ -55,6 +58,13 @@ export const DEFAULT_WEIGHTS: MetricWeights = {
  *  if it turns out one needs to be tighter than the other. */
 const OBSTACLE_CLEARANCE_CAP = 60;
 const EDGE_EDGE_CLEARANCE_CAP = 60;
+
+/** Saturation cap for the crossing-angle metric (degrees). Crossings at
+ *  or above this angle are visually unambiguous — the eye reads "two
+ *  separate lines crossing" rather than "one line tangent to another".
+ *  Below this, the crossing looks shallow and the in→out pairing gets
+ *  confusing. 30° matches the user's stated visual rule of thumb. */
+const CROSSING_ANGLE_CAP_DEG = 30;
 
 interface Box { minX: number; minY: number; maxX: number; maxY: number; }
 interface Pt { x: number; y: number; }
@@ -73,6 +83,7 @@ export function computeRoutingMetrics(
   const minObstacleClearance = computeMinObstacleClearance(nodes, edges, OBSTACLE_CLEARANCE_CAP);
   const minEdgeEdgeClearance = computeMinEdgeEdgeClearance(edges, EDGE_EDGE_CLEARANCE_CAP);
   const nonSiblingCrossings = countNonSiblingCrossings(edges);
+  const minCrossingAngleDeg = computeMinCrossingAngleDeg(edges, CROSSING_ANGLE_CAP_DEG);
 
   const hardFailCount = edgesThroughNodes + siblingCrossings + selfIntersections;
   const composite = hardFailCount > 0 ? -Infinity
@@ -81,12 +92,14 @@ export function computeRoutingMetrics(
       + weights.maxBulgeRatio * maxBulgeRatio
       + weights.minObstacleClearance * minObstacleClearance
       + weights.minEdgeEdgeClearance * minEdgeEdgeClearance
-      + weights.nonSiblingCrossings * nonSiblingCrossings;
+      + weights.nonSiblingCrossings * nonSiblingCrossings
+      + weights.minCrossingAngleDeg * minCrossingAngleDeg;
 
   return {
     edgesThroughNodes, siblingCrossings, selfIntersections,
     totalLength, totalCurvature, maxBulgeRatio,
     minObstacleClearance, minEdgeEdgeClearance, nonSiblingCrossings,
+    minCrossingAngleDeg,
     hardFailCount, composite,
   };
 }
@@ -186,6 +199,56 @@ function countNonSiblingCrossings(edges: DAEdge[]): number {
     }
   }
   return count;
+}
+
+/** Smallest acute angle (degrees, 0..90) at any non-sibling crossing.
+ *  Saturated at `cap` (degrees) — once every crossing is at least `cap`°
+ *  apart, the eye reads "obviously crossing" rather than "tangent"; more
+ *  separation doesn't help further. Returns `cap` if no crossings exist.
+ *  Uses the same interior-segment filter as countNonSiblingCrossings,
+ *  so the two metrics agree on which crossings to consider. */
+function computeMinCrossingAngleDeg(edges: DAEdge[], cap: number): number {
+  let min = cap;
+  const data = edges.map(e => {
+    if (e.srcNode === e.destNode) return null;
+    const a = e.srcNode.id, b = e.destNode.id;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    return { poly: getMetricPolyline(e), key };
+  });
+  for (let i = 0; i < data.length; i++) {
+    const di = data[i];
+    if (!di || di.poly.length < 2) continue;
+    for (let j = i + 1; j < data.length; j++) {
+      const dj = data[j];
+      if (!dj || dj.poly.length < 2) continue;
+      if (di.key === dj.key) continue;
+      // Mirror interiorPolylineCross's segment bounds: skip the first
+      // and last segment of either polyline (they sit near the endpoint
+      // perimeters where edges naturally converge).
+      for (let ai = 1; ai < di.poly.length - 2; ai++) {
+        for (let bi = 1; bi < dj.poly.length - 2; bi++) {
+          if (segmentsIntersect(di.poly[ai], di.poly[ai + 1], dj.poly[bi], dj.poly[bi + 1])) {
+            const angle = acuteAngleBetweenSegments(
+              di.poly[ai], di.poly[ai + 1], dj.poly[bi], dj.poly[bi + 1],
+            );
+            if (angle < min) min = angle;
+            if (min === 0) return 0;
+          }
+        }
+      }
+    }
+  }
+  return min;
+}
+
+function acuteAngleBetweenSegments(a1: Pt, a2: Pt, b1: Pt, b2: Pt): number {
+  const dx1 = a2.x - a1.x, dy1 = a2.y - a1.y;
+  const dx2 = b2.x - b1.x, dy2 = b2.y - b1.y;
+  const len1 = Math.hypot(dx1, dy1) || 1;
+  const len2 = Math.hypot(dx2, dy2) || 1;
+  // |cos| collapses θ and 180-θ into the same acute angle in [0, 90].
+  const cosAbs = Math.abs((dx1 * dx2 + dy1 * dy2) / (len1 * len2));
+  return Math.acos(Math.min(1, cosAbs)) * 180 / Math.PI;
 }
 
 function countSelfIntersections(edges: DAEdge[]): number {

@@ -116,6 +116,7 @@ async function main() {
         minObstacleClearance: baseMetrics.minObstacleClearance,
         minEdgeEdgeClearance: baseMetrics.minEdgeEdgeClearance,
         nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
+        minCrossingAngleDeg: baseMetrics.minCrossingAngleDeg,
         hardFailCount: baseMetrics.hardFailCount,
       };
       if ('composite' in existing) updated.composite = baseMetrics.composite;

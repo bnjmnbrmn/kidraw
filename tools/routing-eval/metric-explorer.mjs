@@ -34,6 +34,7 @@ const DEFAULT_METRICS = [
   'minObstacleClearance',
   'minEdgeEdgeClearance',
   'nonSiblingCrossings',
+  'minCrossingAngleDeg',
 ];
 
 function parseArgs(argv) {
@@ -253,6 +254,7 @@ const METRIC_DESCRIPTIONS = {
   minObstacleClearance: 'Smallest distance (px) from any interior control point to the nearest non-incident node bbox. Saturated at 60 px — beyond that, additional clearance is visually irrelevant.',
   minEdgeEdgeClearance: 'Smallest distance (px) between any two edges that do NOT share an endpoint. Saturated at 60 px. 0 = two non-incident edges crossed or touched; 60 = every edge pair is comfortably separated.',
   nonSiblingCrossings: 'Count of edge pairs from DIFFERENT parallel-edge groups whose interior polylines cross each other. Soft penalty (some crossings are unavoidable on dense graphs — K_n is non-planar for n > 4).',
+  minCrossingAngleDeg: 'Smallest acute angle (degrees, 0–90) at any non-sibling crossing. Saturated at 30°. <30° = at least one shallow / tangent-looking crossing (hard to tell which in pairs with which out); ≥30° = all crossings visually unambiguous.',
 };
 
 function formatVal(v) {
