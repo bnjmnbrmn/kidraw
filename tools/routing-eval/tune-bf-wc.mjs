@@ -265,12 +265,17 @@ function buildGridHtml(m) {
       }
       const md = c.metrics;
       const isCellDefault = (dp === defaultDp) && (seg === defaultSeg);
-      return `<td class="${isCellDefault ? 'cell-default' : ''}">
-        <div class="cell-label">dp=${dp}, seg=${seg}${isCellDefault ? ' ★' : ''}</div>
-        <object type="image/svg+xml" data="dp=${dp},seg=${seg}/routing.svg"></object>
-        <div class="metrics">
-          t=${md.computeMs}ms · sibCross=${md.siblingCrossings} · hardFail=${md.hardFailCount} · bends=${md.bendCount} · tCurv=${md.totalCurvature}
-        </div>
+      const svgPath = `dp=${dp},seg=${seg}/routing.svg`;
+      const metricsLine = `t=${md.computeMs}ms · sibCross=${md.siblingCrossings} · hardFail=${md.hardFailCount} · bends=${md.bendCount} · tCurv=${md.totalCurvature}`;
+      const label = `dp=${dp}, seg=${seg}${isCellDefault ? ' ★' : ''}`;
+      return `<td class="${isCellDefault ? 'cell-default' : ''}"
+          data-svg="${escapeHtml(svgPath)}"
+          data-label="${escapeHtml(label)}"
+          data-metrics="${escapeHtml(metricsLine)}"
+          title="Double-click to zoom">
+        <div class="cell-label">${escapeHtml(label)}</div>
+        <object type="image/svg+xml" data="${escapeHtml(svgPath)}"></object>
+        <div class="metrics">${escapeHtml(metricsLine)}</div>
       </td>`;
     }).join('');
     return `<tr>${rowLabel}${cellsHtml}</tr>`;
@@ -299,6 +304,35 @@ object { display: block; width: 320px; height: 240px; border: 1px solid #eee;
            font-size: 11px; }
 .error { font-family: ui-monospace, monospace; }
 .legend { margin: 8px 0; color: #666; }
+td[data-svg] { cursor: zoom-in; }
+.zoom-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1000; padding: 32px; box-sizing: border-box;
+  cursor: zoom-out;
+}
+.zoom-backdrop.open { display: flex; }
+.zoom-panel {
+  background: white; border-radius: 8px; padding: 16px;
+  max-width: 95vw; max-height: 95vh; display: flex; flex-direction: column;
+  cursor: default;
+}
+.zoom-panel header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 8px; gap: 24px;
+}
+.zoom-title { font-weight: 600; font-size: 14px; }
+.zoom-metrics { font-family: ui-monospace, monospace; color: #555; font-size: 12px; }
+.zoom-close {
+  border: 0; background: #eee; padding: 4px 10px; border-radius: 4px;
+  cursor: pointer; font-size: 14px; color: #333;
+}
+.zoom-close:hover { background: #ddd; }
+.zoom-panel object {
+  display: block; flex: 1 1 auto;
+  width: min(85vw, 1200px); height: min(80vh, 900px);
+  border: 1px solid #eee;
+}
 </style>
 </head>
 <body>
@@ -308,6 +342,7 @@ object { display: block; width: 320px; height: 240px; border: 1px solid #eee;
   Rows: <code>fit.dpTolerance</code> (lower = more control points / faithful to physics).
   Cols: <code>wc.segmentLength</code> (lower = denser raw chain).
   ★ = current default (${defaultDp} dp, ${defaultSeg} seg).
+  <strong>Double-click a cell to zoom.</strong>
   Metrics: <code>sibCross</code> = same-parallel-group edges crossing (should be 0),
   <code>hardFail</code> = edges through nodes + sibling crossings + self-intersections (lower is better),
   <code>bends</code> = total control points across all edges,
@@ -317,6 +352,51 @@ object { display: block; width: 320px; height: 240px; border: 1px solid #eee;
 <thead><tr><th></th>${headerCols}</tr></thead>
 <tbody>${rowsHtml}</tbody>
 </table>
+
+<div class="zoom-backdrop" id="zoom">
+  <div class="zoom-panel" id="zoom-panel">
+    <header>
+      <div>
+        <div class="zoom-title" id="zoom-title"></div>
+        <div class="zoom-metrics" id="zoom-metrics"></div>
+      </div>
+      <button class="zoom-close" id="zoom-close" type="button">Close (Esc)</button>
+    </header>
+    <object type="image/svg+xml" id="zoom-svg"></object>
+  </div>
+</div>
+
+<script>
+(() => {
+  const backdrop = document.getElementById('zoom');
+  const panel    = document.getElementById('zoom-panel');
+  const title    = document.getElementById('zoom-title');
+  const metrics  = document.getElementById('zoom-metrics');
+  const svg      = document.getElementById('zoom-svg');
+  const closeBtn = document.getElementById('zoom-close');
+
+  function open(td) {
+    title.textContent   = td.dataset.label;
+    metrics.textContent = td.dataset.metrics;
+    svg.setAttribute('data', td.dataset.svg);
+    backdrop.classList.add('open');
+  }
+  function close() {
+    backdrop.classList.remove('open');
+    svg.removeAttribute('data');
+  }
+
+  document.querySelectorAll('td[data-svg]').forEach(td => {
+    td.addEventListener('dblclick', () => open(td));
+  });
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  panel.addEventListener('click', e => e.stopPropagation());
+  closeBtn.addEventListener('click', close);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && backdrop.classList.contains('open')) close();
+  });
+})();
+</script>
 </body>
 </html>`;
 }
