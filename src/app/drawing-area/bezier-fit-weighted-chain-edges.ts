@@ -63,9 +63,24 @@ export function applyBezierFitWeightedChainEdges(
     }
     const dense = edge.controlPoints.map(p => ({x: p.x, y: p.y}));
     const simplified = douglasPeucker(dense, fitOpts.dpTolerance);
-    edge.setControlPoints(simplified);
+    // Strip leading cps inside the source bbox and trailing cps inside the
+    // destination bbox. The chain's anchor beads can land inside the node
+    // they're anchored to; when the LAST cp is inside the destination bbox,
+    // DAEdge's perimeter projection lands on the *near* side of the bbox
+    // (between cp and node center), so the path's final segment leaves the
+    // bbox heading away from the node center. The arrowhead is oriented
+    // along that segment and ends up with its body trailing INTO the node,
+    // where the white fill hides it. Stripping interior cps puts the last
+    // cp outside the bbox so the perimeter projects to the *near-incoming*
+    // edge and the final segment points into the node, as intended.
+    const trimmed = stripInteriorCps(
+      simplified,
+      bboxOf(edge.srcNode),
+      bboxOf(edge.destNode),
+    );
+    edge.setControlPoints(trimmed);
     edge.setSmoothRendering(true);
-    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} cps`);
+    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} cps`);
   }
   log?.('[bezier-fit-wc] done');
 }
@@ -112,4 +127,27 @@ function perpDistance(p: Pt, a: Pt, b: Pt): number {
   const len = Math.hypot(dx, dy);
   if (len < 1e-6) return Math.hypot(p.x - a.x, p.y - a.y);
   return Math.abs(dx * (a.y - p.y) - (a.x - p.x) * dy) / len;
+}
+
+interface Bbox { minX: number; minY: number; maxX: number; maxY: number; }
+
+function bboxOf(node: DANode): Bbox {
+  const x = node.konvaGroup.x();
+  const y = node.konvaGroup.y();
+  return { minX: x, minY: y, maxX: x + node.NODE_WIDTH, maxY: y + node.NODE_HEIGHT };
+}
+
+function isInside(p: Pt, b: Bbox): boolean {
+  return p.x > b.minX && p.x < b.maxX && p.y > b.minY && p.y < b.maxY;
+}
+
+/** Drop leading control points that lie inside `src` and trailing ones
+ *  inside `dst`. Returns at minimum an empty array (callers handle that
+ *  case by relying on DAEdge's straight-line src→dst perimeter fallback). */
+function stripInteriorCps(points: Pt[], src: Bbox, dst: Bbox): Pt[] {
+  let lo = 0;
+  while (lo < points.length && isInside(points[lo], src)) lo++;
+  let hi = points.length;
+  while (hi > lo && isInside(points[hi - 1], dst)) hi--;
+  return points.slice(lo, hi);
 }
