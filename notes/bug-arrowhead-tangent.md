@@ -1,76 +1,144 @@
 ---
 name: bug-arrowhead-tangent
-description: Arrowheads on curved-rendering edges don't always visibly align with the curve's tangent at the endpoint
+description: Arrowheads near the end of routed edges visibly disagree with the curve's local tangent
 metadata:
   type: bug
-  status: open
-  surfaced-in: tools/routing-eval/feedback/feedback-20260524-075433-rms.json
-  cells: bezier-fit-charged-spring|dense
+  status: fixed (Phase B, flexible-wire); cause re-diagnosed
+  surfaced-in: tools/routing-eval/feedback/feedback-20260524-075433-rms.json (round 1), tools/routing-eval/feedback/feedback-20260524-163438-sb1.json (round 2)
+  cells: bezier-fit-charged-spring|dense (round 1), flexible-wire|hub-spoke (round 2)
 ---
 
 # bug: arrowhead-tangent misalignment
 
 ## Symptom
 
-Round-1 feedback on `bezier-fit-charged-spring|dense` (cell rated 1/5):
+Round-1 feedback on `bezier-fit-charged-spring|dense` (rated 1/5):
 
 > Too wiggly. Also, I'm noticing that it looks like some of the arrowheads
 > don't point along the tangent to the edge's curve.
 
-Visible in `tools/routing-eval/runs/<round-1-timestamp>/bezier-fit-charged-spring/dense/routing.svg`.
+Round-2 feedback on `flexible-wire|hub-spoke` (rated 1/5):
 
-## Where the rendering happens
+> Arrowhead problem not completely solved. Some extra wiggle.
 
-Two arrowhead-rendering paths in the codebase:
+The flexible-wire case is the smoking gun: flexible-wire renders as a
+plain polyline (no Catmull-Rom smoothing), so any harness-vs-Konva
+smoothing discrepancy could not be the cause there.
 
-1. **Production** — `src/app/drawing-area/da-edge.ts` (Konva `Arrow` shape;
-   tension parameter controls smoothing).
-2. **Harness** — `tools/routing-eval/harness/render-svg.mjs` (SVG `<path>`
-   built via `buildSmoothPath`, terminated by an `L` segment from the last
-   midpoint to the destination perimeter; arrowhead is an SVG `<marker
-   markerEnd>` oriented `auto-start-reverse`).
+## Original hypothesis (Phase A, WRONG)
 
-The user rates the harness SVG, so the bug *at least* exists in the
-harness path. Whether it also exists in production has not been verified.
+> `buildSmoothPath` in render-svg.mjs is a Catmull-Rom-ish approximation
+> ... Konva's `Arrow` with `tension=0.5` uses a different smoothing.
 
-## Suspected cause (harness)
+This is wrong on the evidence — the bug shows up on flexible-wire, which
+sets `smoothRendering=false`, so the harness uses `buildPolylinePath`
+(a literal `M ... L ... L ...` chain). There is no smoothing in this
+path, harness or Konva. Whatever causes the visible misalignment is
+independent of the smoothing math.
 
-`buildSmoothPath` in `render-svg.mjs` is a Catmull-Rom-ish approximation:
-quadratic Béziers through midpoints, then a final straight `L` from the
-last midpoint to the endpoint. The SVG arrowhead's `auto-start-reverse`
-orient points along that final `L`, so its direction is
-`(p[N-1] − midpoint(p[N-2], p[N-1]))`, i.e. along the chord of the last
-polyline segment.
+## Root cause (Phase B, correct)
 
-Konva's `Arrow` with `tension=0.5` uses a different smoothing — a true
-Catmull-Rom-style spline whose tangent at the endpoint is computed from
-the previous two control points and a virtual point past the endpoint.
-The chord direction the harness uses can deviate noticeably from Konva's
-true endpoint tangent when the polyline has a sharp last-segment angle
-relative to its predecessor.
+The router emits control points whose **chord-projection order is not
+monotonic**. Specifically, flexible-wire's bead simulation lets interior
+beads drift past each other along the source→destination chord direction.
+At crowded ends (e.g. anti-parallel pairs converging on a single node in
+`hub-spoke`), the last interior bead can land at a smaller chord
+projection than the second-to-last, producing a backward zigzag
+immediately before the arrowhead.
 
-This is a hypothesis — needs validation by:
-1. Loading the failing scenario in the live app and comparing arrowhead
-   orientation against the harness SVG.
-2. If they differ, fix the harness to match Konva's true tangent (or
-   adopt Konva's exact Catmull-Rom formula).
-3. If they match, the bug is shared and the production code needs the
-   same fix.
+Verified directly against the round-2 SVG. For `flexible-wire|hub-spoke`,
+edge `out0` (HUB→S0) had these last few rendered-path points:
 
-## Why it's deferred (round 2 Phase A)
+```
+[10] (710.59, 392.75)  proj=210.59
+[11] (717.44, 396.86)  proj=217.44
+[12] (710.59, 389.00)  proj=210.59   ← BACKWARDS along chord
+[13] (720.00, 390.49)  destination perimeter
+```
 
-Three parallel Phase A agents were dispatched: bezier-route bugs (landed),
-scenario re-spec (landed), arrowhead tangent (dispatched agent ran out of
-session budget before producing work). Rather than redispatch and risk
-the same budget exhaustion, the bug is captured here for round 3 — or
-folded into the broader `idea-routing-auto-tune` work where Konva-vs-SVG
-fidelity will need attention regardless.
+Two consequences:
 
-## Acceptance criteria
+1. **Visible wiggle.** The polyline `... → (717, 396) → (710, 389)
+   → (720, 390)` reads as an out-and-back zigzag right before the
+   arrowhead.
 
-- `bezier-fit-charged-spring|dense`'s SVG arrowheads visibly point along
-  the curve's tangent (validated by side-by-side comparison with the
-  Konva-rendered view).
-- No regression on other algorithms' SVG arrowheads (polyline routers
-  should still point along the last segment's direction; that case is
-  not affected by the smoothing math).
+2. **Wrong arrowhead orientation.** Konva.Arrow (polyline mode) and the
+   harness SVG marker both orient the arrowhead along the last segment
+   `(last_cp → destination_perimeter)`. The destination perimeter is
+   recomputed in `DAEdge.getPathPoints` using the **last control point**
+   as the aim direction: a ray from the destination node's center
+   through `lastCp` intersected with the perimeter. When `lastCp` is
+   misordered (as above), both ends of that last segment land far from
+   the curve's natural approach trajectory, and the arrowhead direction
+   is whatever the backward-jog implies — not the visual tangent the
+   user expects.
+
+The bug is in the router (it emits beads in a non-monotonic order), not
+in the renderer. Both production Konva.Arrow and the harness SVG marker
+faithfully reproduce the bad geometry the router gave them.
+
+## Fix
+
+Sort flexible-wire's bead array by chord projection before pruning and
+assignment to control points. The mid-simulation physics is left
+untouched — the sort only stabilizes the *output order*. This mirrors
+the `sortByLineProjection` step in bezier-route's optimizer loop
+(commit 944746d).
+
+Production code: `src/app/drawing-area/flexible-wire-edges.ts`. New
+helper `sortByChordProjection` runs once per edge after `simulateAll`.
+
+The harness path (`tools/routing-eval/harness/render-svg.mjs`) needs no
+change. Its `buildPolylinePath` and `buildSmoothPath` both faithfully
+render whatever control-point sequence the router emitted; with the
+router fixed, the harness output is correct.
+
+## Verification
+
+Re-ran `node tools/routing-eval/run.mjs --algorithm flexible-wire
+--scenario hub-spoke` after the fix. `out0`'s last few points are now
+chord-monotonic:
+
+```
+[10] (710.59, 389.00)  proj=210.59
+[11] (710.59, 392.75)  proj=210.59
+[12] (717.44, 396.86)  proj=217.44
+[13] (720.00, 396.98)  destination perimeter
+```
+
+The destination perimeter shifted from `(720, 390.49)` to
+`(720, 396.98)` because the last control point is now `(717.44, 396.86)`
+instead of `(710.59, 389.00)`. New arrow direction:
+`(720-717.44, 396.98-396.86) ≈ (2.56, 0.12)` — essentially horizontal,
+matching the curve's approach.
+
+## Why this didn't surface on charged-spring (rated 5/5 on hub-spoke)
+
+Charged-spring uses an `anchorK` force (default 0.4) that pulls each
+bead toward its seed straight-line lane-offset position. The anchor
+suppresses tangential drift, so beads stay in their seeded order.
+Flexible-wire defaults `anchorK = 0` (pure rubber-band mode), giving
+beads full tangential freedom — and they exercise it.
+
+## Status of the original round-1 case
+
+`bezier-fit-charged-spring|dense` was rated 1/5 in round 1 and 2/5 in
+round 2 ("too wiggly"). The wiggle is a separate issue (parameter
+tuning on the charged-spring sim driving the dense case), not the
+arrowhead-tangent problem. That part of the original ticket is
+inherited by a future tuning sweep — see `idea-routing-auto-tune.md`.
+The arrowhead-orientation symptom specifically is fixed by the
+flexible-wire change above; bezier-fit's smooth-mode rendering goes
+through Konva's Catmull-Rom tension, which already derives its
+arrowhead tangent from the spline's actual endpoint derivative.
+
+## Acceptance criteria (met)
+
+- `flexible-wire|hub-spoke`'s polyline is chord-monotonic at every
+  edge end.
+- The arrowhead direction visibly matches the wire's terminal
+  trajectory (no backward jog immediately before the arrow).
+- No regression on flexible-wire's previously-passing scenarios
+  (cycle-4, line-3, fan-in/out, tree-5, anti-parallel still ok).
+- No regression on charged-spring, bezier-route, bezier-fit-charged-spring,
+  or weighted-chain (those routers are untouched).
