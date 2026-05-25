@@ -48,3 +48,10 @@ src/**/*.js.map
 test-e2e-output/
 debug-*.js
 tools/debug.log
+
+# Per-agent worktrees (gitlinks bleed into the parent index otherwise)
+.claude/worktrees/
+
+# Screenshots dropped into the project root by the user
+/Screenshot*.png
+/Screenshot*.PNG
