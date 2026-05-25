@@ -28,7 +28,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RUNS_ROOT = join(__dirname, 'runs');
 const ANALYSIS_ROOT = join(__dirname, 'analysis');
 
-const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObstacleClearance'];
+const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObstacleClearance', 'minEdgeEdgeClearance'];
 const HARD_FAIL_KEYS = ['siblingCrossings', 'edgesThroughNodes', 'selfIntersections'];
 
 function parseArgs(argv) {
@@ -213,7 +213,7 @@ h1 { font-size: 16px; margin: 0 0 8px; }
 const PAIRS = ${pairsJson};
 const RANGES = ${rangesJson};
 const FEATURE_KEYS = ${JSON.stringify(FEATURE_KEYS)};
-const HAND_TUNED_WEIGHTS = { totalLength: -0.01, totalCurvature: -2, maxBulgeRatio: -50, minObstacleClearance: 0.5 };
+const HAND_TUNED_WEIGHTS = { totalLength: -0.01, totalCurvature: -2, maxBulgeRatio: -50, minObstacleClearance: 0.5, minEdgeEdgeClearance: 0.5 };
 const STORAGE_KEY = 'routing-eval:metric-calibrate:picks';
 
 const state = {
@@ -343,18 +343,20 @@ function fitWeights() {
     label,
   }));
 
-  let w = [0, 0, 0, 0];
+  const D = FEATURE_KEYS.length;
+  let w = new Array(D).fill(0);
   const lr = 0.05;
   const epochs = 5000;
   for (let e = 0; e < epochs; e++) {
-    const grad = [0, 0, 0, 0];
+    const grad = new Array(D).fill(0);
     for (const {diff, label} of normPairs) {
-      const z = w.reduce((s, wi, i) => s + wi * diff[i], 0);
+      let z = 0;
+      for (let i = 0; i < D; i++) z += w[i] * diff[i];
       const p = 1 / (1 + Math.exp(-label * z));
       const factor = -label * (1 - p);
-      for (let i = 0; i < 4; i++) grad[i] += factor * diff[i];
+      for (let i = 0; i < D; i++) grad[i] += factor * diff[i];
     }
-    for (let i = 0; i < 4; i++) w[i] -= lr * grad[i] / normPairs.length;
+    for (let i = 0; i < D; i++) w[i] -= lr * grad[i] / normPairs.length;
   }
   // De-normalize: w_original = w_normalized / featStd
   const wOrig = w.map((wi, i) => wi / featStds[i]);

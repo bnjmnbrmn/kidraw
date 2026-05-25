@@ -10,11 +10,14 @@ export interface RoutingMetrics {
   edgesThroughNodes: number;
   siblingCrossings: number;
   selfIntersections: number;
-  // Soft.
+  // Soft. Clearance metrics are saturated at half-a-node-width: extra
+  // distance beyond that doesn't matter visually and shouldn't keep
+  // rewarding the composite score.
   totalLength: number;
   totalCurvature: number;
   maxBulgeRatio: number;
-  minObstacleClearance: number;
+  minObstacleClearance: number;       // closest non-incident node bbox; clamped
+  minEdgeEdgeClearance: number;       // closest other-edge (no shared endpoint); clamped
   // Composite.
   hardFailCount: number;
   composite: number;
@@ -25,16 +28,31 @@ export interface MetricWeights {
   totalCurvature: number;
   maxBulgeRatio: number;
   minObstacleClearance: number;
+  minEdgeEdgeClearance: number;
 }
 
-/** Default weights — handed-tuned starting point. Phase 6 will fit these
- *  from A/B picks. Negative weight means "bigger is worse". */
+/** Default weights — hand-tuned starting point. Phase 2b's pairwise
+ *  calibration will refit these from human picks. Negative weight means
+ *  "bigger is worse". The two clearance metrics now saturate at
+ *  CLEARANCE_THRESHOLD_RATIO × avg-non-invisible-node-width, so their
+ *  effective range is bounded and their weights don't need to be tiny. */
 export const DEFAULT_WEIGHTS: MetricWeights = {
   totalLength: -0.01,
   totalCurvature: -2,
   maxBulgeRatio: -50,
   minObstacleClearance: 0.5,
+  minEdgeEdgeClearance: 0.5,
 };
+
+/** Saturation caps for the two clearance metrics, in pixels. Beyond these
+ *  distances additional separation is visually irrelevant — the eye stops
+ *  caring once the gap is "clearly comfortable". Tuned by hand: 60 px is
+ *  roughly the gap between two default-sized (120 px) nodes laid out side
+ *  by side; that's a useful "clearly clear" reference. Split between node
+ *  clearance and edge-edge clearance so they can be adjusted independently
+ *  if it turns out one needs to be tighter than the other. */
+const OBSTACLE_CLEARANCE_CAP = 60;
+const EDGE_EDGE_CLEARANCE_CAP = 60;
 
 interface Box { minX: number; minY: number; maxX: number; maxY: number; }
 interface Pt { x: number; y: number; }
@@ -50,18 +68,21 @@ export function computeRoutingMetrics(
   const totalLength = computeTotalLength(edges);
   const totalCurvature = computeTotalCurvature(edges);
   const maxBulgeRatio = computeMaxBulgeRatio(edges);
-  const minObstacleClearance = computeMinObstacleClearance(nodes, edges);
+  const minObstacleClearance = computeMinObstacleClearance(nodes, edges, OBSTACLE_CLEARANCE_CAP);
+  const minEdgeEdgeClearance = computeMinEdgeEdgeClearance(edges, EDGE_EDGE_CLEARANCE_CAP);
 
   const hardFailCount = edgesThroughNodes + siblingCrossings + selfIntersections;
   const composite = hardFailCount > 0 ? -Infinity
     : weights.totalLength * totalLength
       + weights.totalCurvature * totalCurvature
       + weights.maxBulgeRatio * maxBulgeRatio
-      + weights.minObstacleClearance * minObstacleClearance;
+      + weights.minObstacleClearance * minObstacleClearance
+      + weights.minEdgeEdgeClearance * minEdgeEdgeClearance;
 
   return {
     edgesThroughNodes, siblingCrossings, selfIntersections,
-    totalLength, totalCurvature, maxBulgeRatio, minObstacleClearance,
+    totalLength, totalCurvature, maxBulgeRatio,
+    minObstacleClearance, minEdgeEdgeClearance,
     hardFailCount, composite,
   };
 }
@@ -202,8 +223,12 @@ function computeMaxBulgeRatio(edges: DAEdge[]): number {
   return max;
 }
 
-function computeMinObstacleClearance(nodes: DANode[], edges: DAEdge[]): number {
-  let min = Infinity;
+function computeMinObstacleClearance(nodes: DANode[], edges: DAEdge[], cap: number): number {
+  // Walk every interior cp on every edge against every non-incident node
+  // bbox. Take the min distance, but clamp at `cap` — visually, beyond a
+  // node-width-ish gap the additional clearance is irrelevant. Returns
+  // `cap` if no interior cps exist (which is the "all clear" state).
+  let min = cap;
   for (const edge of edges) {
     const poly = getMetricPolyline(edge);
     const incident = new Set([edge.srcNode, edge.destNode]);
@@ -216,10 +241,41 @@ function computeMinObstacleClearance(nodes: DANode[], edges: DAEdge[]): number {
         const cy = Math.max(box.minY, Math.min(p.y, box.maxY));
         const d = Math.hypot(p.x - cx, p.y - cy);
         if (d < min) min = d;
+        if (min === 0) return 0;
       }
     }
   }
-  return min === Infinity ? 0 : min;
+  return min;
+}
+
+/** Min distance between any two edges that do NOT share an endpoint node.
+ *  Edges sharing an endpoint converge near that node by construction (fan-
+ *  out / fan-in hubs) — measuring their close-pass would just penalize
+ *  the topology, not the routing. For every truly-non-incident edge pair,
+ *  walk all interior segment pairs and take the min point-to-segment
+ *  distance. Clamped at `cap` like the node-clearance metric. */
+function computeMinEdgeEdgeClearance(edges: DAEdge[], cap: number): number {
+  let min = cap;
+  const polys = edges.map(e => ({ poly: getMetricPolyline(e), src: e.srcNode, dst: e.destNode }));
+  for (let i = 0; i < polys.length; i++) {
+    const a = polys[i];
+    if (a.poly.length < 2) continue;
+    for (let j = i + 1; j < polys.length; j++) {
+      const b = polys[j];
+      if (b.poly.length < 2) continue;
+      // Skip if they share any endpoint node.
+      if (a.src === b.src || a.src === b.dst || a.dst === b.src || a.dst === b.dst) continue;
+      // Min segment-to-segment distance between the two polylines.
+      for (let ai = 0; ai < a.poly.length - 1; ai++) {
+        for (let bi = 0; bi < b.poly.length - 1; bi++) {
+          const d = segSegDistance(a.poly[ai], a.poly[ai + 1], b.poly[bi], b.poly[bi + 1]);
+          if (d < min) min = d;
+          if (min === 0) return 0;
+        }
+      }
+    }
+  }
+  return min;
 }
 
 // --- Geometry helpers ---
@@ -249,6 +305,28 @@ function interiorPolylineCross(a: Pt[], b: Pt[]): boolean {
     }
   }
   return false;
+}
+
+/** Minimum distance between two line segments (p1→p2 and p3→p4). If they
+ *  intersect, returns 0. Otherwise: min of the four endpoint-to-other-
+ *  segment distances. */
+function segSegDistance(p1: Pt, p2: Pt, p3: Pt, p4: Pt): number {
+  if (segmentsIntersect(p1, p2, p3, p4)) return 0;
+  return Math.min(
+    pointToSegmentDistance(p1, p3, p4),
+    pointToSegmentDistance(p2, p3, p4),
+    pointToSegmentDistance(p3, p1, p2),
+    pointToSegmentDistance(p4, p1, p2),
+  );
+}
+
+function pointToSegmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
+  let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
 function segmentBoxIntersect(p1: Pt, p2: Pt, b: Box): boolean {

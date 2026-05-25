@@ -222,6 +222,7 @@ async function main() {
         totalCurvature: baseMetrics.totalCurvature,
         maxBulgeRatio: baseMetrics.maxBulgeRatio,
         minObstacleClearance: baseMetrics.minObstacleClearance,
+        minEdgeEdgeClearance: baseMetrics.minEdgeEdgeClearance,
         compositeScore: baseMetrics.composite,
         hardFailCount: baseMetrics.hardFailCount,
       };

@@ -32,6 +32,7 @@ const DEFAULT_METRICS = [
   'totalCurvature',
   'maxBulgeRatio',
   'minObstacleClearance',
+  'minEdgeEdgeClearance',
 ];
 
 function parseArgs(argv) {
@@ -248,7 +249,8 @@ const METRIC_DESCRIPTIONS = {
   totalLength: 'Sum of polyline-segment lengths across every edge (px). Lower is shorter wire; very high means edges are detouring far from their chord.',
   totalCurvature: 'Sum of all bend angles across every edge (radians). 0 = every edge perfectly straight. Higher = more wiggle.',
   maxBulgeRatio: 'Max perpendicular distance any interior point bulges from its chord, divided by chord length. 0 = straight. ~0.5 = bulges half as far as it is long.',
-  minObstacleClearance: 'Smallest distance (px) from any interior control point to the nearest non-incident node bbox. Higher = more breathing room.',
+  minObstacleClearance: 'Smallest distance (px) from any interior control point to the nearest non-incident node bbox. Saturated at 60 px — beyond that, additional clearance is visually irrelevant.',
+  minEdgeEdgeClearance: 'Smallest distance (px) between any two edges that do NOT share an endpoint. Saturated at 60 px. 0 = two non-incident edges crossed or touched; 60 = every edge pair is comfortably separated.',
 };
 
 function formatVal(v) {
