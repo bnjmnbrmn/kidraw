@@ -32,21 +32,25 @@ const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObst
 const HARD_FAIL_KEYS = ['siblingCrossings', 'edgesThroughNodes', 'selfIntersections'];
 
 function parseArgs(argv) {
-  const out = { pairs: 200, seed: 42 };
+  const out = { pairs: 200, seed: 42, crossGraph: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') {
       console.log(
         'Usage: node tools/routing-eval/metric-calibrate.mjs [options]\n\n' +
-        '  --pairs <n>   Number of candidate pairs to sample (default 200).\n' +
-        '  --seed <n>    PRNG seed for pair sampling (default 42).\n' +
-        '  --help        Show this help.\n',
+        '  --pairs <n>     Number of candidate pairs to sample (default 200).\n' +
+        '  --seed <n>      PRNG seed for pair sampling (default 42).\n' +
+        '  --cross-graph   Sample pairs across DIFFERENT scenarios. Default is\n' +
+        '                  within-scenario (apples-to-apples routing comparisons).\n' +
+        '  --help          Show this help.\n',
       );
       process.exit(0);
     } else if (a === '--pairs') {
       out.pairs = Number(argv[++i]);
     } else if (a === '--seed') {
       out.seed = Number(argv[++i]);
+    } else if (a === '--cross-graph') {
+      out.crossGraph = true;
     } else {
       console.error('Unknown arg: ' + a);
       process.exit(1);
@@ -96,6 +100,7 @@ function collectCells(root) {
               svgPath: join(dir, 'routing.svg'),
               metrics,
               origin: relative(root, dir).split(sep).join('/'),
+              scenario: typeof metrics.scenario === 'string' ? metrics.scenario : null,
             });
           }
         }
@@ -112,9 +117,18 @@ function collectCells(root) {
 /** Sample N pairs from cells, preferring pairs with larger feature-space
  *  separation so the user is making meaningful judgments. Uses inverse-
  *  rank sampling: random pairs are scored by squared feature-diff in
- *  normalized units, and the top half by separation is kept. */
-function samplePairs(cells, count, rng) {
+ *  normalized units, and the top-N by separation is kept.
+ *
+ *  When `withinGraph` is true (default), pairs are constrained to come
+ *  from the same scenario — apples-to-apples routing comparison. This
+ *  needs each cell to carry a scenario name (most do; older runs without
+ *  the `scenario` field in metrics.json are silently dropped from the
+ *  candidate pool in within-graph mode). */
+function samplePairs(cells, count, rng, withinGraph) {
   if (cells.length < 2) return [];
+  // Always use the full-corpus ranges for feature normalization so the
+  // separation score is comparable across scenarios — within-graph pairs
+  // get scored on the same scale as cross-graph would.
   const ranges = computeRanges(cells);
   const norm = m => FEATURE_KEYS.map(k => {
     const r = ranges[k];
@@ -122,12 +136,43 @@ function samplePairs(cells, count, rng) {
   });
   const cellsN = cells.map(c => ({ cell: c, n: norm(c.metrics) }));
 
+  // Determine which cell indices can be paired with each other.
+  const pickPartner = (() => {
+    if (!withinGraph) {
+      return (aIdx) => {
+        let bIdx = Math.floor(rng() * cellsN.length);
+        if (bIdx === aIdx) bIdx = (bIdx + 1) % cellsN.length;
+        return bIdx;
+      };
+    }
+    // Within-graph: group by scenario and pick from the same group.
+    const byScenario = new Map();
+    cellsN.forEach((c, i) => {
+      const s = c.cell.scenario;
+      if (!s) return;
+      if (!byScenario.has(s)) byScenario.set(s, []);
+      byScenario.get(s).push(i);
+    });
+    const eligibleGroups = [...byScenario.values()].filter(g => g.length >= 2);
+    return (aIdx) => {
+      const a = cellsN[aIdx];
+      if (!a.cell.scenario) return -1;
+      const group = byScenario.get(a.cell.scenario);
+      if (!group || group.length < 2) return -1;
+      let bIdx = group[Math.floor(rng() * group.length)];
+      if (bIdx === aIdx) bIdx = group[(group.indexOf(aIdx) + 1) % group.length];
+      return bIdx;
+    };
+  })();
+
   const oversample = Math.max(count * 4, 200);
   const candidates = [];
-  for (let i = 0; i < oversample; i++) {
+  let attempts = 0;
+  while (candidates.length < oversample && attempts < oversample * 10) {
+    attempts++;
     const aIdx = Math.floor(rng() * cellsN.length);
-    let bIdx = Math.floor(rng() * cellsN.length);
-    if (bIdx === aIdx) bIdx = (bIdx + 1) % cellsN.length;
+    const bIdx = pickPartner(aIdx);
+    if (bIdx < 0 || bIdx === aIdx) continue;
     const a = cellsN[aIdx], b = cellsN[bIdx];
     let sep = 0;
     for (let k = 0; k < FEATURE_KEYS.length; k++) {
@@ -406,8 +451,22 @@ async function main() {
   }
 
   const rng = makeRng(args.seed);
-  const pairs = samplePairs(cells, args.pairs, rng);
-  console.log(`\nsampled ${pairs.length} pairs (oversampled 4× then kept the top-separation ones)`);
+  const withinGraph = !args.crossGraph;
+  const pairs = samplePairs(cells, args.pairs, rng, withinGraph);
+
+  if (withinGraph) {
+    const scenarioCounts = pairs.reduce((m, p) => {
+      const s = p.a.scenario ?? 'unknown';
+      m.set(s, (m.get(s) ?? 0) + 1);
+      return m;
+    }, new Map());
+    console.log(`\nsampled ${pairs.length} within-graph pairs (oversampled then kept top-separation):`);
+    for (const [s, n] of [...scenarioCounts.entries()].sort((x, y) => y[1] - x[1])) {
+      console.log(`  ${String(n).padStart(4)} pairs from scenario "${s}"`);
+    }
+  } else {
+    console.log(`\nsampled ${pairs.length} cross-graph pairs (oversampled then kept top-separation)`);
+  }
 
   const ts = timestamp();
   const outDir = join(ANALYSIS_ROOT, `metric-calibrate-${ts}`);
