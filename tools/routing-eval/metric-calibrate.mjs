@@ -32,17 +32,20 @@ const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObst
 const HARD_FAIL_KEYS = ['siblingCrossings', 'edgesThroughNodes', 'selfIntersections'];
 
 function parseArgs(argv) {
-  const out = { pairs: 200, seed: 42, crossGraph: false };
+  const out = { pairs: 200, seed: 42, crossGraph: false, allAlgorithms: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') {
       console.log(
         'Usage: node tools/routing-eval/metric-calibrate.mjs [options]\n\n' +
-        '  --pairs <n>     Number of candidate pairs to sample (default 200).\n' +
-        '  --seed <n>      PRNG seed for pair sampling (default 42).\n' +
-        '  --cross-graph   Sample pairs across DIFFERENT scenarios. Default is\n' +
-        '                  within-scenario (apples-to-apples routing comparisons).\n' +
-        '  --help          Show this help.\n',
+        '  --pairs <n>        Number of candidate pairs to sample (default 200).\n' +
+        '  --seed <n>         PRNG seed for pair sampling (default 42).\n' +
+        '  --cross-graph      Sample pairs across DIFFERENT scenarios. Default is\n' +
+        '                     within-scenario (apples-to-apples routing comparisons).\n' +
+        '  --all-algorithms   Include cells from deprecated algorithms in the corpus.\n' +
+        '                     Default is bezier-fit-weighted-chain only (matches the\n' +
+        '                     algorithm the Phase 3 optimizer will tune).\n' +
+        '  --help             Show this help.\n',
       );
       process.exit(0);
     } else if (a === '--pairs') {
@@ -51,6 +54,8 @@ function parseArgs(argv) {
       out.seed = Number(argv[++i]);
     } else if (a === '--cross-graph') {
       out.crossGraph = true;
+    } else if (a === '--all-algorithms') {
+      out.allAlgorithms = true;
     } else {
       console.error('Unknown arg: ' + a);
       process.exit(1);
@@ -438,7 +443,13 @@ render(); renderProgress();
 
 async function main() {
   const args = parseArgs(process.argv);
-  const cells = collectCells(RUNS_ROOT);
+  const allCells = collectCells(RUNS_ROOT);
+  const cells = args.allAlgorithms
+    ? allCells
+    : allCells.filter(c => c.metrics.algorithm === 'bezier-fit-weighted-chain');
+  if (!args.allAlgorithms) {
+    console.log(`routing-eval/metric-calibrate: filtered to bezier-fit-weighted-chain only (${cells.length} of ${allCells.length} cells; use --all-algorithms to include deprecated routers)`);
+  }
   if (cells.length < 2) {
     console.error(`Need at least 2 hard-fail-free cells; found ${cells.length}. Run the harness first.`);
     process.exit(1);
