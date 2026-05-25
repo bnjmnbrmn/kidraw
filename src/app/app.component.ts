@@ -2,7 +2,6 @@ import {Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
-import {TuningPanelComponent} from './tuning-panel/tuning-panel.component';
 import {Subject, Subscription} from 'rxjs';
 import {DACommand, DACommandType} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
@@ -12,7 +11,7 @@ import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASS
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, TuningPanelComponent],
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

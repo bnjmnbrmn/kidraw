@@ -422,20 +422,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.grid]:          new LabeledAction('Grid',     emit('grid')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
-      [layout.chargedSpringEdges]: new LabeledAction('Charged Spring Edges', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_CHARGED_SPRING_EDGES});
-      }),
-      [layout.bezierRouteEdges]: new LabeledAction('Bezier Route Edges', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_BEZIER_ROUTE_EDGES});
-      }),
-      [layout.bezierFitChargedSpringEdges]: new LabeledAction('Hybrid CS+Bezier', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_BEZIER_FIT_CHARGED_SPRING_EDGES});
-      }),
-      [layout.flexibleWireEdges]: new LabeledAction('Flexible Wire', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_FLEXIBLE_WIRE_EDGES});
-      }),
-      [layout.weightedChainEdges]: new LabeledAction('Weighted Chain', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_WEIGHTED_CHAIN_EDGES});
+      [layout.bezierFitWeightedChainEdges]: new LabeledAction('Route Edges', () => {
+        this.keyMenuOut.emit({kind: DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES});
       }),
     } as SubmenuConfig;
   }

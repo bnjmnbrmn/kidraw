@@ -133,11 +133,7 @@ export interface KeymenuKeyAssignments {
     readonly grid: KeyString;
     readonly circular: KeyString;
     readonly radial: KeyString;
-    readonly chargedSpringEdges: KeyString;
-    readonly bezierRouteEdges: KeyString;
-    readonly bezierFitChargedSpringEdges: KeyString;
-    readonly flexibleWireEdges: KeyString;
-    readonly weightedChainEdges: KeyString;
+    readonly bezierFitWeightedChainEdges: KeyString;
   };
 }
 
@@ -249,7 +245,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';', bezierFitChargedSpringEdges: "'", flexibleWireEdges: '/', weightedChainEdges: '.'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', bezierFitWeightedChainEdges: 'p'},
 };
 
 // Vim profile (the default): hjkl movement, f for insert submenu, i for edit.
@@ -358,5 +354,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
-  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', chargedSpringEdges: 'p', bezierRouteEdges: ';', bezierFitChargedSpringEdges: "'", flexibleWireEdges: '/', weightedChainEdges: '.'},
+  layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', bezierFitWeightedChainEdges: 'p'},
 };
