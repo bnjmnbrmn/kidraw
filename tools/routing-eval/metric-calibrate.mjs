@@ -28,7 +28,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RUNS_ROOT = join(__dirname, 'runs');
 const ANALYSIS_ROOT = join(__dirname, 'analysis');
 
-const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObstacleClearance', 'minEdgeEdgeClearance'];
+const FEATURE_KEYS = ['totalLength', 'totalCurvature', 'maxBulgeRatio', 'minObstacleClearance', 'minEdgeEdgeClearance', 'nonSiblingCrossings'];
 const HARD_FAIL_KEYS = ['siblingCrossings', 'edgesThroughNodes', 'selfIntersections'];
 
 function parseArgs(argv) {
@@ -213,7 +213,7 @@ h1 { font-size: 16px; margin: 0 0 8px; }
 const PAIRS = ${pairsJson};
 const RANGES = ${rangesJson};
 const FEATURE_KEYS = ${JSON.stringify(FEATURE_KEYS)};
-const HAND_TUNED_WEIGHTS = { totalLength: -0.01, totalCurvature: -2, maxBulgeRatio: -50, minObstacleClearance: 0.5, minEdgeEdgeClearance: 0.5 };
+const HAND_TUNED_WEIGHTS = { totalLength: -0.01, totalCurvature: -2, maxBulgeRatio: -50, minObstacleClearance: 0.5, minEdgeEdgeClearance: 0.5, nonSiblingCrossings: -5 };
 const STORAGE_KEY = 'routing-eval:metric-calibrate:picks';
 
 const state = {

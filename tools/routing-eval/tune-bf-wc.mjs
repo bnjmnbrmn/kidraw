@@ -173,6 +173,7 @@ async function main() {
           totalCurvature: Number(baseMetrics.totalCurvature.toFixed(3)),
           minObstacleClearance: Number(baseMetrics.minObstacleClearance.toFixed(2)),
           minEdgeEdgeClearance: Number(baseMetrics.minEdgeEdgeClearance.toFixed(2)),
+          nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
           maxBulgeRatio: Number(baseMetrics.maxBulgeRatio.toFixed(3)),
           hardFailCount: baseMetrics.hardFailCount,
         };

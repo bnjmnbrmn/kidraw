@@ -10,14 +10,14 @@ export interface RoutingMetrics {
   edgesThroughNodes: number;
   siblingCrossings: number;
   selfIntersections: number;
-  // Soft. Clearance metrics are saturated at half-a-node-width: extra
-  // distance beyond that doesn't matter visually and shouldn't keep
-  // rewarding the composite score.
+  // Soft. Clearance metrics are saturated: extra distance beyond the cap
+  // doesn't matter visually and shouldn't keep rewarding the composite.
   totalLength: number;
   totalCurvature: number;
   maxBulgeRatio: number;
   minObstacleClearance: number;       // closest non-incident node bbox; clamped
   minEdgeEdgeClearance: number;       // closest other-edge (no shared endpoint); clamped
+  nonSiblingCrossings: number;        // count; soft penalty (some are unavoidable on dense graphs)
   // Composite.
   hardFailCount: number;
   composite: number;
@@ -29,6 +29,7 @@ export interface MetricWeights {
   maxBulgeRatio: number;
   minObstacleClearance: number;
   minEdgeEdgeClearance: number;
+  nonSiblingCrossings: number;
 }
 
 /** Default weights — hand-tuned starting point. Phase 2b's pairwise
@@ -42,6 +43,7 @@ export const DEFAULT_WEIGHTS: MetricWeights = {
   maxBulgeRatio: -50,
   minObstacleClearance: 0.5,
   minEdgeEdgeClearance: 0.5,
+  nonSiblingCrossings: -5,
 };
 
 /** Saturation caps for the two clearance metrics, in pixels. Beyond these
@@ -70,6 +72,7 @@ export function computeRoutingMetrics(
   const maxBulgeRatio = computeMaxBulgeRatio(edges);
   const minObstacleClearance = computeMinObstacleClearance(nodes, edges, OBSTACLE_CLEARANCE_CAP);
   const minEdgeEdgeClearance = computeMinEdgeEdgeClearance(edges, EDGE_EDGE_CLEARANCE_CAP);
+  const nonSiblingCrossings = countNonSiblingCrossings(edges);
 
   const hardFailCount = edgesThroughNodes + siblingCrossings + selfIntersections;
   const composite = hardFailCount > 0 ? -Infinity
@@ -77,12 +80,13 @@ export function computeRoutingMetrics(
       + weights.totalCurvature * totalCurvature
       + weights.maxBulgeRatio * maxBulgeRatio
       + weights.minObstacleClearance * minObstacleClearance
-      + weights.minEdgeEdgeClearance * minEdgeEdgeClearance;
+      + weights.minEdgeEdgeClearance * minEdgeEdgeClearance
+      + weights.nonSiblingCrossings * nonSiblingCrossings;
 
   return {
     edgesThroughNodes, siblingCrossings, selfIntersections,
     totalLength, totalCurvature, maxBulgeRatio,
-    minObstacleClearance, minEdgeEdgeClearance,
+    minObstacleClearance, minEdgeEdgeClearance, nonSiblingCrossings,
     hardFailCount, composite,
   };
 }
@@ -151,6 +155,34 @@ function countSiblingCrossings(edges: DAEdge[]): number {
       for (let j = i + 1; j < polys.length; j++) {
         if (interiorPolylineCross(polys[i], polys[j])) count++;
       }
+    }
+  }
+  return count;
+}
+
+/** Count pairs of edges (i, j) that cross each other's interior polylines
+ *  AND are not from the same parallel-edge group (siblings). Sibling
+ *  crossings are tracked separately as a hard fail; non-sibling crossings
+ *  are soft because some are geometrically unavoidable on dense graphs
+ *  (K_n is non-planar for n > 4). Uses the metric polyline (endpoints
+ *  stripped), so two edges that just converge at a shared hub but never
+ *  cross outside that hub do NOT count. Self-loops are skipped. */
+function countNonSiblingCrossings(edges: DAEdge[]): number {
+  const data = edges.map(e => {
+    if (e.srcNode === e.destNode) return null;
+    const a = e.srcNode.id, b = e.destNode.id;
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    return { poly: getMetricPolyline(e), key };
+  });
+  let count = 0;
+  for (let i = 0; i < data.length; i++) {
+    const di = data[i];
+    if (!di || di.poly.length < 2) continue;
+    for (let j = i + 1; j < data.length; j++) {
+      const dj = data[j];
+      if (!dj || dj.poly.length < 2) continue;
+      if (di.key === dj.key) continue;          // siblings; counted elsewhere
+      if (interiorPolylineCross(di.poly, dj.poly)) count++;
     }
   }
   return count;

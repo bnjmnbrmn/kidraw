@@ -115,6 +115,7 @@ async function main() {
         maxBulgeRatio: baseMetrics.maxBulgeRatio,
         minObstacleClearance: baseMetrics.minObstacleClearance,
         minEdgeEdgeClearance: baseMetrics.minEdgeEdgeClearance,
+        nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
         hardFailCount: baseMetrics.hardFailCount,
       };
       if ('composite' in existing) updated.composite = baseMetrics.composite;

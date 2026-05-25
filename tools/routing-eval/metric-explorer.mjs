@@ -33,6 +33,7 @@ const DEFAULT_METRICS = [
   'maxBulgeRatio',
   'minObstacleClearance',
   'minEdgeEdgeClearance',
+  'nonSiblingCrossings',
 ];
 
 function parseArgs(argv) {
@@ -251,6 +252,7 @@ const METRIC_DESCRIPTIONS = {
   maxBulgeRatio: 'Max perpendicular distance any interior point bulges from its chord, divided by chord length. 0 = straight. ~0.5 = bulges half as far as it is long.',
   minObstacleClearance: 'Smallest distance (px) from any interior control point to the nearest non-incident node bbox. Saturated at 60 px — beyond that, additional clearance is visually irrelevant.',
   minEdgeEdgeClearance: 'Smallest distance (px) between any two edges that do NOT share an endpoint. Saturated at 60 px. 0 = two non-incident edges crossed or touched; 60 = every edge pair is comfortably separated.',
+  nonSiblingCrossings: 'Count of edge pairs from DIFFERENT parallel-edge groups whose interior polylines cross each other. Soft penalty (some crossings are unavoidable on dense graphs — K_n is non-planar for n > 4).',
 };
 
 function formatVal(v) {

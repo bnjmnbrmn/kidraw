@@ -277,6 +277,7 @@ async function main() {
           maxBulgeRatio: baseMetrics.maxBulgeRatio,
           minObstacleClearance: baseMetrics.minObstacleClearance,
           minEdgeEdgeClearance: baseMetrics.minEdgeEdgeClearance,
+          nonSiblingCrossings: baseMetrics.nonSiblingCrossings,
           compositeScore: baseMetrics.composite,
           hardFailCount: baseMetrics.hardFailCount,
         };
