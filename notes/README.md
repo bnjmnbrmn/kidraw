@@ -66,6 +66,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 **Routing / layout:**
 
 - [Auto-tune edge-routing parameters on benchmark graphs](idea-routing-auto-tune.md)
+- [Deprecated routing algorithms (resurrection notes)](algo-deprecated-routers.md) — the 5 routers removed when the project consolidated to bezier-fit-weighted-chain.
 
 **Code health / process:**
 
