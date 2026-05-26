@@ -350,9 +350,15 @@ export class DAEdge {
   }
 
   /** Recompute the rendered Konva.Arrow points from current node positions
-   *  and control points. Cheaper than recreating the edge. */
+   *  and control points. Cheaper than recreating the edge. Also re-applies
+   *  each label's path anchor against the new polyline so labels track
+   *  re-routes automatically — see notes/idea-edge-labels.md. */
   refreshGeometry(): void {
-    this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
+    const polyline = this.getPathPoints();
+    this._line.points(polyline.flatMap(p => [p.x, p.y]));
+    for (const lbl of this._labels) {
+      lbl.applyAnchorFromPolyline(polyline);
+    }
   }
 
   /** Toggle between polyline rendering (charged-spring) and smooth-curve

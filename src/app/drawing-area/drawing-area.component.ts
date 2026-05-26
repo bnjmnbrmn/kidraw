@@ -7,7 +7,7 @@ import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
-import { DALabel } from './da-label';
+import { DALabel, aboveSideOffset, polylineArcLength, projectOntoPolyline } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
@@ -2383,9 +2383,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const p1 = pathPoints[i];
         const p2 = pathPoints[i + 1];
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
-          const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
-          this.log.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
-          const label = new DALabel(point.x, point.y, 'label', undefined, this.drawingLayer.labelColors());
+          // Project the crosshairs onto the polyline; place the label at the
+          // resulting (t, free-offset) but snap side to "above" by default
+          // (signed offset = aboveSideOffset for the label's bbox height).
+          const projection = projectOntoPolyline(pathPoints, {x: box.cx, y: box.cy});
+          const label = new DALabel(0, 0, 'label', undefined, this.drawingLayer.labelColors());
+          label.setAnchor({t: projection.t, offset: aboveSideOffset(label.RECT_HEIGHT)});
+          label.applyAnchorFromPolyline(pathPoints);
+          this.log.log(`addLabel: anchored at t=${projection.t.toFixed(2)} on edge ${edge.id}`);
           edge.addLabel(label);
           this.drawingLayer.batchDraw();
           this.unselectAll(); // Clear selection after adding label
@@ -2458,7 +2463,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return null;
   }
 
-  /** Slide a label along its parent edge by the given distance. */
+  /** Slide a label along its parent edge by the given distance. Updates the
+   *  label's `anchor.t` (and re-applies the anchor) so the slide composes
+   *  cleanly with re-routes — see notes/idea-edge-labels.md. Labels without
+   *  an anchor (legacy) get one derived from their current (x, y) first. */
   private slideLabelAlongEdge(label: DALabel, distance: number): void {
     const edge = this.getEdgeForLabel(label);
     if (!edge) return;
@@ -2466,52 +2474,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const points = edge.getPathPoints();
     if (points.length < 2) return;
 
-    // Find which segment the label is currently closest to, and its t parameter
-    let bestSegIdx = 0;
-    let bestT = 0;
-    let bestDist = Infinity;
-    let totalLength = 0;
-    const segLengths: number[] = [];
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const dx = points[i + 1].x - points[i].x;
-      const dy = points[i + 1].y - points[i].y;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      segLengths.push(len);
-      totalLength += len;
-
-      // Project label onto this segment
-      if (len === 0) continue;
-      const t = Math.max(0, Math.min(1, ((label.x - points[i].x) * dx + (label.y - points[i].y) * dy) / (len * len)));
-      const projX = points[i].x + t * dx;
-      const projY = points[i].y + t * dy;
-      const d = Math.sqrt((label.x - projX) ** 2 + (label.y - projY) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        bestSegIdx = i;
-        bestT = t;
-      }
+    // Ensure the label has an anchor; derive from current absolute position
+    // if not (handles labels created before path-anchoring shipped).
+    if (!label.anchor) {
+      const initial = projectOntoPolyline(points, {x: label.x, y: label.y});
+      label.setAnchor(initial);
     }
 
-    // Convert current position to a distance-along-path
-    let currentDist = 0;
-    for (let i = 0; i < bestSegIdx; i++) currentDist += segLengths[i];
-    currentDist += bestT * segLengths[bestSegIdx];
-
-    // Move along path by distance
-    let newDist = Math.max(0, Math.min(totalLength, currentDist + distance));
-
-    // Convert back to x,y
-    let accumulated = 0;
-    for (let i = 0; i < segLengths.length; i++) {
-      if (accumulated + segLengths[i] >= newDist || i === segLengths.length - 1) {
-        const segT = segLengths[i] > 0 ? (newDist - accumulated) / segLengths[i] : 0;
-        label.x = points[i].x + segT * (points[i + 1].x - points[i].x);
-        label.y = points[i].y + segT * (points[i + 1].y - points[i].y);
-        return;
-      }
-      accumulated += segLengths[i];
-    }
+    const totalLength = polylineArcLength(points);
+    if (totalLength === 0) return;
+    const dt = distance / totalLength;
+    const currentAnchor = label.anchor!;
+    const newT = Math.max(0, Math.min(1, currentAnchor.t + dt));
+    label.setAnchor({t: newT, offset: currentAnchor.offset});
+    label.applyAnchorFromPolyline(points);
   }
 
   private getLabelUnderCrosshairs(): DALabel | null {
