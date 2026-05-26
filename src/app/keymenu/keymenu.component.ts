@@ -78,6 +78,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   // it via a child action enters the sticky insertMode. Mirrors editPending.
   // See notes/idea-keymenu-mode-organization.md (Proposal B prototype).
   private insertPending = false;
+  // Prototype 2: similar tap-detection for the style-submenu key. Bare tap
+  // flips to the spatial/page-based `stylePage` mode (Proposal C, narrow
+  // surface).
+  private stylePending = false;
   private pendingNodeShape: NodeShape | undefined = undefined;
   private pendingInsertTypeKey: string | undefined = undefined;
   private selectDragHoldActive = false;
@@ -217,6 +221,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         // key at root; exited by Esc / double-Shift / re-tap of insertSubmenu.
         // See notes/idea-keymenu-mode-organization.md.
         insertMode: new USQwertyModeConfig(this.buildInsertModeRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        // Prototype 2: spatial/page-based Style mode. Entered by bare tap of
+        // styleSubmenu key (`w` in vim); flattens shape / directedness /
+        // line-style / color into a single page; any leaf fires and returns;
+        // re-tap `w` or Esc returns without applying.
+        stylePage: new USQwertyModeConfig(this.buildStylePageSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEdit: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormal: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -364,6 +373,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.insertNodePending = false;
     this.editPending = false;
     this.insertPending = false;
+    this.stylePending = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
@@ -530,6 +540,43 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       // Re-tap the insert-submenu key to exit the sticky mode.
       [root.insertSubmenu]: new LabeledAction('Exit Insert', () => {
+        this.switchMode('normal');
+      }),
+    } as SubmenuConfig;
+  }
+
+  /**
+   * Prototype 2: spatial/page-based Style page (Proposal C from
+   * notes/idea-keymenu-mode-organization.md). Narrow surface: a one-page
+   * color picker. The user taps the style-submenu key (`w` in vim) at root
+   * without holding it; the keymenu flips to this page; the user taps any
+   * color key to apply and *return* to normal; tapping `w` or Esc returns
+   * without applying.
+   *
+   * This contrasts with the held-key submenu approach: in the held version,
+   * setting an item's color requires holding `w`, then holding `h` (style.
+   * colorSubmenu), then tapping the color key — a depth-3 chord with three
+   * fingers. The page version is two taps total. The trade-off: page mode
+   * cannot be combined with sustained crosshair navigation the way a held
+   * trigger can.
+   */
+  private buildStylePageSubmenuConfig(): SubmenuConfig {
+    const c = this.keyAssignments.colors;
+    const root = this.keyAssignments.root;
+    const applyAndExit = (color: ItemColor, label: string) =>
+      new LabeledAction(label, () => {
+        this.keyMenuOut.emit({kind: DACommandType.SET_ITEM_COLOR, color});
+        this.switchMode('normal');
+      });
+
+    return {
+      [c.default]: applyAndExit('default', 'Default'),
+      [c.red]: applyAndExit('red', 'Red'),
+      [c.blue]: applyAndExit('blue', 'Blue'),
+      [c.green]: applyAndExit('green', 'Green'),
+      [c.orange]: applyAndExit('orange', 'Orange'),
+      [c.purple]: applyAndExit('purple', 'Purple'),
+      [root.styleSubmenu]: new LabeledAction('Exit Style', () => {
         this.switchMode('normal');
       }),
     } as SubmenuConfig;
@@ -876,6 +923,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     normal: '#5b9bd5',              // blue
     normalCaps: '#ed7d31',          // orange
     insertMode: '#c266ff',          // violet — distinct from blue/green/orange so sticky-insert is obvious
+    stylePage: '#ff6b9d',           // pink — distinct from violet so the page-mode prototype is visibly different
     labelEdit: '#70ad47',           // green
     labelEditCaps: '#ed7d31',       // orange
     labelEditVimNormal: '#ffd966',  // yellow
@@ -900,6 +948,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'capslock / normal';
     } else if (modeName === 'insertMode') {
       displayName = 'INSERT (sticky)';
+    } else if (modeName === 'stylePage') {
+      displayName = 'STYLE (page) — pick a color, return';
     } else {
       displayName = modeName;
     }
@@ -1212,7 +1262,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // Prototype: Esc / Ctrl-[ exits sticky insertMode back to normal.
     // (Double-Shift already exits via handleDoubleShiftReturnToNormal above.)
-    if (this.keyMenu.currentMode.name === 'insertMode') {
+    if (this.keyMenu.currentMode.name === 'insertMode' ||
+        this.keyMenu.currentMode.name === 'stylePage') {
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
         this.switchMode('normal');
         return;
@@ -1241,6 +1292,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.insertPending = true;
     } else if (this.insertPending && eventKey !== this.keyAssignments.root.insertSubmenu) {
       this.insertPending = false;
+    }
+
+    // Prototype 2: tap-detection for style-submenu key. Bare tap flips to
+    // the spatial stylePage. Same pattern as insertPending.
+    if (currentMode.name === 'normal' && !event.repeat && atRootLevel &&
+        eventKey === this.keyAssignments.root.styleSubmenu) {
+      this.stylePending = true;
+    } else if (this.stylePending && eventKey !== this.keyAssignments.root.styleSubmenu) {
+      this.stylePending = false;
     }
 
     this.keyMenu.handleKeyDown(event);
@@ -1326,6 +1386,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.directedEdgeActive && eventKey === this.keyAssignments.insert.edge) {
       this.directedEdgeActive = false;
       this.keyMenuOut.emit({kind: DACommandType.FINALIZE_DIRECTED_EDGE});
+    }
+
+    // Prototype 2: bare tap of style-submenu key (no child action consumed)
+    // flips to the spatial stylePage. The held style submenu has already
+    // been popped by keyMenu.handleKeyUp above.
+    if (eventKey === this.keyAssignments.root.styleSubmenu && this.stylePending) {
+      this.stylePending = false;
+      this.switchMode('stylePage');
     }
 
     if (this.selectDragHoldActive && eventKey === this.keyAssignments.root.selectDragSubmenu) {

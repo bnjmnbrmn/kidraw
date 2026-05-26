@@ -159,6 +159,32 @@ describe('KeymenuComponent', () => {
     expect(exit.actionLabel).toBe('Exit Insert');
   });
 
+  it('should build a spatial style-page color picker (Proposal C prototype)', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+
+    // stylePage flattens the depth-3 colorSubmenu into a single page.
+    // Each color leaf must (a) emit SET_ITEM_COLOR and (b) leave the page
+    // via switchMode('normal') so the user is returned to the main view.
+    const stylePage = (component as any).buildStylePageSubmenuConfig() as Record<string, unknown>;
+
+    // vim profile: colors.red = 'r'
+    const red = stylePage['r'] as LabeledAction;
+    expect(red instanceof LabeledAction).toBeTrue();
+    expect(red.actionLabel).toBe('Red');
+
+    const switchSpy = spyOn(component as any, 'switchMode');
+    red.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SET_ITEM_COLOR, color: 'red'});
+    expect(switchSpy).toHaveBeenCalledWith('normal');
+
+    // 'w' (styleSubmenu in vim) is the exit toggle inside the page
+    const exit = stylePage['w'] as LabeledAction;
+    expect(exit instanceof LabeledAction).toBeTrue();
+    expect(exit.actionLabel).toBe('Exit Style');
+  });
+
   it('should build root bindings and hints from configurable key assignments', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
