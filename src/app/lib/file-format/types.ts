@@ -115,8 +115,29 @@ export type TextOverflowName =
 export interface EdgeStyleProps extends StyleProps {
   lineStyle?: LineStyleName;
   waypoints?: WaypointSpec[];
-  labelOffsets?: { dx: number; dy: number }[];
+  /**
+   * Per-label positional hint, parallel to EdgeSemantics.labels[]. Two forms
+   * are accepted (loaders should handle both; the writer always emits the
+   * new path-anchored form once available):
+   *
+   *  - Path-anchored (new): `{ t, offset }` where `t` is the fraction of arc
+   *    length along the edge polyline (0 = src, 1 = dest, 0.5 = midpoint)
+   *    and `offset` is the signed perpendicular displacement in px. See
+   *    notes/idea-edge-labels.md.
+   *  - Absolute (legacy): `{ dx, dy }` interpreted as absolute world
+   *    coordinates of the label center. Loaders project onto the current
+   *    edge polyline to derive `(t, offset)` so labels track subsequent
+   *    re-routes.
+   *
+   * For backward compatibility entries may carry both shapes; readers
+   * prefer the `(t, offset)` pair.
+   */
+  labelOffsets?: EdgeLabelOffset[];
 }
+
+export type EdgeLabelOffset =
+  | { t: number; offset: number; dx?: number; dy?: number }
+  | { dx: number; dy: number };
 
 /** A bend point on an edge. Plain router-generated points use just `x`/`y`;
  *  user-placed waypoints additionally carry `id` (stable identifier so undo/

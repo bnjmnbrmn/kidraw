@@ -88,10 +88,14 @@ export function snapshotToFiles(
       }));
     }
     if (e.labels && e.labels.length > 0) {
-      // Snapshot stores absolute label positions; the file format calls these
-      // labelOffsets. We preserve the values verbatim; meaning is up to the
-      // renderer (currently treated as absolute world coords).
-      sp.labelOffsets = e.labels.map(l => ({ dx: l.x, dy: l.y }));
+      // Prefer the path-anchored shape (t, offset) — see
+      // notes/idea-edge-labels.md — but always include legacy (dx, dy) too
+      // so older readers can still position the label.
+      sp.labelOffsets = e.labels.map(l =>
+        l.anchorT !== undefined && l.anchorOffset !== undefined
+          ? { t: l.anchorT, offset: l.anchorOffset, dx: l.x, dy: l.y }
+          : { dx: l.x, dy: l.y }
+      );
     }
     if (Object.keys(sp).length > 0) styleEdges[e.id] = sp;
   }
@@ -141,14 +145,23 @@ export function filesToSnapshot(
     const sp = styleEdges[id] ?? {};
     const semLabels = sem.labels ?? [];
     const offsets = sp.labelOffsets ?? [];
-    const labels: DALabelSnapshot[] = semLabels.map((lbl, i) => ({
-      id: `${id}-label-${i}`,
-      x: offsets[i]?.dx ?? 0,
-      y: offsets[i]?.dy ?? 0,
-      text: lbl.text,
-      fontSize: DEFAULT_FONT_SIZE,
-      isSelected: false,
-    }));
+    const labels: DALabelSnapshot[] = semLabels.map((lbl, i) => {
+      const off = offsets[i];
+      const hasAnchor = off !== undefined && 't' in off && 'offset' in off;
+      const snap: DALabelSnapshot = {
+        id: `${id}-label-${i}`,
+        x: (off && 'dx' in off ? off.dx : 0) ?? 0,
+        y: (off && 'dy' in off ? off.dy : 0) ?? 0,
+        text: lbl.text,
+        fontSize: DEFAULT_FONT_SIZE,
+        isSelected: false,
+      };
+      if (hasAnchor) {
+        snap.anchorT = (off as { t: number; offset: number }).t;
+        snap.anchorOffset = (off as { t: number; offset: number }).offset;
+      }
+      return snap;
+    });
     const edge: DAEdgeSnapshot = {
       id,
       srcNodeId: sem.from,

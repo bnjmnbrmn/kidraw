@@ -1,7 +1,7 @@
 import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAEdge} from './da-edge';
-import {DALabel} from './da-label';
+import {DALabel, projectOntoPolyline} from './da-label';
 import {DAWaypoint} from './da-waypoint';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
@@ -330,6 +330,7 @@ export class DrawingLayer extends Konva.Layer {
         text: lbl.label,
         fontSize: lbl.fontSize,
         isSelected: lbl.isSelected,
+        ...(lbl.anchor ? {anchorT: lbl.anchor.t, anchorOffset: lbl.anchor.offset} : {}),
       })),
       controlPoints: edge.controlPoints.length > 0
         ? edge.controlPoints.map(p => ({
@@ -393,11 +394,20 @@ export class DrawingLayer extends Konva.Layer {
       const num = parseInt(es.id.replace('da-', ''), 10);
       if (!isNaN(num) && num > maxNumericId) maxNumericId = num;
 
-      // Restore labels
+      // Restore labels. Anchor is preferred if present in the snapshot; for
+      // legacy snapshots with only (x, y), project onto the current polyline
+      // to derive an anchor so the label tracks subsequent re-routes.
+      const restorePolyline = edge.getPathPoints();
       for (const ls of es.labels) {
         const lbl = new DALabel(ls.x, ls.y, ls.text, ls.id);
         if (ls.fontSize !== lbl.DEFAULT_FONT_SIZE) {
           lbl.adjustFontSizeBy(ls.fontSize - lbl.DEFAULT_FONT_SIZE);
+        }
+        if (ls.anchorT !== undefined && ls.anchorOffset !== undefined) {
+          lbl.setAnchor({t: ls.anchorT, offset: ls.anchorOffset});
+        } else if (restorePolyline.length >= 2) {
+          const projected = projectOntoPolyline(restorePolyline, {x: ls.x, y: ls.y});
+          lbl.setAnchor(projected);
         }
         lbl.isSelected = ls.isSelected;
         edge.addLabel(lbl);
@@ -405,7 +415,7 @@ export class DrawingLayer extends Konva.Layer {
         if (!isNaN(lblNum) && lblNum > maxNumericId) maxNumericId = lblNum;
       }
 
-      // Update edge visual
+      // Update edge visual (also re-applies each label's anchor)
       edge.refreshGeometry();
     }
 
