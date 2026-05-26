@@ -12,8 +12,15 @@ export interface DALabelAnchor {
 }
 
 /** A signed perpendicular gap suitable for "above the line at this font size".
- *  Half the rect height + 4px of breathing room. */
+ *  Half the rect height + 4px of breathing room. POSITIVE because positive
+ *  offset is interpreted as "in the direction of the convention-B normal,"
+ *  which points toward smaller-y (the screen-up direction). */
 export function aboveSideOffset(rectHeight: number): number {
+  return rectHeight / 2 + 4;
+}
+
+/** Mirror of aboveSideOffset for the "below the line" case. */
+export function belowSideOffset(rectHeight: number): number {
   return -(rectHeight / 2 + 4);
 }
 

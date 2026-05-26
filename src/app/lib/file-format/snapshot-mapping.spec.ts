@@ -226,6 +226,94 @@ describe('snapshot-mapping', () => {
     }
   });
 
+  // ─── Edge label anchors (see notes/idea-edge-labels.md) ──────────────
+
+  describe('edge label anchors', () => {
+    const baseSnapshot = (label: {
+      id?: string; x: number; y: number; text: string;
+      anchorT?: number; anchorOffset?: number;
+    }): GraphSnapshot => ({
+      nodes: [
+        { id: 'n1', x: 0, y: 0, text: 'A', width: 100, height: 50, fontSize: 12, isSelected: false },
+        { id: 'n2', x: 200, y: 0, text: 'B', width: 100, height: 50, fontSize: 12, isSelected: false },
+      ],
+      edges: [
+        {
+          id: 'e1', srcNodeId: 'n1', destNodeId: 'n2', isSelected: false,
+          labels: [{
+            id: label.id ?? 'lbl-1',
+            x: label.x, y: label.y, text: label.text,
+            fontSize: 12, isSelected: false,
+            ...(label.anchorT !== undefined ? {anchorT: label.anchorT} : {}),
+            ...(label.anchorOffset !== undefined ? {anchorOffset: label.anchorOffset} : {}),
+          }],
+        },
+      ],
+    });
+
+    it('emits the new {t, offset, dx, dy} shape when an anchor is present', () => {
+      const snap = baseSnapshot({x: 150, y: -20, text: 'foo', anchorT: 0.5, anchorOffset: 20});
+      const { style } = snapshotToFiles(snap);
+      expect(style.edges?.['e1'].labelOffsets).toEqual([
+        {t: 0.5, offset: 20, dx: 150, dy: -20},
+      ]);
+    });
+
+    it('emits the legacy {dx, dy} shape when no anchor is present', () => {
+      const snap = baseSnapshot({x: 150, y: -20, text: 'foo'});
+      const { style } = snapshotToFiles(snap);
+      expect(style.edges?.['e1'].labelOffsets).toEqual([{dx: 150, dy: -20}]);
+    });
+
+    it('reads back an anchor from the new shape', () => {
+      const doc: KidrawGraphDoc = {
+        kidraw: 1, styles: [],
+        semantics: {
+          nodes: { 'a': { label: 'A' }, 'b': { label: 'B' } },
+          edges: { 'e1': { from: 'a', to: 'b', labels: [{ text: 'lbl' }] } },
+        },
+      };
+      const style: KidrawStyleSet = {
+        kdStyle: 1,
+        edges: { 'e1': { labelOffsets: [{ t: 0.25, offset: -8, dx: 50, dy: 5 }] } },
+      };
+      const snap = filesToSnapshot(doc, style);
+      expect(snap.edges[0].labels[0].anchorT).toBe(0.25);
+      expect(snap.edges[0].labels[0].anchorOffset).toBe(-8);
+      expect(snap.edges[0].labels[0].x).toBe(50);
+      expect(snap.edges[0].labels[0].y).toBe(5);
+    });
+
+    it('reads back legacy {dx, dy} (no anchor) without populating anchorT/Offset', () => {
+      const doc: KidrawGraphDoc = {
+        kidraw: 1, styles: [],
+        semantics: {
+          nodes: { 'a': { label: 'A' }, 'b': { label: 'B' } },
+          edges: { 'e1': { from: 'a', to: 'b', labels: [{ text: 'lbl' }] } },
+        },
+      };
+      const style: KidrawStyleSet = {
+        kdStyle: 1,
+        edges: { 'e1': { labelOffsets: [{ dx: 75, dy: 12 }] } },
+      };
+      const snap = filesToSnapshot(doc, style);
+      expect(snap.edges[0].labels[0].x).toBe(75);
+      expect(snap.edges[0].labels[0].y).toBe(12);
+      expect(snap.edges[0].labels[0].anchorT).toBeUndefined();
+      expect(snap.edges[0].labels[0].anchorOffset).toBeUndefined();
+    });
+
+    it('round-trips a snapshot whose label has an anchor', () => {
+      const original = baseSnapshot({x: 100, y: -30, text: 'mid', anchorT: 0.5, anchorOffset: 30});
+      const { doc, style } = snapshotToFiles(original);
+      const restored = filesToSnapshot(doc, style);
+      expect(restored.edges[0].labels[0].anchorT).toBe(0.5);
+      expect(restored.edges[0].labels[0].anchorOffset).toBe(30);
+      expect(restored.edges[0].labels[0].x).toBe(100);
+      expect(restored.edges[0].labels[0].y).toBe(-30);
+    });
+  });
+
   it('runtime-only fields (pinned, baseWidth) do not appear in the doc/style', () => {
     const snap: GraphSnapshot = {
       nodes: [

@@ -2,7 +2,13 @@ import { TestBed } from '@angular/core/testing';
 import { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
-import { DALabel } from './da-label';
+import {
+  DALabel,
+  aboveSideOffset,
+  polylineArcLength,
+  projectOntoPolyline,
+  sampleAtT,
+} from './da-label';
 import { DACrosshairs } from './da-crosshairs.group';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
@@ -643,6 +649,143 @@ describe('DrawingArea Unit Tests', () => {
 
       expect(node1.outgoingEdges).not.toContain(edge);
       expect(node2.incomingEdges).not.toContain(edge);
+    });
+  });
+
+  describe('DALabel — path anchoring', () => {
+    const horizontalLine = [
+      {x: 0, y: 0},
+      {x: 100, y: 0},
+    ];
+    const verticalLine = [
+      {x: 50, y: 0},
+      {x: 50, y: 100},
+    ];
+    const bentPolyline = [
+      {x: 0, y: 0},
+      {x: 50, y: 0},
+      {x: 50, y: 50},
+    ];
+
+    it('polylineArcLength sums segment lengths', () => {
+      expect(polylineArcLength(horizontalLine)).toBe(100);
+      expect(polylineArcLength(verticalLine)).toBe(100);
+      expect(polylineArcLength(bentPolyline)).toBe(100);
+      expect(polylineArcLength([])).toBe(0);
+      expect(polylineArcLength([{x: 0, y: 0}])).toBe(0);
+    });
+
+    it('sampleAtT lands at endpoints and midpoint of a horizontal line', () => {
+      const start = sampleAtT(horizontalLine, 0);
+      expect(start.basePoint.x).toBe(0);
+      expect(start.basePoint.y).toBe(0);
+      expect(start.tangent.x).toBe(1);
+      expect(start.tangent.y).toBe(0);
+
+      const mid = sampleAtT(horizontalLine, 0.5);
+      expect(mid.basePoint.x).toBe(50);
+      expect(mid.basePoint.y).toBe(0);
+
+      const end = sampleAtT(horizontalLine, 1);
+      expect(end.basePoint.x).toBe(100);
+      expect(end.basePoint.y).toBe(0);
+    });
+
+    it('sampleAtT crosses the bend at t=0.5 on an L-shaped polyline', () => {
+      const mid = sampleAtT(bentPolyline, 0.5);
+      // Total length 100; the bend is at the 50-unit mark. t=0.5 lands
+      // exactly on the bend (last point of segment 0 / first of segment 1).
+      expect(mid.basePoint.x).toBeCloseTo(50, 5);
+      expect(mid.basePoint.y).toBeCloseTo(0, 5);
+
+      const threeQuarters = sampleAtT(bentPolyline, 0.75);
+      // 75 units along: 50 in segment 0 (to the bend), 25 down segment 1.
+      expect(threeQuarters.basePoint.x).toBeCloseTo(50, 5);
+      expect(threeQuarters.basePoint.y).toBeCloseTo(25, 5);
+      expect(threeQuarters.tangent.x).toBeCloseTo(0, 5);
+      expect(threeQuarters.tangent.y).toBeCloseTo(1, 5);
+    });
+
+    it('projectOntoPolyline finds nearest point and signed offset', () => {
+      // A point above the midpoint of the horizontal line: t=0.5, and
+      // "above" by convention B is negative y on screen — so offset > 0
+      // because positive offset means "above" (smaller-y direction).
+      const above = projectOntoPolyline(horizontalLine, {x: 50, y: -8});
+      expect(above.t).toBeCloseTo(0.5, 5);
+      expect(above.offset).toBeCloseTo(8, 5);
+
+      const below = projectOntoPolyline(horizontalLine, {x: 50, y: 8});
+      expect(below.t).toBeCloseTo(0.5, 5);
+      expect(below.offset).toBeCloseTo(-8, 5);
+    });
+
+    it('projectOntoPolyline picks the "left side is above" tie-break on vertical lines', () => {
+      // Vertical line; "above" (positive offset) is the side with smaller x.
+      const left = projectOntoPolyline(verticalLine, {x: 42, y: 50});
+      expect(left.t).toBeCloseTo(0.5, 5);
+      expect(left.offset).toBeCloseTo(8, 5);
+
+      const right = projectOntoPolyline(verticalLine, {x: 58, y: 50});
+      expect(right.t).toBeCloseTo(0.5, 5);
+      expect(right.offset).toBeCloseTo(-8, 5);
+    });
+
+    it('applyAnchorFromPolyline places the label above the line for aboveSideOffset', () => {
+      const lbl = new DALabel(0, 0, 'L');
+      lbl.setAnchor({t: 0.5, offset: aboveSideOffset(lbl.RECT_HEIGHT)});
+      lbl.applyAnchorFromPolyline(horizontalLine);
+      // Midpoint of horizontal line is (50, 0). Convention B's normal
+      // points toward smaller-y; aboveSideOffset is positive; so the
+      // label lands at y < 0 (above the line on screen).
+      expect(lbl.x).toBeCloseTo(50, 5);
+      expect(lbl.y).toBeLessThan(0);
+      expect(lbl.y).toBeCloseTo(-(lbl.RECT_HEIGHT / 2 + 4), 5);
+    });
+
+    it('round-trips an anchor through projectOntoPolyline + applyAnchorFromPolyline', () => {
+      const lbl = new DALabel(0, 0, 'L');
+      // Place at an arbitrary world point near the bent polyline.
+      const worldPt = {x: 60, y: 20};
+      const projected = projectOntoPolyline(bentPolyline, worldPt);
+      lbl.setAnchor(projected);
+      lbl.applyAnchorFromPolyline(bentPolyline);
+      // The label should land back at (or near) worldPt — at minimum the
+      // re-projected anchor of its new position should match the original.
+      const reProjected = projectOntoPolyline(bentPolyline, {x: lbl.x, y: lbl.y});
+      expect(reProjected.t).toBeCloseTo(projected.t, 3);
+      expect(reProjected.offset).toBeCloseTo(projected.offset, 3);
+    });
+
+    it('label rides re-routes when DAEdge.refreshGeometry runs', () => {
+      const src = new DANode(0, 0, 'S');
+      const dest = new DANode(200, 0, 'D');
+      const edge = new DAEdge(src, dest, '');
+      // Place a label at t=0.5 with a known offset.
+      const lbl = new DALabel(0, 0, 'mid');
+      lbl.setAnchor({t: 0.5, offset: 0});
+      edge.addLabel(lbl);
+      edge.refreshGeometry();
+      const polyBefore = edge.getPathPoints();
+      const midBefore = {
+        x: (polyBefore[0].x + polyBefore[polyBefore.length - 1].x) / 2,
+        y: (polyBefore[0].y + polyBefore[polyBefore.length - 1].y) / 2,
+      };
+      expect(lbl.x).toBeCloseTo(midBefore.x, 1);
+      expect(lbl.y).toBeCloseTo(midBefore.y, 1);
+
+      // Move the dest node; the label should follow the new midpoint.
+      dest.konvaGroup.x(400);
+      dest.konvaGroup.y(100);
+      edge.refreshGeometry();
+      const polyAfter = edge.getPathPoints();
+      const midAfter = {
+        x: (polyAfter[0].x + polyAfter[polyAfter.length - 1].x) / 2,
+        y: (polyAfter[0].y + polyAfter[polyAfter.length - 1].y) / 2,
+      };
+      expect(lbl.x).toBeCloseTo(midAfter.x, 1);
+      expect(lbl.y).toBeCloseTo(midAfter.y, 1);
+      // And the label actually moved.
+      expect(lbl.x).not.toBeCloseTo(midBefore.x, 1);
     });
   });
 });
