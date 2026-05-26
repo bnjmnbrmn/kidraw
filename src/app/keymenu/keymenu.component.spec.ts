@@ -129,6 +129,36 @@ describe('KeymenuComponent', () => {
     expect(nextEdge.actionLabel).toBe('Jump Outgoing');
   });
 
+  it('should build a sticky insert-mode submenu config (Proposal B prototype)', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+
+    // The sticky insertMode root submenu must:
+    //  - bind movement keys to MOVE_CROSSHAIRS_* (vim: h j k l)
+    //  - bind node-shape leaves to CREATE_NEW_NODE without leaving the mode
+    //  - bind the insert-submenu key (vim: f) to a self-exit
+    const insertModeRoot = (component as any).buildInsertModeRootSubmenuConfig() as Record<string, unknown>;
+
+    const moveLeft = insertModeRoot['h'] as LabeledAction;
+    expect(moveLeft instanceof LabeledAction).toBeTrue();
+    expect(moveLeft.actionLabel).toBe('Move Left');
+    moveLeft.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.MOVE_CROSSHAIRS_LEFT});
+
+    // vim profile: insert.node = 'd' (Box)
+    const dropBox = insertModeRoot['d'] as LabeledAction;
+    expect(dropBox instanceof LabeledAction).toBeTrue();
+    expect(dropBox.actionLabel).toBe('+ Box');
+    dropBox.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CREATE_NEW_NODE, nodeShape: undefined});
+
+    // 'f' (insertSubmenu in vim) becomes the exit toggle in this mode
+    const exit = insertModeRoot['f'] as LabeledAction;
+    expect(exit instanceof LabeledAction).toBeTrue();
+    expect(exit.actionLabel).toBe('Exit Insert');
+  });
+
   it('should build root bindings and hints from configurable key assignments', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;

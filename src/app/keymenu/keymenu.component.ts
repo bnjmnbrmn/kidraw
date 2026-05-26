@@ -74,6 +74,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private insertNodePending = false;
   // When true, releasing the edit submenu key without selecting a child fires EDIT_SELECTED
   private editPending = false;
+  // Prototype: when true, releasing the insert-submenu key without consuming
+  // it via a child action enters the sticky insertMode. Mirrors editPending.
+  // See notes/idea-keymenu-mode-organization.md (Proposal B prototype).
+  private insertPending = false;
   private pendingNodeShape: NodeShape | undefined = undefined;
   private pendingInsertTypeKey: string | undefined = undefined;
   private selectDragHoldActive = false;
@@ -209,6 +213,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       modes: {
         normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         normalCaps: new USQwertyModeConfig(this.buildNormalCapsSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        // Prototype: sticky-insert mode. Entered by bare tap of insertSubmenu
+        // key at root; exited by Esc / double-Shift / re-tap of insertSubmenu.
+        // See notes/idea-keymenu-mode-organization.md.
+        insertMode: new USQwertyModeConfig(this.buildInsertModeRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEdit: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormal: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -355,6 +363,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.waypointDragActive = false;
     this.insertNodePending = false;
     this.editPending = false;
+    this.insertPending = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
@@ -463,6 +472,65 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         mode.actionSchedulingEnabled = false;
         mode.replaceTopSubmenu(this.dragSubmenuConfig);
         queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
+      }),
+    } as SubmenuConfig;
+  }
+
+  /**
+   * Prototype: sticky-insert mode root submenu. The user enters this mode by
+   * tap-pressing the insert-submenu key at root (without holding it). While
+   * in this mode the movement keys still move the crosshairs, the node-shape
+   * leaves create a node at the crosshairs and stay in mode (so you can build
+   * a whole graph node-by-node without holding a finger down), and the
+   * insert-submenu key acts as an exit toggle back to `normal`.
+   *
+   * Esc / Ctrl-[ / double-Shift also exit via the existing component-level
+   * interceptors (extended below to recognise this mode).
+   *
+   * See notes/idea-keymenu-mode-organization.md for the design rationale.
+   */
+  private buildInsertModeRootSubmenuConfig(): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+    const insert = this.keyAssignments.insert;
+    const types = this.keyAssignments.nodeTypes;
+    const shared = this.keyAssignments.shared;
+    const root = this.keyAssignments.root;
+
+    const dropNode = (shape: NodeShape | undefined, label: string) =>
+      new LabeledAction(label, () => {
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: shape});
+        // Stay in insert mode — no transition.
+      });
+
+    return {
+      // Movement still works — the whole point of staying in the mode is to
+      // navigate and drop nodes without leaving.
+      [movement.up]: new LabeledAction('Move Up', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP})),
+      [movement.left]: new LabeledAction('Move Left', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})),
+      [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
+      [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
+
+      // Node-shape leaves: drop and stay.
+      [insert.node]: dropNode(undefined, '+ Box'),
+      [types.circle]: dropNode('circle', '+ Circle'),
+      [types.diamond]: dropNode('diamond', '+ Diamond'),
+      [types.junction]: dropNode('junction', '+ Junction'),
+      [insert.invisibleNode]: dropNode('invisible', '+ Invisible'),
+
+      // Label and edge — convenience so users don't have to bounce to normal
+      // for adjacent operations during a build session.
+      [insert.label]: new LabeledAction('+ Label', () => {
+        this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
+      }),
+
+      // Cleanup utilities — frequently needed while building.
+      [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
+      [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
+      [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
+
+      // Re-tap the insert-submenu key to exit the sticky mode.
+      [root.insertSubmenu]: new LabeledAction('Exit Insert', () => {
+        this.switchMode('normal');
       }),
     } as SubmenuConfig;
   }
@@ -807,6 +875,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly MODE_LABEL_COLORS: Record<string, string> = {
     normal: '#5b9bd5',              // blue
     normalCaps: '#ed7d31',          // orange
+    insertMode: '#c266ff',          // violet — distinct from blue/green/orange so sticky-insert is obvious
     labelEdit: '#70ad47',           // green
     labelEditCaps: '#ed7d31',       // orange
     labelEditVimNormal: '#ffd966',  // yellow
@@ -829,6 +898,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'capslock / edit: normal';
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
+    } else if (modeName === 'insertMode') {
+      displayName = 'INSERT (sticky)';
     } else {
       displayName = modeName;
     }
@@ -1139,6 +1210,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
     }
 
+    // Prototype: Esc / Ctrl-[ exits sticky insertMode back to normal.
+    // (Double-Shift already exits via handleDoubleShiftReturnToNormal above.)
+    if (this.keyMenu.currentMode.name === 'insertMode') {
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        this.switchMode('normal');
+        return;
+      }
+    }
+
     // Track when the edit submenu key is pressed so tap-to-edit works on keyup
     // Only at root level — if we're inside a submenu, 'i' may be zoom or something else
     const currentMode = this.keyMenu.currentMode;
@@ -1150,6 +1230,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } else if (this.editPending && eventKey !== this.keyAssignments.root.editSubmenu) {
       // Any child key press cancels tap-to-edit (user is using the submenu)
       this.editPending = false;
+    }
+
+    // Prototype: track when the insert submenu key is pressed so bare-tap-f
+    // enters sticky insertMode on keyup. Mirrors editPending. Cleared if any
+    // child key is pressed inside the held insert submenu (user took a held
+    // action) or if a held-action state was entered.
+    if (currentMode.name === 'normal' && !event.repeat && atRootLevel &&
+        eventKey === this.keyAssignments.root.insertSubmenu) {
+      this.insertPending = true;
+    } else if (this.insertPending && eventKey !== this.keyAssignments.root.insertSubmenu) {
+      this.insertPending = false;
     }
 
     this.keyMenu.handleKeyDown(event);
@@ -1183,10 +1274,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // If insert submenu key (f) is released, handle pending/drag states
     if (eventKey === this.keyAssignments.root.insertSubmenu) {
-      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
+      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive, 'insertPending:', this.insertPending);
       // If node creation was pending (type key pressed but not released), create the node now
       if (this.insertNodePending) {
         this.log.log('[keymenu] f released before type key — creating node at crosshairs');
+        this.insertPending = false;
         this.insertNodePending = false;
         this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: this.pendingNodeShape});
         if (this.pendingNodeShape !== 'junction') {
@@ -1195,15 +1287,25 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         return;
       }
       if (this.waypointDragActive) {
+        this.insertPending = false;
         this.waypointDragActive = false;
         // Waypoints have no text — just exit drag, no labelEdit transition.
         return;
       }
       if (this.insertDragActive) {
+        this.insertPending = false;
         this.insertDragActive = false;
         if (this.pendingNodeShape !== 'junction') {
           this.switchMode('labelEdit');
         }
+        return;
+      }
+      // Prototype: bare tap of insertSubmenu key (no child action consumed)
+      // enters the sticky insertMode. The held submenu has already been popped
+      // by keyMenu.handleKeyUp above.
+      if (this.insertPending) {
+        this.insertPending = false;
+        this.switchMode('insertMode');
       }
       return;
     }
