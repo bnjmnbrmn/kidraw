@@ -163,6 +163,41 @@ describe('KeymenuComponent', () => {
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');
   });
+
+  describe('compact view', () => {
+    it('should expose compact-view getters that are null-safe before keyMenu init', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+
+      // Before ngAfterViewInit, keyMenu is undefined — the getters must not throw.
+      expect(component.compactBreadcrumb).toBe('');
+      expect(component.compactRows).toEqual([]);
+      expect(component.compactHeldKeys).toEqual([]);
+      expect(component.compactSuppressList).toBeFalse();
+    });
+
+    it('should populate compact rows from the root submenu after init', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      fixture.detectChanges(); // triggers ngAfterViewInit + Konva init
+
+      const rows = component.compactRows;
+      expect(rows.length).toBeGreaterThan(0);
+      // Vim profile: 'h' is Move Left at root
+      const moveLeft = rows.find((r) => r.keyDisplay === 'h');
+      expect(moveLeft).toBeDefined();
+      expect(moveLeft!.label).toBe('Move Left');
+      expect(moveLeft!.kind).toBe('action');
+
+      // 'f' is the Insert submenu
+      const insert = rows.find((r) => r.keyDisplay === 'f');
+      expect(insert).toBeDefined();
+      expect(insert!.kind === 'submenu' || insert!.kind === 'actionSubmenu').toBeTrue();
+
+      // Breadcrumb should be 'normal' when no submenu is open.
+      expect(component.compactBreadcrumb).toBe('normal');
+    });
+  });
 });
 
 function buildRootConfig(component: KeymenuComponent): Record<string, unknown> {

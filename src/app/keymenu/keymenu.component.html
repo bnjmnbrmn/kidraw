@@ -1,1 +1,49 @@
+<!--
+  Two rendering branches:
+  - Default (full keyboard): the Konva stage is mounted in `#keyMenu`.
+  - Compact view (which-key-style side panel): the Konva stage is hidden via
+    `:host.compact-view` CSS, and an `<aside>` lists the active submenu's
+    bindings as `key → label` rows on the right edge of the viewport.
+
+  The KeyMenu state machine runs identically in both modes; only the visual
+  rendering changes. Toggle with `?compact=1` / `?compact=0` URL params or
+  `KeyboardConfigService.compactView`.
+-->
 <div id="keyMenu"></div>
+
+<aside class="compact-panel" *ngIf="compactView" aria-label="Keymenu compact view">
+  <header class="compact-panel__breadcrumb">
+    {{ compactBreadcrumb }}
+  </header>
+
+  <div class="compact-panel__held" *ngIf="compactHeldKeys.length > 0">
+    <span class="compact-panel__held-label">held:</span>
+    <span class="compact-panel__held-key" *ngFor="let k of compactHeldKeys">{{ k }}</span>
+  </div>
+
+  <ng-container *ngIf="!compactSuppressList; else suppressed">
+    <ul class="compact-panel__rows" *ngIf="compactRows.length > 0; else emptySubmenu">
+      <li class="compact-panel__row"
+          *ngFor="let row of compactRows"
+          [class.compact-panel__row--submenu]="row.kind === 'submenu'"
+          [class.compact-panel__row--actionSubmenu]="row.kind === 'actionSubmenu'">
+        <span class="compact-panel__row-key">{{ row.keyDisplay }}</span>
+        <span class="compact-panel__row-arrow">→</span>
+        <span class="compact-panel__row-label">{{ row.label }}</span>
+        <span class="compact-panel__row-kind" *ngIf="row.kind === 'submenu'">▸</span>
+        <span class="compact-panel__row-kind" *ngIf="row.kind === 'actionSubmenu'">⊕</span>
+      </li>
+    </ul>
+    <ng-template #emptySubmenu>
+      <p class="compact-panel__empty">No bindings in this submenu.</p>
+    </ng-template>
+  </ng-container>
+
+  <ng-template #suppressed>
+    <p class="compact-panel__suppressed">{{ compactSuppressMessage }}</p>
+  </ng-template>
+
+  <footer class="compact-panel__footer">
+    Compact view · <code>?compact=0</code> to disable
+  </footer>
+</aside>

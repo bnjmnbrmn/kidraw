@@ -12,3 +12,156 @@
   width: 100%;
   height: 100%;
 }
+
+/* ============================================================
+ * Compact (which-key) view
+ *
+ * When :host has the .compact-view class, the bottom Konva keyboard
+ * area collapses to zero height (the canvas keeps running underneath,
+ * just invisible) and a fixed right-side panel lists the active
+ * submenu's bindings.
+ * ============================================================ */
+
+:host.compact-view {
+  /* Collapse the bottom strip so the drawing area takes its space. */
+  height: 0;
+  background: transparent;
+}
+
+:host.compact-view #keyMenu {
+  display: none;
+}
+
+.compact-panel {
+  position: fixed;
+  top: 3.25em; /* Below the header. */
+  right: 0;
+  bottom: 0;
+  width: 18em;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75em 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--kd-keymenu-fg, #1f2937);
+  background: var(--kd-keymenu-bg, #f8fafc);
+  border-left: 1px solid var(--kd-keymenu-border, #cbd5e1);
+  box-shadow: -4px 0 12px rgba(15, 23, 42, 0.08);
+  overflow-y: auto;
+}
+
+.compact-panel__breadcrumb {
+  flex: 0 0 auto;
+  font-weight: 700;
+  font-size: 13px;
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5em;
+  border-bottom: 1px solid var(--kd-keymenu-border, #cbd5e1);
+  word-break: break-word;
+}
+
+.compact-panel__held {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35em;
+  margin-bottom: 0.6em;
+  font-size: 11px;
+  color: #475569;
+}
+
+.compact-panel__held-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+
+.compact-panel__held-key {
+  display: inline-block;
+  padding: 0.05em 0.35em;
+  border: 1px solid #94a3b8;
+  border-radius: 3px;
+  background: #e2e8f0;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.compact-panel__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.compact-panel__row {
+  display: grid;
+  grid-template-columns: 2.5em 1em 1fr auto;
+  align-items: baseline;
+  gap: 0.4em;
+  padding: 0.2em 0;
+  border-bottom: 1px dotted #e2e8f0;
+}
+
+.compact-panel__row-key {
+  font-weight: 700;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  min-width: 1.75em;
+  display: inline-block;
+  color: #0f172a;
+}
+
+.compact-panel__row-arrow {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.compact-panel__row-label {
+  word-break: break-word;
+}
+
+.compact-panel__row-kind {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.compact-panel__row--submenu .compact-panel__row-label {
+  color: #1d4ed8;
+}
+
+.compact-panel__row--actionSubmenu .compact-panel__row-label {
+  color: #6d28d9;
+}
+
+.compact-panel__empty,
+.compact-panel__suppressed {
+  flex: 1 1 auto;
+  margin: 0.5em 0;
+  padding: 0.5em;
+  background: rgba(148, 163, 184, 0.15);
+  border-radius: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.compact-panel__footer {
+  flex: 0 0 auto;
+  padding-top: 0.5em;
+  margin-top: 0.5em;
+  border-top: 1px solid var(--kd-keymenu-border, #cbd5e1);
+  font-size: 10px;
+  color: #64748b;
+}
+
+.compact-panel__footer code {
+  background: #e2e8f0;
+  padding: 0.05em 0.25em;
+  border-radius: 2px;
+}

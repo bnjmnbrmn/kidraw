@@ -6,6 +6,7 @@ const CAPSLOCK_KEY = 'kidraw-capslock-swap';
 const FINGER_HIDE_KEY = 'kidraw-hide-finger-keys';
 const LAYOUT_KEY = 'kidraw-keyboard-layout';
 const PROFILE_KEY = 'kidraw-key-profile';
+const COMPACT_VIEW_KEY = 'kidraw-compact-view';
 
 export type KeyProfile = 'vim' | 'ijkl';
 
@@ -15,6 +16,7 @@ export class KeyboardConfigService {
   private _hideFingerBlockedKeys: boolean;
   private _keyboardLayout: KeyboardLayout;
   private _keyProfile: KeyProfile;
+  private _compactView: boolean;
   private _configChanged = new Subject<void>();
   readonly configChanged$ = this._configChanged.asObservable();
 
@@ -26,6 +28,20 @@ export class KeyboardConfigService {
     // Default to 'vim'. Old 'default' value (pre-rename) maps to 'ijkl'.
     const storedProfile = localStorage.getItem(PROFILE_KEY);
     this._keyProfile = storedProfile === 'ijkl' || storedProfile === 'default' ? 'ijkl' : 'vim';
+
+    // Compact view: URL param ?compact=1 wins over localStorage; otherwise read localStorage.
+    // URL param ?compact=0 explicitly disables.
+    const params = typeof window !== 'undefined' && window.location
+      ? new URLSearchParams(window.location.search)
+      : new URLSearchParams();
+    const urlCompact = params.get('compact');
+    if (urlCompact === '1' || urlCompact === 'true') {
+      this._compactView = true;
+    } else if (urlCompact === '0' || urlCompact === 'false') {
+      this._compactView = false;
+    } else {
+      this._compactView = localStorage.getItem(COMPACT_VIEW_KEY) === 'true';
+    }
   }
 
   get capsLockCtrlSwap(): boolean {
@@ -65,6 +81,16 @@ export class KeyboardConfigService {
   set keyProfile(value: KeyProfile) {
     this._keyProfile = value;
     localStorage.setItem(PROFILE_KEY, value);
+    this._configChanged.next();
+  }
+
+  get compactView(): boolean {
+    return this._compactView;
+  }
+
+  set compactView(value: boolean) {
+    this._compactView = value;
+    localStorage.setItem(COMPACT_VIEW_KEY, String(value));
     this._configChanged.next();
   }
 }

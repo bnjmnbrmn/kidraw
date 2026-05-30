@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostBinding,
   HostListener,
   inject,
   Input,
@@ -11,6 +12,7 @@ import {
   Output,
   SimpleChanges,
 } from '@angular/core';
+import {CommonModule} from '@angular/common';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
@@ -18,6 +20,7 @@ import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
 import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
+import {isActionKey, isSubmenuKey} from '../lib/keymenu/keys/kmKey';
 import {
   LabeledActionSubmenuConfig,
   SubmenuConfig,
@@ -40,9 +43,19 @@ interface ProfileHint {
   readonly action: string;
 }
 
+/**
+ * One row in the compact-view side panel: a binding in the active submenu.
+ * `kind` controls a small visual cue (• = action, ▸ = submenu, ⊕ = both).
+ */
+export interface CompactRow {
+  readonly keyDisplay: string;
+  readonly label: string;
+  readonly kind: 'action' | 'submenu' | 'actionSubmenu';
+}
+
 @Component({
   selector: 'app-keymenu',
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './keymenu.component.html',
   styleUrl: './keymenu.component.css'
 })
@@ -101,6 +114,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   readonly MIN_STEERING_SPEED = 20;
   readonly MAX_STEERING_SPEED = 200;
   activeKeyPath: string[] = [];
+
+  /** True when the compact (which-key-style) view should render in place of the full keyboard. */
+  @HostBinding('class.compact-view')
+  get compactView(): boolean {
+    return this.keyboardConfig.compactView;
+  }
 
   private get dragSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
@@ -801,6 +820,123 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     this.activeKeyPath = currentMode.submenuKeyStringStack.filter((key) => key.length > 0);
     this.updateModeLabel();
+  }
+
+  // ===================== Compact view (which-key-style side panel) =====================
+
+  /** Friendlier rendering for special-key strings in the compact panel. */
+  private static readonly COMPACT_KEY_DISPLAY: Record<string, string> = {
+    ' ': '␣',
+    'Enter': '⏎',
+    'Backspace': '⌫',
+    'Tab': '⇥',
+    'Escape': 'Esc',
+    'Shift': '⇧',
+    'RShift': '⇧R',
+    'Control': 'Ctrl',
+    'RControl': 'CtrlR',
+    'Alt': '⌥',
+    'RAlt': '⌥R',
+    'CapsLock': 'Caps',
+  };
+
+  private formatCompactKey(keyString: string): string {
+    return KeymenuComponent.COMPACT_KEY_DISPLAY[keyString] ?? keyString;
+  }
+
+  /** Breadcrumb for the side panel: mode + submenu labels. */
+  get compactBreadcrumb(): string {
+    if (!this.keyMenu) {
+      return '';
+    }
+    const modeName = this.keyMenu.currentMode.name;
+    const modeDisplay = this.compactModeDisplay(modeName);
+    const currentMode = this.keyMenu.currentMode;
+    if (!(currentMode instanceof USQwertyMode) || currentMode.stack.length <= 1) {
+      return modeDisplay;
+    }
+
+    const labels: string[] = [];
+    for (let i = 0; i < currentMode.stack.length - 1; i++) {
+      const submenu = currentMode.stack[i];
+      const nextKey = currentMode.submenuKeyStringStack[i + 1] as KeyString;
+      if (nextKey && submenu.keys[nextKey]) {
+        labels.push(submenu.keys[nextKey]!.label);
+      }
+    }
+    if (labels.length === 0) {
+      return modeDisplay;
+    }
+    return `${modeDisplay} › ${labels.join(' › ')}`;
+  }
+
+  private compactModeDisplay(name: string): string {
+    switch (name) {
+      case 'normal': return 'normal';
+      case 'normalCaps': return 'capslock / normal';
+      case 'labelEdit': return 'edit';
+      case 'labelEditCaps': return 'capslock / edit';
+      case 'labelEditVimNormal': return 'edit: normal';
+      case 'labelEditVimNormalCaps': return 'capslock / edit: normal';
+      default: return name;
+    }
+  }
+
+  /** Keys currently held down that opened the active submenu chain. */
+  get compactHeldKeys(): string[] {
+    return this.activeKeyPath.map((k) => this.formatCompactKey(k));
+  }
+
+  /** Bindings of the currently active submenu, suitable for rendering as `key → label` rows. */
+  get compactRows(): readonly CompactRow[] {
+    if (!this.keyMenu) {
+      return [];
+    }
+    const currentMode = this.keyMenu.currentMode;
+    if (!(currentMode instanceof USQwertyMode)) {
+      return [];
+    }
+    const top = currentMode.stack[currentMode.stack.length - 1];
+    if (!top) {
+      return [];
+    }
+
+    const rows: CompactRow[] = [];
+    for (const keyString of Object.keys(top.keys)) {
+      const kmKey = top.keys[keyString as KeyString];
+      if (!kmKey) continue;
+      const hasAction = isActionKey(kmKey);
+      const hasSubmenu = isSubmenuKey(kmKey);
+      const kind: CompactRow['kind'] = hasAction && hasSubmenu
+        ? 'actionSubmenu'
+        : hasSubmenu ? 'submenu' : 'action';
+      rows.push({
+        keyDisplay: this.formatCompactKey(keyString),
+        label: kmKey.label,
+        kind,
+      });
+    }
+    // Stable, scannable order: alpha rows first, then digits, then everything else.
+    return rows.sort((a, b) => this.compactSortRank(a.keyDisplay) - this.compactSortRank(b.keyDisplay)
+      || a.keyDisplay.localeCompare(b.keyDisplay));
+  }
+
+  private compactSortRank(keyDisplay: string): number {
+    if (keyDisplay.length === 1 && keyDisplay >= 'a' && keyDisplay <= 'z') return 0;
+    if (keyDisplay.length === 1 && keyDisplay >= 'A' && keyDisplay <= 'Z') return 0;
+    if (keyDisplay.length === 1 && keyDisplay >= '0' && keyDisplay <= '9') return 1;
+    return 2;
+  }
+
+  /** True if the active submenu has so many keys (e.g. labelEdit) that listing them is noise. */
+  get compactSuppressList(): boolean {
+    if (!this.keyMenu) return false;
+    const name = this.keyMenu.currentMode.name;
+    return name === 'labelEdit' || name === 'labelEditCaps';
+  }
+
+  get compactSuppressMessage(): string {
+    return 'Any letter / digit / punctuation inserts a character. Double-Shift exits to normal mode.';
   }
 
   /** Mode label color mapping — readable on both light and dark themes. */
