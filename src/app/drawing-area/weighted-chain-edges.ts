@@ -118,6 +118,14 @@ interface EdgeSim {
   destBox: Obstacle;
   beads: Bead[];
   obstacles: Obstacle[];
+  /** If true, beads on this sim are read-only "wall samples" representing
+   *  an already-routed edge that the target edge must avoid. They feel no
+   *  forces, never move, and are skipped by PBD. They still participate in
+   *  cross-edge bead repulsion as SOURCES — i.e., they push live beads
+   *  away. Used by `applyWeightedChainEdgesForOne` so we can re-route ONE
+   *  edge while leaving the rest of the graph's polylines exactly as they
+   *  were. */
+  frozen?: boolean;
 }
 
 interface EdgeGroup {
@@ -203,6 +211,177 @@ export function applyWeightedChainEdges(
   log?.(`[weighted-chain] done`);
 }
 
+/** Incremental routing: route a SINGLE target edge through the existing
+ *  graph, treating every other edge's current polyline as a frozen obstacle.
+ *  Other edges' control points are NOT modified — only `targetEdge`'s are.
+ *
+ *  The "frozen edge" representation: we sample each non-target edge's
+ *  current `getPathPoints()` polyline at spacing `opts.segmentLength` and
+ *  drop those samples into the sim as a non-integrating EdgeSim. Live beads
+ *  on the target see them through the existing all-pairs bead-bead
+ *  repulsion — no new force kinds.
+ *
+ *  See `notes/idea-incremental-edge-routing.md` for the design rationale
+ *  and the alternatives considered (pinned-CP, force-field). */
+export function applyWeightedChainEdgesForOne(
+  nodes: DANode[],
+  edges: DAEdge[],
+  targetEdge: DAEdge,
+  opts: WeightedChainOptions = DEFAULT_OPTIONS,
+  log?: (msg: string) => void,
+): void {
+  if (targetEdge.srcNode === targetEdge.destNode) {
+    log?.(`[weighted-chain/one] edge ${targetEdge.id} is self-loop — skipped`);
+    return;
+  }
+
+  const obstacles = buildObstacleMap(nodes, opts.clearance);
+  // Group ALL edges (not just target) — lane offset for the target needs to
+  // consider its parallel siblings even when they're frozen.
+  const groups = groupEdgesByUnorderedPair(edges);
+  const rng = makeRng(opts.rngSeed >>> 0);
+
+  log?.(`[weighted-chain/one] start: route ${targetEdge.id} ${targetEdge.srcNode.id}→${targetEdge.destNode.id} (${edges.length - 1} edges frozen)`);
+
+  // Build the target EdgeSim — identical to the all-edges builder, but only
+  // for this one edge.
+  const sourceCenter = nodeCenter(targetEdge.srcNode);
+  const destCenter = nodeCenter(targetEdge.destNode);
+  const sourceBox = obstacles.get(targetEdge.srcNode)!;
+  const destBox = obstacles.get(targetEdge.destNode)!;
+
+  const dx = destCenter.x - sourceCenter.x;
+  const dy = destCenter.y - sourceCenter.y;
+  const L = Math.hypot(dx, dy) || 1;
+
+  const baseCount = Math.max(2, Math.ceil(L / opts.segmentLength));
+  const N = Math.max(4, Math.ceil(baseCount * opts.initialSlackFactor) + 1);
+
+  const offset = laneOffsetVector(targetEdge, groups, opts.laneSpacing);
+
+  const beads: Bead[] = [];
+  const j = opts.initialJitter;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const jx = j > 0 ? (rng() - 0.5) * 2 * j : 0;
+    const jy = j > 0 ? (rng() - 0.5) * 2 * j : 0;
+    beads.push({
+      x: sourceCenter.x + t * dx + offset.x + jx,
+      y: sourceCenter.y + t * dy + offset.y + jy,
+      vx: 0,
+      vy: 0,
+    });
+  }
+
+  const incident = new Set([targetEdge.srcNode, targetEdge.destNode]);
+  const targetObstacles: Obstacle[] = [];
+  for (const [n, ob] of obstacles) {
+    if (!incident.has(n)) targetObstacles.push(ob);
+  }
+
+  const sourceTarget = {x: sourceCenter.x + offset.x, y: sourceCenter.y + offset.y};
+  const destTargetPt = {x: destCenter.x + offset.x, y: destCenter.y + offset.y};
+
+  const targetSim: EdgeSim = {
+    edge: targetEdge,
+    sourceTarget,
+    destTarget: destTargetPt,
+    sourceBox,
+    destBox,
+    beads,
+    obstacles: targetObstacles,
+    frozen: false,
+  };
+
+  // Build frozen EdgeSims from every other edge's current rendered polyline.
+  // Self-loops contribute nothing useful — we skip them.
+  const frozenSims: EdgeSim[] = [];
+  for (const e of edges) {
+    if (e === targetEdge) continue;
+    if (e.srcNode === e.destNode) continue;
+    const samples = sampleEdgePolyline(e, opts.segmentLength);
+    if (samples.length === 0) continue;
+    const eSourceBox = obstacles.get(e.srcNode) ?? makeUnitBox(0, 0);
+    const eDestBox = obstacles.get(e.destNode) ?? makeUnitBox(0, 0);
+    frozenSims.push({
+      edge: e,
+      // Endpoint targets unused — frozen sims don't integrate. Provide
+      // dummies so the type-check passes; they're never read in the loop.
+      sourceTarget: {x: 0, y: 0},
+      destTarget: {x: 0, y: 0},
+      sourceBox: eSourceBox,
+      destBox: eDestBox,
+      // Re-use the Bead type — vx/vy never read on frozen sims.
+      beads: samples.map(p => ({x: p.x, y: p.y, vx: 0, vy: 0})),
+      obstacles: [],
+      frozen: true,
+    });
+  }
+
+  const states: EdgeSim[] = [targetSim, ...frozenSims];
+  simulateAll(states, opts);
+
+  // Only the target edge gets its CPs rewritten. Frozen sims' source edges
+  // are untouched.
+  targetEdge.setControlPoints(targetSim.beads.map(b => ({x: b.x, y: b.y})));
+  if (log) {
+    const beadStr = targetSim.beads.slice(0, 8).map(b => `(${b.x.toFixed(0)},${b.y.toFixed(0)})`).join(' ');
+    log(`[weighted-chain/one] edge ${targetEdge.id} ${targetEdge.srcNode.id}→${targetEdge.destNode.id}: ${targetSim.beads.length} beads ${beadStr}${targetSim.beads.length > 8 ? '...' : ''}`);
+  }
+  log?.(`[weighted-chain/one] done`);
+}
+
+/** Sample an edge's currently-rendered polyline at uniform arc-length
+ *  spacing. Used to wall off already-routed edges in incremental routing.
+ *  The polyline comes from `edge.getPathPoints()` — that's the post-render
+ *  point list including the perimeter-projected endpoints. Sample count is
+ *  ceil(totalLength / spacing) + 1; first sample is at the source perimeter,
+ *  last is at the dest perimeter, intermediate samples are roughly `spacing`
+ *  apart (slightly compressed so the last interval lands exactly on the
+ *  endpoint). */
+function sampleEdgePolyline(edge: DAEdge, spacing: number): {x: number; y: number}[] {
+  const poly = edge.getPathPoints();
+  if (poly.length < 2 || spacing <= 0) return [];
+
+  // Cumulative distance along the polyline at each vertex.
+  const cum: number[] = [0];
+  for (let i = 1; i < poly.length; i++) {
+    const dx = poly[i].x - poly[i - 1].x;
+    const dy = poly[i].y - poly[i - 1].y;
+    cum.push(cum[i - 1] + Math.hypot(dx, dy));
+  }
+  const totalLen = cum[cum.length - 1];
+  if (totalLen < 1e-9) return [{x: poly[0].x, y: poly[0].y}];
+
+  // Step count chosen so the last sample lands exactly on the endpoint.
+  const steps = Math.max(1, Math.ceil(totalLen / spacing));
+  const actualSpacing = totalLen / steps;
+
+  const samples: {x: number; y: number}[] = [];
+  let segIdx = 0;
+  for (let k = 0; k <= steps; k++) {
+    const target = k * actualSpacing;
+    while (segIdx < cum.length - 2 && cum[segIdx + 1] < target) segIdx++;
+    const segStart = cum[segIdx];
+    const segEnd = cum[segIdx + 1];
+    const segLen = segEnd - segStart;
+    if (segLen < 1e-9) {
+      samples.push({x: poly[segIdx].x, y: poly[segIdx].y});
+      continue;
+    }
+    const t = (target - segStart) / segLen;
+    samples.push({
+      x: poly[segIdx].x + (poly[segIdx + 1].x - poly[segIdx].x) * t,
+      y: poly[segIdx].y + (poly[segIdx + 1].y - poly[segIdx].y) * t,
+    });
+  }
+  return samples;
+}
+
+function makeUnitBox(x: number, y: number): Obstacle {
+  return {minX: x, minY: y, maxX: x, maxY: y};
+}
+
 function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
   const edgeRepulsionMaxDistSq = opts.edgeRepulsionMaxDist * opts.edgeRepulsionMaxDist;
   const segLen = opts.segmentLength;
@@ -211,6 +390,12 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
     // Step 1: forces and velocity update on all beads.
     for (let s = 0; s < states.length; s++) {
       const st = states[s];
+      // Frozen sims represent already-routed edges treated as obstacles.
+      // Their beads never move — skip force integration entirely. The beads
+      // still participate as repulsion sources in the s2 loop below (see
+      // "Global cross-edge bead repulsion"), so live beads still see them
+      // as walls.
+      if (st.frozen) continue;
       const beads = st.beads;
 
       for (let i = 0; i < beads.length; i++) {
@@ -295,6 +480,7 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
 
     // Step 2: position update from velocity.
     for (const st of states) {
+      if (st.frozen) continue;
       for (const b of st.beads) {
         b.x += b.vx * opts.dt;
         b.y += b.vy * opts.dt;
@@ -306,6 +492,7 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
     // each segment by half the violation. Multiple passes converge.
     for (let pass = 0; pass < opts.pbdIterations; pass++) {
       for (const st of states) {
+        if (st.frozen) continue;
         const beads = st.beads;
         for (let i = 0; i < beads.length - 1; i++) {
           const a = beads[i];
@@ -330,6 +517,7 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
     // represent excess chain length that's been absorbed by the hole.
     if (opts.drainInterval > 0 && (iter + 1) % opts.drainInterval === 0) {
       for (const st of states) {
+        if (st.frozen) continue;
         drainEnds(st.beads, st.sourceBox, st.destBox);
       }
     }

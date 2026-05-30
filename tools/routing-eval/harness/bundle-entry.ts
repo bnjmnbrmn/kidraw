@@ -13,6 +13,7 @@
 
 import {
   applyBezierFitWeightedChainEdges,
+  applyBezierFitWeightedChainEdgesForOne,
   DEFAULT_OPTIONS as BEZIER_FIT_WC_DEFAULTS,
   DEFAULT_WC_OPTIONS as BEZIER_FIT_WC_BASE_DEFAULTS,
 } from '../../../src/app/drawing-area/bezier-fit-weighted-chain-edges';
@@ -39,6 +40,26 @@ export const Routers = {
       applyBezierFitWeightedChainEdges(
         nodes,
         edges,
+        opts.fit,
+        opts.wc,
+        log,
+      ),
+    // Incremental variant: routes ONE target edge while leaving the others
+    // as frozen wall samples. The verification driver invokes this via
+    // Routers['bezier-fit-weighted-chain'].applyOne(...). Not registered as
+    // a top-level algorithm key because the harness sweeps don't iterate
+    // it — it has different inputs (needs a target-edge selector).
+    applyOne: (
+      nodes: any,
+      edges: any,
+      targetEdge: any,
+      opts: { fit: any; wc: any },
+      log?: (msg: string) => void,
+    ) =>
+      applyBezierFitWeightedChainEdgesForOne(
+        nodes,
+        edges,
+        targetEdge,
         opts.fit,
         opts.wc,
         log,

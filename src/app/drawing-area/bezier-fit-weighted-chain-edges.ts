@@ -2,6 +2,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import {
   applyWeightedChainEdges,
+  applyWeightedChainEdgesForOne,
   WeightedChainOptions,
   DEFAULT_OPTIONS as WC_DEFAULT_OPTIONS,
 } from './weighted-chain-edges';
@@ -83,6 +84,52 @@ export function applyBezierFitWeightedChainEdges(
     log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} cps`);
   }
   log?.('[bezier-fit-wc] done');
+}
+
+/** Incremental version of `applyBezierFitWeightedChainEdges`: routes ONE
+ *  target edge through the graph while leaving every other edge's control
+ *  points exactly as they are. Other edges' currently-rendered polylines
+ *  are treated as obstacles via the underlying
+ *  `applyWeightedChainEdgesForOne` sim. See
+ *  `notes/idea-incremental-edge-routing.md` for the design.
+ *
+ *  Intended use case: the user has a settled graph and adds one more edge.
+ *  Re-routing every edge (the existing `applyBezierFitWeightedChainEdges`)
+ *  causes jarring visual jumps; this variant updates only the new edge.
+ *
+ *  No keymenu integration yet — call this directly from whatever path
+ *  creates an edge in a non-empty graph. Existing graph-wide
+ *  `applyBezierFitWeightedChainEdges` remains the keymenu Route Edges
+ *  default. */
+export function applyBezierFitWeightedChainEdgesForOne(
+  nodes: DANode[],
+  edges: DAEdge[],
+  targetEdge: DAEdge,
+  fitOpts: BezierFitWeightedChainOptions,
+  wcOpts: WeightedChainOptions,
+  log?: (msg: string) => void,
+): void {
+  log?.(`[bezier-fit-wc/one] start: target ${targetEdge.id}, ${edges.length - 1} edges frozen, dpTolerance=${fitOpts.dpTolerance}, segLen=${wcOpts.segmentLength}`);
+
+  if (targetEdge.srcNode === targetEdge.destNode) {
+    targetEdge.setSmoothRendering(true);
+    log?.(`[bezier-fit-wc/one] target is self-loop — no-op`);
+    return;
+  }
+
+  applyWeightedChainEdgesForOne(nodes, edges, targetEdge, wcOpts, log);
+
+  const dense = targetEdge.controlPoints.map(p => ({x: p.x, y: p.y}));
+  const simplified = douglasPeucker(dense, fitOpts.dpTolerance);
+  const trimmed = stripInteriorCps(
+    simplified,
+    bboxOf(targetEdge.srcNode),
+    bboxOf(targetEdge.destNode),
+  );
+  targetEdge.setControlPoints(trimmed);
+  targetEdge.setSmoothRendering(true);
+  log?.(`[bezier-fit-wc/one] target ${targetEdge.id} ${targetEdge.srcNode.id}→${targetEdge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} cps`);
+  log?.('[bezier-fit-wc/one] done');
 }
 
 /** Recursive Douglas-Peucker polyline simplification. Returns a subset
