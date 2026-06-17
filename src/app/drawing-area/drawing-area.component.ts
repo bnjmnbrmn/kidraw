@@ -51,6 +51,8 @@ import {
   parseStyleSetByFilename,
   serializeStyleSetByFilename,
 } from '../lib/file-format/parser';
+import { GraphStorageService } from '../services/graph-storage.service';
+import { GraphSnapshot } from './graph-snapshot';
 
 function defaultGraphFilename(): string {
   const stamp = new Date().toISOString().slice(0, 10);
@@ -90,6 +92,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private metrics = inject(RoutingMetricsService);
   private draftStorage = inject(DraftStorageService);
   private fileIo = inject(FileIoService);
+  private graphStorage = inject(GraphStorageService);
   /** The graph doc + style resolver from the most-recent Open. Used to
    *  switch between top-level displays after the file is loaded. */
   private openedDoc: KidrawGraphDoc | null = null;
@@ -572,6 +575,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CYCLE_DISPLAY:
         this.cycleDisplay();
         break;
+      case DACommandType.SAVE_GRAPH_AS:
+        this.saveGraphAs(command.name);
+        break;
+      case DACommandType.LOAD_NAMED_GRAPH:
+        this.loadNamedGraph(command.graphSnapshot);
+        break;
       case DACommandType.TOGGLE_PIN_SELECTED:
         this.togglePinSelected();
         break;
@@ -994,6 +1003,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const content = serializeGraphDocByFilename(doc, filename);
     const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
     this.fileIo.saveAs(filename, content, mime);
+  }
+
+  private saveGraphAs(name: string): void {
+    this.finishTweens();
+    const snapshot = this.drawingLayer.serializeGraph();
+    this.graphStorage.save(name, snapshot);
+    this.daOut.emit({ kind: 'status-message', message: `Saved as "${name}"` });
+  }
+
+  private loadNamedGraph(snapshot: GraphSnapshot): void {
+    this.finishTweens();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.drawingLayer.restoreGraph(snapshot);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.drawingLayer.applyThemeColors(palette);
+    this.recenterCrosshairs();
+    this.emitZoomLevel();
+    this.checkAndEmitEditState();
+    this.openedDoc = null;
+    this.openedStyleResolver = null;
+    this.activeStyleIndex = 0;
   }
 
   private newGraph(): void {

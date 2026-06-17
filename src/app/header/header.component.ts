@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Output } from '@angular/core';
+import { Component, computed, EventEmitter, inject, Output } from '@angular/core';
 import { ThemeService, ThemePalette } from '../services/theme.service';
 import { KeyboardConfigService, KeyProfile } from '../services/keyboard-config.service';
 import { KeyboardLayout } from '../lib/keymenu/layouts/us-qwerty';
@@ -6,6 +6,8 @@ import { VisualConfigService } from '../services/visual-config.service';
 import { VisualConfig } from '../services/visual-config.model';
 import { DemoDataService } from '../services/demo-data.service';
 import { EdgeDirectedness, LineStyle, NodeShape } from '../drawing-area/command.model';
+import { GraphStorageService, SavedGraph } from '../services/graph-storage.service';
+import { GraphSnapshot } from '../drawing-area/graph-snapshot';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -94,11 +96,19 @@ export class HeaderComponent {
   }
 
   @Output() loadSampleGraph = new EventEmitter<string>();
+  @Output() saveGraphAs = new EventEmitter<string>();
+  @Output() loadNamedGraph = new EventEmitter<{graphId: string; graphSnapshot: GraphSnapshot}>();
 
   themeService = inject(ThemeService);
   keyboardConfig = inject(KeyboardConfigService);
   vc = inject(VisualConfigService);
   demoData = inject(DemoDataService);
+  graphStorage = inject(GraphStorageService);
+
+  savedGraphs = computed(() => this.graphStorage.graphs());
+  renamingId: string | null = null;
+  renamingName: string = '';
+  myGraphsOpen = false;
 
   readonly simpleColorFields = SIMPLE_COLOR_FIELDS;
   readonly arrayColorFields = ARRAY_COLOR_FIELDS;
