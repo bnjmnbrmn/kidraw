@@ -22,7 +22,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 ## Recent commits (10 most recent)
 
-<<<<<<< HEAD
 | Commit | Subject |
 | :--- | :--- |
 | `a6834ad` | Harness/sweep: drop the 5 removed routers, fix viewer-launch hint |
@@ -35,19 +34,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `05b2c6b` | Add tools/routing-eval/tune-bf-wc.mjs — 2D fine-tuning grid |
 | `7485246` | Add bezier-fit-weighted-chain hybrid (harness-only) |
 | `0070a4c` | Merge Phase B tuning sweeps (algo notes + sweep tool) |
-=======
-### Default node size +20%
-- `DEFAULT_NODE_WIDTH` and `DEFAULT_NODE_HEIGHT` changed 100 → 120.
-- `createNewNode` reads the actual node size so junction nodes center correctly too.
-
-### Edge style & directedness
-- Edges support `directed` / `undirected` / `bidirectional` and `solid` / `dashed` / `dotted`.
-- Style submenu under `s` key.
-
-### Adaptive two-level grid
-- Grid adapts by decade (factors of 10) to keep ~10–20 major squares across the viewport.
-- Minor sub-grid is always 1/10th of the major spacing.
-- Crosshairs and drag snap to grid.
 
 ---
 
@@ -201,6 +187,8 @@ npx ng build                                          # production build / type-
 ```
 
 **Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`. Tests are at 152/152 after the consolidation (was 159; the deleted `charged-spring-edges.spec.ts` accounted for the difference).
+
+---
 
 ## Where to read next
 
