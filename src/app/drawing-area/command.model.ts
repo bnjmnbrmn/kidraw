@@ -1,3 +1,5 @@
+import { GraphSnapshot } from './graph-snapshot';
+
 export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction' | 'invisible';
 
 export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
@@ -82,6 +84,8 @@ export enum DACommandType {
   SET_DEFAULT_LINE_STYLE = 'SET_DEFAULT_LINE_STYLE',
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
   SAVE_GRAPH = 'SAVE_GRAPH',
+  SAVE_GRAPH_AS = 'SAVE_GRAPH_AS',
+  LOAD_NAMED_GRAPH = 'LOAD_NAMED_GRAPH',
   LOAD_GRAPH = 'LOAD_GRAPH',
   NEW_GRAPH = 'NEW_GRAPH',
   OPEN_FILE = 'OPEN_FILE',
@@ -166,6 +170,8 @@ export type DACommand =
   | {kind: DACommandType.SET_DEFAULT_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
   | {kind: DACommandType.SAVE_GRAPH}
+  | {kind: DACommandType.SAVE_GRAPH_AS; name: string}
+  | {kind: DACommandType.LOAD_NAMED_GRAPH; graphSnapshot: GraphSnapshot}
   | {kind: DACommandType.LOAD_GRAPH}
   | {kind: DACommandType.NEW_GRAPH}
   | {kind: DACommandType.OPEN_FILE}
