@@ -11,7 +11,7 @@ export function build({ DANode, DAEdge }) {
   const w1a = placeNode(DANode, 'W1a', 350, 600);
   const w1b = placeNode(DANode, 'W1b', 550, 600);
   const w1c = placeNode(DANode, 'W1c', 750, 600);
-  const w1d = placeNode(DANode, 'W1d', 900, 600);  // wall extends to (900, 600); gap is from x=900 onward
+  const w1d = placeNode(DANode, 'W1d', 950, 600);  // even 200px spacing → layout is 180°-symmetric about (700,500)
   // Wall 2: horizontal across (y=400), x = 400..1200 (gap is from x=200 to x=350)
   const w2a = placeNode(DANode, 'W2a', 450, 400);
   const w2b = placeNode(DANode, 'W2b', 650, 400);
