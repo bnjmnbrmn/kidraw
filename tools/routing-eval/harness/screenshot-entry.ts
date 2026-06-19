@@ -39,7 +39,9 @@ const PAD = 60;
 // Black-on-white to match the harness's neutral palette (no theme).
 const COLORS = { fill: 'white', stroke: 'black', text: 'black' };
 
-function renderScenario(containerId: string, geometry: Geometry): { width: number; height: number } {
+function renderScenario(
+  containerId: string, geometry: Geometry, showWaypoints = true,
+): { width: number; height: number } {
   const container = document.getElementById(containerId)!;
 
   // Build real nodes first so edges can reference them.
@@ -57,6 +59,9 @@ function renderScenario(containerId: string, geometry: Geometry): { width: numbe
     const edge = new DAEdge(src, dest, '', ge.id, { stroke: COLORS.stroke, fill: COLORS.stroke });
     edge.setControlPoints(ge.controlPoints.map(p => ({ x: p.x, y: p.y })));
     edge.setSmoothRendering(!!ge.smoothRendering);
+    // Show the router's control points as waypoint glyphs (same call the app
+    // makes after routing), so screenshots reveal where the bends sit.
+    if (showWaypoints) edge.promoteToWaypoints();
     edges.push(edge);
   }
 

@@ -23,12 +23,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RUNS_ROOT = resolve(__dirname, 'runs');
 
 function parseArgs(argv) {
-  const args = { run: null, scenario: null };
+  const args = { run: null, scenario: null, waypoints: true };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') args.help = true;
     else if (a === '--run') args.run = argv[++i];
     else if (a === '--scenario') args.scenario = argv[++i];
+    else if (a === '--no-waypoints') args.waypoints = false;
   }
   return args;
 }
@@ -76,6 +77,7 @@ async function main() {
 
   --run <timestamp>   Run dir under runs/ (default: latest)
   --scenario <name>   Only this scenario
+  --no-waypoints      Hide control-point glyphs (shown by default)
   --help              This message`);
     return;
   }
@@ -104,8 +106,8 @@ async function main() {
         await page.setContent(HTML, { waitUntil: 'load' });
         await page.addScriptTag({ content: bundleSrc });
         const dims = await page.evaluate(
-          (geom) => window.renderScenario('stage', geom),
-          geometry,
+          (geom, sw) => window.renderScenario('stage', geom, sw),
+          geometry, args.waypoints,
         );
         const stageEl = await page.$('#stage');
         await stageEl.screenshot({ path: join(cell.dir, 'routing.png') });
