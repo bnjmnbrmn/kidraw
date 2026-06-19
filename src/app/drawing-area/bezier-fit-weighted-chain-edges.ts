@@ -5,6 +5,7 @@ import {
   WeightedChainOptions,
   DEFAULT_OPTIONS as WC_DEFAULT_OPTIONS,
 } from './weighted-chain-edges';
+import { computeRoutingMetrics } from './edge-routing-metrics';
 
 interface Pt { x: number; y: number; }
 
@@ -156,9 +157,12 @@ export function applyBezierFitWeightedChainEdges(
         ? douglasPeucker(smoothed, fitOpts.resimplifyTolerance)
         : smoothed;
     edge.setControlPoints(resimplified);
+    polishControlPoints(edge, nodes, wcOpts.clearance);
     edge.setSmoothRendering(true);
-    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} cps`);
+    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} → ${edge.controlPoints.length} cps`);
   }
+
+  normalizeSameRowDetours(nodes, edges, wcOpts.clearance);
 
   if (fitOpts.straightenUnobstructed) {
     straightenUnobstructedEdges(nodes, edges, wcOpts.clearance, wcOpts.laneSpacing, log);
@@ -166,6 +170,7 @@ export function applyBezierFitWeightedChainEdges(
   if (fitOpts.symmetrizeSiblings) {
     symmetrizeSiblingGroups(nodes, edges, wcOpts.clearance, fitOpts.siblingLaneGap, fitOpts.siblingBulge, log);
   }
+  repairNodeClippingEdges(nodes, edges, wcOpts.clearance, log);
   log?.('[bezier-fit-wc] done');
 }
 
@@ -623,4 +628,416 @@ function stripInteriorCps(points: Pt[], src: Bbox, dst: Bbox): Pt[] {
   let hi = points.length;
   while (hi > lo && isInside(points[hi - 1], dst)) hi--;
   return points.slice(lo, hi);
+}
+
+function polishControlPoints(edge: DAEdge, nodes: DANode[], clearance: number): void {
+  if (edge.srcNode === edge.destNode) return;
+  if (edge.controlPoints.some(cp => cp.pinned)) return;
+  if (isSameRowTwoPointDetour(edge, clearance)) return;
+
+  relaxedPrune(edge, nodes, clearance);
+}
+
+interface SameRowDetour {
+  edge: DAEdge;
+  srcIdx: number;
+  destIdx: number;
+  span: number;
+  sign: number;
+  offset: number;
+  original: Pt[];
+}
+
+interface SameRowWaypoint {
+  candidate: SameRowDetour;
+  pointIndex: 0 | 1;
+  gapIdx: number;
+  lane: number;
+  x: number;
+  y: number;
+}
+
+/** Coordinate a same-row bundle of two-point detours. Per-edge cleanup can make
+ *  each route locally regular while still leaving shared exits/entries too
+ *  close together. For row-shaped cases like tangent-grazing, place shoulders
+ *  in the actual gaps between neighboring nodes and put equal-span edges on a
+ *  shared horizontal lane. */
+function normalizeSameRowDetours(nodes: DANode[], edges: DAEdge[], clearance: number): void {
+  const endpointNodes: DANode[] = [];
+  for (const edge of edges) {
+    if (edge.controlPoints.length !== 2) continue;
+    if (!endpointNodes.includes(edge.srcNode)) endpointNodes.push(edge.srcNode);
+    if (!endpointNodes.includes(edge.destNode)) endpointNodes.push(edge.destNode);
+  }
+  const row = endpointNodes
+    .map(n => ({ node: n, center: centerOf(n) }))
+    .sort((a, b) => a.center.x - b.center.x);
+  if (row.length < 4) return;
+
+  const rowY = row.reduce((sum, item) => sum + item.center.y, 0) / row.length;
+  if (row.some(item => Math.abs(item.center.y - rowY) > 1)) return;
+
+  const indexOf = new Map<DANode, number>();
+  for (let i = 0; i < row.length; i++) indexOf.set(row[i].node, i);
+
+  const candidates: SameRowDetour[] = [];
+  for (const edge of edges) {
+    if (edge.srcNode === edge.destNode) continue;
+    if (edge.controlPoints.length !== 2) continue;
+    if (edge.controlPoints.some(cp => cp.pinned)) continue;
+    const srcIdx = indexOf.get(edge.srcNode);
+    const destIdx = indexOf.get(edge.destNode);
+    if (srcIdx === undefined || destIdx === undefined) continue;
+    const span = Math.abs(destIdx - srcIdx);
+    if (span < 2) continue;
+
+    const src = row[srcIdx].center;
+    const dest = row[destIdx].center;
+    const dx = dest.x - src.x;
+    const dy = dest.y - src.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) continue;
+    const perpX = -dy / len;
+    const perpY = dx / len;
+    const cps = edge.controlPoints.map(p => ({ x: p.x, y: p.y }));
+    const offsets = cps.map(p => (p.x - src.x) * perpX + (p.y - src.y) * perpY);
+    if (offsets[0] === 0 || offsets[1] === 0 || Math.sign(offsets[0]) !== Math.sign(offsets[1])) continue;
+    const offset = offsets.reduce((sum, v) => sum + v, 0) / offsets.length;
+    if (Math.abs(offset) < clearance * 1.5) continue;
+    candidates.push({ edge, srcIdx, destIdx, span, sign: Math.sign(offset), offset: Math.abs(offset), original: cps });
+  }
+  if (candidates.length < 3) return;
+
+  const current = computeRoutingMetrics(nodes, edges);
+  const laneBySpanAndSign = new Map<string, number>();
+  const groups = new Map<string, SameRowDetour[]>();
+  for (const c of candidates) {
+    const key = `${c.sign}:${c.span}`;
+    let group = groups.get(key);
+    if (!group) { group = []; groups.set(key, group); }
+    group.push(c);
+  }
+  for (const [key, group] of groups) {
+    const avg = group.reduce((sum, c) => sum + c.offset, 0) / group.length;
+    laneBySpanAndSign.set(key, avg * group[0].sign);
+  }
+
+  const waypoints: SameRowWaypoint[] = [];
+  for (const c of candidates) {
+    const lane = laneBySpanAndSign.get(`${c.sign}:${c.span}`) ?? c.offset * c.sign;
+    const step = c.destIdx > c.srcIdx ? 1 : -1;
+    const firstGapIdx = Math.min(c.srcIdx, c.srcIdx + step);
+    const secondGapIdx = Math.min(c.destIdx, c.destIdx - step);
+    const firstGap = (row[firstGapIdx].center.x + row[firstGapIdx + 1].center.x) / 2;
+    const secondGap = (row[secondGapIdx].center.x + row[secondGapIdx + 1].center.x) / 2;
+    waypoints.push(
+      { candidate: c, pointIndex: 0, gapIdx: firstGapIdx, lane, x: firstGap, y: rowY + lane },
+      { candidate: c, pointIndex: 1, gapIdx: secondGapIdx, lane, x: secondGap, y: rowY + lane },
+    );
+  }
+
+  spreadSharedGapWaypoints(row, waypoints);
+  for (const c of candidates) {
+    const pts = waypoints
+      .filter(w => w.candidate === c)
+      .sort((a, b) => a.pointIndex - b.pointIndex)
+      .map(w => ({ x: w.x, y: w.y }));
+    c.edge.setControlPoints(pts);
+  }
+
+  const next = computeRoutingMetrics(nodes, edges);
+  if (next.hardFailCount > current.hardFailCount ||
+      next.minObstacleClearance < Math.max(8, current.minObstacleClearance - 3)) {
+    for (const c of candidates) c.edge.setControlPoints(c.original);
+  }
+}
+
+function spreadSharedGapWaypoints(
+  row: { node: DANode; center: Pt }[],
+  waypoints: SameRowWaypoint[],
+): void {
+  const byGapLane = new Map<string, SameRowWaypoint[]>();
+  for (const w of waypoints) {
+    const key = `${w.gapIdx}:${Math.round(w.lane * 10) / 10}`;
+    let group = byGapLane.get(key);
+    if (!group) { group = []; byGapLane.set(key, group); }
+    group.push(w);
+  }
+
+  for (const group of byGapLane.values()) {
+    if (group.length < 2) continue;
+    group.sort((a, b) => {
+      const aLeft = Math.min(a.candidate.srcIdx, a.candidate.destIdx);
+      const bLeft = Math.min(b.candidate.srcIdx, b.candidate.destIdx);
+      if (aLeft !== bLeft) return aLeft - bLeft;
+      return a.candidate.edge.id < b.candidate.edge.id ? -1 : a.candidate.edge.id > b.candidate.edge.id ? 1 : 0;
+    });
+
+    const gapIdx = group[0].gapIdx;
+    const left = row[gapIdx].node;
+    const right = row[gapIdx + 1].node;
+    const leftClear = row[gapIdx].center.x + left.NODE_WIDTH / 2 + 16;
+    const rightClear = row[gapIdx + 1].center.x - right.NODE_WIDTH / 2 - 16;
+    const maxOffset = Math.max(0, (rightClear - leftClear) / 2);
+    const spacing = group.length > 1
+      ? Math.min(36, (maxOffset * 2) / (group.length - 1))
+      : 0;
+    const centerX = (row[gapIdx].center.x + row[gapIdx + 1].center.x) / 2;
+    for (let i = 0; i < group.length; i++) {
+      group[i].x = centerX + (i - (group.length - 1) / 2) * spacing;
+    }
+  }
+}
+
+function isSameRowTwoPointDetour(edge: DAEdge, clearance: number): boolean {
+  if (edge.controlPoints.length !== 2) return false;
+  const a = centerOf(edge.srcNode);
+  const b = centerOf(edge.destNode);
+  if (Math.abs(a.y - b.y) > 1) return false;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return false;
+  const perpX = -dy / len;
+  const perpY = dx / len;
+  const offsets = edge.controlPoints.map(p => (p.x - a.x) * perpX + (p.y - a.y) * perpY);
+  return offsets[0] !== 0 &&
+    offsets[1] !== 0 &&
+    Math.sign(offsets[0]) === Math.sign(offsets[1]) &&
+    Math.abs((offsets[0] + offsets[1]) / 2) >= clearance * 1.5;
+}
+
+/** The constraint pruner uses inflated obstacle boxes, which is intentionally
+ *  conservative but can preserve a run of near-redundant points around a
+ *  corner. This second pass uses the actual rendered path against actual node
+ *  boxes, plus a clearance floor, to remove those cosmetic clusters without
+ *  allowing a route through a node. */
+function relaxedPrune(edge: DAEdge, nodes: DANode[], clearance: number): void {
+  let cur = edge.controlPoints.map(p => ({ x: p.x, y: p.y }));
+  if (cur.length <= 1) return;
+
+  let baseline = measureEdge(edge, nodes).minClearance;
+  const clearanceFloor = Math.max(8, Math.min(baseline, clearance * 0.5));
+
+  while (cur.length > 1) {
+    let best = -1;
+    let bestCost = Infinity;
+    for (let i = 0; i < cur.length; i++) {
+      const prev = i === 0 ? centerOf(edge.srcNode) : cur[i - 1];
+      const next = i === cur.length - 1 ? centerOf(edge.destNode) : cur[i + 1];
+      const cost = perpDistance(cur[i], prev, next);
+      if (cost < bestCost) {
+        best = i;
+        bestCost = cost;
+      }
+    }
+
+    const candidate = cur.filter((_, i) => i !== best);
+    edge.setControlPoints(candidate);
+    const nextMeasure = measureEdge(edge, nodes);
+    if (!nextMeasure.hitsNode && nextMeasure.minClearance >= clearanceFloor) {
+      cur = candidate;
+      baseline = Math.max(baseline, nextMeasure.minClearance);
+    } else {
+      edge.setControlPoints(cur);
+      break;
+    }
+  }
+}
+
+function measureEdge(edge: DAEdge, nodes: DANode[]): { hitsNode: boolean; minClearance: number } {
+  const path = edge.getPathPoints();
+  let minClearance = Infinity;
+  for (const n of nodes) {
+    if (n === edge.srcNode || n === edge.destNode) continue;
+    const box = bboxOf(n);
+    for (let i = 0; i < path.length - 1; i++) {
+      if (segIntersectsRect(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, box.minX, box.minY, box.maxX, box.maxY)) {
+        return { hitsNode: true, minClearance: 0 };
+      }
+      minClearance = Math.min(minClearance, segmentBoxDistance(path[i], path[i + 1], box));
+    }
+  }
+  return { hitsNode: false, minClearance: Number.isFinite(minClearance) ? minClearance : Infinity };
+}
+
+function segmentBoxDistance(a: Pt, b: Pt, box: Bbox): number {
+  if (segIntersectsRect(a.x, a.y, b.x, b.y, box.minX, box.minY, box.maxX, box.maxY)) return 0;
+  const corners = [
+    { x: box.minX, y: box.minY },
+    { x: box.maxX, y: box.minY },
+    { x: box.maxX, y: box.maxY },
+    { x: box.minX, y: box.maxY },
+  ];
+  const edges = [
+    [corners[0], corners[1]],
+    [corners[1], corners[2]],
+    [corners[2], corners[3]],
+    [corners[3], corners[0]],
+  ] as const;
+  let best = Infinity;
+  for (const c of corners) best = Math.min(best, pointSegmentDistance(c, a, b));
+  for (const [p, q] of edges) {
+    best = Math.min(best, pointSegmentDistance(a, p, q), pointSegmentDistance(b, p, q));
+  }
+  return best;
+}
+
+function pointSegmentDistance(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 1e-9) return Math.hypot(p.x - a.x, p.y - a.y);
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
+  const x = a.x + t * dx;
+  const y = a.y + t * dy;
+  return Math.hypot(p.x - x, p.y - y);
+}
+
+function repairNodeClippingEdges(
+  nodes: DANode[],
+  edges: DAEdge[],
+  clearance: number,
+  log?: (msg: string) => void,
+): void {
+  let repaired = 0;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const edge of edges) {
+      if (edge.srcNode === edge.destNode) continue;
+      if (edge.controlPoints.some(cp => cp.pinned)) continue;
+      const hit = firstNodeClip(edge, nodes);
+      if (!hit) continue;
+      if (repairNodeClip(edge, hit.node, nodes, edges, clearance)) {
+        repaired++;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  if (repaired > 0) log?.(`[bezier-fit-wc] repair-node-clips: ${repaired} local detours inserted`);
+}
+
+function firstNodeClip(edge: DAEdge, nodes: DANode[]): { node: DANode } | null {
+  const path = edge.getPathPoints();
+  for (const n of nodes) {
+    if (n === edge.srcNode || n === edge.destNode) continue;
+    const box = bboxOf(n);
+    for (let i = 0; i < path.length - 1; i++) {
+      if (segIntersectsRect(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, box.minX, box.minY, box.maxX, box.maxY)) {
+        return { node: n };
+      }
+    }
+  }
+  return null;
+}
+
+function repairNodeClip(
+  edge: DAEdge,
+  obstacle: DANode,
+  nodes: DANode[],
+  edges: DAEdge[],
+  clearance: number,
+): boolean {
+  const original = edge.controlPoints.map(p => ({ x: p.x, y: p.y }));
+  const obstacleBox = bboxOf(obstacle);
+  const inflated = inflateBox(obstacleBox, clearance);
+  const cleaned = original.filter(p => !isInside(p, obstacleBox));
+  const detours = detourCandidates(inflated);
+  const current = computeRoutingMetrics(nodes, edges);
+  let best: Pt[] | null = null;
+  let bestMetrics = current;
+
+  for (let insertAt = 0; insertAt <= cleaned.length; insertAt++) {
+    for (const detour of detours) {
+      const candidate = [
+        ...cleaned.slice(0, insertAt),
+        ...detour,
+        ...cleaned.slice(insertAt),
+      ];
+      edge.setControlPoints(candidate);
+      const metrics = computeRoutingMetrics(nodes, edges);
+      if (isBetterRepair(metrics, bestMetrics)) {
+        best = candidate;
+        bestMetrics = metrics;
+      }
+    }
+  }
+
+  if (best) {
+    edge.setControlPoints(best);
+    removeRepairEndpointCrowding(edge, nodes, edges);
+    return true;
+  }
+  edge.setControlPoints(original);
+  return false;
+}
+
+function removeRepairEndpointCrowding(edge: DAEdge, nodes: DANode[], edges: DAEdge[]): void {
+  let cur = edge.controlPoints.map(p => ({ x: p.x, y: p.y }));
+  if (cur.length <= 1) return;
+
+  let changed = true;
+  while (changed && cur.length > 1) {
+    changed = false;
+    const path = edge.getPathPoints();
+    const attempts: Array<{ index: number; endpoint: Pt }> = [
+      { index: 0, endpoint: path[0] },
+      { index: cur.length - 1, endpoint: path[path.length - 1] },
+    ];
+    for (const attempt of attempts) {
+      if (cur.length <= 1) break;
+      const cp = cur[attempt.index];
+      if (dist(cp, attempt.endpoint) > 24) continue;
+
+      const before = computeRoutingMetrics(nodes, edges);
+      const candidate = cur.filter((_, i) => i !== attempt.index);
+      edge.setControlPoints(candidate);
+      const after = computeRoutingMetrics(nodes, edges);
+      if (after.hardFailCount <= before.hardFailCount &&
+          after.edgesThroughNodes <= before.edgesThroughNodes &&
+          after.minObstacleClearance >= Math.max(8, before.minObstacleClearance - 3)) {
+        cur = candidate;
+        changed = true;
+      } else {
+        edge.setControlPoints(cur);
+      }
+    }
+  }
+}
+
+function inflateBox(box: Bbox, amount: number): Bbox {
+  return {
+    minX: box.minX - amount,
+    minY: box.minY - amount,
+    maxX: box.maxX + amount,
+    maxY: box.maxY + amount,
+  };
+}
+
+function detourCandidates(box: Bbox): Pt[][] {
+  const corners = [
+    { x: box.minX, y: box.minY },
+    { x: box.maxX, y: box.minY },
+    { x: box.maxX, y: box.maxY },
+    { x: box.minX, y: box.maxY },
+  ];
+  const candidates: Pt[][] = corners.map(c => [c]);
+  for (let i = 0; i < corners.length; i++) {
+    candidates.push([corners[i], corners[(i + 1) % corners.length]]);
+    candidates.push([corners[(i + 1) % corners.length], corners[i]]);
+  }
+  return candidates;
+}
+
+function isBetterRepair(
+  candidate: ReturnType<typeof computeRoutingMetrics>,
+  current: ReturnType<typeof computeRoutingMetrics>,
+): boolean {
+  if (candidate.hardFailCount !== current.hardFailCount) return candidate.hardFailCount < current.hardFailCount;
+  if (candidate.edgesThroughNodes !== current.edgesThroughNodes) return candidate.edgesThroughNodes < current.edgesThroughNodes;
+  if (candidate.siblingCrossings !== current.siblingCrossings) return candidate.siblingCrossings < current.siblingCrossings;
+  if (candidate.selfIntersections !== current.selfIntersections) return candidate.selfIntersections < current.selfIntersections;
+  if (candidate.nonSiblingCrossings !== current.nonSiblingCrossings) return candidate.nonSiblingCrossings < current.nonSiblingCrossings;
+  return candidate.totalLength < current.totalLength;
 }
