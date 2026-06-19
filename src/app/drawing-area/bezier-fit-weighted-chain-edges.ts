@@ -22,6 +22,13 @@ export interface BezierFitWeightedChainOptions {
    *  closer than `minControlPointSpacing` so the rendered curve stays smooth.
    *  0 disables declustering. */
   minControlPointSpacing: number;
+  /** Number of Laplacian smoothing passes over each edge's interior control
+   *  polygon after declustering. Each pass nudges every control point a
+   *  fraction of the way toward the midpoint of its neighbors (the node
+   *  centers anchor the ends), rounding out the small kinks and wobbles the
+   *  Catmull-Rom otherwise renders through DP's output. 0 disables. Kept low
+   *  so obstacle-avoiding bends don't slacken into the node they're dodging. */
+  controlPointSmoothing: number;
   /** After routing, snap an edge to a straight line if its straight chord
    *  clears every non-incident node box (by the weighted-chain `clearance`)
    *  AND straightening would not leave it running parallel-and-close to a
@@ -51,6 +58,7 @@ export interface BezierFitWeightedChainOptions {
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   dpTolerance: 3,
   minControlPointSpacing: 12,
+  controlPointSmoothing: 2,
   straightenUnobstructed: true,
   symmetrizeSiblings: true,
   siblingLaneGap: 30,
@@ -117,7 +125,10 @@ export function applyBezierFitWeightedChainEdges(
       bboxOf(edge.destNode),
     );
     const declustered = declusterCps(trimmed, fitOpts.minControlPointSpacing);
-    edge.setControlPoints(declustered);
+    const smoothed = smoothControlPolygon(
+      declustered, centerOf(edge.srcNode), centerOf(edge.destNode), fitOpts.controlPointSmoothing,
+    );
+    edge.setControlPoints(smoothed);
     edge.setSmoothRendering(true);
     log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} cps`);
   }
@@ -429,6 +440,29 @@ function douglasPeucker(points: Pt[], tolerance: number): Pt[] {
 
 function dist(a: Pt, b: Pt): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** Light Laplacian smoothing of an edge's interior control polygon: each pass
+ *  moves every control point a fixed fraction toward the midpoint of its
+ *  neighbors, with the src/dest node centers acting as the (fixed) end
+ *  neighbors. Rounds out the small kinks and wobbles DP leaves behind. The
+ *  fraction is deliberately small so an obstacle-avoiding bend doesn't relax
+ *  back into the node it was dodging. */
+function smoothControlPolygon(pts: Pt[], srcCenter: Pt, destCenter: Pt, passes: number): Pt[] {
+  if (passes <= 0 || pts.length === 0) return pts;
+  const ALPHA = 0.25;
+  let cur = pts.map(p => ({ x: p.x, y: p.y }));
+  for (let pass = 0; pass < passes; pass++) {
+    const next = cur.map((p, i) => {
+      const left = i === 0 ? srcCenter : cur[i - 1];
+      const right = i === cur.length - 1 ? destCenter : cur[i + 1];
+      const mx = (left.x + right.x) / 2;
+      const my = (left.y + right.y) / 2;
+      return { x: p.x * (1 - ALPHA) + mx * ALPHA, y: p.y * (1 - ALPHA) + my * ALPHA };
+    });
+    cur = next;
+  }
+  return cur;
 }
 
 /** Collapse runs of closely-spaced control points so the Catmull-Rom smoother
