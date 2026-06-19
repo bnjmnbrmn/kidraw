@@ -208,8 +208,15 @@ function renderCurrent() {
     status.className = 'fail';
   }
 
-  const svgUrl = `${state.runDir}${c.algorithm}/${c.scenario}/routing.svg`;
-  document.getElementById('svg-frame').data = svgUrl;
+  // Prefer the faithful Konva screenshot; fall back to the SVG approximation
+  // if no PNG exists for this cell (i.e. render-screens.mjs wasn't run).
+  const base = `${state.runDir}${c.algorithm}/${c.scenario}/`;
+  const png = document.getElementById('png-frame');
+  const svg = document.getElementById('svg-frame');
+  const probe = new Image();
+  probe.onload = () => { png.src = probe.src; png.style.display = ''; svg.style.display = 'none'; };
+  probe.onerror = () => { svg.data = `${base}routing.svg`; png.style.display = 'none'; svg.style.display = ''; };
+  probe.src = `${base}routing.png`;
 
   renderMetrics(c.metrics);
   renderRatingControls();

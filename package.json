@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "screenshot": "node tools/playwright-screenshot.js",
-    "routing-eval": "node tools/routing-eval/run.mjs"
+    "routing-eval": "node tools/routing-eval/run.mjs",
+    "routing-eval:screens": "node tools/routing-eval/render-screens.mjs"
   },
   "private": true,
   "dependencies": {

@@ -24,6 +24,9 @@
 
 <main>
   <section id="viewer-pane">
+    <!-- Faithful Konva screenshot (routing.png) when present; falls back to
+         the approximate routing.svg if screenshots haven't been generated. -->
+    <img id="png-frame" alt="rendered routing" style="display:none; max-width:100%; max-height:100%; object-fit:contain;">
     <object id="svg-frame" type="image/svg+xml" data="about:blank" aria-label="rendered routing"></object>
   </section>
 

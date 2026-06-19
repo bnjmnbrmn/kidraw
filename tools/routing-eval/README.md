@@ -39,6 +39,34 @@ Or via the npm script (equivalent):
 npm run routing-eval -- --algorithm charged-spring
 ```
 
+## Faithful screenshots (render-screens.mjs)
+
+`run.mjs` writes a `routing.svg` per cell, but that SVG only *approximates*
+KiDraw's curve smoothing (a quadratic-midpoint stand-in for Konva's
+Catmull-Rom). To judge what you'd actually see on the canvas, generate true
+PNG screenshots after a run:
+
+```bash
+node tools/routing-eval/render-screens.mjs            # all cells in runs/latest
+node tools/routing-eval/render-screens.mjs --run <ts> # a specific run
+node tools/routing-eval/render-screens.mjs --scenario dense
+npm run routing-eval:screens                          # equivalent to the no-arg form
+```
+
+This replays each cell's `geometry.json` through the **real** `DANode` /
+`DAEdge` classes with **real Konva** in a headless Chromium page (via
+Puppeteer), then screenshots the Konva stage to `routing.png` next to the
+`routing.svg`. Because the app renders every edge as exactly
+`Konva.Arrow(points = getPathPoints(), tension = 0.5)`, these PNGs are
+pixel-identical to the canvas — including correct box/circle/diamond/junction
+node shapes (the SVG path draws every node as a rectangle).
+
+The browser bundle (real render classes + Konva) is built by
+`harness/build-screenshot-bundle.mjs` and cached at
+`.cache/screenshot-bundle.js`, invalidated when any `drawing-area/*.ts`
+source changes. The viewer automatically shows `routing.png` when present and
+falls back to `routing.svg` otherwise.
+
 First run takes a few extra seconds because the harness bundles the
 TypeScript routers via `esbuild` (already a transitive dependency).
 The bundle is cached in `tools/routing-eval/.cache/bundle.cjs` and
@@ -255,11 +283,19 @@ recommended defaults.
   in SVG directly.
 - libavoid-js integration.
 
-## Why SVG instead of PNG
+## SVG vs. PNG
 
-The original spec said "rendered snapshot (PNG)" but headless PNG
-rendering needs the native `canvas` package (heavy build) or
-puppeteer (slow per-cell). SVG renders identically across browsers,
-is byte-deterministic given the same geometry, embeds cleanly in the
-viewer with an `<object>` tag, and any reviewer can save it as PNG via
-right-click. The `routing.svg` file is the snapshot.
+Two snapshot paths now coexist:
+
+- **`routing.svg`** (always written by `run.mjs`) — a fast, dependency-free,
+  byte-deterministic approximation. Its curve smoothing is a quadratic-midpoint
+  stand-in for Konva's Catmull-Rom, and it draws every node as a rectangle. Good
+  for quick diffs and CI; not faithful to the canvas.
+- **`routing.png`** (written on demand by `render-screens.mjs`) — a true
+  headless-Chromium screenshot of the real Konva render path. Pixel-identical to
+  KiDraw, including node shapes. Slower (one page load + screenshot per cell) and
+  needs Puppeteer, which is why it's a separate opt-in step rather than part of
+  `run.mjs`.
+
+The viewer prefers the PNG and falls back to the SVG, so you can run the cheap
+pass alone or layer faithful screenshots on top.
