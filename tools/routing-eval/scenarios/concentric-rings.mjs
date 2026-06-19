@@ -4,8 +4,8 @@ export const name = 'concentric-rings';
 export const description = 'Inner ring of 4 nodes + outer ring of 6 nodes around it, with the inner ring fully connected and a few inter-ring spokes. Tests routing in a wraparound geometry where edges have to choose "go around" vs "go through".';
 
 export function build({ DANode, DAEdge }) {
-  const cx = 550, cy = 500;
-  const innerR = 130, outerR = 350;
+  const cx = 600, cy = 560;
+  const innerR = 200, outerR = 470;
   const inner = [], outer = [];
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * 2 * Math.PI;

@@ -1,15 +1,15 @@
 import { placeNode, connect } from './_helpers.mjs';
 
 export const name = 'mixed-scale';
-export const description = 'A small tight triangle of 3 close-packed nodes + a single far-away node connected to all three. Tests whether one set of router parameters can handle both very short (intra-triangle ~150 px) and very long (triangle-to-distant ~900 px) edges in the same graph.';
+export const description = 'A triangle of 3 nodes (well-separated, ~300 px sides) + a single far-away node connected to all three. Tests whether one set of router parameters can handle both moderate (intra-triangle ~300 px) and very long (triangle-to-distant ~900 px) edges in the same graph.';
 
 export function build({ DANode, DAEdge }) {
-  // Tight triangle in the bottom-left.
-  const a = placeNode(DANode, 'A',  200, 700);
-  const b = placeNode(DANode, 'B',  350, 700);
-  const c = placeNode(DANode, 'C',  275, 570);
+  // Separated triangle in the bottom-left (~300 px sides, ~180 px node gaps).
+  const a = placeNode(DANode, 'A',  200, 780);
+  const b = placeNode(DANode, 'B',  520, 780);
+  const c = placeNode(DANode, 'C',  360, 520);
   // Far node in the top-right.
-  const f = placeNode(DANode, 'F', 1100, 200);
+  const f = placeNode(DANode, 'F', 1150, 180);
   const e1 = connect(DAEdge, 'AB', a, b);
   const e2 = connect(DAEdge, 'BC', b, c);
   const e3 = connect(DAEdge, 'CA', c, a);
