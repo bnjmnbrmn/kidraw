@@ -22,11 +22,19 @@ export interface BezierFitWeightedChainOptions {
    *  closer than `minControlPointSpacing` so the rendered curve stays smooth.
    *  0 disables declustering. */
   minControlPointSpacing: number;
+  /** After routing, snap an edge to a straight line if its straight chord
+   *  clears every non-incident node box (by the weighted-chain `clearance`)
+   *  AND straightening would not leave it running parallel-and-close to a
+   *  nearby edge. The physics tends to leave a residual bow even when the path
+   *  is clear; this removes it for the common "obvious straight shot" edges
+   *  (tree spokes, cycle sides, chain links). false disables the pass. */
+  straightenUnobstructed: boolean;
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   dpTolerance: 3,
   minControlPointSpacing: 12,
+  straightenUnobstructed: true,
 };
 
 /** Default weighted-chain options for the hybrid. Overrides the underlying
@@ -93,7 +101,157 @@ export function applyBezierFitWeightedChainEdges(
     edge.setSmoothRendering(true);
     log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} cps`);
   }
+
+  if (fitOpts.straightenUnobstructed) {
+    straightenUnobstructedEdges(nodes, edges, wcOpts.clearance, wcOpts.laneSpacing, log);
+  }
   log?.('[bezier-fit-wc] done');
+}
+
+interface Bbox2 { minX: number; minY: number; maxX: number; maxY: number; }
+
+/** Liang-Barsky segment vs. axis-aligned rect. Kept local so this module
+ *  stays free of the Konva-importing ./utils (the routing-eval harness bundles
+ *  these routers without Konva). Mirrors utils.lineSegmentIntersectsRect. */
+function segIntersectsRect(
+  x1: number, y1: number, x2: number, y2: number,
+  minX: number, minY: number, maxX: number, maxY: number,
+): boolean {
+  let t0 = 0, t1 = 1;
+  const dx = x2 - x1, dy = y2 - y1;
+  for (const edge of [
+    { p: -dx, q: x1 - minX },
+    { p: dx, q: maxX - x1 },
+    { p: -dy, q: y1 - minY },
+    { p: dy, q: maxY - y1 },
+  ]) {
+    if (edge.p === 0) {
+      if (edge.q < 0) return false;
+    } else {
+      const r = edge.q / edge.p;
+      if (edge.p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+      if (t0 > t1) return false;
+    }
+  }
+  return true;
+}
+
+function centerOf(node: DANode): Pt {
+  const x = node.konvaGroup.x();
+  const y = node.konvaGroup.y();
+  return { x: x + node.NODE_WIDTH / 2, y: y + node.NODE_HEIGHT / 2 };
+}
+
+function unorderedPairKey(e: DAEdge): string {
+  const a = e.srcNode.id, b = e.destNode.id;
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+/** Snap edges with an obviously-clear straight shot to a straight line. An
+ *  edge is straightened only if (a) it has no parallel/anti-parallel sibling
+ *  (those need lanes), (b) it carries no pinned waypoint, (c) its straight
+ *  chord clears every non-incident node box by `clearance`, and (d) the
+ *  straight chord would not run nearly parallel and within `minSeparation` of
+ *  another edge's current route. The pass is greedy: an edge straightened
+ *  early is "seen" by the parallel check of later edges, so two edges that
+ *  would collapse onto each other keep one of them bowed. */
+function straightenUnobstructedEdges(
+  nodes: DANode[],
+  edges: DAEdge[],
+  clearance: number,
+  minSeparation: number,
+  log?: (msg: string) => void,
+): void {
+  // Count edges per unordered node pair so we can skip ones with siblings.
+  const pairCount = new Map<string, number>();
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    const k = unorderedPairKey(e);
+    pairCount.set(k, (pairCount.get(k) ?? 0) + 1);
+  }
+
+  // Pre-inflate non-incident node boxes by `clearance` for the obstacle test.
+  const inflated = new Map<DANode, Bbox2>();
+  for (const n of nodes) {
+    const x = n.konvaGroup.x();
+    const y = n.konvaGroup.y();
+    inflated.set(n, {
+      minX: x - clearance, minY: y - clearance,
+      maxX: x + n.NODE_WIDTH + clearance, maxY: y + n.NODE_HEIGHT + clearance,
+    });
+  }
+
+  // ~20° tolerance for "nearly parallel" (direction-agnostic).
+  const PARALLEL_COS = Math.cos((20 * Math.PI) / 180);
+  let straightened = 0;
+
+  for (const edge of edges) {
+    if (edge.srcNode === edge.destNode) continue;
+    if ((pairCount.get(unorderedPairKey(edge)) ?? 0) > 1) continue;
+    if (edge.controlPoints.length === 0) continue;          // already straight
+    if (edge.controlPoints.some(cp => cp.pinned)) continue; // respect user pins
+
+    const a = centerOf(edge.srcNode);
+    const b = centerOf(edge.destNode);
+
+    // (c) Clear of every non-incident node box?
+    let blocked = false;
+    for (const n of nodes) {
+      if (n === edge.srcNode || n === edge.destNode) continue;
+      const bb = inflated.get(n)!;
+      if (segIntersectsRect(a.x, a.y, b.x, b.y, bb.minX, bb.minY, bb.maxX, bb.maxY)) {
+        blocked = true;
+        break;
+      }
+    }
+    if (blocked) continue;
+
+    // (d) Would the straight chord run parallel-and-close to another edge?
+    if (runsParallelClose(a, b, edge, edges, minSeparation, PARALLEL_COS)) continue;
+
+    edge.clearControlPoints();
+    straightened++;
+  }
+  log?.(`[bezier-fit-wc] straighten: ${straightened}/${edges.length} edges snapped to straight`);
+}
+
+/** True if the chord a→b runs nearly parallel to, and within `minSeparation`
+ *  of, a segment of some other edge — over a real side-by-side stretch (not
+ *  just meeting end-to-end, which is the normal collinear-chain case). */
+function runsParallelClose(
+  a: Pt, b: Pt, self: DAEdge, edges: DAEdge[],
+  minSeparation: number, parallelCos: number,
+): boolean {
+  const ux = b.x - a.x, uy = b.y - a.y;
+  const L = Math.hypot(ux, uy);
+  if (L < 1e-6) return false;
+  const ax = ux / L, ay = uy / L; // unit direction of the chord
+
+  for (const other of edges) {
+    if (other === self) continue;
+    const pts = other.getPathPoints();
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p = pts[i], q = pts[i + 1];
+      const vx = q.x - p.x, vy = q.y - p.y;
+      const vlen = Math.hypot(vx, vy);
+      if (vlen < 1e-6) continue;
+      // Nearly parallel (either direction)?
+      const cos = Math.abs((vx * ax + vy * ay) / vlen);
+      if (cos < parallelCos) continue;
+      // Overlap of the two segments projected onto the chord direction.
+      const tp = (p.x - a.x) * ax + (p.y - a.y) * ay;
+      const tq = (q.x - a.x) * ax + (q.y - a.y) * ay;
+      const lo = Math.max(0, Math.min(tp, tq));
+      const hi = Math.min(L, Math.max(tp, tq));
+      const overlap = hi - lo;
+      if (overlap <= minSeparation) continue; // just touching end-to-end, not alongside
+      // Perpendicular gap: lateral distance of the other segment from the chord line.
+      const perp = Math.abs((p.x - a.x) * ay - (p.y - a.y) * ax);
+      if (perp < minSeparation) return true;
+    }
+  }
+  return false;
 }
 
 /** Recursive Douglas-Peucker polyline simplification. Returns a subset
