@@ -61,7 +61,9 @@ async function fetchLatestRunTimestamp() {
   try {
     // Some servers serve symlinks transparently; some don't. We try to GET
     // the manifest under runs/latest/ first.
-    const r = await fetch('../runs/latest/manifest.json');
+    // Cache-bust: `runs/latest` is a reused path, so without this the browser
+    // serves a stale manifest and the viewer loads the previous run's assets.
+    const r = await fetch(`../runs/latest/manifest.json?t=${Date.now()}`);
     if (r.ok) {
       const manifest = await r.json();
       return manifest.timestamp;
@@ -69,7 +71,7 @@ async function fetchLatestRunTimestamp() {
   } catch {}
   // Fallback: latest.txt pointer.
   try {
-    const r = await fetch('../runs/latest.txt');
+    const r = await fetch(`../runs/latest.txt?t=${Date.now()}`);
     if (r.ok) {
       const txt = (await r.text()).trim();
       if (txt) return txt;
