@@ -19,17 +19,16 @@ const ENTRY = join(__dirname, 'bundle-entry.ts');
 const FAKE_NODE = join(__dirname, 'fake-da-node.ts');
 const FAKE_EDGE = join(__dirname, 'fake-da-edge.ts');
 
-/** Sources whose mtime invalidates the bundle. */
+/** Sources whose mtime invalidates the bundle. Scan every non-spec .ts under
+ *  drawing-area rather than a hardcoded list — a hardcoded list silently went
+ *  stale once (it omitted bezier-fit-weighted-chain-edges.ts, the main router),
+ *  so edits to that file didn't rebuild the bundle. Over-invalidation is cheap
+ *  (the bundle builds in ~65ms). */
 function collectSources() {
   const routerDir = join(REPO_ROOT, 'src', 'app', 'drawing-area');
-  const files = [
-    'charged-spring-edges.ts',
-    'bezier-route-edges.ts',
-    'bezier-fit-route-edges.ts',
-    'flexible-wire-edges.ts',
-    'weighted-chain-edges.ts',
-    'edge-routing-metrics.ts',
-  ].map(f => join(routerDir, f));
+  const files = readdirSync(routerDir)
+    .filter(f => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+    .map(f => join(routerDir, f));
   files.push(ENTRY, FAKE_NODE, FAKE_EDGE, fileURLToPath(import.meta.url));
   return files;
 }
