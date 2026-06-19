@@ -14,10 +14,19 @@ export interface BezierFitWeightedChainOptions {
    *  more control points, closer to the physics result. Higher = simpler
    *  chain, cruder approximation. */
   dpTolerance: number;
+  /** Minimum spacing (px) between consecutive control points after DP.
+   *  Douglas-Peucker keeps every individually-significant point but does not
+   *  guarantee they are well-separated; at tight obstacle-wrap corners it can
+   *  leave clusters of points only a few px apart. The Catmull-Rom smoother
+   *  then kinks through those clusters. This pass collapses any run of points
+   *  closer than `minControlPointSpacing` so the rendered curve stays smooth.
+   *  0 disables declustering. */
+  minControlPointSpacing: number;
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   dpTolerance: 3,
+  minControlPointSpacing: 12,
 };
 
 /** Default weighted-chain options for the hybrid. Overrides the underlying
@@ -50,10 +59,11 @@ export function applyBezierFitWeightedChainEdges(
   fitOpts: BezierFitWeightedChainOptions,
   wcOpts: WeightedChainOptions,
   log?: (msg: string) => void,
+  frozenEdges: DAEdge[] = [],
 ): void {
-  log?.(`[bezier-fit-wc] start: ${edges.length} edges, dpTolerance=${fitOpts.dpTolerance}, segLen=${wcOpts.segmentLength}`);
+  log?.(`[bezier-fit-wc] start: ${edges.length} edges, ${frozenEdges.length} frozen, dpTolerance=${fitOpts.dpTolerance}, segLen=${wcOpts.segmentLength}`);
 
-  applyWeightedChainEdges(nodes, edges, wcOpts, log);
+  applyWeightedChainEdges(nodes, edges, wcOpts, log, frozenEdges);
 
   for (const edge of edges) {
     if (edge.srcNode === edge.destNode) {
@@ -78,9 +88,10 @@ export function applyBezierFitWeightedChainEdges(
       bboxOf(edge.srcNode),
       bboxOf(edge.destNode),
     );
-    edge.setControlPoints(trimmed);
+    const declustered = declusterCps(trimmed, fitOpts.minControlPointSpacing);
+    edge.setControlPoints(declustered);
     edge.setSmoothRendering(true);
-    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} cps`);
+    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} cps`);
   }
   log?.('[bezier-fit-wc] done');
 }
@@ -119,6 +130,44 @@ function douglasPeucker(points: Pt[], tolerance: number): Pt[] {
   }
   // Nothing significant between first and last; drop the middle.
   return [{...first}, {...last}];
+}
+
+function dist(a: Pt, b: Pt): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** Collapse runs of closely-spaced control points so the Catmull-Rom smoother
+ *  doesn't kink through them. A "cluster" is a maximal run of consecutive
+ *  interior points all within `minSpacing` of the run's first point (radial,
+ *  so a long evenly-spaced curve is NOT collapsed — only genuinely bunched
+ *  points are). Each cluster is replaced by its centroid. The first and last
+ *  points are always preserved exactly: they set the arrowhead direction. */
+function declusterCps(points: Pt[], minSpacing: number): Pt[] {
+  if (minSpacing <= 0 || points.length <= 2) return points;
+  const lastIdx = points.length - 1;
+  const result: Pt[] = [points[0]];
+  let i = 1;
+  while (i < lastIdx) {
+    const start = points[i];
+    let sumX = start.x, sumY = start.y, count = 1;
+    let j = i + 1;
+    while (j < lastIdx && dist(points[j], start) < minSpacing) {
+      sumX += points[j].x; sumY += points[j].y; count++; j++;
+    }
+    const c = {x: sumX / count, y: sumY / count};
+    // Drop the representative if it would itself sit too close to the last
+    // kept point (it would just re-introduce a short segment).
+    if (dist(c, result[result.length - 1]) >= minSpacing) result.push(c);
+    i = j;
+  }
+  // The endpoint stays; if it crowds the previous kept interior point, drop
+  // that interior point rather than the endpoint.
+  const last = points[lastIdx];
+  while (result.length > 1 && dist(last, result[result.length - 1]) < minSpacing) {
+    result.pop();
+  }
+  result.push(last);
+  return result;
 }
 
 function perpDistance(p: Pt, a: Pt, b: Pt): number {

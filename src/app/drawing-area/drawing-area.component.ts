@@ -1095,13 +1095,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const allEdges = this.drawingLayer.getDAEdges();
 
     const selectedEdges = allEdges.filter(e => e.isSelected);
-    const edges = selectedEdges.length > 0 ? selectedEdges : allEdges;
+    const routeSubset = selectedEdges.length > 0;
+    const edges = routeSubset ? selectedEdges : allEdges;
+    // When routing only a subset, the unselected edges stay put but still act
+    // as obstacles so the routed edges weave around them rather than overlap.
+    const frozenEdges = routeSubset ? allEdges.filter(e => !e.isSelected) : [];
 
     applyBezierFitWeightedChainEdges(
       allNodes, edges,
       BF_WC_DEFAULTS, BF_WC_WC_DEFAULTS,
       msg => this.log.log(msg),
+      frozenEdges,
     );
+    edges.forEach(e => e.promoteToWaypoints());
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'bezier-fit-weighted-chain';
     this.metrics.compute(allNodes, allEdges);

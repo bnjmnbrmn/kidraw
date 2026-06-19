@@ -283,6 +283,20 @@ export class DAEdge {
     wp.pinned = pinned;
   }
 
+  /** Upgrade every plain control point (no waypointId) to a user-selectable
+   *  waypoint glyph. Call after a router sets control points if you want the
+   *  result to be interactively editable. Pinned waypoints are left alone. */
+  promoteToWaypoints(): void {
+    let changed = false;
+    for (const cp of this._controlPoints) {
+      if (!cp.waypointId) {
+        cp.waypointId = nextId();
+        changed = true;
+      }
+    }
+    if (changed) this.assignControlPoints(this._controlPoints);
+  }
+
   get waypoints(): DAWaypoint[] {
     return Array.from(this._waypointGlyphs.values());
   }

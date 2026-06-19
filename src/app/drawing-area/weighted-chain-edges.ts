@@ -25,6 +25,8 @@ import { DAEdge } from './da-edge';
  *    inside the source bbox, or both end beads are inside the dest bbox)
  *    get spliced off. The chain shortens until the visible portion is taut. */
 
+interface Pt { x: number; y: number; }
+
 interface Bead {
   x: number;
   y: number;
@@ -131,9 +133,21 @@ export function applyWeightedChainEdges(
   edges: DAEdge[],
   opts: WeightedChainOptions = DEFAULT_OPTIONS,
   log?: (msg: string) => void,
+  frozenEdges: DAEdge[] = [],
 ): void {
   const obstacles = buildObstacleMap(nodes, opts.clearance);
-  log?.(`[weighted-chain] start: ${nodes.length} nodes, ${edges.length} edges, segLen=${opts.segmentLength}, slack=${opts.initialSlackFactor}, ${opts.iterations} iters`);
+  log?.(`[weighted-chain] start: ${nodes.length} nodes, ${edges.length} edges, ${frozenEdges.length} frozen, segLen=${opts.segmentLength}, slack=${opts.initialSlackFactor}, ${opts.iterations} iters`);
+
+  // Frozen edges (e.g. the unselected edges when routing a subset) contribute
+  // static repulsion sources: the routed beads are pushed away from their
+  // rendered geometry, but the frozen edges themselves never move. Densify
+  // each frozen polyline so no gap exceeds the repulsion reach and a routed
+  // bead can't slip through.
+  const frozenPoints: Pt[] = [];
+  const frozenSpacing = Math.max(4, opts.edgeRepulsionMaxDist / 4);
+  for (const fe of frozenEdges) {
+    densifyPolyline(fe.getPathPoints(), frozenSpacing, frozenPoints);
+  }
 
   const groups = groupEdgesByUnorderedPair(edges);
   const rng = makeRng(opts.rngSeed >>> 0);
@@ -188,7 +202,7 @@ export function applyWeightedChainEdges(
     states.push({edge, sourceTarget, destTarget, sourceBox, destBox, beads, obstacles: edgeObstacles});
   }
 
-  simulateAll(states, opts);
+  simulateAll(states, opts, frozenPoints);
 
   for (const st of states) {
     // Pass all beads through as control points. Beads that ended up inside
@@ -203,7 +217,7 @@ export function applyWeightedChainEdges(
   log?.(`[weighted-chain] done`);
 }
 
-function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
+function simulateAll(states: EdgeSim[], opts: WeightedChainOptions, frozenPoints: Pt[] = []): void {
   const edgeRepulsionMaxDistSq = opts.edgeRepulsionMaxDist * opts.edgeRepulsionMaxDist;
   const segLen = opts.segmentLength;
 
@@ -279,6 +293,20 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions): void {
               fy += (ddy / d) * force;
             }
           }
+
+          // Repulsion from frozen edges (static obstacle geometry). Same law
+          // as cross-edge bead repulsion, but these points never move.
+          for (let p = 0; p < frozenPoints.length; p++) {
+            const o = frozenPoints[p];
+            const ddx = b.x - o.x;
+            const ddy = b.y - o.y;
+            const dsq = ddx * ddx + ddy * ddy;
+            if (dsq < 1e-6 || dsq > edgeRepulsionMaxDistSq) continue;
+            const d = Math.sqrt(dsq);
+            const force = localEdgeRepulsionK / dsq;
+            fx += (ddx / d) * force;
+            fy += (ddy / d) * force;
+          }
         }
 
         let vx = (b.vx + fx * opts.dt) * opts.damping;
@@ -350,6 +378,26 @@ function drainEnds(beads: Bead[], srcBox: Obstacle, destBox: Obstacle): void {
          inBox(beads[beads.length - 1].x, beads[beads.length - 1].y, destBox) &&
          inBox(beads[beads.length - 2].x, beads[beads.length - 2].y, destBox)) {
     beads.pop();
+  }
+}
+
+/** Sample points along a polyline at ~`spacing` px intervals, appending them
+ *  to `out`. Includes every original vertex plus interpolated points so no
+ *  gap between consecutive samples exceeds `spacing`. */
+function densifyPolyline(points: Pt[], spacing: number, out: Pt[]): void {
+  if (points.length === 0) return;
+  out.push({x: points[0].x, y: points[0].y});
+  for (let i = 0; i < points.length - 1; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const steps = Math.max(1, Math.ceil(len / spacing));
+    for (let s = 1; s <= steps; s++) {
+      const t = s / steps;
+      out.push({x: a.x + dx * t, y: a.y + dy * t});
+    }
   }
 }
 
