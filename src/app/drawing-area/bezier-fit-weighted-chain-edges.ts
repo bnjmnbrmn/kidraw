@@ -389,11 +389,15 @@ function symmetrizeSiblingGroups(
       } else {
         const endOff = lane * laneGap;
         const midOff = lane * laneGap * bulge;
-        edge.setControlPoints([
-          { x: a.x + ux * shoulderA + perpX * endOff, y: a.y + uy * shoulderA + perpY * endOff },
-          { x: midX + perpX * midOff, y: midY + perpY * midOff },
-          { x: b.x - ux * shoulderB + perpX * endOff, y: b.y - uy * shoulderB + perpY * endOff },
-        ]);
+        const cpNearA = { x: a.x + ux * shoulderA + perpX * endOff, y: a.y + uy * shoulderA + perpY * endOff };
+        const cpMid = { x: midX + perpX * midOff, y: midY + perpY * midOff };
+        const cpNearB = { x: b.x - ux * shoulderB + perpX * endOff, y: b.y - uy * shoulderB + perpY * endOff };
+        // Control points must run src→dest. nodeA is the canonical lower-id
+        // node; an edge that actually starts at nodeB needs them reversed, or
+        // its path doubles back on itself (the anti-parallel crossing bug).
+        edge.setControlPoints(
+          edge.srcNode === nodeA ? [cpNearA, cpMid, cpNearB] : [cpNearB, cpMid, cpNearA],
+        );
       }
       edge.setSmoothRendering(true);
     }
