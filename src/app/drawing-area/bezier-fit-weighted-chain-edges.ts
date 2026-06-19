@@ -29,6 +29,12 @@ export interface BezierFitWeightedChainOptions {
    *  Catmull-Rom otherwise renders through DP's output. 0 disables. Kept low
    *  so obstacle-avoiding bends don't slacken into the node they're dodging. */
   controlPointSmoothing: number;
+  /** Tolerance (px) for the second Douglas-Peucker pass run *after* smoothing.
+   *  It operates on the already-obstacle-safe smoothed polygon, so it can be
+   *  more aggressive than `dpTolerance` (which must stay faithful to the raw
+   *  physics path): it strips the flattened wobble points a corridor leaves
+   *  behind without touching the genuine clearance bends. 0 disables. */
+  resimplifyTolerance: number;
   /** After routing, snap an edge to a straight line if its straight chord
    *  clears every non-incident node box (by the weighted-chain `clearance`)
    *  AND straightening would not leave it running parallel-and-close to a
@@ -56,9 +62,10 @@ export interface BezierFitWeightedChainOptions {
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
-  dpTolerance: 3,
-  minControlPointSpacing: 12,
-  controlPointSmoothing: 2,
+  dpTolerance: 4,
+  minControlPointSpacing: 14,
+  controlPointSmoothing: 3,
+  resimplifyTolerance: 12,
   straightenUnobstructed: true,
   symmetrizeSiblings: true,
   siblingLaneGap: 30,
@@ -128,9 +135,16 @@ export function applyBezierFitWeightedChainEdges(
     const smoothed = smoothControlPolygon(
       declustered, centerOf(edge.srcNode), centerOf(edge.destNode), fitOpts.controlPointSmoothing,
     );
-    edge.setControlPoints(smoothed);
+    // Re-simplify after smoothing: smoothing flattens wobble runs (e.g. the
+    // maze corridor) into near-collinear points that DP can now drop, while a
+    // genuine obstacle bend keeps enough curvature to survive — so clearance
+    // is preserved but the redundant waypoints disappear.
+    const resimplified = fitOpts.resimplifyTolerance > 0
+      ? douglasPeucker(smoothed, fitOpts.resimplifyTolerance)
+      : smoothed;
+    edge.setControlPoints(resimplified);
     edge.setSmoothRendering(true);
-    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} cps`);
+    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} cps`);
   }
 
   if (fitOpts.straightenUnobstructed) {
