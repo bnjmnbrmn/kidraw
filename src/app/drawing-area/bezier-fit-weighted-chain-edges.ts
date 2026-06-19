@@ -29,12 +29,26 @@ export interface BezierFitWeightedChainOptions {
    *  is clear; this removes it for the common "obvious straight shot" edges
    *  (tree spokes, cycle sides, chain links). false disables the pass. */
   straightenUnobstructed: boolean;
+  /** Replace the routes of a parallel/anti-parallel sibling group (≥2 edges
+   *  between the same node pair) with deterministic, evenly-spaced arcs that
+   *  are mirror-symmetric about the chord — but only when the corridor between
+   *  the two nodes is clear of other nodes (otherwise the physics route, which
+   *  navigated the obstacle, is kept). The physics settles siblings into
+   *  near-parallel but visibly asymmetric lanes; this makes anti-parallel
+   *  pairs a clean lens and N-way parallels a symmetric fan. false disables. */
+  symmetrizeSiblings: boolean;
+  /** Perpendicular spacing (px) between adjacent lanes in a symmetrized
+   *  sibling group. A 2-edge anti-parallel pair bows ±siblingLaneGap/2 from
+   *  the chord at its midpoint. */
+  siblingLaneGap: number;
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   dpTolerance: 3,
   minControlPointSpacing: 12,
   straightenUnobstructed: true,
+  symmetrizeSiblings: true,
+  siblingLaneGap: 30,
 };
 
 /** Default weighted-chain options for the hybrid. Overrides the underlying
@@ -104,6 +118,9 @@ export function applyBezierFitWeightedChainEdges(
 
   if (fitOpts.straightenUnobstructed) {
     straightenUnobstructedEdges(nodes, edges, wcOpts.clearance, wcOpts.laneSpacing, log);
+  }
+  if (fitOpts.symmetrizeSiblings) {
+    symmetrizeSiblingGroups(nodes, edges, wcOpts.clearance, fitOpts.siblingLaneGap, log);
   }
   log?.('[bezier-fit-wc] done');
 }
@@ -252,6 +269,92 @@ function runsParallelClose(
     }
   }
   return false;
+}
+
+/** Give each parallel/anti-parallel sibling group a clean, mirror-symmetric
+ *  set of arcs — but only when the corridor between the two nodes is clear, so
+ *  we never undo a route that was navigating an obstacle. Each edge in a group
+ *  of size k gets lane index (i - (k-1)/2); its single control point sits at
+ *  the chord midpoint offset by `laneGap * laneIndex` along the chord normal.
+ *  The middle edge of an odd group (offset 0) becomes straight. Edges are
+ *  ordered by id and the chord is taken in canonical node-id order, so the
+ *  result is deterministic and symmetric regardless of edge direction. */
+function symmetrizeSiblingGroups(
+  nodes: DANode[],
+  edges: DAEdge[],
+  clearance: number,
+  laneGap: number,
+  log?: (msg: string) => void,
+): void {
+  // Bucket edges by unordered node pair.
+  const groups = new Map<string, DAEdge[]>();
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    const k = unorderedPairKey(e);
+    let arr = groups.get(k);
+    if (!arr) { arr = []; groups.set(k, arr); }
+    arr.push(e);
+  }
+
+  // Inflated boxes for the clear-corridor test.
+  const inflated = new Map<DANode, Bbox2>();
+  for (const n of nodes) {
+    const x = n.konvaGroup.x();
+    const y = n.konvaGroup.y();
+    inflated.set(n, {
+      minX: x - clearance, minY: y - clearance,
+      maxX: x + n.NODE_WIDTH + clearance, maxY: y + n.NODE_HEIGHT + clearance,
+    });
+  }
+
+  let symmetrized = 0;
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    if (group.some(e => e.controlPoints.some(cp => cp.pinned))) continue; // respect pins
+
+    // Canonical chord endpoints (lower node id is `a`) so the perpendicular
+    // direction — and thus the lane sign — is independent of edge direction.
+    const sample = group[0];
+    const lowerIsSrc = sample.srcNode.id < sample.destNode.id;
+    const nodeA = lowerIsSrc ? sample.srcNode : sample.destNode;
+    const nodeB = lowerIsSrc ? sample.destNode : sample.srcNode;
+    const a = centerOf(nodeA);
+    const b = centerOf(nodeB);
+
+    // Clear corridor? If any non-incident node box straddles the chord, leave
+    // the physics route (it routed around that obstacle) untouched.
+    let blocked = false;
+    for (const n of nodes) {
+      if (n === nodeA || n === nodeB) continue;
+      const bb = inflated.get(n)!;
+      if (segIntersectsRect(a.x, a.y, b.x, b.y, bb.minX, bb.minY, bb.maxX, bb.maxY)) {
+        blocked = true;
+        break;
+      }
+    }
+    if (blocked) continue;
+
+    const L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const perpX = -(b.y - a.y) / L;
+    const perpY = (b.x - a.x) / L;
+    const midX = (a.x + b.x) / 2;
+    const midY = (a.y + b.y) / 2;
+
+    const ordered = [...group].sort((e1, e2) => (e1.id < e2.id ? -1 : e1.id > e2.id ? 1 : 0));
+    const k = ordered.length;
+    for (let i = 0; i < k; i++) {
+      const offset = (i - (k - 1) / 2) * laneGap;
+      const edge = ordered[i];
+      if (Math.abs(offset) < 1e-6) {
+        edge.clearControlPoints();
+      } else {
+        edge.setControlPoints([{ x: midX + perpX * offset, y: midY + perpY * offset }]);
+      }
+      edge.setSmoothRendering(true);
+    }
+    symmetrized += k;
+  }
+  log?.(`[bezier-fit-wc] symmetrize: ${symmetrized} sibling edges set to symmetric arcs`);
 }
 
 /** Recursive Douglas-Peucker polyline simplification. Returns a subset
