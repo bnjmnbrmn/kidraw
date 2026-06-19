@@ -58,6 +58,14 @@ export interface WeightedChainOptions {
    *  zero, chain just pulls itself taut. */
   endpointForce: number;
   chargeK: number;
+  /** Range (px) of obstacle repulsion. Beyond this distance from a node box a
+   *  bead feels zero push; within it the force uses a finite-support kernel
+   *  `chargeK * (1/d - 1/R)^2` that matches the old inverse-square strength up
+   *  close but decays smoothly to exactly zero at R — instead of the old
+   *  unbounded `chargeK/d^2` tail that bowed every edge away from every node in
+   *  the graph. Smaller R = edges hug obstacles tighter and stay straight when
+   *  there's clearance. */
+  obstacleFalloffDist: number;
   insideKickK: number;
   damping: number;
   dt: number;
@@ -89,6 +97,7 @@ export const DEFAULT_OPTIONS: WeightedChainOptions = {
   pbdIterations: 12,
   endpointForce: 30,
   chargeK: 9000,
+  obstacleFalloffDist: 80,
   insideKickK: 80,
   damping: 0.78,
   dt: 1.0,
@@ -267,7 +276,7 @@ function simulateAll(states: EdgeSim[], opts: WeightedChainOptions, frozenPoints
           const perpY = edx / elen;
 
           for (const ob of st.obstacles) {
-            const f = obstacleForce(b.x, b.y, ob, localChargeK, localInsideKickK, perpX, perpY);
+            const f = obstacleForce(b.x, b.y, ob, localChargeK, localInsideKickK, perpX, perpY, opts.obstacleFalloffDist);
             fx += f.fx;
             fy += f.fy;
           }
@@ -482,6 +491,7 @@ function obstacleForce(
   x: number, y: number, ob: Obstacle,
   chargeK: number, insideKickK: number,
   perpX: number, perpY: number,
+  falloffDist: number,
 ): {fx: number; fy: number} {
   const closestX = Math.max(ob.minX, Math.min(x, ob.maxX));
   const closestY = Math.max(ob.minY, Math.min(y, ob.maxY));
@@ -496,6 +506,10 @@ function obstacleForce(
     return {fx: perpX * insideKickK * sign, fy: perpY * insideKickK * sign};
   }
   const dist = Math.sqrt(distSq);
-  const force = chargeK / distSq;
+  // Finite-support kernel: ~chargeK/d^2 up close, exactly 0 at falloffDist,
+  // and smoothly (C1) zero there. Kills the old unbounded inverse-square tail.
+  if (dist >= falloffDist) return {fx: 0, fy: 0};
+  const inv = 1 / dist - 1 / falloffDist;
+  const force = chargeK * inv * inv;
   return {fx: (dx / dist) * force, fy: (dy / dist) * force};
 }
