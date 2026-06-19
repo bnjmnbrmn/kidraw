@@ -35,6 +35,14 @@ export interface BezierFitWeightedChainOptions {
    *  physics path): it strips the flattened wobble points a corridor leaves
    *  behind without touching the genuine clearance bends. 0 disables. */
   resimplifyTolerance: number;
+  /** Replace the fixed-tolerance re-simplify with constraint-based pruning:
+   *  greedily drop the least-significant control point (smallest deviation
+   *  from the line through its neighbors) and keep going until removing any
+   *  remaining point would make the path clip a non-incident node box. Unlike
+   *  a tolerance, this removes *as many as the geometry allows*, so a
+   *  symmetric path keeps a symmetric, minimal set of waypoints. When on,
+   *  `resimplifyTolerance` is ignored. */
+  pruneToConstraints: boolean;
   /** After routing, snap an edge to a straight line if its straight chord
    *  clears every non-incident node box (by the weighted-chain `clearance`)
    *  AND straightening would not leave it running parallel-and-close to a
@@ -66,6 +74,7 @@ export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   minControlPointSpacing: 14,
   controlPointSmoothing: 3,
   resimplifyTolerance: 12,
+  pruneToConstraints: true,
   straightenUnobstructed: true,
   symmetrizeSiblings: true,
   siblingLaneGap: 30,
@@ -135,13 +144,17 @@ export function applyBezierFitWeightedChainEdges(
     const smoothed = smoothControlPolygon(
       declustered, centerOf(edge.srcNode), centerOf(edge.destNode), fitOpts.controlPointSmoothing,
     );
-    // Re-simplify after smoothing: smoothing flattens wobble runs (e.g. the
-    // maze corridor) into near-collinear points that DP can now drop, while a
-    // genuine obstacle bend keeps enough curvature to survive — so clearance
-    // is preserved but the redundant waypoints disappear.
-    const resimplified = fitOpts.resimplifyTolerance > 0
-      ? douglasPeucker(smoothed, fitOpts.resimplifyTolerance)
-      : smoothed;
+    // Thin the smoothed polygon. Constraint pruning removes as many points as
+    // the geometry allows (until the path would clip a node), which gives a
+    // minimal, symmetry-respecting set; the tolerance path is the fallback.
+    const resimplified = fitOpts.pruneToConstraints
+      ? constraintPrune(
+          smoothed, centerOf(edge.srcNode), centerOf(edge.destNode),
+          edge.srcNode, edge.destNode, nodes, wcOpts.clearance,
+        )
+      : fitOpts.resimplifyTolerance > 0
+        ? douglasPeucker(smoothed, fitOpts.resimplifyTolerance)
+        : smoothed;
     edge.setControlPoints(resimplified);
     edge.setSmoothRendering(true);
     log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} cps`);
@@ -468,6 +481,60 @@ function douglasPeucker(points: Pt[], tolerance: number): Pt[] {
 
 function dist(a: Pt, b: Pt): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** Greedily prune control points until removing any more would make the path
+ *  clip a non-incident node box. Each step removes the interior point whose
+ *  deviation from the line through its neighbors is smallest (the "flattest",
+ *  least-significant point) — but only if the segment that would replace it
+ *  still clears every inflated node box. Repeats until nothing is removable.
+ *
+ *  This is constraint-driven rather than tolerance-driven: it keeps exactly
+ *  the points the obstacles force it to keep, so a symmetric path keeps a
+ *  symmetric minimal set. The node centers anchor the ends (a removed end
+ *  point's replacement segment runs from the node center to the next point;
+ *  the visible path is a subset of that, so the test is conservative). */
+function constraintPrune(
+  pts: Pt[],
+  srcCenter: Pt, destCenter: Pt,
+  srcNode: DANode, destNode: DANode,
+  nodes: DANode[], clearance: number,
+): Pt[] {
+  if (pts.length === 0) return pts;
+  const boxes: Bbox2[] = [];
+  for (const n of nodes) {
+    if (n === srcNode || n === destNode) continue;
+    const x = n.konvaGroup.x();
+    const y = n.konvaGroup.y();
+    boxes.push({
+      minX: x - clearance, minY: y - clearance,
+      maxX: x + n.NODE_WIDTH + clearance, maxY: y + n.NODE_HEIGHT + clearance,
+    });
+  }
+  const clears = (p: Pt, q: Pt): boolean => {
+    for (const b of boxes) {
+      if (segIntersectsRect(p.x, p.y, q.x, q.y, b.minX, b.minY, b.maxX, b.maxY)) return false;
+    }
+    return true;
+  };
+
+  const cur = pts.map(p => ({ x: p.x, y: p.y }));
+  while (cur.length > 0) {
+    let best = -1;
+    let bestCost = Infinity;
+    for (let i = 0; i < cur.length; i++) {
+      const prev = i === 0 ? srcCenter : cur[i - 1];
+      const next = i === cur.length - 1 ? destCenter : cur[i + 1];
+      const cost = perpDistance(cur[i], prev, next);
+      if (cost < bestCost && clears(prev, next)) {
+        best = i;
+        bestCost = cost;
+      }
+    }
+    if (best < 0) break;
+    cur.splice(best, 1);
+  }
+  return cur;
 }
 
 /** Light Laplacian smoothing of an edge's interior control polygon: each pass
