@@ -38,9 +38,14 @@ export interface BezierFitWeightedChainOptions {
    *  pairs a clean lens and N-way parallels a symmetric fan. false disables. */
   symmetrizeSiblings: boolean;
   /** Perpendicular spacing (px) between adjacent lanes in a symmetrized
-   *  sibling group. A 2-edge anti-parallel pair bows ±siblingLaneGap/2 from
-   *  the chord at its midpoint. */
+   *  sibling group, measured at the node ends. A 2-edge anti-parallel pair
+   *  attaches ±siblingLaneGap/2 from center on each node perimeter, so the two
+   *  arcs leave/enter the nodes already separated (no brushing at the ends). */
   siblingLaneGap: number;
+  /** How much wider each sibling arc bulges at its midpoint than at the node
+   *  ends, as a multiple of the end offset. 1 = constant-offset (parallel
+   *  lanes); >1 = a lens/leaf that bows out in the middle. */
+  siblingBulge: number;
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
@@ -49,6 +54,7 @@ export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   straightenUnobstructed: true,
   symmetrizeSiblings: true,
   siblingLaneGap: 30,
+  siblingBulge: 1.8,
 };
 
 /** Default weighted-chain options for the hybrid. Overrides the underlying
@@ -120,7 +126,7 @@ export function applyBezierFitWeightedChainEdges(
     straightenUnobstructedEdges(nodes, edges, wcOpts.clearance, wcOpts.laneSpacing, log);
   }
   if (fitOpts.symmetrizeSiblings) {
-    symmetrizeSiblingGroups(nodes, edges, wcOpts.clearance, fitOpts.siblingLaneGap, log);
+    symmetrizeSiblingGroups(nodes, edges, wcOpts.clearance, fitOpts.siblingLaneGap, fitOpts.siblingBulge, log);
   }
   log?.('[bezier-fit-wc] done');
 }
@@ -158,6 +164,16 @@ function centerOf(node: DANode): Pt {
   const x = node.konvaGroup.x();
   const y = node.konvaGroup.y();
   return { x: x + node.NODE_WIDTH / 2, y: y + node.NODE_HEIGHT / 2 };
+}
+
+/** Distance from a node's center to its box perimeter along unit direction
+ *  (ux, uy). Used to place a control point just outside the node. */
+function halfExtentAlong(node: DANode, ux: number, uy: number): number {
+  const hw = node.NODE_WIDTH / 2;
+  const hh = node.NODE_HEIGHT / 2;
+  const tx = Math.abs(ux) > 1e-6 ? hw / Math.abs(ux) : Infinity;
+  const ty = Math.abs(uy) > 1e-6 ? hh / Math.abs(uy) : Infinity;
+  return Math.min(tx, ty);
 }
 
 function unorderedPairKey(e: DAEdge): string {
@@ -274,16 +290,19 @@ function runsParallelClose(
 /** Give each parallel/anti-parallel sibling group a clean, mirror-symmetric
  *  set of arcs — but only when the corridor between the two nodes is clear, so
  *  we never undo a route that was navigating an obstacle. Each edge in a group
- *  of size k gets lane index (i - (k-1)/2); its single control point sits at
- *  the chord midpoint offset by `laneGap * laneIndex` along the chord normal.
- *  The middle edge of an odd group (offset 0) becomes straight. Edges are
- *  ordered by id and the chord is taken in canonical node-id order, so the
- *  result is deterministic and symmetric regardless of edge direction. */
+ *  of size k gets lane index (i - (k-1)/2) and three control points: one just
+ *  outside each node offset by `laneGap * laneIndex` (so the arcs attach to the
+ *  perimeter already separated — no brushing at the ends) and a midpoint offset
+ *  by `laneGap * laneIndex * bulge` (so it bows out into a lens). The middle
+ *  edge of an odd group (lane 0) becomes straight. Edges are ordered by id and
+ *  the chord is taken in canonical node-id order, so the result is
+ *  deterministic and symmetric regardless of edge direction. */
 function symmetrizeSiblingGroups(
   nodes: DANode[],
   edges: DAEdge[],
   clearance: number,
   laneGap: number,
+  bulge: number,
   log?: (msg: string) => void,
 ): void {
   // Bucket edges by unordered node pair.
@@ -335,20 +354,35 @@ function symmetrizeSiblingGroups(
     if (blocked) continue;
 
     const L = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-    const perpX = -(b.y - a.y) / L;
-    const perpY = (b.x - a.x) / L;
+    const ux = (b.x - a.x) / L;
+    const uy = (b.y - a.y) / L;
+    const perpX = -uy;
+    const perpY = ux;
     const midX = (a.x + b.x) / 2;
     const midY = (a.y + b.y) / 2;
+
+    // Place the near-end control points just outside each node's perimeter
+    // (along the chord) so their lateral offset reads as a separated attach
+    // point. Clamp so the two shoulders never cross past the midpoint on short
+    // edges.
+    const shoulderA = Math.min(halfExtentAlong(nodeA, ux, uy) + 10, L * 0.4);
+    const shoulderB = Math.min(halfExtentAlong(nodeB, ux, uy) + 10, L * 0.4);
 
     const ordered = [...group].sort((e1, e2) => (e1.id < e2.id ? -1 : e1.id > e2.id ? 1 : 0));
     const k = ordered.length;
     for (let i = 0; i < k; i++) {
-      const offset = (i - (k - 1) / 2) * laneGap;
+      const lane = i - (k - 1) / 2;
       const edge = ordered[i];
-      if (Math.abs(offset) < 1e-6) {
+      if (Math.abs(lane) < 1e-6) {
         edge.clearControlPoints();
       } else {
-        edge.setControlPoints([{ x: midX + perpX * offset, y: midY + perpY * offset }]);
+        const endOff = lane * laneGap;
+        const midOff = lane * laneGap * bulge;
+        edge.setControlPoints([
+          { x: a.x + ux * shoulderA + perpX * endOff, y: a.y + uy * shoulderA + perpY * endOff },
+          { x: midX + perpX * midOff, y: midY + perpY * midOff },
+          { x: b.x - ux * shoulderB + perpX * endOff, y: b.y - uy * shoulderB + perpY * endOff },
+        ]);
       }
       edge.setSmoothRendering(true);
     }
