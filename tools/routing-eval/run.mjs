@@ -22,7 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const RUNS_ROOT = join(__dirname, 'runs');
 
 function parseArgs(argv) {
-  const out = { algorithm: null, scenario: null, forceBundle: false };
+  const out = { algorithm: null, scenario: null, forceBundle: false, skipOverlapping: false };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') {
@@ -30,6 +30,8 @@ function parseArgs(argv) {
         `Usage: node tools/routing-eval/run.mjs [options]\n\n` +
         `  --algorithm <name>    Run only this algorithm.\n` +
         `  --scenario <name>     Run only this scenario.\n` +
+        `  --skip-overlapping    Skip scenarios whose node boxes overlap\n` +
+        `                        (stale fixtures from the node-size bump).\n` +
         `  --force-bundle        Rebuild the bundled routers even if cached.\n` +
         `  --help                Show this help.\n\n` +
         `Algorithms: bezier-fit-weighted-chain\n` +
@@ -40,6 +42,8 @@ function parseArgs(argv) {
       out.algorithm = argv[++i];
     } else if (a === '--scenario') {
       out.scenario = argv[++i];
+    } else if (a === '--skip-overlapping') {
+      out.skipOverlapping = true;
     } else if (a === '--force-bundle') {
       out.forceBundle = true;
     } else {
@@ -70,6 +74,24 @@ function timestamp() {
     `${pad(d.getSeconds())}-` +
     randomSuffix()
   );
+}
+
+/** True if any two node boxes overlap. Used by --skip-overlapping to defer
+ *  stale fixtures (authored at the old 100px node size, now 120px). */
+function hasOverlappingNodes(nodes) {
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    const ax = a.konvaGroup.x(), ay = a.konvaGroup.y();
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      const bx = b.konvaGroup.x(), by = b.konvaGroup.y();
+      if (ax < bx + b.NODE_WIDTH && ax + a.NODE_WIDTH > bx &&
+          ay < by + b.NODE_HEIGHT && ay + a.NODE_HEIGHT > by) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function maxCurvatureOf(edges) {
@@ -183,6 +205,10 @@ async function main() {
         DANode: Fake.DANode,
         DAEdge: Fake.DAEdge,
       });
+      if (args.skipOverlapping && hasOverlappingNodes(nodes)) {
+        console.log(`  [skip] ${scenario.name.padEnd(20)} overlapping node boxes`);
+        continue;
+      }
       const cellDir = join(runDir, algoName, scenario.name);
       mkdirSync(cellDir, { recursive: true });
 

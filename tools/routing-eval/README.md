@@ -30,6 +30,7 @@ node tools/routing-eval/run.mjs              # all algorithms × all scenarios
 node tools/routing-eval/run.mjs --algorithm charged-spring
 node tools/routing-eval/run.mjs --scenario anti-parallel
 node tools/routing-eval/run.mjs --algorithm charged-spring --scenario anti-parallel
+node tools/routing-eval/run.mjs --skip-overlapping   # defer stale fixtures whose node boxes overlap
 node tools/routing-eval/run.mjs --help
 ```
 

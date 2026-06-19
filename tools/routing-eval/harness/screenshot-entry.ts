@@ -60,14 +60,24 @@ function renderScenario(containerId: string, geometry: Geometry): { width: numbe
     edges.push(edge);
   }
 
-  // Frame: bbox over node boxes (matches the SVG viewBox), pad on all sides.
+  // Frame: bbox over node boxes AND edge geometry, padded on all sides.
+  // Edge curves routinely bulge well outside the node bbox; framing to nodes
+  // alone clips the very routing we're trying to judge. Include each edge's
+  // rendered polyline points so the whole curve stays in frame.
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const grow = (x: number, y: number) => {
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+  };
   for (const node of nodeById.values()) {
     const g = node.konvaGroup;
-    minX = Math.min(minX, g.x());
-    minY = Math.min(minY, g.y());
-    maxX = Math.max(maxX, g.x() + node.NODE_WIDTH);
-    maxY = Math.max(maxY, g.y() + node.NODE_HEIGHT);
+    grow(g.x(), g.y());
+    grow(g.x() + node.NODE_WIDTH, g.y() + node.NODE_HEIGHT);
+  }
+  for (const edge of edges) {
+    for (const p of edge.getPathPoints()) grow(p.x, p.y);
   }
   const width = (maxX - minX) + PAD * 2;
   const height = (maxY - minY) + PAD * 2;
