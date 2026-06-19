@@ -274,6 +274,16 @@ function runsParallelClose(
 
   for (const other of edges) {
     if (other === self) continue;
+    // Edges that share a node fan out from (or into) that node: straight lines
+    // from a common point diverge by angle and only meet at the point, so they
+    // can never run alongside. Skipping them lets fanned diagonals (k3-3
+    // crossings, a hub's spokes) straighten instead of staying bowed by the
+    // near-the-shared-node proximity. The guard still keeps INDEPENDENT
+    // parallel edges (no shared endpoint) apart.
+    if (other.srcNode === self.srcNode || other.srcNode === self.destNode ||
+        other.destNode === self.srcNode || other.destNode === self.destNode) {
+      continue;
+    }
     const pts = other.getPathPoints();
     for (let i = 0; i < pts.length - 1; i++) {
       const p = pts[i], q = pts[i + 1];
