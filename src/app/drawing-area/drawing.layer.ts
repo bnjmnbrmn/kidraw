@@ -176,6 +176,17 @@ export class DrawingLayer extends Konva.Layer {
     return this.getDAWaypoints().filter(wp => wp.isSelected);
   }
 
+  updateWaypointVisibility(extraSelectionActive = false): boolean {
+    const shouldShow = this.gridVisible || extraSelectionActive || this.hasSelectedItems();
+    let changed = false;
+    for (const waypoint of this.getDAWaypoints()) {
+      const nextVisible = waypoint.isSelected || shouldShow;
+      if (waypoint.konvaGroup.visible() !== nextVisible) changed = true;
+    }
+    this.daEdges.forEach(edge => edge.setWaypointIndicatorsVisible(shouldShow));
+    return changed;
+  }
+
   /** Edge that owns the given waypoint, or undefined if not found. */
   findEdgeForWaypoint(wp: DAWaypoint): DAEdge | undefined {
     return this.daEdges.find(e => e.waypoints.includes(wp));
@@ -416,6 +427,7 @@ export class DrawingLayer extends Konva.Layer {
     if (this._palette) {
       this.applyThemeColors(this._palette);
     }
+    this.updateWaypointVisibility();
   }
 
   set palette(p: ThemePalette) {
@@ -448,5 +460,10 @@ export class DrawingLayer extends Konva.Layer {
   labelColors() {
     if (!this._palette) return undefined;
     return { fill: this._palette.labelFill, stroke: this._palette.labelStroke, text: this._palette.labelText };
+  }
+
+  private hasSelectedItems(): boolean {
+    return this.daNodes.some(node => node.isSelected) ||
+      this.daEdges.some(edge => edge.isSelected || edge.waypoints.some(wp => wp.isSelected) || edge.labels.some(label => label.isSelected));
   }
 }

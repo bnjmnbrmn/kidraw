@@ -3,6 +3,7 @@ import { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
+import { DAWaypoint } from './da-waypoint';
 import { DACrosshairs } from './da-crosshairs.group';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
@@ -510,6 +511,34 @@ describe('DrawingArea Unit Tests', () => {
       edge.setControlPoints([{x: 200, y: 80}]);
       // setControlPoints already calls refreshGeometry → Konva line should have 6 numbers
       expect(edge.line.points().length).toBe(6);
+    });
+
+    it('renders control-point edges as smooth curves by default', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      edge.setControlPoints([{x: 200, y: 80}]);
+      expect(edge.smoothRendering).toBeTrue();
+      expect(edge.line.tension()).toBe(edge.SMOOTH_TENSION);
+    });
+  });
+
+  describe('DAWaypoint', () => {
+    it('is hidden until selected or waypoint indicators are visible', () => {
+      const waypoint = new DAWaypoint(100, 100);
+      expect(waypoint.konvaGroup.visible()).toBeFalse();
+
+      waypoint.setIndicatorsVisible(true);
+      expect(waypoint.konvaGroup.visible()).toBeTrue();
+
+      waypoint.setIndicatorsVisible(false);
+      expect(waypoint.konvaGroup.visible()).toBeFalse();
+
+      waypoint.isSelected = true;
+      expect(waypoint.konvaGroup.visible()).toBeTrue();
+
+      waypoint.isSelected = false;
+      expect(waypoint.konvaGroup.visible()).toBeFalse();
     });
   });
 

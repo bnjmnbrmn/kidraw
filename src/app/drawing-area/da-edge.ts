@@ -46,8 +46,8 @@ export class DAEdge {
    *  routing). > 0 renders them as a smooth Catmull-Rom-derived curve through
    *  the same points (Bezier routing). Konva tracks the curve tangent for the
    *  arrowhead automatically. */
-  private _renderTension: number = 0;
   public readonly SMOOTH_TENSION = 0.5;
+  private _renderTension: number = this.SMOOTH_TENSION;
 
   constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
               colors?: { stroke?: string; fill?: string }) {
@@ -68,6 +68,7 @@ export class DAEdge {
       fill: this._fillColor,
       pointerLength: this.POINTER_LENGTH,
       pointerWidth: this.POINTER_WIDTH,
+      tension: this._renderTension,
     });
     this.group.add(this._line);
     this.applyDirectedness();
@@ -299,6 +300,10 @@ export class DAEdge {
 
   get waypoints(): DAWaypoint[] {
     return Array.from(this._waypointGlyphs.values());
+  }
+
+  setWaypointIndicatorsVisible(visible: boolean): void {
+    this._waypointGlyphs.forEach(wp => wp.setIndicatorsVisible(visible));
   }
 
   /** Rebuild the `_waypointGlyphs` map from `_controlPoints`. Existing glyphs

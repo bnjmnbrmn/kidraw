@@ -670,6 +670,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (DrawingAreaComponent.CONTEXT_AFFECTING_COMMANDS.has(command.kind)) {
       this.emitContextState();
     }
+    this.refreshWaypointVisibility();
   }
 
   assertNever(x: never): never {
@@ -1230,6 +1231,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       edge.setSmoothRendering(true);
       edge.promoteToWaypoints();
     }
+    this.refreshWaypointVisibility(false);
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'desiderata';
     this.metrics.compute(allNodes, allEdges);
@@ -1542,6 +1544,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.gridFadeTimeout = window.setTimeout(() => {
       this.drawingLayer.hideGrid();
       this.setGridIndicatorsVisible(false);
+      this.refreshWaypointVisibility(false);
       this.drawingLayer.batchDraw();
       this.gridFadeTimeout = null;
     }, 5000);
@@ -1553,6 +1556,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       node.setInvisibleVisibleForGrid(show);
       node.setPinIndicatorVisible(show);
     });
+    this.refreshWaypointVisibility(false);
+  }
+
+  private refreshWaypointVisibility(drawIfChanged = true): void {
+    const changed = this.drawingLayer.updateWaypointVisibility(this.getSelectedLabels().length > 0);
+    if (changed && drawIfChanged) {
+      this.drawingLayer.batchDraw();
+    }
   }
 
   /**

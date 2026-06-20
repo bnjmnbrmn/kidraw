@@ -3,14 +3,17 @@ import {nextId} from './id-generator';
 
 /** A user-placed bend point on a `DAEdge`'s polyline. Belongs to one edge and
  *  mirrors one entry in that edge's `_controlPoints` array. Unlike router-
- *  generated beads, waypoints are visible (small dot) and selectable. When
- *  `pinned`, the routers won't move them. */
+ *  generated beads, waypoints are selectable bend handles. They are hidden
+ *  unless selected, or unless the drawing layer asks waypoint indicators to be
+ *  visible while selection/grid context is active. When `pinned`, the routers
+ *  won't move them. */
 export class DAWaypoint {
   readonly id: string;
   readonly group: Konva.Group;
   private readonly _dot: Konva.Circle;
   private _isSelected: boolean = false;
   private _pinned: boolean = false;
+  private _indicatorsVisible: boolean = false;
 
   public readonly RADIUS = 5;
   public readonly STROKE_WIDTH_NORMAL = 1.5;
@@ -22,7 +25,7 @@ export class DAWaypoint {
 
   constructor(x: number, y: number, id?: string, colors?: { stroke?: string }) {
     this.id = id ?? nextId();
-    this.group = new Konva.Group({x, y});
+    this.group = new Konva.Group({x, y, visible: false});
     if (colors?.stroke) this._strokeColor = colors.stroke;
 
     this._dot = new Konva.Circle({
@@ -47,6 +50,7 @@ export class DAWaypoint {
   set isSelected(value: boolean) {
     this._isSelected = value;
     this.updateAppearance();
+    this.updateVisibility();
   }
 
   get pinned(): boolean {
@@ -87,6 +91,11 @@ export class DAWaypoint {
     this.updateAppearance();
   }
 
+  setIndicatorsVisible(visible: boolean): void {
+    this._indicatorsVisible = visible;
+    this.updateVisibility();
+  }
+
   /** Distance from the waypoint's center to the given point (in the same
    *  coordinate space as the waypoint's group position — i.e., drawing-layer
    *  coordinates if the group is added to `daEdgeGroup`). */
@@ -98,5 +107,9 @@ export class DAWaypoint {
     this._dot.stroke(this._isSelected ? this._selectedStrokeColor : this._strokeColor);
     this._dot.strokeWidth(this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL);
     this._dot.fill(this._pinned ? this._pinnedFillColor : 'transparent');
+  }
+
+  private updateVisibility(): void {
+    this.group.visible(this._isSelected || this._indicatorsVisible);
   }
 }
