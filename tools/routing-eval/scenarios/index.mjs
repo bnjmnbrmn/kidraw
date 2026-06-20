@@ -7,6 +7,7 @@ import * as selfLoop            from './self-loop.mjs';
 import * as multiParallel       from './multi-parallel.mjs';
 import * as fanOut8             from './fan-out-8.mjs';
 import * as fanIn8              from './fan-in-8.mjs';
+import * as convergeCircular    from './converge-circular.mjs';
 import * as line3               from './line-3.mjs';
 import * as tree5               from './tree-5.mjs';
 import * as mesh3x3             from './mesh-3x3.mjs';
@@ -61,6 +62,7 @@ export const ALL_SCENARIOS = [
   multiParallel,
   fanOut8,
   fanIn8,
+  convergeCircular,
   line3,
   tree5,
   mesh3x3,

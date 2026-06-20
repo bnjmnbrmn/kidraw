@@ -34,7 +34,7 @@ function parseArgs(argv) {
         `                        (stale fixtures from the node-size bump).\n` +
         `  --force-bundle        Rebuild the bundled routers even if cached.\n` +
         `  --help                Show this help.\n\n` +
-        `Algorithms: bezier-fit-weighted-chain\n` +
+        `Algorithms: bezier-fit-weighted-chain, desiderata\n` +
         `Scenarios:  ${ALL_SCENARIOS.map(s => s.name).join(', ')}`,
       );
       process.exit(0);

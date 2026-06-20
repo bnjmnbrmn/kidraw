@@ -5,17 +5,21 @@
 // The esbuild build script substitutes our fake-da-node / fake-da-edge for
 // the real ones via an `alias` map (see build-bundle.mjs).
 //
-// Only bezier-fit-weighted-chain is exposed. The 5 other routing algorithms
-// were removed in commit df50448 (see tag `pre-routing-consolidation` for
-// the prior state). The bf-wc algorithm's weighted-chain physics base is
-// imported transitively through bezier-fit-weighted-chain-edges.ts; we
-// don't need a separate registration for weighted-chain here.
+// The old standalone routing algorithms were removed in commit df50448 (see
+// tag `pre-routing-consolidation` for the prior state). Keep experimental
+// routers registered here first so routing-eval can compare them before the
+// app exposes them.
 
 import {
   applyBezierFitWeightedChainEdges,
   DEFAULT_OPTIONS as BEZIER_FIT_WC_DEFAULTS,
   DEFAULT_WC_OPTIONS as BEZIER_FIT_WC_BASE_DEFAULTS,
 } from '../../../src/app/drawing-area/bezier-fit-weighted-chain-edges';
+
+import {
+  applyDesiderataRouteEdges,
+  DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
+} from '../../../src/app/drawing-area/desiderata-route-edges';
 
 import {
   computeRoutingMetrics,
@@ -46,6 +50,27 @@ export const Routers = {
     defaults: {
       fit: { ...BEZIER_FIT_WC_DEFAULTS },
       wc: { ...BEZIER_FIT_WC_BASE_DEFAULTS },
+    } as any,
+  },
+  'desiderata': {
+    apply: (
+      nodes: any,
+      edges: any,
+      opts: any,
+      log?: (msg: string) => void,
+    ) =>
+      applyDesiderataRouteEdges(
+        nodes,
+        edges,
+        opts,
+        log,
+      ),
+    defaults: {
+      ...DESIDERATA_DEFAULTS,
+      base: {
+        fit: { ...DESIDERATA_DEFAULTS.base.fit },
+        wc: { ...DESIDERATA_DEFAULTS.base.wc },
+      },
     } as any,
   },
 };
