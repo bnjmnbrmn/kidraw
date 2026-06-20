@@ -18,10 +18,9 @@ import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
 import {
-  applyBezierFitWeightedChainEdges,
-  DEFAULT_OPTIONS as BF_WC_DEFAULTS,
-  DEFAULT_WC_OPTIONS as BF_WC_WC_DEFAULTS,
-} from './bezier-fit-weighted-chain-edges';
+  applyDesiderataRouteEdges,
+  DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
+} from './desiderata-route-edges';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
@@ -273,7 +272,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Tracks whether the user has applied a routing this session. Kept as a
    *  null-vs-string marker; parameter-driven re-routing is no longer wired
    *  here (the tuning panel was removed). */
-  private lastAppliedRouting: 'bezier-fit-weighted-chain' | null = null;
+  private lastAppliedRouting: 'bezier-fit-weighted-chain' | 'desiderata' | null = null;
 
   ngOnInit(): void {
   }
@@ -1101,15 +1100,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // as obstacles so the routed edges weave around them rather than overlap.
     const frozenEdges = routeSubset ? allEdges.filter(e => !e.isSelected) : [];
 
-    applyBezierFitWeightedChainEdges(
+    // Production routing is the desiderata pipeline: the bf-wc post-processing
+    // (straighten / symmetric lenses / collapse / fan-separate) followed by the
+    // desiderata refinement pass (thins maze-style bend clusters, separates
+    // bunched fans, straightens clear stars). desiderata wraps bf-wc, so this
+    // is "bf-wc + desiderata pass". (The method/command keep the bf-wc name.)
+    applyDesiderataRouteEdges(
       allNodes, edges,
-      BF_WC_DEFAULTS, BF_WC_WC_DEFAULTS,
+      DESIDERATA_DEFAULTS,
       msg => this.log.log(msg),
       frozenEdges,
     );
     edges.forEach(e => e.promoteToWaypoints());
     this.drawingLayer.batchDraw();
-    this.lastAppliedRouting = 'bezier-fit-weighted-chain';
+    this.lastAppliedRouting = 'desiderata';
     this.metrics.compute(allNodes, allEdges);
   }
 
