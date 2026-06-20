@@ -26,7 +26,10 @@
 
 set -euo pipefail
 
-BASE_PORT=4200
+# BASE_PORT may be overridden via the environment so other per-worktree
+# servers (e.g. the routing-eval viewer) get their own conflict-free range
+# without colliding with `ng serve`. Default is the ng-serve base, 4200.
+BASE_PORT="${BASE_PORT:-4200}"
 SLOT_COUNT=50
 
 worktree="${1:-$(pwd)}"

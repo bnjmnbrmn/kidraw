@@ -293,4 +293,31 @@ function downloadFeedback() {
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
 }
 
+/** Tint the viewer by the server port. Each worktree serves on its own stable
+ *  port (see tools/worktree-port.sh), so the colour is a per-worktree marker —
+ *  it keeps you from confusing one worktree's results with another's when two
+ *  viewers are open. Golden-angle hue spreads adjacent ports to distinct hues. */
+function applyWorktreeTheme() {
+  const port = Number(location.port);
+  if (!port) return;
+  const hue = Math.round((port * 137.508) % 360);
+  const header = document.querySelector('header');
+  if (header) {
+    header.style.background = `hsl(${hue}, 60%, 88%)`;
+    header.style.borderBottom = `3px solid hsl(${hue}, 70%, 42%)`;
+  }
+  document.body.style.background = `hsl(${hue}, 35%, 96%)`;
+  const h1 = document.querySelector('header h1');
+  if (h1) {
+    const badge = document.createElement('span');
+    badge.textContent = `:${port}`;
+    badge.title = 'viewer port — one per worktree';
+    badge.style.cssText =
+      `margin:0 8px;padding:1px 8px;border-radius:10px;font-size:12px;` +
+      `font-weight:600;color:#fff;background:hsl(${hue}, 70%, 42%);`;
+    h1.after(badge);
+  }
+}
+
+applyWorktreeTheme();
 init();

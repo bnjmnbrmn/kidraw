@@ -104,14 +104,20 @@ each other's run dir.
 
 ## Launch the viewer
 
+Use a per-worktree port so parallel worktrees (e.g. a sibling Codex checkout)
+don't collide on a fixed port — `worktree-port.sh` with an 8760 base hands out
+a stable, conflict-free port per worktree:
+
 ```bash
-python3 -m http.server -d tools/routing-eval 8765
-# then open http://localhost:8765/viewer/
+PORT=$(BASE_PORT=8760 tools/worktree-port.sh)
+python3 -m http.server -d tools/routing-eval "$PORT"
+echo "open http://localhost:$PORT/viewer/"
 ```
 
-(Serve from `tools/routing-eval/`, not `tools/routing-eval/viewer/` — the
-viewer fetches `../runs/...` and `python -m http.server` blocks paths that
-escape its document root.)
+(A fixed `python3 -m http.server -d tools/routing-eval 8765` still works for a
+single checkout.) Serve from `tools/routing-eval/`, not
+`tools/routing-eval/viewer/` — the viewer fetches `../runs/...` and
+`python -m http.server` blocks paths that escape its document root.
 
 The viewer auto-loads the newest run via `runs/latest/manifest.json`.
 Use `?run=<timestamp>` to pin to a specific run.
