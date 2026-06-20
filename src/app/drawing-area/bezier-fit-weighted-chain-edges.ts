@@ -67,6 +67,23 @@ export interface BezierFitWeightedChainOptions {
    *  ends, as a multiple of the end offset. 1 = constant-offset (parallel
    *  lanes); >1 = a lens/leaf that bows out in the middle. */
   siblingBulge: number;
+  /** Collapse a one-sided detour edge (its route only ever bows to one side of
+   *  the chord) into a single symmetric control point at the chord midpoint,
+   *  dipped to the shallowest depth that still clears every non-incident node.
+   *  Gives clean, symmetric, equal-depth arcs for edges hopping a row of nodes
+   *  (tangent-grazing). Weaving routes (bow both sides) are left untouched. */
+  collapseSimpleArcs: boolean;
+  /** Spread the attach points of *bent* edges that leave/enter a shared node at
+   *  nearly the same angle, so they don't bunch where they touch the node (e.g.
+   *  tangent-grazing's A→C and A→D both leaving A). Edges within
+   *  `fanAttachMinAngleDeg` of each other at a node get a near-node control
+   *  point that fans them to at least that angle apart. Only affects edges that
+   *  already bend — straight radial fans (hub-spoke, k3-3) are left alone. */
+  separateFanAttachments: boolean;
+  /** Minimum angular separation (degrees) between two bent edges where they
+   *  attach to a shared node. Also the threshold below which they count as
+   *  "bunched". */
+  fanAttachMinAngleDeg: number;
 }
 
 export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
@@ -79,6 +96,9 @@ export const DEFAULT_OPTIONS: BezierFitWeightedChainOptions = {
   symmetrizeSiblings: true,
   siblingLaneGap: 30,
   siblingBulge: 1.8,
+  collapseSimpleArcs: true,
+  separateFanAttachments: true,
+  fanAttachMinAngleDeg: 16,
 };
 
 /** Default weighted-chain options for the hybrid. Overrides the underlying
@@ -155,9 +175,20 @@ export function applyBezierFitWeightedChainEdges(
       : fitOpts.resimplifyTolerance > 0
         ? douglasPeucker(smoothed, fitOpts.resimplifyTolerance)
         : smoothed;
-    edge.setControlPoints(resimplified);
+    // If the route only ever bows to one side of the chord (a simple detour
+    // past a row of nodes), collapse it to a single symmetric midpoint arc at
+    // the shallowest depth that still clears the obstacles — the cleanest form
+    // for cases like tangent-grazing. Weaving routes (maze S, dense chords) bow
+    // both sides and are left as-is.
+    const collapsed = fitOpts.collapseSimpleArcs
+      ? collapseToSymmetricArc(
+          resimplified, centerOf(edge.srcNode), centerOf(edge.destNode),
+          edge.srcNode, edge.destNode, nodes, wcOpts.clearance,
+        )
+      : resimplified;
+    edge.setControlPoints(collapsed);
     edge.setSmoothRendering(true);
-    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} cps`);
+    log?.(`[bezier-fit-wc] edge ${edge.id} ${edge.srcNode.id}→${edge.destNode.id}: ${dense.length} → ${simplified.length} → ${trimmed.length} → ${declustered.length} → ${resimplified.length} → ${collapsed.length} cps`);
   }
 
   if (fitOpts.straightenUnobstructed) {
@@ -165,6 +196,9 @@ export function applyBezierFitWeightedChainEdges(
   }
   if (fitOpts.symmetrizeSiblings) {
     symmetrizeSiblingGroups(nodes, edges, wcOpts.clearance, fitOpts.siblingLaneGap, fitOpts.siblingBulge, log);
+  }
+  if (fitOpts.separateFanAttachments) {
+    separateFanAttachments(nodes, edges, fitOpts.fanAttachMinAngleDeg, log);
   }
   log?.('[bezier-fit-wc] done');
 }
@@ -335,6 +369,112 @@ function runsParallelClose(
   return false;
 }
 
+/** Spread the attach points of bent edges that leave/enter a shared node at
+ *  nearly the same angle, so they don't bunch where they touch the node. For
+ *  each node, the incident *bent* (≥1 cp), non-sibling edges are sorted by the
+ *  angle from the node centre to their nearest control point; any run within
+ *  `minAngleDeg` of each other is fanned out to exactly that spacing by giving
+ *  each a near-node control point in the re-spread direction. Straight edges
+ *  (0 cps) are skipped, so clean radial fans (hub-spoke, k3-3) are untouched. */
+function separateFanAttachments(
+  nodes: DANode[],
+  edges: DAEdge[],
+  minAngleDeg: number,
+  log?: (msg: string) => void,
+): void {
+  const minAngle = (minAngleDeg * Math.PI) / 180;
+  const SHOULDER = 75; // px from node centre to the inserted control point
+
+  // Sibling edges are already laned by the symmetrize pass; exclude them.
+  const pairCount = new Map<string, number>();
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    const k = unorderedPairKey(e);
+    pairCount.set(k, (pairCount.get(k) ?? 0) + 1);
+  }
+
+  // True if the polyline through [srcCenter, ...cps, destCenter] clears every
+  // non-incident node box (small margin) — used to reject a shoulder that would
+  // push the attachment into a neighbouring node.
+  const polyClears = (e: DAEdge, cps: Pt[]): boolean => {
+    const a = centerOf(e.srcNode), b = centerOf(e.destNode);
+    const path = [a, ...cps, b];
+    for (const nd of nodes) {
+      if (nd === e.srcNode || nd === e.destNode) continue;
+      const x = nd.konvaGroup.x(), y = nd.konvaGroup.y();
+      const bx0 = x - 4, by0 = y - 4, bx1 = x + nd.NODE_WIDTH + 4, by1 = y + nd.NODE_HEIGHT + 4;
+      // Skip the first and last segments: those run to the incident node
+      // *centres*, so they pass through the node interior (and sometimes a
+      // neighbour) even though the real edge stops at the perimeter. The
+      // shoulder we're testing always sits on an interior segment.
+      for (let i = 1; i < path.length - 2; i++) {
+        if (segIntersectsRect(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, bx0, by0, bx1, by1)) return false;
+      }
+    }
+    return true;
+  };
+
+  let spread = 0;
+  for (const n of nodes) {
+    const cn = centerOf(n);
+    type Incident = { e: DAEdge; isSrc: boolean; angle: number };
+    const incident: Incident[] = [];
+    for (const e of edges) {
+      if (e.srcNode === e.destNode) continue;
+      if ((pairCount.get(unorderedPairKey(e)) ?? 0) > 1) continue; // sibling
+      if (e.controlPoints.length === 0) continue;                 // straight
+      const isSrc = e.srcNode === n;
+      if (!isSrc && e.destNode !== n) continue;
+      const cps = e.controlPoints;
+      const aim = isSrc ? cps[0] : cps[cps.length - 1];
+      incident.push({ e, isSrc, angle: Math.atan2(aim.y - cn.y, aim.x - cn.x) });
+    }
+    if (incident.length < 2) continue;
+    incident.sort((a, b) => a.angle - b.angle);
+
+    // Walk runs of edges that are within minAngle of their predecessor.
+    let i = 0;
+    while (i < incident.length) {
+      let j = i;
+      while (j + 1 < incident.length && incident[j + 1].angle - incident[j].angle < minAngle) j++;
+      const group = incident.slice(i, j + 1);
+      if (group.length >= 2) {
+        // Greedy: keep each edge near its natural angle, but push any that
+        // would sit within minAngle of an already-placed edge away in whichever
+        // direction still clears the obstacles (offsets tried nearest-first,
+        // deeper before shallower). An edge that can stay at its natural angle
+        // keeps no shoulder.
+        const placed: number[] = [];
+        const offsets = [0, 1, -1, 2, -2, 3, -3];
+        for (const g of group) {
+          let done = false;
+          for (const o of offsets) {
+            const cand = g.angle + o * minAngle;
+            if (placed.some(a => Math.abs(cand - a) < minAngle * 0.95)) continue;
+            if (o === 0) { placed.push(cand); done = true; break; } // natural — no shoulder
+            for (const dist of [SHOULDER, 55, 40]) {
+              const shoulder = { x: cn.x + Math.cos(cand) * dist, y: cn.y + Math.sin(cand) * dist };
+              const cps = g.e.controlPoints.map(p => ({ x: p.x, y: p.y }));
+              if (g.isSrc) cps.unshift(shoulder); else cps.push(shoulder);
+              if (polyClears(g.e, cps)) {
+                g.e.setControlPoints(cps);
+                placed.push(cand);
+                spread++;
+                done = true;
+                break;
+              }
+            }
+            if (done) break;
+          }
+          if (!done) placed.push(g.angle);
+        }
+      }
+      i = j + 1;
+    }
+  }
+  log?.(`[bezier-fit-wc] fan-attach: spread ${spread} edge ends`);
+}
+
 /** Give each parallel/anti-parallel sibling group a clean, mirror-symmetric
  *  set of arcs — but only when the corridor between the two nodes is clear, so
  *  we never undo a route that was navigating an obstacle. Each edge in a group
@@ -481,6 +621,104 @@ function douglasPeucker(points: Pt[], tolerance: number): Pt[] {
 
 function dist(a: Pt, b: Pt): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/** Collapse a one-sided detour route into a single symmetric midpoint arc.
+ *  Only fires when every control point lies on the same side of the chord
+ *  (a simple hop past a row of nodes, not a weaving S). The single control
+ *  point sits at the chord midpoint, dipped to that side by the shallowest
+ *  depth at which the rendered curve still clears every non-incident node —
+ *  so two structurally-identical detours land at the same depth and a detour
+ *  past more nodes lands deeper. Returns the input unchanged if it weaves both
+ *  sides or no clearing depth is found within the search cap. */
+function collapseToSymmetricArc(
+  cps: Pt[],
+  srcCenter: Pt, destCenter: Pt,
+  srcNode: DANode, destNode: DANode,
+  nodes: DANode[], clearance: number,
+): Pt[] {
+  if (cps.length === 0) return cps;
+  const ux = destCenter.x - srcCenter.x;
+  const uy = destCenter.y - srcCenter.y;
+  const L = Math.hypot(ux, uy);
+  if (L < 1e-6) return cps;
+  const perpX = -uy / L, perpY = ux / L;
+
+  // Signed perpendicular offset of each cp from the chord; bail if it bows to
+  // both sides (a weave can't be one symmetric bump).
+  let sum = 0, minOff = Infinity, maxOff = -Infinity;
+  for (const p of cps) {
+    const off = (p.x - srcCenter.x) * perpX + (p.y - srcCenter.y) * perpY;
+    sum += off;
+    minOff = Math.min(minOff, off);
+    maxOff = Math.max(maxOff, off);
+  }
+  if (minOff < -8 && maxOff > 8) return cps; // weaves both sides
+  const side = sum >= 0 ? 1 : -1;
+
+  const boxes: Bbox2[] = [];
+  for (const n of nodes) {
+    if (n === srcNode || n === destNode) continue;
+    const x = n.konvaGroup.x(), y = n.konvaGroup.y();
+    boxes.push({
+      minX: x - clearance, minY: y - clearance,
+      maxX: x + n.NODE_WIDTH + clearance, maxY: y + n.NODE_HEIGHT + clearance,
+    });
+  }
+  const midX = (srcCenter.x + destCenter.x) / 2;
+  const midY = (srcCenter.y + destCenter.y) / 2;
+
+  // Shallowest depth (stepped) whose rendered arc clears every box.
+  const cap = L * 0.7;
+  for (let d = 8; d <= cap; d += 6) {
+    const cp = { x: midX + perpX * side * d, y: midY + perpY * side * d };
+    const poly = sampleTensionSpline([srcCenter, cp, destCenter], 0.5, 12);
+    let clear = true;
+    for (let i = 0; i < poly.length - 1 && clear; i++) {
+      for (const b of boxes) {
+        if (segIntersectsRect(poly[i].x, poly[i].y, poly[i + 1].x, poly[i + 1].y, b.minX, b.minY, b.maxX, b.maxY)) {
+          clear = false;
+          break;
+        }
+      }
+    }
+    if (clear) return [cp];
+  }
+  return cps;
+}
+
+/** Sample the Catmull-Rom tension spline through `points`, matching Konva's
+ *  tensioned Line: each interior point gets a pair of bezier handles scaled by
+ *  `tension`, and each span is a cubic bezier sampled `per` times. */
+function sampleTensionSpline(points: Pt[], tension: number, per: number): Pt[] {
+  const n = points.length;
+  if (n < 3) return points.slice();
+  const cp1: (Pt | null)[] = new Array(n).fill(null);
+  const cp2: (Pt | null)[] = new Array(n).fill(null);
+  for (let i = 1; i < n - 1; i++) {
+    const p0 = points[i - 1], p1 = points[i], p2 = points[i + 1];
+    const d01 = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+    const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+    const fa = (tension * d01) / (d01 + d12 || 1);
+    const fb = (tension * d12) / (d01 + d12 || 1);
+    cp1[i] = { x: p1.x - fa * (p2.x - p0.x), y: p1.y - fa * (p2.y - p0.y) };
+    cp2[i] = { x: p1.x + fb * (p2.x - p0.x), y: p1.y + fb * (p2.y - p0.y) };
+  }
+  const out: Pt[] = [points[0]];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = points[i], p1 = points[i + 1];
+    const c0 = i === 0 ? p0 : cp2[i]!;
+    const c1 = i + 1 === n - 1 ? p1 : cp1[i + 1]!;
+    for (let s = 1; s <= per; s++) {
+      const t = s / per, mt = 1 - t;
+      const a = mt * mt * mt, b = 3 * mt * mt * t, c = 3 * mt * t * t, dd = t * t * t;
+      out.push({
+        x: a * p0.x + b * c0.x + c * c1.x + dd * p1.x,
+        y: a * p0.y + b * c0.y + c * c1.y + dd * p1.y,
+      });
+    }
+  }
+  return out;
 }
 
 /** Greedily prune control points until removing any more would make the path
