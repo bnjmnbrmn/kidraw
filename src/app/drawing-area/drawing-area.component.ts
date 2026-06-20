@@ -21,6 +21,7 @@ import {
   applyDesiderataRouteEdges,
   DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
 } from './desiderata-route-edges';
+import type { RoutingRequest, RoutingResponse } from './routing-worker-messages';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
@@ -197,6 +198,45 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_NODE_SHAPE,
   ]);
 
+  private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
+    DACommandType.CREATE_NEW_NODE,
+    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.INSERT_WAYPOINT,
+    DACommandType.CONNECT_SELECTED_NODES,
+    DACommandType.BEGIN_DIRECTED_EDGE,
+    DACommandType.SET_EDGE_DESTINATION,
+    DACommandType.FINALIZE_DIRECTED_EDGE,
+    DACommandType.ADD_LABEL,
+    DACommandType.EDIT_SELECTED,
+    DACommandType.INSERT_CHAR,
+    DACommandType.DELETE_LAST_CHAR,
+    DACommandType.DELETE,
+    DACommandType.UNDO,
+    DACommandType.REDO,
+    DACommandType.INCREASE_SELECTED_NODE_SIZE,
+    DACommandType.DECREASE_SELECTED_NODE_SIZE,
+    DACommandType.INCREASE_SELECTED_TEXT_SIZE,
+    DACommandType.DECREASE_SELECTED_TEXT_SIZE,
+    DACommandType.DRAG_SELECTED_LEFT,
+    DACommandType.DRAG_SELECTED_RIGHT,
+    DACommandType.DRAG_SELECTED_UP,
+    DACommandType.DRAG_SELECTED_DOWN,
+    DACommandType.SET_TEXT_OVERFLOW_MODE,
+    DACommandType.SET_NODE_SHAPE,
+    DACommandType.SET_EDGE_DIRECTEDNESS,
+    DACommandType.SET_LINE_STYLE,
+    DACommandType.SET_ITEM_COLOR,
+    DACommandType.LOAD_SAMPLE_GRAPH,
+    DACommandType.LOAD_GRAPH,
+    DACommandType.LOAD_NAMED_GRAPH,
+    DACommandType.NEW_GRAPH,
+    DACommandType.OPEN_FILE,
+    DACommandType.CYCLE_DISPLAY,
+    DACommandType.TOGGLE_PIN_SELECTED,
+    DACommandType.APPLY_LAYOUT,
+    DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES,
+  ]);
+
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -274,12 +314,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  here (the tuning panel was removed). */
   private lastAppliedRouting: 'bezier-fit-weighted-chain' | 'desiderata' | null = null;
 
+  /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
+   *  can't freeze the UI. These track the in-flight run so we can drive the
+   *  countdown, enforce the timeout, and cancel a superseding run. */
+  private routingWorker: Worker | null = null;
+  private routingCountdown: ReturnType<typeof setInterval> | null = null;
+  private routingDeadline: ReturnType<typeof setTimeout> | null = null;
+  private static readonly ROUTING_TIMEOUT_MS = 15000;
+
   ngOnInit(): void {
   }
 
   private _beforeUnloadHandler?: () => void;
 
   ngOnDestroy(): void {
+    this.stopRouting();
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
     if (this._beforeUnloadHandler) {
@@ -336,6 +385,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private handleCommands(command: DACommand) {
     this.log.log("handleCommands - " + JSON.stringify(command));
+
+    if (this.isRoutingInProgress() && DrawingAreaComponent.ROUTING_LOCKED_COMMANDS.has(command.kind)) {
+      this.daOut.emit({ kind: 'status-message', message: 'Layout is running; graph edits are locked.' });
+      return;
+    }
 
     // Push undo snapshot before mutating commands
     if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind)) {
@@ -1089,32 +1143,120 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private applyBezierFitWeightedChainEdges() {
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
     const allNodes = this.drawingLayer.getDANodes();
     const allEdges = this.drawingLayer.getDAEdges();
 
     const selectedEdges = allEdges.filter(e => e.isSelected);
     const routeSubset = selectedEdges.length > 0;
-    const edges = routeSubset ? selectedEdges : allEdges;
+    const routeEdges = routeSubset ? selectedEdges : allEdges;
     // When routing only a subset, the unselected edges stay put but still act
     // as obstacles so the routed edges weave around them rather than overlap.
     const frozenEdges = routeSubset ? allEdges.filter(e => !e.isSelected) : [];
 
-    // Production routing is the desiderata pipeline: the bf-wc post-processing
-    // (straighten / symmetric lenses / collapse / fan-separate) followed by the
-    // desiderata refinement pass (thins maze-style bend clusters, separates
-    // bunched fans, straightens clear stars). desiderata wraps bf-wc, so this
-    // is "bf-wc + desiderata pass". (The method/command keep the bf-wc name.)
-    applyDesiderataRouteEdges(
-      allNodes, edges,
-      DESIDERATA_DEFAULTS,
-      msg => this.log.log(msg),
-      frozenEdges,
-    );
-    edges.forEach(e => e.promoteToWaypoints());
+    this.routeInWorker(allNodes, allEdges, routeEdges, frozenEdges);
+  }
+
+  /** Run layout (edge routing) in the Web Worker with a live countdown and a
+   *  hard timeout, so a non-converging graph can't freeze the UI. Production
+   *  routing is the desiderata pipeline (bf-wc post-processing + the desiderata
+   *  refinement pass). Falls back to synchronous routing where Worker is
+   *  unavailable. */
+  private routeInWorker(
+    allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
+  ): void {
+    this.stopRouting(); // supersede any in-flight run
+
+    if (typeof Worker === 'undefined') {
+      this.applyRoutingSync(allNodes, allEdges, routeEdges, frozenEdges);
+      return;
+    }
+
+    const request: RoutingRequest = {
+      nodes: allNodes.map(n => ({
+        id: n.id, x: n.konvaGroup.x(), y: n.konvaGroup.y(),
+        width: n.NODE_WIDTH, height: n.NODE_HEIGHT, shape: n.nodeShape,
+      })),
+      routeEdges: routeEdges.map(e => ({ id: e.id, srcId: e.srcNode.id, destId: e.destNode.id })),
+      frozenEdges: frozenEdges.map(e => ({
+        id: e.id, srcId: e.srcNode.id, destId: e.destNode.id,
+        controlPoints: e.controlPoints.map(p => ({ x: p.x, y: p.y })),
+      })),
+    };
+
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL('./routing.worker', import.meta.url));
+    } catch {
+      this.applyRoutingSync(allNodes, allEdges, routeEdges, frozenEdges);
+      return;
+    }
+    this.routingWorker = worker;
+
+    worker.onmessage = ({ data }: MessageEvent<RoutingResponse>) => {
+      this.stopRouting();
+      this.applyRoutedControlPoints(data, allNodes, allEdges);
+      this.daOut.emit({ kind: 'status-message', message: '' });
+    };
+    worker.onerror = () => {
+      this.stopRouting();
+      this.daOut.emit({ kind: 'status-message', message: '⚠ Layout failed (routing error).' });
+    };
+
+    const deadline = Date.now() + DrawingAreaComponent.ROUTING_TIMEOUT_MS;
+    const tick = () => {
+      const remaining = Math.max(0, deadline - Date.now()) / 1000;
+      this.daOut.emit({ kind: 'status-message', message: `Calculating layout… ${remaining.toFixed(1)}s` });
+    };
+    tick();
+    this.routingCountdown = setInterval(tick, 100);
+    this.routingDeadline = setTimeout(() => {
+      this.stopRouting();
+      const secs = DrawingAreaComponent.ROUTING_TIMEOUT_MS / 1000;
+      this.daOut.emit({ kind: 'status-message', message: `⚠ Layout gave up after ${secs}s — graph too complex to converge.` });
+    }, DrawingAreaComponent.ROUTING_TIMEOUT_MS);
+
+    worker.postMessage(request);
+  }
+
+  /** Apply the control points the worker computed onto the live edges. Edges
+   *  removed while routing ran are simply skipped. */
+  private applyRoutedControlPoints(result: RoutingResponse, allNodes: DANode[], allEdges: DAEdge[]): void {
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    const byId = new Map(allEdges.map(e => [e.id, e]));
+    for (const routed of result.edges) {
+      const edge = byId.get(routed.id);
+      if (!edge) continue;
+      edge.setControlPoints(routed.controlPoints);
+      edge.setSmoothRendering(true);
+      edge.promoteToWaypoints();
+    }
     this.drawingLayer.batchDraw();
     this.lastAppliedRouting = 'desiderata';
     this.metrics.compute(allNodes, allEdges);
+  }
+
+  /** Synchronous routing fallback for environments without Web Workers. */
+  private applyRoutingSync(
+    allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
+  ): void {
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    applyDesiderataRouteEdges(allNodes, routeEdges, DESIDERATA_DEFAULTS, msg => this.log.log(msg), frozenEdges);
+    routeEdges.forEach(e => e.promoteToWaypoints());
+    this.drawingLayer.batchDraw();
+    this.lastAppliedRouting = 'desiderata';
+    this.metrics.compute(allNodes, allEdges);
+  }
+
+  /** Tear down the in-flight routing run: stop the countdown + timeout and kill
+   *  the worker. Safe to call when nothing is running. */
+  private stopRouting(): void {
+    if (this.routingCountdown !== null) { clearInterval(this.routingCountdown); this.routingCountdown = null; }
+    if (this.routingDeadline !== null) { clearTimeout(this.routingDeadline); this.routingDeadline = null; }
+    if (this.routingWorker) { this.routingWorker.terminate(); this.routingWorker = null; }
+  }
+
+  private isRoutingInProgress(): boolean {
+    return this.routingWorker !== null;
   }
 
   private exitLabelEditMode() {

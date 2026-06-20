@@ -1,5 +1,5 @@
-import { DANode } from './da-node';
-import { DAEdge } from './da-edge';
+import type { DANode } from './da-node';
+import type { DAEdge } from './da-edge';
 
 /** Quality metrics for a routed graph. Hard fails are counts that should
  *  ideally be zero (any nonzero value makes the composite -Infinity). Soft

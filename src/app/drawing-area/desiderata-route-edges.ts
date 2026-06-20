@@ -1,5 +1,5 @@
-import { DANode } from './da-node';
-import { DAEdge } from './da-edge';
+import type { DANode } from './da-node';
+import type { DAEdge } from './da-edge';
 import {
   applyBezierFitWeightedChainEdges,
   BezierFitWeightedChainOptions,
