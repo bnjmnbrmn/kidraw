@@ -30,6 +30,12 @@ export interface DesiderataRouteOptions {
   satisfiedSharedEndpointGap: number;
   satisfiedIncidentAngleDeg: number;
   simplifyMaxEdgeNodeRatio: number;
+  /** Leave parallel/anti-parallel sibling groups (≥2 edges between the same
+   *  node pair) untouched by the simplification passes. The bf-wc base already
+   *  shapes them into clean mirror-symmetric lenses; the generic prune/snap/fan
+   *  edits otherwise flatten that symmetry. The desiderata pass keeps its wins
+   *  on single-edge detours (maze) and obstacle fans (converge) regardless. */
+  preserveSiblingArcs: boolean;
 }
 
 export const DEFAULT_OPTIONS: DesiderataRouteOptions = {
@@ -44,6 +50,7 @@ export const DEFAULT_OPTIONS: DesiderataRouteOptions = {
   satisfiedSharedEndpointGap: 18,
   satisfiedIncidentAngleDeg: 12,
   simplifyMaxEdgeNodeRatio: 1.5,
+  preserveSiblingArcs: true,
 };
 
 /** Experimental router: generate a plausible route, then apply prioritized
@@ -89,11 +96,13 @@ function improveSharedEndpointFans(nodes: DANode[], edges: DAEdge[], opts: Desid
   for (const node of nodes) {
     const incident = edges.filter(edge => edge.destNode === node);
     if (incident.length < 3) continue;
+    if (fanWellSeparated(node, incident, opts)) continue;
     let progress = true;
     while (progress) {
       progress = false;
       for (const edge of incident) {
         if (edge.srcNode === edge.destNode || hasPinnedControlPoint(edge)) continue;
+        if (opts.preserveSiblingArcs && isSiblingEdge(edge, edges)) continue;
         const current = ptsOf(edge);
         const candidates = fanEditCandidates(edge, node, opts);
         let best = current;
@@ -202,6 +211,7 @@ function snapWaypointsToMajorGrid(nodes: DANode[], edges: DAEdge[], opts: Deside
   let changed = false;
   for (const edge of edges) {
     if (edge.srcNode === edge.destNode || hasPinnedControlPoint(edge)) continue;
+    if (opts.preserveSiblingArcs && isSiblingEdge(edge, edges)) continue;
     const original = ptsOf(edge);
     for (let i = 0; i < original.length; i++) {
       const current = ptsOf(edge);
@@ -228,6 +238,7 @@ function pruneRedundantWaypoints(nodes: DANode[], edges: DAEdge[], opts: Desider
   let changed = false;
   for (const edge of edges) {
     if (edge.srcNode === edge.destNode || hasPinnedControlPoint(edge)) continue;
+    if (opts.preserveSiblingArcs && isSiblingEdge(edge, edges)) continue;
     let current = ptsOf(edge);
     let progress = true;
     while (progress && current.length > 0) {
@@ -441,6 +452,20 @@ function hasPinnedControlPoint(edge: DAEdge): boolean {
   return edge.controlPoints.some(p => p.pinned);
 }
 
+/** True if another edge connects the same (unordered) node pair — i.e. this
+ *  edge is part of a parallel/anti-parallel sibling group that the bf-wc base
+ *  already shaped into a symmetric lens/fan. */
+function isSiblingEdge(edge: DAEdge, edges: DAEdge[]): boolean {
+  for (const other of edges) {
+    if (other === edge || other.srcNode === other.destNode) continue;
+    if ((other.srcNode === edge.srcNode && other.destNode === edge.destNode) ||
+        (other.srcNode === edge.destNode && other.destNode === edge.srcNode)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 interface Bbox { minX: number; minY: number; maxX: number; maxY: number; }
 
 function bboxOf(node: DANode): Bbox {
@@ -572,6 +597,29 @@ function projectedOverlapLength(a1: Pt, a2: Pt, b1: Pt, b2: Pt): number {
   const bMin = Math.min(bProj1, bProj2);
   const bMax = Math.max(bProj1, bProj2);
   return Math.max(0, Math.min(aMax, bMax) - Math.max(aMin, bMin));
+}
+
+/** True if the edges entering `node` already fan apart past the "satisfied"
+ *  separation thresholds — so they don't need a fan edit. Keeps the pass from
+ *  bending an already-clean fan of straight edges (k3-3) while still acting on
+ *  a genuinely bunched fan (converge-circular's In). */
+function fanWellSeparated(node: DANode, incident: DAEdge[], opts: DesiderataRouteOptions): boolean {
+  const dirs: Pt[] = [];
+  const pts: Pt[] = [];
+  for (const edge of incident) {
+    const path = edge.getPathPoints();
+    if (path.length < 2) continue;
+    pts.push(path[path.length - 1]);
+    dirs.push(vector(path[path.length - 1], path[path.length - 2]));
+  }
+  let minAngle = Infinity, minGap = Infinity;
+  for (let i = 0; i < dirs.length; i++) {
+    for (let j = i + 1; j < dirs.length; j++) {
+      minAngle = Math.min(minAngle, angleBetween(dirs[i], dirs[j]));
+      minGap = Math.min(minGap, dist(pts[i], pts[j]));
+    }
+  }
+  return minAngle >= opts.satisfiedIncidentAngleDeg && minGap >= opts.satisfiedSharedEndpointGap;
 }
 
 function computeIncidentSeparation(edges: DAEdge[]): {
