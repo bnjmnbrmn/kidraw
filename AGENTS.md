@@ -29,7 +29,8 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
 ## Dev commands
 
 ```bash
-npm start                                              # dev server at localhost:4200
+npm start                                              # log server + dev server at localhost:4200
+npm start -- --port "$(tools/worktree-port.sh)"        # log server + worktree-safe dev server port
 npx ng test --watch=false --browsers=ChromeHeadless   # run tests
 npx ng build                                          # production build / type-check
 ```
@@ -103,7 +104,7 @@ Each implementer agent works in its own git worktree to allow parallel work with
 Usage from inside any worktree:
 
 ```bash
-npx ng serve --port "$(tools/worktree-port.sh)"
+npm start -- --port "$(tools/worktree-port.sh)"
 ```
 
 Docker is deferred until port assignment proves insufficient.

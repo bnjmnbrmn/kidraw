@@ -10,7 +10,7 @@ const PORT = 9222;
 // Clear log on startup
 fs.writeFileSync(LOG_FILE, '');
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -31,4 +31,14 @@ http.createServer((req, res) => {
       res.end();
     });
   }
-}).listen(PORT, () => console.log(`Log server on :${PORT}, writing to ${LOG_FILE}`));
+});
+
+server.on('error', err => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Log server port :${PORT} is already in use; assuming a log collector is running.`);
+    process.exit(0);
+  }
+  throw err;
+});
+
+server.listen(PORT, () => console.log(`Log server on :${PORT}, writing to ${LOG_FILE}`));

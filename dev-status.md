@@ -182,7 +182,8 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 ## Dev commands
 
 ```bash
-npm start                                              # dev server at localhost:4200
+npm start                                              # log server + dev server at localhost:4200
+npm start -- --port "$(tools/worktree-port.sh)"        # log server + worktree-safe dev server port
 npx ng test --watch=false --browsers=ChromeHeadless   # run tests (do NOT use npm test)
 npx ng build                                          # production build / type-check
 ```

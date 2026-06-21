@@ -15,10 +15,10 @@
 # Usage:
 #   PORT=$(tools/worktree-port.sh)        # uses $(pwd) as the worktree path
 #   PORT=$(tools/worktree-port.sh /path)  # explicit worktree path
-#   npx ng serve --port "$PORT"
+#   npm start -- --port "$PORT"
 #
 # Or as a one-liner:
-#   npx ng serve --port "$(tools/worktree-port.sh)"
+#   npm start -- --port "$(tools/worktree-port.sh)"
 #
 # If the chosen port is already bound (very rare collision), the script falls
 # back to the next free slot in the [4200, 4249] range and reports the chosen
