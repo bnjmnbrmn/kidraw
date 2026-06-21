@@ -11,4 +11,6 @@ export interface KeyMenuMode<T> {
   beforeSwitchOut(): void;
 
   beforeSwitchIn(): void;
+
+  cancelInputState?(): void;
 }

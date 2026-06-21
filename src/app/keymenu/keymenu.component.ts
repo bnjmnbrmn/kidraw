@@ -1014,25 +1014,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @HostListener('document:visibilitychange')
   handleWindowBlur() {
     if (!this.keyMenu) return;
-    const mode = this.keyMenu.currentMode;
-    if (mode instanceof USQwertyMode) {
-      // Cancel any in-flight slide animations first
-      mode.cancelAllTweensAndReset();
-      // Pop all submenus back to root and clear all state
-      while (mode.stack.length > 1) {
-        mode.stackTop.hideAllKeys();
-        mode.stackTop.unhighlightAllKeys();
-        mode.stackTop.stopAllScheduledActions();
-        mode.stack.pop();
-      }
-      mode.submenuKeyStringStack.splice(1);
-      mode.stackTop.showAllKeys();
-      mode.stackTop.unhighlightAllKeys();
-      mode.stackTop.stopAllScheduledActions();
-    }
+    this.keyMenu.cancelAllInputState();
     this.resetInteractionState();
     this.directedEdgeActive = false;
     this.resetHelpMode();
+    this.refreshActiveKeyPath();
   }
 
   private remapEvent(event: KeyboardEvent): KeyboardEvent {

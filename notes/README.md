@@ -59,6 +59,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Overlapping-nodes handling](idea-overlapping-nodes-handling.md)
 - [Labels without visible boxes by default](idea-label-no-default-box.md)
 - [Movement acceleration](idea-movement-acceleration.md)
+- [Crosshair visual treatment](idea-crosshair-visual-treatment.md)
 - [Rich text in nodes and labels (markdown, math)](idea-rich-text.md)
 - [Cut / copy / paste](idea-cut-copy-paste.md)
 - [Naming — edges vs links](idea-naming-edges-vs-links.md)
@@ -66,6 +67,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 **Routing / layout:**
 
 - [Auto-tune edge-routing parameters on benchmark graphs](idea-routing-auto-tune.md)
+- [Incremental desiderata-first edge routing](idea-incremental-edge-routing.md)
 - [Deprecated routing algorithms (resurrection notes)](algo-deprecated-routers.md) — the 5 routers removed when the project consolidated to bezier-fit-weighted-chain.
 
 **Code health / process:**

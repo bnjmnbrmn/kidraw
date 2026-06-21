@@ -766,7 +766,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  coordinates. The circle is drawn unscaled on the crosshairs layer, so its
    *  effective size relative to the drawing layer changes with zoom. */
   private crosshairsCircleRadiusInLayerCoords(): number {
-    return this.crosshairsLayer.crosshairs.CROSSHAIRS_LENGTH / this.drawingLayer.scaleX();
+    return Math.max(this.crosshairsLayer.crosshairs.hitRadiusX, this.crosshairsLayer.crosshairs.hitRadiusY) / this.drawingLayer.scaleX();
   }
 
   /** Waypoint overlapping the crosshairs' selection circle — i.e. whose dot
@@ -1458,6 +1458,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const minorSpacing = this.drawingLayer.getSubGridSpacing();
       const currentDlX = (currentX - this.drawingLayer.x()) / scale;
       const currentDlY = (currentY - this.drawingLayer.y()) / scale;
+      const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
 
       // 'normal' movement is half a major cell, snapped to the minor grid
       // (minorSpacing is 1/10th of majorSpacing, so 5 minor steps == half a
@@ -1472,8 +1473,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         steps = 10;
       } else {
         spacing = minorSpacing;
-        steps = 5;
+        steps = axis
+          ? this.resolveNormalMovementSteps(axis, axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY), currentDlX, currentDlY, minorSpacing)
+          : 5;
       }
+      this.updateCrosshairsProbeShape(axis, tier, minorSpacing, majorSpacing, steps * spacing, scale);
 
       const snappedDlX = deltaX !== 0
         ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
@@ -1524,6 +1528,137 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Show grid and indicators on movement, then fade after 5s
     this.showMovementIndicators();
+  }
+
+  private resolveNormalMovementSteps(
+    axis: 'x' | 'y',
+    sign: number,
+    currentDlX: number,
+    currentDlY: number,
+    minorSpacing: number,
+  ): number {
+    const normalSteps = 5;
+    const coords = this.collectMovementFeatureCoordinates(axis, currentDlX, currentDlY, minorSpacing);
+    if (coords.length < 1) return normalSteps;
+
+    const current = axis === 'x' ? currentDlX : currentDlY;
+    const before = coords.filter(c => c < current - 0.01).at(-1);
+    const after = coords.find(c => c > current + 0.01);
+    if (before !== undefined && after !== undefined) {
+      const gapSteps = (after - before) / minorSpacing;
+      if (gapSteps <= normalSteps * 2) return 1;
+      if (gapSteps <= normalSteps * 3) return 2;
+      if (gapSteps <= normalSteps * 4) return 3;
+    }
+
+    const next = sign > 0 ? after : before;
+    if (next !== undefined) {
+      const distanceSteps = Math.abs(next - current) / minorSpacing;
+      if (distanceSteps > 1 && distanceSteps < normalSteps) return 1;
+    }
+
+    return normalSteps;
+  }
+
+  private collectMovementFeatureCoordinates(
+    axis: 'x' | 'y',
+    currentDlX: number,
+    currentDlY: number,
+    minorSpacing: number,
+  ): number[] {
+    const perpendicular = axis === 'x' ? currentDlY : currentDlX;
+    const scale = this.drawingLayer.scaleX();
+    const radius = axis === 'x'
+      ? this.crosshairsLayer.crosshairs.hitRadiusY / scale
+      : this.crosshairsLayer.crosshairs.hitRadiusX / scale;
+    const tolerance = Math.max(radius, minorSpacing);
+    const coords: number[] = [];
+    const add = (value: number) => {
+      if (Number.isFinite(value)) coords.push(value);
+    };
+    const spansPerpendicular = (min: number, max: number) =>
+      perpendicular >= min - tolerance && perpendicular <= max + tolerance;
+
+    for (const node of this.drawingLayer.getDANodes()) {
+      const minX = node.group.x();
+      const maxX = minX + node.NODE_WIDTH;
+      const minY = node.group.y();
+      const maxY = minY + node.NODE_HEIGHT;
+      if (axis === 'y' && spansPerpendicular(minX, maxX)) {
+        add(minY);
+        add(maxY);
+      } else if (axis === 'x' && spansPerpendicular(minY, maxY)) {
+        add(minX);
+        add(maxX);
+      }
+    }
+
+    for (const edge of this.drawingLayer.getDAEdges()) {
+      for (const waypoint of edge.waypoints) {
+        const wpPerpendicular = axis === 'x' ? waypoint.y : waypoint.x;
+        if (Math.abs(wpPerpendicular - perpendicular) <= tolerance) {
+          add(axis === 'x' ? waypoint.x : waypoint.y);
+        }
+      }
+      for (const label of edge.labels) {
+        const minX = label.x - label.RECT_WIDTH / 2;
+        const maxX = label.x + label.RECT_WIDTH / 2;
+        const minY = label.y - label.RECT_HEIGHT / 2;
+        const maxY = label.y + label.RECT_HEIGHT / 2;
+        if (axis === 'y' && spansPerpendicular(minX, maxX)) {
+          add(minY);
+          add(maxY);
+        } else if (axis === 'x' && spansPerpendicular(minY, maxY)) {
+          add(minX);
+          add(maxX);
+        }
+      }
+
+      const points = edge.getPathPoints();
+      for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const primaryA = axis === 'x' ? a.x : a.y;
+        const primaryB = axis === 'x' ? b.x : b.y;
+        const perpA = axis === 'x' ? a.y : a.x;
+        const perpB = axis === 'x' ? b.y : b.x;
+        const dPerp = perpB - perpA;
+        if (Math.abs(dPerp) < 0.01) {
+          if (Math.abs(perpA - perpendicular) <= tolerance) {
+            add(primaryA);
+            add(primaryB);
+          }
+          continue;
+        }
+        const t = (perpendicular - perpA) / dPerp;
+        if (t >= -0.01 && t <= 1.01) {
+          add(primaryA + (primaryB - primaryA) * Math.max(0, Math.min(1, t)));
+        }
+      }
+    }
+
+    coords.sort((a, b) => a - b);
+    return coords.filter((value, index) => index === 0 || Math.abs(value - coords[index - 1]) > minorSpacing * 0.25);
+  }
+
+  private updateCrosshairsProbeShape(
+    axis: 'x' | 'y' | null,
+    tier: GridTier,
+    minorSpacing: number,
+    majorSpacing: number,
+    stepDistance: number,
+    scale: number,
+  ): void {
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+    let radius: number;
+    if (tier === 'fine') {
+      radius = clamp(minorSpacing * scale, 5, 12);
+    } else if (tier === 'coarse') {
+      radius = clamp((majorSpacing * scale) / 2, 18, 42);
+    } else {
+      radius = clamp(Math.max((stepDistance * scale) / 2, minorSpacing * scale), 6, 22);
+    }
+    this.crosshairsLayer.setHitRadii(radius, radius);
   }
 
   private showMovementIndicators(): void {

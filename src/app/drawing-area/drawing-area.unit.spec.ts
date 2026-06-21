@@ -5,6 +5,7 @@ import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACrosshairs } from './da-crosshairs.group';
+import { DrawingAreaComponent } from './drawing-area.component';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
 
@@ -219,6 +220,38 @@ describe('DrawingArea Unit Tests', () => {
 
       crosshairs.setHeadingVisible(false);
       expect(headingLine.visible()).toBe(false);
+    });
+
+    it('should update hit radii and rendered line extents', () => {
+      const crosshairs = new DACrosshairs({ x: 0, y: 0 });
+      crosshairs.setHitRadii(12, 8);
+
+      const horizLine = crosshairs.konvaGroup.getChildren()[1] as Konva.Line;
+      const vertLine = crosshairs.konvaGroup.getChildren()[2] as Konva.Line;
+
+      expect(crosshairs.hitRadiusX).toBe(12);
+      expect(crosshairs.hitRadiusY).toBe(8);
+      expect(horizLine.points()).toEqual([-12, 0, 12, 0]);
+      expect(vertLine.points()).toEqual([0, -8, 0, 8]);
+    });
+  });
+
+  describe('adaptive normal movement', () => {
+    it('uses one minor step in a tight corridor between nearby axis features', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      component.crosshairsLayer = {crosshairs: new DACrosshairs({x: 0, y: 0})};
+      component.drawingLayer = {
+        scaleX: () => 1,
+        getDANodes: () => [
+          new DANode(-20, -30, 'top'),
+          new DANode(-20, 5, 'bottom'),
+        ],
+        getDAEdges: () => [],
+      };
+
+      const steps = component.resolveNormalMovementSteps('y', 1, 0, 0, 5);
+
+      expect(steps).toBe(1);
     });
   });
 

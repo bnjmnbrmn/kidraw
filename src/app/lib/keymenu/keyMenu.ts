@@ -119,8 +119,14 @@ export class KeyMenu<T> {
     this.modeLabel.fill(color);
   }
 
-  destroy() {
+  cancelAllInputState() {
     this.keysDown.clear();
+    Object.values(this.modesForNames).forEach((mode) => mode.cancelInputState?.());
+    this.onModeSwitch?.(this.currentMode.name);
+  }
+
+  destroy() {
+    this.cancelAllInputState();
     this.stage.destroy();
   }
 

@@ -87,6 +87,21 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
       this.stackTop.showAllKeys();
     }
 
+    cancelInputState(): void {
+        this.cancelAllTweensAndReset();
+        this.stack.forEach((submenu) => {
+            submenu.unhighlightAllKeys();
+            submenu.stopAllScheduledActions();
+        });
+        while (this.stack.length > 1) {
+            this.stackTop.hideAllKeys();
+            this.stack.pop();
+        }
+        this.submenuKeyStringStack.splice(1);
+        this.slideOrigins.clear();
+        this.stackTop.showAllKeys();
+    }
+
 
     get stackTop() {
         return this.stack[this.stack.length - 1];

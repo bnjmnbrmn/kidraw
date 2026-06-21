@@ -90,7 +90,7 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 
 **1. Serialization / file format.** Design + implementation substantially complete (see Recently Completed for Phase 1–4, 6–9 of the `serialization-plan.md` rollout). The user can now Open / Save As / Export Zip / Cycle Display through the keymenu (`m → o`, `m → a`, `m → z`, `m → d`); single-file and zip-bundle multi-file workflows both work; cascade resolver drives display composition; `localStorage` draft schema v2 with v1 auto-migration is live. **Remaining**: Phase 5 (FSA API for persistent file handles on Chromium) and Phase 10 (dirty indicator + `beforeunload` + minor UX polish).
 
-**2. Edge routing — auto-layout quality.** Five custom physics-based routers already work (`b → *`); the next push is making auto-routing genuinely good. Near-term option (`graph-layout-research.md`): integrate `libavoid-js` (WASM, obstacle-avoiding polyline routing) — maps directly to existing waypoints. Longer-term R&D: polyline nudging — endpoint propagation, iterative stability, dynamic angular spacing (a potential KiDraw differentiator since libavoid's nudging is orthogonal-only). Also queued: auto-tuning parameter sweeps on benchmark graphs (per memory notes), and fixing the bezier anti-parallel overlap bug.
+**2. Edge routing — auto-layout quality.** Five custom physics-based routers already work (`b → *`); the next push is making auto-routing genuinely good. Near-term option (`graph-layout-research.md`): integrate `libavoid-js` (WASM, obstacle-avoiding polyline routing) — maps directly to existing waypoints. Longer-term R&D: polyline nudging — endpoint propagation, iterative stability, dynamic angular spacing (a potential KiDraw differentiator since libavoid's nudging is orthogonal-only). Also queued: auto-tuning parameter sweeps on benchmark graphs, and an incremental desiderata-first router that lays down edges one by one before an optional weighted-chain/bezier-fit cleanup pass (see [`notes/idea-incremental-edge-routing.md`](notes/idea-incremental-edge-routing.md)).
 
 ### Other queued items
 
@@ -101,6 +101,7 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 - **Self-linking edges** — need control points forming a loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
 - **Gather feature** — should be recursive and push away nodes; relates to applying layouts more generally.
+- **Crosshair visual treatment** — make the crosshairs feel like interaction chrome rather than part of the diagram; explore distinct color, animation/pulse, transparency, and less distracting adaptive hit-radius visuals (see [`notes/idea-crosshair-visual-treatment.md`](notes/idea-crosshair-visual-treatment.md)).
 - **Label edit mode overhaul** *(deprioritized — design needs revisiting)*. Earlier idea was a card-based renderer with vim/emacs keybindings and a vim command bar. Revisit once serialization and routing land.
 
 ### Recently completed (2026-05-16 session)

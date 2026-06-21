@@ -39,6 +39,11 @@ export class CrosshairsLayer extends Konva.Layer {
       this.batchDraw();
     }
 
+    setHitRadii(radiusX: number, radiusY: number) {
+      this.crosshairs.setHitRadii(radiusX, radiusY);
+      this.batchDraw();
+    }
+
     updateCrosshairsColor(color: string) {
       this.crosshairs.updateStrokeColor(color);
       this.batchDraw();
