@@ -8,8 +8,24 @@ import {
 } from './bezier-fit-weighted-chain-edges';
 import { computeRoutingMetrics, RoutingMetrics } from './edge-routing-metrics';
 import { WeightedChainOptions } from './weighted-chain-edges';
+import {
+  Pt,
+  Bbox,
+  vector,
+  unit,
+  dist,
+  angleBetween,
+  segmentsIntersect,
+  roundTo,
+  samePoints,
+  uniquePoints,
+  pointSegmentDistance,
+  bboxOf,
+  inflateBox,
+  insideBox,
+  segmentIntersectsBox,
+} from './routing-geometry';
 
-interface Pt { x: number; y: number; }
 type RouteScore = RoutingMetrics & {
   broadCrossings: number;
   closeParallelSegments: number;
@@ -466,55 +482,6 @@ function isSiblingEdge(edge: DAEdge, edges: DAEdge[]): boolean {
   return false;
 }
 
-interface Bbox { minX: number; minY: number; maxX: number; maxY: number; }
-
-function bboxOf(node: DANode): Bbox {
-  const x = node.konvaGroup.x();
-  const y = node.konvaGroup.y();
-  return { minX: x, minY: y, maxX: x + node.NODE_WIDTH, maxY: y + node.NODE_HEIGHT };
-}
-
-function inflateBox(box: Bbox, amount: number): Bbox {
-  return {
-    minX: box.minX - amount,
-    minY: box.minY - amount,
-    maxX: box.maxX + amount,
-    maxY: box.maxY + amount,
-  };
-}
-
-function insideBox(point: Pt, box: Bbox): boolean {
-  return point.x > box.minX && point.x < box.maxX && point.y > box.minY && point.y < box.maxY;
-}
-
-function segmentIntersectsBox(a: Pt, b: Pt, box: Bbox): boolean {
-  let t0 = 0;
-  let t1 = 1;
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const tests = [
-    { p: -dx, q: a.x - box.minX },
-    { p: dx, q: box.maxX - a.x },
-    { p: -dy, q: a.y - box.minY },
-    { p: dy, q: box.maxY - a.y },
-  ];
-  for (const { p, q } of tests) {
-    if (Math.abs(p) < 1e-9) {
-      if (q < 0) return false;
-      continue;
-    }
-    const r = q / p;
-    if (p < 0) {
-      if (r > t1) return false;
-      if (r > t0) t0 = r;
-    } else {
-      if (r < t0) return false;
-      if (r < t1) t1 = r;
-    }
-  }
-  return t0 <= t1 && t1 >= 0 && t0 <= 1;
-}
-
 function countBroadCrossings(edges: DAEdge[]): number {
   const segments: Array<{ edgeIndex: number; a: Pt; b: Pt }> = [];
   for (let edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
@@ -672,58 +639,3 @@ function addIncident(
   entries.push({ point, dir });
 }
 
-function vector(from: Pt, to: Pt): Pt {
-  return { x: to.x - from.x, y: to.y - from.y };
-}
-
-function unit(v: Pt): Pt {
-  const len = Math.hypot(v.x, v.y);
-  if (len < 1e-9) return { x: 1, y: 0 };
-  return { x: v.x / len, y: v.y / len };
-}
-
-function angleBetween(a: Pt, b: Pt): number {
-  const alen = Math.hypot(a.x, a.y);
-  const blen = Math.hypot(b.x, b.y);
-  if (alen < 1e-9 || blen < 1e-9) return 0;
-  const cos = (a.x * b.x + a.y * b.y) / (alen * blen);
-  return Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI;
-}
-
-function segmentsIntersect(a1: Pt, a2: Pt, b1: Pt, b2: Pt): boolean {
-  const d = (a2.x - a1.x) * (b2.y - b1.y) - (a2.y - a1.y) * (b2.x - b1.x);
-  if (Math.abs(d) < 1e-9) return false;
-  const t = ((b1.x - a1.x) * (b2.y - b1.y) - (b1.y - a1.y) * (b2.x - b1.x)) / d;
-  const u = ((b1.x - a1.x) * (a2.y - a1.y) - (b1.y - a1.y) * (a2.x - a1.x)) / d;
-  return t > 0 && t < 1 && u > 0 && u < 1;
-}
-
-function roundTo(value: number, grid: number): number {
-  return Math.round(value / grid) * grid;
-}
-
-function samePoints(a: Pt[], b: Pt[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((p, i) => dist(p, b[i]) < 0.01);
-}
-
-function uniquePoints(points: Pt[]): Pt[] {
-  const out: Pt[] = [];
-  for (const point of points) {
-    if (!out.some(p => dist(p, point) < 0.01)) out.push(point);
-  }
-  return out;
-}
-
-function dist(a: Pt, b: Pt): number {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-function pointSegmentDistance(p: Pt, a: Pt, b: Pt): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq < 1e-9) return dist(p, a);
-  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq));
-  return dist(p, { x: a.x + t * dx, y: a.y + t * dy });
-}

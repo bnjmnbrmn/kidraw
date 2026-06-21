@@ -22,6 +22,11 @@ import {
 } from '../../../src/app/drawing-area/desiderata-route-edges';
 
 import {
+  applyIncrementalDesiderataRouteEdges,
+  DEFAULT_OPTIONS as INCREMENTAL_DESIDERATA_DEFAULTS,
+} from '../../../src/app/drawing-area/incremental-desiderata-route-edges';
+
+import {
   computeRoutingMetrics,
   DEFAULT_WEIGHTS as METRIC_DEFAULTS,
 } from '../../../src/app/drawing-area/edge-routing-metrics';
@@ -71,6 +76,28 @@ export const Routers = {
         fit: { ...DESIDERATA_DEFAULTS.base.fit },
         wc: { ...DESIDERATA_DEFAULTS.base.wc },
       },
+    } as any,
+  },
+  'incremental-desiderata-v2': {
+    // Returns an IncrementalRouterStats object the runner can record as
+    // instrumentation (candidates, score calls, elapsed ms, budget-hit,
+    // unclean edges). Other routers return void; the runner tolerates both.
+    apply: (
+      nodes: any,
+      edges: any,
+      opts: any,
+      log?: (msg: string) => void,
+    ) =>
+      applyIncrementalDesiderataRouteEdges(
+        nodes,
+        edges,
+        opts,
+        log,
+      ),
+    defaults: {
+      ...INCREMENTAL_DESIDERATA_DEFAULTS,
+      local: { ...INCREMENTAL_DESIDERATA_DEFAULTS.local },
+      budgets: { ...INCREMENTAL_DESIDERATA_DEFAULTS.budgets },
     } as any,
   },
 };

@@ -68,6 +68,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 - [Auto-tune edge-routing parameters on benchmark graphs](idea-routing-auto-tune.md)
 - [Incremental desiderata-first edge routing](idea-incremental-edge-routing.md)
+- [Incremental desiderata router v2 — plan + foundation status](plan-incremental-desiderata-v2.md) — the live revival effort: harness-only `incremental-desiderata-v2`, local scoring, budgets, `npm run routing-test`.
 - [Deprecated routing algorithms (resurrection notes)](algo-deprecated-routers.md) — the 5 routers removed when the project consolidated to bezier-fit-weighted-chain.
 
 **Code health / process:**
@@ -110,6 +111,7 @@ _Investigations into options we haven't committed to. One per file, prefixed `re
 _Static catalogs / tables you look up rather than read end-to-end._
 
 - [Valid / workable key combinations](valid-key-combos.md) — manual chord catalog for the keymenu.
+- [Bulge vs. curvature vs. bends](desiderata-bulge-curvature-bends.md) — what each routing aesthetic metric measures, with worked examples; why their ranking order matters.
 
 ## Process
 
