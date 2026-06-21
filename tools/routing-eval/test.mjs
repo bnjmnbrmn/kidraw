@@ -92,17 +92,59 @@ function fmt(n, width) {
   return String(n).padStart(width);
 }
 
+/** Liang–Barsky segment-vs-box test (mirrors routing-geometry). */
+function segIntersectsBox(a, b, box) {
+  let t0 = 0, t1 = 1;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const tests = [
+    { p: -dx, q: a.x - box.minX }, { p: dx, q: box.maxX - a.x },
+    { p: -dy, q: a.y - box.minY }, { p: dy, q: box.maxY - a.y },
+  ];
+  for (const { p, q } of tests) {
+    if (Math.abs(p) < 1e-9) { if (q < 0) return false; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+    else { if (r < t0) return false; if (r < t1) t1 = r; }
+  }
+  return t0 <= t1 && t1 >= 0 && t0 <= 1;
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const bundle = await buildBundle({ force: args.forceBundle });
   const require = createRequire(import.meta.url);
-  const { Routers, Metrics, Fake } = require(bundle.path);
+  const { Routers, Metrics, Fake, Curve } = require(bundle.path);
 
   const router = Routers[args.algorithm];
   if (!router) {
     console.error(`Unknown algorithm "${args.algorithm}". Known: ${Object.keys(Routers).join(', ')}`);
     process.exit(2);
   }
+
+  // Count edges whose RENDERED curve (Konva tension, sampled) passes through a
+  // non-incident node box — the clip the user actually sees. The metric's
+  // edgesThroughNodes only checks the straight control polygon, so a curve that
+  // bulges into a node goes uncounted there.
+  const curveClipCount = (nodes, edges) => {
+    let count = 0;
+    for (const e of edges) {
+      if (e.srcNode === e.destNode) continue;
+      const pts = e.getPathPoints();
+      const curve = e.smoothRendering ? Curve.sampleSmoothPath(pts, 0.5, 8) : pts;
+      let hit = false;
+      for (const n of nodes) {
+        if (n === e.srcNode || n === e.destNode) continue;
+        const box = { minX: n.konvaGroup.x(), minY: n.konvaGroup.y(),
+          maxX: n.konvaGroup.x() + n.NODE_WIDTH, maxY: n.konvaGroup.y() + n.NODE_HEIGHT };
+        for (let i = 0; i < curve.length - 1 && !hit; i++) {
+          if (segIntersectsBox(curve[i], curve[i + 1], box)) hit = true;
+        }
+        if (hit) break;
+      }
+      if (hit) count++;
+    }
+    return count;
+  };
 
   const scenarios = selectScenarios(args);
   if (scenarios.length === 0) {
@@ -112,9 +154,9 @@ async function main() {
 
   console.log(`routing-test: ${args.algorithm}  (budget ${args.budgetMs}ms/scenario)\n`);
   console.log(
-    'result  scenario              ms    hard  nonSibX  minAngle  nodeClr  edgeClr   instrumentation',
+    'result  scenario              ms    hard  curveClip  nonSibX  minAngle  nodeClr  edgeClr   instrumentation',
   );
-  console.log('-'.repeat(108));
+  console.log('-'.repeat(118));
 
   let failures = 0;
   let skipped = 0;
@@ -141,8 +183,9 @@ async function main() {
 
     const m = Metrics.compute(nodes, edges, Metrics.weights);
     const hard = m.hardFailCount;
+    const curveClips = curveClipCount(nodes, edges);
     const overBudget = ms > args.budgetMs;
-    const ok = !threw && hard === 0 && !overBudget;
+    const ok = !threw && hard === 0 && curveClips === 0 && !overBudget;
     if (!ok) failures++;
 
     const instr = stats && typeof stats === 'object'
@@ -152,11 +195,12 @@ async function main() {
     const reasons = [];
     if (threw) reasons.push(`THREW: ${threw.message || threw}`);
     if (hard !== 0) reasons.push(`hardFails=${hard}`);
+    if (curveClips !== 0) reasons.push(`curve clips ${curveClips} node(s)`);
     if (overBudget) reasons.push(`over budget (${ms}ms)`);
 
     console.log(
       `${ok ? ' PASS ' : '*FAIL*'}  ${scenario.name.padEnd(20)} ` +
-      `${fmt(ms, 5)}  ${fmt(hard, 4)}  ${fmt(m.nonSiblingCrossings, 7)}  ` +
+      `${fmt(ms, 5)}  ${fmt(hard, 4)}  ${fmt(curveClips, 9)}  ${fmt(m.nonSiblingCrossings, 7)}  ` +
       `${fmt(m.minCrossingAngleDeg.toFixed(0), 8)}  ${fmt(m.minObstacleClearance.toFixed(0), 7)}  ` +
       `${fmt(m.minEdgeEdgeClearance.toFixed(0), 7)}   ${instr}` +
       (reasons.length ? `\n          └─ ${reasons.join('; ')}` : ''),

@@ -31,6 +31,8 @@ import {
   DEFAULT_WEIGHTS as METRIC_DEFAULTS,
 } from '../../../src/app/drawing-area/edge-routing-metrics';
 
+import { sampleSmoothPath } from '../../../src/app/drawing-area/routing-curve';
+
 import { DANode } from './fake-da-node';
 import { DAEdge } from './fake-da-edge';
 
@@ -105,6 +107,13 @@ export const Routers = {
 export const Metrics = {
   compute: computeRoutingMetrics as any,
   weights: METRIC_DEFAULTS as any,
+};
+
+// The smooth-curve sampler (Konva tension replica) so the harness can measure
+// clips/crossings on the curve the app actually renders, not just the straight
+// control polygon.
+export const Curve = {
+  sampleSmoothPath: sampleSmoothPath as any,
 };
 
 export const Fake = {

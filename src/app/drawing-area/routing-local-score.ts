@@ -20,7 +20,9 @@
 //     7. non-sibling crossings (fewer is better)   <-- now BELOW clearance
 //     8. sibling separation    (higher is better, saturated) — fans parallel /
 //                              anti-parallel groups into distinct lanes
-//     9. aesthetics, least-tolerated first: bends, length, max curvature, bulge
+//     9. fan separation        (higher is better, saturated) — incident edges
+//                              approach a shared node at distinct angles
+//    10. aesthetics, least-tolerated first: bends, length, max curvature, bulge
 //        (max curvature = the single sharpest turn, not the accumulated sum;
 //         see notes/desiderata-bulge-curvature-bends.md)
 
@@ -29,6 +31,7 @@ import {
   NodeBoxSource,
   dist,
   perpDist,
+  angleBetween,
   segmentsIntersect,
   acuteAngleBetweenSegmentsDeg,
   segSegDistance,
@@ -62,6 +65,11 @@ export interface LocalScoreOptions {
    *  this is measured away from the ends. Drives parallel/anti-parallel groups
    *  to fan into separate lanes instead of collapsing onto one line. */
   satisfiedSiblingSeparation: number;
+  /** Edges that share ONE endpoint node (a fan-in / fan-out, not siblings)
+   *  should approach that node at distinct angles so they don't bunch onto the
+   *  same perimeter point. Approaches at least this many degrees apart are
+   *  "good enough". */
+  satisfiedIncidentAngleDeg: number;
 }
 
 export const DEFAULT_LOCAL_SCORE_OPTIONS: LocalScoreOptions = {
@@ -69,6 +77,7 @@ export const DEFAULT_LOCAL_SCORE_OPTIONS: LocalScoreOptions = {
   satisfiedNodeClearance: 36,
   satisfiedEdgeClearance: 30,
   satisfiedSiblingSeparation: 34,
+  satisfiedIncidentAngleDeg: 22,
 };
 
 export interface LocalScore {
@@ -82,6 +91,7 @@ export interface LocalScore {
   minNodeClearance: number; // raw px (not clamped); clamp happens in compare
   minEdgeClearance: number; // raw px
   minSiblingSeparation: number; // raw px; interior gap to nearest sibling
+  minIncidentAngleDeg: number; // smallest approach-angle gap to a fan neighbour
   nonSiblingCrossCount: number;
   maxBulgeRatio: number;
   maxCurvature: number; // largest single interior turn angle (radians)
@@ -108,6 +118,7 @@ export function scoreEdgeRoute(
   let shallowCrossCount = 0;
   let minEdgeClearance = opts.satisfiedEdgeClearance;
   let minSiblingSeparation = opts.satisfiedSiblingSeparation;
+  let minIncidentAngleDeg = opts.satisfiedIncidentAngleDeg;
 
   // Interior sample points of this candidate, used to measure how far it runs
   // from a sibling away from the shared endpoints.
@@ -143,6 +154,29 @@ export function scoreEdgeRoute(
       }
     }
 
+    // Vertex-passthrough crossings: strict segmentsIntersect ignores touches at
+    // a segment endpoint, so a route can hide a crossing by placing a waypoint
+    // EXACTLY on the crossed edge (the curve then passes through that point as a
+    // vertex — diamond-x / k4 BD). Count a crossing when one of this curve's
+    // interior vertices lies on `other` and the curve passes from one side to
+    // the other there.
+    for (let k = 1; k < poly.length - 1; k++) {
+      for (let j = 0; j < other.poly.length - 1; j++) {
+        if (vertexPassesThrough(poly[k - 1], poly[k], poly[k + 1], other.poly[j], other.poly[j + 1])) {
+          if (sib) {
+            siblingCrossCount++;
+          } else {
+            nonSiblingCrossCount++;
+            const angle = acuteAngleBetweenSegmentsDeg(
+              poly[k - 1], poly[k + 1], other.poly[j], other.poly[j + 1],
+            );
+            if (angle < opts.minCrossingAngleDeg) shallowCrossCount++;
+          }
+          break; // at most one crossing per vertex
+        }
+      }
+    }
+
     // Siblings share BOTH endpoints, so they must converge at the ends; measure
     // their separation only at this candidate's interior sample points. Two
     // overlapping straight siblings score 0 here, which pushes the router to
@@ -152,6 +186,11 @@ export function scoreEdgeRoute(
         const d = pointPolylineDistance(p, other.poly);
         if (d < minSiblingSeparation) minSiblingSeparation = d;
       }
+    } else if (sharesEndpoint) {
+      // Fan-in / fan-out: reward distinct approach angles at the shared node so
+      // edges don't bunch onto the same perimeter point.
+      const a = incidentApproachAngle(poly, srcNode, destNode, other);
+      if (a !== null && a < minIncidentAngleDeg) minIncidentAngleDeg = a;
     }
   }
 
@@ -170,6 +209,7 @@ export function scoreEdgeRoute(
     minNodeClearance,
     minEdgeClearance,
     minSiblingSeparation,
+    minIncidentAngleDeg,
     nonSiblingCrossCount,
     maxBulgeRatio: computeBulgeRatio(poly),
     maxCurvature: computeMaxCurvature(poly),
@@ -215,7 +255,13 @@ export function compareLocalScores(a: LocalScore, b: LocalScore, opts: LocalScor
   const bSib = Math.min(b.minSiblingSeparation, opts.satisfiedSiblingSeparation);
   if (Math.abs(aSib - bSib) > 0.5) return aSib > bSib ? -1 : 1;
 
-  // Soft tier 4: aesthetics, least-tolerated first — bends, length, max
+  // Soft tier 4: fan-in/fan-out approach-angle separation (higher is better,
+  // clamped). Keeps incident edges from bunching at a shared node.
+  const aInc = Math.min(a.minIncidentAngleDeg, opts.satisfiedIncidentAngleDeg);
+  const bInc = Math.min(b.minIncidentAngleDeg, opts.satisfiedIncidentAngleDeg);
+  if (Math.abs(aInc - bInc) > 0.5) return aInc > bInc ? -1 : 1;
+
+  // Soft tier 5: aesthetics, least-tolerated first — bends, length, max
   // curvature, bulge (see notes/desiderata-bulge-curvature-bends.md).
   if (a.bendCount !== b.bendCount) return a.bendCount < b.bendCount ? -1 : 1;
   if (Math.abs(a.length - b.length) > 0.5) return a.length < b.length ? -1 : 1;
@@ -300,6 +346,54 @@ function pointAtFraction(poly: Pt[], f: number): Pt {
     target -= segLens[i];
   }
   return poly[poly.length - 1];
+}
+
+/** Angle (deg) between two edges' approach directions at the node they share,
+ *  both pointing away from that node. null if they don't share a single node or
+ *  a polyline is degenerate. */
+function incidentApproachAngle(poly: Pt[], src: ScoreNode, dest: ScoreNode, other: ContextEdge): number | null {
+  let shared: ScoreNode | null = null;
+  if (src === other.srcNode || src === other.destNode) shared = src;
+  else if (dest === other.srcNode || dest === other.destNode) shared = dest;
+  if (!shared) return null;
+  const candDir = approachDir(poly, shared === src);
+  const otherDir = approachDir(other.poly, shared === other.srcNode);
+  if (!candDir || !otherDir) return null;
+  return angleBetween(candDir, otherDir);
+}
+
+/** Direction leaving the polyline's start (or end) endpoint, into the edge. */
+function approachDir(poly: Pt[], atStart: boolean): Pt | null {
+  if (poly.length < 2) return null;
+  const n = poly.length;
+  return atStart
+    ? { x: poly[1].x - poly[0].x, y: poly[1].y - poly[0].y }
+    : { x: poly[n - 2].x - poly[n - 1].x, y: poly[n - 2].y - poly[n - 1].y };
+}
+
+/** Signed side of point p relative to the directed line a→b (>0 left, <0 right,
+ *  0 on the line within tolerance). */
+function sideSign(a: Pt, b: Pt, p: Pt): number {
+  const v = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+  return v > 1e-6 ? 1 : v < -1e-6 ? -1 : 0;
+}
+
+/** True if vertex `v` (with neighbours `prev`/`next`) lies on segment s1→s2 and
+ *  the path passes through to the other side there — a crossing the strict
+ *  segment test misses because it sits at a vertex. */
+function vertexPassesThrough(prev: Pt, v: Pt, next: Pt, s1: Pt, s2: Pt): boolean {
+  const EPS = 2;
+  if (pointSegmentDistance(v, s1, s2) > EPS) return false;
+  // v must project strictly inside the segment (not near its endpoints, where a
+  // shared node / corner would give a false positive).
+  const dx = s2.x - s1.x, dy = s2.y - s1.y;
+  const len2 = dx * dx + dy * dy;
+  if (len2 < 1e-9) return false;
+  const t = ((v.x - s1.x) * dx + (v.y - s1.y) * dy) / len2;
+  if (t <= 0.001 || t >= 0.999) return false;
+  const sp = sideSign(s1, s2, prev);
+  const sn = sideSign(s1, s2, next);
+  return sp !== 0 && sn !== 0 && sp !== sn;
 }
 
 /** Shortest distance from a point to a polyline. */

@@ -69,6 +69,35 @@ still fails (a genuinely tight graze — conflict-report territory).
 (`run.mjs --skip-overlapping`; `test.mjs` skips them by default). A router can't
 be graded on routing cleanly between nodes that already overlap.
 
+## Three follow-up fixes (2026-06-21)
+
+Surfaced by inspecting the comparison page:
+
+1. **Robust crossing detection (vertex-on-edge).** Strict `segmentsIntersect`
+   ignores touches at a segment endpoint, so the router could hide a crossing by
+   placing a waypoint EXACTLY on the crossed edge (the curve then passes through
+   it as a vertex) — scoring 0 crossings while visibly crossing (diamond-x,
+   k4 BD got a pointless bend). `routing-local-score.ts` now adds a
+   vertex-passthrough check: count a crossing when one of the curve's interior
+   vertices lies on another edge and the curve passes from one side to the
+   other. diamond-x / k4 are now bend-free (0 control points).
+
+2. **Curve-based clip detection in the harness.** The metric's
+   `edgesThroughNodes` only checks the straight control polygon, but the app
+   renders a Catmull-Rom curve that can bulge into a node the polygon clears.
+   `bundle-entry.ts` now exports the curve sampler and `test.mjs` gates on a
+   `curveClip` count (sample each edge's rendered curve, test vs non-incident
+   node boxes). Finding: the desiderata maze "clip" is actually a ~16 px
+   near-miss, not a true clip — the SVG fallback exaggerated it. v2 keeps
+   curveClip=0 by construction (it scores the curve); only `tangent-grazing`
+   has a real curve clip.
+
+3. **Fan-in / fan-out separation.** Edges sharing ONE endpoint (not siblings)
+   bunched onto the same perimeter point (converge-circular S2/S3→In). Added a
+   `minIncidentAngleDeg` desideratum: reward distinct approach angles at a
+   shared node, clamped at `satisfiedIncidentAngleDeg` (22°), ranked above
+   aesthetics. Incident fans now spread their approaches.
+
 ## Sibling-separation fix (2026-06-21)
 
 The comparison page (`compare-page.mjs`) revealed v2 collapsing parallel /
