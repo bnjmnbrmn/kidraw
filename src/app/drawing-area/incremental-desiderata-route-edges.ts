@@ -256,6 +256,14 @@ function generateMoves(
 
   const moves: Pt[][] = [];
 
+  // OBSTACLE BYPASS — route around ALL nodes the current curve clips, on each
+  // side at once. A single mid-waypoint can't clear two in-line obstacles
+  // (tangent-grazing's B+C) and a node sitting directly between the endpoints
+  // (converge's S4 between S3 and In) needs a clean side route, not a nudge.
+  for (const bypass of obstacleBypassCandidates(edge, cp, nodes, perp, s, opts)) {
+    moves.push(bypass);
+  }
+
   // MOVE
   const deltas: Pt[] = [
     { x: perp.x * step, y: perp.y * step },
@@ -284,6 +292,46 @@ function generateMoves(
   }
 
   return moves;
+}
+
+/** Candidates that route around every node the current rendered curve clips,
+ *  one per perpendicular side. Each clipped node gets a waypoint offset clear
+ *  of it (by its extent along the chord-perpendicular + clearance), and the
+ *  waypoints are ordered along the chord so the detour is monotone. */
+function obstacleBypassCandidates(
+  edge: DAEdge, cp: Pt[], nodes: DANode[], perp: Pt, s: Pt, opts: IncrementalDesiderataOptions,
+): Pt[][] {
+  // Sample the curve of the CURRENT best route (cp), not whatever candidate the
+  // edge was last left on, so we detect the right obstacles.
+  edge.setControlPoints(cp);
+  const curve = sampleSmoothPath(edge.getPathPoints(), opts.tension, opts.stepsPerSegment);
+  const chordU = unit(vector(s, center(edge.destNode)));
+  const clipped: DANode[] = [];
+  for (const node of nodes) {
+    if (node === edge.srcNode || node === edge.destNode) continue;
+    const box = bboxOf(node);
+    for (let i = 0; i < curve.length - 1; i++) {
+      if (segmentIntersectsBox(curve[i], curve[i + 1], box)) { clipped.push(node); break; }
+    }
+  }
+  if (clipped.length === 0 || clipped.length > opts.maxWaypoints) return [];
+
+  const clearance = opts.local.satisfiedNodeClearance * 0.7;
+  const out: Pt[][] = [];
+  for (const sign of [1, -1]) {
+    const wps = clipped.map(node => {
+      const c = center(node);
+      // Half-extent of the box measured along the perpendicular direction.
+      const ext = Math.abs(perp.x) * (node.NODE_WIDTH / 2) + Math.abs(perp.y) * (node.NODE_HEIGHT / 2);
+      const dist = ext + clearance;
+      const pt = { x: c.x + sign * perp.x * dist, y: c.y + sign * perp.y * dist };
+      const t = (c.x - s.x) * chordU.x + (c.y - s.y) * chordU.y; // projection along chord
+      return { pt, t };
+    });
+    wps.sort((a, b) => a.t - b.t);
+    out.push(wps.map(w => w.pt));
+  }
+  return out;
 }
 
 interface Insertion { point: Pt; index: number; }

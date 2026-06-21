@@ -69,6 +69,30 @@ still fails (a genuinely tight graze — conflict-report territory).
 (`run.mjs --skip-overlapping`; `test.mjs` skips them by default). A router can't
 be graded on routing cleanly between nodes that already overlap.
 
+## Obstacle-bypass move — tangent-grazing + converge (2026-06-21)
+
+Two routes were poor and both traced to the same gap: the router could only
+nudge/insert one waypoint at a time, so it couldn't (a) clear two in-line
+obstacles at once (tangent-grazing AD needed to pass below BOTH B and C) or
+(b) cleanly route around a node sitting directly between the endpoints
+(converge S3→In has S4 between them — it took an ugly backtracking detour).
+
+Fix: an **obstacle-bypass move** (`obstacleBypassCandidates`). Each refine
+iteration, detect every node the current rendered curve clips and emit two
+candidate routes — one per chord-perpendicular side — placing a waypoint clear
+of each clipped node (offset by its extent-along-perp + clearance), ordered
+along the chord. The local scorer then picks the better side. (Bug found en
+route: it must sample the curve of the current *best* control points, not
+whatever candidate the edge was last left on.) Result: tangent-grazing AD routes
+cleanly below B and C; converge S3→In takes a single-waypoint route left of S4;
+the whole battery is now **33/33** with no curve clips. The two issues were NOT
+caused by fan separation (verified by neutralising it).
+
+(Considered extending the trigger to tight near-misses so BD's ~10px graze
+would re-route wider, but the bypass mis-handles obstacles that sit off to one
+side of the chord; left clip-only. BD stays clip-free but tight — a minor
+aesthetic, not a clip.)
+
 ## Three follow-up fixes (2026-06-21)
 
 Surfaced by inspecting the comparison page:
