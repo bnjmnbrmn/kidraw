@@ -51,11 +51,14 @@ function main() {
   const manifest = JSON.parse(readFileSync(join(runDir, 'manifest.json'), 'utf8'));
   const algos = manifest.algorithms;
 
-  // Group cells by scenario (only scenarios that actually ran).
+  // Group cells by scenario (only scenarios that actually ran), and index the
+  // per-cell layout generation time (ms) for the labels.
   const byScenario = new Map();
+  const timeMs = new Map(); // `${algo}|${scenario}` -> computeTimeMs
   for (const cell of manifest.cells) {
     if (!byScenario.has(cell.scenario)) byScenario.set(cell.scenario, new Set());
     byScenario.get(cell.scenario).add(cell.algorithm);
+    timeMs.set(`${cell.algorithm}|${cell.scenario}`, cell.metrics?.computeTimeMs);
   }
 
   const sections = [];
@@ -71,8 +74,10 @@ function main() {
 
     const cells = algos.map(algo => {
       const base = `runs/${runTs}/${algo}/${scenario}`;
+      const ms = timeMs.get(`${algo}|${scenario}`);
+      const time = ms == null ? '' : ` · <span class="time">${ms} ms</span>`;
       return `<div class="cell">
-        <div class="label">${algo}</div>
+        <div class="label">${algo}${time}</div>
         <img loading="lazy" src="${base}/routing.png"
              onerror="this.onerror=null;this.src='${base}/routing.svg'">
       </div>`;
@@ -92,6 +97,7 @@ function main() {
   .row { display: flex; gap: 16px; flex-wrap: wrap; }
   .cell { flex: 1 1 0; min-width: 280px; max-width: 520px; }
   .cell .label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-family: ui-monospace, monospace; }
+  .cell .time { color: #fbbf24; }
   .cell img { width: 100%; height: auto; background: #fff; border-radius: 6px; border: 1px solid #334155; display: block; }
 </style></head><body>
 <header>

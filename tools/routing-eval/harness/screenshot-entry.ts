@@ -59,9 +59,6 @@ function renderScenario(
     const edge = new DAEdge(src, dest, '', ge.id, { stroke: COLORS.stroke, fill: COLORS.stroke });
     edge.setControlPoints(ge.controlPoints.map(p => ({ x: p.x, y: p.y })));
     edge.setSmoothRendering(!!ge.smoothRendering);
-    // Show the router's control points as waypoint glyphs (same call the app
-    // makes after routing), so screenshots reveal where the bends sit.
-    if (showWaypoints) edge.promoteToWaypoints();
     edges.push(edge);
   }
 
@@ -95,6 +92,20 @@ function renderScenario(
   // Edges under nodes (nodes draw on top), matching the SVG order.
   for (const edge of edges) layer.add(edge.group);
   for (const node of nodeById.values()) layer.add(node.konvaGroup);
+
+  // Waypoint markers: the router's control points, drawn on top so it's clear
+  // where each bend sits (a straight edge has none). Explicit circles rather
+  // than the app's waypoint glyphs so they're unambiguous in a static image.
+  if (showWaypoints) {
+    for (const ge of geometry.edges) {
+      for (const cp of ge.controlPoints) {
+        layer.add(new Konva.Circle({
+          x: cp.x, y: cp.y, radius: 7,
+          fill: '#dc2626', stroke: '#ffffff', strokeWidth: 2,
+        }));
+      }
+    }
+  }
 
   stage.add(layer);
   layer.draw();
