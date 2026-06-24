@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -415,6 +415,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildLayoutSubmenuConfig(): SubmenuConfig {
     const layout = this.keyAssignments.layout;
     const emit = (l: LayoutType) => () => this.keyMenuOut.emit({kind: DACommandType.APPLY_LAYOUT, layout: l});
+    const route = (algorithm: RoutingAlgorithm) => () =>
+      this.keyMenuOut.emit({kind: DACommandType.APPLY_EDGE_ROUTING, algorithm});
     return {
       [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
       [layout.treeDown]:      new LabeledAction('Tree ↓',   emit('tree-down')),
@@ -422,9 +424,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.grid]:          new LabeledAction('Grid',     emit('grid')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
-      [layout.bezierFitWeightedChainEdges]: new LabeledAction('Route Edges', () => {
-        this.keyMenuOut.emit({kind: DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES});
-      }),
+      [layout.routeBezierFitWeightedChain]: new LabeledAction('Route: BF-WC', route('bezier-fit-weighted-chain')),
+      [layout.routeDesiderata]:             new LabeledAction('Route: Desiderata', route('desiderata')),
+      [layout.routeIncremental]:            new LabeledAction('Route: Incr v2', route('incremental-desiderata-v2')),
     } as SubmenuConfig;
   }
 

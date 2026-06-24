@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -21,6 +21,15 @@ import {
   applyDesiderataRouteEdges,
   DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
 } from './desiderata-route-edges';
+import {
+  applyBezierFitWeightedChainEdges,
+  DEFAULT_OPTIONS as BFWC_FIT_DEFAULTS,
+  DEFAULT_WC_OPTIONS as BFWC_WC_DEFAULTS,
+} from './bezier-fit-weighted-chain-edges';
+import {
+  applyIncrementalDesiderataRouteEdges,
+  DEFAULT_OPTIONS as INCREMENTAL_DEFAULTS,
+} from './incremental-desiderata-route-edges';
 import type { RoutingRequest, RoutingResponse } from './routing-worker-messages';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
@@ -234,7 +243,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.CYCLE_DISPLAY,
     DACommandType.TOGGLE_PIN_SELECTED,
     DACommandType.APPLY_LAYOUT,
-    DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES,
+    DACommandType.APPLY_EDGE_ROUTING,
   ]);
 
 
@@ -312,7 +321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Tracks whether the user has applied a routing this session. Kept as a
    *  null-vs-string marker; parameter-driven re-routing is no longer wired
    *  here (the tuning panel was removed). */
-  private lastAppliedRouting: 'bezier-fit-weighted-chain' | 'desiderata' | null = null;
+  private lastAppliedRouting: RoutingAlgorithm | null = null;
 
   /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
    *  can't freeze the UI. These track the in-flight run so we can drive the
@@ -640,8 +649,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.APPLY_LAYOUT:
         this.applyGraphLayout(command.layout);
         break;
-      case DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES:
-        this.applyBezierFitWeightedChainEdges();
+      case DACommandType.APPLY_EDGE_ROUTING:
+        this.applyEdgeRouting(command.algorithm);
         break;
       case DACommandType.SET_EDGE_DIRECTEDNESS:
         this.log.log('[style] setEdgeDirectedness:', command.directedness);
@@ -1142,7 +1151,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  private applyBezierFitWeightedChainEdges() {
+  private applyEdgeRouting(algorithm: RoutingAlgorithm) {
     this.finishTweens();
     const allNodes = this.drawingLayer.getDANodes();
     const allEdges = this.drawingLayer.getDAEdges();
@@ -1154,25 +1163,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // as obstacles so the routed edges weave around them rather than overlap.
     const frozenEdges = routeSubset ? allEdges.filter(e => !e.isSelected) : [];
 
-    this.routeInWorker(allNodes, allEdges, routeEdges, frozenEdges);
+    this.routeInWorker(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
   }
 
-  /** Run layout (edge routing) in the Web Worker with a live countdown and a
-   *  hard timeout, so a non-converging graph can't freeze the UI. Production
-   *  routing is the desiderata pipeline (bf-wc post-processing + the desiderata
-   *  refinement pass). Falls back to synchronous routing where Worker is
-   *  unavailable. */
+  /** Run the chosen edge-routing algorithm in the Web Worker with a live
+   *  countdown and a hard timeout, so a non-converging graph can't freeze the
+   *  UI. Falls back to synchronous routing where Worker is unavailable. */
   private routeInWorker(
+    algorithm: RoutingAlgorithm,
     allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
   ): void {
     this.stopRouting(); // supersede any in-flight run
 
     if (typeof Worker === 'undefined') {
-      this.applyRoutingSync(allNodes, allEdges, routeEdges, frozenEdges);
+      this.applyRoutingSync(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
       return;
     }
 
     const request: RoutingRequest = {
+      algorithm,
       nodes: allNodes.map(n => ({
         id: n.id, x: n.konvaGroup.x(), y: n.konvaGroup.y(),
         width: n.NODE_WIDTH, height: n.NODE_HEIGHT, shape: n.nodeShape,
@@ -1188,7 +1197,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     try {
       worker = new Worker(new URL('./routing.worker', import.meta.url));
     } catch {
-      this.applyRoutingSync(allNodes, allEdges, routeEdges, frozenEdges);
+      this.applyRoutingSync(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
       return;
     }
     this.routingWorker = worker;
@@ -1196,7 +1205,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     worker.onmessage = ({ data }: MessageEvent<RoutingResponse>) => {
       this.stopRouting();
       this.applyRoutedControlPoints(data, allNodes, allEdges);
-      this.daOut.emit({ kind: 'status-message', message: '' });
+      this.lastAppliedRouting = algorithm;
+      const unclean = data.uncleanEdgeIds?.length ?? 0;
+      const message = unclean > 0
+        ? `⚠ ${unclean} edge${unclean === 1 ? '' : 's'} could not be routed cleanly.`
+        : '';
+      this.daOut.emit({ kind: 'status-message', message });
     };
     worker.onerror = () => {
       this.stopRouting();
@@ -1239,13 +1253,32 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Synchronous routing fallback for environments without Web Workers. */
   private applyRoutingSync(
+    algorithm: RoutingAlgorithm,
     allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
   ): void {
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    applyDesiderataRouteEdges(allNodes, routeEdges, DESIDERATA_DEFAULTS, msg => this.log.log(msg), frozenEdges);
-    routeEdges.forEach(e => e.promoteToWaypoints());
+    const log = (msg: string) => this.log.log(msg);
+    let unclean = 0;
+    switch (algorithm) {
+      case 'bezier-fit-weighted-chain':
+        applyBezierFitWeightedChainEdges(allNodes, routeEdges, BFWC_FIT_DEFAULTS, BFWC_WC_DEFAULTS, log, frozenEdges);
+        break;
+      case 'incremental-desiderata-v2': {
+        const stats = applyIncrementalDesiderataRouteEdges(allNodes, routeEdges, INCREMENTAL_DEFAULTS, log, frozenEdges);
+        unclean = stats.uncleanEdges.length;
+        break;
+      }
+      case 'desiderata':
+      default:
+        applyDesiderataRouteEdges(allNodes, routeEdges, DESIDERATA_DEFAULTS, log, frozenEdges);
+        break;
+    }
+    routeEdges.forEach(e => { e.setSmoothRendering(true); e.promoteToWaypoints(); });
     this.drawingLayer.batchDraw();
-    this.lastAppliedRouting = 'desiderata';
+    this.lastAppliedRouting = algorithm;
+    if (unclean > 0) {
+      this.daOut.emit({ kind: 'status-message', message: `⚠ ${unclean} edge${unclean === 1 ? '' : 's'} could not be routed cleanly.` });
+    }
     this.metrics.compute(allNodes, allEdges);
   }
 

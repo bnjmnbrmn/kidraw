@@ -6,6 +6,9 @@ export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' |
 
 export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid' | 'circular' | 'radial';
 
+/** Edge-routing algorithms selectable from the Layout submenu. */
+export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'incremental-desiderata-v2';
+
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
@@ -94,7 +97,7 @@ export enum DACommandType {
   CYCLE_DISPLAY = 'CYCLE_DISPLAY',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
-  APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES = 'APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES',
+  APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -180,4 +183,4 @@ export type DACommand =
   | {kind: DACommandType.CYCLE_DISPLAY}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
-  | {kind: DACommandType.APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES}
+  | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
