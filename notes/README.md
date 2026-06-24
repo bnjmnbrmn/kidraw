@@ -110,6 +110,7 @@ _Investigations into options we haven't committed to. One per file, prefixed `re
 
 _Static catalogs / tables you look up rather than read end-to-end._
 
+- [Key-event notation](reference-key-event-notation.md) — `↓`/`↑` notation for held chords, taps, and release order; used to state the keymenu chord bugs precisely.
 - [Valid / workable key combinations](valid-key-combos.md) — manual chord catalog for the keymenu.
 - [Bulge vs. curvature vs. bends](desiderata-bulge-curvature-bends.md) — what each routing aesthetic metric measures, with worked examples; why their ranking order matters.
 

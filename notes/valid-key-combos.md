@@ -7,7 +7,7 @@ type: reference
 
 Manual catalog of physical key pairs (chords) that are ergonomically reachable on a US QWERTY keyboard without finger conflicts. The keymenu uses this when choosing which keys to assign as submenu triggers + child actions so the user can actually hold both keys at once.
 
-Ordering within a section is "first key held + second key tapped." Each line is one chord.
+Ordering within a section is "first key held + second key tapped" — i.e. `↓A B!` in the [key-event notation](reference-key-event-notation.md). Each line is one chord.
 
 Caveat: this is a manual draft; entries may be inconsistent or incomplete. Authoritative when choosing key assignments, but worth double-checking on real hardware. See [architecture-key-profiles](architecture-key-profiles.md) and `src/app/keymenu/config/key-assignments.ts`.
 

@@ -62,13 +62,10 @@ and `keymenu.component.ts` (held-key / keyup handling).
   `[fine][left]` (both held, no release) should be equivalent. This is the
   same root cause as above: order-dependent chord resolution.
 
-> **Notation TODO.** We need a clear notation for held-key chords vs. taps vs.
-> release order — current prose ("first key held + second key tapped",
-> `[left][fine]`) is ambiguous about what's still held and what's been
-> released. A small notation (e.g. distinguishing *hold* `H`, *tap* `T`,
-> *release* `↑`, and order) would make both these bugs and
-> [`notes/valid-key-combos.md`](notes/valid-key-combos.md) precise. Worth
-> writing up before/while fixing the two bugs above.
+> **Notation.** Held-key chords are written with the `↓`/`↑` event notation in
+> [`notes/reference-key-event-notation.md`](notes/reference-key-event-notation.md),
+> which states both bugs above precisely (Bug A `↓m ↓x ↑m ↑x`; Bug B
+> `left∥fine`). Use it when reproducing/fixing.
 
 ### Routing
 
