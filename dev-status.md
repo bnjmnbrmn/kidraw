@@ -1,12 +1,12 @@
 # dev-status
 
-_Updated 2026-05-25. Branch: `main`._
+_Updated 2026-06-24. Branch: `main`._
 
 > Read this at the start of every session for **where work currently stands**. Everything historical, topical, or design-rationale lives in [`notes/`](notes/) — see [`notes/README.md`](notes/README.md) for the Map of Content. Canonical instructions are in [`AGENTS.md`](AGENTS.md).
 
 ## Current focus
 
-1. **Edge routing — consolidated to `bezier-fit-weighted-chain` (bf-wc).** The 5 other routing algorithms (charged-spring, bezier-route, bezier-fit-charged-spring, flexible-wire, weighted-chain) are removed from production. Tag [`pre-routing-consolidation`](#) (901c28d) preserves their state; resurrection notes at [`notes/algo-deprecated-routers.md`](notes/algo-deprecated-routers.md). The runtime tuning panel + a/b service are gone too — bf-wc uses its `DEFAULT_OPTIONS` for now. Next: build a metric explorer + pairwise weight calibration tool (Phase 2 of the plan at `~/.claude/plans/looks-good-i-want-iterative-whale.md`), then a per-graph optimizer, then (if optimization headroom warrants) a surrogate NN that predicts good starting parameters from graph features.
+1. **Edge routing — three routers now user-selectable from the Layout submenu.** After the May consolidation to `bezier-fit-weighted-chain` (bf-wc), production routing moved to the `desiderata` pipeline, and an `incremental-desiderata-v2` curve router was built (initially harness-only). As of `84ee750` the Layout submenu offers all three as a picker — **`p` Route: BF-WC**, **`d` Route: Desiderata**, **`i` Route: Incr v2** (both vim and ijkl profiles). The command is now the parameterized `APPLY_EDGE_ROUTING {algorithm}` (was the single-purpose `APPLY_BEZIER_FIT_WEIGHTED_CHAIN_EDGES`); the worker + sync fallback dispatch on `algorithm`. `incremental-desiderata-v2` reports `uncleanEdgeIds` / `budgetHit`, surfaced as a "N edges could not be routed cleanly" status message. The 5 older routers (charged-spring, bezier-route, bezier-fit-charged-spring, flexible-wire, weighted-chain) remain removed; tag [`pre-routing-consolidation`](#) (901c28d) preserves their state, resurrection notes at [`notes/algo-deprecated-routers.md`](notes/algo-deprecated-routers.md). All routers use their `DEFAULT_OPTIONS` (no runtime tuning panel). Next: continue hardening `incremental-desiderata-v2` (see `notes/idea-incremental-edge-routing.md`); longer term, a metric explorer + pairwise weight calibration tool, then a per-graph optimizer.
 2. **Routing-eval harness** (`tools/routing-eval/`) — same infrastructure as before, now exposes only bf-wc. `run.mjs` for default-options runs (rate per cell); `sweep.mjs` for the dpTolerance sweep on dense+sparse; `tune-bf-wc.mjs` for the 2D dp × seg grid with zoom-on-double-click.
 3. **Serialization.** Phases 1–4 + 6–9 of [`docs/serialization-plan.md`](docs/serialization-plan.md) shipped. Phase 5 (FSA API for persistent file handles) and Phase 10 (dirty indicator + `beforeunload` polish) remain.
 
@@ -24,25 +24,55 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
-| `a6834ad` | Harness/sweep: drop the 5 removed routers, fix viewer-launch hint |
-| `f398eb8` | Delete the 4 now-unused router source files + a spec |
-| `a280a22` | Untrack accidentally-added worktrees + screenshot; harden gitignore |
-| `df50448` | Consolidate routing to bf-wc; remove tuning panel + a/b service |
-| `901c28d` | bezier-fit-weighted-chain: strip cps inside src/dest node bboxes |
-| `3377ed5` | render-svg: shift arrow marker refX 9 → 10 so tip sits on node perimeter |
-| `dfa26ff` | tune-bf-wc: double-click a cell to zoom |
-| `05b2c6b` | Add tools/routing-eval/tune-bf-wc.mjs — 2D fine-tuning grid |
-| `7485246` | Add bezier-fit-weighted-chain hybrid (harness-only) |
-| `0070a4c` | Merge Phase B tuning sweeps (algo notes + sweep tool) |
+| `84ee750` | Layout submenu: select edge router (BF-WC / Desiderata / Incr v2) |
+| `7a94e5a` | Unify npm start: run log server + dev server together |
+| `e1af7e2` | v2 routing: obstacle-bypass move (fix tangent-grazing + converge) |
+| `5b87e21` | v2 routing: robust crossings, curve-clip gate, fan separation |
+| `326f8bc` | routing-eval: waypoint markers + generation times in comparison |
+| `341efd2` | Add incremental-desiderata-v2 curve router (harness-only) |
+| `30ec680` | Add adaptive navigation prototype |
+| `d9fdb57` | Default waypoint edges to curves |
+| `47be917` | Run edge routing in a worker |
+| `2be41a6` | drawing-area: route production edges through desiderata |
 
 ---
 
 ## Known bugs
 
-- **Bezier-route anti-parallel edges overlap** — in `bezier-route-edges.ts` (`b → ;`), A→B and B→A render as a single line because the lane-offset logic keys parallels by *ordered* (src, dest) pair. Fix: switch to the unordered `canonicalPairKey` used by charged-spring / flexible-wire / weighted-chain.
+### Key-handling bugs (keymenu state machine) — *active focus*
 
-(The earlier waypoint / `routeEdgesAroundNodes` bugs are resolved — that
-code was removed in Phase 1; charged-spring edges replaced it.)
+These are the next things to fix. Both are about how held-key chords drive
+the keymenu, and both point at the same gap: the chord state machine doesn't
+robustly handle keys pressed/released in arbitrary order. See
+[`notes/architecture-keymenu-model.md`](notes/architecture-keymenu-model.md)
+and `keymenu.component.ts` (held-key / keyup handling).
+
+- **Key repeat fails to turn off on an out-of-order release.** When keys are
+  released in an unusual sequence, the auto-repeat (continuous movement /
+  edit repeat) keeps firing after the triggering key is physically up — the
+  repeat timer isn't cancelled because the keyup bookkeeping assumes a
+  particular release order. Repro: hold a movement/repeat key, press a second
+  key, then release them in the "wrong" order. **Not yet started** — was
+  mis-remembered as in-progress; it lives nowhere in the working tree yet.
+
+- **Chord into submenu is order-sensitive / doesn't fire.** Pressing a
+  movement key together with a coarse/fine key (no releases between) should
+  enter the corresponding submenu/modifier regardless of which key lands
+  first. Today, only one order works (or neither). Both `[left][fine]` and
+  `[fine][left]` (both held, no release) should be equivalent. This is the
+  same root cause as above: order-dependent chord resolution.
+
+> **Notation TODO.** We need a clear notation for held-key chords vs. taps vs.
+> release order — current prose ("first key held + second key tapped",
+> `[left][fine]`) is ambiguous about what's still held and what's been
+> released. A small notation (e.g. distinguishing *hold* `H`, *tap* `T`,
+> *release* `↑`, and order) would make both these bugs and
+> [`notes/valid-key-combos.md`](notes/valid-key-combos.md) precise. Worth
+> writing up before/while fixing the two bugs above.
+
+### Routing
+
+- **Bezier-route anti-parallel edges overlap** — in `bezier-route-edges.ts` (`b → ;`), A→B and B→A render as a single line because the lane-offset logic keys parallels by *ordered* (src, dest) pair. Fix: switch to the unordered `canonicalPairKey` used by charged-spring / flexible-wire / weighted-chain. *(Historical — bezier-route is no longer a production router; relevant only if resurrected.)*
 
 ### Known pre-existing failures (tests)
 NG0100 fixed — `movementSpeed` now initialized to `50` in `AppComponent`. Current test counts unknown (no Chrome in CI environment; `npx ng test` requires a browser binary).
