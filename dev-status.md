@@ -62,10 +62,13 @@ and `keymenu.component.ts` (held-key / keyup handling).
   `[fine][left]` (both held, no release) should be equivalent. This is the
   same root cause as above: order-dependent chord resolution.
 
-> **Notation.** Held-key chords are written with the `↓`/`↑` event notation in
+> **Notation.** Held-key chords are written with the `\K`/`/K` (down/up) event
+> notation in
 > [`notes/reference-key-event-notation.md`](notes/reference-key-event-notation.md),
-> which states both bugs above precisely (Bug A `↓m ↓x ↑m ↑x`; Bug B
-> `left∥fine`). Use it when reproducing/fixing.
+> which states both bugs above precisely (Bug A `\m \x /m /x`; Bug B compares
+> `\fine \left` vs `\left \fine`). That note also tracks open design questions —
+> escape sequences, named action/submenu sequences, menu-hierarchy notation, and
+> whether two specific keys should ever commute (order matters by design).
 
 ### Routing
 
