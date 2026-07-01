@@ -27,6 +27,11 @@ import {
 } from '../../../src/app/drawing-area/incremental-desiderata-route-edges';
 
 import {
+  applyIncrementalDesiderataV3RouteEdges,
+  DEFAULT_OPTIONS as INCREMENTAL_DESIDERATA_V3_DEFAULTS,
+} from '../../../src/app/drawing-area/incremental-desiderata-v3-route-edges';
+
+import {
   computeRoutingMetrics,
   DEFAULT_WEIGHTS as METRIC_DEFAULTS,
 } from '../../../src/app/drawing-area/edge-routing-metrics';
@@ -100,6 +105,25 @@ export const Routers = {
       ...INCREMENTAL_DESIDERATA_DEFAULTS,
       local: { ...INCREMENTAL_DESIDERATA_DEFAULTS.local },
       budgets: { ...INCREMENTAL_DESIDERATA_DEFAULTS.budgets },
+    } as any,
+  },
+  'incremental-desiderata-v3': {
+    apply: (
+      nodes: any,
+      edges: any,
+      opts: any,
+      log?: (msg: string) => void,
+    ) =>
+      applyIncrementalDesiderataV3RouteEdges(
+        nodes,
+        edges,
+        opts,
+        log,
+      ),
+    defaults: {
+      ...INCREMENTAL_DESIDERATA_V3_DEFAULTS,
+      local: { ...INCREMENTAL_DESIDERATA_V3_DEFAULTS.local },
+      budgets: { ...INCREMENTAL_DESIDERATA_V3_DEFAULTS.budgets },
     } as any,
   },
 };

@@ -70,6 +70,33 @@ export interface LocalScoreOptions {
    *  same perimeter point. Approaches at least this many degrees apart are
    *  "good enough". */
   satisfiedIncidentAngleDeg: number;
+  /** (IDv3) Score fan-in/fan-out interior separation. Off by default so the
+   *  IDv2 router's output is unchanged; the v3 router turns it on. When on, two
+   *  edges that share ONE endpoint must also run at least
+   *  `satisfiedFanSeparation` apart in their interiors (away from the shared
+   *  hub), not just approach the hub at distinct angles — closing the gap that
+   *  lets two fan arcs graze along their length (converge-circular Out→D3/D4).
+   *  The incident-angle term only constrains the first segment at the hub. */
+  fanSeparationEnabled?: boolean;
+  /** Interior separation (px) between two fan edges that is "good enough". */
+  satisfiedFanSeparation?: number;
+  /** Radius (px) around the shared hub within which fan edges are allowed to
+   *  converge — separation is only measured outside this zone (they must meet
+   *  at the shared perimeter by necessity). ~ node half-diagonal. */
+  fanHubExclusion?: number;
+  /** (IDv3) Measure node clearance along the WHOLE rendered path instead of just
+   *  its interior waypoints. Off by default so IDv2 is unchanged. IDv2's
+   *  interior-vertex-only measurement is blind to a STRAIGHT edge (no interior
+   *  vertices → reported as perfectly clear) that grazes a non-incident node —
+   *  so a near-miss that reads as "is this edge connecting to that node?" goes
+   *  unpenalised (dense n8→n10 skimming n9 by 1.6px). With this on, the graze is
+   *  seen, and since node clearance outranks crossings, the router will pull the
+   *  edge clear of the node even at the cost of a bend or a crossing. */
+  wholePathClearance?: boolean;
+  /** Radius (px) around each edge endpoint excluded from whole-path clearance,
+   *  so an edge isn't penalised for leaving its own perimeter beside a neighbour
+   *  of its incident node. Only used when `wholePathClearance` is on. */
+  endpointClearanceRadius?: number;
 }
 
 export const DEFAULT_LOCAL_SCORE_OPTIONS: LocalScoreOptions = {
@@ -78,6 +105,13 @@ export const DEFAULT_LOCAL_SCORE_OPTIONS: LocalScoreOptions = {
   satisfiedEdgeClearance: 30,
   satisfiedSiblingSeparation: 34,
   satisfiedIncidentAngleDeg: 22,
+  // Fan-interior separation defaults OFF (IDv2 parity); v3 enables it.
+  fanSeparationEnabled: false,
+  satisfiedFanSeparation: 28,
+  fanHubExclusion: 90,
+  // Whole-path clearance defaults OFF (IDv2 parity); v3 enables it.
+  wholePathClearance: false,
+  endpointClearanceRadius: 55,
 };
 
 export interface LocalScore {
@@ -92,6 +126,7 @@ export interface LocalScore {
   minEdgeClearance: number; // raw px
   minSiblingSeparation: number; // raw px; interior gap to nearest sibling
   minIncidentAngleDeg: number; // smallest approach-angle gap to a fan neighbour
+  minFanSeparation: number; // raw px; interior gap to nearest fan neighbour (v3)
   nonSiblingCrossCount: number;
   maxBulgeRatio: number;
   maxCurvature: number; // largest single interior turn angle (radians)
@@ -119,6 +154,10 @@ export function scoreEdgeRoute(
   let minEdgeClearance = opts.satisfiedEdgeClearance;
   let minSiblingSeparation = opts.satisfiedSiblingSeparation;
   let minIncidentAngleDeg = opts.satisfiedIncidentAngleDeg;
+  const fanEnabled = opts.fanSeparationEnabled === true;
+  const fanCap = opts.satisfiedFanSeparation ?? 28;
+  const fanExclusion = opts.fanHubExclusion ?? 90;
+  let minFanSeparation = fanCap;
 
   // Interior sample points of this candidate, used to measure how far it runs
   // from a sibling away from the shared endpoints.
@@ -191,11 +230,20 @@ export function scoreEdgeRoute(
       // edges don't bunch onto the same perimeter point.
       const a = incidentApproachAngle(poly, srcNode, destNode, other);
       if (a !== null && a < minIncidentAngleDeg) minIncidentAngleDeg = a;
+      // (v3) Also keep the two fans apart along their interiors, not just at the
+      // hub. Measured outside the hub-convergence zone.
+      if (fanEnabled) {
+        const hub = sharedHubCenter(srcNode, destNode, other);
+        if (hub) {
+          const d = fanInteriorSeparation(poly, other.poly, hub, fanExclusion);
+          if (d < minFanSeparation) minFanSeparation = d;
+        }
+      }
     }
   }
 
   const minNodeClearance = computeMinNodeClearance(
-    poly, srcNode, destNode, nodes, opts.satisfiedNodeClearance,
+    poly, srcNode, destNode, nodes, opts,
   );
 
   const hardFailCount = clipCount + siblingCrossCount + selfIntersections + shallowCrossCount;
@@ -210,6 +258,7 @@ export function scoreEdgeRoute(
     minEdgeClearance,
     minSiblingSeparation,
     minIncidentAngleDeg,
+    minFanSeparation,
     nonSiblingCrossCount,
     maxBulgeRatio: computeBulgeRatio(poly),
     maxCurvature: computeMaxCurvature(poly),
@@ -261,6 +310,17 @@ export function compareLocalScores(a: LocalScore, b: LocalScore, opts: LocalScor
   const bInc = Math.min(b.minIncidentAngleDeg, opts.satisfiedIncidentAngleDeg);
   if (Math.abs(aInc - bInc) > 0.5) return aInc > bInc ? -1 : 1;
 
+  // Soft tier 4b (v3, gated): fan-in/fan-out interior separation (higher is
+  // better, clamped). Ranked alongside the other fan/sibling terms — above
+  // aesthetics so a fan edge will take a bend to pull out of its neighbour's
+  // path, but below crossings so it won't cross to do so. Off for IDv2.
+  if (opts.fanSeparationEnabled) {
+    const cap = opts.satisfiedFanSeparation ?? 28;
+    const aFan = Math.min(a.minFanSeparation, cap);
+    const bFan = Math.min(b.minFanSeparation, cap);
+    if (Math.abs(aFan - bFan) > 0.5) return aFan > bFan ? -1 : 1;
+  }
+
   // Soft tier 5: aesthetics, least-tolerated first — bends, length, max
   // curvature, bulge (see notes/desiderata-bulge-curvature-bends.md).
   if (a.bendCount !== b.bendCount) return a.bendCount < b.bendCount ? -1 : 1;
@@ -303,8 +363,12 @@ function countSelfIntersections(poly: Pt[]): number {
 }
 
 function computeMinNodeClearance(
-  poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[], cap: number,
+  poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[], opts: LocalScoreOptions,
 ): number {
+  const cap = opts.satisfiedNodeClearance;
+  if (opts.wholePathClearance) {
+    return wholePathNodeClearance(poly, src, dest, nodes, cap, opts.endpointClearanceRadius ?? 55);
+  }
   let min = cap;
   for (const node of nodes) {
     if (node === src || node === dest) continue;
@@ -315,6 +379,38 @@ function computeMinNodeClearance(
       const d = pointBoxDistance(poly[i], box);
       if (d < min) min = d;
       if (min === 0) return 0;
+    }
+  }
+  return min;
+}
+
+/** (IDv3) Node clearance measured along the whole rendered path, sampled at a
+ *  fixed spacing so a STRAIGHT edge (no interior vertices) is measured too.
+ *  Samples within `endR` of either endpoint are skipped — an edge leaving its
+ *  own incident perimeter beside a neighbour shouldn't count as a graze. */
+function wholePathNodeClearance(
+  poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[], cap: number, endR: number,
+): number {
+  if (poly.length < 2) return cap;
+  const A = poly[0], B = poly[poly.length - 1];
+  const STEP = 8;
+  let min = cap;
+  for (const node of nodes) {
+    if (node === src || node === dest) continue;
+    const box = bboxOf(node);
+    for (let i = 0; i < poly.length - 1; i++) {
+      const p = poly[i], q = poly[i + 1];
+      const segLen = dist(p, q);
+      if (segLen < 1e-6) continue;
+      const steps = Math.max(1, Math.ceil(segLen / STEP));
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
+        const pt = { x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t };
+        if (dist(pt, A) < endR || dist(pt, B) < endR) continue;
+        const d = pointBoxDistance(pt, box);
+        if (d < min) min = d;
+        if (min === 0) return 0;
+      }
     }
   }
   return min;
@@ -394,6 +490,38 @@ function vertexPassesThrough(prev: Pt, v: Pt, next: Pt, s1: Pt, s2: Pt): boolean
   const sp = sideSign(s1, s2, prev);
   const sn = sideSign(s1, s2, next);
   return sp !== 0 && sn !== 0 && sp !== sn;
+}
+
+/** Centre of the single node two edges share (the fan hub), or null if they
+ *  don't share exactly one endpoint. */
+function sharedHubCenter(src: ScoreNode, dest: ScoreNode, other: ContextEdge): Pt | null {
+  let shared: ScoreNode | null = null;
+  if (src === other.srcNode || src === other.destNode) shared = src;
+  else if (dest === other.srcNode || dest === other.destNode) shared = dest;
+  if (!shared) return null;
+  const b = bboxOf(shared);
+  return { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 };
+}
+
+/** Smallest gap between this edge's interior and the other fan edge, measured
+ *  only where BOTH run outside the hub-convergence zone (radius `excl` around
+ *  `hub`). Returns Infinity if the two never both leave the hub zone (e.g. very
+ *  short edges) so the caller's running min is left untouched. */
+function fanInteriorSeparation(poly: Pt[], otherPoly: Pt[], hub: Pt, excl: number): number {
+  let min = Infinity;
+  for (const f of [0.3, 0.45, 0.6, 0.75, 0.9]) {
+    const p = pointAtFraction(poly, f);
+    if (dist(p, hub) < excl) continue;
+    for (let i = 0; i < otherPoly.length - 1; i++) {
+      const q1 = otherPoly[i], q2 = otherPoly[i + 1];
+      // Skip the other edge's hub-convergence portion: both segment ends must be
+      // clear of the hub zone for the gap to be meaningful.
+      if (dist(q1, hub) < excl || dist(q2, hub) < excl) continue;
+      const d = pointSegmentDistance(p, q1, q2);
+      if (d < min) min = d;
+    }
+  }
+  return min;
 }
 
 /** Shortest distance from a point to a polyline. */
