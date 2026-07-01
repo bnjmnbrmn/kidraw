@@ -1304,6 +1304,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+  /** Re-route every edge incident to the given nodes with the same single-edge
+   *  incremental pipeline used when adding an edge, holding the rest of the
+   *  graph fixed. Runs at drag-step granularity (once per grid step, not per
+   *  animation frame). Edges are re-routed one at a time, each seeing the
+   *  previous ones' fresh routes; pinned user waypoints survive via
+   *  setControlPoints' merge. Silent about unclean routes — a status message
+   *  every repeat tick would spam; the route keeps improving as the node moves. */
+  private rerouteIncidentEdges(nodes: DANode[]): void {
+    const incident = new Set<DAEdge>();
+    nodes.forEach(n => n.connectedEdges.forEach(e => incident.add(e)));
+    if (incident.size === 0) return;
+    const allNodes = this.drawingLayer.getDANodes();
+    const allEdges = this.drawingLayer.getDAEdges();
+    for (const edge of incident) {
+      routeNewEdgeIncrementally(allNodes, allEdges, edge, undefined, (msg: string) => this.log.log(msg));
+      edge.promoteToWaypoints();
+    }
+    this.refreshWaypointVisibility(false);
+    this.drawingLayer.batchDraw();
+  }
+
   /** Tear down the in-flight routing run: stop the countdown + timeout and kill
    *  the worker. Safe to call when nothing is running. */
   private stopRouting(): void {
@@ -2744,6 +2765,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.currentDragRafId = requestAnimationFrame(animate);
       } else {
         this.currentDragRafId = null;
+        // Node(s) landed on their new grid cell: re-route their edges around
+        // the changed geometry (same pipeline as adding a new edge).
+        this.rerouteIncidentEdges(selectedNodes);
       }
     };
 
@@ -3045,6 +3069,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.resizeTargetNode = null;
     }
     if (this.hasDragged) {
+      // A cancelled mid-tween step leaves nodes at their final (part-way)
+      // position without the step-completion reroute having fired.
+      this.rerouteIncidentEdges(this.drawingLayer.getSelectedDANodes());
       this.unselectAll();
       this.checkAndEmitEditState();
     } else if (this.wasAlreadySelectedBeforeDrag) {

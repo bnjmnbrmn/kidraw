@@ -103,6 +103,16 @@ command mutates, so undo removes the edge and its route together. A hard-tier
 failure surfaces as a "New edge could not be routed cleanly" status message.
 The full-graph v3 router remains harness-only.
 
+**Drag rerouting.** `rerouteIncidentEdges(nodes)` re-routes every edge incident
+to the dragged node(s) with the same single-edge pipeline, firing at drag-step
+granularity (once per grid step when the tween completes, plus on
+EXIT_DRAG_MODE to cover a cancelled mid-tween step) — not per animation frame.
+Pinned user waypoints survive via `setControlPoints`' merge. Unclean routes are
+logged, not surfaced — a status message per repeat tick would spam.
+**Known limit:** only the dragged node's *incident* edges re-route; dragging an
+unrelated node (an obstacle) into someone else's edge does not re-route that
+edge. That needs obstacle-aware invalidation or a full-graph pass — follow-up.
+
 ## Open follow-ups
 
 - tangent-grazing B→D keeps 4 waypoints (a minor mid-arc wiggle) because a
