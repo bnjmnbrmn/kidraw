@@ -96,8 +96,12 @@ export class DAEdge {
   }
 
   /** Live DAEdge toggles Konva.Arrow tension. The harness doesn't render
-   *  via Konva, so this is a no-op flag we record for downstream interest. */
-  smoothRendering = false;
+   *  via Konva, so this is a flag the SVG/screenshot renderers read. Defaults
+   *  to TRUE to match the live DAEdge (`_renderTension = SMOOTH_TENSION`) —
+   *  with a false default, edges a router skips (e.g. self-loops in the
+   *  incremental routers) rendered as polylines in the harness while the app
+   *  draws them as curves. */
+  smoothRendering = true;
   setSmoothRendering(smooth: boolean): void {
     this.smoothRendering = smooth;
   }
