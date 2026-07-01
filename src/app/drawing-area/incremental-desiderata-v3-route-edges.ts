@@ -1,6 +1,6 @@
 // incremental-desiderata-v3 — harness-only experimental router (successor to
 // incremental-desiderata-v2). Same per-edge, curve-scored, budgeted hill-climb
-// as v2, plus four targeted improvements identified by case review:
+// as v2 (shared machinery: incremental-routing-common.ts), plus:
 //
 //   1. RELAXATION SWEEPS. v2 routes each edge once against the already-placed
 //      edges and freezes it; a fan that arrives early never sees the edges that
@@ -8,54 +8,53 @@
 //      crossing S1/S2→In). v3 follows the initial pass with a few Gauss-Seidel
 //      sweeps that re-route every edge against ALL the others, so the fan
 //      settles into even spacing.
-//   2. FAN INTERIOR SEPARATION. The scorer (gated flag) now keeps two edges that
+//   2. FAN INTERIOR SEPARATION. The scorer (gated flag) keeps two edges that
 //      share one endpoint apart along their interiors, not just at the hub, so
 //      fan-out arcs stop grazing (converge-circular Out→D3/D4).
 //   3. SYMMETRIC-ARC COLLAPSE. After an edge converges, a one-sided detour is
 //      collapsed to a single centred waypoint at the shallowest clearing depth —
 //      escaping the greedy plateau that left v2 with multi-waypoint wiggles
-//      (bypass-obstacle's 3-point kink). Ported from bezier-fit-weighted-chain.
+//      (bypass-obstacle's 3-point kink). Tries BOTH sides of the chord.
 //   4. CLUSTER-AWARE BYPASS. v2's bypass offsets around each clipped node
 //      independently, which threads tight gaps between obstacles. v3 also routes
 //      around the UNION of obstacles whose gap is below clusterGap, so it goes
 //      around a tight pair instead of between them (tangent-grazing B→D vs OBS).
+//   5. WHOLE-PATH CLEARANCE with a straightness exemption (see the gated flags
+//      in routing-local-score.ts): a straight edge grazing a non-incident node
+//      is seen and pulled clear; an unambiguous straight chord stays straight.
 //
-// As in v2: scoring is always LOCAL (one edge's curve vs nodes + nearby context
-// curves), everything runs inside hard budgets, and edges left with hard-tier
-// failures are reported in `uncleanEdges`. NOT wired into the app/worker —
-// registered only in the routing-eval bundle-entry.
+// NOT wired into the app/worker — registered only in the routing-eval
+// bundle-entry. See notes/plan-incremental-desiderata-v3.md.
 
 import type { DANode } from './da-node';
 import type { DAEdge } from './da-edge';
-import {
-  Pt, Bbox, unit, vector, dist, bboxOf, inflateBox, segmentIntersectsBox,
-} from './routing-geometry';
-import { sampleSmoothPath } from './routing-curve';
+import { Pt, Bbox, unit, vector, bboxOf, inflateBox, segmentIntersectsBox } from './routing-geometry';
 import {
   ContextEdge,
   LocalScore,
   LocalScoreOptions,
   DEFAULT_LOCAL_SCORE_OPTIONS,
   compareLocalScores,
-  scoreEdgeRoute,
 } from './routing-local-score';
+import {
+  IncrementalBudgets,
+  IncrementalRouteOptions,
+  IncrementalRouteStats,
+  EdgeChoice,
+  NearbyContext,
+  routeOneEdge,
+  evaluate,
+  toContext,
+  filterNearby,
+  compareEdgeOrder,
+  outOfGlobalBudget,
+  center,
+} from './incremental-routing-common';
 
-export interface IncrementalBudgets {
-  maxCandidatesPerEdge: number;
-  maxIterationsPerEdge: number;
-  maxMovesPerIteration: number;
-  maxTotalScoreCalls: number;
-  maxElapsedMs: number;
-}
+export type { IncrementalBudgets } from './incremental-routing-common';
 
-export interface IncrementalDesiderataV3Options {
+export interface IncrementalDesiderataV3Options extends IncrementalRouteOptions {
   local: LocalScoreOptions;
-  tension: number;
-  stepsPerSegment: number;
-  perpOffset: number;
-  moveStep: number;
-  maxWaypoints: number;
-  nearbyMargin: number;
   /** Number of Gauss-Seidel relaxation sweeps after the initial placement. Each
    *  sweep re-routes every edge against all the others. 0 = v2 behaviour. */
   relaxationPasses: number;
@@ -95,15 +94,12 @@ export const DEFAULT_OPTIONS: IncrementalDesiderataV3Options = {
   },
 };
 
-export interface IncrementalRouterStats {
+export interface IncrementalRouterStats extends IncrementalRouteStats {
   nodeCount: number;
   edgeCount: number;
-  candidatesEvaluated: number;
-  scoreCalls: number;
-  refineIterations: number;
   relaxationSweeps: number;
   elapsedMs: number;
-  budgetHit: boolean;
+  /** Ids of edges whose final route still has hard-tier failures. */
   uncleanEdges: string[];
 }
 
@@ -139,17 +135,24 @@ export function applyIncrementalDesiderataV3RouteEdges(
     .filter(e => e.srcNode !== e.destNode)
     .map(e => toContext(e, opts));
 
-  // --- Initial pass: place each edge against earlier ones + frozen context.
-  const context: ContextEdge[] = [...frozenContext];
+  // Cached context per routed edge, refreshed only when its route changes —
+  // the relaxation sweeps read everyone else's cache instead of resampling
+  // every curve for every edge (O(E²) per sweep otherwise).
+  const ctxCache = new Map<DAEdge, NearbyContext>();
   const lastScore = new Map<DAEdge, LocalScore | null>();
+
+  // --- Initial pass: place each edge against earlier ones + frozen context.
+  const placed: ContextEdge[] = [...frozenContext];
   for (const edge of ordered) {
     if (outOfGlobalBudget(stats, startMs, opts)) { stats.budgetHit = true; break; }
-    const nearby = filterNearby(edge, context, opts);
-    const best = routeOneEdge(edge, nodes, nearby, opts, stats, startMs);
+    const nearby = filterNearby(edge, placed, opts);
+    const best = routeOneEdgeV3(edge, nodes, nearby, opts, stats, startMs);
     edge.setControlPoints(best.controlPoints);
     edge.setSmoothRendering(true);
     lastScore.set(edge, best.score);
-    context.push(toContext(edge, opts));
+    const ctx = toContext(edge, opts);
+    ctxCache.set(edge, ctx);
+    placed.push(ctx);
   }
 
   // --- Relaxation sweeps: re-route every edge against ALL others. Lets edges
@@ -160,7 +163,12 @@ export function applyIncrementalDesiderataV3RouteEdges(
     let changed = false;
     for (const edge of ordered) {
       if (outOfGlobalBudget(stats, startMs, opts)) { stats.budgetHit = true; break; }
-      const others = contextOfOthers(edge, ordered, frozenContext, opts);
+      const others: ContextEdge[] = [...frozenContext];
+      for (const other of ordered) {
+        if (other === edge) continue;
+        const c = ctxCache.get(other);
+        if (c) others.push(c);
+      }
       const nearby = filterNearby(edge, others, opts);
       const current: EdgeChoice = {
         controlPoints: edge.controlPoints.map(p => ({ x: p.x, y: p.y })),
@@ -169,11 +177,14 @@ export function applyIncrementalDesiderataV3RouteEdges(
       // Re-score the current route against the (now complete) context so the
       // comparison is apples-to-apples with the candidates.
       current.score = evaluate(edge, current.controlPoints, nodes, nearby, opts, stats);
-      const best = routeOneEdge(edge, nodes, nearby, opts, stats, startMs, current);
+      const best = routeOneEdgeV3(edge, nodes, nearby, opts, stats, startMs, current);
       edge.setControlPoints(best.controlPoints);
       edge.setSmoothRendering(true);
       lastScore.set(edge, best.score);
-      if (!samePointList(current.controlPoints, best.controlPoints)) changed = true;
+      if (!samePointList(current.controlPoints, best.controlPoints)) {
+        ctxCache.set(edge, toContext(edge, opts));
+        changed = true;
+      }
     }
     if (!changed) break; // settled
   }
@@ -193,12 +204,9 @@ export function applyIncrementalDesiderataV3RouteEdges(
   return stats;
 }
 
-interface EdgeChoice {
-  controlPoints: Pt[];
-  score: LocalScore | null;
-}
-
-function routeOneEdge(
+/** v2's shared seed + hill-climb, plus v3's extras: cluster-bypass mutation
+ *  candidates during refine, and the symmetric-arc collapse afterwards. */
+function routeOneEdgeV3(
   edge: DAEdge,
   nodes: DANode[],
   context: ContextEdge[],
@@ -207,44 +215,16 @@ function routeOneEdge(
   startMs: number,
   initial?: EdgeChoice,
 ): EdgeChoice {
-  // 1. Seed — fixed candidate set, plus the current route (for relaxation) so a
-  // sweep can only improve, never regress, an edge by its own measure.
-  let best: EdgeChoice = initial
-    ? { controlPoints: initial.controlPoints.map(p => ({ ...p })), score: initial.score }
-    : { controlPoints: [], score: null };
-  const seeds = buildSeedCandidates(edge, opts).slice(0, opts.budgets.maxCandidatesPerEdge);
-  for (const candidate of seeds) {
-    if (outOfGlobalBudget(stats, startMs, opts)) { stats.budgetHit = true; break; }
-    const score = evaluate(edge, candidate, nodes, context, opts, stats);
-    if (best.score === null || compareLocalScores(score, best.score, opts.local) < 0) {
-      best = { controlPoints: candidate, score };
-    }
-  }
+  const s = center(edge.srcNode);
+  const d = center(edge.destNode);
+  const perp = unit({ x: -(d.y - s.y), y: d.x - s.x });
+  const extraMoves = (cp: Pt[]) => clusterBypassCandidates(edge, cp, nodes, perp, s, opts);
 
-  // 2. Refine — bounded hill-climb; stop early when no move improves.
-  for (let iter = 0; iter < opts.budgets.maxIterationsPerEdge; iter++) {
-    if (outOfGlobalBudget(stats, startMs, opts)) { stats.budgetHit = true; break; }
-    stats.refineIterations++;
-    const moves = generateMoves(edge, best.controlPoints, nodes, opts, iter)
-      .slice(0, opts.budgets.maxMovesPerIteration);
+  let best = routeOneEdge(edge, nodes, context, opts, stats, startMs, initial, extraMoves);
 
-    let improved = false;
-    for (const candidate of moves) {
-      if (outOfGlobalBudget(stats, startMs, opts)) { stats.budgetHit = true; break; }
-      const score = evaluate(edge, candidate, nodes, context, opts, stats);
-      if (best.score === null || compareLocalScores(score, best.score, opts.local) < 0) {
-        best = { controlPoints: candidate, score };
-        improved = true;
-      }
-    }
-    if (!improved) break;
-  }
-
-  // 3. Collapse a one-sided detour to a single symmetric waypoint.
   if (opts.collapseSymmetricArcs) {
     best = maybeCollapseSymmetric(edge, best, nodes, context, opts, stats);
   }
-
   return best;
 }
 
@@ -295,132 +275,12 @@ function maybeCollapseSymmetric(
   return cand;
 }
 
-function evaluate(
-  edge: DAEdge,
-  candidate: Pt[],
-  nodes: DANode[],
-  context: ContextEdge[],
-  opts: IncrementalDesiderataV3Options,
-  stats: IncrementalRouterStats,
-): LocalScore {
-  edge.setControlPoints(candidate);
-  const curve = sampleSmoothPath(edge.getPathPoints(), opts.tension, opts.stepsPerSegment);
-  const score = scoreEdgeRoute(
-    curve, edge.srcNode, edge.destNode, candidate.length, nodes, context, opts.local,
-  );
-  stats.scoreCalls++;
-  stats.candidatesEvaluated++;
-  return score;
-}
-
-function buildSeedCandidates(edge: DAEdge, opts: IncrementalDesiderataV3Options): Pt[][] {
-  const s = center(edge.srcNode);
-  const d = center(edge.destNode);
-  const chord = vector(s, d);
-  const perp = unit({ x: -chord.y, y: chord.x });
-  const k = opts.perpOffset;
-  const mid = { x: (s.x + d.x) / 2, y: (s.y + d.y) / 2 };
-  const p1 = { x: s.x + chord.x / 3, y: s.y + chord.y / 3 };
-  const p2 = { x: s.x + (chord.x * 2) / 3, y: s.y + (chord.y * 2) / 3 };
-  return [
-    [],
-    [{ x: d.x, y: s.y }],
-    [{ x: s.x, y: d.y }],
-    [offset(mid, perp, k)],
-    [offset(mid, perp, -k)],
-    [offset(p1, perp, k), offset(p2, perp, k)],
-    [offset(p1, perp, -k), offset(p2, perp, -k)],
-  ];
-}
-
-function generateMoves(
-  edge: DAEdge, cp: Pt[], nodes: DANode[], opts: IncrementalDesiderataV3Options, iter: number,
-): Pt[][] {
-  const s = center(edge.srcNode);
-  const d = center(edge.destNode);
-  const perp = unit({ x: -(d.y - s.y), y: d.x - s.x });
-  const decay = Math.max(0.35, 1 - (iter / opts.budgets.maxIterationsPerEdge) * 0.7);
-  const step = opts.moveStep * decay;
-  const moves: Pt[][] = [];
-
-  // Per-node bypass (around each clipped node, both sides).
-  for (const bypass of obstacleBypassCandidates(edge, cp, nodes, perp, s, opts)) {
-    moves.push(bypass);
-  }
-  // Cluster bypass (around the union of tight-gap obstacle groups, both sides).
-  for (const around of clusterBypassCandidates(edge, cp, nodes, perp, s, opts)) {
-    moves.push(around);
-  }
-
-  // MOVE
-  const deltas: Pt[] = [
-    { x: perp.x * step, y: perp.y * step },
-    { x: -perp.x * step, y: -perp.y * step },
-    { x: perp.x * step * 2, y: perp.y * step * 2 },
-    { x: -perp.x * step * 2, y: -perp.y * step * 2 },
-    { x: step, y: 0 }, { x: -step, y: 0 },
-    { x: 0, y: step }, { x: 0, y: -step },
-  ];
-  for (let i = 0; i < cp.length; i++) {
-    for (const delta of deltas) {
-      moves.push(cp.map((p, j) => (j === i ? { x: p.x + delta.x, y: p.y + delta.y } : p)));
-    }
-  }
-
-  // ADD
-  if (cp.length < opts.maxWaypoints) {
-    for (const ins of insertionCandidates(edge, cp, nodes, perp, step)) {
-      moves.push([...cp.slice(0, ins.index), ins.point, ...cp.slice(ins.index)]);
-    }
-  }
-
-  // REMOVE
-  for (let i = 0; i < cp.length; i++) {
-    moves.push(cp.filter((_, j) => j !== i));
-  }
-
-  return moves;
-}
-
-function obstacleBypassCandidates(
-  edge: DAEdge, cp: Pt[], nodes: DANode[], perp: Pt, s: Pt, opts: IncrementalDesiderataV3Options,
-): Pt[][] {
-  edge.setControlPoints(cp);
-  const curve = sampleSmoothPath(edge.getPathPoints(), opts.tension, opts.stepsPerSegment);
-  const chordU = unit(vector(s, center(edge.destNode)));
-  const clipped: DANode[] = [];
-  for (const node of nodes) {
-    if (node === edge.srcNode || node === edge.destNode) continue;
-    const box = bboxOf(node);
-    for (let i = 0; i < curve.length - 1; i++) {
-      if (segmentIntersectsBox(curve[i], curve[i + 1], box)) { clipped.push(node); break; }
-    }
-  }
-  if (clipped.length === 0 || clipped.length > opts.maxWaypoints) return [];
-
-  const clearance = opts.local.satisfiedNodeClearance * 0.7;
-  const out: Pt[][] = [];
-  for (const sign of [1, -1]) {
-    const wps = clipped.map(node => {
-      const c = center(node);
-      const ext = Math.abs(perp.x) * (node.NODE_WIDTH / 2) + Math.abs(perp.y) * (node.NODE_HEIGHT / 2);
-      const distOff = ext + clearance;
-      const pt = { x: c.x + sign * perp.x * distOff, y: c.y + sign * perp.y * distOff };
-      const t = (c.x - s.x) * chordU.x + (c.y - s.y) * chordU.y;
-      return { pt, t };
-    });
-    wps.sort((a, b) => a.t - b.t);
-    out.push(wps.map(w => w.pt));
-  }
-  return out;
-}
-
 /** Candidates that route around the UNION of each tight-gap obstacle cluster
  *  (≥2 nodes) near the chord, on each side. A cluster's two waypoints sit just
  *  outside the union box's chord-extent corners, offset perpendicular clear of
  *  the whole box — so the edge goes around the pair instead of threading the
  *  sub-clearance gap between them. Single near-chord nodes are left to the
- *  per-node bypass above. */
+ *  per-node bypass in the shared move generator. */
 function clusterBypassCandidates(
   edge: DAEdge, cp: Pt[], nodes: DANode[], perp: Pt, s: Pt, opts: IncrementalDesiderataV3Options,
 ): Pt[][] {
@@ -500,133 +360,6 @@ function unionBoxes(boxes: Bbox[]): Bbox {
     maxX = Math.max(maxX, b.maxX); maxY = Math.max(maxY, b.maxY);
   }
   return { minX, minY, maxX, maxY };
-}
-
-interface Insertion { point: Pt; index: number; }
-
-function insertionCandidates(
-  edge: DAEdge, cp: Pt[], nodes: DANode[], perp: Pt, step: number,
-): Insertion[] {
-  const path = edge.getPathPoints();
-  const out: Insertion[] = [];
-  let longest = -1, gapIdx = 0;
-  for (let i = 0; i < path.length - 1; i++) {
-    const len = Math.hypot(path[i + 1].x - path[i].x, path[i + 1].y - path[i].y);
-    if (len > longest) { longest = len; gapIdx = i; }
-  }
-  const mid = {
-    x: (path[gapIdx].x + path[gapIdx + 1].x) / 2,
-    y: (path[gapIdx].y + path[gapIdx + 1].y) / 2,
-  };
-  for (const amt of [step, -step, step * 2, -step * 2]) {
-    out.push({ point: offset(mid, perp, amt), index: gapIdx });
-  }
-  const clip = firstClip(edge, nodes, path);
-  if (clip) {
-    const c = center(clip.node);
-    const away = unit(vector(c, clip.mid));
-    for (const amt of [step * 1.5, step * 2.5]) {
-      out.push({ point: offset(clip.mid, away, amt), index: clip.index });
-    }
-  }
-  return out;
-}
-
-function firstClip(
-  edge: DAEdge, nodes: DANode[], path: Pt[],
-): { node: DANode; mid: Pt; index: number } | null {
-  for (let i = 0; i < path.length - 1; i++) {
-    for (const node of nodes) {
-      if (node === edge.srcNode || node === edge.destNode) continue;
-      if (segmentIntersectsBox(path[i], path[i + 1], bboxOf(node))) {
-        return {
-          node,
-          mid: { x: (path[i].x + path[i + 1].x) / 2, y: (path[i].y + path[i + 1].y) / 2 },
-          index: i,
-        };
-      }
-    }
-  }
-  return null;
-}
-
-function offset(p: Pt, dir: Pt, amount: number): Pt {
-  return { x: p.x + dir.x * amount, y: p.y + dir.y * amount };
-}
-
-function center(node: DANode): Pt {
-  return {
-    x: node.konvaGroup.x() + node.NODE_WIDTH / 2,
-    y: node.konvaGroup.y() + node.NODE_HEIGHT / 2,
-  };
-}
-
-function outOfGlobalBudget(
-  stats: IncrementalRouterStats, startMs: number, opts: IncrementalDesiderataV3Options,
-): boolean {
-  return (
-    stats.scoreCalls >= opts.budgets.maxTotalScoreCalls ||
-    Date.now() - startMs >= opts.budgets.maxElapsedMs
-  );
-}
-
-function compareEdgeOrder(a: DAEdge, b: DAEdge): number {
-  const ay = a.srcNode.konvaGroup.y(), by = b.srcNode.konvaGroup.y();
-  if (ay !== by) return ay - by;
-  const ax = a.srcNode.konvaGroup.x(), bx = b.srcNode.konvaGroup.x();
-  if (ax !== bx) return ax - bx;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
-
-interface NearbyContext extends ContextEdge { bbox: Bbox; owner: DAEdge; }
-
-function toContext(edge: DAEdge, opts: IncrementalDesiderataV3Options): NearbyContext {
-  const curve = sampleSmoothPath(edge.getPathPoints(), opts.tension, opts.stepsPerSegment);
-  return {
-    poly: curve, srcNode: edge.srcNode, destNode: edge.destNode,
-    bbox: bboxOfPoly(curve), owner: edge,
-  };
-}
-
-/** Context = every routable edge's current route except `edge` itself, plus the
- *  frozen context. Used by the relaxation sweeps. */
-function contextOfOthers(
-  edge: DAEdge, ordered: DAEdge[], frozen: ContextEdge[], opts: IncrementalDesiderataV3Options,
-): ContextEdge[] {
-  const out: ContextEdge[] = [...frozen];
-  for (const other of ordered) {
-    if (other === edge) continue;
-    out.push(toContext(other, opts));
-  }
-  return out;
-}
-
-function filterNearby(
-  edge: DAEdge, context: ContextEdge[], opts: IncrementalDesiderataV3Options,
-): ContextEdge[] {
-  const span = inflateBox(
-    unionBoxes([bboxOf(edge.srcNode), bboxOf(edge.destNode)]),
-    opts.nearbyMargin,
-  );
-  return context.filter(c => {
-    const cb = (c as NearbyContext).bbox ?? bboxOfPoly(c.poly);
-    return boxesOverlap(span, cb);
-  });
-}
-
-function bboxOfPoly(poly: Pt[]): Bbox {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of poly) {
-    if (p.x < minX) minX = p.x;
-    if (p.y < minY) minY = p.y;
-    if (p.x > maxX) maxX = p.x;
-    if (p.y > maxY) maxY = p.y;
-  }
-  return { minX, minY, maxX, maxY };
-}
-
-function boxesOverlap(a: Bbox, b: Bbox): boolean {
-  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY;
 }
 
 function samePointList(a: Pt[], b: Pt[]): boolean {
