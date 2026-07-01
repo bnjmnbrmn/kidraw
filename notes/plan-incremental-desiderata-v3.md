@@ -48,19 +48,33 @@ wired into the app.
    around a tight pair instead of between them (tangent-grazing B→D vs the
    OBS/C gap).
 
-5. **Whole-path node clearance** (in `routing-local-score.ts`, gated by
-   `wholePathClearance`, default **off** for IDv2 parity). IDv2 measured node
-   clearance only at a path's interior *waypoints*; a STRAIGHT edge has none, so
-   its clearance was reported as the cap (36 = perfectly clear) even when it
-   grazed a non-incident node — a near-miss that reads as "does this edge connect
-   to that node?" went unpenalised (dense n8→n10 skimming n9 by 1.6px). IDv3
-   samples clearance along the whole rendered path at 8px spacing, skipping a
-   55px radius (`endpointClearanceRadius`) around each endpoint so an edge isn't
-   dinged for leaving its own perimeter beside a neighbour. Because node
-   clearance already outranks crossings in the comparator, seeing the graze is
-   enough: the router pulls the edge clear of the node even at the cost of a bend
-   or a crossing — the priority the user asked for (visible separation from a
-   near-touched node > overall node distance > avoiding a crossing).
+5. **Whole-path node clearance with a straightness exemption** (in
+   `routing-local-score.ts`, gated by `wholePathClearance`, default **off** for
+   IDv2 parity). IDv2 measured node clearance only at a path's interior
+   *waypoints*; a STRAIGHT edge has none, so its clearance was reported as the
+   cap (36 = perfectly clear) even when it grazed a non-incident node — a
+   near-miss that reads as "does this edge connect to that node?" went
+   unpenalised (dense n8→n10 skimming n9 by 1.6px). IDv3 samples clearance along
+   the whole rendered path at 8px spacing, skipping a 55px radius
+   (`endpointClearanceRadius`) around each endpoint so an edge isn't dinged for
+   leaving its own perimeter beside a neighbour. Because node clearance already
+   outranks crossings in the comparator, seeing the graze is enough: the router
+   pulls the edge clear of the node even at the cost of a bend or a crossing —
+   the priority the user asked for (visible separation from a near-touched node
+   > overall node distance > avoiding a crossing).
+
+   **Straightness exemption** (`satisfiedGrazeClearance`, 16px): a 0-bend chord
+   at least 16px from every non-incident node scores as fully satisfied. Without
+   it, the 36px saturation made compact layouts bow chords that were already
+   visually unambiguous — petersen's inner pentagram runs 19.8–28px from its
+   neighbouring boxes and was being warped into hooks and bunched waypoints.
+   Routes that bend anyway get no exemption, so detours still prefer the full
+   36px berth (the approved tangent-grazing / converge / bypass shapes are
+   unchanged by the exemption — verified byte-identical). Straight chords under
+   16px (dense's 1.6px graze) still get pulled clear. Two candidate routers were
+   tried here: a separate low-cap "graze tier" regressed tangent-grazing (B→D
+   hugged OBS at 10px again because A→D stopped preferring the generous over-OBS
+   arc); the exemption keeps bent-route dynamics exactly as approved.
 
 ## Per-case results (run 20260701-072723-ud2)
 

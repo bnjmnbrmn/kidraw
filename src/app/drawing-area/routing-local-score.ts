@@ -91,8 +91,22 @@ export interface LocalScoreOptions {
    *  so a near-miss that reads as "is this edge connecting to that node?" goes
    *  unpenalised (dense n8→n10 skimming n9 by 1.6px). With this on, the graze is
    *  seen, and since node clearance outranks crossings, the router will pull the
-   *  edge clear of the node even at the cost of a bend or a crossing. */
+   *  edge clear of the node even at the cost of a bend or a crossing.
+   *
+   *  STRAIGHTNESS EXEMPTION: a 0-bend route whose whole-path clearance is at
+   *  least `satisfiedGrazeClearance` counts as fully satisfied. A straight,
+   *  visually unambiguous chord needs no clearance improvement — without the
+   *  exemption, compact layouts bow edges that were already fine (petersen's
+   *  inner star runs 20-28px from its neighbours and should stay straight).
+   *  Routes that bend anyway get no exemption, so a detour still prefers the
+   *  full `satisfiedNodeClearance` berth around the nodes it dodges. */
   wholePathClearance?: boolean;
+  /** Straight-route exemption threshold (px): a 0-bend route at least this far
+   *  from every non-incident node is "clearly not touching" and scores as fully
+   *  satisfied. Must sit below the natural chord-to-box gaps of tidy compact
+   *  layouts (petersen: ~19.8px) and above what reads as touching (dense's
+   *  1.6px graze). */
+  satisfiedGrazeClearance?: number;
   /** Radius (px) around each edge endpoint excluded from whole-path clearance,
    *  so an edge isn't penalised for leaving its own perimeter beside a neighbour
    *  of its incident node. Only used when `wholePathClearance` is on. */
@@ -109,8 +123,9 @@ export const DEFAULT_LOCAL_SCORE_OPTIONS: LocalScoreOptions = {
   fanSeparationEnabled: false,
   satisfiedFanSeparation: 28,
   fanHubExclusion: 90,
-  // Whole-path clearance defaults OFF (IDv2 parity); v3 enables it.
+  // Whole-path graze clearance defaults OFF (IDv2 parity); v3 enables it.
   wholePathClearance: false,
+  satisfiedGrazeClearance: 16,
   endpointClearanceRadius: 55,
 };
 
@@ -243,7 +258,7 @@ export function scoreEdgeRoute(
   }
 
   const minNodeClearance = computeMinNodeClearance(
-    poly, srcNode, destNode, nodes, opts,
+    poly, srcNode, destNode, nodes, bendCount, opts,
   );
 
   const hardFailCount = clipCount + siblingCrossCount + selfIntersections + shallowCrossCount;
@@ -363,11 +378,19 @@ function countSelfIntersections(poly: Pt[]): number {
 }
 
 function computeMinNodeClearance(
-  poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[], opts: LocalScoreOptions,
+  poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[],
+  bendCount: number, opts: LocalScoreOptions,
 ): number {
   const cap = opts.satisfiedNodeClearance;
   if (opts.wholePathClearance) {
-    return wholePathNodeClearance(poly, src, dest, nodes, cap, opts.endpointClearanceRadius ?? 55);
+    const g = wholePathNodeClearance(
+      poly, src, dest, nodes, cap, opts.endpointClearanceRadius ?? 55,
+    );
+    // Straightness exemption: a 0-bend chord that is clearly not touching any
+    // node needs no clearance improvement — report it fully satisfied so the
+    // comparator never trades bends for spacing an unambiguous straight line.
+    if (bendCount === 0 && g >= (opts.satisfiedGrazeClearance ?? 16)) return cap;
+    return g;
   }
   let min = cap;
   for (const node of nodes) {
@@ -384,7 +407,7 @@ function computeMinNodeClearance(
   return min;
 }
 
-/** (IDv3) Node clearance measured along the whole rendered path, sampled at a
+/** (IDv3) Graze clearance measured along the whole rendered path, sampled at a
  *  fixed spacing so a STRAIGHT edge (no interior vertices) is measured too.
  *  Samples within `endR` of either endpoint are skipped — an edge leaving its
  *  own incident perimeter beside a neighbour shouldn't count as a graze. */

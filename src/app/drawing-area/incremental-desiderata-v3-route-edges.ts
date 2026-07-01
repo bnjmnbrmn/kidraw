@@ -74,6 +74,7 @@ export const DEFAULT_OPTIONS: IncrementalDesiderataV3Options = {
     satisfiedFanSeparation: 28,
     fanHubExclusion: 90,
     wholePathClearance: true,
+    satisfiedGrazeClearance: 16,
     endpointClearanceRadius: 55,
   },
   tension: 0.5,
