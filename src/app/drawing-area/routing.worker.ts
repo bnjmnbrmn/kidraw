@@ -22,6 +22,10 @@ import {
   applyIncrementalDesiderataRouteEdges,
   DEFAULT_OPTIONS as INCREMENTAL_DEFAULTS,
 } from './incremental-desiderata-route-edges';
+import {
+  applyIncrementalDesiderataV3RouteEdges,
+  DEFAULT_OPTIONS as INCREMENTAL_V3_DEFAULTS,
+} from './incremental-desiderata-v3-route-edges';
 import { RoutingNode, RoutingEdge } from './routing-worker-geometry';
 import type { DANode } from './da-node';
 import type { DAEdge } from './da-edge';
@@ -58,6 +62,12 @@ addEventListener('message', ({ data }: MessageEvent<RoutingRequest>) => {
       break;
     case 'incremental-desiderata-v2': {
       const stats = applyIncrementalDesiderataRouteEdges(n, re, INCREMENTAL_DEFAULTS, undefined, fe);
+      uncleanEdgeIds = stats.uncleanEdges;
+      budgetHit = stats.budgetHit;
+      break;
+    }
+    case 'incremental-desiderata-v3': {
+      const stats = applyIncrementalDesiderataV3RouteEdges(n, re, INCREMENTAL_V3_DEFAULTS, undefined, fe);
       uncleanEdgeIds = stats.uncleanEdges;
       budgetHit = stats.budgetHit;
       break;

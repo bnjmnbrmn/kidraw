@@ -23,11 +23,12 @@
 //      in routing-local-score.ts): a straight edge grazing a non-incident node
 //      is seen and pulled clear; an unambiguous straight chord stays straight.
 //
-// The FULL-GRAPH router is harness-only (registered in the routing-eval
-// bundle-entry, not the app's Layout submenu). The SINGLE-EDGE entry point
-// `routeNewEdgeIncrementally` IS used by the app: DrawingAreaComponent calls it
-// whenever the user adds an edge, routing just that edge against the existing
-// graph as frozen context. See notes/plan-incremental-desiderata-v3.md.
+// Used by the app two ways: the FULL-GRAPH router is selectable from the
+// Layout submenu ('Route: Incr v3', worker + sync fallback), and the
+// SINGLE-EDGE entry point `routeNewEdgeIncrementally` runs whenever the user
+// adds an edge or drags a node, routing just the affected edges against the
+// existing graph as frozen context. Also registered in the routing-eval
+// bundle-entry. See notes/plan-incremental-desiderata-v3.md.
 
 import type { DANode } from './da-node';
 import type { DAEdge } from './da-edge';

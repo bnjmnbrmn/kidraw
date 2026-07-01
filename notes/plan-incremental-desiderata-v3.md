@@ -5,14 +5,14 @@ type: plan
 
 # incremental-desiderata-v3
 
-Harness-only experimental router (`incremental-desiderata-v3-route-edges.ts`),
-successor to [IDv2](idea-incremental-edge-routing.md). Same per-edge,
-curve-scored, budgeted hill-climb; four targeted changes driven by a case
-review of IDv2 output (see the compare page,
-`tools/routing-eval/compare-latest.html`). Registered in
-`tools/routing-eval/harness/bundle-entry.ts` as `incremental-desiderata-v3`, so
-the compare page shows **bf-wc · desiderata · IDv2 · IDv3** side by side. Not
-wired into the app.
+Successor to [IDv2](idea-incremental-edge-routing.md)
+(`incremental-desiderata-v3-route-edges.ts`). Same per-edge, curve-scored,
+budgeted hill-climb; five targeted changes driven by a case review of IDv2
+output (see the compare page, `tools/routing-eval/compare-latest.html`).
+Registered in `tools/routing-eval/harness/bundle-entry.ts` as
+`incremental-desiderata-v3`, so the compare page shows
+**bf-wc · desiderata · IDv2 · IDv3** side by side. Wired into the app three
+ways — see "In the app" below.
 
 ## The four changes
 
@@ -101,7 +101,9 @@ edge picker (`setEdgeDestination`, so the preview shows the real route), and
 both insert-node-with-edges flows. The undo snapshot is pushed before the
 command mutates, so undo removes the edge and its route together. A hard-tier
 failure surfaces as a "New edge could not be routed cleanly" status message.
-The full-graph v3 router remains harness-only.
+The full-graph v3 router is also selectable from the Layout submenu
+(`b → v`, 'Route: Incr v3') alongside BF-WC / Desiderata / Incr v2, dispatched
+through the same worker + sync fallback with unclean-edge reporting.
 
 **Drag rerouting.** `rerouteIncidentEdges(nodes)` re-routes every edge incident
 to the dragged node(s) with the same single-edge pipeline, firing at drag-step
@@ -115,9 +117,6 @@ edge. That needs obstacle-aware invalidation or a full-graph pass — follow-up.
 
 ## Open follow-ups
 
-- tangent-grazing B→D keeps 4 waypoints (a minor mid-arc wiggle) because a
-  single arc would cross the deep A→D detour — collapse correctly declines it.
-  A collapse that also tries the *other* side of the chord might do better.
-  (Second caveat, under discussion.)
-- If IDv3 wins broadly on the compare page, promote it into the app the same way
-  IDv2 was (parameterized `APPLY_EDGE_ROUTING`, worker + sync dispatch).
+- Obstacle-aware invalidation for drag rerouting (the "known limit" above):
+  re-route any edge whose corridor a moved node now intersects, not just the
+  dragged node's incident edges.

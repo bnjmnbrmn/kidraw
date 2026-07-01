@@ -427,6 +427,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.routeBezierFitWeightedChain]: new LabeledAction('Route: BF-WC', route('bezier-fit-weighted-chain')),
       [layout.routeDesiderata]:             new LabeledAction('Route: Desiderata', route('desiderata')),
       [layout.routeIncremental]:            new LabeledAction('Route: Incr v2', route('incremental-desiderata-v2')),
+      [layout.routeIncrementalV3]:          new LabeledAction('Route: Incr v3', route('incremental-desiderata-v3')),
     } as SubmenuConfig;
   }
 

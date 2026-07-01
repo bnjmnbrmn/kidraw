@@ -7,7 +7,7 @@ export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' |
 export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid' | 'circular' | 'radial';
 
 /** Edge-routing algorithms selectable from the Layout submenu. */
-export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'incremental-desiderata-v2';
+export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'incremental-desiderata-v2' | 'incremental-desiderata-v3';
 
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 

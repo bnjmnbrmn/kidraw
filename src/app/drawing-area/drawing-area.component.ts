@@ -30,7 +30,11 @@ import {
   applyIncrementalDesiderataRouteEdges,
   DEFAULT_OPTIONS as INCREMENTAL_DEFAULTS,
 } from './incremental-desiderata-route-edges';
-import { routeNewEdgeIncrementally } from './incremental-desiderata-v3-route-edges';
+import {
+  routeNewEdgeIncrementally,
+  applyIncrementalDesiderataV3RouteEdges,
+  DEFAULT_OPTIONS as INCREMENTAL_V3_DEFAULTS,
+} from './incremental-desiderata-v3-route-edges';
 import type { RoutingRequest, RoutingResponse } from './routing-worker-messages';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
@@ -1266,6 +1270,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case 'incremental-desiderata-v2': {
         const stats = applyIncrementalDesiderataRouteEdges(allNodes, routeEdges, INCREMENTAL_DEFAULTS, log, frozenEdges);
+        unclean = stats.uncleanEdges.length;
+        break;
+      }
+      case 'incremental-desiderata-v3': {
+        const stats = applyIncrementalDesiderataV3RouteEdges(allNodes, routeEdges, INCREMENTAL_V3_DEFAULTS, log, frozenEdges);
         unclean = stats.uncleanEdges.length;
         break;
       }
