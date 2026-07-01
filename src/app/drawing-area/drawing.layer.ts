@@ -277,10 +277,11 @@ export class DrawingLayer extends Konva.Layer {
       this.daEdges.splice(index, 1);
     }
   }
-  addEdge(srcNode: DANode, destNode: DANode) {
+  addEdge(srcNode: DANode, destNode: DANode): DAEdge {
     let daEdge = new DAEdge(srcNode, destNode, "", undefined, this.edgeColors());
     this.daEdgeGroup.add(daEdge.konvaGroup);
     this.daEdges.push(daEdge);
+    return daEdge;
   }
 
   clearAll(): void {

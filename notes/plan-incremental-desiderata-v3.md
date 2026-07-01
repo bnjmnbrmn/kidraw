@@ -91,6 +91,18 @@ tradeoff: the interior-vertex-only clearance metric never saw a straight edge's
 graze (see change 5). Fixing the measurement made the existing clearance>crossing
 ranking do the right thing — and dense's crossing count dropped 29→26 as a bonus.
 
+## In the app: auto-routing new edges
+
+`routeNewEdgeIncrementally(nodes, allEdges, newEdge)` routes ONE edge against
+the rest of the graph held fixed — the "incremental" applied at edge-add time.
+`DrawingAreaComponent.autoRouteNewEdge` calls it synchronously (single edge =
+milliseconds) from every add-edge flow: connect-selected-nodes, the directed
+edge picker (`setEdgeDestination`, so the preview shows the real route), and
+both insert-node-with-edges flows. The undo snapshot is pushed before the
+command mutates, so undo removes the edge and its route together. A hard-tier
+failure surfaces as a "New edge could not be routed cleanly" status message.
+The full-graph v3 router remains harness-only.
+
 ## Open follow-ups
 
 - tangent-grazing B→D keeps 4 waypoints (a minor mid-arc wiggle) because a

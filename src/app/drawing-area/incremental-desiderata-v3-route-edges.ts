@@ -23,8 +23,11 @@
 //      in routing-local-score.ts): a straight edge grazing a non-incident node
 //      is seen and pulled clear; an unambiguous straight chord stays straight.
 //
-// NOT wired into the app/worker — registered only in the routing-eval
-// bundle-entry. See notes/plan-incremental-desiderata-v3.md.
+// The FULL-GRAPH router is harness-only (registered in the routing-eval
+// bundle-entry, not the app's Layout submenu). The SINGLE-EDGE entry point
+// `routeNewEdgeIncrementally` IS used by the app: DrawingAreaComponent calls it
+// whenever the user adds an edge, routing just that edge against the existing
+// graph as frozen context. See notes/plan-incremental-desiderata-v3.md.
 
 import type { DANode } from './da-node';
 import type { DAEdge } from './da-edge';
@@ -202,6 +205,58 @@ export function applyIncrementalDesiderataV3RouteEdges(
     `budgetHit=${stats.budgetHit} unclean=${stats.uncleanEdges.length}`,
   );
   return stats;
+}
+
+/** Route ONE newly added edge against the rest of the graph, which is held
+ *  fixed — the "incremental" in incremental-desiderata, applied at edge-add
+ *  time. Runs v3's full per-edge pipeline (seed + hill-climb + cluster bypass +
+ *  symmetric collapse) under the per-edge budgets; for a single edge this is
+ *  milliseconds, so callers can run it synchronously in the add-edge flow.
+ *
+ *  Returns whether the route is hard-tier clean (a clip/sibling-cross/self-
+ *  intersection-free curve); the caller can surface an "edge could not be
+ *  routed cleanly" status when false. Self-loops are left untouched (clean). */
+export function routeNewEdgeIncrementally(
+  nodes: DANode[],
+  allEdges: DAEdge[],
+  newEdge: DAEdge,
+  opts: IncrementalDesiderataV3Options = DEFAULT_OPTIONS,
+  log?: (msg: string) => void,
+): boolean {
+  if (newEdge.srcNode === newEdge.destNode) return true;
+  const startMs = Date.now();
+  const stats: IncrementalRouterStats = {
+    nodeCount: nodes.length,
+    edgeCount: allEdges.length,
+    candidatesEvaluated: 0,
+    scoreCalls: 0,
+    refineIterations: 0,
+    relaxationSweeps: 0,
+    elapsedMs: 0,
+    budgetHit: false,
+    uncleanEdges: [],
+  };
+
+  const context: ContextEdge[] = allEdges
+    .filter(e => e !== newEdge && e.srcNode !== e.destNode)
+    .map(e => toContext(e, opts));
+  const nearby = filterNearby(newEdge, context, opts);
+
+  // Deterministic baseline, as in the full router.
+  newEdge.setControlPoints([]);
+  newEdge.setSmoothRendering(true);
+
+  const best = routeOneEdgeV3(newEdge, nodes, nearby, opts, stats, startMs);
+  newEdge.setControlPoints(best.controlPoints);
+  newEdge.setSmoothRendering(true);
+
+  stats.elapsedMs = Date.now() - startMs;
+  log?.(
+    `[incremental-v3] new edge ${newEdge.id}: cand=${stats.candidatesEvaluated} ` +
+    `score=${stats.scoreCalls} iters=${stats.refineIterations} ms=${stats.elapsedMs} ` +
+    `clean=${!best.score || best.score.hardFailCount === 0}`,
+  );
+  return !best.score || best.score.hardFailCount === 0;
 }
 
 /** v2's shared seed + hill-climb, plus v3's extras: cluster-bypass mutation

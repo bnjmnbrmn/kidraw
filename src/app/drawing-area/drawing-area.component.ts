@@ -30,6 +30,7 @@ import {
   applyIncrementalDesiderataRouteEdges,
   DEFAULT_OPTIONS as INCREMENTAL_DEFAULTS,
 } from './incremental-desiderata-route-edges';
+import { routeNewEdgeIncrementally } from './incremental-desiderata-v3-route-edges';
 import type { RoutingRequest, RoutingResponse } from './routing-worker-messages';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
@@ -1282,6 +1283,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.metrics.compute(allNodes, allEdges);
   }
 
+  /** Route a just-added edge with incremental-desiderata-v3, holding every
+   *  other edge fixed. Synchronous — a single edge routes in milliseconds under
+   *  the per-edge budgets. The undo snapshot for the add-edge command is pushed
+   *  before the command mutates, so the routed shape is part of the same undo
+   *  step as the edge itself. */
+  private autoRouteNewEdge(edge: DAEdge): void {
+    const clean = routeNewEdgeIncrementally(
+      this.drawingLayer.getDANodes(),
+      this.drawingLayer.getDAEdges(),
+      edge,
+      undefined,
+      (msg: string) => this.log.log(msg),
+    );
+    edge.promoteToWaypoints();
+    this.refreshWaypointVisibility(false);
+    this.drawingLayer.batchDraw();
+    if (!clean) {
+      this.daOut.emit({ kind: 'status-message', message: '⚠ New edge could not be routed cleanly.' });
+    }
+  }
+
   /** Tear down the in-flight routing run: stop the countdown + timeout and kill
    *  the worker. Safe to call when nothing is running. */
   private stopRouting(): void {
@@ -1385,7 +1407,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if(daNodesContainingCrosshairs.length == 1) {
         const destNode = daNodesContainingCrosshairs[0];
         const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
-        this.drawingLayer.addEdge(srcNode, destNode);
+        this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, destNode));
         this.unselectAll();
       } else {
         return;
@@ -1394,7 +1416,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
       if (srcNode === destNode) return; // no self-edges
-      this.drawingLayer.addEdge(srcNode, destNode);
+      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, destNode));
       this.unselectAll();
       return;
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
@@ -2002,9 +2024,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Remove the current in-progress edge and create a new one to the target
     this.drawingLayer.removeEdge(this.directedEdgeInProgress);
-    this.drawingLayer.addEdge(this.directedEdgeSource, targetNode);
-    const edges = this.drawingLayer.getDAEdges();
-    this.directedEdgeInProgress = edges[edges.length - 1];
+    this.directedEdgeInProgress = this.drawingLayer.addEdge(this.directedEdgeSource, targetNode);
+    this.autoRouteNewEdge(this.directedEdgeInProgress);
 
     // Move crosshairs to target so subsequent direction presses work relative to new position
     const targetCenter = this.getNodeCenterInStageCoordinates(targetNode);
@@ -2404,7 +2425,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Create edges from each previously selected node to the new node
     for (const srcNode of selectedNodes) {
-      this.drawingLayer.addEdge(srcNode, newNode);
+      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, newNode));
     }
 
     newNode.showCursor();
@@ -2454,7 +2475,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
 
     for (const srcNode of sourceNodes) {
-      this.drawingLayer.addEdge(srcNode, newNode);
+      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, newNode));
     }
 
     newNode.showCursor();
