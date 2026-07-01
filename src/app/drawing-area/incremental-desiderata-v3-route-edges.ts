@@ -252,7 +252,12 @@ function routeOneEdge(
  *  time through asymmetric intermediates that re-clip; synthesising a fresh
  *  centred waypoint jumps straight to the clean symmetric arc. Kept only if it
  *  compares no-worse — and since fewer bends rank above length/curvature, an
- *  equally-clear single waypoint wins. */
+ *  equally-clear single waypoint wins.
+ *
+ *  Tries BOTH sides of the chord: a detour threading a tight corridor on its
+ *  own side (tangent-grazing B→D between C and A→D's dip) may collapse cleanly
+ *  only by flipping over the obstacle to the open side. The original-side
+ *  candidates are unchanged, so this is a strict candidate superset. */
 function maybeCollapseSymmetric(
   edge: DAEdge, best: EdgeChoice, nodes: DANode[], context: ContextEdge[],
   opts: IncrementalDesiderataV3Options, stats: IncrementalRouterStats,
@@ -276,12 +281,14 @@ function maybeCollapseSymmetric(
   const midX = (s.x + d.x) / 2, midY = (s.y + d.y) / 2;
 
   let cand = best;
-  for (const f of [0.8, 1.0, 1.2, 1.45]) {
-    const depth = depthBase * f;
-    const wp = { x: midX + perpX * side * depth, y: midY + perpY * side * depth };
-    const score = evaluate(edge, [wp], nodes, context, opts, stats);
-    if (compareLocalScores(score, cand.score!, opts.local) < 0) {
-      cand = { controlPoints: [wp], score };
+  for (const sgn of [side, -side]) {
+    for (const f of [0.8, 1.0, 1.2, 1.45, 1.75]) {
+      const depth = depthBase * f;
+      const wp = { x: midX + perpX * sgn * depth, y: midY + perpY * sgn * depth };
+      const score = evaluate(edge, [wp], nodes, context, opts, stats);
+      if (compareLocalScores(score, cand.score!, opts.local) < 0) {
+        cand = { controlPoints: [wp], score };
+      }
     }
   }
   return cand;
