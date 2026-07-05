@@ -52,6 +52,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 **Drawing / canvas:**
 
 - [Richer edge kinds (self-loops, parallels, dangling, grouping)](idea-richer-edges.md)
+- [Zones — semantic groups, visual containers, layout constraints](idea-zones.md) — the three-concern decomposition, zone-as-endpoint, staging plan.
 - [Fast graph building](idea-fast-graph-building.md)
 - [Multi-select (drag box + extend)](idea-multi-select.md)
 - [Proximity selection feedback](idea-proximity-feedback.md)
@@ -90,6 +91,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 
 - [Bezier-route anti-parallel edges overlap](bug-bezier-antiparallel-overlap.md) — `b → ;` renders A→B and B→A as one line; lane key needs to switch to unordered.
 - ["Next edge out" doesn't seem to work](bug-next-edge-out.md) — user-reported; needs verification against the May 2026 traversal fix.
+- [Header mode chip goes stale after exiting label edit](bug-header-mode-chip-stale.md) — `exit-label-editing-mode` is only emitted on undo/redo; normal exits never reset the badge.
 
 ## Research
 
