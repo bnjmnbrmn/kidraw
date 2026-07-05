@@ -14,6 +14,7 @@ import {
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode} from '../drawing-area/command.model';
+import {EditContext} from '../drawing-area/da-notification.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -72,8 +73,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private waypointDragActive = false;
   // Pending-action-on-release: set when a node type key is pressed, cleared by directional action or type key release
   private insertNodePending = false;
-  // When true, releasing the edit submenu key without selecting a child fires EDIT_SELECTED
+  // When true, releasing the edit submenu key without selecting a child fires EDIT_OR_INSERT
   private editPending = false;
+  // Latest crosshairs/selection context from the drawing area, refreshed via
+  // QUERY_EDIT_CONTEXT on each edit-key press (the reply arrives synchronously).
+  private editContext: EditContext | null = null;
+  // Set when 'Insert Node' fires from the held edit-key submenu; releasing the
+  // edit key then enters labelEdit (mirrors the insert-submenu flow).
+  private insertViaEditActive = false;
+  // One-shot guard for the held edit-key submenu: action keys auto-repeat
+  // (initialRepeatDelayMs is 0), but insert/label/waypoint must fire once per hold.
+  private editContextActionFired = false;
   private pendingNodeShape: NodeShape | undefined = undefined;
   private pendingInsertTypeKey: string | undefined = undefined;
   private selectDragHoldActive = false;
@@ -355,6 +365,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.waypointDragActive = false;
     this.insertNodePending = false;
     this.editPending = false;
+    this.editContext = null;
+    this.insertViaEditActive = false;
+    this.editContextActionFired = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
@@ -370,7 +383,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
       [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
 
-      [root.editSubmenu]: new LabeledSubmenuConfig('Edit...', this.buildEditSubmenuConfig()),
+      [root.editSubmenu]: new LabeledSubmenuConfig('Edit/Insert...', this.buildEditSubmenuConfig()),
       [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
@@ -390,6 +403,50 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
+
+  /** Called by AppComponent when the drawing area answers QUERY_EDIT_CONTEXT. */
+  setEditContext(context: EditContext): void {
+    this.editContext = context;
+  }
+
+  /** Swap the just-pushed Edit submenu for context-appropriate insert options.
+   *  Selection contexts (and unknown context) keep the static Edit submenu
+   *  (Overflow..., Toggle Pin), so those remain reachable while items are
+   *  selected. */
+  private applyEditContextSubmenu(): void {
+    const config = this.buildEditContextSubmenuConfig();
+    if (!config) return;
+    const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
+    mode.replaceTopSubmenu(config);
+  }
+
+  private buildEditContextSubmenuConfig(): SubmenuConfig | null {
+    const insert = this.keyAssignments.insert;
+    const once = (fire: () => void) => () => {
+      if (this.editContextActionFired) return;
+      this.editContextActionFired = true;
+      fire();
+    };
+    switch (this.editContext) {
+      case 'item':   // over a node/label: default (tap) is edit; option is insert
+      case 'empty':  // over waypoint/nothing: tap inserts too; shown for discoverability
+        return {
+          [insert.node]: new LabeledAction('Insert Node', once(() => {
+            this.insertViaEditActive = true;
+            this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
+          })),
+        } as SubmenuConfig;
+      case 'edge':
+        return {
+          [insert.label]: new LabeledAction('Add Label', once(() =>
+            this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL}))),
+          [insert.waypoint]: new LabeledAction('Add Waypoint', once(() =>
+            this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT}))),
+        } as SubmenuConfig;
+      default:
+        return null;
+    }
+  }
 
   private buildEditSubmenuConfig(): SubmenuConfig {
     const edit = this.keyAssignments.edit;
@@ -1133,15 +1190,28 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const currentMode = this.keyMenu.currentMode;
     const atRootLevel = currentMode instanceof USQwertyMode && currentMode.stack.length === 1;
     const eventKey = KeymenuComponent.normalizeEventKey(event);
-    if (currentMode.name === 'normal' && !event.repeat && atRootLevel &&
-        eventKey === this.keyAssignments.root.editSubmenu) {
+    const editKeyPressedAtRoot = currentMode.name === 'normal' && !event.repeat && atRootLevel &&
+        eventKey === this.keyAssignments.root.editSubmenu;
+    if (editKeyPressedAtRoot) {
       this.editPending = true;
+      this.editContext = null;
+      // Synchronous round trip: the drawing area answers with an 'edit-context'
+      // notification, which AppComponent routes into setEditContext() before
+      // this emit returns.
+      this.keyMenuOut.emit({kind: DACommandType.QUERY_EDIT_CONTEXT});
     } else if (this.editPending && eventKey !== this.keyAssignments.root.editSubmenu) {
       // Any child key press cancels tap-to-edit (user is using the submenu)
       this.editPending = false;
     }
 
     this.keyMenu.handleKeyDown(event);
+
+    // The edit-key press just pushed the static Edit submenu; swap it for
+    // context-appropriate insert options when nothing is selected.
+    if (editKeyPressedAtRoot) {
+      this.applyEditContextSubmenu();
+    }
+
     this.refreshActiveKeyPath();
   }
 
@@ -1163,11 +1233,21 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     const eventKey = KeymenuComponent.normalizeEventKey(event);
 
-    // Tap edit submenu key (e) without selecting a child → fire EDIT_SELECTED
-    if (eventKey === this.keyAssignments.root.editSubmenu && this.editPending) {
-      this.editPending = false;
-      this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED});
-      return;
+    if (eventKey === this.keyAssignments.root.editSubmenu) {
+      this.editContextActionFired = false;
+      // A node was created from the held edit-key submenu → enter labelEdit on
+      // release (same rhythm as the insert-submenu flow).
+      if (this.insertViaEditActive) {
+        this.insertViaEditActive = false;
+        this.switchMode('labelEdit');
+        return;
+      }
+      // Tap without selecting a child → context-sensitive default action
+      if (this.editPending) {
+        this.editPending = false;
+        this.keyMenuOut.emit({kind: DACommandType.EDIT_OR_INSERT});
+        return;
+      }
     }
 
     // If insert submenu key (f) is released, handle pending/drag states

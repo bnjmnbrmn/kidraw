@@ -98,6 +98,8 @@ export enum DACommandType {
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
+  QUERY_EDIT_CONTEXT = 'QUERY_EDIT_CONTEXT',
+  EDIT_OR_INSERT = 'EDIT_OR_INSERT',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -184,3 +186,5 @@ export type DACommand =
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
+  | {kind: DACommandType.QUERY_EDIT_CONTEXT}
+  | {kind: DACommandType.EDIT_OR_INSERT}

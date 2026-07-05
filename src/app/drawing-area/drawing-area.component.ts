@@ -11,7 +11,7 @@ import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
-import { DANotification } from './da-notification.model';
+import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
@@ -183,6 +183,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS,
     DACommandType.SET_DEFAULT_LINE_STYLE,
     DACommandType.SET_NODE_SHAPE,
+    DACommandType.EDIT_OR_INSERT,
   ]);
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
@@ -222,6 +223,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.FINALIZE_DIRECTED_EDGE,
     DACommandType.ADD_LABEL,
     DACommandType.EDIT_SELECTED,
+    DACommandType.EDIT_OR_INSERT,
     DACommandType.INSERT_CHAR,
     DACommandType.DELETE_LAST_CHAR,
     DACommandType.DELETE,
@@ -415,6 +417,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         command.kind !== DACommandType.DELETE_LAST_CHAR &&
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
+        command.kind !== DACommandType.EDIT_OR_INSERT &&
+        command.kind !== DACommandType.QUERY_EDIT_CONTEXT &&
         command.kind !== DACommandType.REDO) {
       this.showMovementIndicators();
     }
@@ -575,6 +579,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.EDIT_SELECTED:
         this.handleEditSelected();
+        break;
+      case DACommandType.QUERY_EDIT_CONTEXT:
+        this.daOut.emit({kind: 'edit-context', context: this.computeEditContext()});
+        break;
+      case DACommandType.EDIT_OR_INSERT:
+        this.handleEditOrInsert();
         break;
       case DACommandType.DELETE_LAST_CHAR:
         this.deleteLastChar();
@@ -2852,6 +2862,102 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
     this.log.log('  -> Nothing targeted. Edit command ignored.');
+  }
+
+  /** Selection wins over crosshairs position. Among crosshairs targets, a
+   *  node or label beats everything; a waypoint beats the edge it sits on and
+   *  counts as 'empty' (the i-key spec says a waypoint gets a node inserted
+   *  on top of it, not edge treatment). */
+  private computeEditContext(): EditContext {
+    const selectedCount =
+      this.drawingLayer.getSelectedDANodes().length +
+      this.drawingLayer.getSelectedDAEdges().length +
+      this.drawingLayer.getSelectedDAWaypoints().length +
+      this.getSelectedLabels().length;
+    if (selectedCount > 1) return 'multi-select';
+    if (selectedCount === 1) return 'single-select';
+    if (this.getLabelUnderCrosshairs() || this.getDANodesContainingCrosshairs().length > 0) return 'item';
+    if (this.getWaypointUnderCrosshairs()) return 'empty';
+    if (this.getDAEdgesContainingCrosshairs().length > 0) return 'edge';
+    return 'empty';
+  }
+
+  /** Tap of the edit/insert key: context-sensitive default action. The held-key
+   *  submenu alternatives (insert node over an item; label/waypoint over an
+   *  edge) live in the keymenu, driven by QUERY_EDIT_CONTEXT. */
+  private handleEditOrInsert(): void {
+    const context = this.computeEditContext();
+    this.log.log(`handleEditOrInsert: context=${context}`);
+    switch (context) {
+      case 'multi-select':
+        this.daOut.emit({kind: 'status-message', message: '⚠ Multiple items selected — deselect (Esc) before edit/insert.'});
+        return;
+      case 'single-select':
+        this.focusAndReleaseSelectedItem();
+        return;
+      case 'item':
+        this.handleEditSelected();
+        return;
+      case 'edge':
+        this.daOut.emit({kind: 'status-message', message: 'Edge under crosshairs — hold the edit/insert key to add a label or waypoint.'});
+        return;
+      case 'empty': {
+        this.pushUndoSnapshot({kind: DACommandType.CREATE_NEW_NODE});
+        const shape = this._defaultNodeShape;
+        this.createNewNode();
+        if (shape !== 'junction') {
+          this.daOut.emit({kind: 'started-label-editing-mode'});
+        }
+        return;
+      }
+    }
+  }
+
+  /** Tap of the edit/insert key with exactly one item selected: recenter the
+   *  view, move the crosshairs onto the item, and release the selection.
+   *  Recenter runs before the crosshairs jump because panning the layer
+   *  changes the item's stage position. */
+  private focusAndReleaseSelectedItem(): void {
+    this.finishTweens();
+    this.recenterView();
+    this.finishTweens();
+    const target = this.selectedItemStagePoint();
+    if (target) {
+      this.moveCrosshairsBy(
+        target.x - this.crosshairsLayer.crosshairsX(),
+        target.y - this.crosshairsLayer.crosshairsY(),
+      );
+    }
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+  }
+
+  /** Stage-coordinate position of the single selected item: node center,
+   *  label/waypoint position, or the selected edge's path midpoint. */
+  private selectedItemStagePoint(): {x: number; y: number} | null {
+    const node = this.drawingLayer.getSelectedDANodes()[0];
+    if (node) return this.getNodeCenterInStageCoordinates(node);
+
+    const scale = this.drawingLayer.scaleX();
+    const toStage = (p: {x: number; y: number}) => ({
+      x: this.drawingLayer.x() + p.x * scale,
+      y: this.drawingLayer.y() + p.y * scale,
+    });
+
+    const label = this.getSelectedLabels()[0];
+    if (label) return toStage({x: label.x, y: label.y});
+
+    const waypoint = this.drawingLayer.getSelectedDAWaypoints()[0];
+    if (waypoint) return toStage({x: waypoint.x, y: waypoint.y});
+
+    const edge = this.drawingLayer.getSelectedDAEdges()[0];
+    if (edge) {
+      const points = edge.getPathPoints();
+      if (points.length > 0) return toStage(points[Math.floor(points.length / 2)]);
+    }
+    return null;
   }
 
   private getSelectedLabels(): DALabel[] {

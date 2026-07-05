@@ -163,6 +163,56 @@ describe('KeymenuComponent', () => {
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');
   });
+
+  describe('edit-context submenus (context-sensitive i key)', () => {
+    function buildContextConfig(context: string | null): Record<string, unknown> | null {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      component.setEditContext(context as any);
+      return (component as any).buildEditContextSubmenuConfig();
+    }
+
+    it('offers Insert Node over an item (default vim: d)', () => {
+      const config = buildContextConfig('item')!;
+      const insertNode = config['d'] as LabeledAction;
+      expect(insertNode instanceof LabeledAction).toBeTrue();
+      expect(insertNode.actionLabel).toBe('Insert Node');
+    });
+
+    it('offers Insert Node over empty canvas', () => {
+      const config = buildContextConfig('empty')!;
+      expect((config['d'] as LabeledAction).actionLabel).toBe('Insert Node');
+    });
+
+    it('offers Add Label and Add Waypoint over an edge (vim: a, p)', () => {
+      const config = buildContextConfig('edge')!;
+      expect((config['a'] as LabeledAction).actionLabel).toBe('Add Label');
+      expect((config['p'] as LabeledAction).actionLabel).toBe('Add Waypoint');
+    });
+
+    it('keeps the static Edit submenu when a selection exists', () => {
+      expect(buildContextConfig('single-select')).toBeNull();
+      expect(buildContextConfig('multi-select')).toBeNull();
+      expect(buildContextConfig(null)).toBeNull();
+    });
+
+    it('Insert Node emits CREATE_NEW_NODE and arms the labelEdit transition', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      const emitSpy = spyOn(component.keyMenuOut, 'emit');
+      component.setEditContext('item' as any);
+      const config = (component as any).buildEditContextSubmenuConfig();
+
+      (config['d'] as LabeledAction).action();
+
+      expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CREATE_NEW_NODE});
+      expect((component as any).insertViaEditActive).toBeTrue();
+
+      // A second fire (key repeat) must not create another node
+      (config['d'] as LabeledAction).action();
+      expect(emitSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 function buildRootConfig(component: KeymenuComponent): Record<string, unknown> {
