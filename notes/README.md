@@ -22,6 +22,7 @@ _What we chose and why. Stable until explicitly revised._
 
 - [Vim is the canonical key profile](vim-is-canonical-profile.md) — `ijkl` is the secondary profile; never reintroduce the name `default`.
 - [Held-key modes + waypoints vs labels](decision-interaction-model.md) — the core interaction model: Add+Drag / Select+Drag / Move / Delete held keys, plus the waypoint-vs-label distinction.
+- [Vault model — FSA directory grant behind a storage interface](decision-vault-model.md) — one-time directory grant, silent auto-save, external-change polling + conflict policy, cloud as a later second implementation.
 
 ## Architecture
 
