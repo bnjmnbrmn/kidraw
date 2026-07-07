@@ -80,6 +80,17 @@ function normalizeArchivePath(p: string): string {
   return p.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\\/g, '/');
 }
 
+/** An in-graph search hit: a node (matched by its label text) or an edge label. */
+type SearchMatch =
+  | { kind: 'node'; node: DANode }
+  | { kind: 'edge-label'; label: DALabel };
+
+function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
+  if (a.kind === 'node' && b.kind === 'node') return a.node === b.node;
+  if (a.kind === 'edge-label' && b.kind === 'edge-label') return a.label === b.label;
+  return false;
+}
+
 @Component({
   selector: 'app-drawing-area',
   imports: [],
@@ -195,6 +206,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_DEFAULT_LINE_STYLE,
     DACommandType.SET_NODE_SHAPE,
     DACommandType.EDIT_OR_INSERT,
+    DACommandType.SEARCH_GRAPH,
+    DACommandType.SEARCH_NEXT_MATCH,
+    DACommandType.SEARCH_PREV_MATCH,
   ]);
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
@@ -677,6 +691,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.VAULT_SAVE_AS:
         void this.vaultSaveAs();
+        break;
+      case DACommandType.SEARCH_GRAPH:
+        this.searchGraph();
+        break;
+      case DACommandType.SEARCH_NEXT_MATCH:
+        this.searchStep(1);
+        break;
+      case DACommandType.SEARCH_PREV_MATCH:
+        this.searchStep(-1);
         break;
       case DACommandType.SAVE_GRAPH_AS:
         this.saveGraphAs(command.name);
@@ -1403,6 +1426,95 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.vaultService.currentFilePath = null;
       this.emitStatus('Vault auto-save off — graph is no longer vault-backed.');
     }
+  }
+
+  // ─── In-graph search ──────────────────────────────────────────────────────
+  // Vim-style: `/` prompts for a query (window.prompt is a placeholder until
+  // the trad/large-menu overlay lands) and jumps to the first match; `n` / `p`
+  // cycle forward/backward. The query persists so n/p keep working across
+  // graph edits — matches are recomputed on every step.
+
+  private searchQuery: string | null = null;
+  private lastSearchMatch: SearchMatch | null = null;
+
+  private searchGraph(): void {
+    const entered = window.prompt('Search graph:', this.searchQuery ?? '');
+    if (entered === null || entered.trim() === '') return;
+    this.searchQuery = entered.trim();
+    this.lastSearchMatch = null;
+    const matches = this.computeSearchMatches();
+    if (matches.length === 0) {
+      this.emitStatus(`No matches for "${this.searchQuery}"`);
+      return;
+    }
+    this.focusSearchMatch(matches[0], 0, matches.length);
+  }
+
+  private searchStep(step: 1 | -1): void {
+    if (!this.searchQuery) {
+      this.emitStatus('No search yet — press / to search.');
+      return;
+    }
+    const matches = this.computeSearchMatches();
+    if (matches.length === 0) {
+      this.emitStatus(`No matches for "${this.searchQuery}"`);
+      return;
+    }
+    const currentIndex = this.lastSearchMatch === null
+      ? -1
+      : matches.findIndex(m => searchMatchesEqual(m, this.lastSearchMatch!));
+    const index = currentIndex === -1
+      ? (step === 1 ? 0 : matches.length - 1)
+      : (currentIndex + step + matches.length) % matches.length;
+    this.focusSearchMatch(matches[index], index, matches.length);
+  }
+
+  /** All items whose text contains the query (case-insensitive): nodes in
+   *  layer order, then edge labels. */
+  private computeSearchMatches(): SearchMatch[] {
+    const query = (this.searchQuery ?? '').toLowerCase();
+    if (query === '') return [];
+    const matches: SearchMatch[] = [];
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node.label.text().toLowerCase().includes(query)) {
+        matches.push({ kind: 'node', node });
+      }
+    }
+    for (const edge of this.drawingLayer.getDAEdges()) {
+      for (const label of edge.labels) {
+        if (label.label.toLowerCase().includes(query)) {
+          matches.push({ kind: 'edge-label', label });
+        }
+      }
+    }
+    return matches;
+  }
+
+  /** Select the match, jump the crosshairs to it, and report position. */
+  private focusSearchMatch(match: SearchMatch, index: number, total: number): void {
+    this.lastSearchMatch = match;
+    let text: string;
+    if (match.kind === 'node') {
+      text = match.node.label.text();
+      this.focusNode(match.node);
+    } else {
+      text = match.label.label;
+      this.drawingLayer.unselectAll();
+      this.unselectAllLabels();
+      match.label.isSelected = true;
+      // Label x/y are drawing-layer coords (label center) → stage coords.
+      const scale = this.drawingLayer.scaleX();
+      const stageX = this.drawingLayer.x() + match.label.x * scale;
+      const stageY = this.drawingLayer.y() + match.label.y * scale;
+      this.moveCrosshairsBy(
+        stageX - this.crosshairsLayer.crosshairs.x,
+        stageY - this.crosshairsLayer.crosshairs.y,
+      );
+      this.checkAndEmitEditState();
+    }
+    this.drawingLayer.batchDraw();
+    const shown = text.length > 40 ? `${text.slice(0, 40)}…` : text;
+    this.emitStatus(`Match ${index + 1}/${total}: "${shown}"`);
   }
 
   private saveGraphAs(name: string): void {

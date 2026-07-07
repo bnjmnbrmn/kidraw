@@ -98,6 +98,9 @@ export enum DACommandType {
   CONNECT_VAULT = 'CONNECT_VAULT',
   VAULT_OPEN = 'VAULT_OPEN',
   VAULT_SAVE_AS = 'VAULT_SAVE_AS',
+  SEARCH_GRAPH = 'SEARCH_GRAPH',
+  SEARCH_NEXT_MATCH = 'SEARCH_NEXT_MATCH',
+  SEARCH_PREV_MATCH = 'SEARCH_PREV_MATCH',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
@@ -189,6 +192,9 @@ export type DACommand =
   | {kind: DACommandType.CONNECT_VAULT}
   | {kind: DACommandType.VAULT_OPEN}
   | {kind: DACommandType.VAULT_SAVE_AS}
+  | {kind: DACommandType.SEARCH_GRAPH}
+  | {kind: DACommandType.SEARCH_NEXT_MATCH}
+  | {kind: DACommandType.SEARCH_PREV_MATCH}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}

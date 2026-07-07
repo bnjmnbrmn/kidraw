@@ -694,10 +694,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const mbg = this.keyAssignments.moveByGraph;
     const misc = this.keyAssignments.misc;
 
+    const search = this.keyAssignments.search;
+
     return {
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
+      [search.open]: new LabeledAction('Search…', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_GRAPH})),
+      [search.next]: new LabeledAction('Next Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_NEXT_MATCH})),
+      [search.prev]: new LabeledAction('Prev Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH})),
       [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),

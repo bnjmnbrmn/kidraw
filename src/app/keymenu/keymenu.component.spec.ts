@@ -85,8 +85,9 @@ describe('KeymenuComponent', () => {
     const rootConfig = buildRootConfig(component);
     const clearSelection = rootConfig['c'] as LabeledAction;
 
-    // Zoom keys should NOT be at root level
-    expect(rootConfig['p']).toBeUndefined();
+    // Zoom keys should NOT be at root level ('p' belongs to search Prev
+    // Match, not Zoom Out; 'y' stays unbound at root)
+    expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Prev Match');
     expect(rootConfig['y']).toBeUndefined();
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');

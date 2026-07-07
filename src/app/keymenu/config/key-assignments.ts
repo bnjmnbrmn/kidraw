@@ -74,6 +74,11 @@ export interface KeymenuKeyAssignments {
     readonly select: KeyString;
     readonly undo: KeyString;
   };
+  readonly search: {
+    readonly open: KeyString;
+    readonly next: KeyString;
+    readonly prev: KeyString;
+  };
   readonly select: {
     readonly editItem: KeyString;
   };
@@ -201,6 +206,11 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     select: 'c',
     undo: 'u',
   },
+  search: {
+    open: '/',
+    next: 'n',
+    prev: 'p',
+  },
   select: {
     editItem: ';',
   },
@@ -312,6 +322,11 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     delete: 'x',
     select: 'c',
     undo: 'u',
+  },
+  search: {
+    open: '/',
+    next: 'n',
+    prev: 'p',
   },
   select: {
     editItem: ';',
