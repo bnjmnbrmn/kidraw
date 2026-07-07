@@ -43,7 +43,7 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 ### Fixed 2026-07-07, second batch (`ed9a847`)
 
-- **Opened graphs landed off-screen** — no load path positioned the viewport, and crosshairs-anchored zoom can't find distant content. All load paths now call `centerViewOnContent()` + recenter crosshairs, so the zoom keys orbit the graph right after open. (Rejected alternative — normalizing coordinates to (0,0) on save — recorded in `notes/idea-origin-centering.md`.)
+- **Opened graphs landed off-screen** — no load path positioned the viewport, and crosshairs-anchored zoom can't find distant content. All load paths now call `fitViewToContent()` (pan to bbox center + zoom out to fit, floor 0.02, ceiling 100%) + recenter crosshairs (`ddbaccc`; plain centering shipped first in `ed9a847` but failed on cluster+outlier files where the bbox center is empty space). Selection-less `r→h` Recenter View is the same fit-rescue; with a selection it centers without rescaling. (Rejected alternative — normalizing coordinates to (0,0) on save — recorded in `notes/idea-origin-centering.md`.)
 - **Header now shows the open file** — `file-state-update` notification → monospace chip ("vaultDir/path" for vault files); clears when the graph loses file backing.
 
 ### Fixed 2026-07-07 (`25a873a`)
