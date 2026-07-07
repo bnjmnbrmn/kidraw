@@ -700,7 +700,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
-      [search.open]: new LabeledAction('Search…', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_GRAPH})),
+      [search.open]: new LabeledAction('Search…', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_GRAPH}), false),
       [search.next]: new LabeledAction('Next Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_NEXT_MATCH})),
       [search.prev]: new LabeledAction('Prev Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH})),
       [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
@@ -800,6 +800,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const otherProfileLabel = this.keyboardConfig.keyProfile === 'vim' ? 'IJKL keys' : 'Vim keys';
 
     return {
+      // File / one-shot actions: never auto-repeat. Blocking dialogs
+      // (prompt, native pickers) swallow the keyup, so a repeat timer
+      // would keep firing and stack dialogs.
+      _repeatConfig: { enabled: false },
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
       [misc.saveGraph]: new LabeledAction('Save Graph', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_GRAPH})),
       [misc.loadGraph]: new LabeledAction('Load Graph', () => this.keyMenuOut.emit({kind: DACommandType.LOAD_GRAPH})),

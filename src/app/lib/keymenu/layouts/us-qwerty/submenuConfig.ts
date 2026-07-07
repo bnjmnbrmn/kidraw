@@ -1,7 +1,12 @@
 import { KeyString } from './keyString';
 
 export class LabeledAction {
-  constructor(public actionLabel: string, public action: () => void) {
+  /** `repeat: false` marks a one-shot action (opens a dialog, reloads, …)
+   *  that must not fire again while the key is held — see
+   *  RepeatConfig.enabled for the submenu-wide equivalent. */
+  constructor(public actionLabel: string,
+              public action: () => void,
+              public repeat: boolean = true) {
   }
 }
 
@@ -32,8 +37,13 @@ export type SubmenuConfigValue =
   | LabeledActionSubmenuConfig;
 
 export interface RepeatConfig {
-  initialDelayMs: number;
-  intervalMs: number;
+  initialDelayMs?: number;
+  intervalMs?: number;
+  /** Set to false to disable held-key auto-repeat for the whole submenu.
+   *  One-shot actions (file dialogs, page reload, …) must not repeat: a
+   *  blocking dialog swallows the keyup, so the repeat timer keeps firing
+   *  and stacks dialogs. */
+  enabled?: boolean;
 }
 
 export type SubmenuConfig = {

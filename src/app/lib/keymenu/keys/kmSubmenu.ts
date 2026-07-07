@@ -30,6 +30,8 @@ export class KMSubmenu<T> {
 
   konvaGroup: Group;
   keys: { [K in KeyString]?: KMKey };
+  /** Keys whose LabeledAction opted out of held-key auto-repeat. */
+  private noRepeatKeys = new Set<KeyString>();
   actionSchedulingEnabled: boolean = true;
   helpModeActive: boolean = false;
   /** The x/y positions this card rests at (accounts for depth offset). */
@@ -158,6 +160,10 @@ export class KMSubmenu<T> {
     return this.config._repeatConfig?.intervalMs ?? this.visualConfig.cursor.repeatIntervalMs;
   }
 
+  private get repeatEnabled(): boolean {
+    return this.config._repeatConfig?.enabled !== false;
+  }
+
   private scheduleAction(key: KeyString, action: { (): void }) {
 
     const timerAction = () => {
@@ -201,7 +207,8 @@ export class KMSubmenu<T> {
       kmKey.onKeyDownBeforeRender();
       kmKey.onKeyDown();
 
-      if (!isSubmenuKey(kmKey) && this.mode.actionSchedulingEnabled) {
+      if (!isSubmenuKey(kmKey) && this.mode.actionSchedulingEnabled &&
+          this.repeatEnabled && !this.noRepeatKeys.has(key)) {
         this.scheduleAction(key, () => kmKey.onKeyDown());
       }
     }
@@ -241,7 +248,10 @@ export class KMSubmenu<T> {
         } else if (config instanceof LabeledActionWithRelease) {
           keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, config.onRelease, style, 'release')]);
         } else { //if config instanceof LabeledAction
-          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, () => {}, style, 'repeat')]);
+          const repeats = this.config._repeatConfig?.enabled !== false && config.repeat;
+          if (!repeats) this.noRepeatKeys.add(key);
+          keys.push([key, this.generateActionKey(key, config.actionLabel, config.action, () => {}, style,
+            repeats ? 'repeat' : 'none')]);
         }
       });
 

@@ -1156,12 +1156,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   // until the trad/large-menu overlay lands.
 
   private emitStatus(message: string): void {
+    // Status messages double as the vault/search diagnostic trail in
+    // tools/debug.log (via the log server).
+    this.log.log('[status]', message);
     this.daOut.emit({ kind: 'status-message', message });
   }
 
   private async initVault(): Promise<void> {
     if (!VaultService.isSupported()) return;
     const status = await this.vaultService.tryRestore();
+    this.log.log('[vault] startup restore:', status, 'storedPath:', this.vaultService.currentFilePath ?? '(none)');
     if (status === 'connected') {
       const path = this.vaultService.currentFilePath;
       if (path && await this.loadVaultFile(path, { recenter: true })) {
@@ -1231,9 +1235,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('No graph files in the vault yet — use Vault: Save As first.');
       return;
     }
+    this.log.log('[vault] open picker,', files.length, 'files:', files.join(', '));
     const listing = files.map((f, i) => `${i + 1}. ${f}`).join('\n');
     const entered = window.prompt(`Open from vault (number or name):\n${listing}`, files[0]);
-    if (!entered || entered.trim() === '') return;
+    if (!entered || entered.trim() === '') {
+      this.log.log('[vault] open cancelled');
+      return;
+    }
     const trimmed = entered.trim();
     let path: string | undefined;
     try {
@@ -1262,6 +1270,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private async loadVaultFile(path: string, opts: { recenter?: boolean } = {}): Promise<boolean> {
     const vault = this.vaultService.vault;
     if (!vault) return false;
+    this.log.log('[vault] loading', path);
     const content = await vault.read(path);
     if (content === null) {
       this.emitStatus(`Vault: file not found: ${path}`);
@@ -1492,6 +1501,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Select the match, jump the crosshairs to it, and report position. */
   private focusSearchMatch(match: SearchMatch, index: number, total: number): void {
+    // Land any in-flight crosshairs tween BEFORE computing the jump delta.
+    // moveCrosshairsBy() finishes tweens itself, but only after we've read
+    // the (mid-tween) crosshairs position — a rapid n/p sequence would then
+    // apply a stale delta and strand the crosshairs between two matches.
+    this.finishTweens();
     this.lastSearchMatch = match;
     let text: string;
     if (match.kind === 'node') {
