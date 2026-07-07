@@ -41,6 +41,12 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 ## Known bugs
 
+### Fixed 2026-07-07 (`25a873a`)
+
+- **Dialog-stacking auto-repeat** — one-shot actions (misc/file submenu, root Search) fired 4–5× per press because blocking dialogs swallow the keyup and the repeat timer kept firing. `RepeatConfig.enabled: false` (submenu-wide) + per-key `LabeledAction repeat` flag. This was the real cause of "can't open from vault."
+- **Search crosshairs stranded between matches** — rapid/held `n`/`p` computed the jump delta from a mid-tween crosshairs position. `focusSearchMatch` now finishes tweens first.
+- Status messages + vault operations now log to `tools/debug.log` (`[status]` / `[vault]` prefixes) for diagnosis.
+
 ### Key-handling bugs (keymenu state machine) — *active focus*
 
 These are the next things to fix. Both are about how held-key chords drive
