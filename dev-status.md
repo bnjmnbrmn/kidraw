@@ -41,6 +41,11 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 ## Known bugs
 
+### Fixed 2026-07-07, second batch (`ed9a847`)
+
+- **Opened graphs landed off-screen** — no load path positioned the viewport, and crosshairs-anchored zoom can't find distant content. All load paths now call `centerViewOnContent()` + recenter crosshairs, so the zoom keys orbit the graph right after open. (Rejected alternative — normalizing coordinates to (0,0) on save — recorded in `notes/idea-origin-centering.md`.)
+- **Header now shows the open file** — `file-state-update` notification → monospace chip ("vaultDir/path" for vault files); clears when the graph loses file backing.
+
 ### Fixed 2026-07-07 (`25a873a`)
 
 - **Dialog-stacking auto-repeat** — one-shot actions (misc/file submenu, root Search) fired 4–5× per press because blocking dialogs swallow the keyup and the repeat timer kept firing. `RepeatConfig.enabled: false` (submenu-wide) + per-key `LabeledAction repeat` flag. This was the real cause of "can't open from vault."
