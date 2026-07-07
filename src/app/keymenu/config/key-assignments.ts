@@ -112,6 +112,9 @@ export interface KeymenuKeyAssignments {
     readonly saveFileAs: KeyString;
     readonly exportZip: KeyString;
     readonly cycleDisplay: KeyString;
+    readonly connectVault: KeyString;
+    readonly vaultOpen: KeyString;
+    readonly vaultSaveAs: KeyString;
     readonly toggleKeyProfile: KeyString;
   };
   readonly edit: {
@@ -244,6 +247,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     saveFileAs: 'a',
     exportZip: 'z',
     cycleDisplay: 'd',
+    connectVault: 'v',
+    vaultOpen: 'o',
+    vaultSaveAs: 'w',
     toggleKeyProfile: 'p',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
@@ -353,6 +359,9 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     saveFileAs: 'a',
     exportZip: 'z',
     cycleDisplay: 'd',
+    connectVault: 'v',
+    vaultOpen: 'o',
+    vaultSaveAs: 'w',
     toggleKeyProfile: 'p',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},

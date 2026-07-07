@@ -39,6 +39,7 @@ import type { RoutingRequest, RoutingResponse } from './routing-worker-messages'
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
+import { Vault, VaultService, ensureKidrawFilename, normalizeVaultPath } from '../services/vault.service';
 import {
   isYamlFilename,
   parseGraphDocByFilename,
@@ -107,6 +108,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private draftStorage = inject(DraftStorageService);
   private fileIo = inject(FileIoService);
   private graphStorage = inject(GraphStorageService);
+  private vaultService = inject(VaultService);
+  /** Debounced auto-save to the vault-backed file (null = nothing pending). */
+  private vaultSaveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Guards the external-change poll against reacting to our own writes. */
+  private vaultWriteInFlight = false;
+  private vaultPollTimer: ReturnType<typeof setInterval> | null = null;
+  /** lastModified of the vault file as of our most recent read/write. */
+  private vaultLastModified = 0;
+  private static readonly VAULT_AUTOSAVE_DEBOUNCE_MS = 1000;
+  private static readonly VAULT_POLL_INTERVAL_MS = 1500;
   /** The graph doc + style resolver from the most-recent Open. Used to
    *  switch between top-level displays after the file is loaded. */
   private openedDoc: KidrawGraphDoc | null = null;
@@ -247,6 +258,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.LOAD_NAMED_GRAPH,
     DACommandType.NEW_GRAPH,
     DACommandType.OPEN_FILE,
+    DACommandType.VAULT_OPEN,
     DACommandType.CYCLE_DISPLAY,
     DACommandType.TOGGLE_PIN_SELECTED,
     DACommandType.APPLY_LAYOUT,
@@ -309,6 +321,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this._beforeUnloadHandler = () => this.saveGraphToStorage();
     window.addEventListener('beforeunload', this._beforeUnloadHandler);
 
+    // Vault: restore the stored directory grant and re-open the last file.
+    void this.initVault();
+
     // Emit initial zoom level and context state
     this.emitZoomLevel();
     this.emitMovementSpeed();
@@ -350,6 +365,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this._beforeUnloadHandler) {
       window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     }
+    if (this.vaultSaveTimer !== null) clearTimeout(this.vaultSaveTimer);
+    if (this.vaultPollTimer !== null) clearInterval(this.vaultPollTimer);
   }
 
   private canEdit = false;
@@ -652,6 +669,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CYCLE_DISPLAY:
         this.cycleDisplay();
         break;
+      case DACommandType.CONNECT_VAULT:
+        void this.connectVault();
+        break;
+      case DACommandType.VAULT_OPEN:
+        void this.vaultOpen();
+        break;
+      case DACommandType.VAULT_SAVE_AS:
+        void this.vaultSaveAs();
+        break;
       case DACommandType.SAVE_GRAPH_AS:
         this.saveGraphAs(command.name);
         break;
@@ -695,6 +721,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitContextState();
     }
     this.refreshWaypointVisibility();
+
+    if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind) ||
+        command.kind === DACommandType.UNDO ||
+        command.kind === DACommandType.REDO) {
+      this.scheduleVaultAutoSave();
+    }
   }
 
   assertNever(x: never): never {
@@ -812,6 +844,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private loadSampleGraph(graphId: string) {
+    this.detachVaultFile();
     this.finishTweens();
     this.unselectAllLabels();
     this.undoRedoService.clear();
@@ -834,6 +867,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!draft) return;
     try {
       const snapshot = this.draftStorage.draftToSnapshot(draft);
+      this.detachVaultFile();
       this.finishTweens();
       this.unselectAllLabels();
       this.undoRedoService.clear();
@@ -906,6 +940,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, styleResolver);
     if (resolvedStyle === null) return;
+
+    // A picker-opened file is not vault-backed; stop auto-saving to the
+    // previously-open vault file.
+    this.detachVaultFile();
 
     // Save open-state so the user can cycle through other displays later.
     this.openedDoc = parsed.value;
@@ -1062,11 +1100,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private saveFileAs(): void {
     this.finishTweens();
+    const filename = defaultGraphFilename();
+    const content = this.serializeCurrentGraphSingleFile(filename);
+    const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
+    this.fileIo.saveAs(filename, content, mime);
+  }
+
+  /**
+   * Serialize the live graph as a self-contained single file: the style is
+   * embedded inline so the result opens anywhere. (Multi-file save will land
+   * in a later phase.)
+   */
+  private serializeCurrentGraphSingleFile(filename: string): string {
     const snapshot = this.drawingLayer.serializeGraph();
     const { doc, style } = snapshotToFiles(snapshot);
-
-    // Single-file save: embed the style inline so the result is fully
-    // self-contained. (Multi-file save will land in a later phase.)
     const inline: InlineStyleSet = {
       name: 'default',
       ...(style.nodes ? { nodes: style.nodes } : {}),
@@ -1076,11 +1123,286 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ...(style.view ? { view: style.view } : {}),
     };
     doc.styles = [inline];
+    return serializeGraphDocByFilename(doc, filename);
+  }
 
-    const filename = defaultGraphFilename();
-    const content = serializeGraphDocByFilename(doc, filename);
-    const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
-    this.fileIo.saveAs(filename, content, mime);
+  // ─── Vault ────────────────────────────────────────────────────────────────
+  // Local-directory storage via the File System Access API. One directory
+  // grant, then silent auto-save + external-change polling — see
+  // notes/decision-vault-model.md. window.prompt inputs below are placeholders
+  // until the trad/large-menu overlay lands.
+
+  private emitStatus(message: string): void {
+    this.daOut.emit({ kind: 'status-message', message });
+  }
+
+  private async initVault(): Promise<void> {
+    if (!VaultService.isSupported()) return;
+    const status = await this.vaultService.tryRestore();
+    if (status === 'connected') {
+      const path = this.vaultService.currentFilePath;
+      if (path && await this.loadVaultFile(path, { recenter: true })) {
+        this.emitStatus(`Vault: opened ${path}`);
+      }
+    } else if (status === 'needs-permission') {
+      this.emitStatus('Vault needs reconnecting — file menu → Vault: Connect.');
+    }
+    this.vaultPollTimer = setInterval(
+      () => void this.pollVaultFile(),
+      DrawingAreaComponent.VAULT_POLL_INTERVAL_MS,
+    );
+  }
+
+  private async connectVault(): Promise<void> {
+    if (!VaultService.isSupported()) {
+      this.emitStatus('Vault requires a Chromium-based browser (File System Access API).');
+      return;
+    }
+    const status = await this.vaultService.connectOrReconnect();
+    if (status !== 'connected') {
+      this.emitStatus('Vault not connected.');
+      return;
+    }
+    const vault = this.vaultService.vault!;
+    const files = await vault.list();
+    this.emitStatus(`Vault connected: ${vault.name} (${files.length} kidraw file${files.length === 1 ? '' : 's'})`);
+
+    // If a file was open in a previous session and the canvas is still
+    // empty, resume it now that we have permission again.
+    const path = this.vaultService.currentFilePath;
+    const canvasEmpty = this.drawingLayer.getDANodes().length === 0;
+    if (path && canvasEmpty && await this.loadVaultFile(path, { recenter: true })) {
+      this.emitStatus(`Vault: opened ${path}`);
+    }
+  }
+
+  private async vaultSaveAs(): Promise<void> {
+    if (!this.vaultService.isConnected) {
+      this.emitStatus('Connect a vault first (file menu → Vault: Connect).');
+      return;
+    }
+    const suggestion = this.vaultService.currentFilePath ?? 'graph.kidraw.yaml';
+    const entered = window.prompt('Save in vault as:', suggestion);
+    if (!entered || entered.trim() === '') return;
+    let path: string;
+    try {
+      path = ensureKidrawFilename(entered.trim());
+    } catch (e) {
+      this.emitStatus((e as Error).message);
+      return;
+    }
+    this.cancelVaultAutoSave();
+    if (await this.writeGraphToVault(path)) {
+      this.emitStatus(`Saved to vault: ${path} — auto-save is on`);
+    }
+  }
+
+  private async vaultOpen(): Promise<void> {
+    if (!this.vaultService.isConnected) {
+      this.emitStatus('Connect a vault first (file menu → Vault: Connect).');
+      return;
+    }
+    const vault = this.vaultService.vault!;
+    const files = (await vault.list()).filter(f => /\.kidraw\./i.test(f));
+    if (files.length === 0) {
+      this.emitStatus('No graph files in the vault yet — use Vault: Save As first.');
+      return;
+    }
+    const listing = files.map((f, i) => `${i + 1}. ${f}`).join('\n');
+    const entered = window.prompt(`Open from vault (number or name):\n${listing}`, files[0]);
+    if (!entered || entered.trim() === '') return;
+    const trimmed = entered.trim();
+    let path: string | undefined;
+    try {
+      path = /^\d+$/.test(trimmed)
+        ? files[parseInt(trimmed, 10) - 1]
+        : files.find(f => f === normalizeVaultPath(trimmed)) ?? normalizeVaultPath(trimmed);
+    } catch (e) {
+      this.emitStatus((e as Error).message);
+      return;
+    }
+    if (!path) {
+      this.emitStatus(`No such vault file: ${trimmed}`);
+      return;
+    }
+    if (await this.loadVaultFile(path, { recenter: true })) {
+      this.emitStatus(`Opened from vault: ${path} — auto-save is on`);
+    }
+  }
+
+  /**
+   * Load a graph file from the vault into the canvas and make it the
+   * auto-save target. Does not emit a success status — callers word their
+   * own. `recenter` is for user-initiated opens; external-change reloads
+   * leave the viewport and crosshairs alone.
+   */
+  private async loadVaultFile(path: string, opts: { recenter?: boolean } = {}): Promise<boolean> {
+    const vault = this.vaultService.vault;
+    if (!vault) return false;
+    const content = await vault.read(path);
+    if (content === null) {
+      this.emitStatus(`Vault: file not found: ${path}`);
+      return false;
+    }
+    const parsed = parseGraphDocByFilename(content, path);
+    if (!parsed.ok) {
+      this.emitStatus(`Vault: could not parse ${path}: ${parsed.error}`);
+      return false;
+    }
+
+    // Resolve external style references from the vault (relative to the
+    // graph file's directory), mirroring the zip-internal resolver.
+    const baseDir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
+    const cache = new Map<string, KidrawStyleSet>();
+    await this.gatherVaultStyles(parsed.value.styles, baseDir, cache, vault);
+    const resolver: ImportResolver = p => cache.get(normalizeArchivePath(p)) ?? null;
+
+    const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, resolver);
+    if (resolvedStyle === null) return false;
+
+    this.openedDoc = parsed.value;
+    this.openedStyleResolver = resolver;
+    this.activeStyleIndex = 0;
+
+    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
+    this.cancelVaultAutoSave();
+    this.finishTweens();
+    this.unselectAllLabels();
+    this.undoRedoService.clear();
+    this.drawingLayer.restoreGraph(snapshot);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    this.drawingLayer.applyThemeColors(palette);
+    if (opts.recenter) {
+      this.recenterCrosshairs();
+      this.emitZoomLevel();
+    }
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.emitContextState();
+
+    this.vaultService.currentFilePath = path;
+    this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
+    return true;
+  }
+
+  /** Read + parse external style references (and their transitive imports)
+   *  out of the vault into `cache`, keyed like the zip resolver. */
+  private async gatherVaultStyles(
+    refs: ReadonlyArray<string | InlineStyleSet>,
+    baseDir: string,
+    cache: Map<string, KidrawStyleSet>,
+    vault: Vault,
+  ): Promise<void> {
+    for (const ref of refs) {
+      const paths = typeof ref === 'string' ? [ref] : (ref.imports ?? []);
+      for (const p of paths) {
+        await this.gatherVaultStylePath(p, baseDir, cache, vault);
+      }
+    }
+  }
+
+  private async gatherVaultStylePath(
+    path: string,
+    baseDir: string,
+    cache: Map<string, KidrawStyleSet>,
+    vault: Vault,
+  ): Promise<void> {
+    const key = normalizeArchivePath(path);
+    if (cache.has(key)) return;
+    let vaultPath: string;
+    try {
+      vaultPath = normalizeVaultPath(`${baseDir}${key}`);
+    } catch {
+      return;
+    }
+    const content = await vault.read(vaultPath);
+    if (content === null) return;
+    const parsed = parseStyleSetByFilename(content, vaultPath);
+    if (!parsed.ok) return;
+    cache.set(key, parsed.value);
+    for (const importPath of parsed.value.imports ?? []) {
+      await this.gatherVaultStylePath(importPath, baseDir, cache, vault);
+    }
+  }
+
+  private scheduleVaultAutoSave(): void {
+    if (!this.vaultService.isConnected || !this.vaultService.currentFilePath) return;
+    if (this.vaultSaveTimer !== null) clearTimeout(this.vaultSaveTimer);
+    this.vaultSaveTimer = setTimeout(() => {
+      this.vaultSaveTimer = null;
+      void this.autoSaveToVault();
+    }, DrawingAreaComponent.VAULT_AUTOSAVE_DEBOUNCE_MS);
+  }
+
+  private cancelVaultAutoSave(): void {
+    if (this.vaultSaveTimer !== null) {
+      clearTimeout(this.vaultSaveTimer);
+      this.vaultSaveTimer = null;
+    }
+  }
+
+  private async autoSaveToVault(): Promise<void> {
+    const path = this.vaultService.currentFilePath;
+    if (!path || !this.vaultService.isConnected) return;
+    if (await this.writeGraphToVault(path)) {
+      this.emitStatus(`Saved: ${path}`);
+    }
+  }
+
+  private async writeGraphToVault(path: string): Promise<boolean> {
+    const vault = this.vaultService.vault;
+    if (!vault) return false;
+    this.vaultWriteInFlight = true;
+    try {
+      this.finishTweens();
+      const content = this.serializeCurrentGraphSingleFile(path);
+      await vault.write(path, content);
+      this.vaultService.currentFilePath = path;
+      this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
+      return true;
+    } catch (e) {
+      this.emitStatus(`Vault save failed: ${(e as Error).message}`);
+      return false;
+    } finally {
+      this.vaultWriteInFlight = false;
+    }
+  }
+
+  private vaultReloadInFlight = false;
+
+  /** External-change poll: reload the open vault file when something else
+   *  (an editor, an LLM) writes it. Local unsaved changes win. */
+  private async pollVaultFile(): Promise<void> {
+    if (document.hidden || this.vaultWriteInFlight || this.vaultReloadInFlight) return;
+    const path = this.vaultService.currentFilePath;
+    const vault = this.vaultService.vault;
+    if (!path || !vault) return;
+    const modified = await vault.lastModified(path);
+    if (modified === null || modified <= this.vaultLastModified) return;
+    if (this.vaultSaveTimer !== null) {
+      // Dirty session: local wins (the pending auto-save will overwrite).
+      this.vaultLastModified = modified;
+      this.emitStatus(`${path} changed on disk while editing — keeping local changes.`);
+      return;
+    }
+    this.vaultReloadInFlight = true;
+    try {
+      if (await this.loadVaultFile(path)) {
+        this.emitStatus(`Reloaded — ${path} changed on disk.`);
+      }
+    } finally {
+      this.vaultReloadInFlight = false;
+    }
+  }
+
+  /** Called when a non-vault source replaces the graph: stop auto-saving to
+   *  the previously-open vault file. */
+  private detachVaultFile(): void {
+    this.cancelVaultAutoSave();
+    if (this.vaultService.currentFilePath) {
+      this.vaultService.currentFilePath = null;
+      this.emitStatus('Vault auto-save off — graph is no longer vault-backed.');
+    }
   }
 
   private saveGraphAs(name: string): void {
@@ -1091,6 +1413,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private loadNamedGraph(snapshot: GraphSnapshot): void {
+    this.detachVaultFile();
     this.finishTweens();
     this.unselectAllLabels();
     this.undoRedoService.clear();
@@ -1108,6 +1431,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private newGraph(): void {
     const hasContent = this.drawingLayer.getDANodes().length > 0 || this.drawingLayer.getDAEdges().length > 0;
     if (hasContent && !window.confirm('Start a new graph? This will clear the current diagram.')) return;
+    this.detachVaultFile();
     this.finishTweens();
     this.unselectAllLabels();
     this.undoRedoService.clear();
