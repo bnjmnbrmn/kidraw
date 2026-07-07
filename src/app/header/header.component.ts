@@ -60,6 +60,9 @@ export class HeaderComponent {
   defaultLineStyle: LineStyle = 'solid';
   canUndo: boolean = false;
   canRedo: boolean = false;
+  /** "vaultDir/path" for vault-backed graphs (auto-saving), a filename for
+   *  picker-opened files, or null when the graph has no file backing. */
+  openFileLabel: string | null = null;
 
   get graphStats(): string {
     if (this.totalNodes === 0 && this.totalEdges === 0) return 'empty';

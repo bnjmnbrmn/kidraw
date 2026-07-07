@@ -874,6 +874,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.demoDataService.loadGraph(graphId, this.drawingLayer);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
+    this.centerViewOnContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
@@ -897,6 +898,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.restoreGraph(snapshot);
       const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
       this.drawingLayer.applyThemeColors(palette);
+      this.centerViewOnContent();
       this.recenterCrosshairs();
       this.emitZoomLevel();
       this.checkAndEmitEditState();
@@ -980,9 +982,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
+    this.centerViewOnContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
+    this.emitFileState(manifestName);
 
     this.emitDisplayStatus(parsed.value);
   }
@@ -1008,6 +1012,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
+    this.centerViewOnContent();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
 
@@ -1162,6 +1167,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({ kind: 'status-message', message });
   }
 
+  private lastFileLabel: string | null | undefined = undefined;
+
+  /** Tell the header which file is open (deduplicated — auto-save calls
+   *  this on every write). */
+  private emitFileState(fileLabel: string | null): void {
+    if (fileLabel === this.lastFileLabel) return;
+    this.lastFileLabel = fileLabel;
+    this.log.log('[file]', fileLabel ?? '(none)');
+    this.daOut.emit({ kind: 'file-state-update', fileLabel });
+  }
+
   private async initVault(): Promise<void> {
     if (!VaultService.isSupported()) return;
     const status = await this.vaultService.tryRestore();
@@ -1305,6 +1321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
     if (opts.recenter) {
+      this.centerViewOnContent();
       this.recenterCrosshairs();
       this.emitZoomLevel();
     }
@@ -1314,6 +1331,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.vaultService.currentFilePath = path;
     this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
+    const dir = this.vaultService.directoryName;
+    this.emitFileState(dir ? `${dir}/${path}` : path);
     return true;
   }
 
@@ -1391,6 +1410,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       await vault.write(path, content);
       this.vaultService.currentFilePath = path;
       this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
+      const dir = this.vaultService.directoryName;
+      this.emitFileState(dir ? `${dir}/${path}` : path);
       return true;
     } catch (e) {
       this.emitStatus(`Vault save failed: ${(e as Error).message}`);
@@ -1435,6 +1456,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.vaultService.currentFilePath = null;
       this.emitStatus('Vault auto-save off — graph is no longer vault-backed.');
     }
+    this.emitFileState(null);
   }
 
   // ─── In-graph search ──────────────────────────────────────────────────────
@@ -1546,6 +1568,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
+    this.centerViewOnContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
@@ -3021,35 +3044,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       : this.drawingLayer.getDANodes();
     const edges = this.drawingLayer.getDAEdges();
 
-    if (nodes.length === 0 && edges.length === 0) return;
-
-    // Calculate bounding box from actual DANodes/DAEdges in layer coordinates
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-    nodes.forEach(node => {
-      const x = node.group.x();
-      const y = node.group.y();
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + node.NODE_WIDTH);
-      maxY = Math.max(maxY, y + node.NODE_HEIGHT);
-    });
-
-    edges.forEach(edge => {
-      const points = edge.getPathPoints();
-      points.forEach(p => {
-        minX = Math.min(minX, p.x);
-        minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x);
-        maxY = Math.max(maxY, p.y);
-      });
-    });
-
-    if (minX === Infinity) return;
+    const box = this.contentBoundingBox(nodes, edges);
+    if (!box) return;
 
     // Calculate the center point of the drawing in layer coordinates
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
+    const centerX = (box.minX + box.maxX) / 2;
+    const centerY = (box.minY + box.maxY) / 2;
 
     // Center the view on the content without changing scale
     const stageWidth = this.stage.width();
@@ -3072,6 +3072,52 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.tweens.push(tween);
     tween.play();
+  }
+
+  /** Bounding box of the given items in drawing-layer coordinates, or null
+   *  when there is nothing to measure. */
+  private contentBoundingBox(nodes: DANode[], edges: DAEdge[]):
+      { minX: number; minY: number; maxX: number; maxY: number } | null {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    nodes.forEach(node => {
+      const x = node.group.x();
+      const y = node.group.y();
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + node.NODE_WIDTH);
+      maxY = Math.max(maxY, y + node.NODE_HEIGHT);
+    });
+
+    edges.forEach(edge => {
+      const points = edge.getPathPoints();
+      points.forEach(p => {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      });
+    });
+
+    return minX === Infinity ? null : { minX, minY, maxX, maxY };
+  }
+
+  /**
+   * Instantly pan the view so the whole graph's bounding-box center sits at
+   * the viewport center (no tween, no scale change). Loaded files carry
+   * coordinates from wherever the graph was authored, which can be far from
+   * the current pan position — every load path calls this so an opened
+   * graph is always on screen.
+   */
+  private centerViewOnContent(): void {
+    const box = this.contentBoundingBox(this.drawingLayer.getDANodes(), this.drawingLayer.getDAEdges());
+    if (!box) return;
+    const scale = this.drawingLayer.scaleX();
+    this.drawingLayer.position({
+      x: this.stage.width() / 2 - ((box.minX + box.maxX) / 2) * scale,
+      y: this.stage.height() / 2 - ((box.minY + box.maxY) / 2) * scale,
+    });
+    this.drawingLayer.batchDraw();
   }
 
   private recenterCrosshairs() {

@@ -10,4 +10,5 @@ export type DANotification =
   | {kind: "exit-label-editing-mode"}
   | {kind: "context-state-update", selectionSummary: string, totalNodes: number, totalEdges: number, defaultNodeShape: NodeShape, defaultEdgeDirectedness: EdgeDirectedness, defaultLineStyle: LineStyle, canUndo: boolean, canRedo: boolean}
   | {kind: "status-message", message: string}
+  | {kind: "file-state-update", fileLabel: string | null}
   | {kind: "edit-context", context: EditContext}

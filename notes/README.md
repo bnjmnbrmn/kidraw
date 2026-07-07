@@ -59,6 +59,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Proximity selection feedback](idea-proximity-feedback.md)
 - [Gather feature — recursive, with push-away](idea-gather-recursive.md)
 - [Overlapping-nodes handling](idea-overlapping-nodes-handling.md)
+- [Normalize graph coordinates around the origin?](idea-origin-centering.md) — why we center the view on load instead of rewriting coordinates on save.
 - [Labels without visible boxes by default](idea-label-no-default-box.md)
 - [Movement acceleration](idea-movement-acceleration.md)
 - [Crosshair visual treatment](idea-crosshair-visual-treatment.md)

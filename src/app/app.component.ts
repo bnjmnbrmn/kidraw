@@ -86,6 +86,11 @@ export class AppComponent implements OnInit, OnDestroy {
           this.headerComponent.showStatusMessage(daNotification.message);
         }
         break;
+      case "file-state-update":
+        if (this.headerComponent) {
+          this.headerComponent.openFileLabel = daNotification.fileLabel;
+        }
+        break;
       case "edit-context":
         this.keymenuComponent.setEditContext(daNotification.context);
         break;
