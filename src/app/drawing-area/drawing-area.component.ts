@@ -874,7 +874,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.demoDataService.loadGraph(graphId, this.drawingLayer);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
-    this.centerViewOnContent();
+    this.fitViewToContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
@@ -898,7 +898,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.restoreGraph(snapshot);
       const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
       this.drawingLayer.applyThemeColors(palette);
-      this.centerViewOnContent();
+      this.fitViewToContent();
       this.recenterCrosshairs();
       this.emitZoomLevel();
       this.checkAndEmitEditState();
@@ -982,7 +982,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
-    this.centerViewOnContent();
+    this.fitViewToContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
@@ -1012,7 +1012,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
-    this.centerViewOnContent();
+    this.fitViewToContent();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
 
@@ -1321,7 +1321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
     if (opts.recenter) {
-      this.centerViewOnContent();
+      this.fitViewToContent();
       this.recenterCrosshairs();
       this.emitZoomLevel();
     }
@@ -1568,7 +1568,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
-    this.centerViewOnContent();
+    this.fitViewToContent();
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
@@ -3039,7 +3039,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private recenterView() {
     this.finishTweens();
 
-    const nodes = this.drawingLayer.getSelectedDANodes().length > 0
+    const hasSelection = this.drawingLayer.getSelectedDANodes().length > 0;
+    const nodes = hasSelection
       ? this.drawingLayer.getSelectedDANodes()
       : this.drawingLayer.getDANodes();
     const edges = this.drawingLayer.getDAEdges();
@@ -3051,18 +3052,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const centerX = (box.minX + box.maxX) / 2;
     const centerY = (box.minY + box.maxY) / 2;
 
-    // Center the view on the content without changing scale
     const stageWidth = this.stage.width();
     const stageHeight = this.stage.height();
-    const currentScale = this.drawingLayer.scaleX();
+
+    // With a selection: center on it without changing scale. Without one:
+    // this is the "rescue" command — also zoom out (never in past 100%)
+    // until the whole graph fits, so it always brings everything on screen.
+    let targetScale = this.drawingLayer.scaleX();
+    if (!hasSelection) {
+      const margin = 0.9;
+      const w = Math.max(box.maxX - box.minX, 1);
+      const h = Math.max(box.maxY - box.minY, 1);
+      const fit = Math.min((stageWidth * margin) / w, (stageHeight * margin) / h);
+      targetScale = Math.min(Math.max(fit, 0.02), 1.0);
+    }
 
     const tween = new Konva.Tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
-      x: stageWidth / 2 - centerX * currentScale,
-      y: stageHeight / 2 - centerY * currentScale,
+      scaleX: targetScale,
+      scaleY: targetScale,
+      x: stageWidth / 2 - centerX * targetScale,
+      y: stageHeight / 2 - centerY * targetScale,
       easing: Konva.Easings.EaseInOut,
       onFinish: () => {
+        this.emitZoomLevel();
         const index = this.tweens.indexOf(tween);
         if (index > -1) {
           this.tweens.splice(index, 1);
@@ -3103,16 +3117,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /**
-   * Instantly pan the view so the whole graph's bounding-box center sits at
-   * the viewport center (no tween, no scale change). Loaded files carry
-   * coordinates from wherever the graph was authored, which can be far from
-   * the current pan position — every load path calls this so an opened
-   * graph is always on screen.
+   * Instantly fit the whole graph in the viewport: pan to the bounding-box
+   * center and zoom out (never in past 100%) until everything fits with a
+   * margin. Every load path calls this so an opened graph is always fully
+   * on screen. Plain centering is not enough: a couple of outlier nodes put
+   * the bbox center in empty space with every cluster off-screen.
    */
-  private centerViewOnContent(): void {
+  private fitViewToContent(): void {
     const box = this.contentBoundingBox(this.drawingLayer.getDANodes(), this.drawingLayer.getDAEdges());
     if (!box) return;
-    const scale = this.drawingLayer.scaleX();
+    const margin = 0.9;
+    const w = Math.max(box.maxX - box.minX, 1);
+    const h = Math.max(box.maxY - box.minY, 1);
+    const fit = Math.min((this.stage.width() * margin) / w, (this.stage.height() * margin) / h);
+    // Fitting may go below the interactive MIN_ZOOM — a rescue that stops
+    // short of showing the whole graph isn't a rescue. Floor well below it.
+    const scale = Math.min(Math.max(fit, 0.02), 1.0);
+    this.drawingLayer.scale({ x: scale, y: scale });
     this.drawingLayer.position({
       x: this.stage.width() / 2 - ((box.minX + box.maxX) / 2) * scale,
       y: this.stage.height() / 2 - ((box.minY + box.maxY) / 2) * scale,
