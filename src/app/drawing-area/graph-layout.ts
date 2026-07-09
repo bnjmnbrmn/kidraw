@@ -146,7 +146,7 @@ function treeLayout(
 ): NodePos[] {
   const movableSet = new Set(movable);
 
-  // Build adjacency from edges
+  // Build adjacency from edges (dedupe parallel edges)
   const children = new Map<DANode, DANode[]>();
   const incomingCount = new Map<DANode, number>();
   for (const n of allNodes) {
@@ -154,72 +154,154 @@ function treeLayout(
     incomingCount.set(n, 0);
   }
   for (const e of edges) {
-    children.get(e.srcNode)!.push(e.destNode);
-    incomingCount.set(e.destNode, (incomingCount.get(e.destNode) ?? 0) + 1);
+    const kids = children.get(e.srcNode)!;
+    if (!kids.includes(e.destNode)) {
+      kids.push(e.destNode);
+      incomingCount.set(e.destNode, (incomingCount.get(e.destNode) ?? 0) + 1);
+    }
   }
 
   // Find roots (no incoming edges)
   const roots = allNodes.filter(n => (incomingCount.get(n) ?? 0) === 0);
   if (roots.length === 0) {
-    // Fallback: use all nodes as roots
+    // Pure cycle: pick an arbitrary entry point
     roots.push(allNodes[0]);
   }
 
-  // BFS to assign levels
-  const level = new Map<DANode, number>();
+  // Spanning forest via BFS: first discovery wins, so every node gets exactly
+  // one tree parent even in a DAG. Layout then places each subtree in its own
+  // contiguous breadth interval, which makes tree-edge crossings impossible.
+  const treeChildren = new Map<DANode, DANode[]>();
+  for (const n of allNodes) treeChildren.set(n, []);
+  const visited = new Set<DANode>(roots);
   const queue: DANode[] = [...roots];
-  roots.forEach(r => level.set(r, 0));
   while (queue.length > 0) {
     const node = queue.shift()!;
-    const lvl = level.get(node)!;
     for (const child of children.get(node) ?? []) {
-      if (!level.has(child)) {
-        level.set(child, lvl + 1);
+      if (!visited.has(child)) {
+        visited.add(child);
+        treeChildren.get(node)!.push(child);
         queue.push(child);
       }
     }
   }
 
-  // Assign unvisited nodes to level 0
-  for (const n of allNodes) {
-    if (!level.has(n)) level.set(n, 0);
-  }
-
-  // Group by level
-  const levels = new Map<number, DANode[]>();
-  for (const n of allNodes) {
-    const lvl = level.get(n)!;
-    if (!levels.has(lvl)) levels.set(lvl, []);
-    levels.get(lvl)!.push(n);
-  }
-
-  // Compute center of all nodes as reference
-  let cx = 0, cy = 0;
-  for (const n of allNodes) {
-    cx += n.konvaGroup.x();
-    cy += n.konvaGroup.y();
-  }
-  cx /= allNodes.length;
-  cy /= allNodes.length;
-
-  const positions: NodePos[] = [];
-  const maxLevel = Math.max(...Array.from(levels.keys()));
-
-  for (let lvl = 0; lvl <= maxLevel; lvl++) {
-    const nodesAtLevel = levels.get(lvl) ?? [];
-    const count = nodesAtLevel.length;
-    for (let i = 0; i < count; i++) {
-      const node = nodesAtLevel[i];
-      if (!movableSet.has(node)) continue;
-      const offset = (i - (count - 1) / 2) * spacing;
-      if (direction === 'down') {
-        positions.push({ node, x: cx + offset, y: cy - ((maxLevel / 2) - lvl) * spacing });
-      } else {
-        positions.push({ node, x: cx - ((maxLevel / 2) - lvl) * spacing, y: cy + offset });
+  // Adopt cycle nodes adjacent to the forest (undirected), so cycle members
+  // hang off the tree instead of being dumped at level 0.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const n of allNodes) {
+      if (visited.has(n)) continue;
+      for (const e of edges) {
+        const nbr = e.srcNode === n && visited.has(e.destNode) ? e.destNode
+          : e.destNode === n && visited.has(e.srcNode) ? e.srcNode
+          : null;
+        if (nbr) {
+          visited.add(n);
+          treeChildren.get(nbr)!.push(n);
+          changed = true;
+          break;
+        }
       }
     }
   }
 
+  // Anything still unvisited is a disconnected component with no root; treat
+  // its first node as an extra root and claim the rest of the component.
+  for (const n of allNodes) {
+    if (!visited.has(n)) {
+      roots.push(n);
+      visited.add(n);
+      const stack = [n];
+      while (stack.length > 0) {
+        const m = stack.pop()!;
+        for (const c of children.get(m) ?? []) {
+          if (!visited.has(c)) {
+            visited.add(c);
+            treeChildren.get(m)!.push(c);
+            stack.push(c);
+          }
+        }
+      }
+    }
+  }
+
+  // Breadth = the axis siblings spread along (x for tree-down, y for tree-right).
+  // Each node claims a slot at least `spacing` wide, more if its box is wider,
+  // so long labels don't overlap.
+  const slotOf = (n: DANode): number => {
+    const rect = n.getClientRect();
+    const breadth = direction === 'down' ? rect.width : rect.height;
+    return Math.max(spacing, (Number.isFinite(breadth) ? breadth : 0) + spacing / 2);
+  };
+
+  // Post-order pass: a subtree's extent is the larger of its own slot and the
+  // sum of its children's extents.
+  const extent = new Map<DANode, number>();
+  const computeExtent = (n: DANode): number => {
+    let childSum = 0;
+    for (const c of treeChildren.get(n)!) childSum += computeExtent(c);
+    const e = Math.max(slotOf(n), childSum);
+    extent.set(n, e);
+    return e;
+  };
+
+  // Pre-order pass: children split the parent's interval left-to-right; the
+  // parent is centered on the midpoint of its first and last child.
+  const breadthPos = new Map<DANode, number>();
+  const depthLevel = new Map<DANode, number>();
+  const place = (n: DANode, start: number, lvl: number): void => {
+    depthLevel.set(n, lvl);
+    const kids = treeChildren.get(n)!;
+    if (kids.length === 0) {
+      breadthPos.set(n, start + extent.get(n)! / 2);
+      return;
+    }
+    let childSum = 0;
+    for (const c of kids) childSum += extent.get(c)!;
+    let cursor = start + (extent.get(n)! - childSum) / 2;
+    for (const c of kids) {
+      place(c, cursor, lvl + 1);
+      cursor += extent.get(c)!;
+    }
+    const first = breadthPos.get(kids[0])!;
+    const last = breadthPos.get(kids[kids.length - 1])!;
+    breadthPos.set(n, (first + last) / 2);
+  };
+
+  let treeCursor = 0;
+  for (const r of roots) {
+    computeExtent(r);
+    place(r, treeCursor, 0);
+    treeCursor += extent.get(r)! + spacing;
+  }
+
+  // Convert (breadth, depth) to (x, y) and center the result on the current
+  // average position so the layout doesn't jump the viewport.
+  const laid = new Map<DANode, { x: number; y: number }>();
+  for (const n of allNodes) {
+    const b = breadthPos.get(n)!;
+    const d = depthLevel.get(n)! * spacing;
+    laid.set(n, direction === 'down' ? { x: b, y: d } : { x: d, y: b });
+  }
+
+  let cx = 0, cy = 0, lx = 0, ly = 0;
+  for (const n of allNodes) {
+    cx += n.konvaGroup.x();
+    cy += n.konvaGroup.y();
+    lx += laid.get(n)!.x;
+    ly += laid.get(n)!.y;
+  }
+  const dx = cx / allNodes.length - lx / allNodes.length;
+  const dy = cy / allNodes.length - ly / allNodes.length;
+
+  const positions: NodePos[] = [];
+  for (const n of allNodes) {
+    if (!movableSet.has(n)) continue;
+    const p = laid.get(n)!;
+    positions.push({ node: n, x: p.x + dx, y: p.y + dy });
+  }
   return positions;
 }
 
