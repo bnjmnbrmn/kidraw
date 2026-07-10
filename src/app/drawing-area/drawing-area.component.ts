@@ -1636,22 +1636,58 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     applyLayout(layout, nodes, edges);
     this.updateEdgesForResizedNodes(allNodes);
+
+    // The layout moved nodes wholesale, so pre-existing unpinned waypoints on
+    // affected edges now describe meaningless detours — drop them (pinned
+    // waypoints survive setControlPoints) and re-route to fit the new
+    // positions.
+    const touchedEdges = allEdges.filter(
+      e => nodeSet.has(e.srcNode) || nodeSet.has(e.destNode));
+    for (const e of touchedEdges) e.setControlPoints([]);
     this.drawingLayer.batchDraw();
+    this.applyEdgeRouting(
+      this.lastAppliedRouting ?? 'incremental-desiderata-v3', touchedEdges);
   }
 
-  private applyEdgeRouting(algorithm: RoutingAlgorithm) {
+  private applyEdgeRouting(algorithm: RoutingAlgorithm, explicitEdges?: DAEdge[]) {
     this.finishTweens();
     const allNodes = this.drawingLayer.getDANodes();
     const allEdges = this.drawingLayer.getDAEdges();
 
-    const selectedEdges = allEdges.filter(e => e.isSelected);
-    const routeSubset = selectedEdges.length > 0;
-    const routeEdges = routeSubset ? selectedEdges : allEdges;
-    // When routing only a subset, the unselected edges stay put but still act
-    // as obstacles so the routed edges weave around them rather than overlap.
-    const frozenEdges = routeSubset ? allEdges.filter(e => !e.isSelected) : [];
+    const routeEdges = explicitEdges && explicitEdges.length > 0
+      ? explicitEdges
+      : this.routingScopeFromSelection(allEdges);
+    const routeSet = new Set(routeEdges);
+    // When routing only a subset, the other edges stay put but still act as
+    // obstacles so the routed edges weave around them rather than overlap.
+    const frozenEdges = routeSet.size < allEdges.length
+      ? allEdges.filter(e => !routeSet.has(e))
+      : [];
 
     this.routeInWorker(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
+  }
+
+  /** What the routing commands act on. Selected edges win; otherwise selected
+   *  nodes scope routing to their outgoing edges and, recursively, every edge
+   *  reachable from them along outgoing edges (the whole subtree's wiring);
+   *  with no selection the whole graph is routed. */
+  private routingScopeFromSelection(allEdges: DAEdge[]): DAEdge[] {
+    const selectedEdges = allEdges.filter(e => e.isSelected);
+    if (selectedEdges.length > 0) return selectedEdges;
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length === 0) return allEdges;
+    const inScope = new Set<DANode>(selectedNodes);
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const e of allEdges) {
+        if (inScope.has(e.srcNode) && !inScope.has(e.destNode)) {
+          inScope.add(e.destNode);
+          grew = true;
+        }
+      }
+    }
+    return allEdges.filter(e => inScope.has(e.srcNode));
   }
 
   /** Run the chosen edge-routing algorithm in the Web Worker with a live

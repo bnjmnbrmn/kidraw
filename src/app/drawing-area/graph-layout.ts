@@ -510,21 +510,47 @@ function treeLayout(
   }
   runPlacement();
 
+  // Depth positions: fixed `lvl * spacing` steps leave almost no corridor
+  // between levels once boxes get tall (130px boxes at 200px steps leave
+  // 70px), which forces edge routers into detours. Space each pair of
+  // adjacent levels by the boxes they actually contain plus half a spacing
+  // of clear corridor.
+  const levelDepthExtent = new Map<number, number>();
+  for (const n of allNodes) {
+    const rect = n.getClientRect();
+    const ext = direction === 'down' ? rect.height : rect.width;
+    const lvl = depthLevel.get(n)!;
+    levelDepthExtent.set(lvl, Math.max(
+      levelDepthExtent.get(lvl) ?? 0, Number.isFinite(ext) ? ext : 0));
+  }
+  const depthOf = new Map<number, number>();
+  {
+    const maxLvl = Math.max(...Array.from(depthLevel.values()));
+    let off = 0;
+    depthOf.set(0, 0);
+    for (let l = 1; l <= maxLvl; l++) {
+      off += (levelDepthExtent.get(l - 1) ?? 0) / 2
+        + spacing / 2
+        + (levelDepthExtent.get(l) ?? 0) / 2;
+      depthOf.set(l, off);
+    }
+  }
+
   // Convert (breadth, depth) to (x, y) and center the result on the current
-  // average position so the layout doesn't jump the viewport. breadthPos is
-  // the center of the node's slot, but konvaGroup position is the box's
+  // average position so the layout doesn't jump the viewport. breadthPos and
+  // the level line are node centers, but konvaGroup position is the box's
   // top-left corner — shift by half the box so boxes of different sizes end
-  // up visually centered on their slots.
+  // up visually centered on their slots and level lines.
   const laid = new Map<DANode, { x: number; y: number }>();
   for (const n of allNodes) {
     const rect = n.getClientRect();
     const halfW = Number.isFinite(rect.width) ? rect.width / 2 : 0;
     const halfH = Number.isFinite(rect.height) ? rect.height / 2 : 0;
     const b = breadthPos.get(n)!;
-    const d = depthLevel.get(n)! * spacing;
+    const d = depthOf.get(depthLevel.get(n)!)!;
     laid.set(n, direction === 'down'
-      ? { x: b - halfW, y: d }
-      : { x: d, y: b - halfH });
+      ? { x: b - halfW, y: d - halfH }
+      : { x: d - halfW, y: b - halfH });
   }
 
   let cx = 0, cy = 0, lx = 0, ly = 0;
