@@ -47,3 +47,9 @@ Follow the pattern in `tools/playwright-screenshot.js` and `tools/repro-*.js`:
 - **Edge hit points:** raw `getPathPoints()` control points often sit inside
   node boxes; interpolate along segments and pick a point clear of all node
   rects (and edge-label boxes) before probing "over an edge" behavior.
+- **Scripts outside the repo** need `NODE_PATH=<repo>/node_modules` to
+  resolve `@playwright/test`.
+- **Building a synthetic graph in-page:** grab the constructors from a loaded
+  sample — `Object.getPrototypeOf(dl.getDANodes()[0]).constructor` (same for
+  edges) — then `dl.clearAll()`, `dl.addRawNode/addRawEdge`, `dl.batchDraw()`.
+  Use a seeded PRNG so runs are comparable across code versions.
