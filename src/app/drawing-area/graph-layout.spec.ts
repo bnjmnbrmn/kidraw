@@ -110,6 +110,39 @@ describe('graph-layout treeLayout', () => {
     expect(new Set(positions).size).toBe(positions.length);
   });
 
+  it('reorders siblings so cross-linked subtrees end up adjacent', () => {
+    // R → A, B, C; S is a second root that also points at A. A's tree slot
+    // comes from R, and naively S lands beside R's tree with B and C between
+    // S and A, so the non-tree edge S→A crosses R's edges. After reordering,
+    // A must be the sibling nearest S — whichever side S ends up on.
+    const nodes = makeNodes('R', 'A', 'B', 'C', 'S');
+    const edges = makeEdges(nodes, [
+      ['R', 'A'], ['R', 'B'], ['R', 'C'],
+      ['S', 'A'],
+    ]);
+    applyLayout('tree-down', [...nodes.values()], edges);
+
+    const distToS = (n: string) => Math.abs(x(nodes, n) - x(nodes, 'S'));
+    expect(distToS('A')).toBeLessThan(distToS('B'));
+    expect(distToS('A')).toBeLessThan(distToS('C'));
+  });
+
+  it('orders multiple roots so cross-linked trees are adjacent', () => {
+    // Three separate trees; a leaf of the first links into the third.
+    const nodes = makeNodes('r1', 'c1', 'r2', 'c2', 'r3', 'c3');
+    const edges = makeEdges(nodes, [
+      ['r1', 'c1'], ['r2', 'c2'], ['r3', 'c3'],
+      ['c1', 'c3'],
+    ]);
+    applyLayout('tree-down', [...nodes.values()], edges);
+
+    // r1's and r3's trees share a link, so r2's tree must not sit between them
+    const t1 = x(nodes, 'r1'), t2 = x(nodes, 'r2'), t3 = x(nodes, 'r3');
+    const between = (a: number, b: number, m: number) =>
+      m > Math.min(a, b) && m < Math.max(a, b);
+    expect(between(t1, t3, t2)).toBeFalse();
+  });
+
   it('lays out a rootless pure cycle without losing nodes', () => {
     const nodes = makeNodes('a', 'b', 'c');
     const edges = makeEdges(nodes, [['a', 'b'], ['b', 'c'], ['c', 'a']]);

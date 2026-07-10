@@ -270,20 +270,261 @@ function treeLayout(
     breadthPos.set(n, (first + last) / 2);
   };
 
-  let treeCursor = 0;
-  for (const r of roots) {
-    computeExtent(r);
-    place(r, treeCursor, 0);
-    treeCursor += extent.get(r)! + spacing;
+  for (const r of roots) computeExtent(r);
+  const runPlacement = (): void => {
+    let treeCursor = 0;
+    for (const r of roots) {
+      place(r, treeCursor, 0);
+      treeCursor += extent.get(r)! + spacing;
+    }
+  };
+
+  // Crossing reduction: non-tree edges (extra parents, cross-links) cross
+  // whatever sits between their endpoints, and sibling order so far is just
+  // edge insertion order. Reorder each node's child subtrees — and the roots
+  // themselves — by the barycenter of their external connections, so
+  // cross-linked subtrees end up adjacent. Extents are order-independent, so
+  // only placement needs re-running between sweeps.
+  const descendants = new Map<DANode, Set<DANode>>();
+  const computeDescendants = (n: DANode): Set<DANode> => {
+    const s = new Set<DANode>([n]);
+    for (const c of treeChildren.get(n)!) {
+      for (const m of computeDescendants(c)) s.add(m);
+    }
+    descendants.set(n, s);
+    return s;
+  };
+  for (const r of roots) computeDescendants(r);
+
+  const neighbors = new Map<DANode, DANode[]>();
+  for (const n of allNodes) neighbors.set(n, []);
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    neighbors.get(e.srcNode)!.push(e.destNode);
+    neighbors.get(e.destNode)!.push(e.srcNode);
   }
 
+  // Mean breadth position of everything outside the subtree that connects
+  // into it; subtrees with no external links keep their current position.
+  const barycenterOf = (subtreeRoot: DANode): number => {
+    const inside = descendants.get(subtreeRoot)!;
+    let sum = 0, count = 0;
+    for (const m of inside) {
+      for (const q of neighbors.get(m)!) {
+        if (!inside.has(q)) {
+          sum += breadthPos.get(q)!;
+          count++;
+        }
+      }
+    }
+    return count > 0 ? sum / count : breadthPos.get(subtreeRoot)!;
+  };
+
+  // Objective: crossings first, total breadth span of edges as tiebreaker.
+  // Crossings are counted on straight segments in layout space; span keeps
+  // pulling cross-linked subtrees together even when no single swap removes
+  // a whole crossing. The 1e9 weight makes one crossing outrank any span.
+  const layoutScore = (): number => {
+    let span = 0;
+    const segs: { a: DANode; b: DANode; x1: number; y1: number; x2: number; y2: number }[] = [];
+    for (const e of edges) {
+      if (e.srcNode === e.destNode) continue;
+      span += Math.abs(breadthPos.get(e.srcNode)! - breadthPos.get(e.destNode)!);
+      segs.push({
+        a: e.srcNode, b: e.destNode,
+        x1: breadthPos.get(e.srcNode)!, y1: depthLevel.get(e.srcNode)!,
+        x2: breadthPos.get(e.destNode)!, y2: depthLevel.get(e.destNode)!,
+      });
+    }
+    const orient = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) =>
+      (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+    let crossings = 0;
+    for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length; j++) {
+        const s = segs[i], t = segs[j];
+        if (s.a === t.a || s.a === t.b || s.b === t.a || s.b === t.b) continue;
+        const d1 = orient(t.x1, t.y1, t.x2, t.y2, s.x1, s.y1);
+        const d2 = orient(t.x1, t.y1, t.x2, t.y2, s.x2, s.y2);
+        const d3 = orient(s.x1, s.y1, s.x2, s.y2, t.x1, t.y1);
+        const d4 = orient(s.x1, s.y1, s.x2, s.y2, t.x2, t.y2);
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+            ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) crossings++;
+      }
+    }
+    // An edge running through (or grazing) an unrelated node's slot is as bad
+    // as a crossing — and it's also where the crossing count goes degenerate,
+    // so without this term the optimizer happily trades crossings for pierces.
+    // Depth is in level units, breadth in pixels; scale depth up to compare
+    // distances in a roughly isotropic space.
+    let pierces = 0;
+    const clearance = spacing / 4;
+    for (const s of segs) {
+      const x1 = s.x1, y1 = s.y1 * spacing, x2 = s.x2, y2 = s.y2 * spacing;
+      const len2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+      if (len2 === 0) continue;
+      for (const n of allNodes) {
+        if (n === s.a || n === s.b) continue;
+        const px = breadthPos.get(n)!, py = depthLevel.get(n)! * spacing;
+        const t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / len2;
+        if (t <= 0 || t >= 1) continue;
+        const ddx = px - (x1 + t * (x2 - x1)), ddy = py - (y1 + t * (y2 - y1));
+        if (ddx * ddx + ddy * ddy < clearance * clearance) pierces++;
+      }
+    }
+    return (crossings + pierces) * 1e9 + span;
+  };
+  const snapshotOrder = () => ({
+    roots: [...roots],
+    kids: new Map(Array.from(treeChildren, ([k, v]) => [k, [...v]] as const)),
+  });
+  const restoreOrder = (s: ReturnType<typeof snapshotOrder>): void => {
+    roots.length = 0;
+    roots.push(...s.roots);
+    for (const [k, v] of s.kids) treeChildren.set(k, [...v]);
+  };
+
+  // Barycenter sweeps make the big rearrangements but can oscillate when two
+  // subtrees attract each other (each sorts to where the other *was*), so
+  // keep the best ordering seen rather than trusting the last sweep.
+  runPlacement();
+  let bestScore = layoutScore();
+  let bestOrder = snapshotOrder();
+  const sweeps = 3;
+  for (let sweep = 0; sweep < sweeps; sweep++) {
+    if (roots.length > 1) {
+      roots.sort((a, b) => barycenterOf(a) - barycenterOf(b));
+    }
+    const stack: DANode[] = [...roots];
+    while (stack.length > 0) {
+      const n = stack.pop()!;
+      const kids = treeChildren.get(n)!;
+      if (kids.length > 1) kids.sort((a, b) => barycenterOf(a) - barycenterOf(b));
+      stack.push(...kids);
+    }
+    runPlacement();
+    const score = layoutScore();
+    if (score < bestScore) {
+      bestScore = score;
+      bestOrder = snapshotOrder();
+    }
+  }
+  restoreOrder(bestOrder);
+
+  // Re-parenting refinement: a multi-parent node's tree slot came from its
+  // BFS discoverer, but hanging its subtree under one of its other parents
+  // may remove crossings that no sibling reordering can. Scored like the
+  // sibling moves below, so it only ever improves the layout.
+  const treeParent = new Map<DANode, DANode>();
+  for (const [p, kids] of treeChildren) {
+    for (const k of kids) treeParent.set(k, p);
+  }
+  const parentsOf = new Map<DANode, DANode[]>();
+  for (const n of allNodes) parentsOf.set(n, []);
+  for (const e of edges) {
+    if (e.srcNode === e.destNode) continue;
+    const ps = parentsOf.get(e.destNode)!;
+    if (!ps.includes(e.srcNode)) ps.push(e.srcNode);
+  }
+  const inSubtree = (root: DANode, target: DANode): boolean => {
+    const stack = [root];
+    while (stack.length > 0) {
+      const m = stack.pop()!;
+      if (m === target) return true;
+      stack.push(...treeChildren.get(m)!);
+    }
+    return false;
+  };
+  const recomputeExtents = (): void => {
+    extent.clear();
+    for (const r of roots) computeExtent(r);
+  };
+  // Each refinement trial costs a placement (O(n)) plus a score (O(E²)).
+  // Budget the total so dense graphs degrade to fewer trials instead of
+  // freezing the UI; small graphs stay effectively exhaustive.
+  let trialsLeft = Math.max(200, Math.floor(
+    5e7 / (edges.length * edges.length + allNodes.length + 1)));
+
+  const tryReparenting = (): boolean => {
+    let anyMove = false;
+    for (const n of allNodes) {
+      if (trialsLeft <= 0) break;
+      const p = treeParent.get(n);
+      if (!p || parentsOf.get(n)!.length < 2) continue;
+      for (const q of parentsOf.get(n)!) {
+        if (q === p || inSubtree(n, q) || trialsLeft-- <= 0) continue;
+        const oldIndex = treeChildren.get(p)!.indexOf(n);
+        treeChildren.get(p)!.splice(oldIndex, 1);
+        treeChildren.get(q)!.push(n);
+        recomputeExtents();
+        runPlacement();
+        const score = layoutScore();
+        if (score + 1e-9 < bestScore) {
+          bestScore = score;
+          treeParent.set(n, q);
+          anyMove = true;
+          break;
+        }
+        treeChildren.get(q)!.pop();
+        treeChildren.get(p)!.splice(oldIndex, 0, n);
+      }
+    }
+    // Extents may be stale from a reverted trial regardless of anyMove
+    recomputeExtents();
+    return anyMove;
+  };
+
+  // Greedy refinement: try re-inserting each subtree (and each whole root
+  // tree) at every other position in its sibling list, keeping a move only if
+  // the score improves. Strictly monotone, so it terminates and cannot undo
+  // the barycenter gains; unlike adjacent swaps it can hop a subtree across
+  // several siblings even when the intermediate states are worse.
+  let improved = true;
+  for (let round = 0; improved && round < 10 && trialsLeft > 0; round++) {
+    improved = tryReparenting();
+    const siblingLists: DANode[][] = [roots, ...Array.from(treeChildren.values())]
+      .filter(list => list.length > 1);
+    for (const list of siblingLists) {
+      for (let from = 0; from < list.length && trialsLeft > 0; from++) {
+        let bestTo = -1;
+        for (let to = 0; to < list.length; to++) {
+          if (to === from || trialsLeft-- <= 0) continue;
+          const [moved] = list.splice(from, 1);
+          list.splice(to, 0, moved);
+          runPlacement();
+          const score = layoutScore();
+          if (score + 1e-9 < bestScore) {
+            bestScore = score;
+            bestTo = to;
+          }
+          // revert to try the next position from the same baseline
+          const [back] = list.splice(to, 1);
+          list.splice(from, 0, back);
+        }
+        if (bestTo >= 0) {
+          const [moved] = list.splice(from, 1);
+          list.splice(bestTo, 0, moved);
+          improved = true;
+        }
+      }
+    }
+  }
+  runPlacement();
+
   // Convert (breadth, depth) to (x, y) and center the result on the current
-  // average position so the layout doesn't jump the viewport.
+  // average position so the layout doesn't jump the viewport. breadthPos is
+  // the center of the node's slot, but konvaGroup position is the box's
+  // top-left corner — shift by half the box so boxes of different sizes end
+  // up visually centered on their slots.
   const laid = new Map<DANode, { x: number; y: number }>();
   for (const n of allNodes) {
+    const rect = n.getClientRect();
+    const halfW = Number.isFinite(rect.width) ? rect.width / 2 : 0;
+    const halfH = Number.isFinite(rect.height) ? rect.height / 2 : 0;
     const b = breadthPos.get(n)!;
     const d = depthLevel.get(n)! * spacing;
-    laid.set(n, direction === 'down' ? { x: b, y: d } : { x: d, y: b });
+    laid.set(n, direction === 'down'
+      ? { x: b - halfW, y: d }
+      : { x: d, y: b - halfH });
   }
 
   let cx = 0, cy = 0, lx = 0, ly = 0;
