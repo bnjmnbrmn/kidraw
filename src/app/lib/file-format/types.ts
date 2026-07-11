@@ -113,7 +113,8 @@ export type TextOverflowName =
   | 'ellipsis'
   | 'widen-h'
   | 'widen-v'
-  | 'widen-both';
+  | 'widen-both'
+  | 'fit';
 
 export interface EdgeStyleProps extends StyleProps {
   lineStyle?: LineStyleName;

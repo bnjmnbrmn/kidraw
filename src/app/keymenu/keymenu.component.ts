@@ -466,6 +466,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [overflow.widenH]:     new LabeledAction('Widen →',      emit('widen-h')),
       [overflow.widenV]:     new LabeledAction('Widen ↓',      emit('widen-v')),
       [overflow.widenBoth]:  new LabeledAction('Auto Size',    emit('widen-both')),
+      [overflow.fit]:        new LabeledAction('Fit Text',     emit('fit')),
     } as SubmenuConfig;
   }
 

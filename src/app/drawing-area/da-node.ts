@@ -567,6 +567,25 @@ export class DANode {
         return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
       }
 
+      case 'fit': {
+        // Shrink-to-fit: the base size acts as a maximum width and minimum
+        // baseline rather than a fixed size — short labels get small boxes,
+        // long labels wrap at the base width and grow downward.
+        const prevWidth = this._nodeWidth;
+        const prevHeight = this._nodeHeight;
+        this._fontSize = this._baseFontSize;
+        this._label.fontSize(this._fontSize);
+        const naturalWidth = this.measureNaturalWidth(text, this._baseFontSize);
+        this._nodeWidth = Math.min(
+          this._baseWidth,
+          Math.max(this.MIN_NODE_SIZE, naturalWidth + padding * 2),
+        );
+        const measuredH = this.measureTextHeight(text, this._nodeWidth, this._baseFontSize);
+        this._nodeHeight = Math.max(this.MIN_NODE_SIZE, measuredH + padding * 2);
+        this.applySize(this._nodeWidth, this._nodeHeight);
+        return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
+      }
+
       case 'widen-both': {
         const prevWidth = this._nodeWidth;
         const prevHeight = this._nodeHeight;

@@ -136,6 +136,7 @@ export interface KeymenuKeyAssignments {
     readonly widenH: KeyString;
     readonly widenV: KeyString;
     readonly widenBoth: KeyString;
+    readonly fit: KeyString;
   };
   readonly layout: {
     readonly forceDirected: KeyString;
@@ -269,7 +270,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     applyTodoPlugin: 't',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
-  overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
+  overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
   layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
 };
 
@@ -389,6 +390,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     applyTodoPlugin: 't',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
-  overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},
+  overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
 };

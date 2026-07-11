@@ -2,7 +2,7 @@ import { GraphSnapshot } from './graph-snapshot';
 
 export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction' | 'invisible';
 
-export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both';
+export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' | 'widen-v' | 'widen-both' | 'fit';
 
 export type LayoutType = 'force-directed' | 'tree-down' | 'tree-right' | 'grid' | 'circular' | 'radial';
 

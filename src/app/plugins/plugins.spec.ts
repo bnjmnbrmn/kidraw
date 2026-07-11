@@ -21,11 +21,24 @@ describe('plugins', () => {
 
     for (const n of [circle, box]) {
       expect(n.nodeShape).toBe('box');
-      expect(n.NODE_WIDTH).toBe(280);
-      expect(n.NODE_HEIGHT).toBe(70);
-      expect(n.textOverflowMode).toBe('widen-v');
+      expect(n.textOverflowMode).toBe('fit');
+      // fit mode: a short label gets a snug card, not the full 280 base width
+      expect(n.NODE_WIDTH).toBeLessThan(280);
+      expect(n.NODE_WIDTH).toBeGreaterThanOrEqual(n.MIN_NODE_SIZE);
+      expect(n.NODE_HEIGHT).toBe(n.MIN_NODE_SIZE);
     }
     expect(dl.getActivePlugins()).toEqual(['todo-graph']);
+  });
+
+  it('fit cards wrap long labels at the base width and grow downward', () => {
+    const long = new DANode(0, 0,
+      'a genuinely long todo item whose label cannot possibly fit on a single line of card text');
+    const dl = layerWithNodes(long);
+
+    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+
+    expect(long.NODE_WIDTH).toBe(280);
+    expect(long.NODE_HEIGHT).toBeGreaterThan(long.MIN_NODE_SIZE);
   });
 
   it('junction nodes keep their fixed geometry', () => {
@@ -45,8 +58,10 @@ describe('plugins', () => {
 
     const node = dl.createNewNode(100, 100);
     expect(node.nodeShape).toBe('box');
-    expect(node.NODE_WIDTH).toBe(280);
-    expect(node.NODE_HEIGHT).toBe(70);
+    expect(node.textOverflowMode).toBe('fit');
+    // fit mode with an empty label collapses to the minimum card size
+    expect(node.NODE_WIDTH).toBe(node.MIN_NODE_SIZE);
+    expect(node.NODE_HEIGHT).toBe(node.MIN_NODE_SIZE);
   });
 
   it('an explicitly requested shape wins over the plugin default shape', () => {
@@ -55,8 +70,8 @@ describe('plugins', () => {
 
     const node = dl.createNewNode(100, 100, 'diamond');
     expect(node.nodeShape).toBe('diamond');
-    // size defaults still apply
-    expect(node.NODE_WIDTH).toBe(280);
+    // style defaults still apply
+    expect(node.textOverflowMode).toBe('fit');
   });
 
   it('active plugins survive serialize/restore and are cleared by clearAll', () => {
@@ -70,7 +85,7 @@ describe('plugins', () => {
     dl2.restoreGraph(snap);
     expect(dl2.getActivePlugins()).toEqual(['todo-graph']);
     const fresh = dl2.createNewNode(0, 0);
-    expect(fresh.NODE_WIDTH).toBe(280);
+    expect(fresh.textOverflowMode).toBe('fit');
 
     dl2.clearAll();
     expect(dl2.getActivePlugins()).toEqual([]);
