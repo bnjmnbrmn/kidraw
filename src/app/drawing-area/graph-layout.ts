@@ -1,11 +1,18 @@
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { LayoutType } from './command.model';
+import { resolveBoxOverlaps } from './overlap-resolution';
 
 interface NodePos {
   node: DANode;
   x: number;
   y: number;
+}
+
+/** Center-to-center distance a node needs along a ring or row so its box plus
+ *  half a spacing of clearance fits; never less than the plain spacing. */
+function slotExtent(n: DANode, spacing: number): number {
+  return Math.max(spacing, Math.max(n.NODE_WIDTH, n.NODE_HEIGHT) + spacing / 2);
 }
 
 export function applyLayout(
@@ -39,6 +46,29 @@ export function applyLayout(
       break;
   }
 
+  // The tree layouts space nodes by their real boxes, but the point-based
+  // ones (force, grid, circular, radial) reason mostly about centers, so mixed
+  // node sizes can still collide. Guarantee "layout never leaves overlapping
+  // nodes" for every layout with a final push-apart pass — a no-op when the
+  // layout already came out clean. Pinned nodes participate as immovable
+  // obstacles.
+  const posOf = new Map(positions.map(p => [p.node, p]));
+  const boxes = nodes.map(n => {
+    const p = posOf.get(n);
+    return {
+      x: p ? p.x : n.konvaGroup.x(),
+      y: p ? p.y : n.konvaGroup.y(),
+      w: n.NODE_WIDTH,
+      h: n.NODE_HEIGHT,
+      movable: p !== undefined,
+    };
+  });
+  for (const i of resolveBoxOverlaps(boxes, spacing / 4)) {
+    const p = posOf.get(nodes[i])!;
+    p.x = boxes[i].x;
+    p.y = boxes[i].y;
+  }
+
   for (const p of positions) {
     p.node.konvaGroup.x(p.x);
     p.node.konvaGroup.y(p.y);
@@ -53,10 +83,14 @@ function forceDirectedLayout(
 ): NodePos[] {
   const movableSet = new Set(movable);
 
-  // Initialize positions from current positions
+  // Simulate box centers, not top-left corners: with mixed node sizes the
+  // corner isn't a meaningful proxy for where a node visually sits.
   const pos = new Map<DANode, { x: number; y: number }>();
   for (const n of allNodes) {
-    pos.set(n, { x: n.konvaGroup.x(), y: n.konvaGroup.y() });
+    pos.set(n, {
+      x: n.konvaGroup.x() + n.NODE_WIDTH / 2,
+      y: n.konvaGroup.y() + n.NODE_HEIGHT / 2,
+    });
   }
 
   const iterations = 100;
@@ -83,7 +117,15 @@ function forceDirectedLayout(
         let dy = pa.y - pb.y;
         const distSq = dx * dx + dy * dy;
         const dist = Math.max(Math.sqrt(distSq), 1);
-        const force = repulsion / distSq;
+        // Repel from box edges rather than centers so bigger boxes claim
+        // proportionally more room; clamp so touching boxes don't explode.
+        const clearance = Math.max(
+          dist
+            - Math.max(a.NODE_WIDTH, a.NODE_HEIGHT) / 2
+            - Math.max(b.NODE_WIDTH, b.NODE_HEIGHT) / 2,
+          10,
+        );
+        const force = repulsion / (clearance * clearance);
         const fx = (dx / dist) * force * temperature;
         const fy = (dy / dist) * force * temperature;
 
@@ -134,7 +176,11 @@ function forceDirectedLayout(
     }
   }
 
-  return movable.map(n => ({ node: n, x: pos.get(n)!.x, y: pos.get(n)!.y }));
+  return movable.map(n => ({
+    node: n,
+    x: pos.get(n)!.x - n.NODE_WIDTH / 2,
+    y: pos.get(n)!.y - n.NODE_HEIGHT / 2,
+  }));
 }
 
 function treeLayout(
@@ -583,14 +629,18 @@ function gridLayout(movable: DANode[], spacing: number): NodePos[] {
   cx /= movable.length;
   cy /= movable.length;
 
-  const totalW = (cols - 1) * spacing;
+  // Uniform cells sized by the largest box, so mixed sizes can't collide;
+  // each node is centered in its cell.
+  const cellW = Math.max(spacing, ...movable.map(n => n.NODE_WIDTH + spacing / 2));
+  const cellH = Math.max(spacing, ...movable.map(n => n.NODE_HEIGHT + spacing / 2));
+  const totalW = (cols - 1) * cellW;
   const rows = Math.ceil(movable.length / cols);
-  const totalH = (rows - 1) * spacing;
+  const totalH = (rows - 1) * cellH;
 
   return movable.map((node, i) => ({
     node,
-    x: cx - totalW / 2 + (i % cols) * spacing,
-    y: cy - totalH / 2 + Math.floor(i / cols) * spacing,
+    x: cx - totalW / 2 + (i % cols) * cellW - node.NODE_WIDTH / 2,
+    y: cy - totalH / 2 + Math.floor(i / cols) * cellH - node.NODE_HEIGHT / 2,
   }));
 }
 
@@ -645,10 +695,21 @@ function circularLayout(
   cx /= allNodes.length;
   cy /= allNodes.length;
 
-  const radius = (spacing * movableOrdered.length) / (2 * Math.PI);
-  return movableOrdered.map((node, i) => {
-    const angle = (2 * Math.PI * i) / movableOrdered.length - Math.PI / 2;
-    return { node, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };
+  // Ring circumference from actual box footprints, and each node's angular
+  // share proportional to its footprint, so a few wide cards don't overlap
+  // while small nodes still pack tightly.
+  const circumference = movableOrdered.reduce((sum, n) => sum + slotExtent(n, spacing), 0);
+  const radius = circumference / (2 * Math.PI);
+  let arcCursor = 0;
+  return movableOrdered.map(node => {
+    const arc = slotExtent(node, spacing);
+    const angle = ((arcCursor + arc / 2) / circumference) * 2 * Math.PI - Math.PI / 2;
+    arcCursor += arc;
+    return {
+      node,
+      x: cx + radius * Math.cos(angle) - node.NODE_WIDTH / 2,
+      y: cy + radius * Math.sin(angle) - node.NODE_HEIGHT / 2,
+    };
   });
 }
 
@@ -774,13 +835,34 @@ function radialLayout(
     });
   }
 
+  // Ring radii: at least one spacing beyond the previous ring, widened when a
+  // ring's boxes need more circumference than that radius provides.
+  const ringOf = (lvl: number) => hasUniqueCenter ? lvl : lvl + 1;
+  const ringArc = new Map<number, number>();
+  let maxRing = 0;
+  for (const [lvl, nodesAtLevel] of levels) {
+    const ring = ringOf(lvl);
+    maxRing = Math.max(maxRing, ring);
+    ringArc.set(ring, nodesAtLevel.reduce((sum, n) => sum + slotExtent(n, spacing), 0));
+  }
+  const ringRadius = [0];
+  for (let r = 1; r <= maxRing; r++) {
+    ringRadius.push(Math.max(
+      ringRadius[r - 1] + spacing,
+      (ringArc.get(r) ?? 0) / (2 * Math.PI),
+    ));
+  }
+
   const positions: NodePos[] = [];
   for (const [lvl, nodesAtLevel] of levels) {
-    const ring = hasUniqueCenter ? lvl : lvl + 1;
-    const radius = ring === 0 ? 0 : ring * spacing;
+    const radius = ringRadius[ringOf(lvl)];
     nodesAtLevel.forEach(node => {
       const angle = nodeAngle.get(node)!;
-      positions.push({ node, x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) });
+      positions.push({
+        node,
+        x: cx + radius * Math.cos(angle) - node.NODE_WIDTH / 2,
+        y: cy + radius * Math.sin(angle) - node.NODE_HEIGHT / 2,
+      });
     });
   }
   return positions;
