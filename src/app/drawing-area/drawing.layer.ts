@@ -8,6 +8,8 @@ import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
 import {resetIdCounter} from './id-generator';
 import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
+import {KidrawPlugin} from '../plugins/plugin.model';
+import {getPlugin} from '../plugins/plugin-registry';
 
 export class DrawingLayer extends Konva.Layer {
   private readonly gridGroup: Konva.Group;
@@ -16,6 +18,9 @@ export class DrawingLayer extends Konva.Layer {
   private readonly daNodes: DANode[] = [];
   private readonly daEdges: DAEdge[] = [];
   private _palette?: ThemePalette;
+  /** Ids of plugins active on this graph; their style defaults apply to
+   *  newly created nodes. Serialized with the graph. */
+  private activePlugins: string[] = [];
   private gridSpacing = 50;
   private _currentMajorSpacing = 50;
   private _currentMinorSpacing = 5;
@@ -138,6 +143,12 @@ export class DrawingLayer extends Konva.Layer {
 
     // Create node first so we can read its actual size constants
     const daNode = new DANode(0, 0, "", undefined, this.nodeColors(), nodeShape);
+    // Active plugins set the defaults for new nodes; an explicitly requested
+    // shape (insert-with-shape submenu) wins over the plugin's default shape.
+    for (const pid of this.activePlugins) {
+      const plugin = getPlugin(pid);
+      if (plugin) this.applyPluginDefaultsToNode(daNode, plugin, nodeShape !== undefined);
+    }
     const nodeW = daNode.NODE_WIDTH;
     const nodeH = daNode.NODE_HEIGHT;
     // Position so node center is at the crosshairs position
@@ -295,6 +306,7 @@ export class DrawingLayer extends Konva.Layer {
       node.konvaGroup.remove();
       this.daNodes.pop();
     }
+    this.activePlugins = [];
     resetIdCounter();
   }
 
@@ -355,7 +367,42 @@ export class DrawingLayer extends Konva.Layer {
       lineStyle: edge.lineStyle !== 'solid' ? edge.lineStyle : undefined,
     }));
 
-    return { nodes, edges };
+    return {
+      nodes,
+      edges,
+      ...(this.activePlugins.length > 0 ? { plugins: [...this.activePlugins] } : {}),
+    };
+  }
+
+  /** Activate a plugin on this graph and restyle the existing nodes to its
+   *  defaults. Junction/invisible nodes keep their fixed geometry. */
+  applyPlugin(plugin: KidrawPlugin): void {
+    if (!this.activePlugins.includes(plugin.id)) {
+      this.activePlugins.push(plugin.id);
+    }
+    for (const node of this.daNodes) {
+      this.applyPluginDefaultsToNode(node, plugin, false);
+    }
+  }
+
+  getActivePlugins(): readonly string[] {
+    return this.activePlugins;
+  }
+
+  private applyPluginDefaultsToNode(node: DANode, plugin: KidrawPlugin, keepShape: boolean): void {
+    const d = plugin.nodeDefaults;
+    if (!keepShape && d.shape && node.nodeShape !== d.shape
+        && node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
+      node.changeShape(d.shape, this.nodeColors());
+    }
+    if (node.nodeShape === 'junction' || node.nodeShape === 'invisible') return;
+    node.restoreState(
+      d.width ?? node.NODE_WIDTH,
+      d.height ?? node.NODE_HEIGHT,
+      d.fontSize ?? node.FONT_SIZE,
+      d.textOverflow ?? node.textOverflowMode,
+    );
+    node.applyTextOverflow();
   }
 
   restoreGraph(snapshot: GraphSnapshot): void {
@@ -368,6 +415,7 @@ export class DrawingLayer extends Konva.Layer {
       const edge = this.daEdges.pop()!;
       edge.konvaGroup.destroy();
     }
+    this.activePlugins = [...(snapshot.plugins ?? [])];
 
     // Rebuild nodes
     const nodeMap = new Map<string, DANode>();

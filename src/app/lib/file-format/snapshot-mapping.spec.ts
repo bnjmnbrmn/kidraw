@@ -183,6 +183,21 @@ describe('snapshot-mapping', () => {
 
   // ─── Round-trip ─────────────────────────────────────────────────────────
 
+  it('round-trips active plugins through doc.plugins', () => {
+    const snap = { ...makeSnapshot(), plugins: ['todo-graph'] };
+    const { doc, style } = snapshotToFiles(snap);
+    expect(doc.plugins).toEqual(['todo-graph']);
+    const back = filesToSnapshot(doc, style);
+    expect(back.plugins).toEqual(['todo-graph']);
+  });
+
+  it('omits plugins entirely when none are active', () => {
+    const { doc } = snapshotToFiles(makeSnapshot());
+    expect('plugins' in doc).toBeFalse();
+    const back = filesToSnapshot(doc, { kdStyle: 1 });
+    expect('plugins' in back).toBeFalse();
+  });
+
   it('round-trips a snapshot through files and back', () => {
     const original = makeSnapshot();
     const { doc, style } = snapshotToFiles(original);

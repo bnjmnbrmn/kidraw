@@ -49,4 +49,7 @@ export interface DAEdgeSnapshot {
 export interface GraphSnapshot {
   nodes: DANodeSnapshot[];
   edges: DAEdgeSnapshot[];
+  /** Ids of plugins active on this graph (their style defaults apply to
+   *  newly created nodes). Persisted as the graph doc's `plugins` list. */
+  plugins?: string[];
 }

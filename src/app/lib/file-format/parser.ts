@@ -154,10 +154,19 @@ export function validateGraphDoc(raw: unknown): ParseResult<KidrawGraphDoc> {
   const semanticsResult = validateSemantics(raw['semantics']);
   if (!semanticsResult.ok) return semanticsResult;
 
+  if (raw['plugins'] !== undefined) {
+    if (!Array.isArray(raw['plugins']) || raw['plugins'].some(p => typeof p !== 'string')) {
+      return fail('"plugins" must be an array of strings');
+    }
+  }
+
   return ok({
     kidraw: 1,
     styles: stylesResult.value,
     semantics: semanticsResult.value,
+    ...(Array.isArray(raw['plugins']) && raw['plugins'].length > 0
+      ? { plugins: raw['plugins'] as string[] }
+      : {}),
   });
 }
 

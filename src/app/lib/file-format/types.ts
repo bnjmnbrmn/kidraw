@@ -15,6 +15,9 @@ export interface KidrawGraphDoc {
   kidraw: 1;
   styles: StyleRef[];
   semantics: GraphSemantics;
+  /** Ids of app plugins active on this graph (e.g. 'todo-graph'). A plugin's
+   *  style defaults apply to nodes created while it is active. */
+  plugins?: string[];
 }
 
 export type StyleRef = string | InlineStyleSet;

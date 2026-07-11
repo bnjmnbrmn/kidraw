@@ -100,6 +100,7 @@ export function snapshotToFiles(
     kidraw: 1,
     styles: options.stylePath ? [options.stylePath] : [],
     semantics: { nodes: semNodes, edges: semEdges },
+    ...(snap.plugins && snap.plugins.length > 0 ? { plugins: [...snap.plugins] } : {}),
   };
 
   const style: KidrawStyleSet = {
@@ -169,5 +170,9 @@ export function filesToSnapshot(
     edges.push(edge);
   }
 
-  return { nodes, edges };
+  return {
+    nodes,
+    edges,
+    ...(doc.plugins && doc.plugins.length > 0 ? { plugins: [...doc.plugins] } : {}),
+  };
 }

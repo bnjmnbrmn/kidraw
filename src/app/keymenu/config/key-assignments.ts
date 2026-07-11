@@ -121,6 +121,7 @@ export interface KeymenuKeyAssignments {
     readonly vaultOpen: KeyString;
     readonly vaultSaveAs: KeyString;
     readonly toggleKeyProfile: KeyString;
+    readonly applyTodoPlugin: KeyString;
   };
   readonly edit: {
     readonly overflowSubmenu: KeyString;
@@ -261,6 +262,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     vaultOpen: 'o',
     vaultSaveAs: 'w',
     toggleKeyProfile: 'p',
+    applyTodoPlugin: 't',
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h'},
@@ -378,6 +380,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     vaultOpen: 'o',
     vaultSaveAs: 'w',
     toggleKeyProfile: 'p',
+    applyTodoPlugin: 't',
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e'},

@@ -46,6 +46,7 @@ import {
   serializeGraphDocByFilename,
 } from '../lib/file-format/parser';
 import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
+import { getPlugin } from '../plugins/plugin-registry';
 import {
   InlineStyleSet,
   KidrawGraphDoc,
@@ -236,6 +237,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.UNSELECT_ALL,
     DACommandType.SET_TEXT_OVERFLOW_MODE,
     DACommandType.SET_NODE_SHAPE,
+    DACommandType.APPLY_PLUGIN,
   ]);
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
@@ -277,6 +279,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.TOGGLE_PIN_SELECTED,
     DACommandType.APPLY_LAYOUT,
     DACommandType.APPLY_EDGE_ROUTING,
+    DACommandType.APPLY_PLUGIN,
   ]);
 
 
@@ -683,6 +686,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CYCLE_DISPLAY:
         this.cycleDisplay();
         break;
+      case DACommandType.APPLY_PLUGIN:
+        this.applyPlugin(command.pluginId);
+        break;
       case DACommandType.CONNECT_VAULT:
         void this.connectVault();
         break;
@@ -989,6 +995,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitFileState(manifestName);
 
     this.emitDisplayStatus(parsed.value);
+  }
+
+  /** Apply a registered plugin: restyle existing nodes to its defaults and
+   *  record it as active so new nodes follow them too. Undoable; persisted
+   *  with the graph. */
+  private applyPlugin(pluginId: string): void {
+    const plugin = getPlugin(pluginId);
+    if (!plugin) {
+      this.emitStatus(`⚠ Unknown plugin: ${pluginId}`);
+      return;
+    }
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    this.drawingLayer.applyPlugin(plugin);
+    this.updateEdgesForResizedNodes(this.drawingLayer.getDANodes());
+    this.drawingLayer.batchDraw();
+    this.emitStatus(`Plugin applied: ${plugin.name}`);
   }
 
   private cycleDisplay(): void {
