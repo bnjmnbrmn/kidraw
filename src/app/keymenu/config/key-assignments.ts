@@ -103,6 +103,8 @@ export interface KeymenuKeyAssignments {
     readonly forwards: KeyString;
     readonly backwards: KeyString;
     readonly gather: KeyString;
+    readonly gatherAll: KeyString;
+    readonly ungather: KeyString;
   };
   readonly ctrl: {
     readonly submenu: KeyString;
@@ -246,6 +248,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     forwards: 'k',
     backwards: 'i',
     gather: 'h',
+    gatherAll: 'a',
+    ungather: 'u',
   },
   ctrl: {submenu: 'Control'},
   misc: {
@@ -364,6 +368,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     forwards: 'j',
     backwards: 'k',
     gather: 'h',
+    gatherAll: 'a',
+    ungather: 'u',
   },
   ctrl: {submenu: 'Control'},
   misc: {

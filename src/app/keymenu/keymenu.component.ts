@@ -841,6 +841,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbg.forwards]: new LabeledAction('Forwards', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
       [mbg.backwards]: new LabeledAction('Backwards', () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_BACK})),
       [mbg.gather]: new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
+      [mbg.gatherAll]: new LabeledAction('Gather All', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_DESCENDANTS})),
+      [mbg.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
     } as SubmenuConfig;
   }
 

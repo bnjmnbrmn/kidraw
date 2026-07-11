@@ -197,6 +197,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.FOLLOW_SELECTED_EDGE,
     DACommandType.NAVIGATE_BACK,
     DACommandType.GATHER_CONNECTED_NODES,
+    DACommandType.GATHER_DESCENDANTS,
+    DACommandType.UNGATHER,
     DACommandType.LOAD_SAMPLE_GRAPH,
     DACommandType.LOAD_GRAPH,
     DACommandType.NEW_GRAPH,
@@ -661,6 +663,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.GATHER_CONNECTED_NODES:
         this.gatherConnectedNodes();
+        break;
+      case DACommandType.GATHER_DESCENDANTS:
+        this.gatherDescendants();
+        break;
+      case DACommandType.UNGATHER:
+        this.ungather();
         break;
       case DACommandType.LOAD_SAMPLE_GRAPH:
         this.loadSampleGraph(command.graphId);
@@ -2760,10 +2768,142 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }, 5000);
   }
 
-  private restoreGatheredNodes(): void {
+  /**
+   * Gather all descendants (transitive outgoing edges) of the anchor node into
+   * a radial tree around it. Unlike the plain gather, the view persists until
+   * an explicit Ungather (or a plain Gather toggle). Original positions are
+   * kept in gatheredNodePositions, so this is a temporary view, not a mutation.
+   */
+  private gatherDescendants(): void {
+    this.finishTweens();
+
+    const anchorNode = this.getTraversalAnchorNode();
+    if (!anchorNode) return;
+
+    // Only one temporary gather view at a time: snap any previous one back
+    // first so saved positions always refer to the user's real layout.
+    if (this.gatheredNodePositions.size > 0) {
+      this.restoreGatheredNodes(false);
+    }
+
+    // BFS over outgoing edges; the first visit fixes each node's tree parent
+    // and depth, which makes cycles and diamond-shaped DAGs safe.
+    const depthOf = new Map<DANode, number>([[anchorNode, 0]]);
+    const childrenOf = new Map<DANode, DANode[]>();
+    const order: DANode[] = [];
+    const queue: DANode[] = [anchorNode];
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      for (const edge of node.outgoingEdges) {
+        const child = edge.destNode;
+        if (depthOf.has(child)) continue;
+        depthOf.set(child, depthOf.get(node)! + 1);
+        const siblings = childrenOf.get(node);
+        if (siblings) siblings.push(child); else childrenOf.set(node, [child]);
+        order.push(child);
+        queue.push(child);
+      }
+    }
+    if (order.length === 0) {
+      this.emitStatus('No descendants to gather.');
+      return;
+    }
+
+    // Leaf count per subtree (children processed before parents in reverse
+    // BFS order) — used to split each node's angular wedge among its children.
+    const leafWeight = new Map<DANode, number>();
+    for (let i = order.length - 1; i >= 0; i--) {
+      const node = order[i];
+      const kids = childrenOf.get(node);
+      leafWeight.set(node, kids ? kids.reduce((sum, k) => sum + leafWeight.get(k)!, 0) : 1);
+    }
+
+    const RING_SPACING = 170;
+    const MIN_ARC = 130; // minimum node footprint along a ring
+
+    // Ring radius per depth: at least RING_SPACING beyond the previous ring,
+    // widened when a ring's boxes need more circumference than that provides.
+    let maxDepth = 0;
+    const arcAtDepth: number[] = [];
+    for (const node of order) {
+      const d = depthOf.get(node)!;
+      const arc = Math.max(MIN_ARC, Math.max(node.NODE_WIDTH, node.NODE_HEIGHT) + RING_SPACING / 4);
+      arcAtDepth[d] = (arcAtDepth[d] ?? 0) + arc;
+      maxDepth = Math.max(maxDepth, d);
+    }
+    const radiusAtDepth = [0];
+    for (let d = 1; d <= maxDepth; d++) {
+      radiusAtDepth.push(Math.max(
+        radiusAtDepth[d - 1] + RING_SPACING,
+        arcAtDepth[d] / (2 * Math.PI),
+      ));
+    }
+
+    // Wedges: the anchor owns the full circle; each node splits its wedge
+    // among its children proportionally to their leaf counts. A node sits at
+    // its wedge's midpoint, so subtrees stay near their parents.
+    const wedge = new Map<DANode, [number, number]>([[anchorNode, [0, 2 * Math.PI]]]);
+    for (const node of [anchorNode, ...order]) {
+      const kids = childrenOf.get(node);
+      if (!kids) continue;
+      const [from, to] = wedge.get(node)!;
+      const total = leafWeight.get(node) ?? kids.reduce((sum, k) => sum + leafWeight.get(k)!, 0);
+      let start = from;
+      for (const kid of kids) {
+        const span = ((to - from) * leafWeight.get(kid)!) / total;
+        wedge.set(kid, [start, start + span]);
+        start += span;
+      }
+    }
+
+    const anchorX = anchorNode.group.x();
+    const anchorY = anchorNode.group.y();
+    for (const node of order) {
+      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
+
+      const [from, to] = wedge.get(node)!;
+      const angle = (from + to) / 2;
+      const radius = radiusAtDepth[depthOf.get(node)!];
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        x: anchorX + Math.cos(angle) * radius,
+        y: anchorY + Math.sin(angle) * radius,
+        duration: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          this.updateEdgesForResizedNodes([node]);
+          this.drawingLayer.batchDraw();
+        },
+      }).play());
+    }
+
+    this.emitStatus(`Gathered ${order.length} descendant${order.length === 1 ? '' : 's'}. Ungather restores the layout.`);
+  }
+
+  private ungather(): void {
+    this.finishTweens();
+    if (this.gatheredNodePositions.size === 0) {
+      this.emitStatus('Nothing to ungather.');
+      return;
+    }
+    this.restoreGatheredNodes();
+  }
+
+  private restoreGatheredNodes(animate = true): void {
     if (this.gatherRestoreTimeout !== null) {
       clearTimeout(this.gatherRestoreTimeout);
       this.gatherRestoreTimeout = null;
+    }
+
+    if (!animate) {
+      const moved = [...this.gatheredNodePositions.keys()];
+      for (const [node, pos] of this.gatheredNodePositions) {
+        node.group.position(pos);
+      }
+      this.gatheredNodePositions.clear();
+      this.updateEdgesForResizedNodes(moved);
+      this.drawingLayer.batchDraw();
+      return;
     }
 
     for (const [node, pos] of this.gatheredNodePositions) {
