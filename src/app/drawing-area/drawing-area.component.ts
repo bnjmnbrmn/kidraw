@@ -17,6 +17,7 @@ import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout } from './graph-layout';
+import { resolveBoxOverlaps } from './overlap-resolution';
 import {
   applyDesiderataRouteEdges,
   DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
@@ -167,6 +168,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly MAX_STEERING_SPEED = 200;
   public readonly NODE_SIZE_STEP = 20;
   public readonly TEXT_SIZE_STEP = 2;
+  /** Clearance kept between boxes when a resize pushes neighbors aside. */
+  public readonly RESIZE_REFLOW_GAP = 16;
 
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
@@ -2982,22 +2985,37 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    let changed = false;
-    const connectedEdges = new Set<DAEdge>();
-
-    targetNodes.forEach((node) => {
-      if (node.resizeBy(delta)) {
-        changed = true;
-        node.connectedEdges.forEach((edge) => connectedEdges.add(edge));
-      }
-    });
-
-    if (!changed) {
+    const resized = targetNodes.filter((node) => node.resizeBy(delta));
+    if (resized.length === 0) {
       return;
     }
 
-    connectedEdges.forEach((edge) => this.updateEdgePoints(edge));
+    // A grown node may now sit on top of its neighbors: push them out of the
+    // way (chains included), keeping the resized nodes themselves anchored.
+    // Shrinking creates no new overlaps, so the pass is a no-op then.
+    const moved = this.resolveOverlapsAround(resized);
+    this.updateEdgesForResizedNodes([...resized, ...moved]);
     this.drawingLayer.batchDraw();
+  }
+
+  /** Push movable nodes apart until nothing overlaps, treating `anchored` and
+   *  pinned nodes as immovable obstacles. Returns the nodes that moved. */
+  private resolveOverlapsAround(anchored: DANode[]): DANode[] {
+    const all = this.drawingLayer.getDANodes();
+    const anchoredSet = new Set(anchored);
+    const boxes = all.map(n => ({
+      x: n.group.x(),
+      y: n.group.y(),
+      w: n.NODE_WIDTH,
+      h: n.NODE_HEIGHT,
+      movable: !anchoredSet.has(n) && !n.pinned,
+    }));
+    const moved: DANode[] = [];
+    for (const i of resolveBoxOverlaps(boxes, this.RESIZE_REFLOW_GAP)) {
+      all[i].group.position({x: boxes[i].x, y: boxes[i].y});
+      moved.push(all[i]);
+    }
+    return moved;
   }
 
   private getSelectedNodesOrNodeUnderCrosshairs(): DANode[] {
