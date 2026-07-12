@@ -15,6 +15,7 @@ _Updated 2026-07-12. Branch: `main`._
 7. **Mixed-size node support (dogfooding batch, 2026-07-11).** Building `next.kidraw.yaml` as a todo graph surfaced that everything downstream of the tree layouts assumed uniform node sizes. Four commits fix that end to end: **(a)** `resolveBoxOverlaps` (`overlap-resolution.ts`, unit-tested) — a pure push-apart pass over node boxes (least-penetration axis, pinned/anchored boxes immovable) that `applyLayout` now runs after *every* layout, guaranteeing no layout leaves overlapping nodes; **(b)** the point-based layouts got direct size awareness (force-directed simulates box centers and repels from box edges; grid cells size to the largest box; circular/radial ring radii and angular shares come from actual box footprints) (`6dbf05e`); **(c)** **Increase/Decrease Node Size now reflows**: growing a node pushes overlapping neighbors (and chains) aside, anchored on the resized node, and re-routes edges of everything that moved (`b8d55d1`); **(d)** new **`fit` text-overflow mode** — base size acts as max-width/minimum instead of a fixed box, so short labels get snug cards and long ones wrap and grow downward; overflow submenu key `v` (both profiles), file-format value `fit`, and now the todo-graph plugin default (`0bed763`). Not done yet: layout/reflow still doesn't fit-to-view afterwards, and label/waypoint positions aren't part of the overlap pass.
 8. **Gather Descendants + Ungather** (`1f6b43a`). Traversal submenu grew `a` **Gather All** — pulls every descendant (transitive outgoing edges) of the anchor node into a radial tree around it (BFS, wedges split by subtree leaf counts, ring radii box-aware) — and `u` **Ungather**, which restores the saved layout. Unlike the plain Gather toggle the view persists until explicitly ungathered; original positions live in `gatheredNodePositions`, so it's a temporary view, not a mutation.
 9. **Context-sensitive `i` key (edit/insert).** Tapping the edit key (`i` vim / `e` ijkl) now acts on context: single selection → recenter + jump crosshairs to it + deselect; multi-selection → status warning; over a node/label → edit it; over an edge → status hint; over a waypoint/empty canvas → insert node + label edit. Holding it swaps in context options (Insert Node over items/empty; Add Label / Add Waypoint over edges); with a selection the static Edit submenu (Overflow, Toggle Pin) is kept. Plumbing: keymenu sends `QUERY_EDIT_CONTEXT` on keydown, drawing area answers synchronously with an `edit-context` notification; tap emits `EDIT_OR_INSERT`, decided entirely in the drawing area (`computeEditContext` / `handleEditOrInsert`). Verified end-to-end via Playwright (23-check script driving real key events).
+10. **Edge labels are path-anchored.** A label's position is no longer absolute x/y but an anchor — arc-length fraction `t` (0..1) along the edge's rendered polyline plus a discrete `side` (`above`/`on`/`below`; "above" is screen-stable, independent of edge direction). `DAEdge.refreshGeometry()` re-derives every label's x/y from its anchor, so labels follow node moves, waypoint drags, and re-routing for free. Pure geometry in `edge-label-anchor.ts` (unit-tested): `pointAtT`, `projectPointToPath`, `anchorPosition`, canonical stops at t = 0.1/0.5/0.9. Label-only movement keys: left/right slide `t` by grid spacing (fine tier = subgrid), coarse tier snaps between the start/middle/end stops, up/down cycle above → on → below. Add Label anchors at the projected crosshairs `t` on the line. Persistence: snapshots carry `edgeT`/`side`; the file format gains `labelAnchors` (`{t, side?}`, index-aligned with semantic labels) replacing `labelOffsets`, which is still read for migration — legacy absolute positions restore by projecting onto the path (`adoptLabelPosition`). Degenerate paths (overlapping nodes → zero length) leave the label in place until geometry recovers. Verified end-to-end via `tools/repro-edge-label-anchors.js` (15 checks: add flow, node-move/re-route following, slide/snap/side keys, serialize round trip, legacy projection). Remaining from the [`notes/decision-interaction-model.md`](notes/decision-interaction-model.md) roadmap: move-by-graph fix → gathering/collapse rework.
 
 ## Routing-eval harness
 
@@ -30,16 +31,16 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
+| `fa4d975` | dev-server: allow kidraw.dev.bnjmnbrmn.com as a serve host |
+| `c1e9674` | next: reorganize planning notes into pre/post-MVP |
+| `49c265a` | dev-status: record extensions identity slot + persistence cascade |
 | `eab8642` | Extensions with identity slot; node styles cascade, derived sizes stop persisting |
 | `e2889f9` | notes: record extension decisions + post-persistence roadmap |
 | `03075fd` | notes: rework diagram-types idea into extensions + contribution points |
 | `5294ea0` | notes: record custom-color persistence bug |
 | `0bed763` | 'fit' text-overflow mode; todo cards now size to their text |
 | `b8d55d1` | Growing a node pushes overlapping neighbors aside |
-| `6dbf05e` | Box-aware layouts via overlap-resolution pass |
-| `1f6b43a` | Gather Descendants radial tree view + Ungather |
-| `945a03e` | Plugin system v0 + todo-graph plugin (wide rectangular cards) |
-| `d9a2037` | Auto-route edges after node layout; selection scopes routing recursively |
 
 ---
 
