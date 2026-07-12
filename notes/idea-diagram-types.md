@@ -1,7 +1,7 @@
 ---
 title: Extensions with contribution points — diagram identity, derived sizes, todo-graph semantics
 type: idea
-status: revised 2026-07-12 after discussion; direction agreed, not yet planned
+status: direction + open questions decided 2026-07-12; persistence slice ready to plan
 ---
 
 # Extensions + contribution points (supersedes the "diagram types vs plugins" framing)
@@ -66,17 +66,32 @@ load (`restoreGraph` → `applyTextOverflow`) and text edit. The requested
   a zone containing its members than as a node wired to them — decide
   deliberately when this lands.
 
-## Open questions
+## Decisions (user, 2026-07-12)
 
-1. Activation: does the identity extension pull in other extensions
-   (file-type → plugin hooks, VS Code-style activation events)?
-2. Where do extensions live? App-registered only (like plugin v0) for now;
-   file-defined/user-defined extensions are a much later question.
-3. Key-conflict policy for keymenu contributions: fail loudly at activation,
-   or namespace into a per-extension submenu?
-4. Slice order after the persistence slice: commands/edge-kinds next (enables
-   depends-on), or tags+validation next (enables styling by tag, which the
-   color bug blocks anyway)?
+1. **Activation: file-type hooks.** The identity extension pulls in
+   companion extensions, editor-style.
+2. **Key conflicts: warn loudly, don't fail.** A conflicting contribution
+   gets automatically rebound (with a visible warning), and bindings stay
+   manually changeable — consistent with the Key-Command Binding Language
+   idea in the user's `next.org`.
+3. **Slice order after persistence:**
+   1. **Full edge-label support** — the pre-MVP item: anchor at start /
+      middle / end, shiftable along the edge, below / above / on top of it.
+   2. **Fix "Move by graph" navigation** — see
+      [`bug-next-edge-out.md`](bug-next-edge-out.md); traversal is the
+      keyboard-first backbone and currently unreliable.
+   3. **Node gathering rework** — building on Gather / Gather All / Ungather
+      (`1f6b43a`) and [`idea-gather-recursive.md`](idea-gather-recursive.md),
+      and probably forcing the **node/edge collapse** question: collapsing a
+      subtree into a single node/marker. Collapse interacts with the
+      task-set node kinds above and with [`idea-zones.md`](idea-zones.md) —
+      a collapsed subtree, a task-set, and a zone may be three faces of one
+      mechanism; design them together, not thrice.
+
+## Still open
+
+- Where extensions live: app-registered only for now (like plugin v0);
+  file-defined/user-defined extensions are a much later question.
 
 Relates: [`design-plugin-v0.md`](design-plugin-v0.md),
 [`idea-zones.md`](idea-zones.md),
