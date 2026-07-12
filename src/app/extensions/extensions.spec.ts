@@ -1,8 +1,9 @@
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
-import { TODO_GRAPH_PLUGIN } from './todo-graph.plugin';
+import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
+import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
 
-describe('plugins', () => {
+describe('extensions (identity slot)', () => {
   function layerWithNodes(...nodes: DANode[]): DrawingLayer {
     const dl = new DrawingLayer();
     for (const n of nodes) {
@@ -12,12 +13,12 @@ describe('plugins', () => {
     return dl;
   }
 
-  it('applyPlugin restyles existing nodes to the plugin defaults', () => {
+  it('setDiagramType restyles existing nodes to the identity defaults', () => {
     const circle = new DANode(0, 0, 'todo A', undefined, undefined, 'circle');
     const box = new DANode(300, 0, 'todo B');
     const dl = layerWithNodes(circle, box);
 
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     for (const n of [circle, box]) {
       expect(n.nodeShape).toBe('box');
@@ -27,7 +28,7 @@ describe('plugins', () => {
       expect(n.NODE_WIDTH).toBeGreaterThanOrEqual(n.MIN_NODE_SIZE);
       expect(n.NODE_HEIGHT).toBe(n.MIN_NODE_SIZE);
     }
-    expect(dl.getActivePlugins()).toEqual(['todo-graph']);
+    expect(dl.diagramType).toBe('todo-graph');
   });
 
   it('fit cards wrap long labels at the base width and grow downward', () => {
@@ -35,7 +36,7 @@ describe('plugins', () => {
       'a genuinely long todo item whose label cannot possibly fit on a single line of card text');
     const dl = layerWithNodes(long);
 
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     expect(long.NODE_WIDTH).toBe(280);
     expect(long.NODE_HEIGHT).toBeGreaterThan(long.MIN_NODE_SIZE);
@@ -46,15 +47,15 @@ describe('plugins', () => {
     const dl = layerWithNodes(junction);
     const w = junction.NODE_WIDTH;
 
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     expect(junction.nodeShape).toBe('junction');
     expect(junction.NODE_WIDTH).toBe(w);
   });
 
-  it('new nodes follow the active plugin defaults', () => {
+  it('new nodes follow the identity defaults', () => {
     const dl = layerWithNodes();
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     const node = dl.createNewNode(100, 100);
     expect(node.nodeShape).toBe('box');
@@ -64,9 +65,9 @@ describe('plugins', () => {
     expect(node.NODE_HEIGHT).toBe(node.MIN_NODE_SIZE);
   });
 
-  it('an explicitly requested shape wins over the plugin default shape', () => {
+  it('an explicitly requested shape wins over the identity default shape', () => {
     const dl = layerWithNodes();
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     const node = dl.createNewNode(100, 100, 'diamond');
     expect(node.nodeShape).toBe('diamond');
@@ -74,28 +75,34 @@ describe('plugins', () => {
     expect(node.textOverflowMode).toBe('fit');
   });
 
-  it('active plugins survive serialize/restore and are cleared by clearAll', () => {
+  it('the diagram type survives serialize/restore and is cleared by clearAll', () => {
     const dl = layerWithNodes(new DANode(0, 0, 'x'));
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
+    dl.setDiagramType(TODO_GRAPH_EXTENSION);
 
     const snap = dl.serializeGraph();
-    expect(snap.plugins).toEqual(['todo-graph']);
+    expect(snap.diagramType).toBe('todo-graph');
+    expect(snap.plugins).toBeUndefined();
 
     const dl2 = new DrawingLayer();
     dl2.restoreGraph(snap);
-    expect(dl2.getActivePlugins()).toEqual(['todo-graph']);
+    expect(dl2.diagramType).toBe('todo-graph');
     const fresh = dl2.createNewNode(0, 0);
     expect(fresh.textOverflowMode).toBe('fit');
 
     dl2.clearAll();
-    expect(dl2.getActivePlugins()).toEqual([]);
-    expect(dl2.serializeGraph().plugins).toBeUndefined();
+    expect(dl2.diagramType).toBe('default');
+    expect(dl2.serializeGraph().diagramType).toBeUndefined();
   });
 
-  it('applying the same plugin twice does not duplicate the id', () => {
-    const dl = layerWithNodes();
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
-    dl.applyPlugin(TODO_GRAPH_PLUGIN);
-    expect(dl.getActivePlugins()).toEqual(['todo-graph']);
+  it('legacy plugin-v0 snapshots migrate plugins: [todo-graph] to the identity slot', () => {
+    const dl = new DrawingLayer();
+    dl.restoreGraph({ nodes: [], edges: [], plugins: ['todo-graph'] });
+    expect(dl.diagramType).toBe('todo-graph');
+  });
+
+  it('resolveIdentity falls back to the default identity for unknown or absent types', () => {
+    expect(resolveIdentity(undefined)).toBe(DEFAULT_EXTENSION);
+    expect(resolveIdentity('no-such-type')).toBe(DEFAULT_EXTENSION);
+    expect(resolveIdentity('todo-graph')).toBe(TODO_GRAPH_EXTENSION);
   });
 });

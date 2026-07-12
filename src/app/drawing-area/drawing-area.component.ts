@@ -47,7 +47,7 @@ import {
   serializeGraphDocByFilename,
 } from '../lib/file-format/parser';
 import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
-import { getPlugin } from '../plugins/plugin-registry';
+import { getExtension } from '../extensions/extension-registry';
 import {
   InlineStyleSet,
   KidrawGraphDoc,
@@ -242,7 +242,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.UNSELECT_ALL,
     DACommandType.SET_TEXT_OVERFLOW_MODE,
     DACommandType.SET_NODE_SHAPE,
-    DACommandType.APPLY_PLUGIN,
+    DACommandType.SET_DIAGRAM_TYPE,
   ]);
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
@@ -284,7 +284,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.TOGGLE_PIN_SELECTED,
     DACommandType.APPLY_LAYOUT,
     DACommandType.APPLY_EDGE_ROUTING,
-    DACommandType.APPLY_PLUGIN,
+    DACommandType.SET_DIAGRAM_TYPE,
   ]);
 
 
@@ -697,8 +697,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CYCLE_DISPLAY:
         this.cycleDisplay();
         break;
-      case DACommandType.APPLY_PLUGIN:
-        this.applyPlugin(command.pluginId);
+      case DACommandType.SET_DIAGRAM_TYPE:
+        this.setDiagramType(command.typeId);
         break;
       case DACommandType.CONNECT_VAULT:
         void this.connectVault();
@@ -1011,18 +1011,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Apply a registered plugin: restyle existing nodes to its defaults and
    *  record it as active so new nodes follow them too. Undoable; persisted
    *  with the graph. */
-  private applyPlugin(pluginId: string): void {
-    const plugin = getPlugin(pluginId);
-    if (!plugin) {
-      this.emitStatus(`⚠ Unknown plugin: ${pluginId}`);
+  private setDiagramType(typeId: string): void {
+    const extension = getExtension(typeId);
+    if (!extension) {
+      this.emitStatus(`⚠ Unknown diagram type: ${typeId}`);
       return;
     }
     this.finishTweens();
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.drawingLayer.applyPlugin(plugin);
+    this.drawingLayer.setDiagramType(extension);
     this.updateEdgesForResizedNodes(this.drawingLayer.getDANodes());
     this.drawingLayer.batchDraw();
-    this.emitStatus(`Plugin applied: ${plugin.name}`);
+    this.emitStatus(`Diagram type: ${extension.name}`);
   }
 
   private cycleDisplay(): void {

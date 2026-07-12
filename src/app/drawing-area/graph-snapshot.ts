@@ -49,7 +49,10 @@ export interface DAEdgeSnapshot {
 export interface GraphSnapshot {
   nodes: DANodeSnapshot[];
   edges: DAEdgeSnapshot[];
-  /** Ids of plugins active on this graph (their style defaults apply to
-   *  newly created nodes). Persisted as the graph doc's `plugins` list. */
+  /** Id of the identity extension (diagram type) bound to this graph;
+   *  absent means 'default'. Persisted as the graph doc's `type`. */
+  diagramType?: string;
+  /** Legacy (plugin v0): identity was recorded as plugins: ['todo-graph'].
+   *  Read for migration on restore/load; no longer written. */
   plugins?: string[];
 }

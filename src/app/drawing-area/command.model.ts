@@ -97,7 +97,7 @@ export enum DACommandType {
   SAVE_FILE_AS = 'SAVE_FILE_AS',
   EXPORT_ZIP = 'EXPORT_ZIP',
   CYCLE_DISPLAY = 'CYCLE_DISPLAY',
-  APPLY_PLUGIN = 'APPLY_PLUGIN',
+  SET_DIAGRAM_TYPE = 'SET_DIAGRAM_TYPE',
   CONNECT_VAULT = 'CONNECT_VAULT',
   VAULT_OPEN = 'VAULT_OPEN',
   VAULT_SAVE_AS = 'VAULT_SAVE_AS',
@@ -194,7 +194,7 @@ export type DACommand =
   | {kind: DACommandType.SAVE_FILE_AS}
   | {kind: DACommandType.EXPORT_ZIP}
   | {kind: DACommandType.CYCLE_DISPLAY}
-  | {kind: DACommandType.APPLY_PLUGIN; pluginId: string}
+  | {kind: DACommandType.SET_DIAGRAM_TYPE; typeId: string}
   | {kind: DACommandType.CONNECT_VAULT}
   | {kind: DACommandType.VAULT_OPEN}
   | {kind: DACommandType.VAULT_SAVE_AS}

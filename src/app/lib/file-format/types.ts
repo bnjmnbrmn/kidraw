@@ -13,10 +13,16 @@
 
 export interface KidrawGraphDoc {
   kidraw: 1;
+  /** Id of the identity extension (diagram type) this graph is bound to,
+   *  e.g. 'todo-graph'. Absent means the implicit 'default' identity. The
+   *  identity's node style defaults sit in the resolution cascade
+   *  (app → identity → per-node props), and per-node props equal to their
+   *  cascade value are omitted on save. */
+  type?: string;
   styles: StyleRef[];
   semantics: GraphSemantics;
-  /** Ids of app plugins active on this graph (e.g. 'todo-graph'). A plugin's
-   *  style defaults apply to nodes created while it is active. */
+  /** Legacy (plugin v0): identity was recorded as plugins: ['todo-graph'].
+   *  Still read for migration; no longer written. */
   plugins?: string[];
 }
 

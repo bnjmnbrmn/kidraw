@@ -8,9 +8,15 @@
  *   - style (style set): positions, sizes, fonts, shape, line style,
  *     waypoints, label offsets, text-overflow mode.
  *
+ * Node style props resolve through the cascade
+ *   app defaults -> identity extension defaults -> per-node file props,
+ * and a per-node prop is only written when it differs from its resolved
+ * cascade value. File `w`/`h`/`fontSize` are the node's *base* values (the
+ * inputs — e.g. fit mode's max width), never the rendered size, which is
+ * derived from base + text on every load (restoreGraph -> applyTextOverflow).
+ *
  * Runtime-only fields (excluded from both files):
  *   - isSelected (always reset to false on load)
- *   - baseWidth / baseHeight / baseFontSize (internal scaling reset values)
  *   - pinned (layout-session state)
  */
 
@@ -28,10 +34,37 @@ import {
   NodeSemantics,
   NodeStyleProps,
 } from './types';
+import { resolveIdentity } from '../../extensions/extension-registry';
 
-export const DEFAULT_NODE_WIDTH = 120;
-export const DEFAULT_NODE_HEIGHT = 60;
-export const DEFAULT_FONT_SIZE = 14;
+/** App-level bottom of the node style cascade; mirrors DANode's defaults. */
+export const APP_NODE_DEFAULTS = {
+  shape: 'box',
+  width: 120,
+  height: 120,
+  fontSize: 16,
+  textOverflow: 'widen-both',
+} as const;
+
+export const DEFAULT_LABEL_FONT_SIZE = 14;
+
+/** Identity for a graph: explicit diagramType/type, migrated from the legacy
+ *  plugin v0 recording (plugins: ['todo-graph']) when absent. */
+function identityOf(explicit: string | undefined, legacyPlugins: string[] | undefined): string {
+  return explicit ?? (legacyPlugins?.includes('todo-graph') ? 'todo-graph' : 'default');
+}
+
+/** The fully resolved cascade values (app defaults overlaid with the identity
+ *  extension's defaults) that per-node props are compared against / filled from. */
+function cascadeDefaults(diagramType: string) {
+  const d = resolveIdentity(diagramType).nodeDefaults;
+  return {
+    shape: d.shape ?? APP_NODE_DEFAULTS.shape,
+    width: d.width ?? APP_NODE_DEFAULTS.width,
+    height: d.height ?? APP_NODE_DEFAULTS.height,
+    fontSize: d.fontSize ?? APP_NODE_DEFAULTS.fontSize,
+    textOverflow: d.textOverflow ?? APP_NODE_DEFAULTS.textOverflow,
+  };
+}
 
 export interface SnapshotToFilesOptions {
   /**
@@ -46,6 +79,9 @@ export function snapshotToFiles(
   snap: GraphSnapshot,
   options: SnapshotToFilesOptions = {},
 ): { doc: KidrawGraphDoc; style: KidrawStyleSet } {
+  const diagramType = identityOf(snap.diagramType, snap.plugins);
+  const def = cascadeDefaults(diagramType);
+
   const semNodes: { [id: string]: NodeSemantics } = {};
   const styleNodes: { [id: string]: NodeStyleProps } = {};
 
@@ -54,15 +90,19 @@ export function snapshotToFiles(
     if (n.text) sem.label = n.text;
     semNodes[n.id] = sem;
 
-    const sp: NodeStyleProps = {
-      x: n.x,
-      y: n.y,
-      w: n.width,
-      h: n.height,
-      fontSize: n.fontSize,
-    };
-    if (n.nodeShape && n.nodeShape !== 'box') sp.shape = n.nodeShape;
-    if (n.textOverflowMode) sp.textOverflow = n.textOverflowMode;
+    // Persist base values (the inputs), never derived rendered sizes, and
+    // only when they deviate from the cascade.
+    const sp: NodeStyleProps = { x: n.x, y: n.y };
+    const w = n.baseWidth ?? n.width;
+    const h = n.baseHeight ?? n.height;
+    const fontSize = n.baseFontSize ?? n.fontSize;
+    if (w !== def.width) sp.w = w;
+    if (h !== def.height) sp.h = h;
+    if (fontSize !== def.fontSize) sp.fontSize = fontSize;
+    if (n.nodeShape && n.nodeShape !== def.shape) sp.shape = n.nodeShape;
+    if (n.textOverflowMode && n.textOverflowMode !== def.textOverflow) {
+      sp.textOverflow = n.textOverflowMode;
+    }
     styleNodes[n.id] = sp;
   }
 
@@ -98,9 +138,9 @@ export function snapshotToFiles(
 
   const doc: KidrawGraphDoc = {
     kidraw: 1,
+    ...(diagramType !== 'default' ? { type: diagramType } : {}),
     styles: options.stylePath ? [options.stylePath] : [],
     semantics: { nodes: semNodes, edges: semEdges },
-    ...(snap.plugins && snap.plugins.length > 0 ? { plugins: [...snap.plugins] } : {}),
   };
 
   const style: KidrawStyleSet = {
@@ -119,21 +159,32 @@ export function filesToSnapshot(
   const styleNodes = resolvedStyle.nodes ?? {};
   const styleEdges = resolvedStyle.edges ?? {};
 
+  const diagramType = identityOf(doc.type, doc.plugins);
+  const def = cascadeDefaults(diagramType);
+
   const nodes: DANodeSnapshot[] = [];
   for (const [id, sem] of Object.entries(doc.semantics.nodes)) {
     const sp = styleNodes[id] ?? {};
+    // File props are base values; missing ones fill from the cascade. The
+    // rendered size is re-derived from base + text on restore.
+    const width = sp.w ?? def.width;
+    const height = sp.h ?? def.height;
+    const fontSize = sp.fontSize ?? def.fontSize;
     const node: DANodeSnapshot = {
       id,
       x: sp.x ?? 0,
       y: sp.y ?? 0,
       text: sem.label ?? '',
-      width: sp.w ?? DEFAULT_NODE_WIDTH,
-      height: sp.h ?? DEFAULT_NODE_HEIGHT,
-      fontSize: sp.fontSize ?? DEFAULT_FONT_SIZE,
+      width,
+      height,
+      fontSize,
+      baseWidth: width,
+      baseHeight: height,
+      baseFontSize: fontSize,
       isSelected: false,
+      nodeShape: sp.shape ?? def.shape,
+      textOverflowMode: sp.textOverflow ?? def.textOverflow,
     };
-    if (sp.shape) node.nodeShape = sp.shape;
-    if (sp.textOverflow) node.textOverflowMode = sp.textOverflow;
     nodes.push(node);
   }
 
@@ -147,7 +198,7 @@ export function filesToSnapshot(
       x: offsets[i]?.dx ?? 0,
       y: offsets[i]?.dy ?? 0,
       text: lbl.text,
-      fontSize: DEFAULT_FONT_SIZE,
+      fontSize: DEFAULT_LABEL_FONT_SIZE,
       isSelected: false,
     }));
     const edge: DAEdgeSnapshot = {
@@ -173,6 +224,6 @@ export function filesToSnapshot(
   return {
     nodes,
     edges,
-    ...(doc.plugins && doc.plugins.length > 0 ? { plugins: [...doc.plugins] } : {}),
+    ...(diagramType !== 'default' ? { diagramType } : {}),
   };
 }

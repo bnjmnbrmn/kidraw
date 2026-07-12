@@ -813,7 +813,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.saveFileAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
       [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
       [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
-      [misc.applyTodoPlugin]: new LabeledAction('Todo Plugin', () => this.keyMenuOut.emit({kind: DACommandType.APPLY_PLUGIN, pluginId: 'todo-graph'})),
+      [misc.todoGraphType]: new LabeledAction('Todo Graph', () => this.keyMenuOut.emit({kind: DACommandType.SET_DIAGRAM_TYPE, typeId: 'todo-graph'})),
       [misc.connectVault]: new LabeledAction('Vault: Connect…', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_VAULT})),
       [misc.vaultOpen]: new LabeledAction('Vault: Open…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_OPEN})),
       [misc.vaultSaveAs]: new LabeledAction('Vault: Save As…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_SAVE_AS})),
