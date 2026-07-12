@@ -1,52 +1,75 @@
 #+title: Next
 
-* MVP path
-** Development accelerants
-*** Get claude/codex working well with Intellij
-*** Get claude/codex working well with docker containers/dangerously skip permissions
-** menu-layout/binding language
-*** something like "\j/j" to indicate tapping j.  But also maybe something like \[insert sm] to indicate entering the insert submenu.  And also, how do I indicate a binding?  Maybe "\i -> [insert sm]"" ?  And "i[insert sm] > f[insert node]" for inserting a node by pressing \i\f/f ?  Need help thinking about this.  Probably also want to be able to use yaml, or something like it.
-*** I'm thinking this sort of language could be useful in fine tuning to a reasonable level for MVP.  But maybe this also needs to be limited when developing the MVP.  Maybe develop this language as we need it.
-** Support edge labels on edges
+* Things for Ben to learn about
+** BPMN
+** Petri nets
+* What is the ultimate vision?
+** Use cases
+*** todo graphs
+*** proof/explanation graphs
+*** software architecture diagrams
+*** human pedigrees
+** Killer features
+*** Keyboard based
+**** "Diagram at the speed of thought"
+*** Collapse parts of the graph
+**** Paths to leaves
+**** Subgraphs
+*** Diff-ability and version control
+*** Pull in child/parent nodes when examining a node
+*** Killer plugins
+**** todo graphs in particular
+* What's the development timeline?
+* Development accelerants?
+** How far to push these? When?
+** Get claude/codex working well with Intellij
+** Get claude/codex working well with docker containers/dangerously skip permissions
+** Key-Command Binding Language
+* Pre-MVP todos
+** Initial Plugin/File type support
+Todo-Graphs as initial case
+** Edge Labels
 *** Start, middle, and end, and also shift-able (be able to move label along edge)
 *** Below, above, and on top of
-** Support tagging of graph items (nodes/graphs/waypoints/labels/zones)
-** mini-menu
-*** This would be a version of the key menu that doesn't take up so much screen real-estate.  I'm noticing when developing that I really want to be able to see more of the graph and less of the menu, unless I'm using my external monitor
-** Be able to select by tag
-** Define "trad-menus"
-*** or come up with a better name
-** Create trad-menu navigation submode
-** Create trad-menu for creating styles that can be applied to tagged items
-** Be able to open+navigate large-menu for type styles
-** Fix navigation by graph
+** Graph Navigation
+** Edge/Node collapse
+** Graph Item Tagging
+** Medium menu
+Similar to the emacs which-key plugin/mode, but maybe on the side rather than bottom
+** Small Menu
+Just show basic info in a single line, similar to tmux/vim/emacs
 ** Polish / ergonomics
+*** Bug fixes
 *** Improve menu item layout
-**** DONE the i key should
-***** if nothing is selected or a single item is selected, then
-****** if a single item is selected, then
-******* move crosshairs to item
-******* recenter view
-******* deselect item
-****** if crosshairs above a node or label, then
-******* give option to insert new node but, if not taken, enter edit/insert mode for the item under crosshairs
-****** if crosshairs above an edge, then
-******* give option of adding label or waypoint
-****** if crosshairs above a waypoint or nothing, insert new node
-***** if multiple items are selected
-****** Put warning into message area and do nothing else
 *** Make submenu appear when moving left/right/up/down
 
 * Post-MVP
+** Select by tag
+Depends on [[*Graph Item Tagging]]
+** Apply style to tag
+Depends on [[*Graph Item Tagging]]
+** Define "trad/large-menus"
+*** or come up with a better name
+*** I guess this could refer to multiple things.  I'm sort of thinking wizards with keyboard navigation though.
+**** Inline navigation a la vimium?
+*** Create trad/large-menu navigation submode
+** Create trad/large-menu for creating styles that can be applied to tagged items
+** Be able to open+navigate trad/large-menu for style definitions and palette definitions
+** Use trad/large menu for serialization/deserialization
 ** Support zones
 ** Support item details pane
-*** and popup?
-** plugin system
-** refactoring?
-*** Do I really need messages, or could I just call methods?
+*** This would allow treating nodes like documents
+**** Compete with Obsidian
+*** Support item details popups too?
 ** Expanded styling
 ** LaTeX/Math support
-** images
-** presentation mode
+*** Syntax trees navigible like other graphs
+** Visualized Diagram Diffs
+** Images
+** Presentation mode
+*** Treat areas of the diagram as slides
 ** Non-vim-style keybindings
 ** Non-usqwerty layouts
+** Config files?
+** Multi-user collaboration
+** AI collaboration
