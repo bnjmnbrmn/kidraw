@@ -1,0 +1,135 @@
+import {
+  anchorPosition,
+  cycleSide,
+  LABEL_T_MAX,
+  LABEL_T_MIN,
+  nextTStop,
+  pathLength,
+  pointAtT,
+  projectPointToPath,
+  sideFromSignedDist,
+} from './edge-label-anchor';
+
+describe('edge-label-anchor', () => {
+  const horizontal = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+  const bent = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]; // total 200
+
+  describe('pathLength', () => {
+    it('sums segment lengths', () => {
+      expect(pathLength(horizontal)).toBe(100);
+      expect(pathLength(bent)).toBe(200);
+    });
+  });
+
+  describe('pointAtT', () => {
+    it('interpolates along a single segment', () => {
+      const p = pointAtT(horizontal, 0.25)!;
+      expect(p.x).toBeCloseTo(25);
+      expect(p.y).toBeCloseTo(0);
+    });
+
+    it('walks across segments by arc length', () => {
+      const p = pointAtT(bent, 0.75)!; // 150 along: 50 into the vertical leg
+      expect(p.x).toBeCloseTo(100);
+      expect(p.y).toBeCloseTo(50);
+    });
+
+    it('clamps t outside [0, 1]', () => {
+      expect(pointAtT(horizontal, -1)!.x).toBeCloseTo(0);
+      expect(pointAtT(horizontal, 2)!.x).toBeCloseTo(100);
+    });
+
+    it('returns a screen-up normal regardless of travel direction', () => {
+      const ltr = pointAtT([{ x: 0, y: 0 }, { x: 100, y: 0 }], 0.5)!;
+      const rtl = pointAtT([{ x: 100, y: 0 }, { x: 0, y: 0 }], 0.5)!;
+      expect(ltr.ny).toBeLessThan(0);
+      expect(rtl.ny).toBeLessThan(0);
+      expect(ltr.nx).toBeCloseTo(rtl.nx);
+    });
+
+    it('degrades to the +x normal on vertical segments, direction-independent', () => {
+      const down = pointAtT([{ x: 0, y: 0 }, { x: 0, y: 100 }], 0.5)!;
+      const up = pointAtT([{ x: 0, y: 100 }, { x: 0, y: 0 }], 0.5)!;
+      expect(down.nx).toBeCloseTo(1);
+      expect(up.nx).toBeCloseTo(1);
+    });
+
+    it('rejects degenerate paths', () => {
+      expect(pointAtT([{ x: 5, y: 5 }], 0.5)).toBeNull();
+      expect(pointAtT([{ x: 5, y: 5 }, { x: 5, y: 5 }], 0.5)).toBeNull();
+    });
+  });
+
+  describe('projectPointToPath', () => {
+    it('projects onto the nearest segment with arc-length t', () => {
+      const r = projectPointToPath(bent, { x: 100, y: 50 })!; // on the vertical leg
+      expect(r.t).toBeCloseTo(0.75);
+      expect(Math.abs(r.signedDist)).toBeCloseTo(0);
+    });
+
+    it('reports signed distance positive on the above side', () => {
+      const above = projectPointToPath(horizontal, { x: 50, y: -20 })!;
+      const below = projectPointToPath(horizontal, { x: 50, y: 20 })!;
+      expect(above.signedDist).toBeCloseTo(20);
+      expect(below.signedDist).toBeCloseTo(-20);
+    });
+
+    it('round-trips with pointAtT', () => {
+      const p = pointAtT(bent, 0.3)!;
+      const r = projectPointToPath(bent, p)!;
+      expect(r.t).toBeCloseTo(0.3);
+    });
+  });
+
+  describe('sideFromSignedDist', () => {
+    it('maps distance to side with an on-threshold', () => {
+      expect(sideFromSignedDist(20, 10)).toBe('above');
+      expect(sideFromSignedDist(-20, 10)).toBe('below');
+      expect(sideFromSignedDist(5, 10)).toBe('on');
+      expect(sideFromSignedDist(-5, 10)).toBe('on');
+    });
+  });
+
+  describe('anchorPosition', () => {
+    it('offsets perpendicular by side', () => {
+      const on = anchorPosition(horizontal, 0.5, 'on', 19)!;
+      const above = anchorPosition(horizontal, 0.5, 'above', 19)!;
+      const below = anchorPosition(horizontal, 0.5, 'below', 19)!;
+      expect(on.y).toBeCloseTo(0);
+      expect(above.y).toBeCloseTo(-19);
+      expect(below.y).toBeCloseTo(19);
+      expect(on.x).toBeCloseTo(50);
+      expect(above.x).toBeCloseTo(50);
+    });
+  });
+
+  describe('nextTStop', () => {
+    it('advances between start / middle / end stops', () => {
+      expect(nextTStop(0.1, 1)).toBe(0.5);
+      expect(nextTStop(0.5, 1)).toBe(0.9);
+      expect(nextTStop(0.5, -1)).toBe(0.1);
+      expect(nextTStop(0.9, -1)).toBe(0.5);
+    });
+
+    it('snaps an off-stop t to the next stop in the direction', () => {
+      expect(nextTStop(0.3, 1)).toBe(0.5);
+      expect(nextTStop(0.3, -1)).toBe(0.1);
+    });
+
+    it('saturates at the outer stops', () => {
+      expect(nextTStop(LABEL_T_MAX, 1)).toBe(LABEL_T_MAX);
+      expect(nextTStop(LABEL_T_MIN, -1)).toBe(LABEL_T_MIN);
+    });
+  });
+
+  describe('cycleSide', () => {
+    it('steps above → on → below and saturates', () => {
+      expect(cycleSide('above', 1)).toBe('on');
+      expect(cycleSide('on', 1)).toBe('below');
+      expect(cycleSide('below', 1)).toBe('below');
+      expect(cycleSide('below', -1)).toBe('on');
+      expect(cycleSide('on', -1)).toBe('above');
+      expect(cycleSide('above', -1)).toBe('above');
+    });
+  });
+});

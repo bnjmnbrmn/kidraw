@@ -125,7 +125,18 @@ export type TextOverflowName =
 export interface EdgeStyleProps extends StyleProps {
   lineStyle?: LineStyleName;
   waypoints?: WaypointSpec[];
+  /** Legacy absolute label positions (world coords). Read for migration
+   *  only; new saves write `labelAnchors` instead. */
   labelOffsets?: { dx: number; dy: number }[];
+  /** Path-relative label anchors, index-aligned with the edge's semantic
+   *  `labels`: `t` is the arc-length fraction along the rendered path
+   *  (0..1); `side` places the label relative to the line ('on' default). */
+  labelAnchors?: EdgeLabelAnchor[];
+}
+
+export interface EdgeLabelAnchor {
+  t: number;
+  side?: 'above' | 'on' | 'below';
 }
 
 /** A bend point on an edge. Plain router-generated points use just `x`/`y`;

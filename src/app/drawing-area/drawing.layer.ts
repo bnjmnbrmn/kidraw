@@ -351,6 +351,8 @@ export class DrawingLayer extends Konva.Layer {
         text: lbl.label,
         fontSize: lbl.fontSize,
         isSelected: lbl.isSelected,
+        edgeT: lbl.edgeT,
+        side: lbl.side,
       })),
       controlPoints: edge.controlPoints.length > 0
         ? edge.controlPoints.map(p => ({
@@ -459,6 +461,14 @@ export class DrawingLayer extends Konva.Layer {
           lbl.adjustFontSizeBy(ls.fontSize - lbl.DEFAULT_FONT_SIZE);
         }
         lbl.isSelected = ls.isSelected;
+        if (ls.edgeT !== undefined) {
+          lbl.edgeT = ls.edgeT;
+          lbl.side = ls.side ?? 'on';
+        } else {
+          // Legacy snapshot: absolute x/y is the source of truth — derive
+          // the anchor from it before addLabel re-places the label.
+          edge.adoptLabelPosition(lbl);
+        }
         edge.addLabel(lbl);
         const lblNum = parseInt(ls.id.replace('da-', ''), 10);
         if (!isNaN(lblNum) && lblNum > maxNumericId) maxNumericId = lblNum;

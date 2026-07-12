@@ -1,10 +1,16 @@
 export interface DALabelSnapshot {
   id: string;
+  /** Rendered position. Derived from (edgeT, side) when those are present;
+   *  the source of truth only in legacy snapshots that predate anchors. */
   x: number;
   y: number;
   text: string;
   fontSize: number;
   isSelected: boolean;
+  /** Anchor: arc-length fraction along the edge path (0..1). Absent in
+   *  legacy snapshots — restore derives it by projecting x/y onto the path. */
+  edgeT?: number;
+  side?: import('./edge-label-anchor').EdgeLabelSide;
 }
 
 export interface DANodeSnapshot {

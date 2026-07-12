@@ -11,6 +11,7 @@ import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
+import { projectPointToPath } from './edge-label-anchor';
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -3414,14 +3415,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.hasDragged = true;
 
-    // If only labels are selected, slide them along their edges
+    // If only labels are selected, the movement keys reposition them on
+    // their edges: left/right slides along the path (coarse tier jumps
+    // between the start/middle/end stops), up/down steps through the
+    // above/on/below placement.
     const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
     if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
-      const majorSpacing = this.drawingLayer.getGridSpacing();
-      const slideDist = sign * majorSpacing;
-      selectedLabels.forEach(label => this.slideLabelAlongEdge(label, slideDist));
+      const effectiveTier = tier ?? 'normal';
+      selectedLabels.forEach(label => {
+        const edge = this.getEdgeForLabel(label);
+        if (!edge) return;
+        if (axis === 'y') {
+          edge.cycleLabelSide(label, sign);
+        } else if (effectiveTier === 'coarse') {
+          edge.snapLabelToNextStop(label, sign);
+        } else {
+          const spacing = effectiveTier === 'fine'
+            ? this.drawingLayer.getSubGridSpacing()
+            : this.drawingLayer.getGridSpacing();
+          edge.slideLabelBy(label, sign * spacing);
+        }
+      });
       this.drawingLayer.batchDraw();
       return;
     }
@@ -3543,10 +3559,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const p1 = pathPoints[i];
         const p2 = pathPoints[i + 1];
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
-          const point = closestPointOnSeg(box.cx, box.cy, p1.x, p1.y, p2.x, p2.y);
-          this.log.log(`addLabel: placing at (${point.x.toFixed(1)},${point.y.toFixed(1)}) on segment ${i}`);
-          const label = new DALabel(point.x, point.y, 'label', undefined, this.drawingLayer.labelColors());
+          const projected = projectPointToPath(pathPoints, {x: box.cx, y: box.cy});
+          this.log.log(`addLabel: anchoring at t=${(projected?.t ?? 0.5).toFixed(3)} on edge ${edge.id}`);
+          const label = new DALabel(0, 0, 'label', undefined, this.drawingLayer.labelColors());
           edge.addLabel(label);
+          edge.setLabelAnchor(label, projected?.t ?? 0.5, 'on');
           this.drawingLayer.batchDraw();
           this.unselectAll(); // Clear selection after adding label
           return;
@@ -3712,62 +3729,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if (edge.labels.includes(label)) return edge;
     }
     return null;
-  }
-
-  /** Slide a label along its parent edge by the given distance. */
-  private slideLabelAlongEdge(label: DALabel, distance: number): void {
-    const edge = this.getEdgeForLabel(label);
-    if (!edge) return;
-
-    const points = edge.getPathPoints();
-    if (points.length < 2) return;
-
-    // Find which segment the label is currently closest to, and its t parameter
-    let bestSegIdx = 0;
-    let bestT = 0;
-    let bestDist = Infinity;
-    let totalLength = 0;
-    const segLengths: number[] = [];
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const dx = points[i + 1].x - points[i].x;
-      const dy = points[i + 1].y - points[i].y;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      segLengths.push(len);
-      totalLength += len;
-
-      // Project label onto this segment
-      if (len === 0) continue;
-      const t = Math.max(0, Math.min(1, ((label.x - points[i].x) * dx + (label.y - points[i].y) * dy) / (len * len)));
-      const projX = points[i].x + t * dx;
-      const projY = points[i].y + t * dy;
-      const d = Math.sqrt((label.x - projX) ** 2 + (label.y - projY) ** 2);
-      if (d < bestDist) {
-        bestDist = d;
-        bestSegIdx = i;
-        bestT = t;
-      }
-    }
-
-    // Convert current position to a distance-along-path
-    let currentDist = 0;
-    for (let i = 0; i < bestSegIdx; i++) currentDist += segLengths[i];
-    currentDist += bestT * segLengths[bestSegIdx];
-
-    // Move along path by distance
-    let newDist = Math.max(0, Math.min(totalLength, currentDist + distance));
-
-    // Convert back to x,y
-    let accumulated = 0;
-    for (let i = 0; i < segLengths.length; i++) {
-      if (accumulated + segLengths[i] >= newDist || i === segLengths.length - 1) {
-        const segT = segLengths[i] > 0 ? (newDist - accumulated) / segLengths[i] : 0;
-        label.x = points[i].x + segT * (points[i + 1].x - points[i].x);
-        label.y = points[i].y + segT * (points[i + 1].y - points[i].y);
-        return;
-      }
-      accumulated += segLengths[i];
-    }
   }
 
   private getLabelUnderCrosshairs(): DALabel | null {

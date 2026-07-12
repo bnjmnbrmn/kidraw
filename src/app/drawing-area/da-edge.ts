@@ -4,6 +4,10 @@ import {DALabel} from './da-label';
 import {DAWaypoint} from './da-waypoint';
 import {nextId} from './id-generator';
 import {EdgeDirectedness, LineStyle} from './command.model';
+import {
+  anchorPosition, cycleSide, EdgeLabelSide, LABEL_T_MAX, LABEL_T_MIN,
+  nextTStop, pathLength, projectPointToPath, sideFromSignedDist,
+} from './edge-label-anchor';
 
 /** An entry in `DAEdge._controlPoints`. Plain `{x,y}` bend points come from
  *  routers; user-placed waypoints additionally carry `waypointId` (linking
@@ -139,6 +143,66 @@ export class DAEdge {
   addLabel(label: DALabel): void {
     this._labels.push(label);
     this.group.add(label.konvaGroup);
+    this.positionLabel(label);
+  }
+
+  /** Set a label's anchor (t, side) from its current absolute x/y by
+   *  projecting onto the rendered path. Used when restoring legacy data
+   *  that stored absolute label positions. */
+  adoptLabelPosition(label: DALabel): void {
+    const projected = projectPointToPath(this.getPathPoints(), {x: label.x, y: label.y});
+    if (!projected) return;
+    label.edgeT = projected.t;
+    label.side = sideFromSignedDist(projected.signedDist, this.labelSideClearance(label) / 2);
+  }
+
+  /** Slide a label along the path by a pixel distance (negative = toward
+   *  the source). The anchor fraction is clamped to the outer canonical
+   *  stops so the label stays clear of node faces and arrowheads. */
+  slideLabelBy(label: DALabel, distancePx: number): void {
+    const total = pathLength(this.getPathPoints());
+    if (total < 1e-9) return;
+    label.edgeT = Math.min(Math.max(label.edgeT + distancePx / total, LABEL_T_MIN), LABEL_T_MAX);
+    this.positionLabel(label);
+  }
+
+  /** Jump a label to the next canonical stop (start / middle / end) in the
+   *  given direction. */
+  snapLabelToNextStop(label: DALabel, direction: 1 | -1): void {
+    label.edgeT = nextTStop(label.edgeT, direction);
+    this.positionLabel(label);
+  }
+
+  /** Step a label through the above → on → below cycle. `direction` +1
+   *  moves it downward, -1 upward. */
+  cycleLabelSide(label: DALabel, direction: 1 | -1): void {
+    label.side = cycleSide(label.side, direction);
+    this.positionLabel(label);
+  }
+
+  /** Set a label's anchor directly and re-place it. */
+  setLabelAnchor(label: DALabel, edgeT: number, side: EdgeLabelSide): void {
+    label.edgeT = Math.min(Math.max(edgeT, LABEL_T_MIN), LABEL_T_MAX);
+    label.side = side;
+    this.positionLabel(label);
+  }
+
+  /** Perpendicular distance from the line at which an above/below label
+   *  centers: half the label box plus a small gap past the line stroke. */
+  private labelSideClearance(label: DALabel): number {
+    return label.RECT_HEIGHT / 2 + this.STROKE_WIDTH_SELECTED / 2 + 2;
+  }
+
+  /** Derive a label's absolute position from its (edgeT, side) anchor on
+   *  the current rendered path. */
+  private positionLabel(label: DALabel): void {
+    const pos = anchorPosition(this.getPathPoints(), label.edgeT, label.side,
+      this.labelSideClearance(label));
+    if (pos) label.position = pos;
+  }
+
+  private positionLabels(): void {
+    this._labels.forEach(label => this.positionLabel(label));
   }
 
   removeLabel(label: DALabel): void {
@@ -369,9 +433,11 @@ export class DAEdge {
   }
 
   /** Recompute the rendered Konva.Arrow points from current node positions
-   *  and control points. Cheaper than recreating the edge. */
+   *  and control points, and re-place labels from their path anchors.
+   *  Cheaper than recreating the edge. */
   refreshGeometry(): void {
     this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
+    this.positionLabels();
   }
 
   /** Toggle between polyline rendering (charged-spring) and smooth-curve

@@ -128,10 +128,12 @@ export function snapshotToFiles(
       }));
     }
     if (e.labels && e.labels.length > 0) {
-      // Snapshot stores absolute label positions; the file format calls these
-      // labelOffsets. We preserve the values verbatim; meaning is up to the
-      // renderer (currently treated as absolute world coords).
-      sp.labelOffsets = e.labels.map(l => ({ dx: l.x, dy: l.y }));
+      // Path-relative anchors; a label with no anchor (legacy snapshot not
+      // yet re-rendered) falls back to the path midpoint on the line.
+      sp.labelAnchors = e.labels.map(l => ({
+        t: l.edgeT ?? 0.5,
+        ...(l.side && l.side !== 'on' ? { side: l.side } : {}),
+      }));
     }
     if (Object.keys(sp).length > 0) styleEdges[e.id] = sp;
   }
@@ -192,15 +194,31 @@ export function filesToSnapshot(
   for (const [id, sem] of Object.entries(doc.semantics.edges)) {
     const sp = styleEdges[id] ?? {};
     const semLabels = sem.labels ?? [];
+    const anchors = sp.labelAnchors ?? [];
     const offsets = sp.labelOffsets ?? [];
-    const labels: DALabelSnapshot[] = semLabels.map((lbl, i) => ({
-      id: `${id}-label-${i}`,
-      x: offsets[i]?.dx ?? 0,
-      y: offsets[i]?.dy ?? 0,
-      text: lbl.text,
-      fontSize: DEFAULT_LABEL_FONT_SIZE,
-      isSelected: false,
-    }));
+    const labels: DALabelSnapshot[] = semLabels.map((lbl, i) => {
+      const base: DALabelSnapshot = {
+        id: `${id}-label-${i}`,
+        // Rendered position is derived from the anchor on restore; only
+        // legacy absolute offsets carry meaning through x/y.
+        x: offsets[i]?.dx ?? 0,
+        y: offsets[i]?.dy ?? 0,
+        text: lbl.text,
+        fontSize: DEFAULT_LABEL_FONT_SIZE,
+        isSelected: false,
+      };
+      const anchor = anchors[i];
+      if (anchor) {
+        base.edgeT = anchor.t;
+        base.side = anchor.side ?? 'on';
+      } else if (!offsets[i]) {
+        // Neither anchor nor legacy offset: land on the path midpoint
+        // rather than projecting the meaningless (0,0).
+        base.edgeT = 0.5;
+        base.side = 'on';
+      }
+      return base;
+    });
     const edge: DAEdgeSnapshot = {
       id,
       srcNodeId: sem.from,

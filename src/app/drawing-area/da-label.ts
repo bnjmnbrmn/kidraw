@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import {nextId} from './id-generator';
+import {EdgeLabelSide} from './edge-label-anchor';
 
 export class DALabel {
   readonly id: string;
@@ -8,6 +9,13 @@ export class DALabel {
   private readonly _rect: Konva.Rect;
   private readonly _text: Konva.Text;
   private _label: string;
+
+  /** Anchor along the parent edge's path: arc-length fraction (0..1) and
+   *  which side of the line the label sits on. The owning DAEdge derives
+   *  the absolute x/y from these on every geometry change; x/y is the
+   *  rendered result, never the source of truth. */
+  edgeT: number = 0.5;
+  side: EdgeLabelSide = 'on';
 
   public readonly LABEL_STROKE_WIDTH = 2;
   public readonly SELECTED_STROKE_WIDTH = 3;

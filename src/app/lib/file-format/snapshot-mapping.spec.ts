@@ -40,7 +40,7 @@ function makeSnapshot(): GraphSnapshot {
         destNodeId: 'da-2',
         isSelected: false,
         labels: [
-          { id: 'da-3-label-0', x: 250, y: 195, text: 'reads', fontSize: 12, isSelected: false },
+          { id: 'da-3-label-0', x: 250, y: 195, text: 'reads', fontSize: 12, isSelected: false, edgeT: 0.42, side: 'above' },
         ],
         controlPoints: [{ x: 250, y: 200 }],
         directedness: 'directed',
@@ -78,8 +78,19 @@ describe('snapshot-mapping', () => {
     expect(style.edges?.['da-3']).toEqual({
       lineStyle: 'dashed',
       waypoints: [{ x: 250, y: 200 }],
-      labelOffsets: [{ dx: 250, dy: 195 }],
+      labelAnchors: [{ t: 0.42, side: 'above' }],
     });
+  });
+
+  it('omits the default "on" side from label anchors and falls back to the midpoint without one', () => {
+    const snap = makeSnapshot();
+    snap.edges[0].labels[0].side = 'on';
+    const { style } = snapshotToFiles(snap);
+    expect(style.edges?.['da-3'].labelAnchors).toEqual([{ t: 0.42 }]);
+
+    delete snap.edges[0].labels[0].edgeT;
+    const { style: style2 } = snapshotToFiles(snap);
+    expect(style2.edges?.['da-3'].labelAnchors).toEqual([{ t: 0.5 }]);
   });
 
   it('omits empty styles[] when no stylePath provided', () => {
@@ -171,8 +182,45 @@ describe('snapshot-mapping', () => {
     expect(snap.edges[0].controlPoints).toEqual([{ x: 150, y: 30 }]);
     expect(snap.edges[0].labels.length).toBe(1);
     expect(snap.edges[0].labels[0].text).toBe('flow');
+    // Legacy absolute offsets survive as x/y with no anchor, so restore
+    // can derive the anchor by projecting onto the path.
     expect(snap.edges[0].labels[0].x).toBe(150);
     expect(snap.edges[0].labels[0].y).toBe(25);
+    expect(snap.edges[0].labels[0].edgeT).toBeUndefined();
+  });
+
+  it('restores path-relative label anchors, preferring them over legacy offsets', () => {
+    const doc: KidrawGraphDoc = {
+      kidraw: 1,
+      styles: [],
+      semantics: {
+        nodes: { 'a': {}, 'b': {} },
+        edges: { 'e1': { from: 'a', to: 'b', labels: [{ text: 'x' }, { text: 'y' }] } },
+      },
+    };
+    const style: KidrawStyleSet = {
+      kdStyle: 1,
+      edges: { 'e1': { labelAnchors: [{ t: 0.9, side: 'below' }, { t: 0.1 }] } },
+    };
+    const snap = filesToSnapshot(doc, style);
+    expect(snap.edges[0].labels[0].edgeT).toBe(0.9);
+    expect(snap.edges[0].labels[0].side).toBe('below');
+    expect(snap.edges[0].labels[1].edgeT).toBe(0.1);
+    expect(snap.edges[0].labels[1].side).toBe('on');
+  });
+
+  it('a label with neither anchor nor offset lands at the path midpoint', () => {
+    const doc: KidrawGraphDoc = {
+      kidraw: 1,
+      styles: [],
+      semantics: {
+        nodes: { 'a': {}, 'b': {} },
+        edges: { 'e1': { from: 'a', to: 'b', labels: [{ text: 'bare' }] } },
+      },
+    };
+    const snap = filesToSnapshot(doc, { kdStyle: 1 });
+    expect(snap.edges[0].labels[0].edgeT).toBe(0.5);
+    expect(snap.edges[0].labels[0].side).toBe('on');
   });
 
   it('fills missing props from the identity extension, not just app defaults', () => {
@@ -296,8 +344,9 @@ describe('snapshot-mapping', () => {
       expect(r.labels.length).toBe(o.labels.length);
       for (let j = 0; j < o.labels.length; j++) {
         expect(r.labels[j].text).toBe(o.labels[j].text);
-        expect(r.labels[j].x).toBe(o.labels[j].x);
-        expect(r.labels[j].y).toBe(o.labels[j].y);
+        // Position round-trips through the path anchor, not absolute x/y.
+        expect(r.labels[j].edgeT).toBe(o.labels[j].edgeT);
+        expect(r.labels[j].side).toBe(o.labels[j].side);
       }
     }
   });
