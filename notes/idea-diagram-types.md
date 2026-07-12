@@ -1,85 +1,85 @@
 ---
-title: Diagram types — major modes for graph docs; derived sizes stop being persisted
+title: Extensions with contribution points — diagram identity, derived sizes, todo-graph semantics
 type: idea
-status: proposed 2026-07-11, not yet agreed
+status: revised 2026-07-12 after discussion; direction agreed, not yet planned
 ---
 
-# Diagram types (vs plugins)
+# Extensions + contribution points (supersedes the "diagram types vs plugins" framing)
 
-Proposed by the user while dogfooding `next.kidraw.yaml`: a **diagram type** is
-a new first-class concept — "this graph *is* a todo graph" — and for the
-todo-graph type, node `w`/`h` should not be stored in the yaml at all but
-calculated by kidraw from the text.
+Origin: dogfooding `next.kidraw.yaml`. First proposal (2026-07-11) framed a
+new "diagram type" concept vs plugins as emacs major vs minor modes. **User
+rejected that framing as under-expressive**: mutual exclusivity shouldn't be
+a property of a *category* of extension ("major modes all exclude each
+other, minor modes never do") but of *what is being contributed*. Two
+extensions can both add tags; two extensions cannot both own the same key in
+a submenu or both decide what `w` means in the file.
 
-## The editor analogy (user's framing)
+## The model
 
-Same relationship as file types and plugins in normal editors — in emacs
-terms, **major modes vs minor modes**:
+One kind of thing — an **extension** — declaring contributions to typed
+slots (VS Code's "contribution points"). Each slot defines its own conflict
+semantics:
 
-| | Diagram type (major mode) | Plugin (minor mode) |
-|---|---|---|
-| Cardinality | exactly one per graph doc | zero or more |
-| Meaning | what the content *is* | additive, orthogonal behavior |
-| Owns | node/edge defaults, persistence policy (which style props are derived vs stored), possibly available commands/layouts | extra behaviors usable across types |
-| Declared | in the file (`type: todo-graph` next to `kidraw: 1`) | `plugins: [...]` (exists today) |
+| Contribution point | Conflict semantics |
+|---|---|
+| **identity** | singleton per graph — `type: todo-graph` in the yaml header; implicit `default` identity when absent (decided: yes). "Diagram type" survives only as *the extension bound at the identity slot*, not as a separate category. Switching identity restyles existing content, undoably (decided: yes). |
+| **style defaults + persistence policy** | cascade-ordered: app → identity → plugins → per-node file props (CSS-like). Persistence = per-prop derived-vs-stored rules. |
+| **commands + keymenu entries** | additive; key bindings need conflict detection at activation. Seam exists: `KeymenuKeyAssignments` / submenu configs are already data. |
+| **node kinds / edge kinds** | additive vocabularies with styling, creation commands, semantics hooks. |
+| **tags** | additive vocabularies + tag styles (lands on the same snapshot-mapping cascade that `bug-style-colors-not-persisted.md` needs). |
+| **validation rules** | additive predicates → diagnostics (surface via status area; later the item-details pane). |
 
-**Plugin v0's `todo-graph` is really a diagram type wearing a plugin
-costume** — it's a bundle of style defaults recorded per-graph, and only one
-meaningfully applies. Migration: add `diagramType` to `KidrawGraphDoc` /
-`GraphSnapshot`, move `todo-graph` there, keep `plugins` for genuinely
-orthogonal add-ons. Editors also *bind* plugins to file types (mode hooks);
-a diagram type could likewise activate default plugins later.
+Plugin v0 (`design-plugin-v0.md`) becomes the trivial case: an extension
+contributing only style defaults, activated as identity.
 
-## Derived sizes: most of the machinery already exists
+## Derived sizes (the immediate itch — first implementation slice)
 
-Since the `fit` overflow mode (0bed763), rendered `w`/`h` of a todo card are a
-pure function of (text, fontSize, max-width). And the runtime already treats
-them that way:
+With `fit` overflow (0bed763), rendered `w`/`h` are a pure function of
+(text, fontSize, max-width) and the runtime already re-derives them on every
+load (`restoreGraph` → `applyTextOverflow`) and text edit. The requested
+"cache with invalidation on text change" already exists as
+`DANode._nodeWidth/_nodeHeight`. So the change is serialization policy only:
 
-- The "cache" the user asked for **is** `DANode._nodeWidth/_nodeHeight` —
-  recomputed by `applyTextOverflow()` on every text edit, and re-derived on
-  every load (`DrawingLayer.restoreGraph()` calls `applyTextOverflow()` after
-  `restoreState()`). No new invalidation machinery is needed; text
-  measurement for even hundreds of nodes is microseconds.
+- `snapshotToFiles`: omit style props equal to the resolved cascade value
+  (today `next.kidraw.yaml` carries 61 identical `w/h/fontSize/textOverflow`
+  blocks, and derived sizes churn every save/diff).
+- `filesToSnapshot`: resolve missing props through the cascade.
+- `w` is *input*, not derived, even in fit mode (base/max width): it moves
+  into todo-graph's defaults; per-node `w` in a file stays legal as an
+  override (e.g. manually resized card). Old files with explicit props keep
+  working — they're just overrides. Positions always persist.
+- Version skew accepted: if an extension's defaults change, old files render
+  differently (rendering is app-side, as in editors).
+- The org→kidraw converter emits `type: todo-graph` once instead of
+  fabricating per-node style blocks.
 
-So the actual change is **serialization policy, not runtime**:
+## Todo-graph semantic backlog (user's examples, recorded 2026-07-12)
 
-- `snapshotToFiles`: omit style props that equal the diagram type's defaults
-  (today it always writes `w`/`h`/`fontSize`/`textOverflow` per node — 61×
-  redundant lines in `next.kidraw.yaml`, plus derived-size churn in every
-  save/diff).
-- `filesToSnapshot`: resolve missing props through a cascade —
-  **app hardcoded defaults → diagram type defaults → per-node file props.**
-  This is exactly the HTML/CSS split the file format was designed around
-  ([`docs/file-format.md`](../docs/file-format.md)); the diagram type is a
-  built-in stylesheet.
-
-Nuances:
-
-- **`w` is not fully derived even in fit mode** — it's the base/max width, an
-  *input*. It moves into the type default (280 for todo-graph); a per-node
-  `w` in the file remains legal as an override (user manually resized ⇒
-  changed base ⇒ persist the deviation). Backward compat is free: old files
-  with explicit `w`/`h` just read as overrides.
-- **Position (`x`/`y`) stays persisted.** Only style props with a
-  deterministic derivation become omittable.
-- **Version skew:** if a type's defaults change across app versions, old
-  files render differently. Editors accept this (rendering is app-side);
-  acceptable here, but worth stating as a decision.
-- The org→kidraw converter no longer fabricates `w: 280 / h: 70 /
-  textOverflow` per node — it emits `type: todo-graph` once.
+- **`depends-on` edge kind** with a direct creation command in the keymenu.
+  Today every todo-graph edge means depends-on implicitly; explicit kinds
+  matter as soon as a second relation exists (subtask-of, relates-to).
+- **Task-set node kinds**: a node standing for a set of tasks where *all*
+  must complete (AND) or *one of* suffices (OR), and sequential vs parallel
+  ordering — i.e. the gateways of BPMN / petri-net workflow graphs. Implies
+  validation rules and possibly layout behavior. **Open overlap with
+  [`idea-zones.md`](idea-zones.md):** a task set might be better modeled as
+  a zone containing its members than as a node wired to them — decide
+  deliberately when this lands.
 
 ## Open questions
 
-1. Name: `diagramType`? `type`? Reserve `type` in the yaml header?
-2. Does a graph with no declared type get a `default` type (whose defaults =
-   today's hardcoded ones)? (Probably yes — makes the cascade uniform.)
-3. Does applying a type restyle existing nodes the way `applyPlugin` does,
-   and is switching types undoable the same way?
-4. Do types own more than style defaults (layout default? routing default?
-   key submenu entries?) — start with style + persistence policy only.
+1. Activation: does the identity extension pull in other extensions
+   (file-type → plugin hooks, VS Code-style activation events)?
+2. Where do extensions live? App-registered only (like plugin v0) for now;
+   file-defined/user-defined extensions are a much later question.
+3. Key-conflict policy for keymenu contributions: fail loudly at activation,
+   or namespace into a per-extension submenu?
+4. Slice order after the persistence slice: commands/edge-kinds next (enables
+   depends-on), or tags+validation next (enables styling by tag, which the
+   color bug blocks anyway)?
 
 Relates: [`design-plugin-v0.md`](design-plugin-v0.md),
-[`decision-vault-model.md`](decision-vault-model.md) (external-edit reload is
-what makes file-side simplicity matter), `bug-style-colors-not-persisted.md`
-(the same snapshot-mapping cascade work would give colors a home).
+[`idea-zones.md`](idea-zones.md),
+[`bug-style-colors-not-persisted.md`](bug-style-colors-not-persisted.md),
+[`decision-vault-model.md`](decision-vault-model.md) (external-edit reload
+makes file-side simplicity matter), [`docs/file-format.md`](../docs/file-format.md).

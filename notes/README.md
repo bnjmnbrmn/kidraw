@@ -81,7 +81,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 **Product surface:**
 
-- [Diagram types — major modes for graph docs](idea-diagram-types.md) — types vs plugins (major/minor modes); todo-graph stops persisting derived node sizes.
+- [Extensions with contribution points](idea-diagram-types.md) — one extension concept, per-slot conflict semantics (identity, styles/persistence, commands, node/edge kinds, tags, validation); todo-graph stops persisting derived node sizes; depends-on edges + task-set (AND/OR, seq/par) node kinds recorded.
 - [Graph management UI](idea-graph-management-ui.md)
 - [Real-world test cases (acceptance diagrams)](idea-real-world-test-cases.md)
 - [Infrastructure (deployment, analytics, CI/CD)](idea-infrastructure-deploy.md)
