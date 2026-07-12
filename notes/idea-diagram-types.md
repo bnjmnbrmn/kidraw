@@ -1,7 +1,7 @@
 ---
 title: Extensions with contribution points — diagram identity, derived sizes, todo-graph semantics
 type: idea
-status: direction + open questions decided 2026-07-12; persistence slice ready to plan
+status: persistence slice SHIPPED 2026-07-12 (eab8642) — identity slot + style/persistence cascade; next slices per Decisions below
 ---
 
 # Extensions + contribution points (supersedes the "diagram types vs plugins" framing)
