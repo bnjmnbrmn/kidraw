@@ -24,11 +24,11 @@
 
 #### Key-Command Binding Language
 
-### Support edge labels on edges
+### ~~Support edge labels on edges~~ ✅ done (`26d39dd`, 2026-07-12)
 
-#### Start, middle, and end, and also shift-able (be able to move label along edge)
+#### ~~Start, middle, and end, and also shift-able (be able to move label along edge)~~ ✅ coarse tier snaps between start/middle/end stops; normal/fine tiers slide
 
-#### Below, above, and on top of
+#### ~~Below, above, and on top of~~ ✅ up/down cycle above/on/below
 
 ### Support tagging of graph items (nodes/graphs/waypoints/labels/zones)
 
