@@ -11,7 +11,7 @@ import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
-import { projectPointToPath } from './edge-label-anchor';
+import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -184,6 +184,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Crosshairs position after the last traversal action; if the crosshairs
    *  have moved since (free movement, search, …), momentum is stale. */
   private graphNavLastPos: {x: number; y: number} | null = null;
+  /** The edge currently being traversed. Navigation focus, not a selection:
+   *  it renders as a glow (DAEdge.navFocused) and no editing command sees
+   *  it. */
+  private graphNavEdge: DAEdge | null = null;
 
   private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
@@ -1904,6 +1908,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
+    // Escape also ends the traversal: drop the navigation focus glow.
+    this.setGraphNavEdge(null);
   }
 
   private insertChar(key: string) {
@@ -2498,11 +2504,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.refreshGraphNavMomentum();
 
     const toDest = direction === 'outgoing';
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
-    const edge = selectedEdges.length === 1 ? selectedEdges[0] : null;
+    const edge = this.currentGraphNavEdge();
     if (edge && this.graphNavStepAlongEdge(edge, toDest, tier)) return;
 
-    const anchor = this.getTraversalAnchorNode();
+    const anchor = this.getGraphNavAnchorNode();
     if (!anchor) {
       this.daOut.emit({kind: 'status-message', message: 'Move the crosshairs onto a node to navigate.'});
       return;
@@ -2519,7 +2524,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       endpointFlowDirection(e.getPathPoints(), toDest ? 'src' : 'dest'));
     const pick = pickEntryCandidate(flows, this.graphNavMomentum);
     if (pick < 0) return;
-    this.selectEdgeForNav(candidates[pick], anchor);
+    this.navFocusEdge(candidates[pick], anchor);
   }
 
   /** Next Edge / Previous Edge: cycle the selected edge through the anchor
@@ -2530,16 +2535,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.refreshGraphNavMomentum();
 
-    const anchor = this.getTraversalAnchorNode();
+    const anchor = this.getGraphNavAnchorNode();
     if (!anchor) {
       this.daOut.emit({kind: 'status-message', message: 'Move the crosshairs onto a node to pick an edge.'});
       return;
     }
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
-    const selected = selectedEdges.length === 1 ? selectedEdges[0] : null;
-    const incomingOnly = selected !== null
-      && anchor.incomingEdges.includes(selected)
-      && !anchor.outgoingEdges.includes(selected);
+    const focused = this.currentGraphNavEdge();
+    const incomingOnly = focused !== null
+      && anchor.incomingEdges.includes(focused)
+      && !anchor.outgoingEdges.includes(focused);
     const candidates = incomingOnly ? anchor.incomingEdges : anchor.outgoingEdges;
     if (candidates.length === 0) {
       this.daOut.emit({kind: 'status-message', message: `No ${incomingOnly ? 'incoming' : 'outgoing'} edges here.`});
@@ -2552,11 +2556,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return incomingOnly ? {x: -flow.x, y: -flow.y} : flow;
     });
     const order = clockwiseOrder(outward);
-    const selectedPos = selected ? order.indexOf(candidates.indexOf(selected)) : -1;
-    const nextPos = selectedPos >= 0
-      ? (selectedPos + step + order.length) % order.length
+    const focusedPos = focused ? order.indexOf(candidates.indexOf(focused)) : -1;
+    const nextPos = focusedPos >= 0
+      ? (focusedPos + step + order.length) % order.length
       : (step > 0 ? 0 : order.length - 1);
-    this.selectEdgeForNav(candidates[order[nextPos]], anchor);
+    this.navFocusEdge(candidates[order[nextPos]], anchor);
   }
 
   /** One stop along `edge` in the given direction. Returns false when the
@@ -2580,12 +2584,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return false; // standing on an unrelated node — reselect there
     } else {
       const cross = this.getCrosshairsInLayerCoordinates();
-      index = nearestStopIndex(stops, cross, this.GRAPH_NAV_STOP_TOLERANCE / this.drawingLayer.scaleX());
+      const scale = this.drawingLayer.scaleX();
+      index = nearestStopIndex(stops, cross, this.GRAPH_NAV_STOP_TOLERANCE / scale);
       if (index < 0) {
         // Between stops (e.g. entry landed on the edge midpoint): step to the
-        // adjacent stop by arc-length fraction.
+        // adjacent stop by arc-length fraction — but only if the crosshairs
+        // actually stand near this edge; wandering off dissociates from it.
         const proj = projectPointToPath(pathPoints, cross);
         if (!proj) return false;
+        const at = pointAtT(pathPoints, proj.t);
+        if (!at || Math.hypot(at.x - cross.x, at.y - cross.y) * scale
+              > this.GRAPH_NAV_STOP_TOLERANCE * 3) {
+          return false;
+        }
         const target = toDest
           ? stops.findIndex(s => s.t > proj.t + 1e-4)
           : (stops.length - 1) - [...stops].reverse().findIndex(s => s.t < proj.t - 1e-4);
@@ -2613,37 +2624,86 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     );
   }
 
-  /** Select `edge` as the navigation edge (exclusive selection, crosshairs
-   *  stay put) and surface where it leads in the status line. */
-  private selectEdgeForNav(edge: DAEdge, anchor: DANode): void {
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-    edge.isSelected = true;
+  /** The edge under navigation focus, validated against the live graph
+   *  (undo/redo, delete, and load rebuild edges — a stale reference clears).
+   *  With no nav edge, a single *really selected* edge (search, v-select) is
+   *  adopted so navigation can start from it. */
+  private currentGraphNavEdge(): DAEdge | null {
+    if (this.graphNavEdge && !this.drawingLayer.getDAEdges().includes(this.graphNavEdge)) {
+      this.graphNavEdge = null;
+    }
+    const selected = this.drawingLayer.getSelectedDAEdges();
+    if (selected.length === 1 && selected[0] !== this.graphNavEdge
+        && (!this.graphNavEdge || this.crosshairsAssociatedWithEdge(selected[0]))) {
+      // An explicitly selected edge the crosshairs are standing on wins over
+      // a leftover nav focus; with no nav focus at all, adopt it outright.
+      this.setGraphNavEdge(selected[0]);
+    }
+    return this.graphNavEdge;
+  }
+
+  private setGraphNavEdge(edge: DAEdge | null): void {
+    if (this.graphNavEdge === edge) return;
+    if (this.graphNavEdge) this.graphNavEdge.navFocused = false;
+    this.graphNavEdge = edge;
+    if (edge) edge.navFocused = true;
     this.drawingLayer.batchDraw();
+  }
+
+  /** Anchor node for navigation: the node under the crosshairs — the
+   *  crosshairs are the traversal position — falling back to a selected
+   *  node (the entry flow puts the crosshairs on it anyway). */
+  private getGraphNavAnchorNode(): DANode | null {
+    return this.getDANodesContainingCrosshairs()[0]
+      ?? this.drawingLayer.getSelectedDANodes()[0]
+      ?? null;
+  }
+
+  /** Give `edge` the navigation focus (crosshairs stay put, real selection
+   *  untouched) and surface where it leads in the status line. */
+  private navFocusEdge(edge: DAEdge, anchor: DANode): void {
+    this.setGraphNavEdge(edge);
     this.graphNavLastPos = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
     const other = edge.srcNode === anchor ? edge.destNode : edge.srcNode;
     const otherLabel = (other.label?.text() ?? '').trim();
     const arrow = anchor === edge.srcNode ? '→' : '←';
     this.daOut.emit({kind: 'status-message', message: `Edge ${arrow} ${otherLabel || '(unlabeled)'}`});
-    this.checkAndEmitEditState();
   }
 
-  /** Move the crosshairs to a traversal stop and update the momentum to the
-   *  direction of this step. */
+  /** Move the crosshairs to a traversal stop, recenter the view on it, and
+   *  update the momentum to the direction of this step. */
   private moveCrosshairsToStop(stop: NavStop): void {
-    const scale = this.drawingLayer.scaleX();
-    const target = {
-      x: this.drawingLayer.x() + stop.x * scale,
-      y: this.drawingLayer.y() + stop.y * scale,
-    };
-    const dx = target.x - this.crosshairsLayer.crosshairsX();
-    const dy = target.y - this.crosshairsLayer.crosshairsY();
+    const cross = this.getCrosshairsInLayerCoordinates();
+    const dx = stop.x - cross.x;
+    const dy = stop.y - cross.y;
     const len = Math.hypot(dx, dy);
-    if (len > 1e-6) {
-      this.graphNavMomentum = {x: dx / len, y: dy / len};
-      this.moveCrosshairsBy(dx, dy);
-    }
-    this.graphNavLastPos = target;
+    if (len > 1e-6) this.graphNavMomentum = {x: dx / len, y: dy / len};
+    this.centerViewOnLayerPoint(stop);
+    // Both tweens land the crosshairs at the stage center.
+    this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
+  }
+
+  /** Pan the view (no rescale) so the layer point sits at the stage center,
+   *  tweening the crosshairs onto it in step. */
+  private centerViewOnLayerPoint(p: {x: number; y: number}): void {
+    const scale = this.drawingLayer.scaleX();
+    const centerX = this.stage.width() / 2;
+    const centerY = this.stage.height() / 2;
+    this.tweens.push(new Konva.Tween({
+      node: this.drawingLayer,
+      duration: this.RECENTER_DURATION,
+      x: centerX - p.x * scale,
+      y: centerY - p.y * scale,
+      easing: Konva.Easings.EaseInOut,
+    }).play());
+    this.tweens.push(new Konva.Tween({
+      node: this.crosshairsLayer.crosshairs.konvaGroup,
+      duration: this.RECENTER_DURATION,
+      x: centerX,
+      y: centerY,
+      easing: Konva.Easings.EaseInOut,
+      onFinish: () => this.checkResizeHandleProximity(),
+    }).play());
   }
 
   /** Momentum is only meaningful while the crosshairs sit where the last
@@ -2707,16 +2767,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     const edge = this.drawingLayer.getSelectedDAEdges()[0];
-    if (edge) {
-      const nodeUnder = this.getDANodesContainingCrosshairs()[0];
-      if (nodeUnder === edge.srcNode || nodeUnder === edge.destNode) return true;
-      const pathPoints = edge.getPathPoints();
-      const cross = this.getCrosshairsInLayerCoordinates();
-      const proj = projectPointToPath(pathPoints, cross);
-      if (proj && Math.abs(proj.signedDist) * scale <= tolerance) return true;
-      return nearestStopIndex(this.navStopsFor(edge, 'fine'), cross, tolerance / scale) >= 0;
-    }
+    if (edge) return this.crosshairsAssociatedWithEdge(edge);
     return false;
+  }
+
+  /** Whether the crosshairs stand "on" `edge` for navigation purposes: an
+   *  endpoint node, one of its stops, or close to its path. */
+  private crosshairsAssociatedWithEdge(edge: DAEdge): boolean {
+    const tolerance = this.GRAPH_NAV_STOP_TOLERANCE;
+    const scale = this.drawingLayer.scaleX();
+    const nodeUnder = this.getDANodesContainingCrosshairs()[0];
+    if (nodeUnder === edge.srcNode || nodeUnder === edge.destNode) return true;
+    const cross = this.getCrosshairsInLayerCoordinates();
+    const proj = projectPointToPath(edge.getPathPoints(), cross);
+    if (proj && Math.abs(proj.signedDist) * scale <= tolerance) return true;
+    return nearestStopIndex(this.navStopsFor(edge, 'fine'), cross, tolerance / scale) >= 0;
   }
 
   private snapToNearestNode() {

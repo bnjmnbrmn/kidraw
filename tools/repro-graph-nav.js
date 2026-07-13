@@ -100,16 +100,21 @@ async function main() {
     const dl = da.drawingLayer;
     const scale = dl.scaleX();
     const sel = dl.getSelectedDAEdges().map(e => `${e.srcNode.id}->${e.destNode.id}`);
+    const nav = dl.getDAEdges().filter(e => e.navFocused).map(e => `${e.srcNode.id}->${e.destNode.id}`);
+    const stage = da.stage;
     return {
       selectedEdges: sel,
+      navEdges: nav,
       selectedNodes: dl.getSelectedDANodes().map(n => n.id),
+      atStageCenter: Math.hypot(da.crosshairsLayer.crosshairsX() - stage.width() / 2,
+                                da.crosshairsLayer.crosshairsY() - stage.height() / 2) < 2,
       // Crosshairs in layer coords for easy comparison with node centers.
       x: (da.crosshairsLayer.crosshairsX() - dl.x()) / scale,
       y: (da.crosshairsLayer.crosshairsY() - dl.y()) / scale,
     };
   });
   const near = (s, x, y, tol = 15) => Math.hypot(s.x - x, s.y - y) <= tol;
-  const fmt = s => `xh(${s.x.toFixed(0)},${s.y.toFixed(0)}) sel=[${s.selectedEdges.join(',')}]`;
+  const fmt = s => `xh(${s.x.toFixed(0)},${s.y.toFixed(0)}) nav=[${s.navEdges.join(',')}] sel=[${s.selectedEdges.join(',')}]`;
 
   // --- 1. Entry: selected node, crosshairs elsewhere → recenter onto it. ---
   await placeAtLayer(1000, 100); // far from H
@@ -133,21 +138,23 @@ async function main() {
   await page.keyboard.press('n'); // Jump Outgoing → select first clockwise from 12 o'clock = H→U
   await page.waitForTimeout(150);
   s = await state();
-  check('cold-start Jump Outgoing selects the 12 o\'clock edge (H→U)',
-    s.selectedEdges.join() === 'H->U', fmt(s));
-  check('edge selection does not move the crosshairs', near(s, 400, 300), fmt(s));
+  check('cold-start Jump Outgoing nav-focuses the 12 o\'clock edge (H→U)',
+    s.navEdges.join() === 'H->U', fmt(s));
+  check('nav focus is not a selection (no edge really selected)',
+    s.selectedEdges.length === 0, fmt(s));
+  check('edge focus does not move the crosshairs', near(s, 400, 300), fmt(s));
   await page.keyboard.press('j'); // Next Edge (clockwise) → H→R
   await page.waitForTimeout(150);
   s = await state();
-  check('Next Edge cycles clockwise to H→R', s.selectedEdges.join() === 'H->R', fmt(s));
+  check('Next Edge cycles clockwise to H→R', s.navEdges.join() === 'H->R', fmt(s));
   await page.keyboard.press('j'); // → H→D
   await page.waitForTimeout(150);
   s = await state();
-  check('Next Edge cycles clockwise to H→D', s.selectedEdges.join() === 'H->D', fmt(s));
+  check('Next Edge cycles clockwise to H→D', s.navEdges.join() === 'H->D', fmt(s));
   await page.keyboard.press('k'); // Prev Edge back → H→R
   await page.waitForTimeout(150);
   s = await state();
-  check('Prev Edge cycles back to H→R', s.selectedEdges.join() === 'H->R', fmt(s));
+  check('Prev Edge cycles back to H→R', s.navEdges.join() === 'H->R', fmt(s));
 
   // --- 3. Walk stop-by-stop along H→R: label pseudo-node, then R. ---
   await page.keyboard.press('n');
@@ -159,14 +166,15 @@ async function main() {
   await page.waitForTimeout(300);
   s = await state();
   check('next Jump Outgoing reaches R', near(s, 700, 300), fmt(s));
-  check('the edge stays selected on arrival', s.selectedEdges.join() === 'H->R', fmt(s));
+  check('the edge keeps nav focus on arrival', s.navEdges.join() === 'H->R', fmt(s));
+  check('each walk step recenters the view on the stop', s.atStageCenter === true, fmt(s));
 
   // --- 4. Momentum: traveling east into R, Jump Outgoing prefers R→R2. ---
   await page.keyboard.press('n');
   await page.waitForTimeout(150);
   s = await state();
   check('momentum picks the east-aligned R→R2 over R→RU',
-    s.selectedEdges.join() === 'R->R2', fmt(s));
+    s.navEdges.join() === 'R->R2', fmt(s));
   await page.keyboard.press('n');
   await page.waitForTimeout(300);
   s = await state();
@@ -181,14 +189,15 @@ async function main() {
   await page.keyboard.press('p'); // at R = src of R→R2 → select R's incoming edge (H→R)
   await page.waitForTimeout(150);
   s = await state();
-  check('Jump Incoming at the source selects the incoming edge (H→R)',
-    s.selectedEdges.join() === 'H->R', fmt(s));
+  check('Jump Incoming at the source nav-focuses the incoming edge (H→R)',
+    s.navEdges.join() === 'H->R', fmt(s));
   await page.keyboard.press('p'); // walk backward → label stop
   await page.waitForTimeout(300);
   await page.keyboard.press('p'); // → H
   await page.waitForTimeout(300);
   s = await state();
   check('Jump Incoming walks back through the label to H', near(s, 400, 300), fmt(s));
+  check('the entry selection survived the whole journey', s.selectedNodes.includes('H'), JSON.stringify(s.selectedNodes));
   await page.keyboard.up('f');
   await page.waitForTimeout(200);
 

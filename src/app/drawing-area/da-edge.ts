@@ -24,6 +24,7 @@ export class DAEdge {
   readonly id: string;
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
+  private _navFocused: boolean = false;
   public readonly _line: Konva.Arrow;
   public readonly srcNode: DANode;
   public readonly destNode: DANode;
@@ -32,6 +33,8 @@ export class DAEdge {
 
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
+  public readonly NAV_FOCUS_GLOW_BLUR = 12;
+  public readonly NAV_FOCUS_GLOW_OPACITY = 0.9;
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
   /** Pull the rendered endpoint out from the node perimeter by this many
@@ -88,6 +91,27 @@ export class DAEdge {
     this._line.strokeWidth(this.strokeWidth());
   }
 
+  get navFocused(): boolean {
+    return this._navFocused;
+  }
+
+  /** Navigation focus (move-by-graph): the edge currently being traversed.
+   *  Deliberately NOT a selection — it renders as a soft glow in the edge's
+   *  own stroke color (theme- and custom-color-safe), distinct from the
+   *  thick-stroke look of a real selection, and no command treats it as
+   *  selected. */
+  set navFocused(value: boolean) {
+    this._navFocused = value;
+    this.applyNavFocus();
+  }
+
+  private applyNavFocus(): void {
+    this._line.shadowColor(this._strokeColor);
+    this._line.shadowBlur(this.NAV_FOCUS_GLOW_BLUR);
+    this._line.shadowOpacity(this.NAV_FOCUS_GLOW_OPACITY);
+    this._line.shadowEnabled(this._navFocused);
+  }
+
   private strokeWidth() {
     return this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL;
   }
@@ -134,6 +158,7 @@ export class DAEdge {
     this._line.stroke(this._strokeColor);
     this._line.fill(this._fillColor);
     this._waypointGlyphs.forEach(wp => wp.applyColors({stroke: this._strokeColor}));
+    this.applyNavFocus(); // the glow follows the stroke color
   }
 
   get labels(): DALabel[] {
