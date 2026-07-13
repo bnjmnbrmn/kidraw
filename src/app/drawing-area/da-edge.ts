@@ -25,6 +25,7 @@ export class DAEdge {
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
   private _navFocused: boolean = false;
+  private _navUnderlay: Konva.Line | null = null;
   public readonly _line: Konva.Arrow;
   public readonly srcNode: DANode;
   public readonly destNode: DANode;
@@ -33,8 +34,8 @@ export class DAEdge {
 
   public readonly STROKE_WIDTH_SELECTED = 4;
   public readonly STROKE_WIDTH_NORMAL = 2;
-  public readonly NAV_FOCUS_GLOW_BLUR = 12;
-  public readonly NAV_FOCUS_GLOW_OPACITY = 0.9;
+  public readonly NAV_FOCUS_UNDERLAY_WIDTH = 18;
+  public readonly NAV_FOCUS_UNDERLAY_OPACITY = 0.4;
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
   /** Pull the rendered endpoint out from the node perimeter by this many
@@ -96,8 +97,9 @@ export class DAEdge {
   }
 
   /** Navigation focus (move-by-graph): the edge currently being traversed.
-   *  Deliberately NOT a selection — it renders as a soft glow in the edge's
-   *  own stroke color (theme- and custom-color-safe), distinct from the
+   *  Deliberately NOT a selection — it renders as a wide semi-transparent
+   *  underlay band in the edge's own stroke color (theme- and
+   *  custom-color-safe), a highlighter track clearly distinct from the
    *  thick-stroke look of a real selection, and no command treats it as
    *  selected. */
   set navFocused(value: boolean) {
@@ -106,10 +108,29 @@ export class DAEdge {
   }
 
   private applyNavFocus(): void {
-    this._line.shadowColor(this._strokeColor);
-    this._line.shadowBlur(this.NAV_FOCUS_GLOW_BLUR);
-    this._line.shadowOpacity(this.NAV_FOCUS_GLOW_OPACITY);
-    this._line.shadowEnabled(this._navFocused);
+    if (this._navFocused) {
+      if (!this._navUnderlay) {
+        this._navUnderlay = new Konva.Line({
+          points: this._line.points(),
+          strokeWidth: this.NAV_FOCUS_UNDERLAY_WIDTH,
+          opacity: this.NAV_FOCUS_UNDERLAY_OPACITY,
+          lineCap: 'round',
+          lineJoin: 'round',
+          listening: false,
+          // Constant screen-pixel width at every zoom level: the band is the
+          // "you are navigating here" affordance, not diagram geometry.
+          strokeScaleEnabled: false,
+        });
+        this.group.add(this._navUnderlay);
+        this._navUnderlay.moveToBottom();
+      }
+      this._navUnderlay.points(this._line.points());
+      this._navUnderlay.stroke(this._strokeColor);
+      this._navUnderlay.tension(this._renderTension);
+      this._navUnderlay.visible(true);
+    } else {
+      this._navUnderlay?.visible(false);
+    }
   }
 
   private strokeWidth() {
@@ -462,6 +483,7 @@ export class DAEdge {
    *  Cheaper than recreating the edge. */
   refreshGeometry(): void {
     this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
+    if (this._navFocused) this.applyNavFocus(); // underlay tracks the path
     this.positionLabels();
   }
 
@@ -471,6 +493,7 @@ export class DAEdge {
   setSmoothRendering(smooth: boolean): void {
     this._renderTension = smooth ? this.SMOOTH_TENSION : 0;
     this._line.tension(this._renderTension);
+    if (this._navFocused) this.applyNavFocus();
   }
 
   get smoothRendering(): boolean {
