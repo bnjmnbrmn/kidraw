@@ -42,6 +42,8 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `d97fb81` | Graph nav: recenter view on every stop; nav focus is a glow, not a selection |
+| `e8da514` | dev-status: record move-by-graph traversal rework as shipped |
 | `754dd86` | Move-by-graph traversal rework: stop-based walking, momentum edge pick, tiers |
 | `6b0b5d0` | dev-status: record keymenu binding reorg |
 | `180534a` | Keymenu binding reorg: f = move-by-graph, a = insert, m becomes File menu |
@@ -50,8 +52,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `3e85d36` | Labels auto-size to their text: no more 50x30 clipping limit |
 | `49cf542` | Label add/edit/move fixes: selectable via v, born empty into edit mode, no repeat-stacking |
 | `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
-| `fa4d975` | dev-server: allow kidraw.dev.bnjmnbrmn.com as a serve host |
-| `c1e9674` | next: reorganize planning notes into pre/post-MVP |
 
 ---
 
