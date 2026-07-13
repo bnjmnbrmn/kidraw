@@ -1940,8 +1940,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const resized = this.drawingLayer.appendTextToSelected(key);
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
-    // Also insert into selected labels
-    this.getSelectedLabels().forEach(l => l.appendText(key));
+    // Also insert into selected labels; re-place from the anchor so a growing
+    // box keeps its above/below clearance from the line.
+    this.getSelectedLabels().forEach(l => {
+      l.appendText(key);
+      this.getEdgeForLabel(l)?.refreshGeometry();
+    });
     this.drawingLayer.batchDraw();
   }
 
@@ -1951,7 +1955,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
     // Also delete from selected labels
-    this.getSelectedLabels().forEach(l => l.deleteLastChar());
+    this.getSelectedLabels().forEach(l => {
+      l.deleteLastChar();
+      this.getEdgeForLabel(l)?.refreshGeometry();
+    });
     this.drawingLayer.batchDraw();
   }
 
@@ -2259,10 +2266,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         }
       }
       for (const label of edge.labels) {
-        const minX = label.x - label.RECT_WIDTH / 2;
-        const maxX = label.x + label.RECT_WIDTH / 2;
-        const minY = label.y - label.RECT_HEIGHT / 2;
-        const maxY = label.y + label.RECT_HEIGHT / 2;
+        const minX = label.x - label.width / 2;
+        const maxX = label.x + label.width / 2;
+        const minY = label.y - label.height / 2;
+        const maxY = label.y + label.height / 2;
         if (axis === 'y' && spansPerpendicular(minX, maxX)) {
           add(minY);
           add(maxY);
@@ -3763,10 +3770,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     for (const edge of edges) {
       for (const label of edge.labels) {
         // Check overlap between crosshairs bbox and label bounding rect
-        const labelLeft = label.x - label.RECT_WIDTH / 2;
-        const labelRight = label.x + label.RECT_WIDTH / 2;
-        const labelTop = label.y - label.RECT_HEIGHT / 2;
-        const labelBottom = label.y + label.RECT_HEIGHT / 2;
+        const labelLeft = label.x - label.width / 2;
+        const labelRight = label.x + label.width / 2;
+        const labelTop = label.y - label.height / 2;
+        const labelBottom = label.y + label.height / 2;
 
         const overlaps = labelRight >= box.minX && labelLeft <= box.maxX &&
                          labelBottom >= box.minY && labelTop <= box.maxY;

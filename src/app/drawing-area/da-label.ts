@@ -19,12 +19,14 @@ export class DALabel {
 
   public readonly LABEL_STROKE_WIDTH = 2;
   public readonly SELECTED_STROKE_WIDTH = 3;
-  public readonly RECT_WIDTH = 50;
-  public readonly RECT_HEIGHT = 30;
+  /** Minimum box size — keeps short/empty labels targetable; the box grows
+   *  beyond this to fit the text (no length limit). */
+  public readonly MIN_RECT_WIDTH = 50;
+  public readonly MIN_RECT_HEIGHT = 30;
   public readonly TEXT_PADDING = 5;
   public readonly DEFAULT_FONT_SIZE = 12;
   public readonly MIN_FONT_SIZE = 10;
-  public readonly MAX_FONT_SIZE = 36;
+  public readonly MAX_FONT_SIZE = 48;
 
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
@@ -42,33 +44,47 @@ export class DALabel {
     if (colors?.text) this._textColor = colors.text;
 
     this._rect = new Konva.Rect({
-      x: -this.RECT_WIDTH / 2,
-      y: -this.RECT_HEIGHT / 2,
-      width: this.RECT_WIDTH,
-      height: this.RECT_HEIGHT,
       stroke: 'transparent',
       strokeWidth: 0,
       fill: 'transparent',
     });
 
     this._text = new Konva.Text({
-      x: -this.RECT_WIDTH / 2 + this.TEXT_PADDING,
-      y: -this.RECT_HEIGHT / 2,
-      width: this.RECT_WIDTH - this.TEXT_PADDING * 2,
-      height: this.RECT_HEIGHT,
       text: this._label,
       fontSize: this._fontSize,
       fontFamily: 'Arial',
-      textAlign: 'center',
+      align: 'center',
       verticalAlign: 'middle',
+      wrap: 'none',
       fill: this._textColor,
     });
 
     this.group.add(this._rect);
     this.group.add(this._text);
+    this.resizeToFitText();
 
     // Labels are always visible
     this.group.visible(true);
+  }
+
+  /** Size the box to the text (explicit \n makes multi-line), never smaller
+   *  than the minimum hit-target, keeping everything centered on the anchor.
+   *  Clearing the text's width/height makes Konva report the raw measurement. */
+  private resizeToFitText(): void {
+    this._text.setAttrs({width: undefined, height: undefined});
+    const w = Math.max(this._text.width() + this.TEXT_PADDING * 2, this.MIN_RECT_WIDTH);
+    const h = Math.max(this._text.height() + this.TEXT_PADDING, this.MIN_RECT_HEIGHT);
+    this._rect.setAttrs({x: -w / 2, y: -h / 2, width: w, height: h});
+    this._text.setAttrs({x: -w / 2, y: -h / 2, width: w, height: h});
+  }
+
+  /** Current box size (grows with the text). */
+  get width(): number {
+    return this._rect.width();
+  }
+
+  get height(): number {
+    return this._rect.height();
   }
 
   get konvaGroup(): Konva.Group {
@@ -91,6 +107,7 @@ export class DALabel {
   set label(value: string) {
     this._label = value;
     this._text.text(value);
+    this.resizeToFitText();
   }
 
   get position(): { x: number; y: number } {
@@ -129,6 +146,7 @@ export class DALabel {
 
     this._fontSize = nextSize;
     this._text.fontSize(this._fontSize);
+    this.resizeToFitText();
     return true;
   }
 
@@ -148,12 +166,14 @@ export class DALabel {
   appendText(text: string): void {
     this._label += text;
     this._text.text(this._label);
+    this.resizeToFitText();
   }
 
   deleteLastChar(): void {
     if (this._label.length > 0) {
       this._label = this._label.slice(0, -1);
       this._text.text(this._label);
+      this.resizeToFitText();
     }
   }
 

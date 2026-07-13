@@ -10,7 +10,9 @@
  *   4. A label left empty on exit is pruned, not left as an invisible target.
  *   5. Select+Drag (hold v + hjkl) over a label selects it and slides it
  *      along the edge / cycles its side.
- *   6. f→a over empty canvas adds nothing and does NOT enter label edit.
+ *   6. There is no label size limit: long text grows the box and the grown
+ *      box stays selectable at its far edge.
+ *   7. f→a over empty canvas adds nothing and does NOT enter label edit.
  */
 const { chromium } = require('@playwright/test');
 
@@ -84,7 +86,8 @@ async function main() {
     return {
       mode: km.keyMenu.currentMode.name,
       labels: c.drawingLayer.getDAEdges()[0].labels.map(l =>
-        ({ text: l.label, t: l.edgeT, side: l.side, selected: l.isSelected })),
+        ({ text: l.label, t: l.edgeT, side: l.side, selected: l.isSelected,
+           w: l.width, h: l.height })),
     };
   });
 
@@ -170,7 +173,37 @@ async function main() {
   check('drag up cycles the label side to above', s.labels[0].side === 'above', s.labels[0].side);
   check('label still in normal mode after drag', s.mode === 'normal', s.mode);
 
-  // 6. Add Label over empty canvas: nothing added, no label-edit mode.
+  // 6. No size limit: long text grows the box, and the grown box is still
+  //    hit-testable at its edge (select via v works out there).
+  await placeOverLabel(0);
+  await page.keyboard.press('i');           // tap edit key over the label
+  await page.waitForTimeout(150);
+  await page.keyboard.type(' and quite a lot more text to stretch the box', { delay: 10 });
+  s = await state();
+  const grownW = s.labels[0].w;
+  check('long text grows the label box', grownW > 200, `w=${grownW}`);
+  check('long text fully stored', s.labels[0].text.endsWith('stretch the box'),
+    JSON.stringify(s.labels[0].text));
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('Enter');
+  await page.keyboard.up('Shift');
+  await page.waitForTimeout(120);
+  const edgeHit = await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = c.drawingLayer;
+    const xh = c.crosshairsLayer.crosshairs;
+    const label = dl.getDAEdges()[0].labels[0];
+    // Near the right edge of the grown box — far outside the old 50px width.
+    xh.x = (label.x + label.width / 2 - 5) * dl.scaleX() + dl.x();
+    xh.y = label.y * dl.scaleY() + dl.y();
+    c.handleCommands({ kind: 'MULTI_ITEM_SELECT' });
+    const hit = label.isSelected;
+    c.handleCommands({ kind: 'UNSELECT_ALL' });
+    return hit;
+  });
+  check('grown box is selectable at its far edge', edgeHit);
+
+  // 7. Add Label over empty canvas: nothing added, no label-edit mode.
   await placeAtStage(60, 60);
   await page.keyboard.down('f');
   await page.waitForTimeout(120);

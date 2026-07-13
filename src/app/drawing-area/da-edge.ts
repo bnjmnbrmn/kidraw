@@ -190,7 +190,7 @@ export class DAEdge {
   /** Perpendicular distance from the line at which an above/below label
    *  centers: half the label box plus a small gap past the line stroke. */
   private labelSideClearance(label: DALabel): number {
-    return label.RECT_HEIGHT / 2 + this.STROKE_WIDTH_SELECTED / 2 + 2;
+    return label.height / 2 + this.STROKE_WIDTH_SELECTED / 2 + 2;
   }
 
   /** Derive a label's absolute position from its (edgeT, side) anchor on
