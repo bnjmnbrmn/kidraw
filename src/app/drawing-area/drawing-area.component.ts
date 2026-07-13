@@ -782,6 +782,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private isTopItemSelected(): boolean {
+    // Same priority as singleItemSelect: a label beats everything under it.
+    const label = this.getLabelUnderCrosshairs();
+    if (label) return label.isSelected;
+
     const wp = this.getWaypointUnderCrosshairs();
     if (wp) return wp.isSelected;
 
@@ -801,6 +805,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private ensureTopItemSelected() {
+    const label = this.getLabelUnderCrosshairs();
+    if (label) {
+      label.isSelected = true;
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const wp = this.getWaypointUnderCrosshairs();
     if (wp) {
       wp.isSelected = true;
@@ -1905,8 +1916,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
+    // A label left empty has no visible content — drop it rather than leave
+    // an invisible hit-target on the edge.
+    this.getSelectedLabels()
+      .filter(label => label.label.trim() === '')
+      .forEach(label => {
+        this.getEdgesContainingLabel(label).forEach(edge => edge.removeLabel(label));
+      });
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
+    this.drawingLayer.batchDraw();
   }
 
   private unselectAll() {
@@ -3561,11 +3580,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
           const projected = projectPointToPath(pathPoints, {x: box.cx, y: box.cy});
           this.log.log(`addLabel: anchoring at t=${(projected?.t ?? 0.5).toFixed(3)} on edge ${edge.id}`);
-          const label = new DALabel(0, 0, 'label', undefined, this.drawingLayer.labelColors());
+          const label = new DALabel(0, 0, '', undefined, this.drawingLayer.labelColors());
           edge.addLabel(label);
           edge.setLabelAnchor(label, projected?.t ?? 0.5, 'on');
+          // Leave only the new label selected so the label-edit mode the
+          // keymenu enters on key release types straight into it.
+          this.unselectAll();
+          label.isSelected = true;
+          this.crosshairsLayer.hideCrosshairs();
           this.drawingLayer.batchDraw();
-          this.unselectAll(); // Clear selection after adding label
+          this.checkAndEmitEditState();
+          this.daOut.emit({kind: 'label-added'});
           return;
         }
       }
@@ -3893,8 +3918,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private toggleTopItemSelection() {
-    // Same priority as the rest of the waypoint hit-tests: a waypoint
-    // overlapping the crosshairs circle wins over the edge underneath it.
+    // Same priority as the rest of the waypoint hit-tests: a label wins over
+    // everything; a waypoint overlapping the crosshairs circle wins over the
+    // edge underneath it.
+    const label = this.getLabelUnderCrosshairs();
+    if (label) {
+      label.isSelected = !label.isSelected;
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     const wp = this.getWaypointUnderCrosshairs();
     if (wp) {
       wp.isSelected = !wp.isSelected;

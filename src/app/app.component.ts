@@ -65,6 +65,9 @@ export class AppComponent implements OnInit, OnDestroy {
         this.keymenuComponent.enterLabelEditMode();
         if (this.headerComponent) this.headerComponent.mode = 'labelEdit';
         break;
+      case "label-added":
+        this.keymenuComponent.notifyLabelAdded();
+        break;
       case "exit-label-editing-mode":
         this.keymenuComponent.exitToNormalMode();
         if (this.headerComponent) this.headerComponent.mode = 'normal';

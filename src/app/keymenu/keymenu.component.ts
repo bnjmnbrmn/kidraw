@@ -81,6 +81,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   // Set when 'Insert Node' fires from the held edit-key submenu; releasing the
   // edit key then enters labelEdit (mirrors the insert-submenu flow).
   private insertViaEditActive = false;
+
+  // Set (via AppComponent) when the drawing area confirms a label was added
+  // from a held submenu; releasing the submenu key then enters labelEdit so
+  // typing goes straight into the new label. Confirmation-driven so a failed
+  // Add Label (no edge under the crosshairs) doesn't strand the user in
+  // labelEdit with nothing selected.
+  private labelAddActive = false;
   // One-shot guard for the held edit-key submenu: action keys auto-repeat
   // (initialRepeatDelayMs is 0), but insert/label/waypoint must fire once per hold.
   private editContextActionFired = false;
@@ -367,6 +374,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.editPending = false;
     this.editContext = null;
     this.insertViaEditActive = false;
+    this.labelAddActive = false;
     this.editContextActionFired = false;
     this.pendingNodeShape = undefined;
     this.pendingInsertTypeKey = undefined;
@@ -407,6 +415,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   /** Called by AppComponent when the drawing area answers QUERY_EDIT_CONTEXT. */
   setEditContext(context: EditContext): void {
     this.editContext = context;
+  }
+
+  /** Called by AppComponent when the drawing area confirms an ADD_LABEL
+   *  succeeded: arm the labelEdit transition for the submenu-key release. */
+  notifyLabelAdded(): void {
+    this.labelAddActive = true;
   }
 
   /** Swap the just-pushed Edit submenu for context-appropriate insert options.
@@ -509,14 +523,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [types.junction]:     makeShapeEntry('junction',  'Junction →'),
       [insert.invisibleNode]: new LabeledAction('Invisible', () => {
         this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: 'invisible'});
-      }),
+      }, false),
       [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
         this.directedEdgeActive = true;
         this.keyMenuOut.emit({kind: DACommandType.BEGIN_DIRECTED_EDGE});
       }),
       [insert.label]: new LabeledAction('...Label', () => {
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
-      }),
+      }, false),
       [insert.waypoint]: new LabeledAction('Waypoint', () => {
         this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT});
         this.waypointDragActive = true;
@@ -524,7 +538,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         mode.actionSchedulingEnabled = false;
         mode.replaceTopSubmenu(this.dragSubmenuConfig);
         queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
-      }),
+      }, false),
     } as SubmenuConfig;
   }
 
@@ -1251,10 +1265,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (eventKey === this.keyAssignments.root.editSubmenu) {
       this.editContextActionFired = false;
+      // Capture-and-clear so the flag can never leak into a later interaction.
+      const labelAdded = this.labelAddActive;
+      this.labelAddActive = false;
       // A node was created from the held edit-key submenu → enter labelEdit on
       // release (same rhythm as the insert-submenu flow).
       if (this.insertViaEditActive) {
         this.insertViaEditActive = false;
+        this.switchMode('labelEdit');
+        return;
+      }
+      // A label was added from the held edit-key submenu → type into it.
+      if (labelAdded) {
         this.switchMode('labelEdit');
         return;
       }
@@ -1269,6 +1291,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // If insert submenu key (f) is released, handle pending/drag states
     if (eventKey === this.keyAssignments.root.insertSubmenu) {
       this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
+      // Capture-and-clear so the flag can never leak into a later interaction.
+      const labelAdded = this.labelAddActive;
+      this.labelAddActive = false;
       // If node creation was pending (type key pressed but not released), create the node now
       if (this.insertNodePending) {
         this.log.log('[keymenu] f released before type key — creating node at crosshairs');
@@ -1282,6 +1307,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       if (this.waypointDragActive) {
         this.waypointDragActive = false;
         // Waypoints have no text — just exit drag, no labelEdit transition.
+        return;
+      }
+      // A label was added from the insert submenu → type into it on release.
+      if (labelAdded) {
+        this.switchMode('labelEdit');
         return;
       }
       if (this.insertDragActive) {
