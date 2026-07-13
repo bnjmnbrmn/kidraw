@@ -39,6 +39,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 **Keymenu / interaction:**
 
+- [Keymenu binding reorg — f for graph nav, a for insert, File menu cleanup](plan-keymenu-binding-reorg.md) — full root-level inventory + the rebind decisions (implemented 2026-07-13).
 - [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)
 - [Left-hand-dominant profile](idea-left-hand-profile.md)
 - [Visualize greyed-out submenu options](idea-greyed-submenu-options.md)

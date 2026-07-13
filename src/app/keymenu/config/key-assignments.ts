@@ -14,9 +14,7 @@ export interface ZoomKeyAssignments {
 
 export interface SpeedModifierKeys {
   readonly bigger: KeyString;
-  readonly biggest: KeyString;
   readonly smaller: KeyString;
-  readonly smallest: KeyString;
 }
 
 export interface KeymenuKeyAssignments {
@@ -112,8 +110,6 @@ export interface KeymenuKeyAssignments {
   readonly misc: {
     readonly submenu: KeyString;
     readonly reload: KeyString;
-    readonly saveGraph: KeyString;
-    readonly loadGraph: KeyString;
     readonly newGraph: KeyString;
     readonly openFile: KeyString;
     readonly saveFileAs: KeyString;
@@ -153,7 +149,7 @@ export interface KeymenuKeyAssignments {
 }
 
 // IJKL profile: movement on i/j/k/l (right hand, index-finger-centered),
-// insert submenu on `f` (left hand). The original key layout, kept as a
+// insert submenu on `a` (left hand). The original key layout, kept as a
 // secondary profile after Vim became the default.
 export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'i', left: 'j', down: 'k', right: 'l'},
@@ -161,7 +157,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   zoom: {out: 'p', in: 'y'},
   root: {
     editSubmenu: 'e',
-    insertSubmenu: 'f',
+    insertSubmenu: 'a',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
@@ -220,13 +216,11 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   moveSpeed: {
     bigger: 'd',
-    biggest: 's',
-    smaller: 'a',
-    smallest: 'q',
+    smaller: 's',
   },
   panZoom: {
     submenu: 'r',
-    speed: { bigger: 'e', biggest: 'w', smaller: 'a', smallest: 'q' },
+    speed: { bigger: 'e', smaller: 'a' },
     zoomIn: 'o',
     zoomOut: 'u',
     recenterView: 'h',
@@ -234,16 +228,14 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   dragSpeed: {
     bigger: 'c',
-    biggest: 'x',
     smaller: 'z',
-    smallest: 'a',
   },
   moveByNode: {
     submenu: 't',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
   },
   moveByGraph: {
-    submenu: 'g',
+    submenu: 'f',
     outgoingNext: 'n',
     outgoingPrev: 'p',
     forwards: 'k',
@@ -256,16 +248,14 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   misc: {
     submenu: 'm',
     reload: 'r',
-    saveGraph: 's',
-    loadGraph: 'l',
-    newGraph: 'g',
-    openFile: 'f',
-    saveFileAs: 'a',
+    newGraph: 'n',
+    openFile: 'i',
+    saveFileAs: 'e',
     exportZip: 'z',
     cycleDisplay: 'd',
     connectVault: 'v',
     vaultOpen: 'o',
-    vaultSaveAs: 'w',
+    vaultSaveAs: 's',
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
@@ -274,14 +264,15 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   layout: {forceDirected: 'n', treeDown: 'j', treeRight: 'l', grid: 'm', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
 };
 
-// Vim profile (the default): hjkl movement, f for insert submenu, i for edit.
+// Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
+// f for move-by-graph traversal (best left-index hold + f/s/d tier chords).
 export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
   zoom: {out: 'p', in: 'y'},
   root: {
     editSubmenu: 'i',
-    insertSubmenu: 'f',
+    insertSubmenu: 'a',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
@@ -290,7 +281,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     node: 'd',
     invisibleNode: 'i',
     edge: 's',
-    label: 'a',
+    // 'a' is the held submenu key itself now; label sits under the index finger.
+    label: 'f',
     waypoint: 'p',
   },
   nodeTypes: {
@@ -340,13 +332,11 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   moveSpeed: {
     bigger: 's',
-    biggest: 'a',
     smaller: 'd',
-    smallest: 'q',
   },
   panZoom: {
     submenu: 'r',
-    speed: { bigger: 'w', biggest: 'q', smaller: 'e', smallest: 'd' },
+    speed: { bigger: 'w', smaller: 'e' },
     zoomIn: 'i',
     zoomOut: 'o',
     recenterView: 'y',
@@ -354,16 +344,14 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   dragSpeed: {
     bigger: 'x',
-    biggest: 'z',
     smaller: 'c',
-    smallest: 'a',
   },
   moveByNode: {
     submenu: 't',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
   },
   moveByGraph: {
-    submenu: 'g',
+    submenu: 'f',
     outgoingNext: 'n',
     outgoingPrev: 'p',
     forwards: 'j',
@@ -376,16 +364,14 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   misc: {
     submenu: 'm',
     reload: 'r',
-    saveGraph: 's',
-    loadGraph: 'l',
-    newGraph: 'g',
-    openFile: 'f',
-    saveFileAs: 'a',
+    newGraph: 'n',
+    openFile: 'i',
+    saveFileAs: 'e',
     exportZip: 'z',
     cycleDisplay: 'd',
     connectVault: 'v',
     vaultOpen: 'o',
-    vaultSaveAs: 'w',
+    vaultSaveAs: 's',
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },

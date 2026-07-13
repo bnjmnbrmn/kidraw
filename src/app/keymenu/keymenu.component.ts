@@ -723,7 +723,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
       [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
-      [misc.submenu]: new LabeledSubmenuConfig('Misc...', this.buildMiscSubmenuConfig()),
+      [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
       [this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control']: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
@@ -820,17 +820,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // would keep firing and stack dialogs.
       _repeatConfig: { enabled: false },
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
-      [misc.saveGraph]: new LabeledAction('Save Graph', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_GRAPH})),
-      [misc.loadGraph]: new LabeledAction('Load Graph', () => this.keyMenuOut.emit({kind: DACommandType.LOAD_GRAPH})),
       [misc.newGraph]: new LabeledAction('New Graph', () => this.keyMenuOut.emit({kind: DACommandType.NEW_GRAPH})),
-      [misc.openFile]: new LabeledAction('Open File…', () => this.keyMenuOut.emit({kind: DACommandType.OPEN_FILE})),
-      [misc.saveFileAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
+      // Vault flows are the primary Open/Save; the picker/blob flows are
+      // explicit interop with files outside the vault (and the non-Chromium
+      // fallback), hence Import/Export.
+      [misc.openFile]: new LabeledAction('Import File…', () => this.keyMenuOut.emit({kind: DACommandType.OPEN_FILE})),
+      [misc.saveFileAs]: new LabeledAction('Export File…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
       [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
       [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
       [misc.todoGraphType]: new LabeledAction('Todo Graph', () => this.keyMenuOut.emit({kind: DACommandType.SET_DIAGRAM_TYPE, typeId: 'todo-graph'})),
       [misc.connectVault]: new LabeledAction('Vault: Connect…', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_VAULT})),
-      [misc.vaultOpen]: new LabeledAction('Vault: Open…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_OPEN})),
-      [misc.vaultSaveAs]: new LabeledAction('Vault: Save As…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_SAVE_AS})),
+      [misc.vaultOpen]: new LabeledAction('Open…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_OPEN})),
+      [misc.vaultSaveAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_SAVE_AS})),
       [misc.toggleKeyProfile]: new LabeledAction(`→ ${otherProfileLabel}`, () => {
         this.keyboardConfig.keyProfile = this.keyboardConfig.keyProfile === 'vim' ? 'ijkl' : 'vim';
       }),
@@ -1288,7 +1289,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
     }
 
-    // If insert submenu key (f) is released, handle pending/drag states
+    // If the insert submenu key is released, handle pending/drag states
     if (eventKey === this.keyAssignments.root.insertSubmenu) {
       this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
       // Capture-and-clear so the flag can never leak into a later interaction.
@@ -1324,7 +1325,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     // Pending node insert: releasing type key without pressing a direction creates node at crosshairs.
-    // Only fires if insert submenu key (f) is still held (we're still in the insert context).
+    // Only fires if the insert submenu key is still held (we're still in the insert context).
     if (this.insertNodePending && eventKey === this.pendingInsertTypeKey) {
       this.log.log('[keymenu] type key released with pending — creating node at crosshairs');
       this.insertNodePending = false;

@@ -102,11 +102,11 @@ describe('KeymenuComponent', () => {
     const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
     expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    // 'i' is Edit (LabeledSubmenuConfig), 'f' is Insert submenu (vim profile)
+    // 'i' is Edit (LabeledSubmenuConfig), 'a' is Insert submenu (vim profile)
     const editAction = rootConfig['i'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();
     expect(editAction instanceof LabeledSubmenuConfig).toBeTrue();
-    const insertSubmenu = rootConfig['f'] as LabeledSubmenuConfig;
+    const insertSubmenu = rootConfig['a'] as LabeledSubmenuConfig;
     expect(insertSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
     // 'h' is Move Left in vim profile
@@ -123,8 +123,8 @@ describe('KeymenuComponent', () => {
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
 
-    // Move-by-graph submenu at 'g'
-    const moveByGraphSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
+    // Move-by-graph submenu at 'f'
+    const moveByGraphSubmenu = rootConfig['f'] as LabeledSubmenuConfig;
     expect(moveByGraphSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     const nextEdge = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
     expect(nextEdge.actionLabel).toBe('Jump Outgoing');
@@ -185,9 +185,9 @@ describe('KeymenuComponent', () => {
       expect((config['d'] as LabeledAction).actionLabel).toBe('Insert Node');
     });
 
-    it('offers Add Label and Add Waypoint over an edge (vim: a, p)', () => {
+    it('offers Add Label and Add Waypoint over an edge (vim: f, p)', () => {
       const config = buildContextConfig('edge')!;
-      expect((config['a'] as LabeledAction).actionLabel).toBe('Add Label');
+      expect((config['f'] as LabeledAction).actionLabel).toBe('Add Label');
       expect((config['p'] as LabeledAction).actionLabel).toBe('Add Waypoint');
     });
 

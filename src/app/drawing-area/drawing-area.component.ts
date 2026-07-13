@@ -204,7 +204,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.GATHER_DESCENDANTS,
     DACommandType.UNGATHER,
     DACommandType.LOAD_SAMPLE_GRAPH,
-    DACommandType.LOAD_GRAPH,
     DACommandType.NEW_GRAPH,
     DACommandType.EXIT_LABEL_EDIT_MODE,
     DACommandType.RECENTER_VIEW,
@@ -276,7 +275,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_LINE_STYLE,
     DACommandType.SET_ITEM_COLOR,
     DACommandType.LOAD_SAMPLE_GRAPH,
-    DACommandType.LOAD_GRAPH,
     DACommandType.LOAD_NAMED_GRAPH,
     DACommandType.NEW_GRAPH,
     DACommandType.OPEN_FILE,
@@ -677,12 +675,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.LOAD_SAMPLE_GRAPH:
         this.loadSampleGraph(command.graphId);
         break;
-      case DACommandType.SAVE_GRAPH:
-        this.saveGraphToStorage();
-        break;
-      case DACommandType.LOAD_GRAPH:
-        this.loadGraphFromStorage();
-        break;
       case DACommandType.NEW_GRAPH:
         this.newGraph();
         break;
@@ -913,27 +905,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     const snapshot = this.drawingLayer.serializeGraph();
     this.draftStorage.saveSnapshot(snapshot);
-  }
-
-  private loadGraphFromStorage(): void {
-    const draft = this.draftStorage.load();
-    if (!draft) return;
-    try {
-      const snapshot = this.draftStorage.draftToSnapshot(draft);
-      this.detachVaultFile();
-      this.finishTweens();
-      this.unselectAllLabels();
-      this.undoRedoService.clear();
-      this.drawingLayer.restoreGraph(snapshot);
-      const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-      this.drawingLayer.applyThemeColors(palette);
-      this.fitViewToContent();
-      this.recenterCrosshairs();
-      this.emitZoomLevel();
-      this.checkAndEmitEditState();
-    } catch {
-      // Corrupted or incompatible stored data — ignore silently
-    }
   }
 
   private async openFile(): Promise<void> {
