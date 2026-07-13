@@ -124,8 +124,10 @@ interface to the two-member reality). Pure cleanup; no behavior change.
 
 - Collapse the Layout submenu's four router entries after the routing
   workstream declares a winner.
-- Add `nextEdge` / `prevEdge` to the `moveByGraph` block (both profiles) as
-  part of the rework itself.
+- ~~Add `nextEdge` / `prevEdge` to the `moveByGraph` block (both profiles) as
+  part of the rework itself.~~ ✅ Done with the traversal rework later the
+  same day (replacing `forwards`/`backwards`); tier chords landed as
+  `f`+`s`/`f`+`d` per the Q3 decision.
 - Revisit `c` Clear Selection if/when [idea-cut-copy-paste](idea-cut-copy-paste.md)
   wants `c`.
 

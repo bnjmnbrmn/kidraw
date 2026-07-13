@@ -98,8 +98,8 @@ export interface KeymenuKeyAssignments {
     readonly submenu: KeyString;
     readonly outgoingNext: KeyString;
     readonly outgoingPrev: KeyString;
-    readonly forwards: KeyString;
-    readonly backwards: KeyString;
+    readonly nextEdge: KeyString;
+    readonly prevEdge: KeyString;
     readonly gather: KeyString;
     readonly gatherAll: KeyString;
     readonly ungather: KeyString;
@@ -238,8 +238,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'f',
     outgoingNext: 'n',
     outgoingPrev: 'p',
-    forwards: 'k',
-    backwards: 'i',
+    nextEdge: 'k',
+    prevEdge: 'i',
     gather: 'h',
     gatherAll: 'a',
     ungather: 'u',
@@ -354,8 +354,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 'f',
     outgoingNext: 'n',
     outgoingPrev: 'p',
-    forwards: 'j',
-    backwards: 'k',
+    nextEdge: 'j',
+    prevEdge: 'k',
     gather: 'h',
     gatherAll: 'a',
     ungather: 'u',

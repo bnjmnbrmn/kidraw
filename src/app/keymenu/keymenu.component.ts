@@ -722,7 +722,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
-      [mbg.submenu]: new LabeledSubmenuConfig('Move by graph...', this.buildMoveByGraphSubmenuConfig()),
+      [mbg.submenu]: new LabeledActionSubmenuConfig(
+        'Move by graph...',
+        this.buildMoveByGraphSubmenuConfig(),
+        // Entry: recenter on a single selected item (no-op otherwise).
+        () => this.keyMenuOut.emit({kind: DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV}),
+      ),
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
@@ -849,16 +854,36 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMoveByGraphSubmenuConfig(): SubmenuConfig {
     const mbg = this.keyAssignments.moveByGraph;
+    const moveSpeed = this.keyAssignments.moveSpeed;
 
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      [mbg.outgoingNext]: new LabeledAction('Jump Outgoing', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT})),
-      [mbg.outgoingPrev]: new LabeledAction('Jump Incoming', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT})),
-      [mbg.forwards]: new LabeledAction('Forwards', () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_SELECTED_EDGE})),
-      [mbg.backwards]: new LabeledAction('Backwards', () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_BACK})),
+      ...this.buildGraphNavActions('normal'),
+      // Same tier keys as normal movement: hold f + coarse/fine (Q3 decision).
+      // Coarse skips labels and waypoints; fine stops at waypoints too.
+      [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Nav...', {
+        _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+        ...this.buildGraphNavActions('coarse'),
+      } as SubmenuConfig),
+      [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Nav...', {
+        _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+        ...this.buildGraphNavActions('fine'),
+      } as SubmenuConfig),
       [mbg.gather]: new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
       [mbg.gatherAll]: new LabeledAction('Gather All', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_DESCENDANTS})),
       [mbg.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
+    } as SubmenuConfig;
+  }
+
+  /** The four traversal actions at one movement tier: jump along/onto edges,
+   *  and cycle the candidate edge clockwise/counterclockwise. */
+  private buildGraphNavActions(tier: GridTier): SubmenuConfig {
+    const mbg = this.keyAssignments.moveByGraph;
+    return {
+      [mbg.outgoingNext]: new LabeledAction('Jump Outgoing', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT, gridTier: tier})),
+      [mbg.outgoingPrev]: new LabeledAction('Jump Incoming', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT, gridTier: tier})),
+      [mbg.nextEdge]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_NEXT_EDGE})),
+      [mbg.prevEdge]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_PREV_EDGE})),
     } as SubmenuConfig;
   }
 
@@ -1205,15 +1230,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         return;
       }
 
-      // Shift+N / Shift+P for incoming edge traversal (inside nav submenu context)
-      if (event.shiftKey && event.key === 'N') {
-        this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT});
-        return;
-      }
-      if (event.shiftKey && event.key === 'P') {
-        this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_PREV});
-        return;
-      }
     }
 
     // Track when the edit submenu key is pressed so tap-to-edit works on keyup

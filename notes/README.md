@@ -94,7 +94,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 
 - [Bezier-route anti-parallel edges overlap](bug-bezier-antiparallel-overlap.md) — `b → ;` renders A→B and B→A as one line; lane key needs to switch to unordered.
-- ["Next edge out" doesn't seem to work](bug-next-edge-out.md) — user-reported; needs verification against the May 2026 traversal fix.
+- ["Next edge out" doesn't seem to work](bug-next-edge-out.md) — resolved: superseded by the 2026-07-13 move-by-graph traversal rework.
 - [Header mode chip goes stale after exiting label edit](bug-header-mode-chip-stale.md) — `exit-label-editing-mode` is only emitted on undo/redo; normal exits never reset the badge.
 - [Custom node/edge colors never reach the canvas](bug-style-colors-not-persisted.md) — `fill`/`stroke`/`textColor` (direct or via `tagStyles`) round-trip nowhere in `snapshot-mapping.ts`, and `applyThemeColors()` clobbers any live custom color on every load/theme-toggle anyway.
 

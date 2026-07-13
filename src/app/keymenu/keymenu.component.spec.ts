@@ -123,11 +123,20 @@ describe('KeymenuComponent', () => {
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
 
-    // Move-by-graph submenu at 'f'
-    const moveByGraphSubmenu = rootConfig['f'] as LabeledSubmenuConfig;
-    expect(moveByGraphSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
-    const nextEdge = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
-    expect(nextEdge.actionLabel).toBe('Jump Outgoing');
+    // Move-by-graph submenu at 'f' (action-submenu: entry fires the
+    // recenter-on-selection command)
+    const moveByGraphSubmenu = rootConfig['f'] as LabeledActionSubmenuConfig;
+    expect(moveByGraphSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
+    const jumpOutgoing = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
+    expect(jumpOutgoing.actionLabel).toBe('Jump Outgoing');
+    // j/k cycle the candidate edge; s/d are the tier sub-submenus (vim).
+    expect((moveByGraphSubmenu.submenuConfig['j'] as LabeledAction).actionLabel).toBe('Next Edge');
+    expect((moveByGraphSubmenu.submenuConfig['k'] as LabeledAction).actionLabel).toBe('Prev Edge');
+    const coarseNav = moveByGraphSubmenu.submenuConfig['s'] as LabeledSubmenuConfig;
+    expect(coarseNav instanceof LabeledSubmenuConfig).toBeTrue();
+    expect((coarseNav.submenuConfig['n'] as LabeledAction).actionLabel).toBe('Jump Outgoing');
+    const fineNav = moveByGraphSubmenu.submenuConfig['d'] as LabeledSubmenuConfig;
+    expect(fineNav instanceof LabeledSubmenuConfig).toBeTrue();
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {

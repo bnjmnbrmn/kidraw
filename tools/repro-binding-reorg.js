@@ -111,13 +111,15 @@ async function main() {
   before = await state();
   await page.keyboard.down('f');
   await page.waitForTimeout(250);
-  await page.keyboard.press('n');
+  await page.keyboard.press('n'); // first press selects an outgoing edge
+  await page.waitForTimeout(200);
+  await page.keyboard.press('n'); // second press walks along it
   await page.waitForTimeout(400);
   await page.keyboard.up('f');
   await page.waitForTimeout(400);
   s = await state();
   const moved = Math.hypot(s.xh.x - before.xh.x, s.xh.y - before.xh.y) > 5;
-  check('hold f + n traverses to a neighbor (crosshairs moved)', moved,
+  check('hold f + n,n selects an edge then traverses along it (crosshairs moved)', moved,
     `(${before.xh.x.toFixed(0)},${before.xh.y.toFixed(0)}) → (${s.xh.x.toFixed(0)},${s.xh.y.toFixed(0)})`);
   check('node count unchanged by traversal', s.nodeCount === before.nodeCount, `${s.nodeCount}`);
 
