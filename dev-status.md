@@ -20,8 +20,9 @@ _Updated 2026-07-13. Branch: `main`._
     - **Select+Drag couldn't target labels.** The hold-`v` selection helpers (`ensureTopItemSelected` / `isTopItemSelected` / `toggleTopItemSelection`) hit-tested waypoint → node → edge only, and nothing in the keymenu emits `SINGLE_ITEM_SELECT` (the one selector that did check labels), so the label slide/side-cycle machinery shipped in item 10 was unreachable except through in-graph search. The three helpers now check `getLabelUnderCrosshairs()` first, matching `singleItemSelect` / `computeEditContext` priority. Hover a label + hold `v`: `h`/`l` slide its `t` (coarse snaps stops), `j`/`k` cycle above/on/below.
     - **New labels were born with literal text `label`.** Label-edit is append-only, so the default text had to be backspaced away, and Add Label deselected afterwards, leaving the user to navigate back onto the label to edit it. `addLabel` now creates the label **empty and selected**, and releasing the held submenu key (`f` insert or `i` edit-context) drops straight into label-edit mode — confirmation-driven via the new `label-added` DANotification (armed only on success, so Add Label over empty canvas doesn't strand you in labelEdit). Labels still empty on exit are pruned rather than left as invisible hit-targets.
     - **Held Add Label auto-repeated**, silently stacking identical labels on the same anchor — you'd edit the top one while the one underneath kept showing "label" (the reported "label doesn't go away" bug). The insert-submenu Label, Waypoint, and Invisible-node actions are now `repeat: false` one-shots (`LabeledAction` repeat flag).
+    - **Labels had a de-facto size limit.** The box was a fixed 50×30 with the text clamped inside it, so anything beyond a couple of words clipped into invisibility. `DALabel` now sizes its box to the text (explicit `\n` makes multi-line; 50×30 remains the *minimum* so short/empty labels stay targetable). `width`/`height` getters replaced the `RECT_WIDTH`/`RECT_HEIGHT` constants at every consumer — crosshairs hit-test, search bbox, and the edge's above/below side-clearance, which now re-places the label per keystroke so a growing box keeps clearing the line. Label max font size raised 36 → 48 (parity with nodes).
 
-    Verified end-to-end via `tools/repro-label-edit-flow.js` (16 checks driving real key events: single label from a held key, empty+selected creation, labelEdit on release, typed text with no prefix, empty-label pruning, select+drag slide/side, failure over empty canvas); `repro-edge-label-anchors.js` still 15/15; 235/235 unit tests.
+    Verified end-to-end via `tools/repro-label-edit-flow.js` (19 checks driving real key events: single label from a held key, empty+selected creation, labelEdit on release, typed text with no prefix, empty-label pruning, select+drag slide/side, long-text box growth + far-edge selectability, failure over empty canvas); `repro-edge-label-anchors.js` still 15/15; 235/235 unit tests.
 
 ## Routing-eval harness
 
@@ -37,6 +38,7 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `3e85d36` | Labels auto-size to their text: no more 50x30 clipping limit |
 | `49cf542` | Label add/edit/move fixes: selectable via v, born empty into edit mode, no repeat-stacking |
 | `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
 | `fa4d975` | dev-server: allow kidraw.dev.bnjmnbrmn.com as a serve host |
@@ -46,7 +48,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `e2889f9` | notes: record extension decisions + post-persistence roadmap |
 | `03075fd` | notes: rework diagram-types idea into extensions + contribution points |
 | `5294ea0` | notes: record custom-color persistence bug |
-| `0bed763` | 'fit' text-overflow mode; todo cards now size to their text |
 
 ---
 
