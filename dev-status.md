@@ -141,6 +141,35 @@ See `graph-layout-research.md` for deeper analysis: `libavoid-js` (WASM) as a ca
 
 ## TODO / planned work
 
+### Next up: "Move by graph…" rework (spec'd 2026-07-13, not started)
+
+User-specified behavior for the next session. This is the "move-by-graph fix" step of the interaction-model roadmap (edge labels ✅ → **move-by-graph** → gathering/collapse rework).
+
+**Entry.** Opening "Move by graph…" (hold `g`) with a **single** node, edge, or label selected: move the crosshairs to that item and recenter the view on the crosshairs (skip both if the crosshairs are already there), in addition to bringing up the submenu as usual.
+
+**Edge selection from a node.** With the crosshairs over a node:
+
+- Tap **Jump Outgoing** → select one of the node's *outgoing edges* (today it jumps straight to the neighbor node).
+- **`j` "Next Edge"** (relabel) → cycle the selection through the outgoing edges.
+- Tap **Jump Incoming** → deselect any selected outgoing edge and select one of the *incoming* edges, if one exists.
+- **`k` "Previous Edge"** → cycle backwards.
+
+**Traversal along the selected edge.** Continuing with Jump Outgoing / Jump Incoming while an edge is selected moves to the next *stop* along it, which can be a node, a label, or a waypoint. For navigation purposes labels and waypoints are pseudo-nodes that split the edge — each has exactly one incoming and one outgoing side, so the same Jump Outgoing/Incoming vocabulary applies while standing on one.
+
+**Granularity via the move-speed tiers.**
+
+- **Coarse** movement held: node → node only (skip labels and waypoints).
+- **Neither** fine nor coarse: nodes **and labels**.
+- **Fine** held: nodes, labels, **and waypoints**.
+
+**Implementation findings (current state of the code):**
+
+- Submenu: `buildMoveByGraphSubmenuConfig` (`keymenu.component.ts`) — Jump Outgoing → `TRAVERSE_OUTGOING_NEXT`, Jump Incoming → `TRAVERSE_INCOMING_NEXT`, plus Forwards (`FOLLOW_SELECTED_EDGE`), Backwards (`NAVIGATE_BACK`), Gather/Gather All/Ungather. `j`/`k` are currently unbound in this submenu in the vim profile; the `moveByGraph` block in `key-assignments.ts` needs `nextEdge`/`prevEdge` keys added to **both** profiles (no hardcoded key literals).
+- Traversal today is node-to-node via `traverseFromAnchorNode(direction, sign)` (`drawing-area.component.ts`); it will need a stop-based walk instead. Stops on an edge can be ordered by arc-length `t` along the rendered polyline: labels already carry `edgeT`; waypoints can be projected with `projectPointToPath` (`edge-label-anchor.ts`).
+- Entry behavior: the submenu opener is a plain `LabeledSubmenuConfig`; switching it to `LabeledActionSubmenuConfig` (the Select+Drag pattern) lets it fire a command on entry — e.g. a new `FOCUS_SELECTED_FOR_GRAPH_NAV` handled by the drawing area only when exactly one node/edge/label is selected. `focusAndReleaseSelectedItem` (the tap-`i` single-select flow) already implements recenter + move-crosshairs-to-item and is mostly reusable; note it must *not* deselect in this flow, and must no-op when the crosshairs are already on the item.
+- Grid tier: `GridTier` (`fine`/`normal`/`coarse`) already flows through move/drag commands; the traversal commands need to carry it too. **Open design question:** how the tier is expressed while the `g` submenu is held — the coarse/fine speed keys are themselves held-key submenus, and multi-held-key chords are the known-buggy area of the keymenu state machine (see "Key-handling bugs" above). May be worth fixing bug B there first, or defining tier as a sticky mode inside the submenu.
+- Open design questions to settle at implementation time: which outgoing edge is selected *first* (stable order — e.g. creation order vs. angular order around the node); whether Jump Incoming while standing mid-edge reverses direction along the same edge or jumps back to the anchor node's incoming set; and what happens at the far node (auto-advance the anchor so jumps chain, presumably).
+
 ### Current focus
 
 **1. Serialization / file format.** Design + implementation substantially complete (see Recently Completed for Phase 1–9 of the `serialization-plan.md` rollout, Phase 5 = the vault). Open / Save As / Export Zip / Cycle Display through the keymenu (`m → f`, `m → a`, `m → z`, `m → d`), plus the vault flows (`m → v` / `m → o` / `m → w`) with silent auto-save and external-change reload. **Remaining**: Phase 10 (dirty indicator + `beforeunload` + minor UX polish), and the trad/large-menu fuzzy-finder overlay to replace the `window.prompt` placeholders in Vault Open / Save As.
