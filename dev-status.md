@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-07-12. Branch: `main`._
+_Updated 2026-07-13. Branch: `main`._
 
 > Read this at the start of every session for **where work currently stands**. Everything historical, topical, or design-rationale lives in [`notes/`](notes/) — see [`notes/README.md`](notes/README.md) for the Map of Content. Canonical instructions are in [`AGENTS.md`](AGENTS.md).
 
@@ -16,6 +16,12 @@ _Updated 2026-07-12. Branch: `main`._
 8. **Gather Descendants + Ungather** (`1f6b43a`). Traversal submenu grew `a` **Gather All** — pulls every descendant (transitive outgoing edges) of the anchor node into a radial tree around it (BFS, wedges split by subtree leaf counts, ring radii box-aware) — and `u` **Ungather**, which restores the saved layout. Unlike the plain Gather toggle the view persists until explicitly ungathered; original positions live in `gatheredNodePositions`, so it's a temporary view, not a mutation.
 9. **Context-sensitive `i` key (edit/insert).** Tapping the edit key (`i` vim / `e` ijkl) now acts on context: single selection → recenter + jump crosshairs to it + deselect; multi-selection → status warning; over a node/label → edit it; over an edge → status hint; over a waypoint/empty canvas → insert node + label edit. Holding it swaps in context options (Insert Node over items/empty; Add Label / Add Waypoint over edges); with a selection the static Edit submenu (Overflow, Toggle Pin) is kept. Plumbing: keymenu sends `QUERY_EDIT_CONTEXT` on keydown, drawing area answers synchronously with an `edit-context` notification; tap emits `EDIT_OR_INSERT`, decided entirely in the drawing area (`computeEditContext` / `handleEditOrInsert`). Verified end-to-end via Playwright (23-check script driving real key events).
 10. **Edge labels are path-anchored.** A label's position is no longer absolute x/y but an anchor — arc-length fraction `t` (0..1) along the edge's rendered polyline plus a discrete `side` (`above`/`on`/`below`; "above" is screen-stable, independent of edge direction). `DAEdge.refreshGeometry()` re-derives every label's x/y from its anchor, so labels follow node moves, waypoint drags, and re-routing for free. Pure geometry in `edge-label-anchor.ts` (unit-tested): `pointAtT`, `projectPointToPath`, `anchorPosition`, canonical stops at t = 0.1/0.5/0.9. Label-only movement keys: left/right slide `t` by grid spacing (fine tier = subgrid), coarse tier snaps between the start/middle/end stops, up/down cycle above → on → below. Add Label anchors at the projected crosshairs `t` on the line. Persistence: snapshots carry `edgeT`/`side`; the file format gains `labelAnchors` (`{t, side?}`, index-aligned with semantic labels) replacing `labelOffsets`, which is still read for migration — legacy absolute positions restore by projecting onto the path (`adoptLabelPosition`). Degenerate paths (overlapping nodes → zero length) leave the label in place until geometry recovers. Verified end-to-end via `tools/repro-edge-label-anchors.js` (15 checks: add flow, node-move/re-route following, slide/snap/side keys, serialize round trip, legacy projection). Remaining from the [`notes/decision-interaction-model.md`](notes/decision-interaction-model.md) roadmap: move-by-graph fix → gathering/collapse rework.
+11. **Label add/edit/move interaction fixes (2026-07-13).** Dogfooding the path-anchored labels surfaced three defects, all fixed:
+    - **Select+Drag couldn't target labels.** The hold-`v` selection helpers (`ensureTopItemSelected` / `isTopItemSelected` / `toggleTopItemSelection`) hit-tested waypoint → node → edge only, and nothing in the keymenu emits `SINGLE_ITEM_SELECT` (the one selector that did check labels), so the label slide/side-cycle machinery shipped in item 10 was unreachable except through in-graph search. The three helpers now check `getLabelUnderCrosshairs()` first, matching `singleItemSelect` / `computeEditContext` priority. Hover a label + hold `v`: `h`/`l` slide its `t` (coarse snaps stops), `j`/`k` cycle above/on/below.
+    - **New labels were born with literal text `label`.** Label-edit is append-only, so the default text had to be backspaced away, and Add Label deselected afterwards, leaving the user to navigate back onto the label to edit it. `addLabel` now creates the label **empty and selected**, and releasing the held submenu key (`f` insert or `i` edit-context) drops straight into label-edit mode — confirmation-driven via the new `label-added` DANotification (armed only on success, so Add Label over empty canvas doesn't strand you in labelEdit). Labels still empty on exit are pruned rather than left as invisible hit-targets.
+    - **Held Add Label auto-repeated**, silently stacking identical labels on the same anchor — you'd edit the top one while the one underneath kept showing "label" (the reported "label doesn't go away" bug). The insert-submenu Label, Waypoint, and Invisible-node actions are now `repeat: false` one-shots (`LabeledAction` repeat flag).
+
+    Verified end-to-end via `tools/repro-label-edit-flow.js` (16 checks driving real key events: single label from a held key, empty+selected creation, labelEdit on release, typed text with no prefix, empty-label pruning, select+drag slide/side, failure over empty canvas); `repro-edge-label-anchors.js` still 15/15; 235/235 unit tests.
 
 ## Routing-eval harness
 
@@ -31,6 +37,7 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `49cf542` | Label add/edit/move fixes: selectable via v, born empty into edit mode, no repeat-stacking |
 | `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
 | `fa4d975` | dev-server: allow kidraw.dev.bnjmnbrmn.com as a serve host |
 | `c1e9674` | next: reorganize planning notes into pre/post-MVP |
@@ -40,7 +47,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `03075fd` | notes: rework diagram-types idea into extensions + contribution points |
 | `5294ea0` | notes: record custom-color persistence bug |
 | `0bed763` | 'fit' text-overflow mode; todo cards now size to their text |
-| `b8d55d1` | Growing a node pushes overlapping neighbors aside |
 
 ---
 
