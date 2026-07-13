@@ -42,6 +42,8 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `754dd86` | Move-by-graph traversal rework: stop-based walking, momentum edge pick, tiers |
+| `6b0b5d0` | dev-status: record keymenu binding reorg |
 | `180534a` | Keymenu binding reorg: f = move-by-graph, a = insert, m becomes File menu |
 | `f17b3b4` | dev-status: record move-by-graph Q1/Q2 decisions (momentum + reverse course) |
 | `fcaae53` | dev-status: spec the Move-by-graph rework (next session) |
@@ -50,8 +52,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
 | `fa4d975` | dev-server: allow kidraw.dev.bnjmnbrmn.com as a serve host |
 | `c1e9674` | next: reorganize planning notes into pre/post-MVP |
-| `49c265a` | dev-status: record extensions identity slot + persistence cascade |
-| `eab8642` | Extensions with identity slot; node styles cascade, derived sizes stop persisting |
 
 ---
 
