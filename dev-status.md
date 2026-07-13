@@ -40,6 +40,9 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `180534a` | Keymenu binding reorg: f = move-by-graph, a = insert, m becomes File menu |
+| `f17b3b4` | dev-status: record move-by-graph Q1/Q2 decisions (momentum + reverse course) |
+| `fcaae53` | dev-status: spec the Move-by-graph rework (next session) |
 | `3e85d36` | Labels auto-size to their text: no more 50x30 clipping limit |
 | `49cf542` | Label add/edit/move fixes: selectable via v, born empty into edit mode, no repeat-stacking |
 | `26d39dd` | Path-anchored edge labels: (t, side) anchors follow moves and re-routing |
@@ -47,9 +50,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `c1e9674` | next: reorganize planning notes into pre/post-MVP |
 | `49c265a` | dev-status: record extensions identity slot + persistence cascade |
 | `eab8642` | Extensions with identity slot; node styles cascade, derived sizes stop persisting |
-| `e2889f9` | notes: record extension decisions + post-persistence roadmap |
-| `03075fd` | notes: rework diagram-types idea into extensions + contribution points |
-| `5294ea0` | notes: record custom-color persistence bug |
 
 ---
 
