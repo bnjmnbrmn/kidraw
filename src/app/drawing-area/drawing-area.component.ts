@@ -1543,33 +1543,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return matches;
   }
 
-  /** Select the match, jump the crosshairs to it, and report position. */
+  /** Select the match, move the crosshairs onto it AND recenter the view on
+   *  it (pan only, no rescale — the match lands at screen center under the
+   *  crosshairs), then report position. */
   private focusSearchMatch(match: SearchMatch, index: number, total: number): void {
-    // Land any in-flight crosshairs tween BEFORE computing the jump delta.
-    // moveCrosshairsBy() finishes tweens itself, but only after we've read
-    // the (mid-tween) crosshairs position — a rapid n/p sequence would then
-    // apply a stale delta and strand the crosshairs between two matches.
+    // Land any in-flight tween BEFORE reading positions — a rapid n/p
+    // sequence would otherwise pan from a mid-tween layer offset.
     this.finishTweens();
     this.lastSearchMatch = match;
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+
     let text: string;
+    let layerCenter: {x: number; y: number};
     if (match.kind === 'node') {
       text = match.node.label.text();
-      this.focusNode(match.node);
+      match.node.isSelected = true;
+      layerCenter = this.getNodeCenterInLayerCoordinates(match.node);
     } else {
       text = match.label.label;
-      this.drawingLayer.unselectAll();
-      this.unselectAllLabels();
       match.label.isSelected = true;
-      // Label x/y are drawing-layer coords (label center) → stage coords.
-      const scale = this.drawingLayer.scaleX();
-      const stageX = this.drawingLayer.x() + match.label.x * scale;
-      const stageY = this.drawingLayer.y() + match.label.y * scale;
-      this.moveCrosshairsBy(
-        stageX - this.crosshairsLayer.crosshairs.x,
-        stageY - this.crosshairsLayer.crosshairs.y,
-      );
-      this.checkAndEmitEditState();
+      // Label x/y are already drawing-layer coords (label center).
+      layerCenter = {x: match.label.x, y: match.label.y};
     }
+    this.centerViewOnLayerPoint(layerCenter);
+    this.checkAndEmitEditState();
     this.drawingLayer.batchDraw();
     const shown = text.length > 40 ? `${text.slice(0, 40)}…` : text;
     this.emitStatus(`Match ${index + 1}/${total}: "${shown}"`);
