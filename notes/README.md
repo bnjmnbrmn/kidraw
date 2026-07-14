@@ -52,6 +52,8 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Shift-shift timing](idea-shift-shift-timing.md)
 - [Label-edit mode overhaul](idea-label-edit-overhaul.md)
 
+- [Todo-graph modeling — typed nodes/edges, derived semantics, scenarios](idea-todo-graph-modeling.md) — the ontology brainstorm (2026-07-14): node/edge kinds, ready-frontier/blocked/critical-path payoffs, and the scenario dataset list.
+
 **Drawing / canvas:**
 
 - [Richer edge kinds (self-loops, parallels, dangling, grouping)](idea-richer-edges.md)
