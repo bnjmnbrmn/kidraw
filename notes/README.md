@@ -40,6 +40,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 **Keymenu / interaction:**
 
 - [Keymenu binding reorg — f for graph nav, a for insert, File menu cleanup](plan-keymenu-binding-reorg.md) — full root-level inventory + the rebind decisions (implemented 2026-07-13).
+- [Graph nav — maybe swap n/p and j/k roles](idea-graph-nav-key-swap.md) — siblings on n/p, in/out of edges on j/k; undecided, dogfood first.
 - [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)
 - [Left-hand-dominant profile](idea-left-hand-profile.md)
 - [Visualize greyed-out submenu options](idea-greyed-submenu-options.md)
@@ -70,6 +71,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 **Routing / layout:**
 
+- [Post-layout edge quality — crossings and wiggles the router introduces](idea-routing-post-layout-quality.md) — why a pure tree ends up with crossings after auto-route (priority inversion, degree-blind fan rules) + fix directions.
 - [Auto-tune edge-routing parameters on benchmark graphs](idea-routing-auto-tune.md)
 - [Incremental desiderata-first edge routing](idea-incremental-edge-routing.md)
 - [Incremental desiderata router v2 — plan + foundation status](plan-incremental-desiderata-v2.md) — the live revival effort: harness-only `incremental-desiderata-v2`, local scoring, budgets, `npm run routing-test`.
