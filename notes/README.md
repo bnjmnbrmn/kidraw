@@ -72,6 +72,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 **Routing / layout:**
 
 - [Post-layout edge quality — crossings and wiggles the router introduces](idea-routing-post-layout-quality.md) — why a pure tree ends up with crossings after auto-route (priority inversion, degree-blind fan rules) + fix directions.
+- [Layout-side guarantees — no straight edge through a node, fewer crossings](idea-layout-node-edge-avoidance.md) — per-layout mechanisms + a layout-agnostic pierce-resolution post-pass; composes with the routing note.
 - [Auto-tune edge-routing parameters on benchmark graphs](idea-routing-auto-tune.md)
 - [Incremental desiderata-first edge routing](idea-incremental-edge-routing.md)
 - [Incremental desiderata router v2 — plan + foundation status](plan-incremental-desiderata-v2.md) — the live revival effort: harness-only `incremental-desiderata-v2`, local scoring, budgets, `npm run routing-test`.
