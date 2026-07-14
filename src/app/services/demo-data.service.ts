@@ -3,6 +3,10 @@ import { DANode } from '../drawing-area/da-node';
 import { DAEdge } from '../drawing-area/da-edge';
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { NodeShape } from '../drawing-area/command.model';
+import { parseGraphDocYaml } from '../lib/file-format/parser';
+import { resolveAndApplyToGraph } from '../lib/file-format/resolver';
+import { filesToSnapshot } from '../lib/file-format/snapshot-mapping';
+import { KIDRAW_DEV_SAMPLE_YAML } from './samples/kidraw-dev-sample';
 
 export interface SampleGraphDef {
   id: string;
@@ -28,6 +32,8 @@ export class DemoDataService {
 
   readonly sampleGraphs: SampleGraphDef[] = [
     { id: 'basic', label: 'Basic Flow' },
+    { id: 'kidraw-dev', label: 'KiDraw Dev (typed todo)' },
+    { id: 'fan-tree', label: 'Fan Tree (18-way stress)' },
     { id: 'classes', label: 'Kidraw Classes' },
     { id: 'files', label: 'Project Files' },
     { id: 'modes', label: 'Mode / Shortcut Hierarchy' },
@@ -48,6 +54,8 @@ export class DemoDataService {
   private getGraphBuilder(graphId: string): ((dl: DrawingLayer) => void) | undefined {
     switch (graphId) {
       case 'basic': return dl => this.buildBasicFlow(dl);
+      case 'kidraw-dev': return dl => this.buildKidrawDevTodo(dl);
+      case 'fan-tree': return dl => this.buildFanTree(dl);
       case 'classes': return dl => this.buildClassDiagram(dl);
       case 'files': return dl => this.buildFileDiagram(dl);
       case 'modes': return dl => this.buildModeDiagram(dl);
@@ -55,6 +63,60 @@ export class DemoDataService {
       case 'nudge-fan': return dl => this.buildNudgeFan(dl);
       case 'nudge-converge': return dl => this.buildNudgeConverge(dl);
       default: return undefined;
+    }
+  }
+
+  /** The typed non-tree todo graph (KiDraw development), loaded through the
+   *  real file pipeline: parse → tagStyles cascade → snapshot. Categories,
+   *  goals, questions, and notes get their shapes/sizes from the sample's
+   *  own tagStyles, so this sample end-to-end exercises the typed-todo file
+   *  format (notes/idea-todo-graph-modeling.md). */
+  private buildKidrawDevTodo(dl: DrawingLayer): void {
+    const parsed = parseGraphDocYaml(KIDRAW_DEV_SAMPLE_YAML);
+    if (!parsed.ok) {
+      console.error('kidraw-dev sample failed to parse:', parsed.error);
+      return;
+    }
+    const doc = parsed.value;
+    const first = doc.styles?.[0];
+    // A StyleRef can be an external path (string); the sample only ever
+    // carries an inline style.
+    const inline = typeof first === 'object' ? first : undefined;
+    const resolved = inline
+      ? resolveAndApplyToGraph(doc, inline, () => null)
+      : undefined;
+    if (resolved && !resolved.ok) {
+      console.error('kidraw-dev sample style failed to resolve:', resolved.error);
+      return;
+    }
+    dl.restoreGraph(filesToSnapshot(doc, resolved?.ok ? resolved.value : {kdStyle: 1}));
+  }
+
+  /** The layout stress shape: an 18-way fan with jittered children, four
+   *  deeper chains, and mixed node sizes (what makes fan chords clip
+   *  siblings). Same construction the layout repros measure against. */
+  private buildFanTree(dl: DrawingLayer): void {
+    const root = new DANode(0, 0, 'hub');
+    dl.addRawNode(root);
+    root.resizeBy(160);
+    const kids: DANode[] = [];
+    for (let i = 0; i < 18; i++) {
+      const kid = new DANode((i - 9) * 160, 300 + (i % 3) * 40, `task ${i + 1}`);
+      dl.addRawNode(kid);
+      dl.addRawEdge(new DAEdge(root, kid, ''));
+      kids.push(kid);
+    }
+    kids[2].resizeBy(120);
+    kids[9].resizeBy(120);
+    for (let i = 0; i < 4; i++) {
+      let parent = kids[i];
+      for (let d = 0; d < 3; d++) {
+        const child = new DANode(
+          parent.konvaGroup.x() + 20, parent.konvaGroup.y() + 180, `sub ${i + 1}.${d + 1}`);
+        dl.addRawNode(child);
+        dl.addRawEdge(new DAEdge(parent, child, ''));
+        parent = child;
+      }
     }
   }
 

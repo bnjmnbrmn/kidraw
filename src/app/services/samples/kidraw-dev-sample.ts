@@ -1,3 +1,11 @@
+/** The kidraw-dev sample graph — KiDraw development as a typed non-tree
+ *  todo graph (40 nodes, 59 edges, 15 multi-parent). AUTHORITATIVE copy:
+ *  tools/typed-dataset.js extracts this literal for the gallery/metrics
+ *  tools, and DemoDataService loads it through the real file pipeline
+ *  (parse → tagStyles cascade → snapshot), so the sample doubles as an
+ *  end-to-end exercise of the typed-todo file format
+ *  (notes/idea-todo-graph-modeling.md). */
+export const KIDRAW_DEV_SAMPLE_YAML = `
 # KiDraw development as a typed todo graph — the first NON-TREE scenario
 # dataset (notes/idea-todo-graph-modeling.md). Node types via tags
 # (goal/category/question/note/task), edge kinds via tags (component-of /
@@ -10,6 +18,11 @@ kidraw: 1
 type: todo-graph
 styles:
   - name: default
+    tagStyles:
+      category: {shape: box, w: 280, h: 100, fontSize: 30}
+      goal: {shape: circle, w: 190, h: 190, fontSize: 20}
+      question: {shape: diamond, w: 240, h: 130, fontSize: 14}
+      note: {shape: box, w: 160, h: 50, fontSize: 10}
 semantics:
   nodes:
     g0: {label: "MVP launch", tags: [goal]}
@@ -117,3 +130,4 @@ semantics:
     # note attachments.
     e70: {from: n1, to: t8, tags: [note]}
     e71: {from: n2, to: q4, tags: [note]}
+`;

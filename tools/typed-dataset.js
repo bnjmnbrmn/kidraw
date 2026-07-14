@@ -32,9 +32,21 @@ const TYPE_STYLES = {
   task:     {}, // plugin defaults
 };
 
+/** Dataset YAML text from either a plain .yaml file or a TS module that
+ *  exports it as a single template literal (the kidraw-dev sample lives in
+ *  src/app/services/samples/kidraw-dev-sample.ts so the app bundles it). */
+function loadYamlText(datasetPath) {
+  const raw = fs.readFileSync(datasetPath, 'utf8');
+  if (!datasetPath.endsWith('.ts')) return raw;
+  const first = raw.indexOf('`');
+  const last = raw.lastIndexOf('`');
+  if (first < 0 || last <= first) throw new Error(`no template literal in ${datasetPath}`);
+  return raw.slice(first + 1, last);
+}
+
 /** → {draft, counts} */
 function buildTypedDraft(datasetPath) {
-  const doc = yaml.load(fs.readFileSync(datasetPath, 'utf8'));
+  const doc = yaml.load(loadYamlText(datasetPath));
   const inline = (doc.styles ?? [])[0] ?? {};
   const style = { kdStyle: 1, nodes: { ...(inline.nodes ?? {}) } };
   for (const k of ['imports', 'tagStyles', 'edges', 'view']) {
