@@ -50,10 +50,19 @@ BFS with exclusion set) + `placeGatherTree` (wedge/ring placement, now
 ancestor-side only) + new `placeChildColumn`. Verified visually on the
 typed next graph (`/shots/…-next-typed` gather views).
 
+**Gather now routes** (2026-07-14 `c335db6`): every edge touching a
+gathered node is re-routed with the incremental router once the placement
+tweens land, so nothing runs behind nodes in the gathered view; Ungather
+restores the exact pre-gather control points. Ben's "balance further-apart
+vs waypoints" framing: gather chose waypoints (positions are temporary
+anyway); layouts choose distance first (level-gap widening) with routing as
+the follow-up for non-tree edges.
+
 Still open from the sections below: push-away of unrelated nodes (a
 non-participant sitting where the column lands can be occluded),
-nav-corridor reservation, recursive plain-gather, and whether diamonds'
-pointed corners need extra stack gap in the column.
+nav-corridor reservation, recursive plain-gather, whether diamonds'
+pointed corners need extra stack gap in the column, and Ben's
+**children-along-a-curve** idea for when the column outgrows the viewport.
 
 ## Nav-aware gathering (Ben, 2026-07-13)
 
