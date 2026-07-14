@@ -76,6 +76,26 @@ for the layout/routing work and the `/shots/` gallery.
 - **Categories** may ultimately be zones (containers) rather than nodes —
   see [idea-zones](idea-zones.md); model as nodes for now.
 
+## Means vs. ends (Ben, 2026-07-14: "not sure how useful")
+
+Decision sketch: **model it structurally, not as a task attribute.** A means
+is a task whose value flows through its outgoing `serves`/`component-of`/
+`depends-on` edges; an end-in-itself is a **value sink** (usually a Goal
+node; occasionally a task flagged intrinsic). Tasks that are both just have
+both properties — no special case.
+
+- **Primary payoff — task garbage collection**: when an end completes or is
+  dropped, walk the serves chains backward and offer to sweep tasks that
+  *only* served it (the "third contractor quote" zombie after the estimate
+  was approved). A cascade review list tools structurally can't do.
+- Secondary: motivation surfacing (traverse chore → why it exists) and
+  pruning leverage (cut weak-ended means first; never cut sinks).
+- **Adoption rule**: orphanhood is *visible, not forbidden* — a validation
+  highlight ("serves nothing"), never mandatory metadata; one edge fixes it.
+- **Empirical test**: build the KiDraw-dev dataset with serves edges (roadmap
+  items genuinely serve MVP/dogfooding goals) and keep the concept only if
+  the orphan-sweep proves useful there.
+
 ## Scenario datasets (ordered by shape diversity)
 
 1. **KiDraw development itself** — workstreams as categories, the
