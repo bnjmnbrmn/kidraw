@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const yaml = require('js-yaml');
+const { pageHtml, writeRootIndex } = require('./shots-common');
 
 const OUT_ROOT = '/var/www/kidraw-shots';
 const APP_URL = process.env.KIDRAW_URL || 'http://localhost:4200';
@@ -148,31 +149,16 @@ async function main() {
     <h2>${layout}</h2>
     <div class="row">${ss.map(s => `
       <figure><a href="${s.file}"><img src="${s.file}" loading="lazy"></a>
-      <figcaption>${s.name}</figcaption></figure>`).join('')}
+      <figcaption>${s.layout} · ${s.name}</figcaption></figure>`).join('')}
     </div>`).join('');
-  fs.writeFileSync(path.join(runDir, 'index.html'), `<!doctype html>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>next.org typed — ${stamp}</title>
-<style>
-  body{font-family:system-ui;margin:12px;background:#181a1f;color:#ddd}
-  h2{border-bottom:2px solid #444;padding-bottom:4px}
-  .row{display:flex;flex-wrap:wrap;gap:8px}
-  figure{margin:0;flex:1 1 300px;max-width:480px}
-  img{width:100%;border:1px solid #444;border-radius:4px}
-  figcaption{font-size:12px;color:#999;text-align:center}
-</style>
-<h1>next.org, typed (dark)</h1>
-<p>commit <code>${commit}</code> · category=big box · goal=circle · question=diamond · note=small box · task=default</p>
-${sections}`);
+  fs.writeFileSync(path.join(runDir, 'index.html'), pageHtml(
+    `next.org typed — ${stamp}`,
+    'next.org, typed (dark)',
+    `commit <code>${commit}</code> · category=big box · goal=circle · question=diamond · note=small box · task=default`,
+    sections,
+  ));
 
-  const runs = fs.readdirSync(OUT_ROOT, { withFileTypes: true })
-    .filter(d => d.isDirectory()).map(d => d.name).sort().reverse();
-  fs.writeFileSync(path.join(OUT_ROOT, 'index.html'), `<!doctype html>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>kidraw layout galleries</title>
-<style>body{font-family:system-ui;margin:16px} li{margin:6px 0;font-size:18px}</style>
-<h1>kidraw layout galleries</h1>
-<ul>${runs.map(r => `<li><a href="${r}/">${r}</a></li>`).join('')}</ul>`);
+  writeRootIndex(OUT_ROOT);
 
   console.log(`\npublished → https://kidraw.dev.bnjmnbrmn.com/shots/${stamp}/`);
 }
