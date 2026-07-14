@@ -18,7 +18,7 @@ import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
-import { applyLayout } from './graph-layout';
+import { applyLayout, isClearLayout } from './graph-layout';
 import { resolveBoxOverlaps } from './overlap-resolution';
 import {
   applyDesiderataRouteEdges,
@@ -1662,11 +1662,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // The layout moved nodes wholesale, so pre-existing unpinned waypoints on
     // affected edges now describe meaningless detours — drop them (pinned
     // waypoints survive setControlPoints) and re-route to fit the new
-    // positions.
+    // positions. The "-clear" variants guarantee pierce-free straight edges,
+    // so they deliberately skip the router: the straight-edge result IS the
+    // point of comparison (route explicitly afterwards if wanted).
     const touchedEdges = allEdges.filter(
       e => nodeSet.has(e.srcNode) || nodeSet.has(e.destNode));
     for (const e of touchedEdges) e.setControlPoints([]);
     this.drawingLayer.batchDraw();
+    if (isClearLayout(layout)) {
+      this.daOut.emit({kind: 'status-message', message: 'Layout applied — edges left straight (clear variant).'});
+      return;
+    }
     this.applyEdgeRouting(
       this.lastAppliedRouting ?? 'incremental-desiderata-v3', touchedEdges);
   }

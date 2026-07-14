@@ -2,6 +2,8 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { LayoutType } from './command.model';
 import { resolveBoxOverlaps } from './overlap-resolution';
+import { resolveEdgeNodeOverlaps } from './edge-node-overlap-resolution';
+import { closestPointOnSegment } from './utils';
 
 interface NodePos {
   node: DANode;
@@ -29,10 +31,24 @@ export function applyLayout(
     case 'force-directed':
       positions = forceDirectedLayout(nodes, edges, movable, spacing);
       break;
+    // The "-clear" variants are the same algorithms plus straight-edge
+    // guarantees (notes/idea-layout-node-edge-avoidance.md): force adds a
+    // node↔edge repulsion term, and all of them finish with the
+    // edge-node overlap pass below. Kept separate from the originals for
+    // comparison.
+    case 'force-clear':
+      positions = forceDirectedLayout(nodes, edges, movable, spacing, true);
+      break;
     case 'tree-down':
       positions = treeLayout(nodes, edges, movable, spacing, 'down');
       break;
+    case 'tree-down-clear':
+      positions = treeLayout(nodes, edges, movable, spacing, 'down');
+      break;
     case 'tree-right':
+      positions = treeLayout(nodes, edges, movable, spacing, 'right');
+      break;
+    case 'tree-right-clear':
       positions = treeLayout(nodes, edges, movable, spacing, 'right');
       break;
     case 'grid':
@@ -69,10 +85,34 @@ export function applyLayout(
     p.y = boxes[i].y;
   }
 
+  // The "-clear" variants additionally guarantee no straight edge passes
+  // through a non-endpoint node: push pierced boxes off the offending chords
+  // (box overlaps re-resolved inside the pass).
+  if (isClearLayout(layout)) {
+    const indexOf = new Map(nodes.map((n, i) => [n, i]));
+    const edgePairs = edges
+      .map(e => ({a: indexOf.get(e.srcNode), b: indexOf.get(e.destNode)}))
+      .filter((p): p is {a: number; b: number} => p.a !== undefined && p.b !== undefined);
+    for (const i of resolveEdgeNodeOverlaps(boxes, edgePairs, spacing / 8, spacing / 4)) {
+      const p = posOf.get(nodes[i]);
+      if (p) {
+        p.x = boxes[i].x;
+        p.y = boxes[i].y;
+      }
+    }
+  }
+
   for (const p of positions) {
     p.node.konvaGroup.x(p.x);
     p.node.konvaGroup.y(p.y);
   }
+}
+
+/** Layout variants that guarantee straight edges clear of non-endpoint
+ *  nodes (and are left unrouted by the drawing area so the straight-edge
+ *  result is visible). */
+export function isClearLayout(layout: LayoutType): boolean {
+  return layout === 'force-clear' || layout === 'tree-down-clear' || layout === 'tree-right-clear';
 }
 
 function forceDirectedLayout(
@@ -80,6 +120,7 @@ function forceDirectedLayout(
   edges: DAEdge[],
   movable: DANode[],
   spacing: number,
+  nodeEdgeRepulsion = false,
 ): NodePos[] {
   const movableSet = new Set(movable);
 
@@ -162,6 +203,47 @@ function forceDirectedLayout(
         const vb = vel.get(edge.destNode)!;
         vb.vx -= fx;
         vb.vy -= fy;
+      }
+    }
+
+    // Node ↔ edge repulsion (the "-clear" variant): non-incident nodes are
+    // pushed perpendicular off nearby straight chords so the simulation
+    // converges toward pierce-free positions instead of leaving all the work
+    // to the post-pass. Reaction split onto the edge endpoints.
+    if (nodeEdgeRepulsion) {
+      const cutoff = spacing / 2;
+      for (const edge of edges) {
+        if (edge.srcNode === edge.destNode) continue;
+        const pa = pos.get(edge.srcNode)!;
+        const pb = pos.get(edge.destNode)!;
+        for (const n of allNodes) {
+          if (n === edge.srcNode || n === edge.destNode) continue;
+          const pn = pos.get(n)!;
+          const closest = closestPointOnSegment(pn.x, pn.y, pa.x, pa.y, pb.x, pb.y);
+          const dx = pn.x - closest.x;
+          const dy = pn.y - closest.y;
+          const halfBox = Math.max(n.NODE_WIDTH, n.NODE_HEIGHT) / 2;
+          const dist = Math.max(Math.hypot(dx, dy) - halfBox, 1);
+          if (dist >= cutoff) continue;
+          const force = (spacing / 10) * ((cutoff - dist) / cutoff) * temperature;
+          const ux = dx / Math.max(Math.hypot(dx, dy), 1);
+          const uy = dy / Math.max(Math.hypot(dx, dy), 1);
+          if (movableSet.has(n)) {
+            const vn = vel.get(n)!;
+            vn.vx += ux * force;
+            vn.vy += uy * force;
+          }
+          if (movableSet.has(edge.srcNode)) {
+            const va = vel.get(edge.srcNode)!;
+            va.vx -= ux * force / 2;
+            va.vy -= uy * force / 2;
+          }
+          if (movableSet.has(edge.destNode)) {
+            const vb = vel.get(edge.destNode)!;
+            vb.vx -= ux * force / 2;
+            vb.vy -= uy * force / 2;
+          }
+        }
       }
     }
 

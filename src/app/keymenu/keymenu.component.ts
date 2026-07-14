@@ -491,9 +491,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.APPLY_EDGE_ROUTING, algorithm});
     return {
       [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
+      [layout.forceClear]:    new LabeledAction('Force+',   emit('force-clear')),
       [layout.treeDown]:      new LabeledAction('Tree ↓',   emit('tree-down')),
+      [layout.treeDownClear]: new LabeledAction('Tree ↓+',  emit('tree-down-clear')),
       [layout.treeRight]:     new LabeledAction('Tree →',   emit('tree-right')),
-      [layout.grid]:          new LabeledAction('Grid',     emit('grid')),
+      [layout.treeRightClear]: new LabeledAction('Tree →+', emit('tree-right-clear')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
       [layout.routeBezierFitWeightedChain]: new LabeledAction('Route: BF-WC', route('bezier-fit-weighted-chain')),
