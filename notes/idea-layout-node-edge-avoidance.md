@@ -1,7 +1,7 @@
 ---
 title: Layout-side guarantees — no straight edge through a node, fewer crossings
 type: idea
-status: analyzed 2026-07-14, not started
+status: partially implemented 2026-07-14 (post-pass + force term + tree/force -clear variants shipped f0c5a5d; tree geometry-exact repair + circular ordering still open)
 ---
 
 # Layout-side node-edge avoidance + crossing minimization
@@ -74,3 +74,24 @@ implicitly improved in force by the repulsion term (2). Don't chase optimal.
 repair (Ben's primary graph is a pure tree); then (2) force term; then (4).
 Measure on `next.kidraw.yaml` + the routing-eval scenario battery: straight-
 edge pierce count and crossing count before/after each stage.
+
+## Progress (2026-07-14, `f0c5a5d`)
+
+Done: (1) `resolveEdgeNodeOverlaps` post-pass and (2) force node↔edge
+repulsion, wired into three `-clear` layout variants (`force-clear`,
+`tree-down-clear`, `tree-right-clear`) kept alongside the originals for
+comparison; the clear variants skip the router so the straight result shows.
+Measured on the wide-fan tree: straight-edge pierces tree-down 14→0, force
+5→0. `dev-status` Current-focus item 14.
+
+Still open:
+- (3) **Tree geometry-exact pierce repair** — right now the tree clear
+  variant relies on the generic post-pass; a deterministic
+  widen-sibling-gap/level-separation repair would move fewer nodes and keep
+  the tidy structure truer than the greedy push.
+- (4) **Circular/radial ordering** for crossing minimization (no clear
+  variants yet).
+- **Crossing minimization** generally — the post-pass targets pierces, not
+  crossings; a clear variant could add the straight-line-crossing count to
+  what it repairs.
+- Grid stays out of scope (and is now unbound in the menu).
