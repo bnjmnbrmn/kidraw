@@ -6,7 +6,7 @@ import { VisualConfigService } from '../services/visual-config.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
-import { DAEdge } from './da-edge';
+import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
@@ -188,6 +188,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  it renders as a glow (DAEdge.navFocused) and no editing command sees
    *  it. */
   private graphNavEdge: DAEdge | null = null;
+  /** Pre-gather control points of every edge Gather re-routed, so Ungather
+   *  restores the wiring exactly. */
+  private gatheredEdgeControlPoints = new Map<DAEdge, EdgeControlPoint[]>();
 
   private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
@@ -3008,6 +3011,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const ANC_WEDGE: [number, number] = [Math.PI - 0.7, Math.PI + 0.7]; // ~80° facing left
     this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
 
+    // Once the placement tweens land, re-route the edges around the gathered
+    // arrangement so nothing runs behind a node (original control points are
+    // saved and restored by Ungather). The no-op tween is a scheduler: it
+    // fires just after the 0.3s placements, and finishTweens() fires it too,
+    // so tests see the routed state synchronously.
+    const scheduler = new Konva.Tween({
+      node: anchorNode.group,
+      duration: 0.32,
+      x: anchorNode.group.x(),
+      onFinish: () => this.routeGatheredEdges(),
+    });
+    this.tweens.push(scheduler);
+    scheduler.play();
+
     const parts = [
       children.length ? `${children.length} child${children.length === 1 ? '' : 'ren'}` : '',
       ancestors.order.length ? `${ancestors.order.length} ancestor${ancestors.order.length === 1 ? '' : 's'}` : '',
@@ -3044,6 +3061,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }).play());
       y += child.NODE_HEIGHT + STACK_GAP;
     }
+  }
+
+  /** Re-route every edge touching a gathered node (stale detours dropped,
+   *  pinned waypoints survive), saving the original control points so
+   *  Ungather can put the wiring back exactly as it was. */
+  private routeGatheredEdges(): void {
+    const moved = [...this.gatheredNodePositions.keys()];
+    if (moved.length === 0) return;
+    const incident = new Set<DAEdge>();
+    moved.forEach(n => n.connectedEdges.forEach(e => incident.add(e)));
+    for (const edge of incident) {
+      if (!this.gatheredEdgeControlPoints.has(edge)) {
+        this.gatheredEdgeControlPoints.set(edge, edge.controlPoints.map(c => ({...c})));
+      }
+      edge.setControlPoints([]); // detours for the pre-gather positions are meaningless here
+    }
+    this.rerouteIncidentEdges(moved);
+    this.drawingLayer.batchDraw();
   }
 
   /** BFS from the anchor along one direction ('out' = descendants via
@@ -3166,12 +3201,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.gatherRestoreTimeout = null;
     }
 
+    // Put back the pre-gather wiring exactly (gather re-routed the edges
+    // around the temporary arrangement).
+    const restoreEdgeWiring = () => {
+      for (const [edge, cps] of this.gatheredEdgeControlPoints) {
+        edge.restoreControlPoints(cps);
+      }
+      this.gatheredEdgeControlPoints.clear();
+    };
+
     if (!animate) {
       const moved = [...this.gatheredNodePositions.keys()];
       for (const [node, pos] of this.gatheredNodePositions) {
         node.group.position(pos);
       }
       this.gatheredNodePositions.clear();
+      restoreEdgeWiring();
       this.updateEdgesForResizedNodes(moved);
       this.drawingLayer.batchDraw();
       return;
@@ -3191,6 +3236,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }).play());
     }
     this.gatheredNodePositions.clear();
+    restoreEdgeWiring();
   }
 
   /** Auto-select the first edge of the given direction on a node, if any. */

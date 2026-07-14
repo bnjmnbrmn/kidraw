@@ -17,60 +17,22 @@ const { chromium } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const yaml = require('js-yaml');
 const { pageHtml, writeRootIndex } = require('./shots-common');
+const { buildTypedDraft } = require('./typed-dataset');
 
 const OUT_ROOT = '/var/www/kidraw-shots';
 const APP_URL = process.env.KIDRAW_URL || 'http://localhost:4200';
 const NEXT_YAML = '/home/bot/projects/meta-project/kdvault/next.kidraw.yaml';
 
-// Explicit category nodes (grouping buckets that never "complete").
-const CATEGORY_IDS = new Set(['n0', 'n1', 'n29', 'n8', 'n25']);
-// Ends in themselves.
-const GOAL_IDS = new Set(['n41']); // "Compete with Obsidian"
-// Commentary / annotation nodes (no action in them).
-const NOTE_IDS = new Set(['n21', 'n22', 'n31', 'n32', 'n40']);
-
-function classify(id, label) {
-  if (CATEGORY_IDS.has(id)) return 'category';
-  if (GOAL_IDS.has(id)) return 'goal';
-  if ((label ?? '').trim().endsWith('?')) return 'question';
-  if (NOTE_IDS.has(id)) return 'note';
-  return 'task';
-}
-
-// Shape + size per type (fill/stroke would be better; blocked on the color
-// round-trip bug).
-const TYPE_STYLES = {
-  category: { shape: 'box', w: 280, h: 100, fontSize: 30 },
-  goal:     { shape: 'circle', w: 190, h: 190, fontSize: 20 },
-  question: { shape: 'diamond', w: 240, h: 130, fontSize: 14 },
-  note:     { shape: 'box', w: 160, h: 50, fontSize: 10 },
-  task:     {}, // plugin defaults
-};
+// Usage: node tools/next-typed-viz.js [dataset.kidraw.yaml] [runLabel]
+const DATASET = process.argv[2] || NEXT_YAML;
+const RUN_LABEL = process.argv[3] || 'next-typed';
 
 async function main() {
-  const doc = yaml.load(fs.readFileSync(NEXT_YAML, 'utf8'));
-  const inline = (doc.styles ?? [])[0] ?? {};
-  const style = { kdStyle: 1, nodes: { ...(inline.nodes ?? {}) } };
-  for (const k of ['imports', 'tagStyles', 'edges', 'view']) {
-    if (inline[k] !== undefined) style[k] = inline[k];
-  }
-
-  const counts = {};
-  for (const [id, node] of Object.entries(doc.semantics.nodes)) {
-    const type = classify(id, node.label);
-    counts[type] = (counts[type] ?? 0) + 1;
-    node.tags = [...new Set([...(node.tags ?? []), type])];
-    style.nodes[id] = { ...(style.nodes[id] ?? {}), ...TYPE_STYLES[type] };
-  }
+  const { draft, counts } = buildTypedDraft(DATASET);
   console.log('classified:', JSON.stringify(counts));
 
-  const draft = {
-    version: 2, doc, style, filePath: null, dirty: false, savedAt: Date.now(),
-  };
-
-  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '') + '-next-typed';
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '') + '-' + RUN_LABEL;
   const runDir = path.join(OUT_ROOT, stamp);
   fs.mkdirSync(runDir, { recursive: true });
 
@@ -103,9 +65,14 @@ async function main() {
   const canvasBox = await page.locator('#mainDrawingArea').boundingBox();
   const shots = [];
 
-  const centerOn = async (labelText, scale) => da(`
+  // Rank = 0 → busiest node (by degree), 1 → second busiest, and so on.
+  const hubExpr = (rank) => `
+    (dl.getDANodes().slice().sort((a, b) =>
+      (b.outgoingEdges.length + b.incomingEdges.length)
+      - (a.outgoingEdges.length + a.incomingEdges.length))[${rank}])`;
+  const centerOn = async (rank, scale) => da(`
     const dl = da.drawingLayer;
-    const hub = dl.getDANodes().find(n => n.label.text().includes(${JSON.stringify(labelText)}));
+    const hub = ${hubExpr(rank)};
     if (!hub) return;
     const s = ${scale};
     dl.scaleX(s); dl.scaleY(s);
@@ -123,13 +90,13 @@ async function main() {
     da.drawingLayer.batchDraw();
   `);
 
-  // Move the crosshairs onto a node (by label substring) so gather anchors
-  // on it, then gather its lineage.
-  const gatherOn = async (labelText) => {
+  // Move the crosshairs onto the rank-th busiest node so gather anchors on
+  // it, then gather around it.
+  const gatherOn = async (rank) => {
     await da(`
       da.tweens.forEach(t => t.finish()); da.tweens = [];
       const dl = da.drawingLayer;
-      const hub = dl.getDANodes().find(n => n.label.text().includes(${JSON.stringify(labelText)}));
+      const hub = ${hubExpr(rank)};
       da.crosshairsLayer.crosshairs.x = dl.x() + (hub.konvaGroup.x() + hub.NODE_WIDTH / 2) * dl.scaleX();
       da.crosshairsLayer.crosshairs.y = dl.y() + (hub.konvaGroup.y() + hub.NODE_HEIGHT / 2) * dl.scaleY();
       da.handleCommands({kind: "GATHER_DESCENDANTS"});
@@ -165,22 +132,20 @@ async function main() {
     // Plain views.
     await da('da.handleCommands({kind:"UNSELECT_ALL"}); da.handleCommands({kind:"RECENTER_VIEW"});');
     await shoot('fit');
-    await centerOn('Pre-MVP', 0.7);
-    await shoot('pre-mvp-70');
-    await centerOn('Post-MVP', 0.7);
-    await shoot('post-mvp-70');
-    await centerOn('Post-MVP', 1.0);
-    await shoot('post-mvp-100');
+    await centerOn(0, 0.7);
+    await shoot('hub1-70');
+    await centerOn(1, 0.7);
+    await shoot('hub2-70');
 
-    // Gather Around: children fan right, ancestors left.
-    await gatherOn('Pre-MVP');
-    await centerOn('Pre-MVP', 0.55);
-    await shoot('gather-pre-mvp');
+    // Gather Around: child column right, ancestors left, edges re-routed.
+    await gatherOn(1);
+    await centerOn(1, 0.55);
+    await shoot('gather-hub2');
     await ungather();
 
-    await gatherOn('Support edge labels');
-    await centerOn('Support edge labels', 0.8);
-    await shoot('gather-edge-labels-node');
+    await gatherOn(2);
+    await centerOn(2, 0.7);
+    await shoot('gather-hub3');
     await ungather();
   }
   await browser.close();

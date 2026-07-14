@@ -11,6 +11,15 @@ interface NodePos {
   y: number;
 }
 
+/** Node box in LAYER coordinates. DANode.getClientRect() is stage-absolute
+ *  (zoom-scaled) — right for crosshairs hit-tests, wrong for layout math,
+ *  which mixes sizes with layer-space konvaGroup positions; at any zoom
+ *  other than 100% the absolute rect silently shrinks/grows every slot. */
+function layerRect(n: DANode): {x: number; y: number; width: number; height: number} {
+  const layer = n.konvaGroup.getLayer();
+  return n.konvaGroup.getClientRect(layer ? {relativeTo: layer} : undefined);
+}
+
 /** Center-to-center distance a node needs along a ring or row so its box plus
  *  half a spacing of clearance fits; never less than the plain spacing. */
 function slotExtent(n: DANode, spacing: number): number {
@@ -362,7 +371,7 @@ function treeLayout(
   // Each node claims a slot at least `spacing` wide, more if its box is wider,
   // so long labels don't overlap.
   const slotOf = (n: DANode): number => {
-    const rect = n.getClientRect();
+    const rect = layerRect(n);
     const breadth = direction === 'down' ? rect.width : rect.height;
     return Math.max(spacing, (Number.isFinite(breadth) ? breadth : 0) + spacing / 2);
   };
@@ -648,7 +657,7 @@ function treeLayout(
   // of clear corridor.
   const levelDepthExtent = new Map<number, number>();
   for (const n of allNodes) {
-    const rect = n.getClientRect();
+    const rect = layerRect(n);
     const ext = direction === 'down' ? rect.height : rect.width;
     const lvl = depthLevel.get(n)!;
     levelDepthExtent.set(lvl, Math.max(
@@ -679,12 +688,12 @@ function treeLayout(
   if (repairPierces) {
     const clearance = spacing / 8;
     const breadthExtentOf = (n: DANode): number => {
-      const rect = n.getClientRect();
+      const rect = layerRect(n);
       const ext = direction === 'down' ? rect.width : rect.height;
       return Number.isFinite(ext) ? ext : 0;
     };
     const depthExtentOf = (n: DANode): number => {
-      const rect = n.getClientRect();
+      const rect = layerRect(n);
       const ext = direction === 'down' ? rect.height : rect.width;
       return Number.isFinite(ext) ? ext : 0;
     };
@@ -730,7 +739,7 @@ function treeLayout(
   // up visually centered on their slots and level lines.
   const laid = new Map<DANode, { x: number; y: number }>();
   for (const n of allNodes) {
-    const rect = n.getClientRect();
+    const rect = layerRect(n);
     const halfW = Number.isFinite(rect.width) ? rect.width / 2 : 0;
     const halfH = Number.isFinite(rect.height) ? rect.height / 2 : 0;
     const b = breadthPos.get(n)!;

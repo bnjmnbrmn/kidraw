@@ -1,0 +1,119 @@
+# KiDraw development as a typed todo graph — the first NON-TREE scenario
+# dataset (notes/idea-todo-graph-modeling.md). Node types via tags
+# (goal/category/question/note/task), edge kinds via tags (component-of /
+# depends-on / serves / note). depends-on points prerequisite → dependent
+# (flow of enablement); component-of points parent → part.
+#
+# Deliberately non-tree: ~14 nodes have more than one incoming edge
+# (depends-on cross-links between categories, serves edges into goals).
+kidraw: 1
+type: todo-graph
+styles:
+  - name: default
+semantics:
+  nodes:
+    g0: {label: "MVP launch", tags: [goal]}
+    g1: {label: "Compete with Obsidian", tags: [goal]}
+    c0: {label: "KiDraw", tags: [category]}
+    c1: {label: "Routing", tags: [category]}
+    c2: {label: "Keymenu", tags: [category]}
+    c3: {label: "Serialization", tags: [category]}
+    c4: {label: "Navigation & gather", tags: [category]}
+    c5: {label: "Todo modeling", tags: [category]}
+    c6: {label: "Trad/large menus", tags: [category]}
+    c7: {label: "Styling", tags: [category]}
+    t1: {label: "Post-layout routing profile", tags: [task]}
+    t2: {label: "No-new-crossings vs straight baseline", tags: [task]}
+    t3: {label: "Straight-line reversion pass", tags: [task]}
+    t4: {label: "Degree-aware fan demands", tags: [task]}
+    t5: {label: "Fix color round-trip to canvas", tags: [task]}
+    t6: {label: "Type-to-color mapping for todo graphs", tags: [task]}
+    t7: {label: "Design trad/large-menu interaction", tags: [task]}
+    t8: {label: "Fix held-chord order bugs", tags: [task]}
+    t9: {label: "Key-command binding language", tags: [task]}
+    t10: {label: "Dirty indicator + beforeunload", tags: [task]}
+    t11: {label: "Vault fuzzy finder", tags: [task]}
+    t12: {label: "Multi-file save preserving style imports", tags: [task]}
+    t13: {label: "Edge kind field in file format", tags: [task]}
+    t14: {label: "Ready-frontier highlight", tags: [task]}
+    t15: {label: "Nav-corridor reservation in gather", tags: [task]}
+    t16: {label: "Push-away for gather column", tags: [task]}
+    t17: {label: "Typed traversal: follow only depends-on", tags: [task]}
+    t18: {label: "Status lifecycle on tasks", tags: [task]}
+    t19: {label: "Serves-edge orphan sweep", tags: [task]}
+    t20: {label: "Build condo scenario dataset", tags: [task]}
+    t21: {label: "Style-definition large menu", tags: [task]}
+    t22: {label: "Open/Save large menus", tags: [task]}
+    t23: {label: "Kind-aware spanning forest in tree layout", tags: [task]}
+    t24: {label: "Semantic zoom: importance floors", tags: [task]}
+    q1: {label: "Departure tangent or endpoint bearing?", tags: [question]}
+    q2: {label: "Sticky tier mode instead of held chords?", tags: [question]}
+    q3: {label: "n/p siblings, j/k in-out swap?", tags: [question]}
+    q4: {label: "Are categories zones or nodes?", tags: [question]}
+    n1: {label: "Chord bugs bite tier chords too", tags: [note]}
+    n2: {label: "Label-ends-with-? found 11 questions", tags: [note]}
+  edges:
+    # component-of spine (parent → part) — listed first so BFS spanning
+    # prefers them until kind-aware spanning exists.
+    e0: {from: c0, to: c1, tags: [component-of]}
+    e1: {from: c0, to: c2, tags: [component-of]}
+    e2: {from: c0, to: c3, tags: [component-of]}
+    e3: {from: c0, to: c4, tags: [component-of]}
+    e4: {from: c0, to: c5, tags: [component-of]}
+    e5: {from: c0, to: c6, tags: [component-of]}
+    e6: {from: c0, to: c7, tags: [component-of]}
+    e7: {from: c0, to: g0, tags: [component-of]}
+    e8: {from: c0, to: g1, tags: [component-of]}
+    e10: {from: c1, to: t1, tags: [component-of]}
+    e11: {from: c1, to: t2, tags: [component-of]}
+    e12: {from: c1, to: t3, tags: [component-of]}
+    e13: {from: c1, to: t4, tags: [component-of]}
+    e14: {from: c1, to: q1, tags: [component-of]}
+    e15: {from: c7, to: t5, tags: [component-of]}
+    e16: {from: c7, to: t6, tags: [component-of]}
+    e17: {from: c2, to: t8, tags: [component-of]}
+    e18: {from: c2, to: t9, tags: [component-of]}
+    e19: {from: c2, to: q2, tags: [component-of]}
+    e20: {from: c3, to: t10, tags: [component-of]}
+    e21: {from: c3, to: t11, tags: [component-of]}
+    e22: {from: c3, to: t12, tags: [component-of]}
+    e23: {from: c3, to: t13, tags: [component-of]}
+    e24: {from: c4, to: t15, tags: [component-of]}
+    e25: {from: c4, to: t16, tags: [component-of]}
+    e26: {from: c4, to: t17, tags: [component-of]}
+    e27: {from: c4, to: q3, tags: [component-of]}
+    e28: {from: c5, to: t14, tags: [component-of]}
+    e29: {from: c5, to: t18, tags: [component-of]}
+    e30: {from: c5, to: t19, tags: [component-of]}
+    e31: {from: c5, to: t20, tags: [component-of]}
+    e32: {from: c5, to: q4, tags: [component-of]}
+    e33: {from: c6, to: t7, tags: [component-of]}
+    e34: {from: c6, to: t21, tags: [component-of]}
+    e35: {from: c6, to: t22, tags: [component-of]}
+    e36: {from: c1, to: t23, tags: [component-of]}
+    e37: {from: c7, to: t24, tags: [component-of]}
+    # depends-on cross-links (prerequisite → dependent): the non-tree part.
+    e40: {from: t2, to: t3, tags: [depends-on]}
+    e41: {from: t7, to: t11, tags: [depends-on]}
+    e42: {from: t7, to: t21, tags: [depends-on]}
+    e43: {from: t7, to: t22, tags: [depends-on]}
+    e44: {from: t13, to: t17, tags: [depends-on]}
+    e45: {from: t13, to: t14, tags: [depends-on]}
+    e46: {from: t18, to: t14, tags: [depends-on]}
+    e47: {from: t18, to: t19, tags: [depends-on]}
+    e48: {from: t5, to: t6, tags: [depends-on]}
+    e49: {from: t13, to: t23, tags: [depends-on]}
+    e50: {from: t8, to: q2, tags: [depends-on]}
+    e51: {from: t13, to: t20, tags: [depends-on]}
+    # serves (task → goal it advances).
+    e60: {from: t10, to: g0, tags: [serves]}
+    e61: {from: t11, to: g0, tags: [serves]}
+    e62: {from: t7, to: g0, tags: [serves]}
+    e63: {from: t8, to: g0, tags: [serves]}
+    e64: {from: t14, to: g1, tags: [serves]}
+    e65: {from: t19, to: g1, tags: [serves]}
+    e66: {from: t6, to: g1, tags: [serves]}
+    e67: {from: t24, to: g1, tags: [serves]}
+    # note attachments.
+    e70: {from: n1, to: t8, tags: [note]}
+    e71: {from: n2, to: q4, tags: [note]}
