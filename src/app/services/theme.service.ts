@@ -23,6 +23,10 @@ export interface ThemePalette {
   nodeText: string;
   edgeStroke: string;
   edgeFill: string;
+  /** Direction gradient for edges (stroke fades source → dest, arrowhead
+   *  takes the dest color) so flow direction reads at any zoom. Omit for
+   *  flat edgeStroke coloring. */
+  edgeGradient?: { from: string; to: string };
   labelFill: string;
   labelStroke: string;
   labelText: string;
@@ -52,6 +56,7 @@ export const DEFAULT_DARK_PALETTE: ThemePalette = {
   nodeText: '#f0f0f0',
   edgeStroke: '#b0b0b0',
   edgeFill: '#b0b0b0',
+  edgeGradient: { from: '#22d3ee', to: '#facc15' },
   labelFill: '#1a1a1a',
   labelStroke: '#c0c0c0',
   labelText: '#f0f0f0',
@@ -81,6 +86,7 @@ export const DEFAULT_LIGHT_PALETTE: ThemePalette = {
   nodeText: '#1e293b',
   edgeStroke: '#334155',
   edgeFill: '#334155',
+  edgeGradient: { from: '#0e7490', to: '#b45309' },
   labelFill: '#ffffff',
   labelStroke: '#2563eb',
   labelText: '#1e293b',

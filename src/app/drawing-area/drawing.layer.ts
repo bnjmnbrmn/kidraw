@@ -287,6 +287,7 @@ export class DrawingLayer extends Konva.Layer {
   }
   addEdge(srcNode: DANode, destNode: DANode): DAEdge {
     let daEdge = new DAEdge(srcNode, destNode, "", undefined, this.edgeColors());
+    if (this._palette?.edgeGradient) daEdge.setDirectionGradient(this._palette.edgeGradient);
     this.daEdgeGroup.add(daEdge.konvaGroup);
     this.daEdges.push(daEdge);
     return daEdge;
@@ -501,6 +502,7 @@ export class DrawingLayer extends Konva.Layer {
     this.daNodes.forEach(n => n.applyColors(nc));
     this.daEdges.forEach(e => {
       e.applyColors(ec);
+      e.setDirectionGradient(palette.edgeGradient ?? null);
       e.labels.forEach(l => l.applyColors(lc));
     });
   }

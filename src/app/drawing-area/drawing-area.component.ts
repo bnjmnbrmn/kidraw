@@ -2915,6 +2915,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.directedEdgeInProgress = null;
   }
 
+  /** Plain Gather (toggle, auto-restores after 5s): the anchor's immediate
+   *  children line up in a column on its right and its immediate parents in
+   *  a column on its left — same neat placement as Gather Around, one level
+   *  deep both ways. (The old version circled everything at a fixed 150px
+   *  radius, which read as a jumble.) */
   private gatherConnectedNodes(): void {
     this.finishTweens();
 
@@ -2927,44 +2932,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const anchorNode = this.getTraversalAnchorNode();
     if (!anchorNode) return;
 
-    // Collect unique connected nodes
-    const connected = new Set<DANode>();
+    const children: DANode[] = [];
     for (const edge of anchorNode.outgoingEdges) {
-      if (edge.destNode !== anchorNode) connected.add(edge.destNode);
+      if (edge.destNode !== anchorNode && !children.includes(edge.destNode)) {
+        children.push(edge.destNode);
+      }
     }
+    const parents: DANode[] = [];
     for (const edge of anchorNode.incomingEdges) {
-      if (edge.srcNode !== anchorNode) connected.add(edge.srcNode);
+      if (edge.srcNode !== anchorNode && !parents.includes(edge.srcNode)
+          && !children.includes(edge.srcNode)) {
+        parents.push(edge.srcNode);
+      }
     }
-    if (connected.size === 0) return;
+    if (children.length === 0 && parents.length === 0) return;
 
-    // Save original positions and animate nodes close
-    const anchorX = anchorNode.group.x();
-    const anchorY = anchorNode.group.y();
-    const GATHER_RADIUS = 150;
-
-    let i = 0;
-    const total = connected.size;
-    for (const node of connected) {
-      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
-
-      // Arrange in a circle around the anchor
-      const angle = (2 * Math.PI * i) / total;
-      const targetX = anchorX + Math.cos(angle) * GATHER_RADIUS;
-      const targetY = anchorY + Math.sin(angle) * GATHER_RADIUS;
-
-      this.tweens.push(new Konva.Tween({
-        node: node.group,
-        x: targetX,
-        y: targetY,
-        duration: 0.3,
-        easing: Konva.Easings.EaseInOut,
-        onFinish: () => {
-          this.updateEdgesForResizedNodes([node]);
-          this.drawingLayer.batchDraw();
-        },
-      }).play());
-      i++;
-    }
+    this.placeColumn(anchorNode, children, 'right');
+    this.placeColumn(anchorNode, parents, 'left');
+    this.scheduleGatherRouting(anchorNode);
 
     // Auto-restore after 5 seconds
     this.gatherRestoreTimeout = window.setTimeout(() => {
@@ -3007,23 +2992,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    this.placeChildColumn(anchorNode, children);
+    this.placeColumn(anchorNode, children, 'right');
     const ANC_WEDGE: [number, number] = [Math.PI - 0.7, Math.PI + 0.7]; // ~80° facing left
     this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
 
-    // Once the placement tweens land, re-route the edges around the gathered
-    // arrangement so nothing runs behind a node (original control points are
-    // saved and restored by Ungather). The no-op tween is a scheduler: it
-    // fires just after the 0.3s placements, and finishTweens() fires it too,
-    // so tests see the routed state synchronously.
-    const scheduler = new Konva.Tween({
-      node: anchorNode.group,
-      duration: 0.32,
-      x: anchorNode.group.x(),
-      onFinish: () => this.routeGatheredEdges(),
-    });
-    this.tweens.push(scheduler);
-    scheduler.play();
+    // Re-route the edges around the gathered arrangement so nothing runs
+    // behind a node (original control points saved; Ungather restores them).
+    this.scheduleGatherRouting(anchorNode);
 
     const parts = [
       children.length ? `${children.length} child${children.length === 1 ? '' : 'ren'}` : '',
@@ -3032,35 +3007,51 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Gathered ${parts}. Ungather restores the layout.`);
   }
 
-  /** Line the children up in a single column just right of the anchor:
-   *  stacked with clear perimeter gaps, vertically centered on it, keeping
-   *  their pre-gather relative order so spatial memory survives. */
-  private placeChildColumn(anchorNode: DANode, children: DANode[]): void {
-    if (children.length === 0) return;
-    const COLUMN_GAP = 120;  // anchor right edge → column left edge
-    const STACK_GAP = 24;    // clear vertical gap between child boxes
+  /** Line nodes up in a single neat column beside the anchor: stacked with
+   *  clear perimeter gaps, vertically centered on it, keeping their
+   *  pre-gather relative order so spatial memory survives. `side: 'right'`
+   *  left-aligns the column past the anchor's right edge; `'left'`
+   *  right-aligns it before the anchor's left edge. */
+  private placeColumn(anchorNode: DANode, nodes: DANode[], side: 'right' | 'left'): void {
+    if (nodes.length === 0) return;
+    const COLUMN_GAP = 120;  // anchor edge → column edge
+    const STACK_GAP = 24;    // clear vertical gap between boxes
 
-    const ordered = [...children].sort((a, b) => a.group.y() - b.group.y());
+    const ordered = [...nodes].sort((a, b) => a.group.y() - b.group.y());
     const totalHeight = ordered.reduce((sum, n) => sum + n.NODE_HEIGHT, 0)
       + STACK_GAP * (ordered.length - 1);
-    const columnX = anchorNode.group.x() + anchorNode.NODE_WIDTH + COLUMN_GAP;
+    const columnLeft = anchorNode.group.x() + anchorNode.NODE_WIDTH + COLUMN_GAP;
+    const columnRight = anchorNode.group.x() - COLUMN_GAP;
     let y = anchorNode.group.y() + anchorNode.NODE_HEIGHT / 2 - totalHeight / 2;
 
-    for (const child of ordered) {
-      this.gatheredNodePositions.set(child, {x: child.group.x(), y: child.group.y()});
+    for (const node of ordered) {
+      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
       this.tweens.push(new Konva.Tween({
-        node: child.group,
-        x: columnX,
+        node: node.group,
+        x: side === 'right' ? columnLeft : columnRight - node.NODE_WIDTH,
         y,
         duration: 0.3,
         easing: Konva.Easings.EaseInOut,
         onFinish: () => {
-          this.updateEdgesForResizedNodes([child]);
+          this.updateEdgesForResizedNodes([node]);
           this.drawingLayer.batchDraw();
         },
       }).play());
-      y += child.NODE_HEIGHT + STACK_GAP;
+      y += node.NODE_HEIGHT + STACK_GAP;
     }
+  }
+
+  /** Schedule the post-gather edge re-route just after the placement tweens
+   *  land (finishTweens fires it synchronously in tests). */
+  private scheduleGatherRouting(anchorNode: DANode): void {
+    const scheduler = new Konva.Tween({
+      node: anchorNode.group,
+      duration: 0.32,
+      x: anchorNode.group.x(),
+      onFinish: () => this.routeGatheredEdges(),
+    });
+    this.tweens.push(scheduler);
+    scheduler.play();
   }
 
   /** Re-route every edge touching a gathered node (stale detours dropped,
