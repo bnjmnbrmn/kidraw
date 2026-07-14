@@ -2970,11 +2970,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /**
-   * Gather the anchor node's lineage into radial trees around it:
-   * descendants (transitive outgoing) fan into a wide wedge on the right,
-   * ancestors (transitive incoming) into a narrower wedge on the left, with
-   * deliberate clear margins between the two groups — incoming and outgoing
-   * edges separate more from each other than from their own kind. Unlike the
+   * Gather the anchor node's immediate context: its children line up in a
+   * clean column just right of the anchor (grandchildren stay where they
+   * are — they'd only get in the way), and its ancestor chain pulls into a
+   * line on the left. In/out separation falls out of the geometry: incoming
+   * edges arrive from the left, outgoing leave to the right. Unlike the
    * plain gather, the view persists until an explicit Ungather. Original
    * positions are kept in gatheredNodePositions: a temporary view, not a
    * mutation.
@@ -2991,28 +2991,59 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.restoreGatheredNodes(false);
     }
 
-    const descendants = this.collectGatherTree(anchorNode, 'out', new Set([anchorNode]));
-    const exclude = new Set<DANode>([anchorNode, ...descendants.order]);
-    const ancestors = this.collectGatherTree(anchorNode, 'in', exclude);
-    if (descendants.order.length === 0 && ancestors.order.length === 0) {
+    const children: DANode[] = [];
+    for (const edge of anchorNode.outgoingEdges) {
+      if (edge.destNode !== anchorNode && !children.includes(edge.destNode)) {
+        children.push(edge.destNode);
+      }
+    }
+    const ancestors = this.collectGatherTree(
+      anchorNode, 'in', new Set<DANode>([anchorNode, ...children]));
+    if (children.length === 0 && ancestors.order.length === 0) {
       this.emitStatus('Nothing connected to gather.');
       return;
     }
 
-    // Wedges (canvas angles, y down): descendants own a wide right-side
-    // wedge, ancestors a narrower left-side one. The unused margins between
-    // the groups are the in/out separation.
-    const DESC_WEDGE: [number, number] = [-1.75, 1.75];              // ~200° facing right
+    this.placeChildColumn(anchorNode, children);
     const ANC_WEDGE: [number, number] = [Math.PI - 0.7, Math.PI + 0.7]; // ~80° facing left
-    let placed = 0;
-    placed += this.placeGatherTree(anchorNode, descendants, DESC_WEDGE);
-    placed += this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
+    this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
 
     const parts = [
-      descendants.order.length ? `${descendants.order.length} descendant${descendants.order.length === 1 ? '' : 's'}` : '',
+      children.length ? `${children.length} child${children.length === 1 ? '' : 'ren'}` : '',
       ancestors.order.length ? `${ancestors.order.length} ancestor${ancestors.order.length === 1 ? '' : 's'}` : '',
     ].filter(Boolean).join(' + ');
     this.emitStatus(`Gathered ${parts}. Ungather restores the layout.`);
+  }
+
+  /** Line the children up in a single column just right of the anchor:
+   *  stacked with clear perimeter gaps, vertically centered on it, keeping
+   *  their pre-gather relative order so spatial memory survives. */
+  private placeChildColumn(anchorNode: DANode, children: DANode[]): void {
+    if (children.length === 0) return;
+    const COLUMN_GAP = 120;  // anchor right edge → column left edge
+    const STACK_GAP = 24;    // clear vertical gap between child boxes
+
+    const ordered = [...children].sort((a, b) => a.group.y() - b.group.y());
+    const totalHeight = ordered.reduce((sum, n) => sum + n.NODE_HEIGHT, 0)
+      + STACK_GAP * (ordered.length - 1);
+    const columnX = anchorNode.group.x() + anchorNode.NODE_WIDTH + COLUMN_GAP;
+    let y = anchorNode.group.y() + anchorNode.NODE_HEIGHT / 2 - totalHeight / 2;
+
+    for (const child of ordered) {
+      this.gatheredNodePositions.set(child, {x: child.group.x(), y: child.group.y()});
+      this.tweens.push(new Konva.Tween({
+        node: child.group,
+        x: columnX,
+        y,
+        duration: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          this.updateEdgesForResizedNodes([child]);
+          this.drawingLayer.batchDraw();
+        },
+      }).play());
+      y += child.NODE_HEIGHT + STACK_GAP;
+    }
   }
 
   /** BFS from the anchor along one direction ('out' = descendants via
