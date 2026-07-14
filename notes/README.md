@@ -53,6 +53,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Label-edit mode overhaul](idea-label-edit-overhaul.md)
 
 - [Todo-graph modeling — typed nodes/edges, derived semantics, scenarios](idea-todo-graph-modeling.md) — the ontology brainstorm (2026-07-14): node/edge kinds, ready-frontier/blocked/critical-path payoffs, and the scenario dataset list.
+- [Semantic zoom — important nodes/edges stay visible zoomed out](idea-semantic-zoom-importance.md) — screen-size floors for category/goal nodes, constant-width important edges, cull notes first.
 
 **Drawing / canvas:**
 

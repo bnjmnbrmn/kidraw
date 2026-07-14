@@ -76,6 +76,28 @@ for the layout/routing work and the `/shots/` gallery.
 - **Categories** may ultimately be zones (containers) rather than nodes —
   see [idea-zones](idea-zones.md); model as nodes for now.
 
+## Type mechanics + what the real data showed (Ben + Claude, 2026-07-14)
+
+- **Types are tags, not exclusive classes.** A node can be `task` + `goal`
+  (Ben: "maybe some nodes should be tagged both"). Equivalently: goal and
+  question are *specializations* of task — they have status and can be
+  worked — while category and note are not tasks at all. Tag-set semantics
+  give us both readings for free and match the file format's existing
+  `tags` field.
+- **Classifying the actual next.org graph** (`tools/next-typed-viz.js`)
+  found: 5 categories (Next, Pre-MVP, Post-MVP, Polish/ergonomics,
+  Development accelerants), **11 questions** (label ends in `?` is a
+  surprisingly reliable heuristic), 1 goal (Compete with Obsidian), 39
+  tasks, and a type we hadn't listed: **5 note/commentary nodes** ("Should
+  be relatively easy", "I guess this could refer to…") — annotations with
+  no action in them. Notes render small and should cull first when zoomed
+  out ([idea-semantic-zoom-importance](idea-semantic-zoom-importance.md)).
+- **Visual mapping v0** (shape+size only; fill/stroke blocked on
+  [bug-style-colors-not-persisted](bug-style-colors-not-persisted.md)):
+  category = big box w/ 30px font, goal = circle, question = diamond,
+  note = small 10px box, task = plugin default. Rendered dark-theme in the
+  `/shots/` gallery (`…-next-typed` runs).
+
 ## Means vs. ends (Ben, 2026-07-14: "not sure how useful")
 
 Decision sketch: **model it structurally, not as a task attribute.** A means

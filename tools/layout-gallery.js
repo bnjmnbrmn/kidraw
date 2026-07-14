@@ -81,6 +81,8 @@ async function main() {
 
   for (const dataset of ['next', 'fan-tree']) {
     const context = await browser.newContext({ viewport: { width: 1500, height: 1400 } });
+    // Ben reviews on his phone in dark mode; shots match (2026-07-14).
+    await context.addInitScript(() => localStorage.setItem('kidraw-theme', 'dark'));
     if (dataset === 'next') {
       const draft = draftFromVaultYaml(NEXT_YAML);
       await context.addInitScript((d) => {
