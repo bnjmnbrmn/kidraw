@@ -253,7 +253,10 @@ npm start                                              # log server + dev server
 npm start -- --port "$(tools/worktree-port.sh)"        # log server + worktree-safe dev server port
 npx ng test --watch=false --browsers=ChromeHeadless   # run tests (do NOT use npm test)
 npx ng build                                          # production build / type-check
+node tools/layout-gallery.js                          # publish layout screenshots for phone review
 ```
+
+**Layout gallery** (2026-07-14): `tools/layout-gallery.js` applies every layout to Ben's real next.org graph (injected read-only via the localStorage draft) plus the synthetic fan tree, screenshots each at three views (fit / hub@100% / hub@150%), and publishes to `/var/www/kidraw-shots` → **`https://kidraw.dev.bnjmnbrmn.com/shots/`** (nginx `location /shots/` alias added to `/etc/nginx/sites-enabled/kidraw`; served directly, independent of the dev server). Run it after layout/routing experiments so results are reviewable from a phone; each run gets a timestamped directory + mobile-friendly index, and the root index lists runs newest-first.
 
 **Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`. Tests are at 152/152 after the consolidation (was 159; the deleted `charged-spring-edges.spec.ts` accounted for the difference).
 
