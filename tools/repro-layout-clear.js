@@ -61,6 +61,11 @@ async function main() {
         parent = c;
       }
     }
+    // Mixed sizes like the typed todo graph (big category boxes): the fat
+    // boxes are what make fan chords clip siblings.
+    root.resizeBy(160);
+    kids[2].resizeBy(120);
+    kids[9].resizeBy(120);
     dl.batchDraw();
   });
 
@@ -110,6 +115,30 @@ async function main() {
     return da.drawingLayer.getDAEdges().some(e => e.controlPoints.length > 0);
   });
 
+  // Straight-chord crossings between edges that share no endpoint. The tidy
+  // tree guarantees zero for tree edges; the clear variants must not
+  // reintroduce any (the old push-apart pass scattered nodes and did).
+  const countCrossings = () => page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    const cen = n => ({ x: n.konvaGroup.x() + n.NODE_WIDTH / 2, y: n.konvaGroup.y() + n.NODE_HEIGHT / 2 });
+    const segs = dl.getDAEdges().filter(e => e.srcNode !== e.destNode)
+      .map(e => ({ a: e.srcNode, b: e.destNode, p: cen(e.srcNode), q: cen(e.destNode) }));
+    const orient = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    let crossings = 0;
+    for (let i = 0; i < segs.length; i++) {
+      for (let j = i + 1; j < segs.length; j++) {
+        const s = segs[i], t = segs[j];
+        if (s.a === t.a || s.a === t.b || s.b === t.a || s.b === t.b) continue;
+        const d1 = orient(t.p, t.q, s.p), d2 = orient(t.p, t.q, s.q);
+        const d3 = orient(s.p, s.q, t.p), d4 = orient(s.p, s.q, t.q);
+        if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+            ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) crossings++;
+      }
+    }
+    return crossings;
+  });
+
   // APPLY_LAYOUT is blocked while a routing worker is in flight (plain
   // variants route async in a worker). Wait for routing-idle before AND after
   // so consecutive layouts aren't dropped by the lock.
@@ -134,10 +163,22 @@ async function main() {
   const treePlain = await countPierces();
   await applyLayout('tree-down-clear');
   const treeClear = await countPierces();
+  const treeClearCrossings = await countCrossings();
   const treeClearWaypoints = await anyWaypoints();
   check('tree-down-clear leaves no straight edge piercing a node', treeClear === 0,
     `plain=${treePlain} clear=${treeClear}`);
+  check('tree-down-clear keeps the tree crossing-free', treeClearCrossings === 0,
+    `${treeClearCrossings} crossings`);
   check('tree-down-clear leaves edges straight (no waypoints)', treeClearWaypoints === false);
+
+  // --- Tree right: the mixed-size regression shape ---
+  await applyLayout('tree-right-clear');
+  const treeRightPierces = await countPierces();
+  const treeRightCrossings = await countCrossings();
+  check('tree-right-clear leaves no straight edge piercing a node', treeRightPierces === 0,
+    `${treeRightPierces} pierces`);
+  check('tree-right-clear keeps the tree crossing-free', treeRightCrossings === 0,
+    `${treeRightCrossings} crossings`);
 
   // --- Force: plain vs clear ---
   await applyLayout('force-directed');

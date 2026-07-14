@@ -114,7 +114,36 @@ async function main() {
     dl.batchDraw();
   `);
 
-  for (const layout of ['tree-down-clear', 'tree-right-clear', 'force-clear']) {
+  // Cyan → yellow direction gradient on every edge (source → dest), the
+  // flow-direction experiment. Re-applied after graph restores (LOAD_NAMED
+  // rebuilds the DAEdge objects).
+  const applyGradient = () => da(`
+    da.drawingLayer.getDAEdges().forEach(e =>
+      e.setDirectionGradient({from: '#22d3ee', to: '#facc15'}));
+    da.drawingLayer.batchDraw();
+  `);
+
+  // Move the crosshairs onto a node (by label substring) so gather anchors
+  // on it, then gather its lineage.
+  const gatherOn = async (labelText) => {
+    await da(`
+      da.tweens.forEach(t => t.finish()); da.tweens = [];
+      const dl = da.drawingLayer;
+      const hub = dl.getDANodes().find(n => n.label.text().includes(${JSON.stringify(labelText)}));
+      da.crosshairsLayer.crosshairs.x = dl.x() + (hub.konvaGroup.x() + hub.NODE_WIDTH / 2) * dl.scaleX();
+      da.crosshairsLayer.crosshairs.y = dl.y() + (hub.konvaGroup.y() + hub.NODE_HEIGHT / 2) * dl.scaleY();
+      da.handleCommands({kind: "GATHER_DESCENDANTS"});
+    `);
+    await page.waitForTimeout(500);
+    await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+  };
+  const ungather = async () => {
+    await da('da.handleCommands({kind: "UNGATHER"});');
+    await page.waitForTimeout(500);
+    await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+  };
+
+  for (const layout of ['tree-right-clear']) {
     await waitRoutingIdle();
     await da('da.handleCommands({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
     await page.waitForTimeout(200);
@@ -122,22 +151,37 @@ async function main() {
     await page.waitForTimeout(300);
     await waitRoutingIdle();
     await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+    await applyGradient();
 
-    const views = [
-      ['fit', async () => da('da.handleCommands({kind:"UNSELECT_ALL"}); da.handleCommands({kind:"RECENTER_VIEW"});')],
-      ['pre-mvp-70', () => centerOn('Pre-MVP', 0.7)],
-      ['post-mvp-70', () => centerOn('Post-MVP', 0.7)],
-      ['post-mvp-100', () => centerOn('Post-MVP', 1.0)],
-    ];
-    for (const [name, go] of views) {
-      await go();
+    const shoot = async (name) => {
       await page.waitForTimeout(450);
       await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
       const file = `${layout}--${name}.png`;
       await page.screenshot({ path: path.join(runDir, file), clip: canvasBox });
       shots.push({ layout, name, file });
       console.log('shot', file);
-    }
+    };
+
+    // Plain views.
+    await da('da.handleCommands({kind:"UNSELECT_ALL"}); da.handleCommands({kind:"RECENTER_VIEW"});');
+    await shoot('fit');
+    await centerOn('Pre-MVP', 0.7);
+    await shoot('pre-mvp-70');
+    await centerOn('Post-MVP', 0.7);
+    await shoot('post-mvp-70');
+    await centerOn('Post-MVP', 1.0);
+    await shoot('post-mvp-100');
+
+    // Gather Around: children fan right, ancestors left.
+    await gatherOn('Pre-MVP');
+    await centerOn('Pre-MVP', 0.55);
+    await shoot('gather-pre-mvp');
+    await ungather();
+
+    await gatherOn('Support edge labels');
+    await centerOn('Support edge labels', 0.8);
+    await shoot('gather-edge-labels-node');
+    await ungather();
   }
   await browser.close();
 

@@ -2970,10 +2970,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /**
-   * Gather all descendants (transitive outgoing edges) of the anchor node into
-   * a radial tree around it. Unlike the plain gather, the view persists until
-   * an explicit Ungather (or a plain Gather toggle). Original positions are
-   * kept in gatheredNodePositions, so this is a temporary view, not a mutation.
+   * Gather the anchor node's lineage into radial trees around it:
+   * descendants (transitive outgoing) fan into a wide wedge on the right,
+   * ancestors (transitive incoming) into a narrower wedge on the left, with
+   * deliberate clear margins between the two groups — incoming and outgoing
+   * edges separate more from each other than from their own kind. Unlike the
+   * plain gather, the view persists until an explicit Ungather. Original
+   * positions are kept in gatheredNodePositions: a temporary view, not a
+   * mutation.
    */
   private gatherDescendants(): void {
     this.finishTweens();
@@ -2987,43 +2991,83 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.restoreGatheredNodes(false);
     }
 
-    // BFS over outgoing edges; the first visit fixes each node's tree parent
-    // and depth, which makes cycles and diamond-shaped DAGs safe.
+    const descendants = this.collectGatherTree(anchorNode, 'out', new Set([anchorNode]));
+    const exclude = new Set<DANode>([anchorNode, ...descendants.order]);
+    const ancestors = this.collectGatherTree(anchorNode, 'in', exclude);
+    if (descendants.order.length === 0 && ancestors.order.length === 0) {
+      this.emitStatus('Nothing connected to gather.');
+      return;
+    }
+
+    // Wedges (canvas angles, y down): descendants own a wide right-side
+    // wedge, ancestors a narrower left-side one. The unused margins between
+    // the groups are the in/out separation.
+    const DESC_WEDGE: [number, number] = [-1.75, 1.75];              // ~200° facing right
+    const ANC_WEDGE: [number, number] = [Math.PI - 0.7, Math.PI + 0.7]; // ~80° facing left
+    let placed = 0;
+    placed += this.placeGatherTree(anchorNode, descendants, DESC_WEDGE);
+    placed += this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
+
+    const parts = [
+      descendants.order.length ? `${descendants.order.length} descendant${descendants.order.length === 1 ? '' : 's'}` : '',
+      ancestors.order.length ? `${ancestors.order.length} ancestor${ancestors.order.length === 1 ? '' : 's'}` : '',
+    ].filter(Boolean).join(' + ');
+    this.emitStatus(`Gathered ${parts}. Ungather restores the layout.`);
+  }
+
+  /** BFS from the anchor along one direction ('out' = descendants via
+   *  outgoing edges, 'in' = ancestors via incoming). First visit fixes each
+   *  node's tree parent and depth (cycles and diamonds safe); nodes in
+   *  `exclude` are skipped so the two directions never fight over a node. */
+  private collectGatherTree(
+    anchorNode: DANode,
+    direction: 'out' | 'in',
+    exclude: Set<DANode>,
+  ): {order: DANode[]; depthOf: Map<DANode, number>; childrenOf: Map<DANode, DANode[]>; leafWeight: Map<DANode, number>} {
     const depthOf = new Map<DANode, number>([[anchorNode, 0]]);
     const childrenOf = new Map<DANode, DANode[]>();
     const order: DANode[] = [];
     const queue: DANode[] = [anchorNode];
     while (queue.length > 0) {
       const node = queue.shift()!;
-      for (const edge of node.outgoingEdges) {
-        const child = edge.destNode;
-        if (depthOf.has(child)) continue;
-        depthOf.set(child, depthOf.get(node)! + 1);
+      const edges = direction === 'out' ? node.outgoingEdges : node.incomingEdges;
+      for (const edge of edges) {
+        const next = direction === 'out' ? edge.destNode : edge.srcNode;
+        if (depthOf.has(next) || (next !== anchorNode && exclude.has(next))) continue;
+        depthOf.set(next, depthOf.get(node)! + 1);
         const siblings = childrenOf.get(node);
-        if (siblings) siblings.push(child); else childrenOf.set(node, [child]);
-        order.push(child);
-        queue.push(child);
+        if (siblings) siblings.push(next); else childrenOf.set(node, [next]);
+        order.push(next);
+        queue.push(next);
       }
     }
-    if (order.length === 0) {
-      this.emitStatus('No descendants to gather.');
-      return;
-    }
-
     // Leaf count per subtree (children processed before parents in reverse
-    // BFS order) — used to split each node's angular wedge among its children.
+    // BFS order) — splits each node's angular wedge among its children.
     const leafWeight = new Map<DANode, number>();
     for (let i = order.length - 1; i >= 0; i--) {
       const node = order[i];
       const kids = childrenOf.get(node);
       leafWeight.set(node, kids ? kids.reduce((sum, k) => sum + leafWeight.get(k)!, 0) : 1);
     }
+    return {order, depthOf, childrenOf, leafWeight};
+  }
+
+  /** Place one gather tree into the given angular wedge around the anchor:
+   *  ring radii are depth-based, widened when a ring's boxes need more arc
+   *  than the wedge provides at that radius. Returns the number of nodes
+   *  moved (and records their original positions for Ungather). */
+  private placeGatherTree(
+    anchorNode: DANode,
+    tree: {order: DANode[]; depthOf: Map<DANode, number>; childrenOf: Map<DANode, DANode[]>; leafWeight: Map<DANode, number>},
+    wedgeRange: [number, number],
+  ): number {
+    const {order, depthOf, childrenOf, leafWeight} = tree;
+    if (order.length === 0) return 0;
 
     const RING_SPACING = 170;
     const MIN_ARC = 130; // minimum node footprint along a ring
+    const wedgeSpan = wedgeRange[1] - wedgeRange[0];
 
-    // Ring radius per depth: at least RING_SPACING beyond the previous ring,
-    // widened when a ring's boxes need more circumference than that provides.
     let maxDepth = 0;
     const arcAtDepth: number[] = [];
     for (const node of order) {
@@ -3036,14 +3080,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     for (let d = 1; d <= maxDepth; d++) {
       radiusAtDepth.push(Math.max(
         radiusAtDepth[d - 1] + RING_SPACING,
-        arcAtDepth[d] / (2 * Math.PI),
+        (arcAtDepth[d] ?? 0) / wedgeSpan,
       ));
     }
 
-    // Wedges: the anchor owns the full circle; each node splits its wedge
-    // among its children proportionally to their leaf counts. A node sits at
-    // its wedge's midpoint, so subtrees stay near their parents.
-    const wedge = new Map<DANode, [number, number]>([[anchorNode, [0, 2 * Math.PI]]]);
+    const wedge = new Map<DANode, [number, number]>([[anchorNode, wedgeRange]]);
     for (const node of [anchorNode, ...order]) {
       const kids = childrenOf.get(node);
       if (!kids) continue;
@@ -3061,7 +3102,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const anchorY = anchorNode.group.y();
     for (const node of order) {
       this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
-
       const [from, to] = wedge.get(node)!;
       const angle = (from + to) / 2;
       const radius = radiusAtDepth[depthOf.get(node)!];
@@ -3077,8 +3117,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         },
       }).play());
     }
-
-    this.emitStatus(`Gathered ${order.length} descendant${order.length === 1 ? '' : 's'}. Ungather restores the layout.`);
+    return order.length;
   }
 
   private ungather(): void {

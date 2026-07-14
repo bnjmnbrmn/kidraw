@@ -26,6 +26,7 @@ export class DAEdge {
   private _isSelected: boolean = false;
   private _navFocused: boolean = false;
   private _navUnderlay: Konva.Line | null = null;
+  private _directionGradient: {from: string; to: string} | null = null;
   public readonly _line: Konva.Arrow;
   public readonly srcNode: DANode;
   public readonly destNode: DANode;
@@ -107,6 +108,37 @@ export class DAEdge {
     this.applyNavFocus();
   }
 
+  /** Direction gradient: stroke fades from one color at the source to
+   *  another at the destination (e.g. cyan → yellow), making flow direction
+   *  readable even when arrowheads are subpixel at low zoom. The arrowhead
+   *  fill takes the destination color. Null restores the plain stroke. */
+  setDirectionGradient(gradient: {from: string; to: string} | null): void {
+    this._directionGradient = gradient;
+    this.applyDirectionGradient();
+  }
+
+  private applyDirectionGradient(): void {
+    if (!this._directionGradient) {
+      this._line.strokeLinearGradientColorStops([]);
+      this._line.stroke(this._strokeColor);
+      this._line.fill(this._fillColor);
+      return;
+    }
+    const points = this.getPathPoints();
+    if (points.length < 2) return;
+    const a = points[0];
+    const b = points[points.length - 1];
+    // Konva prefers the flat color when both are set; clear it so the
+    // gradient shows. Gradient coordinates are in the line's own space,
+    // which is the layer space (the group is untransformed).
+    this._line.stroke(undefined as unknown as string);
+    this._line.strokeLinearGradientStartPoint({x: a.x, y: a.y});
+    this._line.strokeLinearGradientEndPoint({x: b.x, y: b.y});
+    this._line.strokeLinearGradientColorStops(
+      [0, this._directionGradient.from, 1, this._directionGradient.to]);
+    this._line.fill(this._directionGradient.to);
+  }
+
   private applyNavFocus(): void {
     if (this._navFocused) {
       if (!this._navUnderlay) {
@@ -180,6 +212,7 @@ export class DAEdge {
     this._line.fill(this._fillColor);
     this._waypointGlyphs.forEach(wp => wp.applyColors({stroke: this._strokeColor}));
     this.applyNavFocus(); // the glow follows the stroke color
+    if (this._directionGradient) this.applyDirectionGradient(); // gradient outranks theme stroke
   }
 
   get labels(): DALabel[] {
@@ -484,6 +517,7 @@ export class DAEdge {
   refreshGeometry(): void {
     this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
     if (this._navFocused) this.applyNavFocus(); // underlay tracks the path
+    if (this._directionGradient) this.applyDirectionGradient(); // endpoints move
     this.positionLabels();
   }
 

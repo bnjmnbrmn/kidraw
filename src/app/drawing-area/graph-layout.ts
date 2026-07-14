@@ -3,7 +3,7 @@ import { DAEdge } from './da-edge';
 import { LayoutType } from './command.model';
 import { resolveBoxOverlaps } from './overlap-resolution';
 import { resolveEdgeNodeOverlaps } from './edge-node-overlap-resolution';
-import { closestPointOnSegment } from './utils';
+import { closestPointOnSegment, lineSegmentIntersectsRect } from './utils';
 
 interface NodePos {
   node: DANode;
@@ -43,13 +43,13 @@ export function applyLayout(
       positions = treeLayout(nodes, edges, movable, spacing, 'down');
       break;
     case 'tree-down-clear':
-      positions = treeLayout(nodes, edges, movable, spacing, 'down');
+      positions = treeLayout(nodes, edges, movable, spacing, 'down', true);
       break;
     case 'tree-right':
       positions = treeLayout(nodes, edges, movable, spacing, 'right');
       break;
     case 'tree-right-clear':
-      positions = treeLayout(nodes, edges, movable, spacing, 'right');
+      positions = treeLayout(nodes, edges, movable, spacing, 'right', true);
       break;
     case 'grid':
       positions = gridLayout(movable, spacing);
@@ -85,10 +85,12 @@ export function applyLayout(
     p.y = boxes[i].y;
   }
 
-  // The "-clear" variants additionally guarantee no straight edge passes
-  // through a non-endpoint node: push pierced boxes off the offending chords
-  // (box overlaps re-resolved inside the pass).
-  if (isClearLayout(layout)) {
+  // Force-clear additionally guarantees no straight edge passes through a
+  // non-endpoint node via the generic push-apart pass. The tree-clear
+  // variants deliberately do NOT run it: pushing nodes off chords scatters
+  // the tidy arrangement and manufactures crossings — they repair pierces
+  // inside treeLayout by widening level gaps instead (order-preserving).
+  if (layout === 'force-clear') {
     const indexOf = new Map(nodes.map((n, i) => [n, i]));
     const edgePairs = edges
       .map(e => ({a: indexOf.get(e.srcNode), b: indexOf.get(e.destNode)}))
@@ -271,6 +273,7 @@ function treeLayout(
   movable: DANode[],
   spacing: number,
   direction: 'down' | 'right',
+  repairPierces = false,
 ): NodePos[] {
   const movableSet = new Set(movable);
 
@@ -652,8 +655,8 @@ function treeLayout(
       levelDepthExtent.get(lvl) ?? 0, Number.isFinite(ext) ? ext : 0));
   }
   const depthOf = new Map<number, number>();
+  const maxLvl = Math.max(...Array.from(depthLevel.values()));
   {
-    const maxLvl = Math.max(...Array.from(depthLevel.values()));
     let off = 0;
     depthOf.set(0, 0);
     for (let l = 1; l <= maxLvl; l++) {
@@ -661,6 +664,62 @@ function treeLayout(
         + spacing / 2
         + (levelDepthExtent.get(l) ?? 0) / 2;
       depthOf.set(l, off);
+    }
+  }
+
+  // "-clear" repair: a parent→child straight chord can clip a *sibling* box
+  // when the child sits far sideways and the level gap is small — the chord
+  // crosses the sibling band at a shallow angle. Widening the offending
+  // level gap steepens every chord into that band, clearing the siblings
+  // WITHOUT touching breadth order — so the tidy tree's crossing-free
+  // invariant survives (unlike the generic push-apart pass, which scatters
+  // nodes and manufactures crossings). Deterministic; only adjacent-level
+  // (tree-shaped) edges are considered — long cross-links are the router's
+  // problem.
+  if (repairPierces) {
+    const clearance = spacing / 8;
+    const breadthExtentOf = (n: DANode): number => {
+      const rect = n.getClientRect();
+      const ext = direction === 'down' ? rect.width : rect.height;
+      return Number.isFinite(ext) ? ext : 0;
+    };
+    const depthExtentOf = (n: DANode): number => {
+      const rect = n.getClientRect();
+      const ext = direction === 'down' ? rect.height : rect.width;
+      return Number.isFinite(ext) ? ext : 0;
+    };
+    for (let iter = 0; iter < 10; iter++) {
+      // gap index g = the gap between level g-1 and level g
+      const gapsToWiden = new Set<number>();
+      for (const e of edges) {
+        if (e.srcNode === e.destNode) continue;
+        const la = depthLevel.get(e.srcNode)!;
+        const lb = depthLevel.get(e.destNode)!;
+        if (Math.abs(la - lb) !== 1) continue;
+        const x1 = breadthPos.get(e.srcNode)!;
+        const y1 = depthOf.get(la)!;
+        const x2 = breadthPos.get(e.destNode)!;
+        const y2 = depthOf.get(lb)!;
+        for (const n of allNodes) {
+          if (n === e.srcNode || n === e.destNode) continue;
+          const ln = depthLevel.get(n)!;
+          if (ln !== la && ln !== lb) continue;
+          const bw = breadthExtentOf(n) / 2 + clearance;
+          const bd = depthExtentOf(n) / 2 + clearance;
+          const px = breadthPos.get(n)!;
+          const py = depthOf.get(ln)!;
+          if (lineSegmentIntersectsRect(
+                x1, y1, x2, y2, px - bw, py - bd, px + bw, py + bd)) {
+            gapsToWiden.add(Math.max(la, lb));
+          }
+        }
+      }
+      if (gapsToWiden.size === 0) break;
+      let extra = 0;
+      for (let l = 1; l <= maxLvl; l++) {
+        if (gapsToWiden.has(l)) extra += spacing / 2;
+        depthOf.set(l, depthOf.get(l)! + extra);
+      }
     }
   }
 

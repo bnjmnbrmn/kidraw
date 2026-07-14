@@ -15,7 +15,7 @@ export interface EdgeIndexPair {
 }
 
 const EPS = 1e-6;
-const MAX_SWEEPS = 8;
+const MAX_SWEEPS = 20;
 /** Fraction of extra push beyond the computed penetration, so a box lands
  *  clear of the chord instead of exactly tangent to it. */
 const OVERSHOOT = 0.1;
@@ -41,9 +41,23 @@ export function resolveEdgeNodeOverlaps(
   boxGap: number,
 ): number[] {
   const moved = new Set<number>();
+  // A box ringed by chords can oscillate: the perpendicular push off one
+  // chord lands it across another, forever. After a few futile sweeps, such
+  // a box escapes radially — away from the centroid of all boxes — which
+  // must eventually exit the cluster.
+  const pushSweeps = new Array(boxes.length).fill(0);
 
   for (let sweep = 0; sweep < MAX_SWEEPS; sweep++) {
     let pushed = false;
+    const pushedThisSweep = new Set<number>();
+    let centroidX = 0;
+    let centroidY = 0;
+    for (const b of boxes) {
+      centroidX += b.x + b.w / 2;
+      centroidY += b.y + b.h / 2;
+    }
+    centroidX /= boxes.length;
+    centroidY /= boxes.length;
 
     for (const edge of edges) {
       if (edge.a === edge.b) continue; // self-loops have no straight chord
@@ -68,19 +82,28 @@ export function resolveEdgeNodeOverlaps(
         const cx = box.x + box.w / 2;
         const cy = box.y + box.h / 2;
         const closest = closestPointOnSegment(cx, cy, x1, y1, x2, y2);
-        let dirX = cx - closest.x;
-        let dirY = cy - closest.y;
-        let dist = Math.hypot(dirX, dirY);
-        if (dist < EPS) {
-          // Box center sits exactly on the chord: push perpendicular to it,
-          // deterministic side.
+        const dist = Math.hypot(cx - closest.x, cy - closest.y);
+
+        // Push direction: perpendicular off the chord, except for a box
+        // that keeps getting pushed sweep after sweep (ringed by chords) —
+        // that one escapes radially out of the cluster instead of trading
+        // one chord for another. A box centered exactly on the chord takes
+        // the deterministic chord-normal.
+        let dirX: number;
+        let dirY: number;
+        const rx = cx - centroidX;
+        const ry = cy - centroidY;
+        const rLen = Math.hypot(rx, ry);
+        if (pushSweeps[k] >= 3 && rLen > EPS) {
+          dirX = rx / rLen;
+          dirY = ry / rLen;
+        } else if (dist > EPS) {
+          dirX = (cx - closest.x) / dist;
+          dirY = (cy - closest.y) / dist;
+        } else {
           const chordLen = Math.max(Math.hypot(x2 - x1, y2 - y1), EPS);
           dirX = -(y2 - y1) / chordLen;
           dirY = (x2 - x1) / chordLen;
-          dist = 0;
-        } else {
-          dirX /= dist;
-          dirY /= dist;
         }
 
         const penetration = supportRadius(box, dirX, dirY) + clearance - dist;
@@ -90,11 +113,13 @@ export function resolveEdgeNodeOverlaps(
         box.x += dirX * push;
         box.y += dirY * push;
         moved.add(k);
+        pushedThisSweep.add(k);
         pushed = true;
       }
     }
 
     if (!pushed) break;
+    for (const i of pushedThisSweep) pushSweeps[i]++;
     // A push can land the box on a neighbor; keep the no-overlap invariant.
     for (const i of resolveBoxOverlaps(boxes, boxGap)) moved.add(i);
   }
