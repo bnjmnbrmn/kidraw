@@ -36,6 +36,8 @@ _Updated 2026-07-13. Branch: `main`._
 
 17. **Arrowhead/tangent aim fix (2026-07-14, `b517e0b`).** On bent routes the tension spline's end tangents follow the curve, not the end chords — arrowheads touched their node while pointing off-center, and departures left at odd tangents. `DAEdge.renderPoints()` now inserts a short collinear stub inside the first and last chords (render-only; `getPathPoints()` and its segment↔control-point contract untouched), pinning arrival/departure onto the node-center rays. Verified visually on the gather shots (`/shots/2026-07-14-1637-kidraw-dev/`); unit test asserts the last rendered chord aims at the dest center.
 
+18. **Gradients by default, plain-Gather columns, sample positions (2026-07-14, `ee0e3ea`).** The direction gradient (cyan→yellow dark / teal→amber light) is now a `ThemePalette.edgeGradient` default applied to every edge in the app — previously only the screenshot script set it. Plain Gather (`f→h`) dropped its 150px circle for the same neat placement as Gather Around, one level deep both ways (children column right, parents column left, shared `placeColumn`, post-gather re-route; toggle + 5s auto-restore kept). The kidraw-dev dropdown sample ships with baked tree-right-clear positions instead of loading as a pile at the origin.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
