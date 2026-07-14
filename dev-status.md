@@ -30,6 +30,8 @@ _Updated 2026-07-13. Branch: `main`._
 
 14. **Layout "-clear" variants + search recenter (2026-07-14).** First implementation of the layout-side straight-edge guarantees from [`notes/idea-layout-node-edge-avoidance.md`](notes/idea-layout-node-edge-avoidance.md). Three new comparison layouts alongside the originals (kept for A/B): **Force+** (`force-clear`), **Tree ↓+** (`tree-down-clear`), **Tree →+** (`tree-right-clear`), Layout submenu keys `f`/`h`/`k` in both profiles. Each runs its base algorithm then a new pure, unit-tested `resolveEdgeNodeOverlaps` pass (`edge-node-overlap-resolution.ts`) — companion to `resolveBoxOverlaps` — that pushes any node off a straight edge chord piercing it and re-resolves box overlaps so a push never re-overlaps boxes; Force+ also adds an in-sim node↔edge repulsion term so it converges toward pierce-free. `isClearLayout()` gates both the post-pass and a deliberate **skip-routing**: the clear variants leave edges straight (the straight result IS the comparison point vs. the router's wiggles/bows). Measured on a wide-fan tree (the next.org shape) via `tools/repro-layout-clear.js`: straight-edge pierces drop **tree-down 14→0, force 5→0**, no waypoints added. **Grid removed from the Layout submenu** (still a valid `LayoutType`, just unbound). Separately, **Search now recenters** (`tools/repro-search-recenter.js`): jumping to a match (`/`, `n`/`p`) pans the view so the match lands at screen center under the crosshairs (reuses `centerViewOnLayerPoint`), instead of moving the crosshairs to an off-screen match. 7 new unit tests (259 total). Design/roadmap for the rest (tree geometry-exact repair, circular ordering) stays in the note.
 
+15. **Tree-clear repair + Gather Around + direction gradients (2026-07-14, `06c0086`).** From the tree-right-clear experiment round on the typed next graph: **(a)** the tree-clear crossings Ben spotted were manufactured by the generic push-apart pass scattering the tidy tree — `tree-*-clear` now repairs pierces *inside* `treeLayout` by widening offending level gaps (order-preserving → crossing-free invariant survives; deterministic); the generic pass is force-clear-only and gained a radial-escape rule for chord-ringed boxes; `repro-layout-clear` asserts pierces=0 **and crossings=0** on a mixed-size fan tree. **(b)** Gather All is now **Gather Around**: descendants fan into a wide right wedge (~200°), ancestors into a narrow left wedge (~80°) — the clear margins between groups give in-vs-out edges more separation than same-direction pairs (macro version of the in/out fan idea; router-level version recorded in [`notes/idea-routing-post-layout-quality.md`](notes/idea-routing-post-layout-quality.md)). **(c)** `DAEdge.setDirectionGradient` — stroke fades source→dest (cyan→yellow in the gallery), arrowhead takes the dest color; direction stays readable at any zoom. Gallery run: `/shots/2026-07-14-1324-next-typed/`.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
@@ -44,15 +46,16 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `06c0086` | Tree-clear pierce repair, Gather Around (ancestors too), direction gradients |
+| `d5f4e53` | shots gallery: one diagram per screen in phone landscape (snap scroll) |
+| `4d8ed73` | Remove stray serve-test file |
+| `1c82dca` | Typed next.org visualization (dark) + semantic-zoom idea; gallery goes dark |
+| `3584e37` | notes: means-vs-ends — structural via serves edges, task GC as the payoff |
+| `01051c3` | notes: todo-graph modeling brainstorm — typed nodes/edges, semantics, scenarios |
+| `5991733` | notes: layout-side node-edge avoidance + crossing minimization design |
+| `e044e5c` | notes: post-layout routing quality analysis, gather distance/nav-corridor, key-swap idea |
 | `a08549c` | Search: recenter the view on the match, not just move the crosshairs |
 | `f0c5a5d` | Layout: add -clear variants (straight edges never pierce nodes), drop grid from menu |
-| `f821cef` | Nav-focus band: wide zoom-independent underlay instead of shadow glow |
-| `079d8eb` | dev-status: record nav recenter + nav-focus refinements |
-| `d97fb81` | Graph nav: recenter view on every stop; nav focus is a glow, not a selection |
-| `e8da514` | dev-status: record move-by-graph traversal rework as shipped |
-| `754dd86` | Move-by-graph traversal rework: stop-based walking, momentum edge pick, tiers |
-| `6b0b5d0` | dev-status: record keymenu binding reorg |
-| `180534a` | Keymenu binding reorg: f = move-by-graph, a = insert, m becomes File menu |
 
 ---
 

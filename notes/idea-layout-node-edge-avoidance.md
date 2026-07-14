@@ -85,13 +85,16 @@ Measured on the wide-fan tree: straight-edge pierces tree-down 14→0, force
 5→0. `dev-status` Current-focus item 14.
 
 Still open:
-- (3) **Tree geometry-exact pierce repair** — right now the tree clear
-  variant relies on the generic post-pass; a deterministic
-  widen-sibling-gap/level-separation repair would move fewer nodes and keep
-  the tidy structure truer than the greedy push.
+- ~~(3) **Tree geometry-exact pierce repair**~~ ✅ Done 2026-07-14
+  (`06c0086`): tree-clear repairs pierces inside `treeLayout` by widening
+  the offending level gaps (order-preserving, so the crossing-free
+  invariant survives — the generic push had been scattering the tidy tree
+  and *manufacturing* crossings, visible on the typed next graph). The
+  generic pass is force-clear-only now, with a radial-escape rule for boxes
+  ringed by chords. `repro-layout-clear` asserts pierces=0 AND crossings=0
+  on a mixed-size fan tree.
 - (4) **Circular/radial ordering** for crossing minimization (no clear
   variants yet).
-- **Crossing minimization** generally — the post-pass targets pierces, not
-  crossings; a clear variant could add the straight-line-crossing count to
-  what it repairs.
+- **Crossing minimization for force-clear** — its post-pass targets pierces,
+  not crossings.
 - Grid stays out of scope (and is now unbound in the menu).

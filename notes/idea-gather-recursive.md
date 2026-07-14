@@ -34,6 +34,22 @@ child half-diagonal + label band (~one label height + margin) + breathing
 room. Prefer "readable at current zoom" over "as compact as possible" — the
 point of gathering is to *look at* the children.
 
+## Implemented 2026-07-14 (`06c0086`): Gather Around
+
+"Gather All" is now **Gather Around**: descendants fan into a wide right
+wedge (~200°), **ancestors** into a narrow left wedge (~80°), with clear
+margins between the groups — so incoming and outgoing edges separate more
+from each other than same-direction edges do (Ben's in/out separation
+request, realized at the gather level). Shared machinery:
+`collectGatherTree` (directional BFS, exclusion set so cycles can't put a
+node in both groups) + `placeGatherTree` (ring radii sized against the wedge
+span, not the full circle). Verified visually on the typed next graph
+(`/shots/…-next-typed` gather views).
+
+Still open from the sections below: perimeter-gap ring spacing (labels can
+still overlap on crowded rings), push-away of unrelated nodes, nav-corridor
+reservation, recursive plain-gather.
+
 ## Nav-aware gathering (Ben, 2026-07-13)
 
 Gather is entering the traversal loop (hold `f` → gather while navigating),

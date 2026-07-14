@@ -87,6 +87,19 @@ crossings for straight-vs-routed to confirm the baseline is 0, then implement
 scenario machinery; add a "post-tree-layout" scenario built from a real tidy
 tree with an 18-way fan.
 
+## In/out fan separation (Ben, 2026-07-14)
+
+For *routed* graphs, refine the fan terms directionally: at a shared node,
+an incoming/outgoing pair should demand **more** angular separation than
+outgoing/outgoing or incoming/incoming pairs — direction groups should read
+as groups. Concretely: `satisfiedIncidentAngleDeg` becomes a pair-class
+function (opposite-direction pairs get the larger threshold; same-direction
+pairs can pack tighter, scaled by fan degree per the fix list above). The
+gather rework already realizes this macro-scale (ancestors left wedge,
+descendants right wedge, clear margins between groups —
+[idea-gather-recursive](idea-gather-recursive.md)); this item is the
+router-level version.
+
 Related: [plan-incremental-desiderata-v3](plan-incremental-desiderata-v3.md),
 [idea-incremental-edge-routing](idea-incremental-edge-routing.md),
 dev-status "Tree layouts" item (known 4-crossing regression).
