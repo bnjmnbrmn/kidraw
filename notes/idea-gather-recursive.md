@@ -34,21 +34,26 @@ child half-diagonal + label band (~one label height + margin) + breathing
 room. Prefer "readable at current zoom" over "as compact as possible" — the
 point of gathering is to *look at* the children.
 
-## Implemented 2026-07-14 (`06c0086`): Gather Around
+## Implemented 2026-07-14 (`06c0086`, refined `fe920b6`): Gather Around
 
-"Gather All" is now **Gather Around**: descendants fan into a wide right
-wedge (~200°), **ancestors** into a narrow left wedge (~80°), with clear
-margins between the groups — so incoming and outgoing edges separate more
-from each other than same-direction edges do (Ben's in/out separation
-request, realized at the gather level). Shared machinery:
-`collectGatherTree` (directional BFS, exclusion set so cycles can't put a
-node in both groups) + `placeGatherTree` (ring radii sized against the wedge
-span, not the full circle). Verified visually on the typed next graph
-(`/shots/…-next-typed` gather views).
+"Gather All" is now **Gather Around**, and after one dogfooding round it is
+deliberately *shallow*: the anchor's **immediate children line up in a
+clean column just right of it** (perimeter-gapped stack, vertically
+centered, pre-gather relative order kept for spatial memory), the
+**ancestor chain** pulls into a line on the left, and **grandchildren stay
+where they are** — Ben: "I don't want the grandchildren getting in the
+way." The first iteration fanned all descendants into a wide radial wedge;
+the deep rings crowded the view and were dropped the same day. In/out
+separation now falls straight out of the geometry (incoming from the left,
+outgoing to the right). Machinery kept: `collectGatherTree` (directional
+BFS with exclusion set) + `placeGatherTree` (wedge/ring placement, now
+ancestor-side only) + new `placeChildColumn`. Verified visually on the
+typed next graph (`/shots/…-next-typed` gather views).
 
-Still open from the sections below: perimeter-gap ring spacing (labels can
-still overlap on crowded rings), push-away of unrelated nodes, nav-corridor
-reservation, recursive plain-gather.
+Still open from the sections below: push-away of unrelated nodes (a
+non-participant sitting where the column lands can be occluded),
+nav-corridor reservation, recursive plain-gather, and whether diamonds'
+pointed corners need extra stack gap in the column.
 
 ## Nav-aware gathering (Ben, 2026-07-13)
 
