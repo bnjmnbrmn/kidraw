@@ -537,13 +537,30 @@ describe('DrawingArea Unit Tests', () => {
       expect(edge.controlPoints.length).toBe(0);
     });
 
-    it('refreshGeometry rewrites Konva.Arrow points', () => {
+    it('refreshGeometry rewrites Konva.Arrow points with end stubs on bent routes', () => {
       const src = new DANode(0, 0, 'A');
       const dest = new DANode(400, 0, 'B');
       const edge = new DAEdge(src, dest, '');
       edge.setControlPoints([{x: 200, y: 80}]);
-      // setControlPoints already calls refreshGeometry → Konva line should have 6 numbers
-      expect(edge.line.points().length).toBe(6);
+      // setControlPoints already calls refreshGeometry → the rendered line is
+      // the logical path (src + cp + dest) plus one collinear stub inside
+      // each end chord, pinning the tension spline's end tangents onto the
+      // node-center rays: 5 points → 10 numbers.
+      const flat = edge.line.points();
+      expect(flat.length).toBe(10);
+      // The last chord (destStub → destEdge) must aim at the dest center.
+      const [sx2, sy2, ex, ey] = flat.slice(-4);
+      const cx = dest.konvaGroup.x() + dest.NODE_WIDTH / 2;
+      const cy = dest.konvaGroup.y() + dest.NODE_HEIGHT / 2;
+      const cross = (ex - sx2) * (cy - ey) - (ey - sy2) * (cx - ex);
+      expect(Math.abs(cross)).toBeLessThan(1e-6);
+    });
+
+    it('renders straight edges without stub points', () => {
+      const src = new DANode(0, 0, 'A');
+      const dest = new DANode(400, 0, 'B');
+      const edge = new DAEdge(src, dest, '');
+      expect(edge.line.points().length).toBe(4);
     });
 
     it('renders control-point edges as smooth curves by default', () => {

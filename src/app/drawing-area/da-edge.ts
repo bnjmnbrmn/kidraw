@@ -328,7 +328,42 @@ export class DAEdge {
   }
 
   public calculatePoints(srcNode: DANode, destNode: DANode): number[] {
-    return this.getPathPoints().flatMap(p => [p.x, p.y]);
+    return this.renderPoints().flatMap(p => [p.x, p.y]);
+  }
+
+  /** Points handed to Konva: the logical path plus short collinear "stub"
+   *  points inside the first and last chords. With tension, the rendered
+   *  spline's end tangents follow the end chords — on a bent route that made
+   *  arrowheads touch a node while pointing somewhere other than its center
+   *  (and departures leave at odd tangents). The stubs pin the end chords
+   *  onto the node-center rays, so arrival and departure always aim at the
+   *  centers. Render-only: waypoint insertion, labels, routing, and nav
+   *  stops keep using getPathPoints(), whose segments map 1:1 to control
+   *  points. */
+  private renderPoints(): { x: number; y: number }[] {
+    const pts = this.getPathPoints();
+    if (this._controlPoints.length === 0 || pts.length < 3
+        || this.srcNode === this.destNode) {
+      return pts;
+    }
+    const STUB = 26;
+    const stubToward = (end: {x: number; y: number}, toward: {x: number; y: number}) => {
+      const dx = toward.x - end.x;
+      const dy = toward.y - end.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 1e-6) return null;
+      const k = Math.min(STUB, dist * 0.45) / dist;
+      return {x: end.x + dx * k, y: end.y + dy * k};
+    };
+    const srcStub = stubToward(pts[0], pts[1]);
+    const destStub = stubToward(pts[pts.length - 1], pts[pts.length - 2]);
+    return [
+      pts[0],
+      ...(srcStub ? [srcStub] : []),
+      ...pts.slice(1, -1),
+      ...(destStub ? [destStub] : []),
+      pts[pts.length - 1],
+    ];
   }
 
   /** Internal bend points between the src and dest endpoints. Each entry is
@@ -515,7 +550,7 @@ export class DAEdge {
    *  and control points, and re-place labels from their path anchors.
    *  Cheaper than recreating the edge. */
   refreshGeometry(): void {
-    this._line.points(this.getPathPoints().flatMap(p => [p.x, p.y]));
+    this._line.points(this.renderPoints().flatMap(p => [p.x, p.y]));
     if (this._navFocused) this.applyNavFocus(); // underlay tracks the path
     if (this._directionGradient) this.applyDirectionGradient(); // endpoints move
     this.positionLabels();
