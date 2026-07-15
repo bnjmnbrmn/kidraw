@@ -155,7 +155,8 @@ async function main() {
       anchor: da.gatherAnchor ? da.gatherAnchor.id : null,
       hiddenEdges, indicators,
       containers: overlays.filter(n => n.className === 'Rect').length,
-      metaArrows: overlays.filter(n => n.className === 'Arrow').length,
+      metaArrows: overlays.filter(n => n.className === 'Arrow' && n.strokeWidth() === 5).length,
+      metaBundles: overlays.filter(n => n.className === 'Arrow' && n.strokeWidth() < 5).length,
       status: window.__status.slice(-3),
     };
   });
@@ -212,6 +213,8 @@ async function main() {
     s.hiddenEdges.length >= 20, `hidden=${s.hiddenEdges.length}`);
   check('A6c: a stacked member\'s wiring to the wider graph hides too',
     s.hiddenEdges.includes('od0->os0'), JSON.stringify(s.hiddenEdges.slice(-4)));
+  check('A6d: hidden outside wiring is bundled as thin meta-arrows (od0\u2192os0 pile pair)',
+    s.metaBundles >= 1, `bundles=${s.metaBundles}`);
   check('A7: meta-edge shows the top label plus a "…more labels…" marker',
     s.indicators.some(t => /^lbl/.test(t)) && s.indicators.some(t => /more label/.test(t)),
     JSON.stringify(s.indicators));
@@ -234,7 +237,8 @@ async function main() {
   check('A9: Ungather restores every edge\'s wiring exactly', wiringDrift.length === 0, wiringDrift.join(','));
   s = await gatherState();
   check('A10: pile edges visible again, all overlays gone',
-    s.hiddenEdges.length === 0 && s.indicators.length === 0 && s.containers === 0 && s.metaArrows === 0,
+    s.hiddenEdges.length === 0 && s.indicators.length === 0 && s.containers === 0
+      && s.metaArrows === 0 && s.metaBundles === 0,
     `hidden=${s.hiddenEdges.length} ind=${s.indicators.length}`);
 
   // ---------- B. Sparse hub Y: individual fisheye ----------

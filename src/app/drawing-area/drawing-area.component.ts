@@ -14,6 +14,14 @@ import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg }
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
+
+/** Axis-aligned box a gather meta-arrow connects to (node or container). */
+interface MetaBox {
+  cx: number;
+  cy: number;
+  halfW: number;
+  halfH: number;
+}
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -3303,6 +3311,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Meta-node + meta-edge per pile: a dashed container around the sheets,
     // one thick arrow into/out of it, the ×N count at its corner, and the
     // top edge's label (plus a "…K more labels…" marker) on the arrow.
+    const containerOf = new Map<DANode, Konva.Rect>();
+    const pileIds = new Map<Konva.Rect, number>();
     for (const [key, members] of stackMembers) {
       const ordered = [...members].sort((a, b) => a.stack!.index - b.stack!.index);
       const memberNodes = ordered.map(m => nodeById.get(m.id)!);
@@ -3331,6 +3341,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       });
       this.drawingLayer.add(container);
       this.gatherIndicators.push(container);
+      pileIds.set(container, pileIds.size);
+      for (const n of memberNodes) containerOf.set(n, container);
       // Sheets render inside (above) their container, deepest first.
       [...ordered].reverse().forEach(m => nodeById.get(m.id)!.group.moveToTop());
 
@@ -3347,26 +3359,37 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Everything else touching a moved node. A stacked member's wiring to
-    // the wider graph is detail inside the meta-node — hidden with the rest
-    // of the pile (dozens of re-routed fan edges out of a pile were most of
-    // the gathered view's noise). Edges between still-individual nodes stay
-    // live: stale wiring → incremental re-route, debounced behind the
-    // navigation.
-    const stackedNodes = new Set<DANode>();
-    for (const members of stackMembers.values()) {
-      for (const m of members) stackedNodes.add(nodeById.get(m.id)!);
-    }
+    // the wider graph hides with its pile but is not lost: each distinct
+    // (pile ↔ endpoint) connection renders as one thin meta-arrow bundled
+    // at the container — the fan of individually re-routed member edges
+    // was most of the gathered view's noise. Edges between still-individual
+    // nodes stay live: stale wiring → incremental re-route, debounced
+    // behind the navigation.
     const rest: DAEdge[] = [];
+    const bundles = new Map<string, {from: MetaBox; to: MetaBox}>();
     for (const node of this.gatheredNodePositions.keys()) {
       for (const edge of node.connectedEdges) {
         if (handled.has(edge) || rest.includes(edge) || !edge.group.visible()) continue;
-        if (stackedNodes.has(edge.srcNode) || stackedNodes.has(edge.destNode)) {
-          edge.group.visible(false);
-          this.gatherHiddenEdges.push(edge);
+        const srcRect = containerOf.get(edge.srcNode);
+        const dstRect = containerOf.get(edge.destNode);
+        if (!srcRect && !dstRect) {
+          rest.push(edge);
           continue;
         }
-        rest.push(edge);
+        edge.group.visible(false);
+        this.gatherHiddenEdges.push(edge);
+        const sKey = srcRect ? `pile:${pileIds.get(srcRect)}` : `node:${edge.srcNode.id}`;
+        const dKey = dstRect ? `pile:${pileIds.get(dstRect)}` : `node:${edge.destNode.id}`;
+        if (!bundles.has(`${sKey}->${dKey}`)) {
+          bundles.set(`${sKey}->${dKey}`, {
+            from: srcRect ? this.gatherMetaBoxOfRect(srcRect) : this.gatherMetaBoxOfNode(edge.srcNode),
+            to: dstRect ? this.gatherMetaBoxOfRect(dstRect) : this.gatherMetaBoxOfNode(edge.destNode),
+          });
+        }
       }
+    }
+    for (const bundle of bundles.values()) {
+      this.addGatherMetaArrow(bundle.from, bundle.to, true);
     }
     if (this.gatherDeferredRouting !== null) {
       clearTimeout(this.gatherDeferredRouting);
@@ -3417,55 +3440,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.gatherIndicators.push(badge);
   }
 
-  /** The meta-edge: one thick arrow between the anchor's box and a pile's
-   *  container, pointing the way all the hidden member edges flow, carrying
-   *  the top edge's label and a "…K more labels…" marker on opposite
-   *  sides so they never collide. */
+  /** The primary meta-edge: one thick arrow between the anchor's box and a
+   *  pile's container, pointing the way all the hidden member edges flow,
+   *  carrying the top edge's label and a "…K more labels…" marker on
+   *  opposite sides so they never collide. */
   private addGatherMetaEdge(
     anchorNode: DANode,
     container: Konva.Rect,
     incoming: boolean,
     labels: string[],
   ): void {
-    const aC = this.getNodeCenterInLayerCoordinates(anchorNode);
-    const cC = {x: container.x() + container.width() / 2, y: container.y() + container.height() / 2};
-    const len = Math.hypot(cC.x - aC.x, cC.y - aC.y);
-    if (len < 1e-6) return;
-    const u = {x: (cC.x - aC.x) / len, y: (cC.y - aC.y) / len};
-    const fromAnchor = this.rectBoundaryPoint(aC, anchorNode.NODE_WIDTH / 2, anchorNode.NODE_HEIGHT / 2, u);
-    const atContainer = this.rectBoundaryPoint(cC, container.width() / 2, container.height() / 2, {x: -u.x, y: -u.y});
-    // Stand the arrowhead tip off its target so a 16px head never overlaps
-    // the container border / anchor box it points at.
-    const STANDOFF = 6;
-    const points = incoming
-      ? [atContainer.x, atContainer.y, fromAnchor.x + u.x * STANDOFF, fromAnchor.y + u.y * STANDOFF]
-      : [fromAnchor.x, fromAnchor.y, atContainer.x - u.x * STANDOFF, atContainer.y - u.y * STANDOFF];
-    // Direction gradient in the meta grays: dim at the flow's source,
-    // bright at its destination, arrowhead in the destination color —
-    // same readability convention as the real edges' theme gradient.
-    const dark = this.themeService.theme === 'dark';
-    const grayFrom = dark ? '#5c5c5c' : '#c2c2c2';
-    const grayTo = dark ? '#d4d4d4' : '#4d4d4d';
-    const arrow = new Konva.Arrow({
-      points,
-      stroke: '#8a8a8a',
-      strokeLinearGradientStartPoint: {x: points[0], y: points[1]},
-      strokeLinearGradientEndPoint: {x: points[2], y: points[3]},
-      strokeLinearGradientColorStops: [0, grayFrom, 1, grayTo],
-      fill: grayTo,
-      strokeWidth: 5,
-      pointerLength: 16,
-      pointerWidth: 16,
-      lineCap: 'round',
-      opacity: 0.95,
-      listening: false,
-    });
-    this.drawingLayer.add(arrow);
-    this.gatherIndicators.push(arrow);
+    const anchorBox = this.gatherMetaBoxOfNode(anchorNode);
+    const containerBox = this.gatherMetaBoxOfRect(container);
+    const geo = incoming
+      ? this.addGatherMetaArrow(containerBox, anchorBox, false)
+      : this.addGatherMetaArrow(anchorBox, containerBox, false);
+    if (!geo || labels.length === 0) return;
 
-    if (labels.length === 0) return;
-    const mid = {x: (fromAnchor.x + atContainer.x) / 2, y: (fromAnchor.y + atContainer.y) / 2};
-    const perp = {x: -u.y, y: u.x};
+    const mid = {x: (geo.start.x + geo.end.x) / 2, y: (geo.start.y + geo.end.y) / 2};
+    const perp = {x: -geo.u.y, y: geo.u.x};
     const put = (text: string, side: number, italic: boolean) => {
       const t = new Konva.Text({
         x: mid.x + perp.x * side,
@@ -3486,6 +3479,56 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (labels.length > 1) {
       put(`…${labels.length - 1} more label${labels.length === 2 ? '' : 's'}…`, -16, true);
     }
+  }
+
+  /** A meta-arrow between two boxes: boundary to boundary, gray direction
+   *  gradient (dim source → bright destination, arrowhead in the
+   *  destination gray), tip standing off its target, rendered just above
+   *  the grid — below nodes and real edges, like wiring should be. `thin`
+   *  is the secondary form bundling a pile's connections to the wider
+   *  graph. */
+  private addGatherMetaArrow(
+    from: MetaBox,
+    to: MetaBox,
+    thin: boolean,
+  ): {start: {x: number; y: number}; end: {x: number; y: number}; u: {x: number; y: number}} | null {
+    const len = Math.hypot(to.cx - from.cx, to.cy - from.cy);
+    if (len < 1e-6) return null;
+    const u = {x: (to.cx - from.cx) / len, y: (to.cy - from.cy) / len};
+    const start = this.rectBoundaryPoint({x: from.cx, y: from.cy}, from.halfW, from.halfH, u);
+    const end = this.rectBoundaryPoint({x: to.cx, y: to.cy}, to.halfW, to.halfH, {x: -u.x, y: -u.y});
+    const standoff = thin ? 4 : 6;
+    const tip = {x: end.x - u.x * standoff, y: end.y - u.y * standoff};
+    const dark = this.themeService.theme === 'dark';
+    const grayFrom = dark ? '#5c5c5c' : '#c2c2c2';
+    const grayTo = dark ? '#d4d4d4' : '#4d4d4d';
+    const arrow = new Konva.Arrow({
+      points: [start.x, start.y, tip.x, tip.y],
+      stroke: '#8a8a8a',
+      strokeLinearGradientStartPoint: {x: start.x, y: start.y},
+      strokeLinearGradientEndPoint: {x: tip.x, y: tip.y},
+      strokeLinearGradientColorStops: [0, grayFrom, 1, grayTo],
+      fill: grayTo,
+      strokeWidth: thin ? 2.5 : 5,
+      pointerLength: thin ? 10 : 16,
+      pointerWidth: thin ? 10 : 16,
+      lineCap: 'round',
+      opacity: thin ? 0.7 : 0.95,
+      listening: false,
+    });
+    this.drawingLayer.add(arrow);
+    arrow.zIndex(1); // above the grid group, below every node and edge
+    this.gatherIndicators.push(arrow);
+    return {start, end, u};
+  }
+
+  private gatherMetaBoxOfNode(n: DANode): MetaBox {
+    const c = this.getNodeCenterInLayerCoordinates(n);
+    return {cx: c.x, cy: c.y, halfW: n.NODE_WIDTH / 2, halfH: n.NODE_HEIGHT / 2};
+  }
+
+  private gatherMetaBoxOfRect(r: Konva.Rect): MetaBox {
+    return {cx: r.x() + r.width() / 2, cy: r.y() + r.height() / 2, halfW: r.width() / 2, halfH: r.height() / 2};
   }
 
   /** Whether the straight chord between an edge's endpoint boxes runs
