@@ -41,4 +41,6 @@ server.on('error', err => {
   throw err;
 });
 
-server.listen(PORT, () => console.log(`Log server on :${PORT}, writing to ${LOG_FILE}`));
+// Loopback only: remote pages reach this through the nginx /debug-log proxy,
+// so the raw port never needs to be exposed on the public interface.
+server.listen(PORT, '127.0.0.1', () => console.log(`Log server on 127.0.0.1:${PORT}, writing to ${LOG_FILE}`));
