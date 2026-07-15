@@ -27,6 +27,7 @@ export interface KeymenuKeyAssignments {
     readonly selectDragSubmenu: KeyString;
     readonly styleSubmenu: KeyString;
     readonly layoutSubmenu: KeyString;
+    readonly toggleVisibility: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
@@ -163,6 +164,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
+    toggleVisibility: 'g',
   },
   insert: {
     node: 'j',
@@ -278,6 +280,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
+    toggleVisibility: 'g',
   },
   insert: {
     node: 'd',

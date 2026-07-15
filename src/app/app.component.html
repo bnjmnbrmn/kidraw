@@ -8,8 +8,12 @@
 />
 
 <app-keymenu
+  [class.keymenu-hidden]="!keymenuVisible"
+  [attr.aria-hidden]="!keymenuVisible"
   [movementSpeed]="movementSpeed"
   [canEdit]="canEdit"
+  [visible]="keymenuVisible"
   [keyAssignments]="keyAssignments"
   (keyMenuOut)="relayKeymenuCommand($event)"
-  (labelEditModeOut)="handleLabelEditModeChange($event)"/>
+  (labelEditModeOut)="handleLabelEditModeChange($event)"
+  (visibilityToggle)="toggleKeymenuVisibility()"/>

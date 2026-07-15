@@ -52,8 +52,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() movementSpeed = 20;
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
+  @Input() visible = true;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
   @Output() labelEditModeOut = new EventEmitter<'insert' | 'vimNormal'>();
+  @Output() visibilityToggle = new EventEmitter<void>();
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -396,6 +398,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
+      [root.toggleVisibility]: new LabeledAction('Hide Keyboard', () => this.visibilityToggle.emit(), false),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
   }
@@ -1167,6 +1170,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
     event = this.remapEvent(event);
 
+    const eventKey = KeymenuComponent.normalizeEventKey(event);
+    if (!this.visible && eventKey === this.keyAssignments.root.toggleVisibility) {
+      event.preventDefault();
+      if (!event.repeat) {
+        this.visibilityToggle.emit();
+      }
+      return;
+    }
+
     // Ctrl+Z = Undo, Ctrl+Shift+Z / Ctrl+R = Redo (works in all modes)
     // Skip interception when the Ctrl submenu is active so keymenu handles it with visual feedback
     const ctrlSubmenuActive = this.keyMenu.currentMode instanceof USQwertyMode &&
@@ -1238,7 +1250,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // Only at root level — if we're inside a submenu, 'i' may be zoom or something else
     const currentMode = this.keyMenu.currentMode;
     const atRootLevel = currentMode instanceof USQwertyMode && currentMode.stack.length === 1;
-    const eventKey = KeymenuComponent.normalizeEventKey(event);
     const editKeyPressedAtRoot = currentMode.name === 'normal' && !event.repeat && atRootLevel &&
         eventKey === this.keyAssignments.root.editSubmenu;
     if (editKeyPressedAtRoot) {

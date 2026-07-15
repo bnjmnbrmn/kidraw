@@ -43,4 +43,27 @@ describe('AppComponent', () => {
     const keymenu = fixture.debugElement.query(By.directive(KeymenuComponent)).componentInstance as KeymenuComponent;
     expect(keymenu.movementSpeed).toBe(fixture.componentInstance.movementSpeed);
   });
+
+  it('should hide and restore the keyboard menu without destroying it', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const keymenuDebug = fixture.debugElement.query(By.directive(KeymenuComponent));
+
+    expect(keymenuDebug.componentInstance.visible).toBeTrue();
+
+    app.toggleKeymenuVisibility();
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.directive(KeymenuComponent))).toBe(keymenuDebug);
+    expect(keymenuDebug.nativeElement.classList).toContain('keymenu-hidden');
+    expect(keymenuDebug.componentInstance.visible).toBeFalse();
+    expect(keymenuDebug.nativeElement.getAttribute('aria-hidden')).toBe('true');
+
+    app.toggleKeymenuVisibility();
+    fixture.detectChanges();
+
+    expect(keymenuDebug.nativeElement.classList).not.toContain('keymenu-hidden');
+    expect(keymenuDebug.componentInstance.visible).toBeTrue();
+  });
 });

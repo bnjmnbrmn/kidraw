@@ -24,6 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   movementSpeed = 50;
   canEdit = false;
+  keymenuVisible = true;
   keyAssignments: KeymenuKeyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
 
   private configSub?: Subscription;
@@ -50,6 +51,10 @@ export class AppComponent implements OnInit, OnDestroy {
   relayKeymenuCommand(kmCommand: DACommand) {
     this.log.log("app component kmCommand: " + JSON.stringify(kmCommand))
     this.commandsSubject.next(kmCommand);
+  }
+
+  toggleKeymenuVisibility() {
+    this.keymenuVisible = !this.keymenuVisible;
   }
 
   handleLabelEditModeChange(subMode: 'insert' | 'vimNormal') {

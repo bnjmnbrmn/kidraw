@@ -77,6 +77,35 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ENTER_DRAG_MODE});
   });
 
+  it('should expose a one-shot root action for toggling keyboard visibility', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.visibilityToggle, 'emit');
+
+    const toggleVisibility = buildRootConfig(component)['g'] as LabeledAction;
+
+    expect(toggleVisibility instanceof LabeledAction).toBeTrue();
+    expect(toggleVisibility.actionLabel).toBe('Hide Keyboard');
+    expect(toggleVisibility.repeat).toBeFalse();
+
+    toggleVisibility.action();
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should restore a hidden keyboard from any keymenu mode', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.visibilityToggle, 'emit');
+    component.visible = false;
+    component.enterLabelEditMode();
+
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'g', code: 'KeyG'}));
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'g', code: 'KeyG', repeat: true}));
+
+    expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('should have nav submenu on r with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
@@ -153,6 +182,7 @@ describe('KeymenuComponent', () => {
         editSubmenu: 'j',
         insertSubmenu: 'k',
         selectDragSubmenu: 'l',
+        toggleVisibility: 'q',
       },
       shared: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,
@@ -169,6 +199,7 @@ describe('KeymenuComponent', () => {
     expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit is submenu (tap fires on keyup)
     expect(rootConfig['k'] instanceof LabeledSubmenuConfig).toBeTrue(); // Insert is a submenu
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
+    expect((rootConfig['q'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');

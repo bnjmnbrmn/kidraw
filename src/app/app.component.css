@@ -3,3 +3,18 @@
   flex-direction: column;
   height: 100vh;
 }
+
+app-drawing-area {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+app-keymenu {
+  flex: 0 0 27em;
+}
+
+app-keymenu.keymenu-hidden {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
