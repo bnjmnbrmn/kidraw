@@ -102,6 +102,45 @@ gathered subgraph (e.g. enlarge gathered nodes / thicken their edges,
 dim non-participants, plus a header chip like the LABEL EDIT badge) so
 "gathered in" never gets mistaken for the real layout.
 
+## Implemented 2026-07-15 (`542b7f6`, `746dce6`): fisheye + stacks + auto-gather
+
+Ben's spec (2026-07-15, refining the sections above): all neighbors —
+incoming and outgoing — visible but not too close; near-strangers pushed
+away so proximity means neighborship; crowds stack up (nav-next node and
+its nearest siblings stay clear; different types in different stacks;
+in vs out never mixed); stacked-edge labels show only the top one plus an
+"…other labels…" indicator in an alternate font that must not occlude it;
+stack offsets small and capped ("50 should look pretty much the same
+as 3"). Plus (mid-session): drop the temporary Gather entirely and make
+gathering automatic in the move-by-graph submenu, re-anchoring to
+whatever the traversal is at, with attention to performance.
+
+Shipped as: `gather-fisheye.ts` planner (bearing-preserving isotonic
+angular packing onto a perimeter-gap ring; stacks grouped by
+direction+kind with protected members; cascade capped at 3 visible
+levels) + one persistent Gather (`f→h` toggle, `f→u` Ungather;
+GATHER_DESCENDANTS removed). Anchor↔neighbor wiring transforms by the
+same rotate+scale as the node (the sucked-in look); stack edges go
+straight (a pile reads as one bundle); everything else re-routes
+incrementally behind a 250 ms debounce. Holding `f` auto-gathers and
+re-anchors per node landing (GRAPH_NAV_EXIT restores unless pinned —
+pressing Gather over an auto-gather pins it). Screenshots:
+`/shots/2026-07-15-1211-gather-fisheye/`.
+
+**Still open:**
+- Anchor on node-like stops: Ben wants labels/waypoints as gather anchors
+  too (gather the stop's edge endpoints?); today only node landings
+  re-anchor.
+- Performance beyond the debounce: precompute neighbor plans in a worker
+  while resting on a node; diff-based re-gather (only move what changes
+  between consecutive anchors) instead of restore-then-gather; a
+  "gathering…" spinner if routing ever gets slow.
+- Pushed strangers can pile up on the clear-radius circle (no overlap
+  resolution on the pushed set).
+- Gathered-state styling (dim non-participants, header chip) — the
+  cascade piles signal stacking, but nothing yet marks "this whole view
+  is temporary".
+
 ## Nav-aware gathering (Ben, 2026-07-13)
 
 Gather is entering the traversal loop (hold `f` → gather while navigating),
