@@ -169,9 +169,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** True while the Move-by-graph submenu is held: traversal re-gathers
    *  around each node it lands on. */
   private graphNavSession = false;
-  /** Escape hatch for the automatic nav-session gather (repro suites that
-   *  assert raw traversal geometry turn it off; the app leaves it on). */
-  public autoGatherEnabled = true;
+  /** Automatic nav-session gather. Off by default since 2026-07-15: Ben
+   *  found it too slow and not the right shape for navigation — the nav
+   *  popup (notes/idea-nav-popup.md) is the replacement direction. Explicit
+   *  Gather/Ungather are unaffected. */
+  public autoGatherEnabled = false;
   /** Member edges of a pile, hidden while their meta-edge stands in for
    *  them; shown again on ungather. */
   private gatherHiddenEdges: DAEdge[] = [];

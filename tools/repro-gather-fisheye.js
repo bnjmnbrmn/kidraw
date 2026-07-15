@@ -272,6 +272,11 @@ async function main() {
   });
 
   // ---------- C. Nav session auto-gather (real keys) ----------
+  // Auto-gather is off by default (too slow for navigation; the nav popup
+  // is the replacement direction) — turn it on to verify the machinery.
+  await page.evaluate(() => {
+    window.ng.getComponent(document.querySelector('app-drawing-area')).autoGatherEnabled = true;
+  });
   await placeOn('Y');
   await page.keyboard.down('f');
   await page.waitForTimeout(300);
