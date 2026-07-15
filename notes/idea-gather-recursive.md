@@ -64,6 +64,44 @@ nav-corridor reservation, recursive plain-gather, whether diamonds'
 pointed corners need extra stack gap in the column, and Ben's
 **children-along-a-curve** idea for when the column outgrows the viewport.
 
+## Two gathers is one too many (Ben, 2026-07-15)
+
+Ben: "We have both 'Gather' and 'Gather Around'. Not sure what the
+difference is, or which I actually want." After `ee0e3ea` the two are
+nearly identical — both place children in a right column and
+parents/ancestors on the left; the only real differences are **(a)** plain
+Gather auto-restores after 5 s while Gather Around persists until
+Ungather, and **(b)** Gather takes one level of parents, Gather Around
+takes the whole ancestor chain (wedge). When the difference needs a diff
+to explain, the split has stopped earning its two keys. **Direction:
+merge into a single persistent Gather** (toggle: re-press = ungather;
+keep `u` Ungather as the explicit escape). Depth can become a modifier or
+repeat-press deepening later.
+
+## Gathered = ungathered, sucked in (Ben, 2026-07-15)
+
+The post-gather edge routing reads as wonky — "too much trying to get
+around having connection points too close together." The column layout
+manufactures the problem: it discards the neighborhood's original
+geometry, packs connection points into a dense stack, and then asks the
+router to untangle what the placement tangled.
+
+Ben's stated intent: "I want the gathered layout to more clearly be
+ungathered layout, but sucked in." That suggests **radial compression
+(fisheye), not re-layout**: keep every gathered node at its original
+bearing from the anchor and compress its distance (with perimeter-gap
+floors so boxes never collide). Because angles are preserved,
+**edge control points can be transformed by the same mapping** — the
+wiring keeps its familiar shape, just pulled in, and the incremental
+re-route becomes a fallback rather than the default. Spatial memory
+survives by construction, and the in/out separation of the current
+columns is traded for recognizability.
+
+Companion UI idea (Ben): make the gathered state *visible* — style the
+gathered subgraph (e.g. enlarge gathered nodes / thicken their edges,
+dim non-participants, plus a header chip like the LABEL EDIT badge) so
+"gathered in" never gets mistaken for the real layout.
+
 ## Nav-aware gathering (Ben, 2026-07-13)
 
 Gather is entering the traversal loop (hold `f` → gather while navigating),

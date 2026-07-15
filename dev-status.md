@@ -40,6 +40,8 @@ _Updated 2026-07-15. Branch: `main`._
 
 19. **Typed cross-link routing; KiDraw Dev pierces fixed (2026-07-15, `02da288`).** Tree-clear now keeps the hierarchy straight and routes only the wiring outside it. Semantic node/edge tags survive file ↔ snapshot ↔ live-object round trips (previously loading preserved their style effect but silently discarded the tags themselves); when `component-of` tags exist, those edges alone form the spanning forest, while `depends-on` / `serves` / `note` remain cross-links. Tree membership is exact edge identity, so parallel and anti-parallel edges cannot be mistaken for the same tree edge. `applyLayout` returns the cross-links and `DrawingAreaComponent` routes them against the frozen tree after `tree-*-clear`. IDv3's cluster bypass now includes a two-waypoint union candidate for long spaced rows/columns — the old `cluster.length > maxWaypoints` guard incorrectly rejected a 2-point bypass merely because it avoided more than four nodes, which left the two reported center-cutting edges straight. The KiDraw Dev sample is re-baked with the kind-aware tree-right-clear positions and clean cross-link waypoints. Rendered-path metrics now sample the actual tension curve plus endpoint stubs rather than its control polygon. Live sample verification: **40n / 59e, 37 hierarchy + 22 cross-link edges, 0 edges through nodes, 0 sibling crossings, 0 self-intersections, 0 long collinear overlaps**; 262/262 unit tests, 33/33 routing scenarios, production build clean.
 
+21. **Traversal current node + remote debug logging (2026-07-15, `6fe5e41`, `35bfed1`).** Ben's "can't navigate when the crosshairs aren't over the current node" bug confirmed and fixed: nav focus isn't a selection, so drifting the crosshairs off the traversed node left no anchor — jumps/cycles dead-ended and Gather no-op'd silently. The traversal now tracks its **current node** (`graphNavLastNode`) as anchor of last resort; using the fallback recenters the crosshairs onto it (same recovery gesture as hold-`f` entry) so the next jump walks. Gather shares the fallback and emits status feedback when anchorless. Separately, **debug logging now works from `kidraw.dev.bnjmnbrmn.com`**: `DebugLogService` posts same-origin to `/debug-log` on non-localhost hosts, nginx proxies it to the collector (which now binds loopback), lines land in `tools/debug.log` as usual — verified by driving the app at the public domain. **Gather design feedback recorded** in [`notes/idea-gather-recursive.md`](notes/idea-gather-recursive.md): merge Gather/Gather Around into one persistent toggle; replace column re-layout with radial "sucked-in" compression (fisheye — transform edge control points with the nodes instead of re-routing); style the gathered state visibly.
+
 20. **Keyboard menu visibility toggle (2026-07-15, `b18dc72`).** Root **`g`** now shows **Hide Keyboard** and toggles the visual keyboard in both vim and ijkl profiles. Hiding keeps `KeymenuComponent` mounted for its document-level listener, marks it `aria-hidden`, removes it from the flex layout, and gives the reclaimed space to the drawing canvas. While hidden, `g` is intercepted before mode-specific handling, so it reliably restores the menu even if the app entered Label Edit while hidden (and does not insert a literal `g`). Explicit drawing/menu flex bases make the layout return to its original dimensions after restoration. Browser verification at 1280×900: drawing canvas **412→844→412 px**, menu **432→hidden→432 px**; recovery from hidden Label Edit also passed. 265/265 unit tests; production build clean apart from the existing budget/CommonJS warnings.
 
 ## Routing-eval harness
@@ -56,6 +58,8 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `35bfed1` | Debug logging works from kidraw.dev.bnjmnbrmn.com |
+| `6fe5e41` | Traversal tracks a current node; navigation recovers after crosshairs drift |
 | `b18dc72` | Toggle keyboard menu with g |
 | `103dde8` | Document typed cross-link routing result |
 | `02da288` | Route typed cross-links around layout nodes |
@@ -64,8 +68,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `2dd0e74` | Samples: KiDraw Dev (typed todo) + Fan Tree in the Load Sample dropdown |
 | `9ba1b78` | dev-status: record arrowhead stub fix |
 | `b517e0b` | Fix arrowhead/tangent aim on curved edges: collinear end stubs at render time |
-| `29aff8e` | dev-status: record dataset/metrics/gather-routing/zoom-fix round |
-| `01c05bc` | notes: metrics table + gather routing progress |
 
 ---
 
