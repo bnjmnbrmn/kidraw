@@ -229,6 +229,18 @@ async function main() {
   check('A7c: stacked edges bow into distinct lanes (visible multiplicity)',
     laneInfo.withLane >= 6 && laneInfo.distinctLanes >= 6,
     JSON.stringify(laneInfo));
+  // Arrowheads of a pile's outgoing edges must not vanish under the sheets
+  // above their target: the pile's edges render above the node boxes.
+  const arrowInfo = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    const outEdges = dl.getDAEdges().filter(e =>
+      e.srcNode.id === 'H' && /^(od|os)/.test(e.destNode.id));
+    const raised = outEdges.filter(e => e.group.zIndex() > e.destNode.group.zIndex());
+    return {outEdges: outEdges.length, raised: raised.length};
+  });
+  check('A7d: piled out-edges render above the sheets (arrowheads visible)',
+    arrowInfo.raised >= 12, JSON.stringify(arrowInfo));
 
   // Ungather → exact restore.
   await page.evaluate(() => {

@@ -3276,11 +3276,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             const uy0 = p.y - aC.y;
             const len = Math.hypot(ux0, uy0);
             const perp = len < 1e-6 ? {x: 0, y: 1} : {x: -uy0 / len, y: ux0 / len};
-            const LANE = 8;
+            const LANE = 11;
             edge.setControlPoints([{
               x: (aC.x + p.x) / 2 + perp.x * LANE * level,
               y: (aC.y + p.y) / 2 + perp.y * LANE * level,
             }]);
+          }
+          // An arrowhead pointing at a buried sheet lands under the sheets
+          // above it — raise the pile's edges over the node boxes so every
+          // visible lane keeps its arrowhead (restore puts z-order back).
+          if (edge.destNode !== anchorNode) {
+            edge.group.moveToTop();
           }
           continue;
         }

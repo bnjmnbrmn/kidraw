@@ -293,13 +293,21 @@ export function planGather(
     const uy = Math.sin(angle);
     const baseX = anchor.cx + ux * ringRadius;
     const baseY = anchor.cy + uy * ringRadius;
+    // Cascade diagonally (radial rotated ~35° toward the lane side): the
+    // sideways component separates each sheet's edge-arrival point, so the
+    // pile shows one arrowhead per visible level instead of a coincident
+    // clump.
+    const CAS_R = Math.SQRT1_2;
+    const CAS_P = Math.SQRT1_2;
+    const casX = ux * CAS_R - uy * CAS_P;
+    const casY = uy * CAS_R + ux * CAS_P;
     item.members.forEach((m, j) => {
       const level = Math.min(j, opt.stackMaxVisible);
       const off = item.members.length > 1 ? opt.stackOffset * level : 0;
       placed.push({
         id: m.id,
-        x: baseX + ux * off,
-        y: baseY + uy * off,
+        x: baseX + casX * off,
+        y: baseY + casY * off,
         stack: item.stackKey === null
           ? null
           : {key: item.stackKey, index: j, size: item.members.length},
