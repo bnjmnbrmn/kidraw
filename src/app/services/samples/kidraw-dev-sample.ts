@@ -156,27 +156,29 @@ semantics:
     e36: {from: c1, to: t23, tags: [component-of]}
     e37: {from: c7, to: t24, tags: [component-of]}
     # depends-on cross-links (prerequisite → dependent): the non-tree part.
+    # Labels on the hub nodes' edges (t7, t13, t8, the goals) exercise the
+    # stacked-edge label handling in the gathered view.
     e40: {from: t2, to: t3, tags: [depends-on]}
-    e41: {from: t7, to: t11, tags: [depends-on]}
-    e42: {from: t7, to: t21, tags: [depends-on]}
-    e43: {from: t7, to: t22, tags: [depends-on]}
-    e44: {from: t13, to: t17, tags: [depends-on]}
-    e45: {from: t13, to: t14, tags: [depends-on]}
+    e41: {from: t7, to: t11, tags: [depends-on], labels: [{text: "menu shell first"}]}
+    e42: {from: t7, to: t21, tags: [depends-on], labels: [{text: "same overlay"}]}
+    e43: {from: t7, to: t22, tags: [depends-on], labels: [{text: "same overlay"}]}
+    e44: {from: t13, to: t17, tags: [depends-on], labels: [{text: "kinds define follow"}]}
+    e45: {from: t13, to: t14, tags: [depends-on], labels: [{text: "frontier reads kinds"}]}
     e46: {from: t18, to: t14, tags: [depends-on]}
     e47: {from: t18, to: t19, tags: [depends-on]}
-    e48: {from: t5, to: t6, tags: [depends-on]}
-    e49: {from: t13, to: t23, tags: [depends-on]}
+    e48: {from: t5, to: t6, tags: [depends-on], labels: [{text: "colors must land"}]}
+    e49: {from: t13, to: t23, tags: [depends-on], labels: [{text: "forest keys on kind"}]}
     e50: {from: t8, to: q2, tags: [depends-on]}
-    e51: {from: t13, to: t20, tags: [depends-on]}
+    e51: {from: t13, to: t20, tags: [depends-on], labels: [{text: "schema proves out"}]}
     # serves (task → goal it advances).
-    e60: {from: t10, to: g0, tags: [serves]}
-    e61: {from: t11, to: g0, tags: [serves]}
-    e62: {from: t7, to: g0, tags: [serves]}
-    e63: {from: t8, to: g0, tags: [serves]}
-    e64: {from: t14, to: g1, tags: [serves]}
-    e65: {from: t19, to: g1, tags: [serves]}
-    e66: {from: t6, to: g1, tags: [serves]}
-    e67: {from: t24, to: g1, tags: [serves]}
+    e60: {from: t10, to: g0, tags: [serves], labels: [{text: "safe saves"}]}
+    e61: {from: t11, to: g0, tags: [serves], labels: [{text: "fast open"}]}
+    e62: {from: t7, to: g0, tags: [serves], labels: [{text: "discoverability"}]}
+    e63: {from: t8, to: g0, tags: [serves], labels: [{text: "reliability"}]}
+    e64: {from: t14, to: g1, tags: [serves], labels: [{text: "todo superpower"}]}
+    e65: {from: t19, to: g1, tags: [serves], labels: [{text: "graph GC"}]}
+    e66: {from: t6, to: g1, tags: [serves], labels: [{text: "type legibility"}]}
+    e67: {from: t24, to: g1, tags: [serves], labels: [{text: "scale to big graphs"}]}
     # note attachments.
     e70: {from: n1, to: t8, tags: [note]}
     e71: {from: n2, to: q4, tags: [note]}
