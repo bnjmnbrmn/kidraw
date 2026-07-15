@@ -210,6 +210,25 @@ async function main() {
     `hidden=${s.hiddenLabels.length} visible=${s.visibleLabels.length}`);
   check('A7: "…more labels…" marker present',
     s.indicators.some(t => /more label/.test(t)), JSON.stringify(s.indicators));
+  check('A7b: every pile carries a ×N count badge',
+    s.indicators.filter(t => /^×\d+$/.test(t)).length === piles.length,
+    JSON.stringify(s.indicators));
+  // Stacked edges fan into visible lanes: within a pile, the edges of the
+  // first cascade levels bow through distinct offset control points.
+  const laneInfo = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    const stackEdges = dl.getDAEdges().filter(e =>
+      (e.srcNode.id === 'H' || e.destNode.id === 'H')
+      && /^(od|os|in)/.test(e.srcNode.id === 'H' ? e.destNode.id : e.srcNode.id));
+    const withLane = stackEdges.filter(e => e.controlPoints.length === 1);
+    const laneOffsets = new Set(withLane.map(e =>
+      `${Math.round(e.controlPoints[0].x)},${Math.round(e.controlPoints[0].y)}`));
+    return {withLane: withLane.length, distinctLanes: laneOffsets.size};
+  });
+  check('A7c: stacked edges bow into distinct lanes (visible multiplicity)',
+    laneInfo.withLane >= 6 && laneInfo.distinctLanes >= 6,
+    JSON.stringify(laneInfo));
 
   // Ungather → exact restore.
   await page.evaluate(() => {

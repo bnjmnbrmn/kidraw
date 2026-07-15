@@ -13,7 +13,7 @@ import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, Layout
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
-import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
+import { planGather, DEFAULT_GATHER_OPTIONS, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -3263,7 +3263,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         handled.add(edge);
         this.saveGatherEdgeWiring(edge);
         const hasWaypoint = edge.controlPoints.some(cp => cp.waypointId);
-        if (p.stack !== null || hasWaypoint || edge.controlPoints.length === 0 || !saved) {
+        if (p.stack !== null) {
+          // Fan the pile's edges into slightly offset lanes (one per visible
+          // cascade level, deeper edges coincide with the last lane — same
+          // capped rule as the node cascade) so a stack of edges visibly
+          // reads as a stack, not one edge.
+          const level = Math.min(p.stack.index, DEFAULT_GATHER_OPTIONS.stackMaxVisible);
+          if (level === 0) {
+            edge.setControlPoints([]);
+          } else {
+            const ux0 = p.x - aC.x;
+            const uy0 = p.y - aC.y;
+            const len = Math.hypot(ux0, uy0);
+            const perp = len < 1e-6 ? {x: 0, y: 1} : {x: -uy0 / len, y: ux0 / len};
+            const LANE = 8;
+            edge.setControlPoints([{
+              x: (aC.x + p.x) / 2 + perp.x * LANE * level,
+              y: (aC.y + p.y) / 2 + perp.y * LANE * level,
+            }]);
+          }
+          continue;
+        }
+        if (hasWaypoint || edge.controlPoints.length === 0 || !saved) {
           edge.setControlPoints([]);
           continue;
         }
@@ -3303,11 +3324,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           }
         }
       }
+      const topNode = nodeById.get(ordered[0].id)!;
       if (hidden > 0) {
-        const topNode = nodeById.get(ordered[0].id)!;
         const topEdges = infos.get(topNode)?.edges ?? [];
         this.addGatherLabelIndicator(aC, topNode, topEdges[0] ?? null, hidden);
       }
+      this.addGatherStackBadge(topNode, ordered.length);
     }
 
     // Everything else touching a moved node: stale wiring → incremental
@@ -3344,6 +3366,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  /** "×N" count badge at the top-right corner of a pile's top node: how
+   *  many nodes (and edges) are stacked here, since the capped cascade
+   *  deliberately looks the same for 4 and 50. */
+  private addGatherStackBadge(topNode: DANode, size: number): void {
+    const badge = new Konva.Text({
+      x: topNode.group.x() + topNode.NODE_WIDTH - 4,
+      y: topNode.group.y() - 16,
+      text: `×${size}`,
+      fontSize: 13,
+      fontStyle: 'italic bold',
+      fill: '#8a8a8a',
+      listening: false,
+    });
+    this.drawingLayer.add(badge);
+    badge.moveToTop();
+    this.gatherIndicators.push(badge);
+  }
+
   /** Small italic marker beside the top edge of a stack: there are labels
    *  underneath. Placed on the opposite side of the edge from the visible
    *  top label so it never occludes it. */
@@ -3365,9 +3405,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const off = (topLabel.x - mid.x) * perp.x + (topLabel.y - mid.y) * perp.y;
       sideSign = off >= 0 ? -1 : 1;
     }
+    // Clear of the top label AND the fanned edge lanes (up to
+    // stackMaxVisible × 8px on the +perp side).
     const text = new Konva.Text({
-      x: mid.x + perp.x * sideSign * 26,
-      y: mid.y + perp.y * sideSign * 26,
+      x: mid.x + perp.x * sideSign * 46,
+      y: mid.y + perp.y * sideSign * 46,
       text: `…${hiddenCount} more label${hiddenCount === 1 ? '' : 's'}…`,
       fontSize: 11,
       fontStyle: 'italic',
