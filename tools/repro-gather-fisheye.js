@@ -208,9 +208,10 @@ async function main() {
   check('A6: every pile is a meta-node: one dashed container and one meta-arrow each',
     s.containers === piles.length && s.metaArrows === piles.length,
     `containers=${s.containers} arrows=${s.metaArrows} piles=${piles.length}`);
-  check('A6b: all pile member edges hidden behind their meta-edge',
-    s.hiddenEdges.length >= 20 && s.hiddenEdges.every(k => k.includes('H')),
-    `hidden=${s.hiddenEdges.length}`);
+  check('A6b: pile member edges hidden behind their meta-edge',
+    s.hiddenEdges.length >= 20, `hidden=${s.hiddenEdges.length}`);
+  check('A6c: a stacked member\'s wiring to the wider graph hides too',
+    s.hiddenEdges.includes('od0->os0'), JSON.stringify(s.hiddenEdges.slice(-4)));
   check('A7: meta-edge shows the top label plus a "…more labels…" marker',
     s.indicators.some(t => /^lbl/.test(t)) && s.indicators.some(t => /more label/.test(t)),
     JSON.stringify(s.indicators));

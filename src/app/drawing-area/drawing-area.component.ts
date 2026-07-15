@@ -3346,12 +3346,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.addGatherStackBadge(container, ordered.length);
     }
 
-    // Everything else touching a moved node: stale wiring → incremental
-    // re-route, debounced behind the navigation.
+    // Everything else touching a moved node. A stacked member's wiring to
+    // the wider graph is detail inside the meta-node — hidden with the rest
+    // of the pile (dozens of re-routed fan edges out of a pile were most of
+    // the gathered view's noise). Edges between still-individual nodes stay
+    // live: stale wiring → incremental re-route, debounced behind the
+    // navigation.
+    const stackedNodes = new Set<DANode>();
+    for (const members of stackMembers.values()) {
+      for (const m of members) stackedNodes.add(nodeById.get(m.id)!);
+    }
     const rest: DAEdge[] = [];
     for (const node of this.gatheredNodePositions.keys()) {
       for (const edge of node.connectedEdges) {
-        if (!handled.has(edge) && !rest.includes(edge)) rest.push(edge);
+        if (handled.has(edge) || rest.includes(edge) || !edge.group.visible()) continue;
+        if (stackedNodes.has(edge.srcNode) || stackedNodes.has(edge.destNode)) {
+          edge.group.visible(false);
+          this.gatherHiddenEdges.push(edge);
+          continue;
+        }
+        rest.push(edge);
       }
     }
     if (this.gatherDeferredRouting !== null) {
@@ -3367,8 +3381,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         for (const edge of rest) {
           this.saveGatherEdgeWiring(edge);
           edge.setControlPoints([]);
-          routeNewEdgeIncrementally(allNodes, allEdges, edge, undefined, (msg: string) => this.log.log(msg));
-          edge.promoteToWaypoints();
+          // Straight first: the router only earns its curves when the
+          // straight chord actually pierces a node — a temporary view
+          // doesn't need routing polish, it needs calm.
+          if (this.straightChordPiercesNode(edge, allNodes)) {
+            routeNewEdgeIncrementally(allNodes, allEdges, edge, undefined, (msg: string) => this.log.log(msg));
+            edge.promoteToWaypoints();
+          }
         }
         this.refreshWaypointVisibility(false);
         this.drawingLayer.batchDraw();
@@ -3415,13 +3434,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const u = {x: (cC.x - aC.x) / len, y: (cC.y - aC.y) / len};
     const fromAnchor = this.rectBoundaryPoint(aC, anchorNode.NODE_WIDTH / 2, anchorNode.NODE_HEIGHT / 2, u);
     const atContainer = this.rectBoundaryPoint(cC, container.width() / 2, container.height() / 2, {x: -u.x, y: -u.y});
+    // Stand the arrowhead tip off its target so a 16px head never overlaps
+    // the container border / anchor box it points at.
+    const STANDOFF = 6;
     const points = incoming
-      ? [atContainer.x, atContainer.y, fromAnchor.x, fromAnchor.y]
-      : [fromAnchor.x, fromAnchor.y, atContainer.x, atContainer.y];
+      ? [atContainer.x, atContainer.y, fromAnchor.x + u.x * STANDOFF, fromAnchor.y + u.y * STANDOFF]
+      : [fromAnchor.x, fromAnchor.y, atContainer.x - u.x * STANDOFF, atContainer.y - u.y * STANDOFF];
+    // Direction gradient in the meta grays: dim at the flow's source,
+    // bright at its destination, arrowhead in the destination color —
+    // same readability convention as the real edges' theme gradient.
+    const dark = this.themeService.theme === 'dark';
+    const grayFrom = dark ? '#5c5c5c' : '#c2c2c2';
+    const grayTo = dark ? '#d4d4d4' : '#4d4d4d';
     const arrow = new Konva.Arrow({
       points,
       stroke: '#8a8a8a',
-      fill: '#8a8a8a',
+      strokeLinearGradientStartPoint: {x: points[0], y: points[1]},
+      strokeLinearGradientEndPoint: {x: points[2], y: points[3]},
+      strokeLinearGradientColorStops: [0, grayFrom, 1, grayTo],
+      fill: grayTo,
       strokeWidth: 5,
       pointerLength: 16,
       pointerWidth: 16,
@@ -3455,6 +3486,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (labels.length > 1) {
       put(`…${labels.length - 1} more label${labels.length === 2 ? '' : 's'}…`, -16, true);
     }
+  }
+
+  /** Whether the straight chord between an edge's endpoint boxes runs
+   *  through any other node's box. */
+  private straightChordPiercesNode(edge: DAEdge, allNodes: DANode[]): boolean {
+    const a = this.getNodeCenterInLayerCoordinates(edge.srcNode);
+    const b = this.getNodeCenterInLayerCoordinates(edge.destNode);
+    for (const node of allNodes) {
+      if (node === edge.srcNode || node === edge.destNode) continue;
+      if (!node.group.visible()) continue;
+      if (lineSegmentIntersectsRect(
+        a.x, a.y, b.x, b.y,
+        node.group.x(), node.group.y(),
+        node.group.x() + node.NODE_WIDTH, node.group.y() + node.NODE_HEIGHT,
+      )) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Where a ray from a box's center exits its (axis-aligned) boundary. */
