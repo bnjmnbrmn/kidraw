@@ -77,6 +77,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private insertNodePending = false;
   // When true, releasing the edit submenu key without selecting a child fires EDIT_OR_INSERT
   private editPending = false;
+  /** True while the Move-by-graph submenu is held (set by its entry action,
+   *  cleared when its key is released) — gates the GRAPH_NAV_EXIT emit. */
+  private graphNavActive = false;
   // Latest crosshairs/selection context from the drawing area, refreshed via
   // QUERY_EDIT_CONTEXT on each edit-key press (the reply arrives synchronously).
   private editContext: EditContext | null = null;
@@ -730,8 +733,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [mbg.submenu]: new LabeledActionSubmenuConfig(
         'Move by graph...',
         this.buildMoveByGraphSubmenuConfig(),
-        // Entry: recenter on a single selected item (no-op otherwise).
-        () => this.keyMenuOut.emit({kind: DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV}),
+        // Entry: recenter on a single selected item (no-op otherwise). The
+        // drawing area also starts the auto-gather nav session on this.
+        () => {
+          this.graphNavActive = true;
+          this.keyMenuOut.emit({kind: DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV});
+        },
       ),
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
@@ -875,7 +882,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         ...this.buildGraphNavActions('fine'),
       } as SubmenuConfig),
       [mbg.gather]: new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
-      [mbg.gatherAll]: new LabeledAction('Gather Around', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_DESCENDANTS})),
       [mbg.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
     } as SubmenuConfig;
   }
@@ -1292,6 +1298,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.refreshActiveKeyPath();
 
     const eventKey = KeymenuComponent.normalizeEventKey(event);
+
+    // Leaving the Move-by-graph submenu ends the nav session (the drawing
+    // area restores any automatic gather). The flag is only ever set by the
+    // submenu's entry action, so an `f` that meant something else in another
+    // submenu can't trigger a spurious exit.
+    if (this.graphNavActive && eventKey === this.keyAssignments.moveByGraph.submenu) {
+      this.graphNavActive = false;
+      this.keyMenuOut.emit({kind: DACommandType.GRAPH_NAV_EXIT});
+    }
 
     if (eventKey === this.keyAssignments.root.editSubmenu) {
       this.editContextActionFired = false;

@@ -13,6 +13,7 @@ import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, Layout
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
+import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -152,7 +153,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
-  private gatherRestoreTimeout: number | null = null;
+  /** Node the current gather view is centered on. */
+  private gatherAnchor: DANode | null = null;
+  /** Explicitly gathered (Gather key) → survives leaving the nav submenu;
+   *  automatic nav-session gathers restore on GRAPH_NAV_EXIT. */
+  private gatherPinned = false;
+  /** True while the Move-by-graph submenu is held: traversal re-gathers
+   *  around each node it lands on. */
+  private graphNavSession = false;
+  /** Escape hatch for the automatic nav-session gather (repro suites that
+   *  assert raw traversal geometry turn it off; the app leaves it on). */
+  public autoGatherEnabled = true;
+  /** Labels hidden because their edge is buried in a stack; shown again on
+   *  ungather. */
+  private gatherHiddenLabels: DALabel[] = [];
+  /** "…N more labels…" overlays; destroyed on ungather. */
+  private gatherIndicators: Konva.Text[] = [];
+  /** Drawing-layer children order before stack restacking, for restore. */
+  private gatherZOrder: Konva.Node[] | null = null;
+  /** Debounced re-route of edges between gathered nodes and the rest of the
+   *  graph — rapid navigation keeps cancelling it so only the resting view
+   *  pays for routing. */
+  private gatherDeferredRouting: number | null = null;
   private gridFadeTimeout: number | null = null;
   private gridInitialized = false;
 
@@ -220,8 +242,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.TRAVERSE_PREV_EDGE,
     DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV,
     DACommandType.GATHER_CONNECTED_NODES,
-    DACommandType.GATHER_DESCENDANTS,
     DACommandType.UNGATHER,
+    DACommandType.GRAPH_NAV_EXIT,
     DACommandType.LOAD_SAMPLE_GRAPH,
     DACommandType.NEW_GRAPH,
     DACommandType.EXIT_LABEL_EDIT_MODE,
@@ -531,6 +553,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV:
         this.focusSelectedForGraphNav();
+        this.beginGraphNavSession();
+        break;
+      case DACommandType.GRAPH_NAV_EXIT:
+        this.endGraphNavSession();
         break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
@@ -677,10 +703,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.panViewport(0, -(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
         break;
       case DACommandType.GATHER_CONNECTED_NODES:
-        this.gatherConnectedNodes();
-        break;
-      case DACommandType.GATHER_DESCENDANTS:
-        this.gatherDescendants();
+        this.gatherToggle();
         break;
       case DACommandType.UNGATHER:
         this.ungather();
@@ -2633,10 +2656,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Step onto a stop, tracking the traversal's current node when the stop
-   *  is a node endpoint. */
+   *  is a node endpoint. During a nav session, landing on a node re-anchors
+   *  the automatic gather there: the previous gather snaps home first, so
+   *  the landed node may move — the view then recenters on where it
+   *  actually lives, not on the stale stop coordinates. */
   private moveCrosshairsToNavStop(edge: DAEdge, stop: NavStop): void {
     if (stop.kind === 'node') {
-      this.graphNavLastNode = stop.t === 0 ? edge.srcNode : edge.destNode;
+      const node = stop.t === 0 ? edge.srcNode : edge.destNode;
+      this.graphNavLastNode = node;
+      if (this.graphNavSession && this.autoGatherEnabled && node !== this.gatherAnchor) {
+        // Momentum from the step direction, measured before anything moves.
+        const cross = this.getCrosshairsInLayerCoordinates();
+        const dx = stop.x - cross.x;
+        const dy = stop.y - cross.y;
+        const len = Math.hypot(dx, dy);
+        if (len > 1e-6) this.graphNavMomentum = {x: dx / len, y: dy / len};
+        this.autoGatherAround(node);
+        this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
+        this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
+        return;
+      }
     }
     this.moveCrosshairsToStop(stop);
   }
@@ -2711,6 +2750,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navFocusEdge(edge: DAEdge, anchor: DANode): void {
     this.setGraphNavEdge(edge);
     this.graphNavLastNode = anchor;
+    if (this.graphNavSession) this.autoGatherAround(anchor);
     this.graphNavLastPos = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
     const other = edge.srcNode === anchor ? edge.destNode : edge.srcNode;
     const otherLabel = (other.label?.text() ?? '').trim();
@@ -2956,130 +2996,127 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.directedEdgeInProgress = null;
   }
 
-  /** Plain Gather (toggle, auto-restores after 5s): the anchor's immediate
-   *  children line up in a column on its right and its immediate parents in
-   *  a column on its left — same neat placement as Gather Around, one level
-   *  deep both ways. (The old version circled everything at a fixed 150px
-   *  radius, which read as a jumble.) */
-  private gatherConnectedNodes(): void {
+  /** Explicit Gather (the `Gather` key): a persistent toggle. Pressing it
+   *  over the gathered anchor (or with no anchor at all) restores; over a
+   *  different node it re-gathers there. */
+  private gatherToggle(): void {
     this.finishTweens();
-
-    // If already gathered, restore first
-    if (this.gatheredNodePositions.size > 0) {
+    const anchorNode = this.getTraversalAnchorNode();
+    if (this.gatheredNodePositions.size > 0
+        && (anchorNode === null || anchorNode === this.gatherAnchor)) {
+      if (!this.gatherPinned && this.gatherAnchor !== null) {
+        // The nav session auto-gathered this view; the explicit key pins it
+        // so it survives leaving the submenu.
+        this.gatherPinned = true;
+        this.emitStatus('Gather pinned. Ungather restores.');
+        return;
+      }
       this.restoreGatheredNodes();
       return;
     }
-
-    const anchorNode = this.getTraversalAnchorNode();
     if (!anchorNode) {
       this.emitStatus('Move the crosshairs onto a node to gather.');
       return;
     }
-
-    const children: DANode[] = [];
-    for (const edge of anchorNode.outgoingEdges) {
-      if (edge.destNode !== anchorNode && !children.includes(edge.destNode)) {
-        children.push(edge.destNode);
-      }
-    }
-    const parents: DANode[] = [];
-    for (const edge of anchorNode.incomingEdges) {
-      if (edge.srcNode !== anchorNode && !parents.includes(edge.srcNode)
-          && !children.includes(edge.srcNode)) {
-        parents.push(edge.srcNode);
-      }
-    }
-    if (children.length === 0 && parents.length === 0) {
-      this.emitStatus('Nothing connected to gather.');
-      return;
-    }
-
-    this.placeColumn(anchorNode, children, 'right');
-    this.placeColumn(anchorNode, parents, 'left');
-    this.scheduleGatherRouting(anchorNode);
-
-    // Auto-restore after 5 seconds
-    this.gatherRestoreTimeout = window.setTimeout(() => {
-      this.restoreGatheredNodes();
-    }, 5000);
+    this.gatherAround(anchorNode, true);
   }
 
-  /**
-   * Gather the anchor node's immediate context: its children line up in a
-   * clean column just right of the anchor (grandchildren stay where they
-   * are — they'd only get in the way), and its ancestor chain pulls into a
-   * line on the left. In/out separation falls out of the geometry: incoming
-   * edges arrive from the left, outgoing leave to the right. Unlike the
-   * plain gather, the view persists until an explicit Ungather. Original
-   * positions are kept in gatheredNodePositions: a temporary view, not a
-   * mutation.
-   */
-  private gatherDescendants(): void {
-    this.finishTweens();
+  /** Automatic gather for the move-by-graph session: re-anchor the view on
+   *  the node the traversal is at. No-op when already gathered there. */
+  private autoGatherAround(node: DANode): void {
+    if (!this.autoGatherEnabled) return;
+    if (this.gatherAnchor === node && this.gatheredNodePositions.size > 0) return;
+    this.gatherAround(node, false);
+  }
 
-    const anchorNode = this.getTraversalAnchorNode();
-    if (!anchorNode) {
-      this.emitStatus('Move the crosshairs onto a node to gather.');
-      return;
+  private beginGraphNavSession(): void {
+    this.graphNavSession = true;
+    const anchor = this.getDANodesContainingCrosshairs()[0]
+      ?? this.drawingLayer.getSelectedDANodes()[0]
+      ?? this.validGraphNavLastNode();
+    if (anchor) this.autoGatherAround(anchor);
+  }
+
+  /** Leaving the Move-by-graph submenu: automatic gathers restore; an
+   *  explicit (pinned) Gather stays until Ungather. */
+  private endGraphNavSession(): void {
+    this.graphNavSession = false;
+    if (!this.gatherPinned && this.gatheredNodePositions.size > 0) {
+      this.finishTweens();
+      this.restoreGatheredNodes();
     }
+  }
 
-    // Only one temporary gather view at a time: snap any previous one back
-    // first so saved positions always refer to the user's real layout.
+  /** Everything the gather view needs to know about one neighbor. */
+  private collectGatherNeighbors(anchorNode: DANode):
+      Map<DANode, {direction: 'in' | 'out'; kind: string; edges: DAEdge[]}> {
+    const infos = new Map<DANode, {direction: 'in' | 'out'; kind: string; edges: DAEdge[]}>();
+    for (const edge of anchorNode.outgoingEdges) {
+      const n = edge.destNode;
+      if (n === anchorNode) continue;
+      const info = infos.get(n)
+        ?? {direction: 'out' as const, kind: edge.tags[0] ?? n.tags[0] ?? '', edges: []};
+      info.edges.push(edge);
+      infos.set(n, info);
+    }
+    for (const edge of anchorNode.incomingEdges) {
+      const n = edge.srcNode;
+      if (n === anchorNode) continue;
+      const existing = infos.get(n);
+      if (existing) { // edges both ways → counts as 'out'
+        existing.edges.push(edge);
+        continue;
+      }
+      infos.set(n, {direction: 'in', kind: edge.tags[0] ?? n.tags[0] ?? '', edges: [edge]});
+    }
+    return infos;
+  }
+
+  /** Gather the anchor's neighborhood into the fisheye view: neighbors keep
+   *  their bearings and compress onto a ring (stacking when crowded — see
+   *  gather-fisheye.ts), strangers inside the zone are pushed out, and the
+   *  wiring is transformed with the nodes so the picture reads as the real
+   *  layout sucked in. A temporary view: Ungather restores everything. */
+  private gatherAround(anchorNode: DANode, pinned: boolean): void {
+    this.finishTweens();
     if (this.gatheredNodePositions.size > 0) {
       this.restoreGatheredNodes(false);
     }
 
-    const children: DANode[] = [];
-    for (const edge of anchorNode.outgoingEdges) {
-      if (edge.destNode !== anchorNode && !children.includes(edge.destNode)) {
-        children.push(edge.destNode);
-      }
-    }
-    const ancestors = this.collectGatherTree(
-      anchorNode, 'in', new Set<DANode>([anchorNode, ...children]));
-    if (children.length === 0 && ancestors.order.length === 0) {
-      this.emitStatus('Nothing connected to gather.');
+    const infos = this.collectGatherNeighbors(anchorNode);
+    if (infos.size === 0) {
+      if (pinned) this.emitStatus('Nothing connected to gather.');
       return;
     }
+    this.gatherAnchor = anchorNode;
+    this.gatherPinned = pinned;
 
-    this.placeColumn(anchorNode, children, 'right');
-    const ANC_WEDGE: [number, number] = [Math.PI - 0.7, Math.PI + 0.7]; // ~80° facing left
-    this.placeGatherTree(anchorNode, ancestors, ANC_WEDGE);
+    const protectedNodes = this.gatherProtectedNodes(anchorNode, infos);
+    const boxOf = (n: DANode) => {
+      const c = this.getNodeCenterInLayerCoordinates(n);
+      return {id: n.id, cx: c.x, cy: c.y, halfW: n.NODE_WIDTH / 2, halfH: n.NODE_HEIGHT / 2};
+    };
+    const neighbors: GatherNeighbor[] = [...infos.entries()].map(([n, i]) => ({
+      ...boxOf(n),
+      direction: i.direction,
+      kind: i.kind,
+      protected: protectedNodes.has(n),
+    }));
+    const plan = planGather(boxOf(anchorNode), neighbors);
+    const placedById = new Map(plan.placed.map(p => [p.id, p]));
+    const nodeById = new Map([...infos.keys()].map(n => [n.id, n]));
 
-    // Re-route the edges around the gathered arrangement so nothing runs
-    // behind a node (original control points saved; Ungather restores them).
-    this.scheduleGatherRouting(anchorNode);
+    // Snapshot z-order before restacking piles (restored on ungather).
+    this.gatherZOrder = [...this.drawingLayer.getChildren()];
 
-    const parts = [
-      children.length ? `${children.length} child${children.length === 1 ? '' : 'ren'}` : '',
-      ancestors.order.length ? `${ancestors.order.length} ancestor${ancestors.order.length === 1 ? '' : 's'}` : '',
-    ].filter(Boolean).join(' + ');
-    this.emitStatus(`Gathered ${parts}. Ungather restores the layout.`);
-  }
-
-  /** Line nodes up in a single neat column beside the anchor: stacked with
-   *  clear perimeter gaps, vertically centered on it, keeping their
-   *  pre-gather relative order so spatial memory survives. `side: 'right'`
-   *  left-aligns the column past the anchor's right edge; `'left'`
-   *  right-aligns it before the anchor's left edge. */
-  private placeColumn(anchorNode: DANode, nodes: DANode[], side: 'right' | 'left'): void {
-    if (nodes.length === 0) return;
-    const COLUMN_GAP = 120;  // anchor edge → column edge
-    const STACK_GAP = 24;    // clear vertical gap between boxes
-
-    const ordered = [...nodes].sort((a, b) => a.group.y() - b.group.y());
-    const totalHeight = ordered.reduce((sum, n) => sum + n.NODE_HEIGHT, 0)
-      + STACK_GAP * (ordered.length - 1);
-    const columnLeft = anchorNode.group.x() + anchorNode.NODE_WIDTH + COLUMN_GAP;
-    const columnRight = anchorNode.group.x() - COLUMN_GAP;
-    let y = anchorNode.group.y() + anchorNode.NODE_HEIGHT / 2 - totalHeight / 2;
-
-    for (const node of ordered) {
+    // Move the neighbors.
+    for (const p of plan.placed) {
+      const node = nodeById.get(p.id)!;
       this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
       this.tweens.push(new Konva.Tween({
         node: node.group,
-        x: side === 'right' ? columnLeft : columnRight - node.NODE_WIDTH,
-        y,
+        x: p.x - node.NODE_WIDTH / 2,
+        y: p.y - node.NODE_HEIGHT / 2,
         duration: 0.3,
         easing: Konva.Easings.EaseInOut,
         onFinish: () => {
@@ -3087,144 +3124,261 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           this.drawingLayer.batchDraw();
         },
       }).play());
-      y += node.NODE_HEIGHT + STACK_GAP;
+    }
+    // Stack z-order: deepest first, so index 0 renders on top.
+    const stackMembers = new Map<string, GatherPlacement[]>();
+    for (const p of plan.placed) {
+      if (!p.stack) continue;
+      const list = stackMembers.get(p.stack.key) ?? [];
+      list.push(p);
+      stackMembers.set(p.stack.key, list);
+    }
+    for (const members of stackMembers.values()) {
+      [...members].sort((a, b) => b.stack!.index - a.stack!.index)
+        .forEach(p => nodeById.get(p.id)!.group.moveToTop());
+    }
+
+    // Push non-participants out of the gather zone so nothing near the ring
+    // can be mistaken for a neighbor.
+    const aC = this.getNodeCenterInLayerCoordinates(anchorNode);
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node === anchorNode || infos.has(node)) continue;
+      const c = this.getNodeCenterInLayerCoordinates(node);
+      const d = Math.hypot(c.x - aC.x, c.y - aC.y);
+      const need = plan.clearRadius + Math.hypot(node.NODE_WIDTH, node.NODE_HEIGHT) / 2;
+      if (d >= need) continue;
+      const ang = d < 1e-6 ? 0 : Math.atan2(c.y - aC.y, c.x - aC.x);
+      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
+      this.tweens.push(new Konva.Tween({
+        node: node.group,
+        x: aC.x + Math.cos(ang) * need - node.NODE_WIDTH / 2,
+        y: aC.y + Math.sin(ang) * need - node.NODE_HEIGHT / 2,
+        duration: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: () => {
+          this.updateEdgesForResizedNodes([node]);
+          this.drawingLayer.batchDraw();
+        },
+      }).play());
+    }
+
+    this.scheduleAfterGatherTweens(anchorNode,
+      () => this.applyGatherEdgeTreatment(anchorNode, infos, placedById, stackMembers, nodeById));
+
+    if (pinned) {
+      const stacked = plan.placed.filter(p => p.stack !== null).length;
+      const parts = `${infos.size} neighbor${infos.size === 1 ? '' : 's'}`
+        + (stacked > 0 ? ` (${stacked} in ${stackMembers.size} stack${stackMembers.size === 1 ? '' : 's'})` : '');
+      this.emitStatus(`Gathered ${parts}. Gather again or Ungather restores.`);
     }
   }
 
-  /** Schedule the post-gather edge re-route just after the placement tweens
-   *  land (finishTweens fires it synchronously in tests). */
-  private scheduleGatherRouting(anchorNode: DANode): void {
+  /** The traversal's next-jump candidate and its bearing-adjacent
+   *  siblings — these must never disappear into a stack. */
+  private gatherProtectedNodes(
+    anchorNode: DANode,
+    infos: Map<DANode, {direction: 'in' | 'out'; kind: string; edges: DAEdge[]}>,
+  ): Set<DANode> {
+    const result = new Set<DANode>();
+    let navNext: DANode | null = null;
+    if (this.graphNavEdge
+        && this.drawingLayer.getDAEdges().includes(this.graphNavEdge)
+        && (this.graphNavEdge.srcNode === anchorNode || this.graphNavEdge.destNode === anchorNode)) {
+      const other = this.graphNavEdge.srcNode === anchorNode
+        ? this.graphNavEdge.destNode : this.graphNavEdge.srcNode;
+      if (infos.has(other)) navNext = other;
+    }
+    if (!navNext) {
+      // Same pick Jump Outgoing would make: momentum-aligned, else first
+      // clockwise from 12 o'clock.
+      const toDest = anchorNode.outgoingEdges.length > 0;
+      const candidates = toDest ? anchorNode.outgoingEdges : anchorNode.incomingEdges;
+      if (candidates.length > 0) {
+        const flows = candidates.map(e =>
+          endpointFlowDirection(e.getPathPoints(), toDest ? 'src' : 'dest'));
+        const pick = pickEntryCandidate(flows, this.graphNavMomentum);
+        if (pick >= 0) {
+          const e = candidates[pick];
+          const other = e.srcNode === anchorNode ? e.destNode : e.srcNode;
+          if (infos.has(other)) navNext = other;
+        }
+      }
+    }
+    if (!navNext) return result;
+    result.add(navNext);
+    const aC = this.getNodeCenterInLayerCoordinates(anchorNode);
+    const bearingOf = (n: DANode) => {
+      const c = this.getNodeCenterInLayerCoordinates(n);
+      return Math.atan2(c.y - aC.y, c.x - aC.x);
+    };
+    const sorted = [...infos.keys()].sort((a, b) => bearingOf(a) - bearingOf(b));
+    const i = sorted.indexOf(navNext);
+    if (sorted.length > 1) {
+      result.add(sorted[(i + 1) % sorted.length]);
+      result.add(sorted[(i - 1 + sorted.length) % sorted.length]);
+    }
+    return result;
+  }
+
+  /** Run `work` just after the gather placement tweens land (finishTweens
+   *  fires it synchronously in tests and on interrupt). */
+  private scheduleAfterGatherTweens(anchorNode: DANode, work: () => void): void {
     const scheduler = new Konva.Tween({
       node: anchorNode.group,
       duration: 0.32,
       x: anchorNode.group.x(),
-      onFinish: () => this.routeGatheredEdges(),
+      onFinish: work,
     });
     this.tweens.push(scheduler);
     scheduler.play();
   }
 
-  /** Re-route every edge touching a gathered node (stale detours dropped,
-   *  pinned waypoints survive), saving the original control points so
-   *  Ungather can put the wiring back exactly as it was. */
-  private routeGatheredEdges(): void {
-    const moved = [...this.gatheredNodePositions.keys()];
-    if (moved.length === 0) return;
-    const incident = new Set<DAEdge>();
-    moved.forEach(n => n.connectedEdges.forEach(e => incident.add(e)));
-    for (const edge of incident) {
-      if (!this.gatheredEdgeControlPoints.has(edge)) {
-        this.gatheredEdgeControlPoints.set(edge, edge.controlPoints.map(c => ({...c})));
-      }
-      edge.setControlPoints([]); // detours for the pre-gather positions are meaningless here
+  private saveGatherEdgeWiring(edge: DAEdge): void {
+    if (!this.gatheredEdgeControlPoints.has(edge)) {
+      this.gatheredEdgeControlPoints.set(edge, edge.controlPoints.map(c => ({...c})));
     }
-    this.rerouteIncidentEdges(moved);
+  }
+
+  /** The wiring pass, after placement: anchor↔neighbor edges keep their
+   *  shape via the same rotate+scale that moved their node (the "sucked in"
+   *  look); stacked edges go straight so a pile reads as one bundle (with
+   *  buried labels hidden behind a "…N more labels…" marker); everything
+   *  else re-routes incrementally — debounced, so rapid navigation only
+   *  pays for the view it rests on. */
+  private applyGatherEdgeTreatment(
+    anchorNode: DANode,
+    infos: Map<DANode, {direction: 'in' | 'out'; kind: string; edges: DAEdge[]}>,
+    placedById: Map<string, GatherPlacement>,
+    stackMembers: Map<string, GatherPlacement[]>,
+    nodeById: Map<string, DANode>,
+  ): void {
+    const aC = this.getNodeCenterInLayerCoordinates(anchorNode);
+    const handled = new Set<DAEdge>();
+
+    for (const [node, info] of infos) {
+      const p = placedById.get(node.id);
+      if (!p) continue;
+      const saved = this.gatheredNodePositions.get(node);
+      for (const edge of info.edges) {
+        handled.add(edge);
+        this.saveGatherEdgeWiring(edge);
+        const hasWaypoint = edge.controlPoints.some(cp => cp.waypointId);
+        if (p.stack !== null || hasWaypoint || edge.controlPoints.length === 0 || !saved) {
+          edge.setControlPoints([]);
+          continue;
+        }
+        const oldC = {x: saved.x + node.NODE_WIDTH / 2, y: saved.y + node.NODE_HEIGHT / 2};
+        const va = {x: oldC.x - aC.x, y: oldC.y - aC.y};
+        const vb = {x: p.x - aC.x, y: p.y - aC.y};
+        const da = Math.hypot(va.x, va.y);
+        if (da < 1e-6) {
+          edge.setControlPoints([]);
+          continue;
+        }
+        const scale = Math.hypot(vb.x, vb.y) / da;
+        const rot = Math.atan2(vb.y, vb.x) - Math.atan2(va.y, va.x);
+        const cos = Math.cos(rot);
+        const sin = Math.sin(rot);
+        edge.setControlPoints(edge.controlPoints.map(cp => {
+          const dx = cp.x - aC.x;
+          const dy = cp.y - aC.y;
+          return {...cp, x: aC.x + (dx * cos - dy * sin) * scale, y: aC.y + (dx * sin + dy * cos) * scale};
+        }));
+      }
+    }
+
+    // Buried stack labels: only the top edge of a pile shows its label.
+    for (const members of stackMembers.values()) {
+      const ordered = [...members].sort((a, b) => a.stack!.index - b.stack!.index);
+      let hidden = 0;
+      for (const p of ordered.slice(1)) {
+        const node = nodeById.get(p.id)!;
+        for (const edge of infos.get(node)?.edges ?? []) {
+          for (const label of edge.labels) {
+            if (label.group.visible()) {
+              label.group.visible(false);
+              this.gatherHiddenLabels.push(label);
+              hidden++;
+            }
+          }
+        }
+      }
+      if (hidden > 0) {
+        const topNode = nodeById.get(ordered[0].id)!;
+        const topEdges = infos.get(topNode)?.edges ?? [];
+        this.addGatherLabelIndicator(aC, topNode, topEdges[0] ?? null, hidden);
+      }
+    }
+
+    // Everything else touching a moved node: stale wiring → incremental
+    // re-route, debounced behind the navigation.
+    const rest: DAEdge[] = [];
+    for (const node of this.gatheredNodePositions.keys()) {
+      for (const edge of node.connectedEdges) {
+        if (!handled.has(edge) && !rest.includes(edge)) rest.push(edge);
+      }
+    }
+    if (this.gatherDeferredRouting !== null) {
+      clearTimeout(this.gatherDeferredRouting);
+      this.gatherDeferredRouting = null;
+    }
+    if (rest.length > 0) {
+      if (this.gatherPinned) this.emitStatus('Gathering…');
+      this.gatherDeferredRouting = window.setTimeout(() => {
+        this.gatherDeferredRouting = null;
+        const allNodes = this.drawingLayer.getDANodes();
+        const allEdges = this.drawingLayer.getDAEdges();
+        for (const edge of rest) {
+          this.saveGatherEdgeWiring(edge);
+          edge.setControlPoints([]);
+          routeNewEdgeIncrementally(allNodes, allEdges, edge, undefined, (msg: string) => this.log.log(msg));
+          edge.promoteToWaypoints();
+        }
+        this.refreshWaypointVisibility(false);
+        this.drawingLayer.batchDraw();
+        if (this.gatherPinned) {
+          this.emitStatus(`Gathered around ${(this.gatherAnchor?.label?.text() ?? '').trim() || 'node'}.`);
+        }
+      }, 250);
+    }
     this.drawingLayer.batchDraw();
   }
 
-  /** BFS from the anchor along one direction ('out' = descendants via
-   *  outgoing edges, 'in' = ancestors via incoming). First visit fixes each
-   *  node's tree parent and depth (cycles and diamonds safe); nodes in
-   *  `exclude` are skipped so the two directions never fight over a node. */
-  private collectGatherTree(
-    anchorNode: DANode,
-    direction: 'out' | 'in',
-    exclude: Set<DANode>,
-  ): {order: DANode[]; depthOf: Map<DANode, number>; childrenOf: Map<DANode, DANode[]>; leafWeight: Map<DANode, number>} {
-    const depthOf = new Map<DANode, number>([[anchorNode, 0]]);
-    const childrenOf = new Map<DANode, DANode[]>();
-    const order: DANode[] = [];
-    const queue: DANode[] = [anchorNode];
-    while (queue.length > 0) {
-      const node = queue.shift()!;
-      const edges = direction === 'out' ? node.outgoingEdges : node.incomingEdges;
-      for (const edge of edges) {
-        const next = direction === 'out' ? edge.destNode : edge.srcNode;
-        if (depthOf.has(next) || (next !== anchorNode && exclude.has(next))) continue;
-        depthOf.set(next, depthOf.get(node)! + 1);
-        const siblings = childrenOf.get(node);
-        if (siblings) siblings.push(next); else childrenOf.set(node, [next]);
-        order.push(next);
-        queue.push(next);
-      }
+  /** Small italic marker beside the top edge of a stack: there are labels
+   *  underneath. Placed on the opposite side of the edge from the visible
+   *  top label so it never occludes it. */
+  private addGatherLabelIndicator(
+    anchorCenter: {x: number; y: number},
+    topNode: DANode,
+    topEdge: DAEdge | null,
+    hiddenCount: number,
+  ): void {
+    const tC = this.getNodeCenterInLayerCoordinates(topNode);
+    const mid = {x: (anchorCenter.x + tC.x) / 2, y: (anchorCenter.y + tC.y) / 2};
+    const len = Math.hypot(tC.x - anchorCenter.x, tC.y - anchorCenter.y);
+    const ux = len < 1e-6 ? 1 : (tC.x - anchorCenter.x) / len;
+    const uy = len < 1e-6 ? 0 : (tC.y - anchorCenter.y) / len;
+    const perp = {x: -uy, y: ux};
+    let sideSign = 1;
+    const topLabel = topEdge?.labels[0];
+    if (topLabel) {
+      const off = (topLabel.x - mid.x) * perp.x + (topLabel.y - mid.y) * perp.y;
+      sideSign = off >= 0 ? -1 : 1;
     }
-    // Leaf count per subtree (children processed before parents in reverse
-    // BFS order) — splits each node's angular wedge among its children.
-    const leafWeight = new Map<DANode, number>();
-    for (let i = order.length - 1; i >= 0; i--) {
-      const node = order[i];
-      const kids = childrenOf.get(node);
-      leafWeight.set(node, kids ? kids.reduce((sum, k) => sum + leafWeight.get(k)!, 0) : 1);
-    }
-    return {order, depthOf, childrenOf, leafWeight};
-  }
-
-  /** Place one gather tree into the given angular wedge around the anchor:
-   *  ring radii are depth-based, widened when a ring's boxes need more arc
-   *  than the wedge provides at that radius. Returns the number of nodes
-   *  moved (and records their original positions for Ungather). */
-  private placeGatherTree(
-    anchorNode: DANode,
-    tree: {order: DANode[]; depthOf: Map<DANode, number>; childrenOf: Map<DANode, DANode[]>; leafWeight: Map<DANode, number>},
-    wedgeRange: [number, number],
-  ): number {
-    const {order, depthOf, childrenOf, leafWeight} = tree;
-    if (order.length === 0) return 0;
-
-    const RING_SPACING = 170;
-    const MIN_ARC = 130; // minimum node footprint along a ring
-    const wedgeSpan = wedgeRange[1] - wedgeRange[0];
-
-    let maxDepth = 0;
-    const arcAtDepth: number[] = [];
-    for (const node of order) {
-      const d = depthOf.get(node)!;
-      const arc = Math.max(MIN_ARC, Math.max(node.NODE_WIDTH, node.NODE_HEIGHT) + RING_SPACING / 4);
-      arcAtDepth[d] = (arcAtDepth[d] ?? 0) + arc;
-      maxDepth = Math.max(maxDepth, d);
-    }
-    const radiusAtDepth = [0];
-    for (let d = 1; d <= maxDepth; d++) {
-      radiusAtDepth.push(Math.max(
-        radiusAtDepth[d - 1] + RING_SPACING,
-        (arcAtDepth[d] ?? 0) / wedgeSpan,
-      ));
-    }
-
-    const wedge = new Map<DANode, [number, number]>([[anchorNode, wedgeRange]]);
-    for (const node of [anchorNode, ...order]) {
-      const kids = childrenOf.get(node);
-      if (!kids) continue;
-      const [from, to] = wedge.get(node)!;
-      const total = leafWeight.get(node) ?? kids.reduce((sum, k) => sum + leafWeight.get(k)!, 0);
-      let start = from;
-      for (const kid of kids) {
-        const span = ((to - from) * leafWeight.get(kid)!) / total;
-        wedge.set(kid, [start, start + span]);
-        start += span;
-      }
-    }
-
-    const anchorX = anchorNode.group.x();
-    const anchorY = anchorNode.group.y();
-    for (const node of order) {
-      this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
-      const [from, to] = wedge.get(node)!;
-      const angle = (from + to) / 2;
-      const radius = radiusAtDepth[depthOf.get(node)!];
-      this.tweens.push(new Konva.Tween({
-        node: node.group,
-        x: anchorX + Math.cos(angle) * radius,
-        y: anchorY + Math.sin(angle) * radius,
-        duration: 0.3,
-        easing: Konva.Easings.EaseInOut,
-        onFinish: () => {
-          this.updateEdgesForResizedNodes([node]);
-          this.drawingLayer.batchDraw();
-        },
-      }).play());
-    }
-    return order.length;
+    const text = new Konva.Text({
+      x: mid.x + perp.x * sideSign * 26,
+      y: mid.y + perp.y * sideSign * 26,
+      text: `…${hiddenCount} more label${hiddenCount === 1 ? '' : 's'}…`,
+      fontSize: 11,
+      fontStyle: 'italic',
+      fill: '#8a8a8a',
+      listening: false,
+    });
+    text.offsetX(text.width() / 2);
+    text.offsetY(text.height() / 2);
+    this.drawingLayer.add(text);
+    text.moveToTop();
+    this.gatherIndicators.push(text);
   }
 
   private ungather(): void {
@@ -3237,10 +3391,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private restoreGatheredNodes(animate = true): void {
-    if (this.gatherRestoreTimeout !== null) {
-      clearTimeout(this.gatherRestoreTimeout);
-      this.gatherRestoreTimeout = null;
+    if (this.gatherDeferredRouting !== null) {
+      clearTimeout(this.gatherDeferredRouting);
+      this.gatherDeferredRouting = null;
     }
+    // Buried stack labels come back, the "…more labels…" markers go away.
+    for (const label of this.gatherHiddenLabels) {
+      label.group.visible(true);
+    }
+    this.gatherHiddenLabels = [];
+    for (const indicator of this.gatherIndicators) {
+      indicator.destroy();
+    }
+    this.gatherIndicators = [];
+    // Original stacking order of the layer (stacks called moveToTop).
+    if (this.gatherZOrder) {
+      const layer = this.drawingLayer;
+      this.gatherZOrder
+        .filter(child => child.getParent() === layer)
+        .forEach((child, i) => child.zIndex(i));
+      this.gatherZOrder = null;
+    }
+    this.gatherAnchor = null;
+    this.gatherPinned = false;
 
     // Put back the pre-gather wiring exactly (gather re-routed the edges
     // around the temporary arrangement).

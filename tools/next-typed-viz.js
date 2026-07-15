@@ -99,7 +99,7 @@ async function main() {
       const hub = ${hubExpr(rank)};
       da.crosshairsLayer.crosshairs.x = dl.x() + (hub.konvaGroup.x() + hub.NODE_WIDTH / 2) * dl.scaleX();
       da.crosshairsLayer.crosshairs.y = dl.y() + (hub.konvaGroup.y() + hub.NODE_HEIGHT / 2) * dl.scaleY();
-      da.handleCommands({kind: "GATHER_DESCENDANTS"});
+      da.handleCommands({kind: "GATHER_CONNECTED_NODES"});
     `);
     await page.waitForTimeout(500);
     await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');

@@ -102,7 +102,6 @@ export interface KeymenuKeyAssignments {
     readonly nextEdge: KeyString;
     readonly prevEdge: KeyString;
     readonly gather: KeyString;
-    readonly gatherAll: KeyString;
     readonly ungather: KeyString;
   };
   readonly ctrl: {
@@ -245,7 +244,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     nextEdge: 'k',
     prevEdge: 'i',
     gather: 'h',
-    gatherAll: 'a',
     ungather: 'u',
   },
   ctrl: {submenu: 'Control'},
@@ -362,7 +360,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     nextEdge: 'j',
     prevEdge: 'k',
     gather: 'h',
-    gatherAll: 'a',
     ungather: 'u',
   },
   ctrl: {submenu: 'Control'},

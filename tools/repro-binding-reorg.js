@@ -61,7 +61,7 @@ async function main() {
   });
   check('root a is the Insert submenu', menu.a?.label === 'Insert...', JSON.stringify(menu.a));
   check('root f is Move by graph', menu.f?.label === 'Move by graph...', JSON.stringify(menu.f));
-  check('root g is unbound', menu.g === null, JSON.stringify(menu.g));
+  check('root g toggles keyboard visibility', menu.g?.label === 'Hide Keyboard', JSON.stringify(menu.g));
   check('root m is File...', menu.m?.label === 'File...', JSON.stringify(menu.m));
   check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
   check('m→o Open… (vault)', menu.miscLabels['o'] === 'Open…');

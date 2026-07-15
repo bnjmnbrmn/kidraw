@@ -76,6 +76,9 @@ async function main() {
     dl.addEdge(R, RU);
     hd.insertWaypoint({ x: 400, y: 400 });
     dl.batchDraw();
+    // This suite asserts raw traversal geometry; the nav session's
+    // automatic gather would move the very nodes being asserted on.
+    da.autoGatherEnabled = false;
     window.__nav = { dl };
   });
 
