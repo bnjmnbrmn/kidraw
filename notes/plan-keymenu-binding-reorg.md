@@ -133,8 +133,9 @@ interface to the two-member reality). Pure cleanup; no behavior change.
 
 ## Decisions (Ben, 2026-07-13) + what shipped
 
-1. **Insert → `a`** ("add"), not the recommended `f`↔`g` swap — `g` is now
-   unbound at root in both profiles. Knock-ons: vim's insert-submenu Label
+1. **Insert → `a`** ("add"), not the recommended `f`↔`g` swap — `g` was
+   left unbound at root in both profiles, then assigned to **Hide Keyboard**
+   on 2026-07-15. Knock-ons: vim's insert-submenu Label
    key moved `a`→`f` (the held key can't be its own child), and ijkl's
    fine-move modifier moved `a`→`s` (root `a` was taken there).
 2. **Full File… restructure** as tabled above; the root `m` submenu is
