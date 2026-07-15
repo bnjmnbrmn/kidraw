@@ -115,6 +115,20 @@ as 3"). Plus (mid-session): drop the temporary Gather entirely and make
 gathering automatic in the move-by-graph submenu, re-anchoring to
 whatever the traversal is at, with attention to performance.
 
+**Meta-node/meta-edge representation (Ben, 2026-07-15 evening).** Two
+attempts at per-edge arrowhead visibility (offset lanes; 45° diagonal
+cascade + edges raised above the sheets) still didn't read as N edges —
+overlapping arrowheads never do. Ben's call: "a box around the stack and
+have the edges go into/come out of it. Sort of a meta-node… maybe a
+similar sort of meta-edge." Now: each pile gets a dashed rounded
+container around the cascade, its member edges hide entirely, and one
+thick gray meta-arrow runs anchor ↔ container (direction = the pile's
+direction, gray = the established meta color of the badges/markers),
+carrying the top label + "…K more labels…" on opposite sides; ×N badge
+at the container corner. Possible future: meta-node as a real
+interactive node (traverse into a pile = expand it), meta-edge for
+parallel edge bundles outside gather.
+
 Shipped as: `gather-fisheye.ts` planner (bearing-preserving isotonic
 angular packing onto a perimeter-gap ring; stacks grouped by
 direction+kind with protected members; cascade capped at 3 visible

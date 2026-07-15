@@ -145,17 +145,17 @@ async function main() {
     const center = (n) => ({x: n.group.x() + n.NODE_WIDTH / 2, y: n.group.y() + n.NODE_HEIGHT / 2});
     const nodes = {};
     for (const n of dl.getDANodes()) nodes[n.id] = center(n);
-    const hiddenLabels = [];
-    const visibleLabels = [];
-    for (const e of dl.getDAEdges()) {
-      for (const l of e.labels) (l.group.visible() ? visibleLabels : hiddenLabels).push(l.label);
-    }
-    const indicators = da.gatherIndicators.map(t => t.text());
+    const hiddenEdges = dl.getDAEdges().filter(e => !e.group.visible())
+      .map(e => `${e.srcNode.id}->${e.destNode.id}`);
+    const overlays = da.gatherIndicators;
+    const indicators = overlays.filter(n => n.className === 'Text').map(t => t.text());
     return {
       nodes,
       gathered: da.gatheredNodePositions.size,
       anchor: da.gatherAnchor ? da.gatherAnchor.id : null,
-      hiddenLabels, visibleLabels, indicators,
+      hiddenEdges, indicators,
+      containers: overlays.filter(n => n.className === 'Rect').length,
+      metaArrows: overlays.filter(n => n.className === 'Arrow').length,
       status: window.__status.slice(-3),
     };
   });
@@ -205,42 +205,18 @@ async function main() {
   check('A5: cascade capped — big pile shows ≤4 distinct offsets',
     big.length >= 5 && distinct.size <= 4, `pile=${big.length} distinct=${distinct.size}`);
 
-  check('A6: buried stack labels hidden, at least one still visible on top',
-    s.hiddenLabels.length > 0 && s.visibleLabels.length > 0,
-    `hidden=${s.hiddenLabels.length} visible=${s.visibleLabels.length}`);
-  check('A7: "…more labels…" marker present',
-    s.indicators.some(t => /more label/.test(t)), JSON.stringify(s.indicators));
+  check('A6: every pile is a meta-node: one dashed container and one meta-arrow each',
+    s.containers === piles.length && s.metaArrows === piles.length,
+    `containers=${s.containers} arrows=${s.metaArrows} piles=${piles.length}`);
+  check('A6b: all pile member edges hidden behind their meta-edge',
+    s.hiddenEdges.length >= 20 && s.hiddenEdges.every(k => k.includes('H')),
+    `hidden=${s.hiddenEdges.length}`);
+  check('A7: meta-edge shows the top label plus a "…more labels…" marker',
+    s.indicators.some(t => /^lbl/.test(t)) && s.indicators.some(t => /more label/.test(t)),
+    JSON.stringify(s.indicators));
   check('A7b: every pile carries a ×N count badge',
     s.indicators.filter(t => /^×\d+$/.test(t)).length === piles.length,
     JSON.stringify(s.indicators));
-  // Stacked edges fan into visible lanes: within a pile, the edges of the
-  // first cascade levels bow through distinct offset control points.
-  const laneInfo = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const dl = da.drawingLayer;
-    const stackEdges = dl.getDAEdges().filter(e =>
-      (e.srcNode.id === 'H' || e.destNode.id === 'H')
-      && /^(od|os|in)/.test(e.srcNode.id === 'H' ? e.destNode.id : e.srcNode.id));
-    const withLane = stackEdges.filter(e => e.controlPoints.length === 1);
-    const laneOffsets = new Set(withLane.map(e =>
-      `${Math.round(e.controlPoints[0].x)},${Math.round(e.controlPoints[0].y)}`));
-    return {withLane: withLane.length, distinctLanes: laneOffsets.size};
-  });
-  check('A7c: stacked edges bow into distinct lanes (visible multiplicity)',
-    laneInfo.withLane >= 6 && laneInfo.distinctLanes >= 6,
-    JSON.stringify(laneInfo));
-  // Arrowheads of a pile's outgoing edges must not vanish under the sheets
-  // above their target: the pile's edges render above the node boxes.
-  const arrowInfo = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const dl = da.drawingLayer;
-    const outEdges = dl.getDAEdges().filter(e =>
-      e.srcNode.id === 'H' && /^(od|os)/.test(e.destNode.id));
-    const raised = outEdges.filter(e => e.group.zIndex() > e.destNode.group.zIndex());
-    return {outEdges: outEdges.length, raised: raised.length};
-  });
-  check('A7d: piled out-edges render above the sheets (arrowheads visible)',
-    arrowInfo.raised >= 12, JSON.stringify(arrowInfo));
 
   // Ungather → exact restore.
   await page.evaluate(() => {
@@ -256,9 +232,9 @@ async function main() {
   const wiringDrift = Object.keys(before.edges).filter(k => before.edges[k] !== after.edges[k]);
   check('A9: Ungather restores every edge\'s wiring exactly', wiringDrift.length === 0, wiringDrift.join(','));
   s = await gatherState();
-  check('A10: labels all visible again, markers gone',
-    s.hiddenLabels.length === 0 && s.indicators.length === 0,
-    `hidden=${s.hiddenLabels.length} ind=${s.indicators.length}`);
+  check('A10: pile edges visible again, all overlays gone',
+    s.hiddenEdges.length === 0 && s.indicators.length === 0 && s.containers === 0 && s.metaArrows === 0,
+    `hidden=${s.hiddenEdges.length} ind=${s.indicators.length}`);
 
   // ---------- B. Sparse hub Y: individual fisheye ----------
   await placeOn('Y');

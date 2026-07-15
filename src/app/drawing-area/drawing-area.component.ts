@@ -13,7 +13,7 @@ import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, Layout
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
-import { planGather, DEFAULT_GATHER_OPTIONS, GatherNeighbor, GatherPlacement } from './gather-fisheye';
+import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import { DANotification, EditContext } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -164,11 +164,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Escape hatch for the automatic nav-session gather (repro suites that
    *  assert raw traversal geometry turn it off; the app leaves it on). */
   public autoGatherEnabled = true;
-  /** Labels hidden because their edge is buried in a stack; shown again on
-   *  ungather. */
-  private gatherHiddenLabels: DALabel[] = [];
-  /** "…N more labels…" overlays; destroyed on ungather. */
-  private gatherIndicators: Konva.Text[] = [];
+  /** Member edges of a pile, hidden while their meta-edge stands in for
+   *  them; shown again on ungather. */
+  private gatherHiddenEdges: DAEdge[] = [];
+  /** Meta-node containers, meta-edges, ×N badges, and label markers;
+   *  destroyed on ungather. */
+  private gatherIndicators: Konva.Node[] = [];
   /** Drawing-layer children order before stack restacking, for restore. */
   private gatherZOrder: Konva.Node[] | null = null;
   /** Debounced re-route of edges between gathered nodes and the rest of the
@@ -3264,29 +3265,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.saveGatherEdgeWiring(edge);
         const hasWaypoint = edge.controlPoints.some(cp => cp.waypointId);
         if (p.stack !== null) {
-          // Fan the pile's edges into slightly offset lanes (one per visible
-          // cascade level, deeper edges coincide with the last lane — same
-          // capped rule as the node cascade) so a stack of edges visibly
-          // reads as a stack, not one edge.
-          const level = Math.min(p.stack.index, DEFAULT_GATHER_OPTIONS.stackMaxVisible);
-          if (level === 0) {
-            edge.setControlPoints([]);
-          } else {
-            const ux0 = p.x - aC.x;
-            const uy0 = p.y - aC.y;
-            const len = Math.hypot(ux0, uy0);
-            const perp = len < 1e-6 ? {x: 0, y: 1} : {x: -uy0 / len, y: ux0 / len};
-            const LANE = 11;
-            edge.setControlPoints([{
-              x: (aC.x + p.x) / 2 + perp.x * LANE * level,
-              y: (aC.y + p.y) / 2 + perp.y * LANE * level,
-            }]);
-          }
-          // An arrowhead pointing at a buried sheet lands under the sheets
-          // above it — raise the pile's edges over the node boxes so every
-          // visible lane keeps its arrowhead (restore puts z-order back).
-          if (edge.destNode !== anchorNode) {
-            edge.group.moveToTop();
+          // A pile is represented by a meta-node (dashed container) and one
+          // meta-edge; the member edges hide entirely — labels and waypoint
+          // glyphs live inside the edge group and ride along. N overlapping
+          // arrowheads never read as N; one arrow into a box labeled ×N
+          // does.
+          if (edge.group.visible()) {
+            edge.group.visible(false);
+            this.gatherHiddenEdges.push(edge);
           }
           continue;
         }
@@ -3314,28 +3300,50 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
     }
 
-    // Buried stack labels: only the top edge of a pile shows its label.
-    for (const members of stackMembers.values()) {
+    // Meta-node + meta-edge per pile: a dashed container around the sheets,
+    // one thick arrow into/out of it, the ×N count at its corner, and the
+    // top edge's label (plus a "…K more labels…" marker) on the arrow.
+    for (const [key, members] of stackMembers) {
       const ordered = [...members].sort((a, b) => a.stack!.index - b.stack!.index);
-      let hidden = 0;
-      for (const p of ordered.slice(1)) {
-        const node = nodeById.get(p.id)!;
-        for (const edge of infos.get(node)?.edges ?? []) {
+      const memberNodes = ordered.map(m => nodeById.get(m.id)!);
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      for (const n of memberNodes) {
+        minX = Math.min(minX, n.group.x());
+        minY = Math.min(minY, n.group.y());
+        maxX = Math.max(maxX, n.group.x() + n.NODE_WIDTH);
+        maxY = Math.max(maxY, n.group.y() + n.NODE_HEIGHT);
+      }
+      const PAD = 10;
+      const container = new Konva.Rect({
+        x: minX - PAD,
+        y: minY - PAD,
+        width: maxX - minX + 2 * PAD,
+        height: maxY - minY + 2 * PAD,
+        stroke: '#8a8a8a',
+        strokeWidth: 1.5,
+        dash: [7, 5],
+        cornerRadius: 8,
+        fill: 'rgba(138, 138, 138, 0.07)',
+        listening: false,
+      });
+      this.drawingLayer.add(container);
+      this.gatherIndicators.push(container);
+      // Sheets render inside (above) their container, deepest first.
+      [...ordered].reverse().forEach(m => nodeById.get(m.id)!.group.moveToTop());
+
+      const labels: string[] = [];
+      for (const m of ordered) {
+        for (const edge of infos.get(nodeById.get(m.id)!)?.edges ?? []) {
           for (const label of edge.labels) {
-            if (label.group.visible()) {
-              label.group.visible(false);
-              this.gatherHiddenLabels.push(label);
-              hidden++;
-            }
+            if (label.label.trim()) labels.push(label.label);
           }
         }
       }
-      const topNode = nodeById.get(ordered[0].id)!;
-      if (hidden > 0) {
-        const topEdges = infos.get(topNode)?.edges ?? [];
-        this.addGatherLabelIndicator(aC, topNode, topEdges[0] ?? null, hidden);
-      }
-      this.addGatherStackBadge(topNode, ordered.length);
+      this.addGatherMetaEdge(anchorNode, container, key.startsWith('in:'), labels);
+      this.addGatherStackBadge(container, ordered.length);
     }
 
     // Everything else touching a moved node: stale wiring → incremental
@@ -3372,13 +3380,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** "×N" count badge at the top-right corner of a pile's top node: how
+  /** "×N" count badge at the top-right corner of a pile's container: how
    *  many nodes (and edges) are stacked here, since the capped cascade
    *  deliberately looks the same for 4 and 50. */
-  private addGatherStackBadge(topNode: DANode, size: number): void {
+  private addGatherStackBadge(container: Konva.Rect, size: number): void {
     const badge = new Konva.Text({
-      x: topNode.group.x() + topNode.NODE_WIDTH - 4,
-      y: topNode.group.y() - 16,
+      x: container.x() + container.width() - 6,
+      y: container.y() - 18,
       text: `×${size}`,
       fontSize: 13,
       fontStyle: 'italic bold',
@@ -3390,43 +3398,76 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.gatherIndicators.push(badge);
   }
 
-  /** Small italic marker beside the top edge of a stack: there are labels
-   *  underneath. Placed on the opposite side of the edge from the visible
-   *  top label so it never occludes it. */
-  private addGatherLabelIndicator(
-    anchorCenter: {x: number; y: number},
-    topNode: DANode,
-    topEdge: DAEdge | null,
-    hiddenCount: number,
+  /** The meta-edge: one thick arrow between the anchor's box and a pile's
+   *  container, pointing the way all the hidden member edges flow, carrying
+   *  the top edge's label and a "…K more labels…" marker on opposite
+   *  sides so they never collide. */
+  private addGatherMetaEdge(
+    anchorNode: DANode,
+    container: Konva.Rect,
+    incoming: boolean,
+    labels: string[],
   ): void {
-    const tC = this.getNodeCenterInLayerCoordinates(topNode);
-    const mid = {x: (anchorCenter.x + tC.x) / 2, y: (anchorCenter.y + tC.y) / 2};
-    const len = Math.hypot(tC.x - anchorCenter.x, tC.y - anchorCenter.y);
-    const ux = len < 1e-6 ? 1 : (tC.x - anchorCenter.x) / len;
-    const uy = len < 1e-6 ? 0 : (tC.y - anchorCenter.y) / len;
-    const perp = {x: -uy, y: ux};
-    let sideSign = 1;
-    const topLabel = topEdge?.labels[0];
-    if (topLabel) {
-      const off = (topLabel.x - mid.x) * perp.x + (topLabel.y - mid.y) * perp.y;
-      sideSign = off >= 0 ? -1 : 1;
-    }
-    // Clear of the top label AND the fanned edge lanes (up to
-    // stackMaxVisible × 8px on the +perp side).
-    const text = new Konva.Text({
-      x: mid.x + perp.x * sideSign * 46,
-      y: mid.y + perp.y * sideSign * 46,
-      text: `…${hiddenCount} more label${hiddenCount === 1 ? '' : 's'}…`,
-      fontSize: 11,
-      fontStyle: 'italic',
+    const aC = this.getNodeCenterInLayerCoordinates(anchorNode);
+    const cC = {x: container.x() + container.width() / 2, y: container.y() + container.height() / 2};
+    const len = Math.hypot(cC.x - aC.x, cC.y - aC.y);
+    if (len < 1e-6) return;
+    const u = {x: (cC.x - aC.x) / len, y: (cC.y - aC.y) / len};
+    const fromAnchor = this.rectBoundaryPoint(aC, anchorNode.NODE_WIDTH / 2, anchorNode.NODE_HEIGHT / 2, u);
+    const atContainer = this.rectBoundaryPoint(cC, container.width() / 2, container.height() / 2, {x: -u.x, y: -u.y});
+    const points = incoming
+      ? [atContainer.x, atContainer.y, fromAnchor.x, fromAnchor.y]
+      : [fromAnchor.x, fromAnchor.y, atContainer.x, atContainer.y];
+    const arrow = new Konva.Arrow({
+      points,
+      stroke: '#8a8a8a',
       fill: '#8a8a8a',
+      strokeWidth: 5,
+      pointerLength: 16,
+      pointerWidth: 16,
+      lineCap: 'round',
+      opacity: 0.95,
       listening: false,
     });
-    text.offsetX(text.width() / 2);
-    text.offsetY(text.height() / 2);
-    this.drawingLayer.add(text);
-    text.moveToTop();
-    this.gatherIndicators.push(text);
+    this.drawingLayer.add(arrow);
+    this.gatherIndicators.push(arrow);
+
+    if (labels.length === 0) return;
+    const mid = {x: (fromAnchor.x + atContainer.x) / 2, y: (fromAnchor.y + atContainer.y) / 2};
+    const perp = {x: -u.y, y: u.x};
+    const put = (text: string, side: number, italic: boolean) => {
+      const t = new Konva.Text({
+        x: mid.x + perp.x * side,
+        y: mid.y + perp.y * side,
+        text,
+        fontSize: italic ? 11 : 12,
+        fontStyle: italic ? 'italic' : 'normal',
+        fill: '#8a8a8a',
+        listening: false,
+      });
+      t.offsetX(t.width() / 2);
+      t.offsetY(t.height() / 2);
+      this.drawingLayer.add(t);
+      t.moveToTop();
+      this.gatherIndicators.push(t);
+    };
+    put(labels[0], 16, false);
+    if (labels.length > 1) {
+      put(`…${labels.length - 1} more label${labels.length === 2 ? '' : 's'}…`, -16, true);
+    }
+  }
+
+  /** Where a ray from a box's center exits its (axis-aligned) boundary. */
+  private rectBoundaryPoint(
+    center: {x: number; y: number},
+    halfW: number,
+    halfH: number,
+    u: {x: number; y: number},
+  ): {x: number; y: number} {
+    const tx = Math.abs(u.x) < 1e-9 ? Infinity : halfW / Math.abs(u.x);
+    const ty = Math.abs(u.y) < 1e-9 ? Infinity : halfH / Math.abs(u.y);
+    const t = Math.min(tx, ty);
+    return {x: center.x + u.x * t, y: center.y + u.y * t};
   }
 
   private ungather(): void {
@@ -3443,11 +3484,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       clearTimeout(this.gatherDeferredRouting);
       this.gatherDeferredRouting = null;
     }
-    // Buried stack labels come back, the "…more labels…" markers go away.
-    for (const label of this.gatherHiddenLabels) {
-      label.group.visible(true);
+    // Hidden pile edges come back; the meta-node/meta-edge overlays go away.
+    for (const edge of this.gatherHiddenEdges) {
+      edge.group.visible(true);
     }
-    this.gatherHiddenLabels = [];
+    this.gatherHiddenEdges = [];
     for (const indicator of this.gatherIndicators) {
       indicator.destroy();
     }
