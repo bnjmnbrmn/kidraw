@@ -188,6 +188,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  it renders as a glow (DAEdge.navFocused) and no editing command sees
    *  it. */
   private graphNavEdge: DAEdge | null = null;
+  /** The traversal's current node: the last node a jump anchored at or
+   *  landed on. Anchor of last resort — nav focus is not a selection, so
+   *  without this, drifting the crosshairs off the current node stranded
+   *  the whole traversal (no jump, no cycle, no gather). */
+  private graphNavLastNode: DANode | null = null;
   /** Pre-gather control points of every edge Gather re-routed, so Ungather
    *  restores the wiring exactly. */
   private gatheredEdgeControlPoints = new Map<DAEdge, EdgeControlPoint[]>();
@@ -2616,15 +2621,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           ? stops.findIndex(s => s.t > proj.t + 1e-4)
           : (stops.length - 1) - [...stops].reverse().findIndex(s => s.t < proj.t - 1e-4);
         if (target < 0 || target > stops.length - 1) return false;
-        this.moveCrosshairsToStop(stops[target]);
+        this.moveCrosshairsToNavStop(edge, stops[target]);
         return true;
       }
     }
 
     const target = index + (toDest ? 1 : -1);
     if (target < 0 || target > stops.length - 1) return false;
-    this.moveCrosshairsToStop(stops[target]);
+    this.moveCrosshairsToNavStop(edge, stops[target]);
     return true;
+  }
+
+  /** Step onto a stop, tracking the traversal's current node when the stop
+   *  is a node endpoint. */
+  private moveCrosshairsToNavStop(edge: DAEdge, stop: NavStop): void {
+    if (stop.kind === 'node') {
+      this.graphNavLastNode = stop.t === 0 ? edge.srcNode : edge.destNode;
+    }
+    this.moveCrosshairsToStop(stop);
   }
 
   /** Tier-filtered traversal stops of `edge`, ordered src → dest. */
@@ -2667,17 +2681,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Anchor node for navigation: the node under the crosshairs — the
    *  crosshairs are the traversal position — falling back to a selected
-   *  node (the entry flow puts the crosshairs on it anyway). */
+   *  node, then to the traversal's current node (`graphNavLastNode`).
+   *  Either fallback pulls the crosshairs back onto the anchor first, so
+   *  the following jump walks instead of re-picking forever. */
   private getGraphNavAnchorNode(): DANode | null {
-    return this.getDANodesContainingCrosshairs()[0]
-      ?? this.drawingLayer.getSelectedDANodes()[0]
-      ?? null;
+    const under = this.getDANodesContainingCrosshairs()[0];
+    if (under) return under;
+    const fallback = this.drawingLayer.getSelectedDANodes()[0]
+      ?? this.validGraphNavLastNode();
+    if (fallback) {
+      this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(fallback));
+      this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
+    }
+    return fallback ?? null;
+  }
+
+  /** `graphNavLastNode`, validated against the live graph (undo/redo,
+   *  delete, and load rebuild nodes — a stale reference clears). */
+  private validGraphNavLastNode(): DANode | null {
+    if (this.graphNavLastNode
+        && !this.drawingLayer.getDANodes().includes(this.graphNavLastNode)) {
+      this.graphNavLastNode = null;
+    }
+    return this.graphNavLastNode;
   }
 
   /** Give `edge` the navigation focus (crosshairs stay put, real selection
    *  untouched) and surface where it leads in the status line. */
   private navFocusEdge(edge: DAEdge, anchor: DANode): void {
     this.setGraphNavEdge(edge);
+    this.graphNavLastNode = anchor;
     this.graphNavLastPos = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
     const other = edge.srcNode === anchor ? edge.destNode : edge.srcNode;
     const otherLabel = (other.label?.text() ?? '').trim();
@@ -2938,7 +2971,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     const anchorNode = this.getTraversalAnchorNode();
-    if (!anchorNode) return;
+    if (!anchorNode) {
+      this.emitStatus('Move the crosshairs onto a node to gather.');
+      return;
+    }
 
     const children: DANode[] = [];
     for (const edge of anchorNode.outgoingEdges) {
@@ -2953,7 +2989,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         parents.push(edge.srcNode);
       }
     }
-    if (children.length === 0 && parents.length === 0) return;
+    if (children.length === 0 && parents.length === 0) {
+      this.emitStatus('Nothing connected to gather.');
+      return;
+    }
 
     this.placeColumn(anchorNode, children, 'right');
     this.placeColumn(anchorNode, parents, 'left');
@@ -2979,7 +3018,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
 
     const anchorNode = this.getTraversalAnchorNode();
-    if (!anchorNode) return;
+    if (!anchorNode) {
+      this.emitStatus('Move the crosshairs onto a node to gather.');
+      return;
+    }
 
     // Only one temporary gather view at a time: snap any previous one back
     // first so saved positions always refer to the user's real layout.
@@ -3250,6 +3292,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (nodesUnderCrosshairs.length > 0) {
       this.log.log('[getTraversalAnchorNode] under crosshairs:', nodesUnderCrosshairs[0].id);
       return nodesUnderCrosshairs[0];
+    }
+
+    const navNode = this.validGraphNavLastNode();
+    if (navNode) {
+      this.log.log('[getTraversalAnchorNode] traversal current node:', navNode.id);
+      return navNode;
     }
 
     this.log.log('[getTraversalAnchorNode] no anchor node found');
