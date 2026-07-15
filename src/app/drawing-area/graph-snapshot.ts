@@ -28,6 +28,9 @@ export interface DANodeSnapshot {
   baseHeight?: number;
   baseFontSize?: number;
   pinned?: boolean;
+  /** Semantic tags from the graph document. Kept in the runtime snapshot so
+   *  save/undo/layout operations do not erase type information. */
+  tags?: string[];
 }
 
 /** A bend point on an edge's polyline. `waypointId` is set on user-placed
@@ -50,6 +53,10 @@ export interface DAEdgeSnapshot {
   controlPoints?: DAControlPointSnapshot[];
   directedness?: import('./command.model').EdgeDirectedness;
   lineStyle?: import('./command.model').LineStyle;
+  /** Semantic tags from the graph document (for example `component-of` or
+   *  `depends-on`). Layout uses these to distinguish hierarchy edges from
+   *  cross-links. */
+  tags?: string[];
 }
 
 export interface GraphSnapshot {

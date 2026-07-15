@@ -338,6 +338,7 @@ export class DrawingLayer extends Konva.Layer {
       baseHeight: node.BASE_HEIGHT,
       baseFontSize: node.BASE_FONT_SIZE,
       pinned: node.pinned,
+      tags: node.tags.length > 0 ? [...node.tags] : undefined,
     }));
 
     const edges: DAEdgeSnapshot[] = this.daEdges.map(edge => ({
@@ -365,6 +366,7 @@ export class DrawingLayer extends Konva.Layer {
         : undefined,
       directedness: edge.directedness !== 'directed' ? edge.directedness : undefined,
       lineStyle: edge.lineStyle !== 'solid' ? edge.lineStyle : undefined,
+      tags: edge.tags.length > 0 ? [...edge.tags] : undefined,
     }));
 
     return {
@@ -429,6 +431,7 @@ export class DrawingLayer extends Konva.Layer {
       node.applyTextOverflow();
       node.isSelected = ns.isSelected;
       node.pinned = ns.pinned ?? false;
+      node.tags = [...(ns.tags ?? [])];
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);
       nodeMap.set(ns.id, node);
@@ -449,6 +452,7 @@ export class DrawingLayer extends Konva.Layer {
       }
       if (es.directedness) edge.directedness = es.directedness;
       if (es.lineStyle) edge.lineStyle = es.lineStyle;
+      edge.tags = [...(es.tags ?? [])];
       this.daEdgeGroup.add(edge.konvaGroup);
       this.daEdges.push(edge);
 

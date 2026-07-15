@@ -11,6 +11,7 @@
 //     between the two perimeters, identical to the live impl.
 
 import { DANode } from './fake-da-node';
+import { sampleSmoothPath } from '../../../src/app/drawing-area/routing-curve';
 
 export interface EdgeControlPoint {
   x: number;
@@ -27,6 +28,7 @@ export class DAEdge {
 
   /** Match the live default — endpoints sit ON the node perimeter. */
   readonly ARROW_STANDOFF = 0;
+  readonly SMOOTH_TENSION = 0.5;
 
   constructor(id: string, src: DANode, dest: DANode) {
     this.id = id;
@@ -60,6 +62,15 @@ export class DAEdge {
       ...this._controlPoints.map(p => ({ x: p.x, y: p.y })),
       applyArrowStandoff(destEdge, destAimTarget, this.ARROW_STANDOFF),
     ];
+  }
+
+  /** Mirrors the live edge's rendered metric path: endpoint tangent stubs,
+   *  followed by Konva-compatible spline sampling. */
+  getRenderedPathPoints(stepsPerSegment = 12): {x: number; y: number}[] {
+    const points = renderPoints(this.getPathPoints(), this._controlPoints.length > 0);
+    return this.smoothRendering
+      ? sampleSmoothPath(points, this.SMOOTH_TENSION, stepsPerSegment)
+      : points;
   }
 
   initializeStraightControlPoints(count: number): void {
@@ -106,6 +117,27 @@ export class DAEdge {
     this.smoothRendering = smooth;
   }
 
+}
+
+function renderPoints(points: {x: number; y: number}[], hasControlPoints: boolean): {x: number; y: number}[] {
+  if (!hasControlPoints || points.length < 3) return points;
+  const stubToward = (end: {x: number; y: number}, toward: {x: number; y: number}) => {
+    const dx = toward.x - end.x;
+    const dy = toward.y - end.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1e-6) return null;
+    const k = Math.min(26, dist * 0.45) / dist;
+    return {x: end.x + dx * k, y: end.y + dy * k};
+  };
+  const srcStub = stubToward(points[0], points[1]);
+  const destStub = stubToward(points[points.length - 1], points[points.length - 2]);
+  return [
+    points[0],
+    ...(srcStub ? [srcStub] : []),
+    ...points.slice(1, -1),
+    ...(destStub ? [destStub] : []),
+    points[points.length - 1],
+  ];
 }
 
 function nodeCenter(node: DANode): { x: number; y: number } {

@@ -355,10 +355,19 @@ function clusterBypassCandidates(
   if (near.length < 2) return [];
 
   const clusters = clusterByGap(near, opts.clusterGap);
+  // A long chord can cut through a whole layout row/column whose boxes are
+  // separated by more than `clusterGap`. Per-node bypass then exceeds the
+  // waypoint budget and every small cluster is a singleton. Include the union
+  // of all near-chord obstacles as a two-waypoint outer bypass candidate.
+  if (near.length > 1 && clusters.length > 1) clusters.unshift(near);
   const margin = opts.local.satisfiedNodeClearance * 0.8;
   const out: Pt[][] = [];
   for (const cl of clusters) {
-    if (cl.length < 2 || cl.length > opts.maxWaypoints) continue;
+    // Cluster size is unrelated to the waypoint budget: every cluster route
+    // uses exactly two waypoints around its union box, whether the cluster
+    // contains two obstacles or twenty. Capping by node count made long
+    // cross-links through a layout column impossible to recover.
+    if (cl.length < 2) continue;
     const ub = unionBoxes(cl.map(n => bboxOf(n)));
     const corners = [
       { x: ub.minX, y: ub.minY }, { x: ub.maxX, y: ub.minY },

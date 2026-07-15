@@ -30,7 +30,7 @@ const MEASURE = `
 
   // Rendered-path segments per edge.
   const segsOf = e => {
-    const p = e.getPathPoints();
+    const p = e.getRenderedPathPoints();
     const out = [];
     for (let i = 0; i + 1 < p.length; i++) out.push([p[i], p[i + 1]]);
     return out;

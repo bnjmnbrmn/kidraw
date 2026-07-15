@@ -24,6 +24,24 @@ function y(nodes: Map<string, DANode>, name: string): number {
 }
 
 describe('graph-layout treeLayout', () => {
+  it('returns typed non-hierarchy and parallel edges as cross-links', () => {
+    const nodes = makeNodes('root', 'a', 'b');
+    const [rootA, rootB, dependency, parallel, reverse] = makeEdges(nodes, [
+      ['root', 'a'], ['root', 'b'], ['a', 'b'], ['root', 'a'], ['a', 'root'],
+    ]);
+    rootA.tags = ['component-of'];
+    rootB.tags = ['component-of'];
+    dependency.tags = ['depends-on'];
+    parallel.tags = ['depends-on'];
+    reverse.tags = ['depends-on'];
+
+    const crossLinks = applyLayout(
+      'tree-right-clear', [...nodes.values()],
+      [rootA, rootB, dependency, parallel, reverse]);
+
+    expect(crossLinks).toEqual([dependency, parallel, reverse]);
+  });
+
   it('centers a parent horizontally over its children in tree-down', () => {
     const nodes = makeNodes('root', 'a', 'b', 'c');
     const edges = makeEdges(nodes, [['root', 'a'], ['root', 'b'], ['root', 'c']]);

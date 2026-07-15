@@ -13,6 +13,8 @@ const _nativeCaf: (id: number) => void =
   (typeof cancelAnimationFrame !== 'undefined' ? cancelAnimationFrame : () => {});
 
 export class DANode {
+  /** Semantic tags loaded from the graph document. */
+  public tags: string[] = [];
   readonly id: string;
   private _nodeShape: NodeShape;
   get nodeShape(): NodeShape { return this._nodeShape; }

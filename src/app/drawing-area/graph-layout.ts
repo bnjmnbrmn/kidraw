@@ -26,16 +26,23 @@ function slotExtent(n: DANode, spacing: number): number {
   return Math.max(spacing, Math.max(n.NODE_WIDTH, n.NODE_HEIGHT) + spacing / 2);
 }
 
+/** Applies the layout. Returns the edges the caller should still route:
+ *  for the tree-clear variants these are the NON-TREE edges (cross-links
+ *  the spanning forest doesn't cover) — their straight chords legitimately
+ *  pierce and overlap nodes that tree geometry can't move out of the way,
+ *  so they need the router while tree edges stay straight. Empty for every
+ *  other layout. */
 export function applyLayout(
   layout: LayoutType,
   nodes: DANode[],
   edges: DAEdge[],
   spacing = 200,
-): void {
+): DAEdge[] {
   const movable = nodes.filter(n => !n.pinned);
-  if (movable.length === 0) return;
+  if (movable.length === 0) return [];
 
   let positions: NodePos[];
+  let routeAfter: DAEdge[] = [];
   switch (layout) {
     case 'force-directed':
       positions = forceDirectedLayout(nodes, edges, movable, spacing);
@@ -49,17 +56,23 @@ export function applyLayout(
       positions = forceDirectedLayout(nodes, edges, movable, spacing, true);
       break;
     case 'tree-down':
-      positions = treeLayout(nodes, edges, movable, spacing, 'down');
+      positions = treeLayout(nodes, edges, movable, spacing, 'down').positions;
       break;
-    case 'tree-down-clear':
-      positions = treeLayout(nodes, edges, movable, spacing, 'down', true);
+    case 'tree-down-clear': {
+      const t = treeLayout(nodes, edges, movable, spacing, 'down', true);
+      positions = t.positions;
+      routeAfter = t.nonTreeEdges;
       break;
+    }
     case 'tree-right':
-      positions = treeLayout(nodes, edges, movable, spacing, 'right');
+      positions = treeLayout(nodes, edges, movable, spacing, 'right').positions;
       break;
-    case 'tree-right-clear':
-      positions = treeLayout(nodes, edges, movable, spacing, 'right', true);
+    case 'tree-right-clear': {
+      const t = treeLayout(nodes, edges, movable, spacing, 'right', true);
+      positions = t.positions;
+      routeAfter = t.nonTreeEdges;
       break;
+    }
     case 'grid':
       positions = gridLayout(movable, spacing);
       break;
@@ -117,6 +130,7 @@ export function applyLayout(
     p.node.konvaGroup.x(p.x);
     p.node.konvaGroup.y(p.y);
   }
+  return routeAfter;
 }
 
 /** Layout variants that guarantee straight edges clear of non-endpoint
@@ -283,8 +297,15 @@ function treeLayout(
   spacing: number,
   direction: 'down' | 'right',
   repairPierces = false,
-): NodePos[] {
+): {positions: NodePos[]; nonTreeEdges: DAEdge[]} {
   const movableSet = new Set(movable);
+
+  // Typed graphs can identify the structural hierarchy explicitly. When at
+  // least one component-of edge is present, only those edges may form the
+  // spanning forest; dependency/serves/note edges remain cross-links. Plain
+  // graphs retain the historical all-edges behavior.
+  const taggedHierarchyEdges = edges.filter(e => e.tags.includes('component-of'));
+  const forestCandidates = taggedHierarchyEdges.length > 0 ? taggedHierarchyEdges : edges;
 
   // Build adjacency from edges (dedupe parallel edges)
   const children = new Map<DANode, DANode[]>();
@@ -293,7 +314,7 @@ function treeLayout(
     children.set(n, []);
     incomingCount.set(n, 0);
   }
-  for (const e of edges) {
+  for (const e of forestCandidates) {
     const kids = children.get(e.srcNode)!;
     if (!kids.includes(e.destNode)) {
       kids.push(e.destNode);
@@ -333,7 +354,7 @@ function treeLayout(
     changed = false;
     for (const n of allNodes) {
       if (visited.has(n)) continue;
-      for (const e of edges) {
+      for (const e of forestCandidates) {
         const nbr = e.srcNode === n && visited.has(e.destNode) ? e.destNode
           : e.destNode === n && visited.has(e.srcNode) ? e.srcNode
           : null;
@@ -560,7 +581,7 @@ function treeLayout(
   }
   const parentsOf = new Map<DANode, DANode[]>();
   for (const n of allNodes) parentsOf.set(n, []);
-  for (const e of edges) {
+  for (const e of forestCandidates) {
     if (e.srcNode === e.destNode) continue;
     const ps = parentsOf.get(e.destNode)!;
     if (!ps.includes(e.srcNode)) ps.push(e.srcNode);
@@ -700,17 +721,16 @@ function treeLayout(
     for (let iter = 0; iter < 10; iter++) {
       // gap index g = the gap between level g-1 and level g
       const gapsToWiden = new Set<number>();
-      for (const e of edges) {
-        if (e.srcNode === e.destNode) continue;
-        const la = depthLevel.get(e.srcNode)!;
-        const lb = depthLevel.get(e.destNode)!;
+      for (const [child, parent] of treeParent) {
+        const la = depthLevel.get(parent)!;
+        const lb = depthLevel.get(child)!;
         if (Math.abs(la - lb) !== 1) continue;
-        const x1 = breadthPos.get(e.srcNode)!;
+        const x1 = breadthPos.get(parent)!;
         const y1 = depthOf.get(la)!;
-        const x2 = breadthPos.get(e.destNode)!;
+        const x2 = breadthPos.get(child)!;
         const y2 = depthOf.get(lb)!;
         for (const n of allNodes) {
-          if (n === e.srcNode || n === e.destNode) continue;
+          if (n === parent || n === child) continue;
           const ln = depthLevel.get(n)!;
           if (ln !== la && ln !== lb) continue;
           const bw = breadthExtentOf(n) / 2 + clearance;
@@ -765,7 +785,23 @@ function treeLayout(
     const p = laid.get(n)!;
     positions.push({ node: n, x: p.x + dx, y: p.y + dy });
   }
-  return positions;
+
+  // Select the exact edge that represents each forest relation. Endpoint
+  // comparison alone is insufficient: parallel and anti-parallel edges must
+  // remain cross-links rather than being mistaken for the same tree edge.
+  // Cycle adoption can hang a node against edge direction, hence the reverse
+  // fallback.
+  const treeEdges = new Set<DAEdge>();
+  for (const [child, parent] of treeParent) {
+    const edge = forestCandidates.find(e =>
+      !treeEdges.has(e) && e.srcNode === parent && e.destNode === child)
+      ?? forestCandidates.find(e =>
+        !treeEdges.has(e) && e.srcNode === child && e.destNode === parent);
+    if (edge) treeEdges.add(edge);
+  }
+  const nonTreeEdges = edges.filter(e => !treeEdges.has(e));
+
+  return {positions, nonTreeEdges};
 }
 
 function gridLayout(movable: DANode[], spacing: number): NodePos[] {

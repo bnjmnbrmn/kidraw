@@ -121,7 +121,7 @@ function strictlyInside(p: Pt, b: Box): boolean {
  *  inside either incident bbox (these are "in-hole" for weighted-chain;
  *  irrelevant for other algos since they don't have such beads). */
 function getMetricPolyline(edge: DAEdge): Pt[] {
-  const poly = edge.getPathPoints();
+  const poly = edge.getRenderedPathPoints();
   if (poly.length < 2) return poly;
   const srcBox = nodeBox(edge.srcNode);
   const destBox = nodeBox(edge.destNode);

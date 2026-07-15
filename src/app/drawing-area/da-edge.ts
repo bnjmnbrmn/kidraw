@@ -8,6 +8,7 @@ import {
   anchorPosition, cycleSide, EdgeLabelSide, LABEL_T_MAX, LABEL_T_MIN,
   nextTStop, pathLength, projectPointToPath, sideFromSignedDist,
 } from './edge-label-anchor';
+import { sampleSmoothPath } from './routing-curve';
 
 /** An entry in `DAEdge._controlPoints`. Plain `{x,y}` bend points come from
  *  routers; user-placed waypoints additionally carry `waypointId` (linking
@@ -21,6 +22,8 @@ export interface EdgeControlPoint {
 }
 
 export class DAEdge {
+  /** Semantic tags loaded from the graph document. */
+  public tags: string[] = [];
   readonly id: string;
   readonly group: Konva.Group;
   private _isSelected: boolean = false;
@@ -314,6 +317,17 @@ export class DAEdge {
       ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
       this.applyArrowStandoff(destEdge, destAimTarget),
     ];
+  }
+
+  /** Sample the path Konva actually paints, including the collinear endpoint
+   *  stubs and spline tension. Quality metrics use this instead of the raw
+   *  control polygon so a harmless control segment behind a curved route is
+   *  not reported as a visible node pierce. */
+  getRenderedPathPoints(stepsPerSegment = 12): {x: number; y: number}[] {
+    const points = this.renderPoints();
+    return this.smoothRendering
+      ? sampleSmoothPath(points, this.SMOOTH_TENSION, stepsPerSegment)
+      : points;
   }
 
   /** Push a perimeter endpoint outward (toward `aim`, i.e., along the

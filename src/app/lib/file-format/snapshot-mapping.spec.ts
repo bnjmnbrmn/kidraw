@@ -19,6 +19,7 @@ function makeSnapshot(): GraphSnapshot {
         fontSize: 14,
         isSelected: false,
         nodeShape: 'box',
+        tags: ['backend', 'critical'],
       },
       {
         id: 'da-2',
@@ -45,6 +46,7 @@ function makeSnapshot(): GraphSnapshot {
         controlPoints: [{ x: 250, y: 200 }],
         directedness: 'directed',
         lineStyle: 'dashed',
+        tags: ['read-path'],
       },
     ],
   };
@@ -60,12 +62,14 @@ describe('snapshot-mapping', () => {
     expect(doc.styles).toEqual(['./main.kd-style.json']);
     expect(Object.keys(doc.semantics.nodes).sort()).toEqual(['da-1', 'da-2']);
     expect(doc.semantics.nodes['da-1'].label).toBe('Auth');
+    expect(doc.semantics.nodes['da-1'].tags).toEqual(['backend', 'critical']);
     expect(doc.semantics.nodes['da-2'].label).toBe('DB');
 
     expect(doc.semantics.edges['da-3'].from).toBe('da-1');
     expect(doc.semantics.edges['da-3'].to).toBe('da-2');
     expect(doc.semantics.edges['da-3'].directed).toBe('directed');
     expect(doc.semantics.edges['da-3'].labels).toEqual([{ text: 'reads' }]);
+    expect(doc.semantics.edges['da-3'].tags).toEqual(['read-path']);
 
     expect(style.kdStyle).toBe(1);
     // w 120 and (da-2's) fontSize 16 equal the app defaults, so they're omitted
@@ -143,11 +147,11 @@ describe('snapshot-mapping', () => {
       styles: [],
       semantics: {
         nodes: {
-          'a': { label: 'A' },
+          'a': { label: 'A', tags: ['category'] },
           'b': { label: 'B' },
         },
         edges: {
-          'e1': { from: 'a', to: 'b', directed: 'directed', labels: [{ text: 'flow' }] },
+          'e1': { from: 'a', to: 'b', directed: 'directed', tags: ['component-of'], labels: [{ text: 'flow' }] },
         },
       },
     };
@@ -168,6 +172,7 @@ describe('snapshot-mapping', () => {
     expect(snap.nodes[0].x).toBe(10);
     expect(snap.nodes[0].width).toBe(100);
     expect(snap.nodes[0].baseWidth).toBe(100);   // file w/h are base values
+    expect(snap.nodes[0].tags).toEqual(['category']);
     expect(snap.nodes[1].nodeShape).toBe('diamond');
     expect(snap.nodes[1].width).toBe(APP_NODE_DEFAULTS.width);    // cascade fallback
     expect(snap.nodes[1].height).toBe(APP_NODE_DEFAULTS.height);
@@ -179,6 +184,7 @@ describe('snapshot-mapping', () => {
     expect(snap.edges[0].destNodeId).toBe('b');
     expect(snap.edges[0].directedness).toBe('directed');
     expect(snap.edges[0].lineStyle).toBe('dotted');
+    expect(snap.edges[0].tags).toEqual(['component-of']);
     expect(snap.edges[0].controlPoints).toEqual([{ x: 150, y: 30 }]);
     expect(snap.edges[0].labels.length).toBe(1);
     expect(snap.edges[0].labels[0].text).toBe('flow');

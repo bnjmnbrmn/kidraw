@@ -1657,21 +1657,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodeSet = new Set(nodes);
     const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
 
-    applyLayout(layout, nodes, edges);
+    const crossLinks = applyLayout(layout, nodes, edges);
     this.updateEdgesForResizedNodes(allNodes);
 
     // The layout moved nodes wholesale, so pre-existing unpinned waypoints on
     // affected edges now describe meaningless detours — drop them (pinned
     // waypoints survive setControlPoints) and re-route to fit the new
-    // positions. The "-clear" variants guarantee pierce-free straight edges,
-    // so they deliberately skip the router: the straight-edge result IS the
-    // point of comparison (route explicitly afterwards if wanted).
+    // positions. The "-clear" variants keep tree/skeleton edges straight;
+    // for the tree-clears the layout hands back the NON-TREE cross-links,
+    // whose straight chords legitimately pierce nodes the tree geometry
+    // can't move — those still get routed, against everything else frozen.
     const touchedEdges = allEdges.filter(
       e => nodeSet.has(e.srcNode) || nodeSet.has(e.destNode));
     for (const e of touchedEdges) e.setControlPoints([]);
     this.drawingLayer.batchDraw();
     if (isClearLayout(layout)) {
-      this.daOut.emit({kind: 'status-message', message: 'Layout applied — edges left straight (clear variant).'});
+      if (crossLinks.length > 0) {
+        this.daOut.emit({kind: 'status-message',
+          message: `Layout applied — tree edges straight, routing ${crossLinks.length} cross-link${crossLinks.length === 1 ? '' : 's'}.`});
+        this.applyEdgeRouting(
+          this.lastAppliedRouting ?? 'incremental-desiderata-v3', crossLinks);
+      } else {
+        this.daOut.emit({kind: 'status-message', message: 'Layout applied — edges left straight (clear variant).'});
+      }
       return;
     }
     this.applyEdgeRouting(

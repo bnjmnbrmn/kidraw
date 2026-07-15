@@ -88,6 +88,7 @@ export function snapshotToFiles(
   for (const n of snap.nodes) {
     const sem: NodeSemantics = {};
     if (n.text) sem.label = n.text;
+    if (n.tags && n.tags.length > 0) sem.tags = [...n.tags];
     semNodes[n.id] = sem;
 
     // Persist base values (the inputs), never derived rendered sizes, and
@@ -112,6 +113,7 @@ export function snapshotToFiles(
   for (const e of snap.edges) {
     const sem: EdgeSemantics = { from: e.srcNodeId, to: e.destNodeId };
     if (e.directedness) sem.directed = e.directedness;
+    if (e.tags && e.tags.length > 0) sem.tags = [...e.tags];
     if (e.labels && e.labels.length > 0) {
       sem.labels = e.labels.map(l => ({ text: l.text }));
     }
@@ -186,6 +188,7 @@ export function filesToSnapshot(
       isSelected: false,
       nodeShape: sp.shape ?? def.shape,
       textOverflowMode: sp.textOverflow ?? def.textOverflow,
+      ...(sem.tags && sem.tags.length > 0 ? { tags: [...sem.tags] } : {}),
     };
     nodes.push(node);
   }
@@ -225,6 +228,7 @@ export function filesToSnapshot(
       destNodeId: sem.to,
       isSelected: false,
       labels,
+      ...(sem.tags && sem.tags.length > 0 ? { tags: [...sem.tags] } : {}),
     };
     if (sp.waypoints && sp.waypoints.length > 0) {
       edge.controlPoints = sp.waypoints.map(p => ({
