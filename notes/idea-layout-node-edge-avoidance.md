@@ -1,7 +1,7 @@
 ---
 title: Layout-side guarantees — no straight edge through a node, fewer crossings
 type: idea
-status: partially implemented 2026-07-14 (post-pass + force term + tree/force -clear variants shipped f0c5a5d; tree geometry-exact repair + circular ordering still open)
+status: partially implemented 2026-07-15 (post-pass + force term + tree/force -clear variants; typed tree cross-link routing shipped; circular ordering still open)
 ---
 
 # Layout-side node-edge avoidance + crossing minimization
@@ -98,3 +98,14 @@ Still open:
 - **Crossing minimization for force-clear** — its post-pass targets pierces,
   not crossings.
 - Grid stays out of scope (and is now unbound in the menu).
+
+## Typed tree + cross-link composition (2026-07-15, `02da288`)
+
+The non-tree half now ships: semantic edge tags survive in runtime snapshots;
+when `component-of` is present it defines the spanning forest, and tree-clear
+routes every other exact edge identity after layout while leaving the forest
+straight. IDv3 gained an outer-union bypass for a long spaced obstacle column,
+so cross-links that cross more nodes than the waypoint budget can still route
+around the whole column with two points. KiDraw Dev tree-right-clear measures
+0 rendered-path node pierces with perfect level columns. Circular/radial
+ordering and the no-new-crossings routing objective remain open.

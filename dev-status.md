@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-07-13. Branch: `main`._
+_Updated 2026-07-15. Branch: `main`._
 
 > Read this at the start of every session for **where work currently stands**. Everything historical, topical, or design-rationale lives in [`notes/`](notes/) — see [`notes/README.md`](notes/README.md) for the Map of Content. Canonical instructions are in [`AGENTS.md`](AGENTS.md).
 
@@ -38,6 +38,8 @@ _Updated 2026-07-13. Branch: `main`._
 
 18. **Gradients by default, plain-Gather columns, sample positions (2026-07-14, `ee0e3ea`).** The direction gradient (cyan→yellow dark / teal→amber light) is now a `ThemePalette.edgeGradient` default applied to every edge in the app — previously only the screenshot script set it. Plain Gather (`f→h`) dropped its 150px circle for the same neat placement as Gather Around, one level deep both ways (children column right, parents column left, shared `placeColumn`, post-gather re-route; toggle + 5s auto-restore kept). The kidraw-dev dropdown sample ships with baked tree-right-clear positions instead of loading as a pile at the origin.
 
+19. **Typed cross-link routing; KiDraw Dev pierces fixed (2026-07-15, `02da288`).** Tree-clear now keeps the hierarchy straight and routes only the wiring outside it. Semantic node/edge tags survive file ↔ snapshot ↔ live-object round trips (previously loading preserved their style effect but silently discarded the tags themselves); when `component-of` tags exist, those edges alone form the spanning forest, while `depends-on` / `serves` / `note` remain cross-links. Tree membership is exact edge identity, so parallel and anti-parallel edges cannot be mistaken for the same tree edge. `applyLayout` returns the cross-links and `DrawingAreaComponent` routes them against the frozen tree after `tree-*-clear`. IDv3's cluster bypass now includes a two-waypoint union candidate for long spaced rows/columns — the old `cluster.length > maxWaypoints` guard incorrectly rejected a 2-point bypass merely because it avoided more than four nodes, which left the two reported center-cutting edges straight. The KiDraw Dev sample is re-baked with the kind-aware tree-right-clear positions and clean cross-link waypoints. Rendered-path metrics now sample the actual tension curve plus endpoint stubs rather than its control polygon. Live sample verification: **40n / 59e, 37 hierarchy + 22 cross-link edges, 0 edges through nodes, 0 sibling crossings, 0 self-intersections, 0 long collinear overlaps**; 262/262 unit tests, 33/33 routing scenarios, production build clean.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
@@ -52,16 +54,16 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
-| `06c0086` | Tree-clear pierce repair, Gather Around (ancestors too), direction gradients |
-| `d5f4e53` | shots gallery: one diagram per screen in phone landscape (snap scroll) |
-| `4d8ed73` | Remove stray serve-test file |
-| `1c82dca` | Typed next.org visualization (dark) + semantic-zoom idea; gallery goes dark |
-| `3584e37` | notes: means-vs-ends — structural via serves edges, task GC as the payoff |
-| `01051c3` | notes: todo-graph modeling brainstorm — typed nodes/edges, semantics, scenarios |
-| `5991733` | notes: layout-side node-edge avoidance + crossing minimization design |
-| `e044e5c` | notes: post-layout routing quality analysis, gather distance/nav-corridor, key-swap idea |
-| `a08549c` | Search: recenter the view on the match, not just move the crosshairs |
-| `f0c5a5d` | Layout: add -clear variants (straight edges never pierce nodes), drop grid from menu |
+| `02da288` | Route typed cross-links around layout nodes |
+| `aa310f0` | dev-status: record gradient default + gather columns + sample positions |
+| `ee0e3ea` | Direction gradients on by default; plain Gather uses neat columns; sample opens laid out |
+| `2dd0e74` | Samples: KiDraw Dev (typed todo) + Fan Tree in the Load Sample dropdown |
+| `9ba1b78` | dev-status: record arrowhead stub fix |
+| `b517e0b` | Fix arrowhead/tangent aim on curved edges: collinear end stubs at render time |
+| `29aff8e` | dev-status: record dataset/metrics/gather-routing/zoom-fix round |
+| `01c05bc` | notes: metrics table + gather routing progress |
+| `c335db6` | Non-tree dataset + layout metrics + gather edge routing + zoom-scale layout fix |
+| `ab01896` | notes: record shallow column gather decision |
 
 ---
 

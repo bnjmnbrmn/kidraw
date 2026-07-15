@@ -117,8 +117,7 @@ semantics:
     n1: {label: "Chord bugs bite tier chords too", tags: [note]}
     n2: {label: "Label-ends-with-? found 11 questions", tags: [note]}
   edges:
-    # component-of spine (parent → part) — listed first so BFS spanning
-    # prefers them until kind-aware spanning exists.
+    # component-of spine (parent → part) — the tree-layout skeleton.
     e0: {from: c0, to: c1, tags: [component-of]}
     e1: {from: c0, to: c2, tags: [component-of]}
     e2: {from: c0, to: c3, tags: [component-of]}

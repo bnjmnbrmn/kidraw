@@ -87,26 +87,26 @@ crossings for straight-vs-routed to confirm the baseline is 0, then implement
 scenario machinery; add a "post-tree-layout" scenario built from a real tidy
 tree with an 18-way fan.
 
-## Measured on real datasets (2026-07-14, tools/layout-metrics.js)
+## Measured on real datasets (2026-07-15, tools/layout-metrics.js)
 
 | dataset | layout | pierces | crossings | x-columns (vs depths) |
 | :-- | :-- | --: | --: | --: |
-| next (pure tree) | tree-right | 1 | 0 | 6 (6) |
+| next (pure tree) | tree-right | 0 | 0 | 6 (6) |
 | next (pure tree) | tree-right-clear | **0** | **0** | **6 (6), 0px dev** |
 | next (pure tree) | force-clear | 1 | 28 | 48 (6) |
-| kidraw-dev (non-tree) | tree-right | 7 | 13 | 4 (3) |
-| kidraw-dev (non-tree) | tree-right-clear | 9 | 10 | 4 (3), 0px dev |
-| kidraw-dev (non-tree) | force-clear | 0 | 39 | 38 (3) |
+| kidraw-dev (non-tree) | tree-right | 1 | 23 | 3 (3) |
+| kidraw-dev (non-tree) | tree-right-clear | **0** | 25 | **3 (3), 0px dev** |
+| kidraw-dev (non-tree) | force-clear | 0 | 32 | 36 (3) |
 
-Reading: the tree-clear guarantee holds perfectly on the real tree; on the
-non-tree dataset **every pierce and crossing comes from the straight
-non-tree edges** (depends-on/serves cross-links) that tree-clear leaves
-unrouted. The concrete next step is the *post-layout routing profile*
-narrowed to exactly that: after tree-clear, route ONLY the non-tree edges
-(tree edges stay straight) with the no-new-crossings rule. Force trades the
-other way: pierce-free but crossing chaos (28–39) — wrong tool for
-hierarchical todo graphs. Column alignment is essentially perfect for tree
-layouts even on non-trees.
+Reading: the tree-clear guarantee now composes with a typed post-layout
+routing profile. `component-of` edges form the straight spanning forest;
+the 22 `depends-on` / `serves` / `note` cross-links route against that frozen
+tree. The result is pierce-free with perfect three-column alignment on the
+KiDraw Dev graph. The crossing figure is the broad gallery metric (any
+rendered segment pair); the app's stricter routing metric reports one
+non-sibling interior crossing and no hard failures. The no-new-crossings
+router objective remains open. Force trades the other way: pierce-free but
+crossing-heavy — wrong for hierarchical todo graphs.
 
 ## In/out fan separation (Ben, 2026-07-14)
 
