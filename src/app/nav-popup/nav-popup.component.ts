@@ -70,11 +70,16 @@ export class NavPopupComponent implements OnChanges {
   /** false = list mode: the input swallows typing and plain j/k/n/p navigate.
    *  true = filter mode: typing filters, ^j/^k (and arrows) navigate. */
   filterMode = false;
+  /** Whether the keyboard moved the selection since the popup (re)opened.
+   *  Distinguishes hold-navigate-release (commit on release) from a plain
+   *  tap of the Go key (keyup right after opening — must not commit). */
+  private navigatedSinceOpen = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['rows']) {
       this.query = '';
       this.filterMode = false;
+      this.navigatedSinceOpen = false;
       if (this.searchInput) this.searchInput.nativeElement.value = '';
       // Compute rows synchronously so the template renders, but defer the
       // highlight emit: ngOnChanges runs inside the parent's change-detection
@@ -111,6 +116,7 @@ export class NavPopupComponent implements OnChanges {
     const move = (delta: number) => {
       event.preventDefault();
       event.stopPropagation();
+      this.navigatedSinceOpen = true;
       this.select(this.selectedIndex + delta);
     };
     // ^n/^p stay bound for muscle memory but are NOT advertised in the hint:
@@ -152,14 +158,23 @@ export class NavPopupComponent implements OnChanges {
     event.stopPropagation(); // typing (incl. Backspace/Delete) stays in the box
   }
 
-  /** Releasing the still-held Go key over the search pseudo-item activates
-   *  it — the hold-f → p → release-f rhythm from the old traversal. */
+  /** Releasing the Go key acts on the selection — the hold-f → navigate →
+   *  release rhythm from the old traversal: over the search pseudo-item it
+   *  starts filtering, over a row it jumps there. A plain tap (keyup with no
+   *  navigation in between) leaves the popup open. */
   onKeyup(event: KeyboardEvent): void {
     event.stopPropagation();
-    if (!this.filterMode && this.holdKey !== null
-        && event.key.toLowerCase() === this.holdKey.toLowerCase()
-        && this.selectedIndex === -1) {
+    if (this.filterMode || this.holdKey === null
+        || event.key.toLowerCase() !== this.holdKey.toLowerCase()) {
+      return;
+    }
+    if (this.selectedIndex === -1) {
       this.enterFilterMode();
+      return;
+    }
+    if (this.navigatedSinceOpen) {
+      const row = this.filtered[this.selectedIndex];
+      if (row) this.commitRow.emit({id: row.row.id, walk: false});
     }
   }
 

@@ -272,6 +272,20 @@ async function main() {
   check('6c: keymenu works again after the popup closes',
     Math.abs(afterH.under === 'F' ? 0 : 1) >= 0 && true, '');
 
+  // --- 6.5. Hold f, navigate, release f → commits the selected row without
+  // Enter. (A plain tap — keyup with no navigation — must NOT commit: section
+  // 2 already guards that, its tap leaves the popup open.) ---
+  await placeOn('C');
+  await page.keyboard.down('f');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('n'); // row 0 (alpha) → row 1 (beta); marks navigation
+  await page.waitForTimeout(150);
+  await page.keyboard.up('f');
+  await page.waitForTimeout(500);
+  s = await state();
+  check('6.5a: releasing f after navigating jumps to the selected row',
+    s.under === 'E' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
+
   // --- 7. Hold-f flow + walk mode: hold f at the fork, p to the search item,
   // release f to filter, Tab to walk. ---
   await placeOn('C');
