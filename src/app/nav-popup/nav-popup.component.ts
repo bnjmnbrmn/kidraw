@@ -96,6 +96,10 @@ export class NavPopupComponent implements OnChanges {
       event.stopPropagation();
       this.select(this.selectedIndex + delta);
     };
+    // ^n/^p stay bound for muscle memory but are NOT advertised in the hint:
+    // Chrome/Firefox reserve Ctrl+N (new window) at the browser level — the
+    // page never receives the keydown, so it works only where the browser
+    // chooses not to claim it. ^j/^k and the arrows always reach us.
     if (key === 'ArrowDown' || (event.ctrlKey && (key === 'n' || key === 'j'))) { move(1); return; }
     if (key === 'ArrowUp' || (event.ctrlKey && (key === 'p' || key === 'k'))) { move(-1); return; }
     if (key === 'Enter' || key === 'Tab') {

@@ -2739,8 +2739,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  you might be going. */
   private positionNavPopup(): void {
     if (!this.navSource) return;
-    const POPUP_W = 320;
-    const POPUP_H = Math.min(56 + this.navPopupRows.length * 40 + 22, 380);
+    // Estimates for edge clamping — keep in sync with nav-popup.component.css
+    // (width / max-height) and its compact row metrics.
+    const POPUP_W = 210;
+    const POPUP_H = Math.min(38 + this.navPopupRows.length * 28 + 16, 220);
     const GAP = 14;
     const scale = this.drawingLayer.scaleX();
     const n = this.navSource;

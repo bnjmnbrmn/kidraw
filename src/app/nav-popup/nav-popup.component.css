@@ -4,43 +4,46 @@
   z-index: 40;
 }
 
+/* Compact + translucent: the popup is a lens over the graph, not a wall —
+ * the diagram must stay readable behind and around it. */
 .nav-popup {
   position: absolute;
   z-index: 41;
-  width: 320px;
-  max-height: 380px;
+  width: 210px;
+  max-height: 220px;
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
+  border-radius: 6px;
   font-family: system-ui, sans-serif;
-  font-size: 13px;
-  background: #ffffff;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(2px);
   color: #1e293b;
-  border: 1px solid #94a3b8;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   overflow: hidden;
 }
 
 .nav-popup.dark {
-  background: #1f2937;
+  background: rgba(31, 41, 55, 0.72);
   color: #e5e7eb;
-  border-color: #4b5563;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.65);
+  border-color: rgba(75, 85, 99, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
 .search {
-  margin: 8px;
-  padding: 6px 8px;
-  border-radius: 5px;
-  border: 1px solid #94a3b8;
-  background: inherit;
+  margin: 5px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  background: transparent;
   color: inherit;
   font: inherit;
   outline: none;
 }
 
 .nav-popup.dark .search {
-  border-color: #4b5563;
+  border-color: rgba(75, 85, 99, 0.8);
 }
 
 .search:focus {
@@ -49,36 +52,37 @@
 
 .rows {
   overflow-y: auto;
-  padding-bottom: 4px;
+  padding-bottom: 3px;
 }
 
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
+  gap: 6px;
+  padding: 3px 8px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .row.selected {
-  background: #dbeafe;
+  background: rgba(37, 99, 235, 0.16);
 }
 
 .nav-popup.dark .row.selected {
-  background: #1e3a5f;
+  background: rgba(96, 165, 250, 0.22);
 }
 
 .glyph {
   flex: none;
-  width: 16px;
+  width: 12px;
   text-align: center;
   opacity: 0.8;
 }
 
 .texts {
   flex: 1;
-  min-width: 0;
+  /* The title keeps at least this share of the row — tag pills clip first. */
+  min-width: 55%;
   display: flex;
   flex-direction: column;
 }
@@ -89,7 +93,7 @@
 }
 
 .subtitle {
-  font-size: 11px;
+  font-size: 10px;
   font-style: italic;
   opacity: 0.7;
   overflow: hidden;
@@ -106,36 +110,38 @@
 }
 
 .tags {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
-  gap: 4px;
+  gap: 3px;
+  overflow: hidden;
 }
 
 .tag {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 8px;
+  font-size: 9px;
+  padding: 0 5px;
+  border-radius: 7px;
   background: rgba(100, 116, 139, 0.18);
   opacity: 0.9;
 }
 
 .divider {
-  padding: 3px 10px;
-  font-size: 10px;
+  padding: 2px 8px;
+  font-size: 9px;
   font-style: italic;
   opacity: 0.55;
   border-top: 1px dashed rgba(100, 116, 139, 0.5);
 }
 
 .no-match {
-  padding: 8px 10px;
+  padding: 6px 8px;
   font-style: italic;
   opacity: 0.6;
 }
 
 .hint {
-  padding: 4px 10px 6px;
-  font-size: 10px;
+  padding: 3px 8px 4px;
+  font-size: 9px;
   opacity: 0.5;
   border-top: 1px solid rgba(100, 116, 139, 0.25);
 }
