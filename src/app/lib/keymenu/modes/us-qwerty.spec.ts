@@ -15,6 +15,63 @@ describe('USQwertyMode', () => {
     }
   });
 
+  describe('repeater lifetime on out-of-order release (\\m \\x /m /x)', () => {
+    beforeEach(() => jasmine.clock().install());
+    afterEach(() => jasmine.clock().uninstall());
+
+    function buildRepeatMenu(counter: { count: number }): KeyMenu<void> {
+      return buildKeyMenu({
+        _repeatConfig: {initialDelayMs: 100, intervalMs: 50},
+        h: new LabeledAction('Move', () => counter.count++),
+        s: new LabeledSubmenuConfig('Coarse...', {
+          h: new LabeledAction('Coarse Move', () => {}),
+        }),
+      } as SubmenuConfig);
+    }
+
+    it('keeps the parent repeater running while a child submenu is open (I3)', () => {
+      const counter = {count: 0};
+      const keyMenu = buildRepeatMenu(counter);
+
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 'h'}));
+      expect(counter.count).toBe(1);
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+      jasmine.clock().tick(200);
+      expect(counter.count).toBeGreaterThan(1);
+    });
+
+    it('stops the parent repeater on its key-up even while a child submenu is open', () => {
+      const counter = {count: 0};
+      const keyMenu = buildRepeatMenu(counter);
+
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 'h'}));
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+      keyMenu.handleKeyUp(new KeyboardEvent('keyup', {key: 'h'}));
+
+      const after = counter.count;
+      jasmine.clock().tick(1000);
+      expect(counter.count).toBe(after);
+
+      keyMenu.handleKeyUp(new KeyboardEvent('keyup', {key: 's'}));
+      jasmine.clock().tick(1000);
+      expect(counter.count).toBe(after);
+    });
+
+    it('leaves no scheduled timer in any stacked submenu after all keys are up', () => {
+      const counter = {count: 0};
+      const keyMenu = buildRepeatMenu(counter);
+
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 'h'}));
+      keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+      keyMenu.handleKeyUp(new KeyboardEvent('keyup', {key: 'h'}));
+      keyMenu.handleKeyUp(new KeyboardEvent('keyup', {key: 's'}));
+
+      const mode = keyMenu.currentMode as USQwertyMode<void>;
+      const scheduled = mode.stack.flatMap((s) => [...s.scheduledActions.keys()]);
+      expect(scheduled).toEqual([]);
+    });
+  });
+
   it('should pop submenu path when releasing a submenu key that is reused in the child submenu', () => {
     const keyMenu = buildKeyMenu({
       a: new LabeledSubmenuConfig('Insert...', {

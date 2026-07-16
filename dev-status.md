@@ -90,19 +90,27 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 ### Key-handling bugs (keymenu state machine) — *active focus*
 
-These are the next things to fix. Both are about how held-key chords drive
+Both are about how held-key chords drive
 the keymenu, and both point at the same gap: the chord state machine doesn't
-robustly handle keys pressed/released in arbitrary order. See
+robustly handle keys pressed/released in arbitrary order. Bug A (repeat) is
+fixed; Bug B (chord entry order) remains open. See
 [`notes/architecture-keymenu-model.md`](notes/architecture-keymenu-model.md)
 and `keymenu.component.ts` (held-key / keyup handling).
 
-- **Key repeat fails to turn off on an out-of-order release.** When keys are
-  released in an unusual sequence, the auto-repeat (continuous movement /
-  edit repeat) keeps firing after the triggering key is physically up — the
-  repeat timer isn't cancelled because the keyup bookkeeping assumes a
-  particular release order. Repro: hold a movement/repeat key, press a second
-  key, then release them in the "wrong" order. **Not yet started** — was
-  mis-remembered as in-progress; it lives nowhere in the working tree yet.
+- **Key repeat fails to turn off on an out-of-order release.** ✅ **Fixed
+  2026-07-16.** Root cause: `USQwertyMode.handleKeyUp` delivered key-ups only
+  to the stack-top submenu, but repeat timers live per-submenu — so in
+  `\m \x /m /x` (hold a movement key, press a submenu key, release the
+  movement key first) the parent submenu's repeater never heard `/m` and fired
+  forever; `popSubmenuAndChildren` only stops timers on *removed* submenus, so
+  even `/x` didn't kill it, and re-pressing `m` orphaned the timer chain
+  permanently (`scheduleAction` overwrote the map slot). Fix: key-ups are now
+  delivered to **every** submenu in the stack (the repeater dies on `/K`
+  regardless of what else is held — the I3 invariant), and `scheduleAction`
+  clears any existing timer before scheduling. Verified via
+  `tools/repro-repeat-release-order.js` (7 checks incl. the timer-map ground
+  truth, which the crosshairs-position check alone misses when clamped at the
+  canvas edge) + 3 new unit tests in `us-qwerty.spec.ts` (281/281).
 
 - **Chord into submenu is order-sensitive / doesn't fire.** Pressing a
   movement key together with a coarse/fine key (no releases between) should

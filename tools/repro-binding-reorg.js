@@ -4,8 +4,8 @@
  *
  *   1. Root `a` opens the Insert submenu: hold a → tap d creates a node and
  *      releasing a drops into label-edit mode.
- *   2. Root `f` opens Move by graph: hold f → tap n (Jump Outgoing) moves the
- *      crosshairs to a neighbor node.
+ *   2. Root `f` is the one-shot Go action (nav popup, 2026-07-16); the
+ *      traversal checks below drive it with real key events.
  *   3. Root `g` is unbound.
  *   4. The `m` File submenu has the new shape: n New, o Open… (vault),
  *      s Save As… (vault), i Import File…, e Export File…, and no
@@ -60,7 +60,8 @@ async function main() {
     return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), m: summarize(root['m']), miscLabels };
   });
   check('root a is the Insert submenu', menu.a?.label === 'Insert...', JSON.stringify(menu.a));
-  check('root f is Move by graph', menu.f?.label === 'Move by graph...', JSON.stringify(menu.f));
+  // 2026-07-16: f became the one-shot Go action (nav popup rework).
+  check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
   check('root g toggles keyboard visibility', menu.g?.label === 'Hide Keyboard', JSON.stringify(menu.g));
   check('root m is File...', menu.m?.label === 'File...', JSON.stringify(menu.m));
   check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));

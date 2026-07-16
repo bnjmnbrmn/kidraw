@@ -144,20 +144,15 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     handleKeyUp(event: KeyboardEvent) {
         const key = USQwertyMode.resolveKeyString(event);
-        this.stackTop.handleKeyUp(event);
-
-        if (this.submenuKeyStringStack.includes(key) && this.stack.length > 1) {
-            this.popSubmenuAndChildren(key);
-            return;
+        // Deliver the release to every submenu in the stack, not just the top:
+        // a repeater scheduled in a parent keeps running while a child submenu
+        // is open (I3), so the parent must see the key-up to stop it — the
+        // repeater dies on /K regardless of what else is still held.
+        for (let i = this.stack.length - 1; i >= 0; i--) {
+            this.stack[i].handleKeyUp(event);
         }
 
-        // Pop submenu if:
-        // 1. The key is not in the current submenu AND
-        // 2. The key is in the submenu key string stack (meaning it was a submenu key) AND
-        // 3. We're not at the root level
-        if (!this.stackTop.keys[key] &&
-            this.submenuKeyStringStack.includes(key) &&
-            this.stack.length > 1) {
+        if (this.submenuKeyStringStack.includes(key) && this.stack.length > 1) {
             this.popSubmenuAndChildren(key);
         }
     }

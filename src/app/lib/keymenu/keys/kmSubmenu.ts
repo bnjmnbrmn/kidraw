@@ -165,6 +165,12 @@ export class KMSubmenu<T> {
   }
 
   private scheduleAction(key: KeyString, action: { (): void }) {
+    // Overwriting a map entry must not orphan a live timer chain — an orphaned
+    // chain re-arms itself forever and no key-up can reach it.
+    const existing = this.scheduledActions.get(key);
+    if (existing !== undefined) {
+      window.clearTimeout(existing);
+    }
 
     const timerAction = () => {
       action();
