@@ -1,6 +1,7 @@
 <div id="mainDrawingArea" #mainDrawingArea></div>
 @if (navPopupOpen) {
   <app-nav-popup [rows]="navPopupRows"
+                 [class.concealed]="navPopupHidden"
                  [left]="navPopupLeft"
                  [top]="navPopupTop"
                  [dark]="navPopupDark"

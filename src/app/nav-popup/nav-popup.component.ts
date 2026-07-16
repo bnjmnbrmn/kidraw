@@ -119,6 +119,13 @@ export class NavPopupComponent implements OnChanges {
     // chooses not to claim it. ^j/^k and the arrows always reach us.
     if (key === 'ArrowDown' || (event.ctrlKey && (key === 'n' || key === 'j'))) { move(1); return; }
     if (key === 'ArrowUp' || (event.ctrlKey && (key === 'p' || key === 'k'))) { move(-1); return; }
+    // Jumplist chords are keymenu-level; swallow them here so Ctrl+O can't
+    // reach the browser (Open File dialog) while the popup owns the keyboard.
+    if (event.ctrlKey && (key === 'o' || key === 'i')) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     // Esc / ^[ peel one layer: filter mode → list mode (query and filtered
     // rows kept), list mode → close (back to the main keymenu).
     if (key === 'Escape' || (event.ctrlKey && key === '[')) {

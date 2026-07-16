@@ -98,6 +98,10 @@ async function main() {
     edge.labels[0]?.appendText('needs alpha');
     da.handleCommands({ kind: 'EXIT_LABEL_EDIT_MODE' });
     da.handleCommands({ kind: 'UNSELECT_ALL' });
+    // The programmatic ADD_LABEL armed the keymenu's label-added flag; in the
+    // real flow the held submenu key's release consumes it. Disarm it here so
+    // it can't leak into a later key release.
+    window.ng.getComponent(document.querySelector('app-keymenu')).labelAddActive = false;
   });
 
   const placeOn = (id) => page.evaluate((nodeId) => {
@@ -124,6 +128,7 @@ async function main() {
     const popup = document.querySelector('.nav-popup');
     const rows = popup ? [...popup.querySelectorAll('.row')].map(r => r.textContent.trim().replace(/\s+/g, ' ')) : [];
     const selected = popup ? popup.querySelector('.row.selected')?.textContent.trim().replace(/\s+/g, ' ') : null;
+    const concealed = !!document.querySelector('app-nav-popup.concealed');
     const searchEl = popup ? popup.querySelector('input.search') : null;
     const searchSelected = !!(searchEl && searchEl.classList.contains('selected'));
     const filtering = !!(searchEl && searchEl.classList.contains('filtering'));
@@ -131,6 +136,7 @@ async function main() {
     return {
       under: under ? under.id : null,
       popupOpen: !!popup,
+      concealed,
       rows,
       selected,
       searchSelected,
@@ -154,6 +160,53 @@ async function main() {
   await page.waitForTimeout(400);
   s = await state();
   check('1b: second f continues the chain to C', s.under === 'C' && !s.popupOpen,
+    `under=${s.under}`);
+
+  // --- 1.5. Single-candidate node: popup opens concealed (no flash on a
+  // tap), reveals after ~500 ms of holding; chain nodes show both options;
+  // the glow clears once you land. ---
+  await placeOn('A');
+  await page.keyboard.down('f');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('1.5a: single-candidate popup is open but concealed at first',
+    s.popupOpen && s.concealed && s.rows.length === 1,
+    `open=${s.popupOpen} concealed=${s.concealed} rows=${s.rows.length}`);
+  await page.waitForTimeout(600);
+  s = await state();
+  check('1.5b: still holding after ~500ms reveals the popup',
+    s.popupOpen && !s.concealed, `concealed=${s.concealed}`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('f');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('1.5c: Escape while holding cancels the single-option move',
+    !s.popupOpen && s.under === 'A', `under=${s.under}`);
+  await page.keyboard.down('f');
+  await page.waitForTimeout(120); // released before the 500ms reveal
+  s = await state();
+  const concealedDuringQuickHold = s.concealed;
+  await page.keyboard.up('f');
+  await page.waitForTimeout(500);
+  s = await state();
+  check('1.5d: quick release commits the single option without ever showing the popup',
+    concealedDuringQuickHold && s.under === 'B' && !s.popupOpen,
+    `concealedWhileHeld=${concealedDuringQuickHold} under=${s.under}`);
+  check('1.5e: the edge glow clears after landing (shows where you head, not where you were)',
+    s.glow.length === 0, JSON.stringify(s.glow));
+  await page.keyboard.down('f');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('1.5f: chain node offers both directions immediately (momentum = default)',
+    s.popupOpen && !s.concealed && s.rows.length === 2
+      && s.rows[0].startsWith('→') && s.rows[0].includes('the fork')
+      && s.divider && s.rows[1].includes('start here'),
+    `concealed=${s.concealed} rows=${JSON.stringify(s.rows)}`);
+  await page.keyboard.up('f'); // commit the default: onward to C
+  await page.waitForTimeout(500);
+  s = await state();
+  check('1.5g: releasing takes the momentum default onward', s.under === 'C' && !s.popupOpen,
     `under=${s.under}`);
 
   // --- 2. Popup at the fork (f held down — a tap would commit the top row,
@@ -306,6 +359,30 @@ async function main() {
   check('6.5a: releasing f after navigating jumps to the selected row',
     s.under === 'E' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
 
+  // --- 6.6. Filtering to zero matches cancels the movement. ---
+  await placeOn('C');
+  await page.keyboard.down('f');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('p');
+  await page.keyboard.up('f'); // filter mode
+  await page.waitForTimeout(150);
+  await page.keyboard.type('qqq');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('6.6a: query with no matches shows an empty list', s.popupOpen && s.rows.length === 0,
+    `rows=${s.rows.length}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('6.6b: Enter on an empty list moves nowhere', s.popupOpen && s.under === 'C',
+    `open=${s.popupOpen} under=${s.under}`);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('6.6c: Esc Esc cancels the movement entirely', !s.popupOpen && s.under === 'C',
+    `under=${s.under}`);
+
   // --- 7. Hold-f flow + walk mode: hold f at the fork, p to the search item,
   // release f to filter, Tab to walk. ---
   await placeOn('C');
@@ -375,6 +452,37 @@ async function main() {
   });
   check('9b: no node left enlarged', scales.every(v => Math.abs(v - 1) < 1e-6),
     JSON.stringify(scales));
+
+  // --- 10. Jumplist: Ctrl+O back, Ctrl+I forward. Recent landings were
+  // … C, D (Tab walk), Z (Enter), D (dead-end bounce). ---
+  await page.keyboard.press('Control+o');
+  await page.waitForTimeout(300);
+  s = await state();
+  check('10a: Ctrl+O steps back to Z', s.under === 'Z', `under=${s.under}`);
+  await page.keyboard.press('Control+o');
+  await page.waitForTimeout(300);
+  s = await state();
+  check('10b: Ctrl+O again steps back to D', s.under === 'D', `under=${s.under}`);
+  await page.keyboard.press('Control+i');
+  await page.waitForTimeout(300);
+  s = await state();
+  check('10c: Ctrl+I steps forward to Z', s.under === 'Z', `under=${s.under}`);
+  for (let i = 0; i < 20; i++) await page.keyboard.press('Control+o');
+  await page.waitForTimeout(400);
+  s = await state();
+  check('10d: Ctrl+O bottoms out at the oldest landing (A)', s.under === 'A', `under=${s.under}`);
+  // A fresh jump truncates the forward history (vim jumplist semantics).
+  await page.keyboard.press('f');
+  await page.waitForTimeout(500);
+  s = await state();
+  check('10e: f works from a jumplist landing', s.under === 'B', `under=${s.under}`);
+  await page.keyboard.press('Control+i');
+  await page.waitForTimeout(300);
+  const statusAfter = await page.evaluate(() => window.__status.slice(-1)[0]);
+  s = await state();
+  check('10f: forward history was truncated by the new jump',
+    s.under === 'B' && /newest/.test(statusAfter ?? ''),
+    `under=${s.under} status=${JSON.stringify(statusAfter)}`);
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

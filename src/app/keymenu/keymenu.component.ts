@@ -1177,6 +1177,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.REDO});
       return;
     }
+    // Ctrl+O / Ctrl+I: vim-style jumplist over the nav history (normal mode
+    // only). Intercepted unconditionally — Ctrl+O's browser default is the
+    // Open File dialog, which must never fire.
+    if (event.ctrlKey && this.keyMenu.currentMode.name === 'normal'
+        && (event.key.toLowerCase() === 'o' || event.key.toLowerCase() === 'i')) {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: event.key.toLowerCase() === 'o'
+        ? DACommandType.NAV_HISTORY_BACK : DACommandType.NAV_HISTORY_FORWARD});
+      return;
+    }
 
     if (this.handleDoubleShiftReturnToNormal(event)) {
       return;
@@ -1273,7 +1283,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     const eventKey = KeymenuComponent.normalizeEventKey(event);
 
-    if (eventKey === this.keyAssignments.root.editSubmenu) {
+    // Held-key release logic below only applies to plain releases: a
+    // ctrl-chorded keyup (e.g. the /i of a Ctrl+I jumplist chord, whose
+    // keydown was intercepted before the keymenu saw it) must not run the
+    // edit/insert release branches.
+    if (eventKey === this.keyAssignments.root.editSubmenu && !event.ctrlKey) {
       this.editContextActionFired = false;
       // Capture-and-clear so the flag can never leak into a later interaction.
       const labelAdded = this.labelAddActive;
@@ -1299,7 +1313,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     // If the insert submenu key is released, handle pending/drag states
-    if (eventKey === this.keyAssignments.root.insertSubmenu) {
+    if (eventKey === this.keyAssignments.root.insertSubmenu && !event.ctrlKey) {
       this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
       // Capture-and-clear so the flag can never leak into a later interaction.
       const labelAdded = this.labelAddActive;

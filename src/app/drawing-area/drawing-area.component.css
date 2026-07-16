@@ -12,3 +12,10 @@ canvas {
   background-color: var(--kd-drawing-canvas-bg);
   display: block;
 }
+
+/* Concealed single-candidate popup: invisible but fully live — opacity
+ * (not display:none) keeps the input focusable so keys still land there. */
+app-nav-popup.concealed {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -231,6 +231,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Physical key that fired Go, if still held — releasing it over the
    *  popup's search pseudo-item starts filtering. */
   navPopupHoldKey: string | null = null;
+  /** True while a single-candidate popup is concealed (first 500 ms of a
+   *  hold — a quick tap walks the chain without flashing UI). */
+  navPopupHidden = false;
+  private navPopupRevealTimer: number | null = null;
+  /** Vim-style jumplist over nav landings: Ctrl+O back, Ctrl+I forward. */
+  private navHistory: string[] = [];
+  private navHistoryIndex = -1;
   private navCandidates = new Map<string, NavCandidate>();
   private navSource: DANode | null = null;
   /** Original transform of the popup's enlarged source node. */
@@ -257,6 +264,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SNAP_TO_NODE_UP,
     DACommandType.SNAP_TO_NODE_DOWN,
     DACommandType.TRAVERSE_SMART,
+    DACommandType.NAV_HISTORY_BACK,
+    DACommandType.NAV_HISTORY_FORWARD,
     DACommandType.GATHER_CONNECTED_NODES,
     DACommandType.UNGATHER,
     DACommandType.LOAD_SAMPLE_GRAPH,
@@ -556,6 +565,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.TRAVERSE_SMART:
         this.traverseSmart(command.holdKey);
+        break;
+      case DACommandType.NAV_HISTORY_BACK:
+        this.navHistoryGo(-1);
+        break;
+      case DACommandType.NAV_HISTORY_FORWARD:
+        this.navHistoryGo(1);
         break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
@@ -2549,10 +2564,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
 
-  /** Tap of the Go key. Exactly one candidate continuing the traversal's
-   *  direction → advance along it silently; otherwise (fork, cold start,
-   *  dead end) the popup lists every way out — candidates continuing the
-   *  current direction first, reverse ones under a divider. */
+  /** Press of the Go key. Always presents every candidate — momentum only
+   *  decides the default (top) row, and the move happens on the key's
+   *  release. A node with exactly one candidate conceals the popup for half
+   *  a second so tap-walking a chain doesn't flash UI; the concealed popup
+   *  is fully live (its keyup commit still fires), it's just not painted. */
   private traverseSmart(holdKey?: string): void {
     this.navPopupHoldKey = holdKey ?? null;
     this.finishTweens();
@@ -2568,13 +2584,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('No edges here.');
       return;
     }
-    const forwardDir = this.navDirection ?? 'out';
-    const forward = candidates.filter(c => c.direction === forwardDir);
-    if (forward.length === 1) {
-      this.navCommitTo(source, forward[0], false);
-      return;
-    }
-    this.openNavPopup(source, candidates, forwardDir);
+    this.openNavPopup(source, candidates, this.navDirection ?? 'out',
+      candidates.length === 1);
   }
 
   private navCandidatesFor(source: DANode): NavCandidate[] {
@@ -2588,7 +2599,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return out;
   }
 
-  private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in'): void {
+  private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in',
+                       concealed = false): void {
+    this.clearNavPopupRevealTimer();
+    this.navPopupHidden = concealed;
+    if (concealed) {
+      this.navPopupRevealTimer = window.setTimeout(() => {
+        this.navPopupRevealTimer = null;
+        this.navPopupHidden = false;
+      }, 500);
+    }
     const sC = this.getNodeCenterInLayerCoordinates(source);
     const bearing = (c: NavCandidate) => {
       const oC = this.getNodeCenterInLayerCoordinates(c.other);
@@ -2642,6 +2662,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!event.walk) {
       this.navPopupOpen = false;
       this.navSource = null;
+      this.clearNavPopupRevealTimer();
       this.daOut.emit({kind: 'popup-state', open: false});
     }
     this.navCommitTo(source, cand, event.walk);
@@ -2654,6 +2675,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.setGraphNavEdge(null);
     const source = this.navSource;
     this.navSource = null;
+    this.clearNavPopupRevealTimer();
     if (this.navPopupOpen) {
       this.navPopupOpen = false;
       this.daOut.emit({kind: 'popup-state', open: false});
@@ -2673,11 +2695,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** The jump itself. Non-walk: animated recenter onto the destination,
-   *  keeping the traveled edge's glow as a trace. Walk: snap the view and
-   *  immediately reopen the popup at the landing node. */
+  /** The jump itself. Non-walk: animated recenter onto the destination; the
+   *  glow clears — it marks where you're headed, never where you've been.
+   *  Walk: snap the view and immediately reopen the popup at the landing
+   *  node. Every landing is recorded in the nav history (Ctrl+O / Ctrl+I). */
   private navCommitTo(source: DANode, cand: NavCandidate, walk: boolean): void {
     const dest = cand.other;
+    this.recordNavVisit(source.id, dest.id);
     this.graphNavLastNode = dest;
     this.navDirection = cand.direction;
     const sC = this.getNodeCenterInLayerCoordinates(source);
@@ -2687,7 +2711,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const destLabel = (dest.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`${cand.direction === 'out' ? '→' : '←'} ${destLabel}`);
     if (!walk) {
-      this.setGraphNavEdge(cand.edge);
+      this.setGraphNavEdge(null);
       this.centerViewOnLayerPoint(dC);
       return;
     }
@@ -2707,6 +2731,55 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.setGraphNavEdge(null);
     this.openNavPopup(dest, candidates, this.navDirection ?? 'out');
+  }
+
+  private clearNavPopupRevealTimer(): void {
+    if (this.navPopupRevealTimer !== null) {
+      window.clearTimeout(this.navPopupRevealTimer);
+      this.navPopupRevealTimer = null;
+    }
+    this.navPopupHidden = false;
+  }
+
+  /** Record a nav landing. A new jump truncates any forward history (vim
+   *  jumplist semantics); the source is stitched in when the chain broke
+   *  (free crosshairs movement between jumps). */
+  private recordNavVisit(sourceId: string, destId: string): void {
+    if (this.navHistoryIndex < this.navHistory.length - 1) {
+      this.navHistory.splice(this.navHistoryIndex + 1);
+    }
+    if (this.navHistory[this.navHistory.length - 1] !== sourceId) {
+      this.navHistory.push(sourceId);
+    }
+    this.navHistory.push(destId);
+    this.navHistoryIndex = this.navHistory.length - 1;
+  }
+
+  /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist.
+   *  Entries whose nodes have since been deleted are skipped. Stepping
+   *  doesn't edit the history — only a new jump truncates it. */
+  private navHistoryGo(delta: -1 | 1): void {
+    const nodeById = (id: string) =>
+      this.drawingLayer.getDANodes().find(n => n.id === id);
+    let i = this.navHistoryIndex + delta;
+    while (i >= 0 && i < this.navHistory.length && !nodeById(this.navHistory[i])) {
+      i += delta;
+    }
+    if (i < 0 || i >= this.navHistory.length) {
+      this.emitStatus(delta < 0
+        ? 'Already at the oldest nav position.'
+        : 'Already at the newest nav position.');
+      return;
+    }
+    this.navHistoryIndex = i;
+    const node = nodeById(this.navHistory[i])!;
+    this.finishTweens();
+    this.graphNavLastNode = node;
+    this.navDirection = null; // arriving by jumplist is a cold start
+    this.setGraphNavEdge(null);
+    this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
+    const label = (node.label?.text() ?? '').trim() || '(unlabeled)';
+    this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
   }
 
   /** Both boxes on screen: no-op when they already are; otherwise pan to

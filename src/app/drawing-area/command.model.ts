@@ -34,6 +34,8 @@ export enum DACommandType {
   INCREASE_MOVE_SPEED = 'INCREASE_MOVE_SPEED',
   DECREASE_MOVE_SPEED = 'DECREASE_MOVE_SPEED',
   TRAVERSE_SMART = 'TRAVERSE_SMART',
+  NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
+  NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
   SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
   SNAP_TO_NODE_LEFT = 'SNAP_TO_NODE_LEFT',
   SNAP_TO_NODE_RIGHT = 'SNAP_TO_NODE_RIGHT',
@@ -125,6 +127,8 @@ export type DACommand =
   // holdKey: the physical key bound to Go, still held from the tap that fired
   // this — the popup treats its release as "activate the search pseudo-item".
   | {kind: DACommandType.TRAVERSE_SMART, holdKey?: string}
+  | {kind: DACommandType.NAV_HISTORY_BACK}
+  | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
   | {kind: DACommandType.SNAP_TO_NODE_LEFT}
   | {kind: DACommandType.SNAP_TO_NODE_RIGHT}
