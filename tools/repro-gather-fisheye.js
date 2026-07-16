@@ -271,35 +271,10 @@ async function main() {
     da.tweens.forEach(t => t.finish()); da.tweens = [];
   });
 
-  // ---------- C. Nav session auto-gather (real keys) ----------
-  // Auto-gather is off by default (too slow for navigation; the nav popup
-  // is the replacement direction) — turn it on to verify the machinery.
-  await page.evaluate(() => {
-    window.ng.getComponent(document.querySelector('app-drawing-area')).autoGatherEnabled = true;
-  });
-  await placeOn('Y');
-  await page.keyboard.down('f');
-  await page.waitForTimeout(300);
-  s = await gatherState();
-  check('C1: holding f auto-gathers around the node under the crosshairs',
-    s.gathered > 0 && s.anchor === 'Y', `anchor=${s.anchor} gathered=${s.gathered}`);
-  await page.keyboard.press('n'); // focus an edge at Y
-  await page.waitForTimeout(150);
-  await page.keyboard.press('n'); // walk to the neighbor
-  await page.waitForTimeout(500);
-  s = await gatherState();
-  check('C2: landing on a neighbor re-anchors the gather there',
-    s.gathered > 0 && s.anchor !== 'Y' && yIds.includes(s.anchor ?? ''), `anchor=${s.anchor}`);
-  await page.keyboard.up('f');
-  await page.waitForTimeout(300);
-  s = await gatherState();
-  check('C3: releasing f restores the layout (auto-gather is temporary)',
-    s.gathered === 0 && s.anchor === null, `gathered=${s.gathered} anchor=${s.anchor}`);
-  const finalSnap = await snapshot();
-  const finalDrift = Object.keys(before.nodes).filter(id =>
-    Math.hypot(before.nodes[id].x - finalSnap.nodes[id].x, before.nodes[id].y - finalSnap.nodes[id].y) > 0.5);
-  check('C4: positions identical to the original layout after the session',
-    finalDrift.length === 0, finalDrift.join(','));
+  // Auto-gather during navigation was removed: gathering proved too slow to
+  // drive a graph walk, and the nav popup (tools/repro-nav-popup.js) is the
+  // replacement. Gather now lives as a parked, explicit Layout action, which
+  // sections A and B above exercise.
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

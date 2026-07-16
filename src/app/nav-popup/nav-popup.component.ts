@@ -68,14 +68,23 @@ export class NavPopupComponent implements OnChanges {
     if (changes['rows']) {
       this.query = '';
       if (this.searchInput) this.searchInput.nativeElement.value = '';
-      this.refilter(true);
-      setTimeout(() => this.searchInput?.nativeElement.focus());
+      // Compute rows synchronously so the template renders, but defer the
+      // highlight emit: ngOnChanges runs inside the parent's change-detection
+      // pass, and the parent moves the popup in response — emitting now trips
+      // NG0100 (ExpressionChangedAfterItHasBeenChecked).
+      const topId = this.refilter();
+      setTimeout(() => {
+        this.searchInput?.nativeElement.focus();
+        if (topId !== null) this.highlightRow.emit(topId);
+      });
     }
   }
 
   onInput(value: string): void {
     this.query = value;
-    this.refilter(true);
+    // Runs from a DOM event handler, outside change detection — safe to emit now.
+    const topId = this.refilter();
+    if (topId !== null) this.highlightRow.emit(topId);
   }
 
   onKeydown(event: KeyboardEvent): void {
@@ -135,7 +144,10 @@ export class NavPopupComponent implements OnChanges {
     });
   }
 
-  private refilter(emit: boolean): void {
+  /** Recompute `filtered` and reset the selection to the top. Returns the id
+   *  of the new top row (or null if empty) so the caller can decide when to
+   *  emit the highlight — see the NG0100 note in ngOnChanges. */
+  private refilter(): string | null {
     const plain = (row: PopupRow) => ({
       row,
       titleSegments: segments(row.title, [], 0),
@@ -166,8 +178,6 @@ export class NavPopupComponent implements OnChanges {
       this.filtered = scored.map(s => s.r);
     }
     this.selectedIndex = 0;
-    if (emit && this.filtered.length > 0) {
-      this.highlightRow.emit(this.filtered[0].row.id);
-    }
+    return this.filtered.length > 0 ? this.filtered[0].row.id : null;
   }
 }

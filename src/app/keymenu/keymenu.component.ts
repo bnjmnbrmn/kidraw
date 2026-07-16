@@ -860,11 +860,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  /** While a DOM popup owns the keyboard, ignore key-downs entirely (the
-   *  popup handles its own); key-ups still run so pressed-key bookkeeping
-   *  survives the popup. Called by AppComponent on 'popup-state'. */
+  /** While a DOM popup owns the keyboard, ignore key events entirely — the
+   *  popup handles its own. When we suspend we flush held-key bookkeeping so
+   *  the key that opened the popup (e.g. a tapped Go) can't get stuck pressed
+   *  while its key-up is swallowed. Called by AppComponent on 'popup-state'. */
   setSuspended(suspended: boolean): void {
     this.suspended = suspended;
+    if (suspended && this.keyMenu) {
+      this.keyMenu.cancelAllInputState();
+      this.refreshActiveKeyPath();
+    }
   }
 
   /** Switch keymenu mode and update the mode label. Called by AppComponent. */
@@ -1252,7 +1257,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @HostListener('document:keyup', ['$event'])
   handleKeyUp(event: KeyboardEvent) {
-    if (!this.keyMenu) {
+    if (!this.keyMenu || this.suspended) {
       return;
     }
     event = this.remapEvent(event);
