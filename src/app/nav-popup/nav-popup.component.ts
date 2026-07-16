@@ -1,4 +1,4 @@
-import {Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild} from '@angular/core';
+import {Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild} from '@angular/core';
 import {fuzzyMatch} from '../lib/fuzzy-match';
 
 /** One choice in the popup. Generic on purpose: the nav popup is the first
@@ -70,16 +70,11 @@ export class NavPopupComponent implements OnChanges {
   /** false = list mode: the input swallows typing and plain j/k/n/p navigate.
    *  true = filter mode: typing filters, ^j/^k (and arrows) navigate. */
   filterMode = false;
-  /** Whether the keyboard moved the selection since the popup (re)opened.
-   *  Distinguishes hold-navigate-release (commit on release) from a plain
-   *  tap of the Go key (keyup right after opening — must not commit). */
-  private navigatedSinceOpen = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['rows']) {
       this.query = '';
       this.filterMode = false;
-      this.navigatedSinceOpen = false;
       if (this.searchInput) this.searchInput.nativeElement.value = '';
       // Compute rows synchronously so the template renders, but defer the
       // highlight emit: ngOnChanges runs inside the parent's change-detection
@@ -116,7 +111,6 @@ export class NavPopupComponent implements OnChanges {
     const move = (delta: number) => {
       event.preventDefault();
       event.stopPropagation();
-      this.navigatedSinceOpen = true;
       this.select(this.selectedIndex + delta);
     };
     // ^n/^p stay bound for muscle memory but are NOT advertised in the hint:
@@ -158,10 +152,13 @@ export class NavPopupComponent implements OnChanges {
     event.stopPropagation(); // typing (incl. Backspace/Delete) stays in the box
   }
 
-  /** Releasing the Go key acts on the selection — the hold-f → navigate →
-   *  release rhythm from the old traversal: over the search pseudo-item it
-   *  starts filtering, over a row it jumps there. A plain tap (keyup with no
-   *  navigation in between) leaves the popup open. */
+  /** Releasing the Go key acts on the selection: over the search pseudo-item
+   *  it starts filtering, over a row it jumps there. A plain tap therefore
+   *  takes the top candidate (the popup merely flashes) — hold and navigate
+   *  to pick a different one; Esc while holding cancels without moving.
+   *  Document-level: a fast tap's keyup can arrive before the deferred focus
+   *  lands on the input, so listening on the input alone would miss it. */
+  @HostListener('document:keyup', ['$event'])
   onKeyup(event: KeyboardEvent): void {
     event.stopPropagation();
     if (this.filterMode || this.holdKey === null
@@ -172,10 +169,8 @@ export class NavPopupComponent implements OnChanges {
       this.enterFilterMode();
       return;
     }
-    if (this.navigatedSinceOpen) {
-      const row = this.filtered[this.selectedIndex];
-      if (row) this.commitRow.emit({id: row.row.id, walk: false});
-    }
+    const row = this.filtered[this.selectedIndex];
+    if (row) this.commitRow.emit({id: row.row.id, walk: false});
   }
 
   /** Clicking the box is an explicit "I want to type". */

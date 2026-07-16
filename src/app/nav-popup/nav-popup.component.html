@@ -10,7 +10,6 @@
          spellcheck="false"
          (input)="onInput(searchInput.value)"
          (keydown)="onKeydown($event)"
-         (keyup)="onKeyup($event)"
          (mousedown)="onSearchMousedown()" />
   <div class="rows">
     @for (item of filtered; track item.row.id; let i = $index) {

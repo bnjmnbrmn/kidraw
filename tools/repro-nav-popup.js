@@ -156,8 +156,9 @@ async function main() {
   check('1b: second f continues the chain to C', s.under === 'C' && !s.popupOpen,
     `under=${s.under}`);
 
-  // --- 2. Popup at the fork. ---
-  await page.keyboard.press('f');
+  // --- 2. Popup at the fork (f held down — a tap would commit the top row,
+  // see 6.4; the popup is the "while held / while browsing" view). ---
+  await page.keyboard.down('f');
   await page.waitForTimeout(400);
   s = await state();
   check('2a: f at the fork opens the popup', s.popupOpen, JSON.stringify(s.status));
@@ -198,6 +199,12 @@ async function main() {
   await page.waitForTimeout(150);
   s = await state();
   check('4c: Enter on the search item activates filtering', s.filtering, `filtering=${s.filtering}`);
+  // Release the held f now that filtering is live — must be a no-op.
+  await page.keyboard.up('f');
+  await page.waitForTimeout(100);
+  s = await state();
+  check('4c2: releasing f during filtering changes nothing',
+    s.popupOpen && s.filtering, `open=${s.popupOpen} filtering=${s.filtering}`);
   await page.keyboard.type('beta');
   await page.waitForTimeout(200);
   s = await state();
@@ -226,12 +233,18 @@ async function main() {
   check('4i: second Esc closes the popup without moving', !s.popupOpen && s.under === 'C',
     `open=${s.popupOpen} under=${s.under}`);
 
-  // Reopen for the selection-movement checks.
+  // Reopen for the selection-movement checks. To browse with f released:
+  // hold f → p (search item) → release f (filter mode) → Esc (list mode).
   await placeOn('C');
-  await page.keyboard.press('f');
+  await page.keyboard.down('f');
   await page.waitForTimeout(300);
+  await page.keyboard.press('p');
+  await page.keyboard.up('f');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
   s = await state();
-  check('4j: reopened popup is back in list mode with a fresh query',
+  check('4j: reopened popup is in list mode with a fresh query (f released)',
     s.popupOpen && !s.filtering && s.searchValue === '' && s.rows.length === 5,
     `filtering=${s.filtering} value=${JSON.stringify(s.searchValue)} rows=${s.rows.length}`);
 
@@ -272,9 +285,16 @@ async function main() {
   check('6c: keymenu works again after the popup closes',
     Math.abs(afterH.under === 'F' ? 0 : 1) >= 0 && true, '');
 
+  // --- 6.4. A plain tap of f takes the top candidate (popup just flashes). ---
+  await placeOn('C');
+  await page.keyboard.press('f');
+  await page.waitForTimeout(500);
+  s = await state();
+  check('6.4a: tapping f at the fork commits the top candidate',
+    s.under === 'D' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
+
   // --- 6.5. Hold f, navigate, release f → commits the selected row without
-  // Enter. (A plain tap — keyup with no navigation — must NOT commit: section
-  // 2 already guards that, its tap leaves the popup open.) ---
+  // Enter. ---
   await placeOn('C');
   await page.keyboard.down('f');
   await page.waitForTimeout(300);
@@ -323,24 +343,32 @@ async function main() {
   check('7f: walk-reopened popup resets to list mode',
     !s.filtering && s.searchValue === '', `filtering=${s.filtering} value=${JSON.stringify(s.searchValue)}`);
 
-  // --- 8. Dead end: walk to Z, then f → popup with only the reverse row. ---
+  // --- 8. Dead end: walk to Z, then tap f → the top (and only) row is the
+  // way back, so the tap bounces back along it. ---
   await page.keyboard.press('Enter'); // commit to Z, close
   await page.waitForTimeout(500);
   s = await state();
   check('8a: Enter from walk popup lands on the dead end', s.under === 'Z', `under=${s.under}`);
   await page.keyboard.press('f');
+  await page.waitForTimeout(500);
+  s = await state();
+  check('8b: tapping f at the dead end takes the way back',
+    s.under === 'D' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
+
+  // --- 9. Escape while f is held closes without moving (browse + cancel).
+  // At the fork — a chain node like D would just auto-advance. ---
+  await placeOn('C');
+  await page.keyboard.down('f');
   await page.waitForTimeout(300);
   s = await state();
-  check('8b: dead end still opens the popup with the way back',
-    s.popupOpen && s.rows.length === 1 && s.rows[0].startsWith('←') && /alpha task/.test(s.rows[0]),
-    JSON.stringify(s.rows));
-
-  // --- 9. Escape closes without moving. ---
+  check('9pre: holding f at the fork opens the popup', s.popupOpen, `popup=${s.popupOpen}`);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
+  await page.keyboard.up('f'); // releasing after Esc must not commit anything
+  await page.waitForTimeout(200);
   s = await state();
-  check('9a: Escape closes the popup and stays put', !s.popupOpen && s.under === 'Z',
-    `under=${s.under}`);
+  check('9a: Escape closes the popup and stays put (f release is inert)',
+    !s.popupOpen && s.under === 'C', `under=${s.under}`);
   const scales = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return da.drawingLayer.getDANodes().map(n => n.group.scaleX());
