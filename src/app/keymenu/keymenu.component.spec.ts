@@ -159,7 +159,8 @@ describe('KeymenuComponent', () => {
     expect(go.actionLabel).toBe('Go');
     expect(go.repeat).toBeFalse();
     go.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART});
+    // holdKey rides along so the popup can watch for the Go key's release.
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART, holdKey: 'f'});
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {

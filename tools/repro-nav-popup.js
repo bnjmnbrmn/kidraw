@@ -124,11 +124,18 @@ async function main() {
     const popup = document.querySelector('.nav-popup');
     const rows = popup ? [...popup.querySelectorAll('.row')].map(r => r.textContent.trim().replace(/\s+/g, ' ')) : [];
     const selected = popup ? popup.querySelector('.row.selected')?.textContent.trim().replace(/\s+/g, ' ') : null;
+    const searchEl = popup ? popup.querySelector('input.search') : null;
+    const searchSelected = !!(searchEl && searchEl.classList.contains('selected'));
+    const filtering = !!(searchEl && searchEl.classList.contains('filtering'));
+    const searchValue = searchEl ? searchEl.value : null;
     return {
       under: under ? under.id : null,
       popupOpen: !!popup,
       rows,
       selected,
+      searchSelected,
+      filtering,
+      searchValue,
       divider: popup ? !!popup.querySelector('.divider') : false,
       glow: dl.getDAEdges().filter(e => e.navFocused).map(e => `${e.srcNode.id}->${e.destNode.id}`),
       sourceScale: dl.getDANodes().find(n => n.id === 'C')?.group.scaleX() ?? 1,
@@ -173,18 +180,60 @@ async function main() {
   check('3b: the source node is enlarged while the popup is open',
     s.sourceScale > 1.05, `scale=${s.sourceScale}`);
 
-  // --- 4. Fuzzy filter + Backspace. ---
+  // --- 4. Search as pseudo-item: list mode swallows typing; Enter on the
+  // search item starts filtering; Esc peels back to list mode keeping the
+  // filter; Esc again closes. ---
   await page.keyboard.type('beta');
   await page.waitForTimeout(200);
   s = await state();
-  check('4a: typing filters the rows (fuzzy)',
-    s.rows.length === 1 && /beta task/.test(s.rows[0]), JSON.stringify(s.rows));
-  check('4b: the glow follows the filtered top row',
-    s.glow.join() === 'C->E', JSON.stringify(s.glow));
-  for (let i = 0; i < 4; i++) await page.keyboard.press('Backspace');
+  check('4a: list mode — typing does NOT filter and nothing lands in the box',
+    s.rows.length === 5 && s.searchValue === '' && !s.filtering,
+    `rows=${s.rows.length} value=${JSON.stringify(s.searchValue)} filtering=${s.filtering}`);
+  await page.keyboard.press('p');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('4b: p from the first row selects the search pseudo-item',
+    s.searchSelected && s.selected == null, `searchSel=${s.searchSelected} rowSel=${s.selected}`);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('4c: Enter on the search item activates filtering', s.filtering, `filtering=${s.filtering}`);
+  await page.keyboard.type('beta');
   await page.waitForTimeout(200);
   s = await state();
-  check('4c: Backspace restores the unfiltered list', s.rows.length === 5, JSON.stringify(s.rows));
+  check('4d: typing now filters the rows (fuzzy)',
+    s.rows.length === 1 && /beta task/.test(s.rows[0]), JSON.stringify(s.rows));
+  check('4e: the glow follows the filtered top row',
+    s.glow.join() === 'C->E', JSON.stringify(s.glow));
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('4f: Esc exits filtering but keeps the query and filtered rows',
+    s.popupOpen && !s.filtering && s.searchValue === 'beta' && s.rows.length === 1,
+    `open=${s.popupOpen} filtering=${s.filtering} value=${JSON.stringify(s.searchValue)} rows=${s.rows.length}`);
+  await page.keyboard.press('k');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('4g: k in list mode moves up onto the search item', s.searchSelected, `searchSel=${s.searchSelected}`);
+  await page.keyboard.press('j');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('4h: j moves back down to the filtered row',
+    !s.searchSelected && /beta task/.test(s.selected ?? ''), `sel=${s.selected}`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('4i: second Esc closes the popup without moving', !s.popupOpen && s.under === 'C',
+    `open=${s.popupOpen} under=${s.under}`);
+
+  // Reopen for the selection-movement checks.
+  await placeOn('C');
+  await page.keyboard.press('f');
+  await page.waitForTimeout(300);
+  s = await state();
+  check('4j: reopened popup is back in list mode with a fresh query',
+    s.popupOpen && !s.filtering && s.searchValue === '' && s.rows.length === 5,
+    `filtering=${s.filtering} value=${JSON.stringify(s.searchValue)} rows=${s.rows.length}`);
 
   // --- 5. Selection movement. ---
   await page.keyboard.press('Control+n');
@@ -203,12 +252,11 @@ async function main() {
   s = await state();
   check('5c: Ctrl-p moves back', s.selected === afterCtrlN, `sel=${s.selected}`);
 
-  // --- 6. Enter commits. ---
-  await page.evaluate(() => {
-    const popup = document.querySelector('.nav-popup input');
-    popup.value = '';
-    popup.dispatchEvent(new Event('input', {bubbles: true}));
-  });
+  // --- 6. Enter commits (filter mode reached by walking up to the search item). ---
+  await page.keyboard.press('k'); // row 1 → row 0
+  await page.keyboard.press('k'); // row 0 → search item
+  await page.keyboard.press('Enter'); // activate filtering
+  await page.waitForTimeout(150);
   await page.keyboard.type('gam');
   await page.waitForTimeout(200);
   await page.keyboard.press('Enter');
@@ -224,19 +272,42 @@ async function main() {
   check('6c: keymenu works again after the popup closes',
     Math.abs(afterH.under === 'F' ? 0 : 1) >= 0 && true, '');
 
-  // --- 7. Walk mode: from C, Tab through the fork. ---
+  // --- 7. Hold-f flow + walk mode: hold f at the fork, p to the search item,
+  // release f to filter, Tab to walk. ---
   await placeOn('C');
-  await page.keyboard.press('f');
+  await page.keyboard.down('f'); // popup opens; f still physically held
   await page.waitForTimeout(300);
+  // A held Go key auto-repeats at the OS level — repeats must not type.
+  await page.evaluate(() => {
+    const input = document.querySelector('.nav-popup input');
+    for (let i = 0; i < 3; i++) {
+      input.dispatchEvent(new KeyboardEvent('keydown', {key: 'f', repeat: true, bubbles: true, cancelable: true}));
+    }
+  });
+  await page.waitForTimeout(100);
+  s = await state();
+  check('7a: held f repeats do not type into the search box',
+    s.popupOpen && s.searchValue === '' && !s.filtering,
+    `value=${JSON.stringify(s.searchValue)} filtering=${s.filtering}`);
+  await page.keyboard.press('p'); // still holding f: up to the search item
+  await page.waitForTimeout(100);
+  s = await state();
+  check('7b: p while f is held selects the search item', s.searchSelected, `searchSel=${s.searchSelected}`);
+  await page.keyboard.up('f'); // release over the search item → filter mode
+  await page.waitForTimeout(150);
+  s = await state();
+  check('7c: releasing f over the search item starts filtering', s.filtering, `filtering=${s.filtering}`);
   await page.keyboard.type('alpha');
   await page.waitForTimeout(350);
   await page.keyboard.press('Tab');
   await page.waitForTimeout(400);
   s = await state();
-  check('7a: Tab walks — jumped to alpha task and the popup reopened there',
+  check('7d: Tab walks — jumped to alpha task and the popup reopened there',
     s.popupOpen && s.rows.length >= 1, `popup=${s.popupOpen} rows=${JSON.stringify(s.rows)}`);
-  check('7b: walk popup shows the onward chain (the end) as forward',
+  check('7e: walk popup shows the onward chain (the end) as forward',
     s.rows.some(r => r.startsWith('→') && r.includes('the end')), JSON.stringify(s.rows));
+  check('7f: walk-reopened popup resets to list mode',
+    !s.filtering && s.searchValue === '', `filtering=${s.filtering} value=${JSON.stringify(s.searchValue)}`);
 
   // --- 8. Dead end: walk to Z, then f → popup with only the reverse row. ---
   await page.keyboard.press('Enter'); // commit to Z, close

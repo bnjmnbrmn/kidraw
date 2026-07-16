@@ -228,6 +228,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   navPopupLeft = 0;
   navPopupTop = 0;
   navPopupDark = false;
+  /** Physical key that fired Go, if still held — releasing it over the
+   *  popup's search pseudo-item starts filtering. */
+  navPopupHoldKey: string | null = null;
   private navCandidates = new Map<string, NavCandidate>();
   private navSource: DANode | null = null;
   /** Original transform of the popup's enlarged source node. */
@@ -552,7 +555,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.decreaseMoveSpeed();
         break;
       case DACommandType.TRAVERSE_SMART:
-        this.traverseSmart();
+        this.traverseSmart(command.holdKey);
         break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
@@ -2550,7 +2553,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  direction → advance along it silently; otherwise (fork, cold start,
    *  dead end) the popup lists every way out — candidates continuing the
    *  current direction first, reverse ones under a divider. */
-  private traverseSmart(): void {
+  private traverseSmart(holdKey?: string): void {
+    this.navPopupHoldKey = holdKey ?? null;
     this.finishTweens();
     const source = this.getTraversalAnchorNode();
     if (!source) {

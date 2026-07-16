@@ -51,6 +51,9 @@ export class NavPopupComponent implements OnChanges {
   @Input() left = 0;
   @Input() top = 0;
   @Input() dark = false;
+  /** Physical key whose tap opened the popup (and may still be held).
+   *  Releasing it while the search pseudo-item is selected starts filtering. */
+  @Input() holdKey: string | null = null;
 
   /** Selection moved (id of the newly highlighted row). */
   @Output() highlightRow = new EventEmitter<string>();
@@ -62,11 +65,16 @@ export class NavPopupComponent implements OnChanges {
 
   query = '';
   filtered: RenderedRow[] = [];
+  /** -1 = the search pseudo-item (rendered above the first row). */
   selectedIndex = 0;
+  /** false = list mode: the input swallows typing and plain j/k/n/p navigate.
+   *  true = filter mode: typing filters, ^j/^k (and arrows) navigate. */
+  filterMode = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['rows']) {
       this.query = '';
+      this.filterMode = false;
       if (this.searchInput) this.searchInput.nativeElement.value = '';
       // Compute rows synchronously so the template renders, but defer the
       // highlight emit: ngOnChanges runs inside the parent's change-detection
@@ -74,10 +82,19 @@ export class NavPopupComponent implements OnChanges {
       // NG0100 (ExpressionChangedAfterItHasBeenChecked).
       const topId = this.refilter();
       setTimeout(() => {
+        // The input is always physically focused so every key lands here —
+        // list mode just swallows the printable ones (no stray 'fff' from a
+        // still-held Go key; the caret is hidden via CSS until filtering).
         this.searchInput?.nativeElement.focus();
         if (topId !== null) this.highlightRow.emit(topId);
       });
     }
+  }
+
+  get hint(): string {
+    return this.filterMode
+      ? '^j ^k move · Enter jump · Tab walk · Esc list'
+      : 'j k move · Enter jump · Tab walk · Esc close';
   }
 
   onInput(value: string): void {
@@ -102,20 +119,69 @@ export class NavPopupComponent implements OnChanges {
     // chooses not to claim it. ^j/^k and the arrows always reach us.
     if (key === 'ArrowDown' || (event.ctrlKey && (key === 'n' || key === 'j'))) { move(1); return; }
     if (key === 'ArrowUp' || (event.ctrlKey && (key === 'p' || key === 'k'))) { move(-1); return; }
+    // Esc / ^[ peel one layer: filter mode → list mode (query and filtered
+    // rows kept), list mode → close (back to the main keymenu).
+    if (key === 'Escape' || (event.ctrlKey && key === '[')) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (this.filterMode) this.exitFilterMode();
+      else this.closed.emit();
+      return;
+    }
     if (key === 'Enter' || key === 'Tab') {
       event.preventDefault();
       event.stopPropagation();
+      if (this.selectedIndex === -1) {
+        this.enterFilterMode();
+        return;
+      }
       const row = this.filtered[this.selectedIndex];
       if (row) this.commitRow.emit({id: row.row.id, walk: key === 'Tab'});
       return;
     }
-    if (key === 'Escape') {
+    if (!this.filterMode) {
+      // List mode: plain vim keys navigate (n/p keep the old traversal
+      // muscle memory and work while the Go key is still held)...
+      if (key === 'j' || key === 'n') { move(1); return; }
+      if (key === 'k' || key === 'p') { move(-1); return; }
+      // ...and everything else is swallowed so nothing types into the box.
       event.preventDefault();
       event.stopPropagation();
-      this.closed.emit();
       return;
     }
     event.stopPropagation(); // typing (incl. Backspace/Delete) stays in the box
+  }
+
+  /** Releasing the still-held Go key over the search pseudo-item activates
+   *  it — the hold-f → p → release-f rhythm from the old traversal. */
+  onKeyup(event: KeyboardEvent): void {
+    event.stopPropagation();
+    if (!this.filterMode && this.holdKey !== null
+        && event.key.toLowerCase() === this.holdKey.toLowerCase()
+        && this.selectedIndex === -1) {
+      this.enterFilterMode();
+    }
+  }
+
+  /** Clicking the box is an explicit "I want to type". */
+  onSearchMousedown(): void {
+    if (!this.filterMode) this.enterFilterMode();
+  }
+
+  private enterFilterMode(): void {
+    this.filterMode = true;
+    // Selection returns to the rows so ^j/^k walk the filtered list.
+    if (this.filtered.length > 0) {
+      this.selectedIndex = 0;
+      this.highlightRow.emit(this.filtered[0].row.id);
+    }
+  }
+
+  private exitFilterMode(): void {
+    this.filterMode = false;
+    // Query and filtered rows survive; selection stays put (or falls back to
+    // the search item when nothing matched).
+    if (this.filtered.length === 0) this.selectedIndex = -1;
   }
 
   onRowClick(index: number): void {
@@ -138,9 +204,18 @@ export class NavPopupComponent implements OnChanges {
   }
 
   private select(index: number): void {
-    if (this.filtered.length === 0) return;
     const n = this.filtered.length;
-    this.selectedIndex = ((index % n) + n) % n;
+    if (this.filterMode) {
+      // Filter mode cycles the rows only — the search box is already active.
+      if (n === 0) return;
+      this.selectedIndex = ((index % n) + n) % n;
+    } else {
+      // List mode cycles [search, row0 … rowN-1]: shift by one so the wrap
+      // arithmetic runs over 0..n, then shift back to -1..n-1.
+      const total = n + 1;
+      this.selectedIndex = ((((index + 1) % total) + total) % total) - 1;
+    }
+    if (this.selectedIndex === -1) return; // search item: keep the last glow
     this.highlightRow.emit(this.filtered[this.selectedIndex].row.id);
     setTimeout(() => {
       const el = document.querySelector('.nav-popup .row.selected');

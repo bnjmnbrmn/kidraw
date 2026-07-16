@@ -735,7 +735,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // One-shot: the popup takes the keyboard, so auto-repeat must not
       // queue further traversals behind it.
       [this.keyAssignments.root.go]: new LabeledAction('Go',
-        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART}), false),
+        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART, holdKey: this.keyAssignments.root.go}), false),
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position

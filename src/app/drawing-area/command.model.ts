@@ -122,7 +122,9 @@ export type DACommand =
   | {kind: DACommandType.ROTATE_HEADING_RIGHT}
   | {kind: DACommandType.INCREASE_MOVE_SPEED}
   | {kind: DACommandType.DECREASE_MOVE_SPEED}
-  | {kind: DACommandType.TRAVERSE_SMART}
+  // holdKey: the physical key bound to Go, still held from the tap that fired
+  // this — the popup treats its release as "activate the search pseudo-item".
+  | {kind: DACommandType.TRAVERSE_SMART, holdKey?: string}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
   | {kind: DACommandType.SNAP_TO_NODE_LEFT}
   | {kind: DACommandType.SNAP_TO_NODE_RIGHT}

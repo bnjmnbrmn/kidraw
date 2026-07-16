@@ -2,12 +2,16 @@
 <div class="nav-popup" [class.dark]="dark" [style.left.px]="left" [style.top.px]="top">
   <input #searchInput
          class="search"
+         [class.selected]="selectedIndex === -1"
+         [class.filtering]="filterMode"
          type="text"
          placeholder="fuzzy filter…"
          autocomplete="off"
          spellcheck="false"
          (input)="onInput(searchInput.value)"
-         (keydown)="onKeydown($event)" />
+         (keydown)="onKeydown($event)"
+         (keyup)="onKeyup($event)"
+         (mousedown)="onSearchMousedown()" />
   <div class="rows">
     @for (item of filtered; track item.row.id; let i = $index) {
       @if (showDividerBefore(i)) {
@@ -42,5 +46,5 @@
       <div class="no-match">no match</div>
     }
   </div>
-  <div class="hint">↑↓/^j ^k move · Enter jump · Tab walk · Esc close</div>
+  <div class="hint">{{ hint }}</div>
 </div>
