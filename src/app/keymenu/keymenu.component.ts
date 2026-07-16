@@ -77,9 +77,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private insertNodePending = false;
   // When true, releasing the edit submenu key without selecting a child fires EDIT_OR_INSERT
   private editPending = false;
-  /** True while the Move-by-graph submenu is held (set by its entry action,
-   *  cleared when its key is released) — gates the GRAPH_NAV_EXIT emit. */
-  private graphNavActive = false;
+  /** True while a DOM popup (nav popup) owns the keyboard: key-downs are
+   *  ignored entirely; key-ups still run so held-key bookkeeping can't go
+   *  stale across the popup. Set via setSuspended() from AppComponent. */
+  private suspended = false;
   // Latest crosshairs/selection context from the drawing area, refreshed via
   // QUERY_EDIT_CONTEXT on each edit-key press (the reply arrives synchronously).
   private editContext: EditContext | null = null;
@@ -162,7 +163,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: this.keyAssignments.moveSpeed.bigger, action: 'Bigger move'},
       {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
       {key: this.keyAssignments.moveByNode.submenu, action: 'Move by node'},
-      {key: this.keyAssignments.moveByGraph.submenu, action: 'Move by graph'},
+      {key: this.keyAssignments.root.go, action: 'Go (nav popup)'},
       {key: shared.select, action: 'Clear selection'},
       {key: shared.delete, action: 'Delete'},
     ];
@@ -508,6 +509,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [layout.routeDesiderata]:             new LabeledAction('Route: Desiderata', route('desiderata')),
       [layout.routeIncremental]:            new LabeledAction('Route: Incr v2', route('incremental-desiderata-v2')),
       [layout.routeIncrementalV3]:          new LabeledAction('Route: Incr v3', route('incremental-desiderata-v3')),
+      [layout.gather]:   new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
+      [layout.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
     } as SubmenuConfig;
   }
 
@@ -714,7 +717,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const moveSpeed = this.keyAssignments.moveSpeed;
     const panZoom = this.keyAssignments.panZoom;
     const mbn = this.keyAssignments.moveByNode;
-    const mbg = this.keyAssignments.moveByGraph;
     const misc = this.keyAssignments.misc;
 
     const search = this.keyAssignments.search;
@@ -730,16 +732,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
-      [mbg.submenu]: new LabeledActionSubmenuConfig(
-        'Move by graph...',
-        this.buildMoveByGraphSubmenuConfig(),
-        // Entry: recenter on a single selected item (no-op otherwise). The
-        // drawing area also starts the auto-gather nav session on this.
-        () => {
-          this.graphNavActive = true;
-          this.keyMenuOut.emit({kind: DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV});
-        },
-      ),
+      // One-shot: the popup takes the keyboard, so auto-repeat must not
+      // queue further traversals behind it.
+      [this.keyAssignments.root.go]: new LabeledAction('Go',
+        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART}), false),
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
@@ -864,38 +860,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildMoveByGraphSubmenuConfig(): SubmenuConfig {
-    const mbg = this.keyAssignments.moveByGraph;
-    const moveSpeed = this.keyAssignments.moveSpeed;
-
-    return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      ...this.buildGraphNavActions('normal'),
-      // Same tier keys as normal movement: hold f + coarse/fine (Q3 decision).
-      // Coarse skips labels and waypoints; fine stops at waypoints too.
-      [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Nav...', {
-        _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-        ...this.buildGraphNavActions('coarse'),
-      } as SubmenuConfig),
-      [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Nav...', {
-        _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-        ...this.buildGraphNavActions('fine'),
-      } as SubmenuConfig),
-      [mbg.gather]: new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
-      [mbg.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
-    } as SubmenuConfig;
-  }
-
-  /** The four traversal actions at one movement tier: jump along/onto edges,
-   *  and cycle the candidate edge clockwise/counterclockwise. */
-  private buildGraphNavActions(tier: GridTier): SubmenuConfig {
-    const mbg = this.keyAssignments.moveByGraph;
-    return {
-      [mbg.outgoingNext]: new LabeledAction('Jump Outgoing', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_OUTGOING_NEXT, gridTier: tier})),
-      [mbg.outgoingPrev]: new LabeledAction('Jump Incoming', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_INCOMING_NEXT, gridTier: tier})),
-      [mbg.nextEdge]: new LabeledAction('Next Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_NEXT_EDGE})),
-      [mbg.prevEdge]: new LabeledAction('Prev Edge', () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_PREV_EDGE})),
-    } as SubmenuConfig;
+  /** While a DOM popup owns the keyboard, ignore key-downs entirely (the
+   *  popup handles its own); key-ups still run so pressed-key bookkeeping
+   *  survives the popup. Called by AppComponent on 'popup-state'. */
+  setSuspended(suspended: boolean): void {
+    this.suspended = suspended;
   }
 
   /** Switch keymenu mode and update the mode label. Called by AppComponent. */
@@ -1171,7 +1140,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
-    if (!this.keyMenu) {
+    if (!this.keyMenu || this.suspended) {
       return;
     }
     event = this.remapEvent(event);
@@ -1298,15 +1267,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.refreshActiveKeyPath();
 
     const eventKey = KeymenuComponent.normalizeEventKey(event);
-
-    // Leaving the Move-by-graph submenu ends the nav session (the drawing
-    // area restores any automatic gather). The flag is only ever set by the
-    // submenu's entry action, so an `f` that meant something else in another
-    // submenu can't trigger a spurious exit.
-    if (this.graphNavActive && eventKey === this.keyAssignments.moveByGraph.submenu) {
-      this.graphNavActive = false;
-      this.keyMenuOut.emit({kind: DACommandType.GRAPH_NAV_EXIT});
-    }
 
     if (eventKey === this.keyAssignments.root.editSubmenu) {
       this.editContextActionFired = false;

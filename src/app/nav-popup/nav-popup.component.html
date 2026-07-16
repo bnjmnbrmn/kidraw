@@ -1,0 +1,46 @@
+<div class="backdrop" (mousedown)="onBackdrop()"></div>
+<div class="nav-popup" [class.dark]="dark" [style.left.px]="left" [style.top.px]="top">
+  <input #searchInput
+         class="search"
+         type="text"
+         placeholder="fuzzy filter…"
+         autocomplete="off"
+         spellcheck="false"
+         (input)="onInput(searchInput.value)"
+         (keydown)="onKeydown($event)" />
+  <div class="rows">
+    @for (item of filtered; track item.row.id; let i = $index) {
+      @if (showDividerBefore(i)) {
+        <div class="divider">↩ back the way you came</div>
+      }
+      <div class="row"
+           [class.selected]="i === selectedIndex"
+           (mousedown)="$event.preventDefault(); onRowClick(i)"
+           (mouseenter)="onRowEnter(i)">
+        <span class="glyph">{{ item.row.glyph }}</span>
+        <span class="texts">
+          <span class="title">
+            @for (seg of item.titleSegments; track $index) {
+              <span [class.hit]="seg.hit">{{ seg.text }}</span>
+            }
+          </span>
+          @if (item.row.subtitle) {
+            <span class="subtitle">
+              @for (seg of item.subtitleSegments; track $index) {
+                <span [class.hit]="seg.hit">{{ seg.text }}</span>
+              }
+            </span>
+          }
+        </span>
+        <span class="tags">
+          @for (tag of item.row.tags ?? []; track tag) {
+            <span class="tag">{{ tag }}</span>
+          }
+        </span>
+      </div>
+    } @empty {
+      <div class="no-match">no match</div>
+    }
+  </div>
+  <div class="hint">↑↓/^n ^p move · Enter jump · Tab walk · Esc close</div>
+</div>

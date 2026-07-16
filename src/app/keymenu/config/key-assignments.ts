@@ -28,6 +28,8 @@ export interface KeymenuKeyAssignments {
     readonly styleSubmenu: KeyString;
     readonly layoutSubmenu: KeyString;
     readonly toggleVisibility: KeyString;
+    /** Tap: smart traverse — auto-advance or the nav popup. */
+    readonly go: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
@@ -95,15 +97,6 @@ export interface KeymenuKeyAssignments {
     readonly submenu: KeyString;
     readonly nodeJump: DirectionalKeyAssignments;
   };
-  readonly moveByGraph: {
-    readonly submenu: KeyString;
-    readonly outgoingNext: KeyString;
-    readonly outgoingPrev: KeyString;
-    readonly nextEdge: KeyString;
-    readonly prevEdge: KeyString;
-    readonly gather: KeyString;
-    readonly ungather: KeyString;
-  };
   readonly ctrl: {
     readonly submenu: KeyString;
   };
@@ -147,6 +140,8 @@ export interface KeymenuKeyAssignments {
     readonly routeDesiderata: KeyString;
     readonly routeIncremental: KeyString;
     readonly routeIncrementalV3: KeyString;
+    readonly gather: KeyString;
+    readonly ungather: KeyString;
   };
 }
 
@@ -164,6 +159,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'g',
+    go: 'f',
   },
   insert: {
     node: 'j',
@@ -237,15 +233,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 't',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
   },
-  moveByGraph: {
-    submenu: 'f',
-    outgoingNext: 'n',
-    outgoingPrev: 'p',
-    nextEdge: 'k',
-    prevEdge: 'i',
-    gather: 'h',
-    ungather: 'u',
-  },
   ctrl: {submenu: 'Control'},
   misc: {
     submenu: 'm',
@@ -263,7 +250,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'k', togglePin: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
+  layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
 
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
@@ -279,6 +266,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'g',
+    go: 'f',
   },
   insert: {
     node: 'd',
@@ -353,15 +341,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     submenu: 't',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
   },
-  moveByGraph: {
-    submenu: 'f',
-    outgoingNext: 'n',
-    outgoingPrev: 'p',
-    nextEdge: 'j',
-    prevEdge: 'k',
-    gather: 'h',
-    ungather: 'u',
-  },
   ctrl: {submenu: 'Control'},
   misc: {
     submenu: 'm',
@@ -379,5 +358,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   edit: {overflowSubmenu: 'u', togglePin: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
+  layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

@@ -12,8 +12,16 @@ import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
-import { buildEdgeStops, clockwiseOrder, endpointFlowDirection, nearestStopIndex, pickEntryCandidate, NavStop } from './graph-nav';
+import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
+import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
+
+/** One way out of the nav popup's source node. */
+interface NavCandidate {
+  edge: DAEdge;
+  direction: 'out' | 'in';
+  other: DANode;
+}
 
 /** Axis-aligned box a gather meta-arrow connects to (node or container). */
 interface MetaBox {
@@ -106,7 +114,7 @@ function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
 
 @Component({
   selector: 'app-drawing-area',
-  imports: [],
+  imports: [NavPopupComponent],
   templateUrl: './drawing-area.component.html',
   styleUrl: './drawing-area.component.css'
 })
@@ -163,17 +171,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
   /** Node the current gather view is centered on. */
   private gatherAnchor: DANode | null = null;
-  /** Explicitly gathered (Gather key) → survives leaving the nav submenu;
-   *  automatic nav-session gathers restore on GRAPH_NAV_EXIT. */
+  /** Explicitly gathered (Gather key); restored by Ungather or re-toggle. */
   private gatherPinned = false;
-  /** True while the Move-by-graph submenu is held: traversal re-gathers
-   *  around each node it lands on. */
-  private graphNavSession = false;
-  /** Automatic nav-session gather. Off by default since 2026-07-15: Ben
-   *  found it too slow and not the right shape for navigation — the nav
-   *  popup (notes/idea-nav-popup.md) is the replacement direction. Explicit
-   *  Gather/Ungather are unaffected. */
-  public autoGatherEnabled = false;
   /** Member edges of a pile, hidden while their meta-edge stands in for
    *  them; shown again on ungather. */
   private gatherHiddenEdges: DAEdge[] = [];
@@ -206,26 +205,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly RESIZE_REFLOW_GAP = 16;
   /** Stage-pixel radius within which the crosshairs count as standing on a
    *  traversal stop (label/waypoint pseudo-node). */
-  public readonly GRAPH_NAV_STOP_TOLERANCE = 20;
-
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
-  /** Direction of the last move-by-graph traversal step (unit vector, stage
-   *  orientation), or null on a cold start. Q1 momentum: only used to pick
-   *  the *entry* edge; cycling is always fixed clockwise order. */
+  /** Direction (unit vector, layer orientation) of the last nav-popup jump;
+   *  used by gather's nav-next pick (`pickEntryCandidate`). */
   private graphNavMomentum: {x: number; y: number} | null = null;
-  /** Crosshairs position after the last traversal action; if the crosshairs
-   *  have moved since (free movement, search, …), momentum is stale. */
-  private graphNavLastPos: {x: number; y: number} | null = null;
-  /** The edge currently being traversed. Navigation focus, not a selection:
-   *  it renders as a glow (DAEdge.navFocused) and no editing command sees
-   *  it. */
+  /** The edge under consideration in the nav popup (preview highlight) or
+   *  the edge last traveled. A glow (DAEdge.navFocused), not a selection:
+   *  no editing command sees it. */
   private graphNavEdge: DAEdge | null = null;
-  /** The traversal's current node: the last node a jump anchored at or
-   *  landed on. Anchor of last resort — nav focus is not a selection, so
-   *  without this, drifting the crosshairs off the current node stranded
-   *  the whole traversal (no jump, no cycle, no gather). */
+  /** The traversal's current node: where the last nav jump landed (or
+   *  anchored). Anchor of last resort for navigation and gather. */
   private graphNavLastNode: DANode | null = null;
+  /** In/out sense of the last nav jump — the popup's "momentum": candidates
+   *  continuing this direction are the primary group, and a single one
+   *  auto-advances without a popup. */
+  private navDirection: 'out' | 'in' | null = null;
+
+  // --- Nav popup state (template bindings + open-session bookkeeping) ---
+  navPopupOpen = false;
+  navPopupRows: PopupRow[] = [];
+  navPopupLeft = 0;
+  navPopupTop = 0;
+  navPopupDark = false;
+  private navCandidates = new Map<string, NavCandidate>();
+  private navSource: DANode | null = null;
+  /** Original transform of the popup's enlarged source node. */
+  private navSourceEmphasis: {node: DANode; scaleX: number; scaleY: number; x: number; y: number} | null = null;
   /** Pre-gather control points of every edge Gather re-routed, so Ungather
    *  restores the wiring exactly. */
   private gatheredEdgeControlPoints = new Map<DAEdge, EdgeControlPoint[]>();
@@ -247,14 +253,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SNAP_TO_NODE_RIGHT,
     DACommandType.SNAP_TO_NODE_UP,
     DACommandType.SNAP_TO_NODE_DOWN,
-    DACommandType.TRAVERSE_OUTGOING_NEXT,
-    DACommandType.TRAVERSE_INCOMING_NEXT,
-    DACommandType.TRAVERSE_NEXT_EDGE,
-    DACommandType.TRAVERSE_PREV_EDGE,
-    DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV,
+    DACommandType.TRAVERSE_SMART,
     DACommandType.GATHER_CONNECTED_NODES,
     DACommandType.UNGATHER,
-    DACommandType.GRAPH_NAV_EXIT,
     DACommandType.LOAD_SAMPLE_GRAPH,
     DACommandType.NEW_GRAPH,
     DACommandType.EXIT_LABEL_EDIT_MODE,
@@ -550,24 +551,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.DECREASE_MOVE_SPEED:
         this.decreaseMoveSpeed();
         break;
-      case DACommandType.TRAVERSE_OUTGOING_NEXT:
-        this.graphNavJump('outgoing', command.gridTier ?? 'normal');
-        break;
-      case DACommandType.TRAVERSE_INCOMING_NEXT:
-        this.graphNavJump('incoming', command.gridTier ?? 'normal');
-        break;
-      case DACommandType.TRAVERSE_NEXT_EDGE:
-        this.graphNavCycleEdge(1);
-        break;
-      case DACommandType.TRAVERSE_PREV_EDGE:
-        this.graphNavCycleEdge(-1);
-        break;
-      case DACommandType.FOCUS_SELECTED_FOR_GRAPH_NAV:
-        this.focusSelectedForGraphNav();
-        this.beginGraphNavSession();
-        break;
-      case DACommandType.GRAPH_NAV_EXIT:
-        this.endGraphNavSession();
+      case DACommandType.TRAVERSE_SMART:
+        this.traverseSmart();
         break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
@@ -2545,181 +2530,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // --- Move-by-graph traversal (see graph-nav.ts for the geometry) ---
 
-  /** Jump Outgoing / Jump Incoming. With a selected edge under the crosshairs
-   *  this walks one tier-filtered stop along it (outgoing → toward dest,
-   *  incoming → toward src — labels and waypoints are pseudo-nodes whose
-   *  in/out sides follow the edge's direction, so Jump Incoming mid-edge is
-   *  the Q2 "reverse course"). Otherwise — or at the terminal end for the
-   *  requested direction — it selects an edge at the anchor node: the
-   *  momentum-aligned candidate, or the first clockwise from 12 o'clock on a
-   *  cold start. */
-  private graphNavJump(direction: 'outgoing' | 'incoming', tier: GridTier): void {
-    this.finishTweens();
-    this.refreshGraphNavMomentum();
 
-    const toDest = direction === 'outgoing';
-    const edge = this.currentGraphNavEdge();
-    if (edge && this.graphNavStepAlongEdge(edge, toDest, tier)) return;
 
-    const anchor = this.getGraphNavAnchorNode();
-    if (!anchor) {
-      this.daOut.emit({kind: 'status-message', message: 'Move the crosshairs onto a node to navigate.'});
-      return;
-    }
-    const candidates = toDest ? anchor.outgoingEdges : anchor.incomingEdges;
-    if (candidates.length === 0) {
-      this.daOut.emit({kind: 'status-message', message: `No ${toDest ? 'outgoing' : 'incoming'} edges here.`});
-      return;
-    }
-    // Score by flow alignment: an outgoing edge flows away from the node, an
-    // incoming edge flows through it — both compared against the momentum of
-    // travel, so Jump Incoming backs up along the stream you rode in on.
-    const flows = candidates.map(e =>
-      endpointFlowDirection(e.getPathPoints(), toDest ? 'src' : 'dest'));
-    const pick = pickEntryCandidate(flows, this.graphNavMomentum);
-    if (pick < 0) return;
-    this.navFocusEdge(candidates[pick], anchor);
-  }
 
-  /** Next Edge / Previous Edge: cycle the selected edge through the anchor
-   *  node's candidates in fixed clockwise order starting at 12 o'clock. The
-   *  set (outgoing vs incoming) follows the current selection; outgoing when
-   *  nothing is selected yet. */
-  private graphNavCycleEdge(step: 1 | -1): void {
-    this.finishTweens();
-    this.refreshGraphNavMomentum();
 
-    const anchor = this.getGraphNavAnchorNode();
-    if (!anchor) {
-      this.daOut.emit({kind: 'status-message', message: 'Move the crosshairs onto a node to pick an edge.'});
-      return;
-    }
-    const focused = this.currentGraphNavEdge();
-    const incomingOnly = focused !== null
-      && anchor.incomingEdges.includes(focused)
-      && !anchor.outgoingEdges.includes(focused);
-    const candidates = incomingOnly ? anchor.incomingEdges : anchor.outgoingEdges;
-    if (candidates.length === 0) {
-      this.daOut.emit({kind: 'status-message', message: `No ${incomingOnly ? 'incoming' : 'outgoing'} edges here.`});
-      return;
-    }
-    // Cycle order comes from where each edge visually leaves the node.
-    const outward = candidates.map(e => {
-      const flow = endpointFlowDirection(e.getPathPoints(), incomingOnly ? 'dest' : 'src');
-      if (!flow) return null;
-      return incomingOnly ? {x: -flow.x, y: -flow.y} : flow;
-    });
-    const order = clockwiseOrder(outward);
-    const focusedPos = focused ? order.indexOf(candidates.indexOf(focused)) : -1;
-    const nextPos = focusedPos >= 0
-      ? (focusedPos + step + order.length) % order.length
-      : (step > 0 ? 0 : order.length - 1);
-    this.navFocusEdge(candidates[order[nextPos]], anchor);
-  }
 
-  /** One stop along `edge` in the given direction. Returns false when the
-   *  crosshairs aren't associated with this edge or there is no further stop
-   *  that way (terminal node) — the caller then falls back to edge selection
-   *  at the anchor node. */
-  private graphNavStepAlongEdge(edge: DAEdge, toDest: boolean, tier: GridTier): boolean {
-    const pathPoints = edge.getPathPoints();
-    const stops = this.navStopsFor(edge, tier);
-
-    let index = -1;
-    const nodeUnder = this.getDANodesContainingCrosshairs()[0];
-    if (nodeUnder === edge.srcNode || nodeUnder === edge.destNode) {
-      // Self-loops hit both arms; resolve so a step is always possible.
-      if (edge.srcNode === edge.destNode) {
-        index = toDest ? 0 : stops.length - 1;
-      } else {
-        index = nodeUnder === edge.srcNode ? 0 : stops.length - 1;
-      }
-    } else if (nodeUnder) {
-      return false; // standing on an unrelated node — reselect there
-    } else {
-      const cross = this.getCrosshairsInLayerCoordinates();
-      const scale = this.drawingLayer.scaleX();
-      index = nearestStopIndex(stops, cross, this.GRAPH_NAV_STOP_TOLERANCE / scale);
-      if (index < 0) {
-        // Between stops (e.g. entry landed on the edge midpoint): step to the
-        // adjacent stop by arc-length fraction — but only if the crosshairs
-        // actually stand near this edge; wandering off dissociates from it.
-        const proj = projectPointToPath(pathPoints, cross);
-        if (!proj) return false;
-        const at = pointAtT(pathPoints, proj.t);
-        if (!at || Math.hypot(at.x - cross.x, at.y - cross.y) * scale
-              > this.GRAPH_NAV_STOP_TOLERANCE * 3) {
-          return false;
-        }
-        const target = toDest
-          ? stops.findIndex(s => s.t > proj.t + 1e-4)
-          : (stops.length - 1) - [...stops].reverse().findIndex(s => s.t < proj.t - 1e-4);
-        if (target < 0 || target > stops.length - 1) return false;
-        this.moveCrosshairsToNavStop(edge, stops[target]);
-        return true;
-      }
-    }
-
-    const target = index + (toDest ? 1 : -1);
-    if (target < 0 || target > stops.length - 1) return false;
-    this.moveCrosshairsToNavStop(edge, stops[target]);
-    return true;
-  }
-
-  /** Step onto a stop, tracking the traversal's current node when the stop
-   *  is a node endpoint. During a nav session, landing on a node re-anchors
-   *  the automatic gather there: the previous gather snaps home first, so
-   *  the landed node may move — the view then recenters on where it
-   *  actually lives, not on the stale stop coordinates. */
-  private moveCrosshairsToNavStop(edge: DAEdge, stop: NavStop): void {
-    if (stop.kind === 'node') {
-      const node = stop.t === 0 ? edge.srcNode : edge.destNode;
-      this.graphNavLastNode = node;
-      if (this.graphNavSession && this.autoGatherEnabled && node !== this.gatherAnchor) {
-        // Momentum from the step direction, measured before anything moves.
-        const cross = this.getCrosshairsInLayerCoordinates();
-        const dx = stop.x - cross.x;
-        const dy = stop.y - cross.y;
-        const len = Math.hypot(dx, dy);
-        if (len > 1e-6) this.graphNavMomentum = {x: dx / len, y: dy / len};
-        this.autoGatherAround(node);
-        this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
-        this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
-        return;
-      }
-    }
-    this.moveCrosshairsToStop(stop);
-  }
-
-  /** Tier-filtered traversal stops of `edge`, ordered src → dest. */
-  private navStopsFor(edge: DAEdge, tier: GridTier): NavStop[] {
-    return buildEdgeStops(
-      edge.getPathPoints(),
-      this.getNodeCenterInLayerCoordinates(edge.srcNode),
-      this.getNodeCenterInLayerCoordinates(edge.destNode),
-      edge.labels.map(l => ({point: {x: l.x, y: l.y}, t: l.edgeT})),
-      edge.controlPoints.filter(cp => cp.waypointId).map(cp => ({x: cp.x, y: cp.y})),
-      tier,
-    );
-  }
-
-  /** The edge under navigation focus, validated against the live graph
-   *  (undo/redo, delete, and load rebuild edges — a stale reference clears).
-   *  With no nav edge, a single *really selected* edge (search, v-select) is
-   *  adopted so navigation can start from it. */
-  private currentGraphNavEdge(): DAEdge | null {
-    if (this.graphNavEdge && !this.drawingLayer.getDAEdges().includes(this.graphNavEdge)) {
-      this.graphNavEdge = null;
-    }
-    const selected = this.drawingLayer.getSelectedDAEdges();
-    if (selected.length === 1 && selected[0] !== this.graphNavEdge
-        && (!this.graphNavEdge || this.crosshairsAssociatedWithEdge(selected[0]))) {
-      // An explicitly selected edge the crosshairs are standing on wins over
-      // a leftover nav focus; with no nav focus at all, adopt it outright.
-      this.setGraphNavEdge(selected[0]);
-    }
-    return this.graphNavEdge;
-  }
 
   private setGraphNavEdge(edge: DAEdge | null): void {
     if (this.graphNavEdge === edge) return;
@@ -2729,22 +2544,257 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** Anchor node for navigation: the node under the crosshairs — the
-   *  crosshairs are the traversal position — falling back to a selected
-   *  node, then to the traversal's current node (`graphNavLastNode`).
-   *  Either fallback pulls the crosshairs back onto the anchor first, so
-   *  the following jump walks instead of re-picking forever. */
-  private getGraphNavAnchorNode(): DANode | null {
-    const under = this.getDANodesContainingCrosshairs()[0];
-    if (under) return under;
-    const fallback = this.drawingLayer.getSelectedDANodes()[0]
-      ?? this.validGraphNavLastNode();
-    if (fallback) {
-      this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(fallback));
-      this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
+  // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
+
+  /** Tap of the Go key. Exactly one candidate continuing the traversal's
+   *  direction → advance along it silently; otherwise (fork, cold start,
+   *  dead end) the popup lists every way out — candidates continuing the
+   *  current direction first, reverse ones under a divider. */
+  private traverseSmart(): void {
+    this.finishTweens();
+    const source = this.getTraversalAnchorNode();
+    if (!source) {
+      this.emitStatus('Move the crosshairs onto a node to navigate.');
+      return;
     }
-    return fallback ?? null;
+    // Free movement to a different node is a cold start.
+    if (source !== this.graphNavLastNode) this.navDirection = null;
+    const candidates = this.navCandidatesFor(source);
+    if (candidates.length === 0) {
+      this.emitStatus('No edges here.');
+      return;
+    }
+    const forwardDir = this.navDirection ?? 'out';
+    const forward = candidates.filter(c => c.direction === forwardDir);
+    if (forward.length === 1) {
+      this.navCommitTo(source, forward[0], false);
+      return;
+    }
+    this.openNavPopup(source, candidates, forwardDir);
   }
+
+  private navCandidatesFor(source: DANode): NavCandidate[] {
+    const out: NavCandidate[] = [];
+    for (const edge of source.outgoingEdges) {
+      if (edge.destNode !== source) out.push({edge, direction: 'out', other: edge.destNode});
+    }
+    for (const edge of source.incomingEdges) {
+      if (edge.srcNode !== source) out.push({edge, direction: 'in', other: edge.srcNode});
+    }
+    return out;
+  }
+
+  private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in'): void {
+    const sC = this.getNodeCenterInLayerCoordinates(source);
+    const bearing = (c: NavCandidate) => {
+      const oC = this.getNodeCenterInLayerCoordinates(c.other);
+      const a = Math.atan2(oC.x - sC.x, -(oC.y - sC.y)); // clockwise from 12
+      return a < 0 ? a + Math.PI * 2 : a;
+    };
+    const ordered = [...candidates].sort((a, b) =>
+      Number(a.direction !== forwardDir) - Number(b.direction !== forwardDir)
+      || bearing(a) - bearing(b));
+    const hasForward = ordered.some(c => c.direction === forwardDir);
+    this.navCandidates = new Map(ordered.map(c => [c.edge.id, c]));
+    this.navSource = source;
+    this.navPopupRows = ordered.map(c => ({
+      id: c.edge.id,
+      glyph: c.direction === 'out' ? '→' : '←',
+      title: (c.other.label?.text() ?? '').trim() || '(unlabeled)',
+      subtitle: c.edge.labels.map(l => l.label).filter(t => t.trim()).join(' · ') || undefined,
+      tags: [...c.edge.tags, ...c.other.tags],
+      secondary: hasForward && c.direction !== forwardDir,
+    }));
+    this.navPopupDark = this.themeService.theme === 'dark';
+    this.emphasizeNavSource(source);
+    if (!this.navPopupOpen) {
+      this.navPopupOpen = true;
+      this.daOut.emit({kind: 'popup-state', open: true});
+    }
+    this.positionNavPopup();
+    this.drawingLayer.batchDraw();
+  }
+
+  /** Selection moved in the popup: glow the candidate edge, make sure both
+   *  source and candidate destination are on screen (pan, zooming out if
+   *  needed — never in), and keep the popup beside the source. */
+  onNavPopupHighlight(edgeId: string): void {
+    const cand = this.navCandidates.get(edgeId);
+    if (!cand || !this.navSource) return;
+    this.setGraphNavEdge(cand.edge);
+    this.snapViewToNodePair(this.navSource, cand.other);
+    this.positionNavPopup();
+    this.drawingLayer.batchDraw();
+  }
+
+  onNavPopupCommit(event: {id: string; walk: boolean}): void {
+    const cand = this.navCandidates.get(event.id);
+    const source = this.navSource;
+    this.restoreNavSourceEmphasis();
+    if (!cand || !source) {
+      this.closeNavPopup();
+      return;
+    }
+    if (!event.walk) {
+      this.navPopupOpen = false;
+      this.navSource = null;
+      this.daOut.emit({kind: 'popup-state', open: false});
+    }
+    this.navCommitTo(source, cand, event.walk);
+  }
+
+  /** Escape / backdrop: close without moving. The crosshairs return to the
+   *  source node so the traversal anchor stays meaningful. */
+  closeNavPopup(): void {
+    this.restoreNavSourceEmphasis();
+    this.setGraphNavEdge(null);
+    const source = this.navSource;
+    this.navSource = null;
+    if (this.navPopupOpen) {
+      this.navPopupOpen = false;
+      this.daOut.emit({kind: 'popup-state', open: false});
+    }
+    if (source) {
+      const c = this.getNodeCenterInLayerCoordinates(source);
+      const scale = this.drawingLayer.scaleX();
+      const sx = this.drawingLayer.x() + c.x * scale;
+      const sy = this.drawingLayer.y() + c.y * scale;
+      if (sx >= 0 && sx <= this.stage.width() && sy >= 0 && sy <= this.stage.height()) {
+        this.crosshairsLayer.crosshairs.x = sx;
+        this.crosshairsLayer.crosshairs.y = sy;
+      } else {
+        this.centerViewOnLayerPoint(c);
+      }
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  /** The jump itself. Non-walk: animated recenter onto the destination,
+   *  keeping the traveled edge's glow as a trace. Walk: snap the view and
+   *  immediately reopen the popup at the landing node. */
+  private navCommitTo(source: DANode, cand: NavCandidate, walk: boolean): void {
+    const dest = cand.other;
+    this.graphNavLastNode = dest;
+    this.navDirection = cand.direction;
+    const sC = this.getNodeCenterInLayerCoordinates(source);
+    const dC = this.getNodeCenterInLayerCoordinates(dest);
+    const len = Math.hypot(dC.x - sC.x, dC.y - sC.y);
+    if (len > 1e-6) this.graphNavMomentum = {x: (dC.x - sC.x) / len, y: (dC.y - sC.y) / len};
+    const destLabel = (dest.label?.text() ?? '').trim() || '(unlabeled)';
+    this.emitStatus(`${cand.direction === 'out' ? '→' : '←'} ${destLabel}`);
+    if (!walk) {
+      this.setGraphNavEdge(cand.edge);
+      this.centerViewOnLayerPoint(dC);
+      return;
+    }
+    // Walk mode: land, then keep browsing from the new node.
+    const scale = this.drawingLayer.scaleX();
+    this.drawingLayer.position({
+      x: this.stage.width() / 2 - dC.x * scale,
+      y: this.stage.height() / 2 - dC.y * scale,
+    });
+    this.crosshairsLayer.crosshairs.x = this.stage.width() / 2;
+    this.crosshairsLayer.crosshairs.y = this.stage.height() / 2;
+    const candidates = this.navCandidatesFor(dest);
+    if (candidates.length === 0) {
+      this.emitStatus(`${destLabel}: dead end.`);
+      this.closeNavPopup();
+      return;
+    }
+    this.setGraphNavEdge(null);
+    this.openNavPopup(dest, candidates, this.navDirection ?? 'out');
+  }
+
+  /** Both boxes on screen: no-op when they already are; otherwise pan to
+   *  their union's center, zooming out (never in) just enough to fit. */
+  private snapViewToNodePair(a: DANode, b: DANode): void {
+    const MARGIN = 70;
+    const rects = [a, b].map(n => ({
+      x: n.group.x(), y: n.group.y(), w: n.NODE_WIDTH, h: n.NODE_HEIGHT,
+    }));
+    const minX = Math.min(...rects.map(r => r.x)) - MARGIN;
+    const minY = Math.min(...rects.map(r => r.y)) - MARGIN;
+    const maxX = Math.max(...rects.map(r => r.x + r.w)) + MARGIN;
+    const maxY = Math.max(...rects.map(r => r.y + r.h)) + MARGIN;
+    const scale = this.drawingLayer.scaleX();
+    const sw = this.stage.width();
+    const sh = this.stage.height();
+    const visible = (r: {x: number; y: number; w: number; h: number}) => {
+      const x0 = this.drawingLayer.x() + r.x * scale;
+      const y0 = this.drawingLayer.y() + r.y * scale;
+      return x0 >= 0 && y0 >= 0 && x0 + r.w * scale <= sw && y0 + r.h * scale <= sh;
+    };
+    if (rects.every(visible)) return;
+    const fit = Math.min(sw / (maxX - minX), sh / (maxY - minY));
+    const newScale = Math.min(scale, fit);
+    this.drawingLayer.scale({x: newScale, y: newScale});
+    this.drawingLayer.position({
+      x: sw / 2 - ((minX + maxX) / 2) * newScale,
+      y: sh / 2 - ((minY + maxY) / 2) * newScale,
+    });
+  }
+
+  /** Beside the source node, on the side with the fewest candidate
+   *  destinations, so the popup occludes as little as possible of where
+   *  you might be going. */
+  private positionNavPopup(): void {
+    if (!this.navSource) return;
+    const POPUP_W = 320;
+    const POPUP_H = Math.min(56 + this.navPopupRows.length * 40 + 22, 380);
+    const GAP = 14;
+    const scale = this.drawingLayer.scaleX();
+    const n = this.navSource;
+    const rect = {
+      x: this.drawingLayer.x() + n.group.x() * scale,
+      y: this.drawingLayer.y() + n.group.y() * scale,
+      w: n.NODE_WIDTH * scale,
+      h: n.NODE_HEIGHT * scale,
+    };
+    const counts = {right: 0, left: 0, below: 0, above: 0};
+    for (const cand of this.navCandidates.values()) {
+      const c = this.getNodeCenterInLayerCoordinates(cand.other);
+      const x = this.drawingLayer.x() + c.x * scale;
+      const y = this.drawingLayer.y() + c.y * scale;
+      if (x > rect.x + rect.w) counts.right++;
+      if (x < rect.x) counts.left++;
+      if (y > rect.y + rect.h) counts.below++;
+      if (y < rect.y) counts.above++;
+    }
+    const sides: (keyof typeof counts)[] = ['right', 'left', 'below', 'above'];
+    const side = sides.reduce((best, s2) => counts[s2] < counts[best] ? s2 : best, 'right' as keyof typeof counts);
+    let left = rect.x;
+    let top = rect.y;
+    if (side === 'right') { left = rect.x + rect.w + GAP; }
+    else if (side === 'left') { left = rect.x - GAP - POPUP_W; }
+    else if (side === 'below') { top = rect.y + rect.h + GAP; }
+    else { top = rect.y - GAP - POPUP_H; }
+    this.navPopupLeft = Math.max(8, Math.min(left, this.stage.width() - POPUP_W - 8));
+    this.navPopupTop = Math.max(8, Math.min(top, this.stage.height() - POPUP_H - 8));
+  }
+
+  /** The popup's source node grows a little so it reads as "you are here";
+   *  transform restored on close/commit. */
+  private emphasizeNavSource(source: DANode): void {
+    this.restoreNavSourceEmphasis();
+    const g = source.group;
+    this.navSourceEmphasis = {node: source, scaleX: g.scaleX(), scaleY: g.scaleY(), x: g.x(), y: g.y()};
+    const f = 1.12;
+    g.x(g.x() - source.NODE_WIDTH * (f - 1) / 2);
+    g.y(g.y() - source.NODE_HEIGHT * (f - 1) / 2);
+    g.scaleX(g.scaleX() * f);
+    g.scaleY(g.scaleY() * f);
+  }
+
+  private restoreNavSourceEmphasis(): void {
+    if (!this.navSourceEmphasis) return;
+    const e = this.navSourceEmphasis;
+    e.node.group.scaleX(e.scaleX);
+    e.node.group.scaleY(e.scaleY);
+    e.node.group.x(e.x);
+    e.node.group.y(e.y);
+    this.navSourceEmphasis = null;
+  }
+
 
   /** `graphNavLastNode`, validated against the live graph (undo/redo,
    *  delete, and load rebuild nodes — a stale reference clears). */
@@ -2756,31 +2806,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.graphNavLastNode;
   }
 
-  /** Give `edge` the navigation focus (crosshairs stay put, real selection
-   *  untouched) and surface where it leads in the status line. */
-  private navFocusEdge(edge: DAEdge, anchor: DANode): void {
-    this.setGraphNavEdge(edge);
-    this.graphNavLastNode = anchor;
-    if (this.graphNavSession) this.autoGatherAround(anchor);
-    this.graphNavLastPos = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
-    const other = edge.srcNode === anchor ? edge.destNode : edge.srcNode;
-    const otherLabel = (other.label?.text() ?? '').trim();
-    const arrow = anchor === edge.srcNode ? '→' : '←';
-    this.daOut.emit({kind: 'status-message', message: `Edge ${arrow} ${otherLabel || '(unlabeled)'}`});
-  }
 
-  /** Move the crosshairs to a traversal stop, recenter the view on it, and
-   *  update the momentum to the direction of this step. */
-  private moveCrosshairsToStop(stop: NavStop): void {
-    const cross = this.getCrosshairsInLayerCoordinates();
-    const dx = stop.x - cross.x;
-    const dy = stop.y - cross.y;
-    const len = Math.hypot(dx, dy);
-    if (len > 1e-6) this.graphNavMomentum = {x: dx / len, y: dy / len};
-    this.centerViewOnLayerPoint(stop);
-    // Both tweens land the crosshairs at the stage center.
-    this.graphNavLastPos = {x: this.stage.width() / 2, y: this.stage.height() / 2};
-  }
 
   /** Pan the view (no rescale) so the layer point sits at the stage center,
    *  tweening the crosshairs onto it in step. */
@@ -2805,83 +2831,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }).play());
   }
 
-  /** Momentum is only meaningful while the crosshairs sit where the last
-   *  traversal step left them; any free movement in between is a cold
-   *  start. */
-  private refreshGraphNavMomentum(): void {
-    const pos = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
-    if (!this.graphNavLastPos
-        || Math.hypot(pos.x - this.graphNavLastPos.x, pos.y - this.graphNavLastPos.y) > 2) {
-      this.graphNavMomentum = null;
-    }
-  }
 
-  /** Entry action of the Move-by-graph submenu: with exactly one item
-   *  selected, recenter the view and move the crosshairs onto it — both
-   *  skipped when the crosshairs are already on the item, so re-holding the
-   *  submenu key mid-journey never yanks an in-progress traversal. Never
-   *  deselects. */
-  private focusSelectedForGraphNav(): void {
-    this.finishTweens();
-    const selectedCount = this.drawingLayer.getSelectedDANodes().length
-      + this.drawingLayer.getSelectedDAEdges().length
-      + this.getSelectedLabels().length
-      + this.drawingLayer.getSelectedDAWaypoints().length;
-    if (selectedCount !== 1) return;
-    if (this.crosshairsOnSelectedItem()) return;
 
-    // Recenter before the jump: panning the layer changes stage positions.
-    this.recenterView();
-    this.finishTweens();
-    const target = this.selectedItemStagePoint();
-    if (target) {
-      this.moveCrosshairsBy(
-        target.x - this.crosshairsLayer.crosshairsX(),
-        target.y - this.crosshairsLayer.crosshairsY(),
-      );
-      this.graphNavLastPos = target;
-    }
-    this.graphNavMomentum = null;
-  }
 
-  /** Whether the crosshairs already sit on the single selected item. For an
-   *  edge that means an endpoint node, a stop, or anywhere along its path —
-   *  not just the midpoint the entry jump would target. */
-  private crosshairsOnSelectedItem(): boolean {
-    const tolerance = this.GRAPH_NAV_STOP_TOLERANCE;
-
-    const node = this.drawingLayer.getSelectedDANodes()[0];
-    if (node) return this.getDANodesContainingCrosshairs().includes(node);
-
-    const label = this.getSelectedLabels()[0];
-    if (label) return this.getLabelUnderCrosshairs() === label;
-
-    const stage = {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
-    const scale = this.drawingLayer.scaleX();
-    const waypoint = this.drawingLayer.getSelectedDAWaypoints()[0];
-    if (waypoint) {
-      const wx = this.drawingLayer.x() + waypoint.x * scale;
-      const wy = this.drawingLayer.y() + waypoint.y * scale;
-      return Math.hypot(wx - stage.x, wy - stage.y) <= tolerance;
-    }
-
-    const edge = this.drawingLayer.getSelectedDAEdges()[0];
-    if (edge) return this.crosshairsAssociatedWithEdge(edge);
-    return false;
-  }
-
-  /** Whether the crosshairs stand "on" `edge` for navigation purposes: an
-   *  endpoint node, one of its stops, or close to its path. */
-  private crosshairsAssociatedWithEdge(edge: DAEdge): boolean {
-    const tolerance = this.GRAPH_NAV_STOP_TOLERANCE;
-    const scale = this.drawingLayer.scaleX();
-    const nodeUnder = this.getDANodesContainingCrosshairs()[0];
-    if (nodeUnder === edge.srcNode || nodeUnder === edge.destNode) return true;
-    const cross = this.getCrosshairsInLayerCoordinates();
-    const proj = projectPointToPath(edge.getPathPoints(), cross);
-    if (proj && Math.abs(proj.signedDist) * scale <= tolerance) return true;
-    return nearestStopIndex(this.navStopsFor(edge, 'fine'), cross, tolerance / scale) >= 0;
-  }
 
   private snapToNearestNode() {
     const nodes = this.drawingLayer.getDANodes();
@@ -3032,31 +2984,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.gatherAround(anchorNode, true);
   }
 
-  /** Automatic gather for the move-by-graph session: re-anchor the view on
-   *  the node the traversal is at. No-op when already gathered there. */
-  private autoGatherAround(node: DANode): void {
-    if (!this.autoGatherEnabled) return;
-    if (this.gatherAnchor === node && this.gatheredNodePositions.size > 0) return;
-    this.gatherAround(node, false);
-  }
 
-  private beginGraphNavSession(): void {
-    this.graphNavSession = true;
-    const anchor = this.getDANodesContainingCrosshairs()[0]
-      ?? this.drawingLayer.getSelectedDANodes()[0]
-      ?? this.validGraphNavLastNode();
-    if (anchor) this.autoGatherAround(anchor);
-  }
 
-  /** Leaving the Move-by-graph submenu: automatic gathers restore; an
-   *  explicit (pinned) Gather stays until Ungather. */
-  private endGraphNavSession(): void {
-    this.graphNavSession = false;
-    if (!this.gatherPinned && this.gatheredNodePositions.size > 0) {
-      this.finishTweens();
-      this.restoreGatheredNodes();
-    }
-  }
 
   /** Everything the gather view needs to know about one neighbor. */
   private collectGatherNeighbors(anchorNode: DANode):

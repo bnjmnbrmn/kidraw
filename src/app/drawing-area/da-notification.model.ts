@@ -13,3 +13,4 @@ export type DANotification =
   | {kind: "status-message", message: string}
   | {kind: "file-state-update", fileLabel: string | null}
   | {kind: "edit-context", context: EditContext}
+  | {kind: "popup-state", open: boolean}

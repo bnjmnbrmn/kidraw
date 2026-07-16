@@ -102,6 +102,10 @@ export class AppComponent implements OnInit, OnDestroy {
       case "edit-context":
         this.keymenuComponent.setEditContext(daNotification.context);
         break;
+      case "popup-state":
+        // A DOM popup (nav popup) owns the keyboard while open.
+        this.keymenuComponent.setSuspended(daNotification.open);
+        break;
     }
   }
 

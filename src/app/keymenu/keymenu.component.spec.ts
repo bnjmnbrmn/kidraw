@@ -152,20 +152,14 @@ describe('KeymenuComponent', () => {
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
 
-    // Move-by-graph submenu at 'f' (action-submenu: entry fires the
-    // recenter-on-selection command)
-    const moveByGraphSubmenu = rootConfig['f'] as LabeledActionSubmenuConfig;
-    expect(moveByGraphSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
-    const jumpOutgoing = moveByGraphSubmenu.submenuConfig['n'] as LabeledAction;
-    expect(jumpOutgoing.actionLabel).toBe('Jump Outgoing');
-    // j/k cycle the candidate edge; s/d are the tier sub-submenus (vim).
-    expect((moveByGraphSubmenu.submenuConfig['j'] as LabeledAction).actionLabel).toBe('Next Edge');
-    expect((moveByGraphSubmenu.submenuConfig['k'] as LabeledAction).actionLabel).toBe('Prev Edge');
-    const coarseNav = moveByGraphSubmenu.submenuConfig['s'] as LabeledSubmenuConfig;
-    expect(coarseNav instanceof LabeledSubmenuConfig).toBeTrue();
-    expect((coarseNav.submenuConfig['n'] as LabeledAction).actionLabel).toBe('Jump Outgoing');
-    const fineNav = moveByGraphSubmenu.submenuConfig['d'] as LabeledSubmenuConfig;
-    expect(fineNav instanceof LabeledSubmenuConfig).toBeTrue();
+    // Go at 'f': one-shot tap emitting the smart traverse (the nav popup
+    // handles everything the old move-by-graph submenu did).
+    const go = rootConfig['f'] as LabeledAction;
+    expect(go instanceof LabeledAction).toBeTrue();
+    expect(go.actionLabel).toBe('Go');
+    expect(go.repeat).toBeFalse();
+    go.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART});
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {

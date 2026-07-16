@@ -1,1 +1,10 @@
 <div id="mainDrawingArea" #mainDrawingArea></div>
+@if (navPopupOpen) {
+  <app-nav-popup [rows]="navPopupRows"
+                 [left]="navPopupLeft"
+                 [top]="navPopupTop"
+                 [dark]="navPopupDark"
+                 (highlightRow)="onNavPopupHighlight($event)"
+                 (commitRow)="onNavPopupCommit($event)"
+                 (closed)="closeNavPopup()" />
+}

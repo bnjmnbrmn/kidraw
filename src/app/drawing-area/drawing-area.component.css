@@ -3,6 +3,8 @@
   width: 100vw;
   flex-shrink: 0;
   flex-grow: 1;
+  /* The nav popup is positioned absolutely against this element. */
+  position: relative;
 }
 
 
