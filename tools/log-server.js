@@ -1,10 +1,14 @@
-// Tiny log collector: receives POSTed log messages, writes to tools/debug.log
+// Tiny log collector: receives POSTed log messages, writes to tools/debug.log.
+// Also mirrors the app's localStorage draft: POST /draft overwrites
+// tools/draft-mirror.json (GET /draft reads it back), so an agent on the box
+// can see the graph currently being edited in any browser session.
 // Usage: node tools/log-server.js
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
 const LOG_FILE = path.join(__dirname, 'debug.log');
+const DRAFT_FILE = path.join(__dirname, 'draft-mirror.json');
 const PORT = 9222;
 
 // Clear log on startup
@@ -21,12 +25,28 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  const url = (req.url || '/').split('?')[0];
+
+  if (url === '/draft' && req.method === 'GET') {
+    fs.readFile(DRAFT_FILE, (err, data) => {
+      if (err) { res.writeHead(404); res.end(); return; }
+      res.setHeader('Content-Type', 'application/json');
+      res.writeHead(200);
+      res.end(data);
+    });
+    return;
+  }
+
   if (req.method === 'POST') {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
-      const line = `${new Date().toISOString()} ${body}\n`;
-      fs.appendFileSync(LOG_FILE, line);
+      if (url === '/draft') {
+        fs.writeFileSync(DRAFT_FILE, body);
+      } else {
+        const line = `${new Date().toISOString()} ${body}\n`;
+        fs.appendFileSync(LOG_FILE, line);
+      }
       res.writeHead(200);
       res.end();
     });

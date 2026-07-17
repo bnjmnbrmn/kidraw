@@ -55,3 +55,4 @@ tools/debug.log
 # Screenshots dropped into the project root by the user
 /Screenshot*.png
 /Screenshot*.PNG
+tools/draft-mirror.json

@@ -7,6 +7,16 @@ import {
 } from '../lib/file-format/snapshot-mapping';
 import { KidrawGraphDoc, KidrawStyleSet } from '../lib/file-format/types';
 
+// Dev-only draft mirror: every draft save is also POSTed to the local log
+// collector (tools/log-server.js), which writes tools/draft-mirror.json so
+// an agent on the dev box can see the graph currently being edited. Same
+// host split as DebugLogService: local dev talks straight to the collector;
+// remote hosts (kidraw.dev.bnjmnbrmn.com, phones) post same-origin to
+// /debug-log/draft, which nginx forwards.
+const DRAFT_MIRROR_URL = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  ? 'http://localhost:9222/draft'
+  : '/debug-log/draft';
+
 /**
  * Manages the localStorage draft — kidraw's crash-recovery layer.
  *
@@ -28,7 +38,12 @@ export class DraftStorageService {
    */
   load(): DraftStateV2 | null {
     const v2 = this.readV2();
-    if (v2) return v2;
+    if (v2) {
+      // Mirror on load too: opening/reloading the app pushes the current
+      // draft to the collector without waiting for the first edit.
+      this.mirror(JSON.stringify(v2));
+      return v2;
+    }
 
     const migrated = this.tryMigrateV1();
     if (migrated) {
@@ -42,10 +57,29 @@ export class DraftStorageService {
 
   /** Persist a draft state. Silent no-op on quota errors. */
   save(state: DraftStateV2): void {
+    const json = JSON.stringify(state);
     try {
-      localStorage.setItem(DraftStorageService.V2_KEY, JSON.stringify(state));
+      localStorage.setItem(DraftStorageService.V2_KEY, json);
     } catch {
       // Quota exceeded or storage disabled — skip.
+    }
+    this.mirror(json);
+  }
+
+  /** Fire-and-forget mirror of the draft to the dev log collector.
+   *  sendBeacon because the draft saves on beforeunload — a plain fetch
+   *  would be dropped with the page. The raw string keeps it a "simple"
+   *  request (no CORS preflight, which beacons can't perform). Best-effort:
+   *  any failure is swallowed — the mirror is an observation channel,
+   *  never a dependency of saving. */
+  private mirror(json: string): void {
+    try {
+      if (!(navigator.sendBeacon && navigator.sendBeacon(DRAFT_MIRROR_URL, json))) {
+        fetch(DRAFT_MIRROR_URL, { method: 'POST', body: json, keepalive: true })
+          .catch(() => {});
+      }
+    } catch {
+      // Never let the mirror break a save.
     }
   }
 
