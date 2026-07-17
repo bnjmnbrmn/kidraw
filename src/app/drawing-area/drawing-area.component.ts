@@ -696,6 +696,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.DELETE_LAST_CHAR:
         this.deleteLastChar();
         break;
+      case DACommandType.DELETE_CHAR_AT_CURSOR:
+        this.deleteCharAtCursor();
+        break;
+      case DACommandType.CURSOR_LEFT:
+        this.moveEditCursor(t => t.moveCursorH(-1));
+        break;
+      case DACommandType.CURSOR_RIGHT:
+        this.moveEditCursor(t => t.moveCursorH(1));
+        break;
+      case DACommandType.CURSOR_UP:
+        this.moveEditCursor(t => t.moveCursorV(-1));
+        break;
+      case DACommandType.CURSOR_DOWN:
+        this.moveEditCursor(t => t.moveCursorV(1));
+        break;
+      case DACommandType.CURSOR_LINE_START:
+        this.moveEditCursor(t => t.cursorToLineStart());
+        break;
+      case DACommandType.CURSOR_LINE_END:
+        this.moveEditCursor(t => t.cursorToLineEnd());
+        break;
+      case DACommandType.CURSOR_WORD_FORWARD:
+        this.moveEditCursor(t => t.cursorWordForward());
+        break;
+      case DACommandType.CURSOR_WORD_BACK:
+        this.moveEditCursor(t => t.cursorWordBack());
+        break;
       case DACommandType.DELETE:
         this.deleteSelected();
         break;
@@ -1956,6 +1983,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log("case exit-label-edit-mode")
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
+    this.getSelectedLabels().forEach(l => l.hideCursor());
     // A label left empty has no visible content — drop it rather than leave
     // an invisible hit-target on the edge.
     this.getSelectedLabels()
@@ -1981,11 +2009,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.hideCrosshairs();
     const resized = this.drawingLayer.appendTextToSelected(key);
     this.updateEdgesForResizedNodes(resized);
-    this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
     // Also insert into selected labels; re-place from the anchor so a growing
     // box keeps its above/below clearance from the line.
     this.getSelectedLabels().forEach(l => {
-      l.appendText(key);
+      l.insertAtCursor(key);
       this.getEdgeForLabel(l)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
@@ -1993,14 +2020,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private deleteLastChar() {
     this.finishTweens();
-    const resized = this.drawingLayer.deleteLastCharFromSelected();
+    const resized = this.drawingLayer.deleteBeforeCursorFromSelected();
     this.updateEdgesForResizedNodes(resized);
-    this.drawingLayer.getSelectedDANodes().forEach(n => n.updateCursorPosition());
     // Also delete from selected labels
     this.getSelectedLabels().forEach(l => {
-      l.deleteLastChar();
+      l.deleteBeforeCursor();
       this.getEdgeForLabel(l)?.refreshGeometry();
     });
+    this.drawingLayer.batchDraw();
+  }
+
+  private deleteCharAtCursor() {
+    this.finishTweens();
+    const resized = this.drawingLayer.deleteAtCursorFromSelected();
+    this.updateEdgesForResizedNodes(resized);
+    this.getSelectedLabels().forEach(l => {
+      l.deleteAtCursor();
+      this.getEdgeForLabel(l)?.refreshGeometry();
+    });
+    this.drawingLayer.batchDraw();
+  }
+
+  /** Apply a caret motion to everything being edited (selected nodes and
+   *  edge labels). Motions never change geometry — just the caret. */
+  private moveEditCursor(motion: (target: {
+    moveCursorH(d: number): void; moveCursorV(d: number): void;
+    cursorToLineStart(): void; cursorToLineEnd(): void;
+    cursorWordForward(): void; cursorWordBack(): void;
+  }) => void) {
+    this.drawingLayer.getSelectedDANodes().forEach(n => motion(n));
+    this.getSelectedLabels().forEach(l => motion(l));
     this.drawingLayer.batchDraw();
   }
 
@@ -4441,6 +4490,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           // keymenu enters on key release types straight into it.
           this.unselectAll();
           label.isSelected = true;
+          label.setCursorToEnd();
+          label.showCursor();
           this.crosshairsLayer.hideCrosshairs();
           this.drawingLayer.batchDraw();
           this.checkAndEmitEditState();
@@ -4450,6 +4501,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
     }
     this.log.log('addLabel: no edge found under crosshairs');
+  }
+
+  /** Reset carets to the end and show them on everything about to be
+   *  edited (nodes and edge labels alike). */
+  private showEditCarets(): void {
+    this.drawingLayer.getSelectedDANodes().forEach(n => {
+      n.setCursorToEnd();
+      n.showCursor();
+    });
+    this.getSelectedLabels().forEach(l => {
+      l.setCursorToEnd();
+      l.showCursor();
+    });
   }
 
   private handleEditSelected() {
@@ -4462,7 +4526,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         selectedLabels.length > 0) {
        this.log.log('  -> Entering edit mode due to existing selection.');
        this.crosshairsLayer.hideCrosshairs();
-       selectedNodes.forEach(n => n.showCursor());
+       this.showEditCarets();
        this.drawingLayer.batchDraw();
        this.daOut.emit({kind: "started-label-editing-mode"});
        return;
@@ -4474,6 +4538,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.crosshairsLayer.hideCrosshairs();
+      this.showEditCarets();
+      this.drawingLayer.batchDraw();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
     }
@@ -4484,7 +4550,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.crosshairsLayer.hideCrosshairs();
-      this.drawingLayer.getSelectedDANodes().forEach(n => n.showCursor());
+      this.showEditCarets();
       this.drawingLayer.batchDraw();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;

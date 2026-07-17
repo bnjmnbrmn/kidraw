@@ -2,6 +2,10 @@ import Konva from 'konva';
 import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
 import { NodeShape, TextOverflowMode } from './command.model';
+import {
+  clampIndex, LineRange, lineIndexAt, lineRangesFromWrapped,
+  logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordForward,
+} from './text-cursor';
 
 // Use the un-patched requestAnimationFrame so Zone.js doesn't track the blink
 // loop as a pending task (which would prevent Angular test zones from stabilizing).
@@ -62,6 +66,11 @@ export class DANode {
   private _baseWidth: number = this.DEFAULT_NODE_WIDTH;
   private _baseHeight: number = this.DEFAULT_NODE_HEIGHT;
   private _baseFontSize: number = this.DEFAULT_FONT_SIZE;
+
+  /** Insertion index of the label-edit caret (0..text.length); null = end.
+   *  The text can change out from under it (undo, load), so it is always
+   *  read clamped via {@link cursorIndex}. */
+  private _cursorIndex: number | null = null;
 
   private static _measureText: Konva.Text | null = null;
 
@@ -765,31 +774,126 @@ export class DANode {
     }
   }
 
-  updateCursorPosition(): void {
-    const text = this._label.text();
+  // --- Label-edit caret: position model + rendering ---
 
-    // Use measurement text to get word-wrapped lines matching the label's layout
+  /** Current insertion index, clamped to the live text. */
+  get cursorIndex(): number {
+    const len = this._label.text().length;
+    return this._cursorIndex === null ? len : clampIndex(this._label.text(), this._cursorIndex);
+  }
+
+  setCursorToEnd(): void {
+    this._cursorIndex = null;
+    this.updateCursorPosition();
+  }
+
+  /** Insert at the caret; returns true if the node resized to fit. */
+  insertAtCursor(text: string): boolean {
+    const current = this._label.text();
+    const i = this.cursorIndex;
+    this._label.text(current.slice(0, i) + text + current.slice(i));
+    this._cursorIndex = i + text.length;
+    const resized = this.applyTextOverflow();
+    this.updateCursorPosition();
+    return resized;
+  }
+
+  /** Backspace: delete the char before the caret. Returns resized. */
+  deleteBeforeCursor(): boolean {
+    const current = this._label.text();
+    const i = this.cursorIndex;
+    if (i === 0) return false;
+    this._label.text(current.slice(0, i - 1) + current.slice(i));
+    this._cursorIndex = i - 1;
+    const resized = this.applyTextOverflow();
+    this.updateCursorPosition();
+    return resized;
+  }
+
+  /** Vim `x`: delete the char at the caret — or the last char when the
+   *  caret sits at the very end, where vim's block cursor would be. */
+  deleteAtCursor(): boolean {
+    const current = this._label.text();
+    if (current.length === 0) return false;
+    const i = Math.min(this.cursorIndex, current.length - 1);
+    this._label.text(current.slice(0, i) + current.slice(i + 1));
+    this._cursorIndex = Math.min(i, current.length - 1);
+    const resized = this.applyTextOverflow();
+    this.updateCursorPosition();
+    return resized;
+  }
+
+  moveCursorH(delta: number): void {
+    this._cursorIndex = clampIndex(this._label.text(), this.cursorIndex + delta);
+    this.updateCursorPosition();
+  }
+
+  /** Vim `j`/`k` over the *display* (word-wrapped) lines. */
+  moveCursorV(delta: number): void {
+    this._cursorIndex = moveVertical(this.wrappedRanges(), this.cursorIndex, delta);
+    this.updateCursorPosition();
+  }
+
+  cursorToLineStart(): void {
+    this._cursorIndex = logicalLineStart(this._label.text(), this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorToLineEnd(): void {
+    this._cursorIndex = logicalLineEnd(this._label.text(), this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorWordForward(): void {
+    this._cursorIndex = wordForward(this._label.text(), this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorWordBack(): void {
+    this._cursorIndex = wordBack(this._label.text(), this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  /** Measurement text mirroring the label's wrap configuration. */
+  private configuredMeasureText(): Konva.Text {
     if (!DANode._measureText) {
       DANode._measureText = new Konva.Text({ visible: false });
     }
-    DANode._measureText.text(text);
+    DANode._measureText.text(this._label.text());
     DANode._measureText.fontSize(this._fontSize);
     DANode._measureText.width(this._nodeWidth);
     DANode._measureText.wrap('word');
+    return DANode._measureText;
+  }
 
-    // textArr contains the rendered lines after word-wrapping
+  /** The label's rendered lines mapped back onto raw-text index ranges. */
+  private wrappedRanges(): LineRange[] {
+    const measure = this.configuredMeasureText();
     const textArr: { text: string; width: number; lastInParagraph: boolean }[] =
-      (DANode._measureText as any).textArr ?? [];
-    const lastEntry = textArr.length > 0 ? textArr[textArr.length - 1] : { text: '', width: 0 };
+      (measure as any).textArr ?? [];
+    return lineRangesFromWrapped(this._label.text(), textArr);
+  }
 
-    // For center-aligned text: cursor goes at the right edge of the last rendered line
-    const cursorX = (this._nodeWidth + lastEntry.width) / 2;
+  updateCursorPosition(): void {
+    const text = this._label.text();
+    const measure = this.configuredMeasureText();
+    const textArr: { text: string; width: number; lastInParagraph: boolean }[] =
+      (measure as any).textArr ?? [];
+    const ranges = lineRangesFromWrapped(text, textArr);
+    const i = this.cursorIndex;
+    const li = lineIndexAt(ranges, i);
+    const line = ranges[li];
+    const lineWidth = textArr[li]?.width ?? 0;
+    const prefix = text.substr(line.start, i - line.start);
+    const prefixWidth = prefix.length === 0 ? 0 : measure.measureSize(prefix).width;
 
-    // Total height from the measurement text (already configured with wrap/width/fontSize)
-    const totalHeight = DANode._measureText.height();
-    // verticalAlign: 'middle' → text starts at (nodeHeight - totalHeight) / 2
+    // Center-aligned lines: the line box starts at (nodeWidth - lineWidth)/2.
+    const cursorX = (this._nodeWidth - lineWidth) / 2 + prefixWidth;
+    // verticalAlign: 'middle' → the text block starts at (nodeHeight - H)/2.
+    const lineHeight = this._fontSize * (this._label.lineHeight() ?? 1);
+    const totalHeight = measure.height();
     const textStartY = (this._nodeHeight - totalHeight) / 2;
-    const cursorY = textStartY + totalHeight - this._fontSize;
+    const cursorY = textStartY + li * lineHeight;
 
     this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
   }

@@ -1,6 +1,10 @@
 import Konva from 'konva';
 import {nextId} from './id-generator';
 import {EdgeLabelSide} from './edge-label-anchor';
+import {
+  clampIndex, LineRange, lineIndexAt, logicalLineEnd, logicalLineStart,
+  moveVertical, wordBack, wordForward,
+} from './text-cursor';
 
 export class DALabel {
   readonly id: string;
@@ -34,6 +38,12 @@ export class DALabel {
   private _strokeColor: string = 'blue';
   private _textColor: string = 'black';
 
+  /** Insertion index of the label-edit caret (0..text.length); null = end. */
+  private _cursorIndex: number | null = null;
+  private readonly _cursor: Konva.Line;
+  private _cursorBlinkTimer?: number;
+  private static _measureText: Konva.Text | null = null;
+
   constructor(x: number, y: number, label: string, id?: string,
               colors?: { fill?: string; stroke?: string; text?: string }) {
     this.id = id ?? nextId();
@@ -61,6 +71,15 @@ export class DALabel {
 
     this.group.add(this._rect);
     this.group.add(this._text);
+
+    // Label-edit caret — hidden until edit mode.
+    this._cursor = new Konva.Line({
+      stroke: this._textColor,
+      strokeWidth: 2,
+      visible: false,
+    });
+    this.group.add(this._cursor);
+
     this.resizeToFitText();
 
     // Labels are always visible
@@ -163,18 +182,145 @@ export class DALabel {
     this.updateAppearance();
   }
 
+  // --- Label-edit caret: position model + rendering ---
+
+  /** Current insertion index, clamped to the live text. */
+  get cursorIndex(): number {
+    return this._cursorIndex === null
+      ? this._label.length : clampIndex(this._label, this._cursorIndex);
+  }
+
+  setCursorToEnd(): void {
+    this._cursorIndex = null;
+    this.updateCursorPosition();
+  }
+
+  showCursor(): void {
+    this.updateCursorPosition();
+    this._cursor.visible(true);
+    this._cursor.opacity(1);
+    this._cursorBlinkTimer = window.setInterval(() => {
+      this._cursor.opacity(this._cursor.opacity() > 0 ? 0 : 1);
+    }, 530);
+  }
+
+  hideCursor(): void {
+    this._cursor.visible(false);
+    if (this._cursorBlinkTimer !== undefined) {
+      window.clearInterval(this._cursorBlinkTimer);
+      this._cursorBlinkTimer = undefined;
+    }
+  }
+
   appendText(text: string): void {
-    this._label += text;
+    this.insertAtCursor(text);
+  }
+
+  insertAtCursor(text: string): void {
+    const i = this.cursorIndex;
+    this._label = this._label.slice(0, i) + text + this._label.slice(i);
+    this._cursorIndex = i + text.length;
     this._text.text(this._label);
     this.resizeToFitText();
+    this.updateCursorPosition();
   }
 
   deleteLastChar(): void {
-    if (this._label.length > 0) {
-      this._label = this._label.slice(0, -1);
-      this._text.text(this._label);
-      this.resizeToFitText();
+    this.deleteBeforeCursor();
+  }
+
+  /** Backspace: delete the char before the caret. */
+  deleteBeforeCursor(): void {
+    const i = this.cursorIndex;
+    if (i === 0) return;
+    this._label = this._label.slice(0, i - 1) + this._label.slice(i);
+    this._cursorIndex = i - 1;
+    this._text.text(this._label);
+    this.resizeToFitText();
+    this.updateCursorPosition();
+  }
+
+  /** Vim `x`: delete the char at the caret — or the last char when the
+   *  caret sits at the very end, where vim's block cursor would be. */
+  deleteAtCursor(): void {
+    if (this._label.length === 0) return;
+    const i = Math.min(this.cursorIndex, this._label.length - 1);
+    this._label = this._label.slice(0, i) + this._label.slice(i + 1);
+    this._cursorIndex = Math.min(i, this._label.length - 1);
+    this._text.text(this._label);
+    this.resizeToFitText();
+    this.updateCursorPosition();
+  }
+
+  moveCursorH(delta: number): void {
+    this._cursorIndex = clampIndex(this._label, this.cursorIndex + delta);
+    this.updateCursorPosition();
+  }
+
+  /** Vim `j`/`k` over the label's explicit \n lines (labels never wrap). */
+  moveCursorV(delta: number): void {
+    this._cursorIndex = moveVertical(this.lineRanges(), this.cursorIndex, delta);
+    this.updateCursorPosition();
+  }
+
+  cursorToLineStart(): void {
+    this._cursorIndex = logicalLineStart(this._label, this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorToLineEnd(): void {
+    this._cursorIndex = logicalLineEnd(this._label, this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorWordForward(): void {
+    this._cursorIndex = wordForward(this._label, this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  cursorWordBack(): void {
+    this._cursorIndex = wordBack(this._label, this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
+  private lineRanges(): LineRange[] {
+    const ranges: LineRange[] = [];
+    let start = 0;
+    for (const line of this._label.split('\n')) {
+      ranges.push({start, length: line.length});
+      start += line.length + 1;
     }
+    return ranges;
+  }
+
+  private measure(str: string): number {
+    if (str.length === 0) return 0;
+    if (!DALabel._measureText) {
+      DALabel._measureText = new Konva.Text({visible: false, fontFamily: 'Arial'});
+    }
+    DALabel._measureText.fontSize(this._fontSize);
+    return DALabel._measureText.measureSize(str).width;
+  }
+
+  private updateCursorPosition(): void {
+    const ranges = this.lineRanges();
+    const i = this.cursorIndex;
+    const li = lineIndexAt(ranges, i);
+    const line = ranges[li];
+    const lineText = this._label.substr(line.start, line.length);
+    const prefixWidth = this.measure(this._label.substr(line.start, i - line.start));
+
+    // The text box is centered on the group origin; lines are center-aligned
+    // within it and the line block is vertically centered.
+    const boxW = this._rect.width();
+    const boxH = this._rect.height();
+    const lineHeight = this._fontSize * (this._text.lineHeight() ?? 1);
+    const blockH = ranges.length * lineHeight;
+    const cursorX = -boxW / 2 + (boxW - this.measure(lineText)) / 2 + prefixWidth;
+    const cursorY = -boxH / 2 + (boxH - blockH) / 2 + li * lineHeight;
+
+    this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
+    this._cursor.stroke(this._textColor);
   }
 
   private updateAppearance(): void {

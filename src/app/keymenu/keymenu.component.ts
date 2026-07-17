@@ -314,24 +314,54 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.switchMode(capsMode ? 'labelEditCaps' : 'labelEdit');
       this.labelEditModeOut.emit('insert');
     };
-    const config: SubmenuConfig = {} as SubmenuConfig;
+    const emit = (kind: DACommandType) => () => this.keyMenuOut.emit({kind} as DACommand);
+    const cursor = this.visualConfig.config.cursor;
 
-    // i → insert before cursor (return to insert mode)
+    const config: SubmenuConfig = {
+      // Held motions repeat like held typing does in insert mode.
+      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+    } as SubmenuConfig;
+
+    // i → insert at the caret; a → insert after it (vim append).
     (config as any)['i'] = new LabeledAction('insert', goInsert);
-    // a → append (return to insert mode — will be "after cursor" when cursor tracking is added)
-    (config as any)['a'] = new LabeledAction('append', goInsert);
+    (config as any)['a'] = new LabeledAction('append', () => {
+      this.keyMenuOut.emit({kind: DACommandType.CURSOR_RIGHT});
+      goInsert();
+    });
 
-    // hjkl movement (visible on card; actual cursor movement not yet implemented)
-    (config as any)['h'] = new LabeledAction('←', () => {});
-    (config as any)['j'] = new LabeledAction('↓', () => {});
-    (config as any)['k'] = new LabeledAction('↑', () => {});
-    (config as any)['l'] = new LabeledAction('→', () => {});
+    // hjkl caret movement — j/k walk the display (wrapped) lines.
+    (config as any)['h'] = new LabeledAction('←', emit(DACommandType.CURSOR_LEFT));
+    (config as any)['j'] = new LabeledAction('↓', emit(DACommandType.CURSOR_DOWN));
+    (config as any)['k'] = new LabeledAction('↑', emit(DACommandType.CURSOR_UP));
+    (config as any)['l'] = new LabeledAction('→', emit(DACommandType.CURSOR_RIGHT));
+    // Vim-normal Backspace moves left, it does not delete.
+    (config as any)['Backspace'] = new LabeledAction('←', emit(DACommandType.CURSOR_LEFT));
 
-    // x → delete char under cursor (same as Backspace until cursor tracking is added)
-    (config as any)['x'] = new LabeledAction('del char', () =>
-      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
-    (config as any)['Backspace'] = new LabeledAction('delete', () =>
-      this.keyMenuOut.emit({kind: DACommandType.DELETE_LAST_CHAR}));
+    // Word motions and line anchors.
+    (config as any)['w'] = new LabeledAction('word →', emit(DACommandType.CURSOR_WORD_FORWARD));
+    (config as any)['b'] = new LabeledAction('word ←', emit(DACommandType.CURSOR_WORD_BACK));
+    (config as any)['0'] = new LabeledAction('line start', emit(DACommandType.CURSOR_LINE_START));
+
+    // x → delete the char under the caret.
+    (config as any)['x'] = new LabeledAction('del char', emit(DACommandType.DELETE_CHAR_AT_CURSOR));
+
+    // Shifted vim commands: $ (line end), A (append at line end), I (insert
+    // at line start).
+    const shift: SubmenuConfig = {
+      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+    } as SubmenuConfig;
+    (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
+    (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
+    (shift as any)['a'] = new LabeledAction('Append at end', () => {
+      this.keyMenuOut.emit({kind: DACommandType.CURSOR_LINE_END});
+      goInsert();
+    });
+    (shift as any)['i'] = new LabeledAction('Insert at start', () => {
+      this.keyMenuOut.emit({kind: DACommandType.CURSOR_LINE_START});
+      goInsert();
+    });
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', shift);
 
     return config;
   }

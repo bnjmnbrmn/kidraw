@@ -107,6 +107,16 @@ export enum DACommandType {
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
   QUERY_EDIT_CONTEXT = 'QUERY_EDIT_CONTEXT',
   EDIT_OR_INSERT = 'EDIT_OR_INSERT',
+  // Label-edit caret (vim-normal-in-edit motions + delete-under-cursor).
+  CURSOR_LEFT = 'CURSOR_LEFT',
+  CURSOR_RIGHT = 'CURSOR_RIGHT',
+  CURSOR_UP = 'CURSOR_UP',
+  CURSOR_DOWN = 'CURSOR_DOWN',
+  CURSOR_LINE_START = 'CURSOR_LINE_START',
+  CURSOR_LINE_END = 'CURSOR_LINE_END',
+  CURSOR_WORD_FORWARD = 'CURSOR_WORD_FORWARD',
+  CURSOR_WORD_BACK = 'CURSOR_WORD_BACK',
+  DELETE_CHAR_AT_CURSOR = 'DELETE_CHAR_AT_CURSOR',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -199,3 +209,12 @@ export type DACommand =
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
   | {kind: DACommandType.QUERY_EDIT_CONTEXT}
   | {kind: DACommandType.EDIT_OR_INSERT}
+  | {kind: DACommandType.CURSOR_LEFT}
+  | {kind: DACommandType.CURSOR_RIGHT}
+  | {kind: DACommandType.CURSOR_UP}
+  | {kind: DACommandType.CURSOR_DOWN}
+  | {kind: DACommandType.CURSOR_LINE_START}
+  | {kind: DACommandType.CURSOR_LINE_END}
+  | {kind: DACommandType.CURSOR_WORD_FORWARD}
+  | {kind: DACommandType.CURSOR_WORD_BACK}
+  | {kind: DACommandType.DELETE_CHAR_AT_CURSOR}

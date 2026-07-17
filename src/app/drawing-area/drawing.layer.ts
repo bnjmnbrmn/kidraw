@@ -200,29 +200,18 @@ export class DrawingLayer extends Konva.Layer {
     return this.daEdges.find(e => e.waypoints.includes(wp));
   }
 
+  /** Insert at each selected node's caret (the caret starts at the end, so
+   *  plain typing is still an append). Returns the nodes that resized. */
   appendTextToSelected(text: string): DANode[] {
-    const resized: DANode[] = [];
-    this.getSelectedDANodes().forEach(daNode => {
-      daNode.label.text(daNode.label.text() + text);
-      if (daNode.applyTextOverflow()) {
-        resized.push(daNode);
-      }
-    });
-    return resized;
+    return this.getSelectedDANodes().filter(daNode => daNode.insertAtCursor(text));
   }
 
-  deleteLastCharFromSelected(): DANode[] {
-    const resized: DANode[] = [];
-    this.getSelectedDANodes().forEach(daNode => {
-      const currentText = daNode.label.text();
-      if (currentText.length > 0) {
-        daNode.label.text(currentText.slice(0, -1));
-        if (daNode.applyTextOverflow()) {
-          resized.push(daNode);
-        }
-      }
-    });
-    return resized;
+  deleteBeforeCursorFromSelected(): DANode[] {
+    return this.getSelectedDANodes().filter(daNode => daNode.deleteBeforeCursor());
+  }
+
+  deleteAtCursorFromSelected(): DANode[] {
+    return this.getSelectedDANodes().filter(daNode => daNode.deleteAtCursor());
   }
 
   changeNodeShape(node: DANode, newShape: NodeShape): void {
