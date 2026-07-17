@@ -2823,6 +2823,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const dest = cand.other;
     const scale = this.drawingLayer.scaleX();
+    // Ghosts never render below their 100%-zoom size: below that, every
+    // ghost dimension (box, text, stroke, labels) is inflated by 1/scale so
+    // legibility is independent of how far out the view is. Centers stay at
+    // true layer positions — only the ghosts' size is zoom-immune.
+    const boost = Math.max(1, 1 / scale);
     // Source box as rendered — the popup's emphasis scales its group.
     const sW = source.NODE_WIDTH * source.group.scaleX();
     const sH = source.NODE_HEIGHT * source.group.scaleY();
@@ -2830,15 +2835,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dC = this.getNodeCenterInLayerCoordinates(dest);
     const dW = dest.NODE_WIDTH;
     const dH = dest.NODE_HEIGHT;
-    // Viewport in layer coordinates, inset so the ghost lands fully visible
-    // (half the destination box plus a constant screen-space margin).
+    // Viewport in layer coordinates, inset so the (boosted) ghost lands
+    // fully visible: half the rendered box plus a constant screen margin.
     const lo = {
-      x: -this.drawingLayer.x() / scale + dW / 2 + 16 / scale,
-      y: -this.drawingLayer.y() / scale + dH / 2 + 16 / scale,
+      x: -this.drawingLayer.x() / scale + dW * boost / 2 + 16 / scale,
+      y: -this.drawingLayer.y() / scale + dH * boost / 2 + 16 / scale,
     };
     const hi = {
-      x: (this.stage.width() - this.drawingLayer.x()) / scale - dW / 2 - 16 / scale,
-      y: (this.stage.height() - this.drawingLayer.y()) / scale - dH / 2 - 16 / scale,
+      x: (this.stage.width() - this.drawingLayer.x()) / scale - dW * boost / 2 - 16 / scale,
+      y: (this.stage.height() - this.drawingLayer.y()) / scale - dH * boost / 2 - 16 / scale,
     };
     let g = {x: dC.x, y: dC.y};
     const inside = (p: {x: number; y: number}) =>
@@ -2865,8 +2870,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const group = new Konva.Group({listening: false, opacity: 0.8});
     const DASH = [8, 5];
+    // Each ghost box is a boost-scaled subgroup anchored on its center, so
+    // the contents are laid out at natural (100%-zoom) dimensions.
     const ghostNode = (cx: number, cy: number, w: number, h: number, text: string) => {
-      const n = new Konva.Group({x: cx - w / 2, y: cy - h / 2});
+      const n = new Konva.Group({
+        x: cx, y: cy, offsetX: w / 2, offsetY: h / 2,
+        scaleX: boost, scaleY: boost,
+      });
       n.add(new Konva.Rect({
         width: w, height: h, cornerRadius: 10,
         fill: palette.nodeFill, stroke: palette.nodeStroke, strokeWidth: 2,
@@ -2883,7 +2893,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
     // Straight ghost edge between the two ghost boxes' borders, arrowhead
     // matching the real edge's direction; labels stacked at its midpoint.
-    const labelShapes: Konva.Shape[] = [];
+    let labelsGroup: Konva.Group | null = null;
     const len = Math.hypot(g.x - sC.x, g.y - sC.y);
     if (len > 1e-6) {
       const u = {x: (g.x - sC.x) / len, y: (g.y - sC.y) / len};
@@ -2894,36 +2904,44 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           dy !== 0 ? hh / Math.abs(dy) : Number.POSITIVE_INFINITY);
         return {x: cx + dx * s, y: cy + dy * s};
       };
-      const p0 = border(sC.x, sC.y, sW / 2, sH / 2, u.x, u.y);
-      const p1 = border(g.x, g.y, dW / 2, dH / 2, -u.x, -u.y);
+      const p0 = border(sC.x, sC.y, sW * boost / 2, sH * boost / 2, u.x, u.y);
+      const p1 = border(g.x, g.y, dW * boost / 2, dH * boost / 2, -u.x, -u.y);
       group.add(new Konva.Arrow({
         points: cand.direction === 'out'
           ? [p0.x, p0.y, p1.x, p1.y] : [p1.x, p1.y, p0.x, p0.y],
         stroke: palette.edgeStroke, fill: palette.edgeFill,
-        strokeWidth: 2.5, dash: DASH, pointerLength: 12, pointerWidth: 10,
+        strokeWidth: 2.5 * boost, dash: DASH.map(d => d * boost),
+        pointerLength: 12 * boost, pointerWidth: 10 * boost,
       }));
       const texts = cand.edge.labels.map(l => l.label).filter(t => t.trim());
-      const mid = {x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2};
-      let rowY = mid.y;
-      texts.forEach((t, i) => {
-        const txt = new Konva.Text({text: t, fontSize: 12, fill: palette.labelText, padding: 5});
-        if (i === 0) rowY = mid.y - (texts.length * (txt.height() + 4) - 4) / 2;
-        const box = {x: mid.x - txt.width() / 2, y: rowY, w: txt.width(), h: txt.height()};
-        labelShapes.push(new Konva.Rect({
-          x: box.x, y: box.y, width: box.w, height: box.h, cornerRadius: 6,
-          fill: palette.labelFill, stroke: palette.labelStroke,
-          strokeWidth: 1.5, dash: [4, 3],
-        }));
-        txt.position({x: box.x, y: box.y});
-        labelShapes.push(txt);
-        rowY += box.h + 4;
-      });
+      if (texts.length > 0) {
+        // Label stack laid out at natural size around (0,0), boost-scaled
+        // as a whole and anchored on the ghost edge's midpoint.
+        labelsGroup = new Konva.Group({
+          x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2,
+          scaleX: boost, scaleY: boost,
+        });
+        let rowY = 0;
+        texts.forEach((t, i) => {
+          const txt = new Konva.Text({text: t, fontSize: 12, fill: palette.labelText, padding: 5});
+          if (i === 0) rowY = -(texts.length * (txt.height() + 4) - 4) / 2;
+          const box = {x: -txt.width() / 2, y: rowY, w: txt.width(), h: txt.height()};
+          labelsGroup!.add(new Konva.Rect({
+            x: box.x, y: box.y, width: box.w, height: box.h, cornerRadius: 6,
+            fill: palette.labelFill, stroke: palette.labelStroke,
+            strokeWidth: 1.5, dash: [4, 3],
+          }));
+          txt.position({x: box.x, y: box.y});
+          labelsGroup!.add(txt);
+          rowY += box.h + 4;
+        });
+      }
     }
     ghostNode(sC.x, sC.y, sW, sH, (source.label?.text() ?? '').trim());
     ghostNode(g.x, g.y, dW, dH, (dest.label?.text() ?? '').trim());
     // Labels last: they stay readable even when a short ghost edge tucks
     // them under one of the ghost boxes.
-    labelShapes.forEach(s => group.add(s));
+    if (labelsGroup) group.add(labelsGroup);
     this.navGhostGroup = group;
     this.drawingLayer.add(group); // after the node group: ghosts render on top
   }
