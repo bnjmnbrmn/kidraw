@@ -242,6 +242,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navSource: DANode | null = null;
   /** Original transform of the popup's enlarged source node. */
   private navSourceEmphasis: {node: DANode; scaleX: number; scaleY: number; x: number; y: number} | null = null;
+  /** The candidate currently highlighted in the popup — drives the ghost
+   *  preview and which side of the source the popup sits on. */
+  private navHighlightCand: NavCandidate | null = null;
+  /** Translucent dashed preview of the highlighted candidate (copies of the
+   *  source node, a straightened edge + labels, and the destination node
+   *  pulled into the viewport). The view itself never moves while browsing. */
+  private navGhostGroup: Konva.Group | null = null;
   /** Pre-gather control points of every edge Gather re-routed, so Ungather
    *  restores the wiring exactly. */
   private gatheredEdgeControlPoints = new Map<DAEdge, EdgeControlPoint[]>();
@@ -2607,6 +2614,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.navPopupRevealTimer = window.setTimeout(() => {
         this.navPopupRevealTimer = null;
         this.navPopupHidden = false;
+        // The ghost preview is suppressed while concealed (a tap-walk
+        // shouldn't flash canvas UI either) — paint it on reveal.
+        if (this.navHighlightCand) {
+          this.renderNavGhost(this.navHighlightCand);
+          this.drawingLayer.batchDraw();
+        }
       }, 500);
     }
     const sC = this.getNodeCenterInLayerCoordinates(source);
@@ -2621,6 +2634,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const hasForward = ordered.some(c => c.direction === forwardDir);
     this.navCandidates = new Map(ordered.map(c => [c.edge.id, c]));
     this.navSource = source;
+    // The popup opens with the top row selected; its highlight emit is
+    // deferred, so seed the candidate now for the initial popup placement.
+    this.navHighlightCand = ordered[0];
     this.navPopupRows = ordered.map(c => ({
       id: c.edge.id,
       glyph: c.direction === 'out' ? '→' : '←',
@@ -2639,14 +2655,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** Selection moved in the popup: glow the candidate edge, make sure both
-   *  source and candidate destination are on screen (pan, zooming out if
-   *  needed — never in), and keep the popup beside the source. */
+  /** Selection moved in the popup: glow the candidate edge and paint the
+   *  ghost preview of where it leads. The view (pan and zoom) never moves —
+   *  offscreen destinations are represented by the ghost copy instead. */
   onNavPopupHighlight(edgeId: string): void {
     const cand = this.navCandidates.get(edgeId);
     if (!cand || !this.navSource) return;
+    this.navHighlightCand = cand;
     this.setGraphNavEdge(cand.edge);
-    this.snapViewToNodePair(this.navSource, cand.other);
+    if (!this.navPopupHidden) this.renderNavGhost(cand);
     this.positionNavPopup();
     this.drawingLayer.batchDraw();
   }
@@ -2654,6 +2671,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   onNavPopupCommit(event: {id: string; walk: boolean}): void {
     const cand = this.navCandidates.get(event.id);
     const source = this.navSource;
+    this.clearNavGhost();
+    this.navHighlightCand = null;
     this.restoreNavSourceEmphasis();
     if (!cand || !source) {
       this.closeNavPopup();
@@ -2671,6 +2690,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Escape / backdrop: close without moving. The crosshairs return to the
    *  source node so the traversal anchor stays meaningful. */
   closeNavPopup(): void {
+    this.clearNavGhost();
+    this.navHighlightCand = null;
     this.restoreNavSourceEmphasis();
     this.setGraphNavEdge(null);
     const source = this.navSource;
@@ -2782,38 +2803,134 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
   }
 
-  /** Both boxes on screen: no-op when they already are; otherwise pan to
-   *  their union's center, zooming out (never in) just enough to fit. */
-  private snapViewToNodePair(a: DANode, b: DANode): void {
-    const MARGIN = 70;
-    const rects = [a, b].map(n => ({
-      x: n.group.x(), y: n.group.y(), w: n.NODE_WIDTH, h: n.NODE_HEIGHT,
-    }));
-    const minX = Math.min(...rects.map(r => r.x)) - MARGIN;
-    const minY = Math.min(...rects.map(r => r.y)) - MARGIN;
-    const maxX = Math.max(...rects.map(r => r.x + r.w)) + MARGIN;
-    const maxY = Math.max(...rects.map(r => r.y + r.h)) + MARGIN;
-    const scale = this.drawingLayer.scaleX();
-    const sw = this.stage.width();
-    const sh = this.stage.height();
-    const visible = (r: {x: number; y: number; w: number; h: number}) => {
-      const x0 = this.drawingLayer.x() + r.x * scale;
-      const y0 = this.drawingLayer.y() + r.y * scale;
-      return x0 >= 0 && y0 >= 0 && x0 + r.w * scale <= sw && y0 + r.h * scale <= sh;
-    };
-    if (rects.every(visible)) return;
-    const fit = Math.min(sw / (maxX - minX), sh / (maxY - minY));
-    const newScale = Math.min(scale, fit);
-    this.drawingLayer.scale({x: newScale, y: newScale});
-    this.drawingLayer.position({
-      x: sw / 2 - ((minX + maxX) / 2) * newScale,
-      y: sh / 2 - ((minY + maxY) / 2) * newScale,
-    });
+  private clearNavGhost(): void {
+    if (!this.navGhostGroup) return;
+    this.navGhostGroup.destroy();
+    this.navGhostGroup = null;
   }
 
-  /** Beside the source node, on the side with the fewest candidate
-   *  destinations, so the popup occludes as little as possible of where
-   *  you might be going. */
+  /** Ghost preview of the highlighted candidate: translucent dashed copies
+   *  of the source node, a straight edge with its labels, and the
+   *  destination node. An offscreen destination's ghost slides along the
+   *  source→destination ray until it fits in the viewport, so the bearing
+   *  (and therefore the sense of where you're headed) is preserved. The
+   *  straight ghost edge may cross real nodes and edges — that's the
+   *  accepted cost of keeping it cheap. */
+  private renderNavGhost(cand: NavCandidate): void {
+    this.clearNavGhost();
+    const source = this.navSource;
+    if (!source) return;
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const dest = cand.other;
+    const scale = this.drawingLayer.scaleX();
+    // Source box as rendered — the popup's emphasis scales its group.
+    const sW = source.NODE_WIDTH * source.group.scaleX();
+    const sH = source.NODE_HEIGHT * source.group.scaleY();
+    const sC = {x: source.group.x() + sW / 2, y: source.group.y() + sH / 2};
+    const dC = this.getNodeCenterInLayerCoordinates(dest);
+    const dW = dest.NODE_WIDTH;
+    const dH = dest.NODE_HEIGHT;
+    // Viewport in layer coordinates, inset so the ghost lands fully visible
+    // (half the destination box plus a constant screen-space margin).
+    const lo = {
+      x: -this.drawingLayer.x() / scale + dW / 2 + 16 / scale,
+      y: -this.drawingLayer.y() / scale + dH / 2 + 16 / scale,
+    };
+    const hi = {
+      x: (this.stage.width() - this.drawingLayer.x()) / scale - dW / 2 - 16 / scale,
+      y: (this.stage.height() - this.drawingLayer.y()) / scale - dH / 2 - 16 / scale,
+    };
+    let g = {x: dC.x, y: dC.y};
+    const inside = (p: {x: number; y: number}) =>
+      p.x >= lo.x && p.x <= hi.x && p.y >= lo.y && p.y <= hi.y;
+    if (!inside(g)) {
+      if (inside(sC)) {
+        // Slide toward the source along the ray until inside.
+        let t = 1;
+        const axis = (s: number, d: number, min: number, max: number) => {
+          if (d > max) t = Math.min(t, (max - s) / (d - s));
+          else if (d < min) t = Math.min(t, (min - s) / (d - s));
+        };
+        axis(sC.x, dC.x, lo.x, hi.x);
+        axis(sC.y, dC.y, lo.y, hi.y);
+        g = {x: sC.x + (dC.x - sC.x) * t, y: sC.y + (dC.y - sC.y) * t};
+      } else {
+        // Source offscreen too (shouldn't happen — it's under the
+        // crosshairs): plain clamp is the best we can do.
+        g = {
+          x: Math.min(Math.max(g.x, lo.x), hi.x),
+          y: Math.min(Math.max(g.y, lo.y), hi.y),
+        };
+      }
+    }
+    const group = new Konva.Group({listening: false, opacity: 0.8});
+    const DASH = [8, 5];
+    const ghostNode = (cx: number, cy: number, w: number, h: number, text: string) => {
+      const n = new Konva.Group({x: cx - w / 2, y: cy - h / 2});
+      n.add(new Konva.Rect({
+        width: w, height: h, cornerRadius: 10,
+        fill: palette.nodeFill, stroke: palette.nodeStroke, strokeWidth: 2,
+        dash: DASH,
+        shadowColor: palette.highlightShadowColor, shadowBlur: 10, shadowOpacity: 0.35,
+      }));
+      if (text) {
+        n.add(new Konva.Text({
+          text, width: w, height: h, align: 'center', verticalAlign: 'middle',
+          fontSize: 16, fill: palette.nodeText,
+        }));
+      }
+      group.add(n);
+    };
+    // Straight ghost edge between the two ghost boxes' borders, arrowhead
+    // matching the real edge's direction; labels stacked at its midpoint.
+    const labelShapes: Konva.Shape[] = [];
+    const len = Math.hypot(g.x - sC.x, g.y - sC.y);
+    if (len > 1e-6) {
+      const u = {x: (g.x - sC.x) / len, y: (g.y - sC.y) / len};
+      const border = (cx: number, cy: number, hw: number, hh: number,
+                      dx: number, dy: number) => {
+        const s = Math.min(
+          dx !== 0 ? hw / Math.abs(dx) : Number.POSITIVE_INFINITY,
+          dy !== 0 ? hh / Math.abs(dy) : Number.POSITIVE_INFINITY);
+        return {x: cx + dx * s, y: cy + dy * s};
+      };
+      const p0 = border(sC.x, sC.y, sW / 2, sH / 2, u.x, u.y);
+      const p1 = border(g.x, g.y, dW / 2, dH / 2, -u.x, -u.y);
+      group.add(new Konva.Arrow({
+        points: cand.direction === 'out'
+          ? [p0.x, p0.y, p1.x, p1.y] : [p1.x, p1.y, p0.x, p0.y],
+        stroke: palette.edgeStroke, fill: palette.edgeFill,
+        strokeWidth: 2.5, dash: DASH, pointerLength: 12, pointerWidth: 10,
+      }));
+      const texts = cand.edge.labels.map(l => l.label).filter(t => t.trim());
+      const mid = {x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2};
+      let rowY = mid.y;
+      texts.forEach((t, i) => {
+        const txt = new Konva.Text({text: t, fontSize: 12, fill: palette.labelText, padding: 5});
+        if (i === 0) rowY = mid.y - (texts.length * (txt.height() + 4) - 4) / 2;
+        const box = {x: mid.x - txt.width() / 2, y: rowY, w: txt.width(), h: txt.height()};
+        labelShapes.push(new Konva.Rect({
+          x: box.x, y: box.y, width: box.w, height: box.h, cornerRadius: 6,
+          fill: palette.labelFill, stroke: palette.labelStroke,
+          strokeWidth: 1.5, dash: [4, 3],
+        }));
+        txt.position({x: box.x, y: box.y});
+        labelShapes.push(txt);
+        rowY += box.h + 4;
+      });
+    }
+    ghostNode(sC.x, sC.y, sW, sH, (source.label?.text() ?? '').trim());
+    ghostNode(g.x, g.y, dW, dH, (dest.label?.text() ?? '').trim());
+    // Labels last: they stay readable even when a short ghost edge tucks
+    // them under one of the ghost boxes.
+    labelShapes.forEach(s => group.add(s));
+    this.navGhostGroup = group;
+    this.drawingLayer.add(group); // after the node group: ghosts render on top
+  }
+
+  /** Beside the source node, on the opposite horizontal side from the
+   *  highlighted destination (destination east → popup west), so the popup
+   *  never sits between you and where you're going. */
   private positionNavPopup(): void {
     if (!this.navSource) return;
     // Estimates for edge clamping — keep in sync with nav-popup.component.css
@@ -2829,26 +2946,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       w: n.NODE_WIDTH * scale,
       h: n.NODE_HEIGHT * scale,
     };
-    const counts = {right: 0, left: 0, below: 0, above: 0};
-    for (const cand of this.navCandidates.values()) {
-      const c = this.getNodeCenterInLayerCoordinates(cand.other);
-      const x = this.drawingLayer.x() + c.x * scale;
-      const y = this.drawingLayer.y() + c.y * scale;
-      if (x > rect.x + rect.w) counts.right++;
-      if (x < rect.x) counts.left++;
-      if (y > rect.y + rect.h) counts.below++;
-      if (y < rect.y) counts.above++;
+    let destEast = true;
+    if (this.navHighlightCand) {
+      const sC = this.getNodeCenterInLayerCoordinates(n);
+      const dC = this.getNodeCenterInLayerCoordinates(this.navHighlightCand.other);
+      destEast = dC.x >= sC.x;
     }
-    const sides: (keyof typeof counts)[] = ['right', 'left', 'below', 'above'];
-    const side = sides.reduce((best, s2) => counts[s2] < counts[best] ? s2 : best, 'right' as keyof typeof counts);
-    let left = rect.x;
-    let top = rect.y;
-    if (side === 'right') { left = rect.x + rect.w + GAP; }
-    else if (side === 'left') { left = rect.x - GAP - POPUP_W; }
-    else if (side === 'below') { top = rect.y + rect.h + GAP; }
-    else { top = rect.y - GAP - POPUP_H; }
+    const left = destEast ? rect.x - GAP - POPUP_W : rect.x + rect.w + GAP;
     this.navPopupLeft = Math.max(8, Math.min(left, this.stage.width() - POPUP_W - 8));
-    this.navPopupTop = Math.max(8, Math.min(top, this.stage.height() - POPUP_H - 8));
+    this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
   }
 
   /** The popup's source node grows a little so it reads as "you are here";
