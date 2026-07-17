@@ -484,6 +484,32 @@ async function main() {
     s.under === 'B' && /newest/.test(statusAfter ?? ''),
     `under=${s.under} status=${JSON.stringify(statusAfter)}`);
 
+  // --- 11. A stale selection must not hijack the traversal anchor (the
+  // 2026-07-16 dogfood bug: with a node selected, every Go re-anchored at
+  // it, so navigation kept restarting from the same node). ---
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    dl.getDANodes().find(n => n.id === 'A').isSelected = true;
+    dl.batchDraw();
+  });
+  await placeOn('A');
+  await page.keyboard.press('f'); // A → B (single option, tap commits)
+  await page.waitForTimeout(500);
+  s = await state();
+  check('11a: first f from the selected node walks to B', s.under === 'B', `under=${s.under}`);
+  await page.keyboard.press('f'); // must anchor at B (crosshairs), NOT selected A
+  await page.waitForTimeout(500);
+  s = await state();
+  check('11b: second f continues from B — selection does not re-anchor the journey',
+    s.under === 'C' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
+  const selectionSurvived = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.drawingLayer.getDANodes().find(n => n.id === 'A').isSelected;
+  });
+  check('11c: the selection itself survives the journey untouched', selectionSurvived === true,
+    `selected=${selectionSurvived}`);
+
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);

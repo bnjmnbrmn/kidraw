@@ -3646,13 +3646,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Auto-select the first edge of the given direction on a node, if any. */
+  /** Anchor priority: the node you're on (crosshairs), then the traversal's
+   *  current node — an in-progress journey continues from where it is — and
+   *  only then the selection. A selection is a way to START a journey; it
+   *  must not keep hijacking the anchor after the traversal moves on
+   *  (checking it first made every Go re-anchor at the selected node,
+   *  2026-07-16 dogfood bug). */
   private getTraversalAnchorNode(): DANode | null {
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedNodes.length > 0) {
-      this.log.log('[getTraversalAnchorNode] selected:', selectedNodes[0].id);
-      return selectedNodes[0];
-    }
-
     const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
     if (nodesUnderCrosshairs.length > 0) {
       this.log.log('[getTraversalAnchorNode] under crosshairs:', nodesUnderCrosshairs[0].id);
@@ -3663,6 +3663,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (navNode) {
       this.log.log('[getTraversalAnchorNode] traversal current node:', navNode.id);
       return navNode;
+    }
+
+    const selectedNodes = this.drawingLayer.getSelectedDANodes();
+    if (selectedNodes.length > 0) {
+      this.log.log('[getTraversalAnchorNode] selected:', selectedNodes[0].id);
+      return selectedNodes[0];
     }
 
     this.log.log('[getTraversalAnchorNode] no anchor node found');
