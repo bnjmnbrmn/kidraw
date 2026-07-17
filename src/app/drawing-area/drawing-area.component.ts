@@ -2615,12 +2615,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.navPopupRevealTimer = null;
         this.navPopupHidden = false;
         // The ghost preview is suppressed while concealed (a tap-walk
-        // shouldn't flash canvas UI either) — paint it on reveal.
+        // shouldn't flash canvas UI either) — paint it on reveal. The
+        // crosshairs go with it: they'd occlude the source ghost.
+        this.crosshairsLayer.hideCrosshairs();
+        this.crosshairsLayer.batchDraw();
         if (this.navHighlightCand) {
           this.renderNavGhost(this.navHighlightCand);
           this.drawingLayer.batchDraw();
         }
       }, 500);
+    } else {
+      // Graph navigation owns the canvas: the crosshairs would sit right on
+      // the source node, occluding it and the ghost — hide until the
+      // popup closes.
+      this.crosshairsLayer.hideCrosshairs();
+      this.crosshairsLayer.batchDraw();
     }
     const sC = this.getNodeCenterInLayerCoordinates(source);
     const bearing = (c: NavCandidate) => {
@@ -2683,6 +2692,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.navSource = null;
       this.clearNavPopupRevealTimer();
       this.daOut.emit({kind: 'popup-state', open: false});
+      this.crosshairsLayer.showCrosshairs();
     }
     this.navCommitTo(source, cand, event.walk);
   }
@@ -2693,6 +2703,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.clearNavGhost();
     this.navHighlightCand = null;
     this.restoreNavSourceEmphasis();
+    this.crosshairsLayer.showCrosshairs();
     this.setGraphNavEdge(null);
     const source = this.navSource;
     this.navSource = null;
