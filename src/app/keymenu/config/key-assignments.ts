@@ -103,6 +103,10 @@ export interface KeymenuKeyAssignments {
     readonly centerOnCrosshairs: KeyString;
   };
   readonly dragSpeed: SpeedModifierKeys;
+  /** Post-insert drag phase directions. The hub key is right-hand in the vim
+   *  profile, so these must be left-hand (wasd); ijkl's hub key is left-hand
+   *  'e', so its normal movement keys work. */
+  readonly hubDrag: DirectionalKeyAssignments;
   readonly moveByNode: {
     readonly submenu: KeyString;
     readonly nodeJump: DirectionalKeyAssignments;
@@ -251,6 +255,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     bigger: 'c',
     smaller: 'z',
   },
+  hubDrag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
@@ -367,6 +372,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     bigger: 'x',
     smaller: 'c',
   },
+  hubDrag: {up: 'w', left: 'a', down: 's', right: 'd'},
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},

@@ -183,12 +183,13 @@ async function main() {
   await page.waitForTimeout(150);
   let before = await state();
   let fresh = before.nodes.find(n => n.selected);
-  await page.keyboard.press('l');
-  await page.keyboard.press('l');
+  // left-hand drag keys (wasd) — the right hand is busy holding i
+  await page.keyboard.press('d');
+  await page.keyboard.press('d');
   await page.waitForTimeout(150);
   s = await state();
   let after = s.nodes.find(n => n.selected);
-  check('movement keys drag the fresh node while i held', after && fresh && after.x > fresh.x,
+  check('left-hand d drags the fresh node right while i held', after && fresh && after.x > fresh.x,
     `x ${fresh?.x} → ${after?.x}`);
   await page.keyboard.up('i');
   await page.waitForTimeout(150);
@@ -210,12 +211,12 @@ async function main() {
   await page.waitForTimeout(150);
   before = await state();
   fresh = before.nodes.find(n => n.selected);
-  await page.keyboard.press('j');
-  await page.keyboard.press('j');
+  await page.keyboard.press('s');
+  await page.keyboard.press('s');
   await page.waitForTimeout(150);
   s = await state();
   after = s.nodes.find(n => n.selected);
-  check('drag works after releasing the connect modifier (only i held)',
+  check('left-hand s drags down after releasing the connect modifier (only i held)',
     after && fresh && after.y > fresh.y, `y ${fresh?.y} → ${after?.y}`);
   check('connected edge exists from the drag anchor', s.edges.some(e => e.from === 'dragged'),
     JSON.stringify(s.edges));
