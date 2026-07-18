@@ -225,7 +225,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 's',
   },
   panZoom: {
-    submenu: 'z',
+    submenu: 't',
     speed: { bigger: 'e', smaller: 'a' },
     zoomIn: 'o',
     zoomOut: 'u',
@@ -337,7 +337,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 'd',
   },
   panZoom: {
-    submenu: 'z',
+    submenu: 't',
     speed: { bigger: 'w', smaller: 'e' },
     zoomIn: 'i',
     zoomOut: 'o',
