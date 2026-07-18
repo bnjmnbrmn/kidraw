@@ -138,19 +138,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  /** Drag submenu for the post-insert phase: the regular drag bindings plus
-   *  the hubDrag directions — the hub key is held in the right hand (vim
-   *  `i`), so the drag keys must be reachable with the left (wasd). */
-  private get hubDragSubmenuConfig(): SubmenuConfig {
-    const hd = this.keyAssignments.hubDrag;
-    return {
-      ...this.dragSubmenuConfig,
-      [hd.up]: new LabeledAction('Drag Up', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP})),
-      [hd.left]: new LabeledAction('Drag Left', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT})),
-      [hd.down]: new LabeledAction('Drag Down', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN})),
-      [hd.right]: new LabeledAction('Drag Right', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT})),
-    } as SubmenuConfig;
-  }
 
   get activeProfileHints(): readonly ProfileHint[] {
     const movementKeys = this.getDirectionalKeyHint(this.keyAssignments.movement);
@@ -463,7 +450,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       mode.popSubmenuAndChildren(mode.submenuKeyStringStack[2] as KeyString);
     }
     mode.actionSchedulingEnabled = false;
-    mode.replaceTopSubmenu(this.hubDragSubmenuConfig);
+    mode.replaceTopSubmenu(this.dragSubmenuConfig);
     queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
   }
 

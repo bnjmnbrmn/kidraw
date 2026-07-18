@@ -20,7 +20,7 @@ Follow the pattern in `tools/playwright-screenshot.js` and `tools/repro-*.js`:
 
 - Real key events via `page.keyboard.down/up` against `document.body` — the
   keymenu listens on document-level HostListeners. Vim profile is the default
-  (held `i` = insert/connect hub, `f` Go/nav popup, `v` select, `y` status, `t` pan/zoom, `r` move-by-node, hjkl movement).
+  (held `a` = insert/connect hub, `f` Go/nav popup, `v` select, `y` status, `t` pan/zoom, `g` move-by-node, `z` keyboard toggle, hjkl movement).
 - Held-key chords: keydown trigger, wait ~250ms, keydown child, release child,
   release trigger.
 - Load a sample graph: set `select.sample-graph-select` to e.g. `basic` and

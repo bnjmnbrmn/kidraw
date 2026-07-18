@@ -1,18 +1,18 @@
 /*
  * Verify the unified insert/connect hub (vim profile, real keys):
  *
- *   1. hold i → d inserts a box at the crosshairs; releasing i enters
+ *   1. hold a → d inserts a box at the crosshairs; releasing a enters
  *      labelEdit (covered more fully in repro-binding-reorg).
- *   2. hold i → hold u → d births a node wired anchor → new (anchor = the
- *      selected node); releasing i drops into labelEdit on the new node.
- *   3. hold i → hold o → c births a circle wired new → anchor.
+ *   2. hold a → hold u → d births a node wired anchor → new (anchor = the
+ *      selected node); releasing a drops into labelEdit on the new node.
+ *   3. hold a → hold o → c births a circle wired new → anchor.
  *   4. With no anchor (nothing selected, no traversal node), the connected
- *      insert warns and creates nothing — and releasing i must NOT enter
+ *      insert warns and creates nothing — and releasing a must NOT enter
  *      labelEdit.
- *   5. hold i → g inserts a junction and releasing i stays in normal mode
+ *   5. hold a → g inserts a junction and releasing a stays in normal mode
  *      (junctions have no label).
  *   6. Post-insert drag phase: after any hub insert, movement keys drag the
- *      fresh node while the hub key stays held — including after a
+ *      fresh node while a stays held — including after a
  *      connected insert with the connect modifier already released.
  */
 const { chromium } = require('@playwright/test');
@@ -81,14 +81,14 @@ async function main() {
 
   // --- 1. Plain insert: i → d, type the anchor's label ---
   await park(400, 300);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.press('d');
   await page.waitForTimeout(120);
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(150);
   let s = await state();
-  check('i→d inserts a box and enters labelEdit', s.nodes.length === 1 && s.mode === 'labelEdit',
+  check('a→d inserts a box and enters labelEdit', s.nodes.length === 1 && s.mode === 'labelEdit',
     JSON.stringify({n: s.nodes.length, mode: s.mode}));
   await page.keyboard.type('root', { delay: 25 });
   await escapeToNormal();
@@ -96,40 +96,40 @@ async function main() {
   // --- 2. Connected out: anchor selected, i+u+d at an empty spot ---
   await selectOnly('root');
   await park(700, 300);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.down('u');
   await page.waitForTimeout(150);
   await page.keyboard.press('d');
   await page.waitForTimeout(150);
   await page.keyboard.up('u');
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
-  check('i+u+d births a connected node', s.nodes.length === 2 && s.edges.length === 1,
+  check('a+u+d births a connected node', s.nodes.length === 2 && s.edges.length === 1,
     JSON.stringify({nodes: s.nodes.length, edges: s.edges}));
   // the unlabeled new node reports its shape ('box') as the fallback name
   check('edge wires anchor → new', s.edges[0]?.from === 'root' && s.edges[0]?.to === 'box',
     JSON.stringify(s.edges[0]));
-  check('releasing i enters labelEdit on the new node', s.mode === 'labelEdit', s.mode);
+  check('releasing a enters labelEdit on the new node', s.mode === 'labelEdit', s.mode);
   await page.keyboard.type('child', { delay: 25 });
   await escapeToNormal();
 
   // --- 3. Connected in: i+o+c wires new → anchor ---
   await selectOnly('child');
   await park(1000, 300);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.down('o');
   await page.waitForTimeout(150);
   await page.keyboard.press('c');
   await page.waitForTimeout(150);
   await page.keyboard.up('o');
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
   const inEdge = s.edges.find(e => e.to === 'child' && e.from !== 'root');
-  check('i+o+c births a circle wired new → anchor', s.nodes.length === 3 && !!inEdge,
+  check('a+o+c births a circle wired new → anchor', s.nodes.length === 3 && !!inEdge,
     JSON.stringify(s.edges));
   check('new node is a circle', s.nodes.some(n => n.shape === 'circle'), JSON.stringify(s.nodes));
   check('labelEdit again on release', s.mode === 'labelEdit', s.mode);
@@ -144,17 +144,17 @@ async function main() {
     da.drawingLayer.batchDraw();
   });
   await park(400, 600);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.down('u');
   await page.waitForTimeout(150);
   await page.keyboard.press('d');
   await page.waitForTimeout(150);
   await page.keyboard.up('u');
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
-  check('anchorless i+u+d creates nothing', s.nodes.length === 3 && s.edges.length === 2,
+  check('anchorless a+u+d creates nothing', s.nodes.length === 3 && s.edges.length === 2,
     JSON.stringify({nodes: s.nodes.length, edges: s.edges.length}));
   check('anchorless attempt warns', s.statuses.some(m => m.includes('anchor')),
     JSON.stringify(s.statuses.slice(-2)));
@@ -162,14 +162,14 @@ async function main() {
 
   // --- 5. Junction insert never enters labelEdit ---
   await park(700, 600);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.press('g');
   await page.waitForTimeout(120);
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(150);
   s = await state();
-  check('i→g inserts a junction', s.nodes.filter(n => n.shape === 'junction').length === 1,
+  check('a→g inserts a junction', s.nodes.filter(n => n.shape === 'junction').length === 1,
     JSON.stringify(s.nodes.map(n => n.shape)));
   check('junction insert stays in normal mode', s.mode === 'normal', s.mode);
 
@@ -177,21 +177,21 @@ async function main() {
   // Plain insert: keep holding i after d and drag right with l.
   await escapeToNormal();
   await park(1000, 600);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.press('d');
   await page.waitForTimeout(150);
   let before = await state();
   let fresh = before.nodes.find(n => n.selected);
-  // left-hand drag keys (wasd) — the right hand is busy holding i
-  await page.keyboard.press('d');
-  await page.keyboard.press('d');
+  // right-hand drag keys (hjkl) — the left hand holds the a hub
+  await page.keyboard.press('l');
+  await page.keyboard.press('l');
   await page.waitForTimeout(150);
   s = await state();
   let after = s.nodes.find(n => n.selected);
-  check('left-hand d drags the fresh node right while i held', after && fresh && after.x > fresh.x,
+  check('l drags the fresh node right while a held', after && fresh && after.x > fresh.x,
     `x ${fresh?.x} → ${after?.x}`);
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(150);
   s = await state();
   check('release after drag still enters labelEdit', s.mode === 'labelEdit', s.mode);
@@ -201,7 +201,7 @@ async function main() {
   // Connected insert: release u first, then drag with only i held.
   await selectOnly('dragged');
   await park(1300, 600);
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.down('u');
   await page.waitForTimeout(150);
@@ -211,16 +211,16 @@ async function main() {
   await page.waitForTimeout(150);
   before = await state();
   fresh = before.nodes.find(n => n.selected);
-  await page.keyboard.press('s');
-  await page.keyboard.press('s');
+  await page.keyboard.press('j');
+  await page.keyboard.press('j');
   await page.waitForTimeout(150);
   s = await state();
   after = s.nodes.find(n => n.selected);
-  check('left-hand s drags down after releasing the connect modifier (only i held)',
+  check('j drags down after releasing the connect modifier (only a held)',
     after && fresh && after.y > fresh.y, `y ${fresh?.y} → ${after?.y}`);
   check('connected edge exists from the drag anchor', s.edges.some(e => e.from === 'dragged'),
     JSON.stringify(s.edges));
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(150);
   s = await state();
   check('labelEdit after connected drag phase', s.mode === 'labelEdit', s.mode);

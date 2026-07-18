@@ -98,18 +98,18 @@ async function main() {
   });
   await page.waitForTimeout(120);
 
-  // Insert a node on empty canvas (hold i → d), type its label, escape out.
+  // Insert a node on empty canvas (hold a → d), type its label, escape out.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.tweens.forEach(t => t.finish()); da.tweens = [];
     da.crosshairsLayer.crosshairs.x = 400;
     da.crosshairsLayer.crosshairs.y = 500;
   });
-  await page.keyboard.down('i');
+  await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.press('d');
   await page.waitForTimeout(120);
-  await page.keyboard.up('i');
+  await page.keyboard.up('a');
   await page.waitForTimeout(150);
   await page.keyboard.type('fix parser', { delay: 30 });
   await page.keyboard.press('Escape');

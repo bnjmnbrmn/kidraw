@@ -28,9 +28,10 @@ export interface KeymenuKeyAssignments {
      *  status choice keys all sit in the left hand. */
     readonly statusSubmenu: KeyString;
   };
-  /** Children of the held edit/insert hub. Kinds sit in the left hand;
-   *  connectOut/connectIn are right-hand modifiers next to the held key:
-   *  hub+connectOut+shape births the node wired current → new,
+  /** Children of the held edit/insert hub. The hub key is left-hand in both
+   *  profiles, so kinds sit in the left hand next to it and the right hand
+   *  stays free for movement/drag; connectOut/connectIn are right-hand
+   *  modifiers: hub+connectOut+shape births the node wired current → new,
    *  hub+connectIn+shape wires new → current. */
   readonly insert: {
     readonly box: KeyString;
@@ -103,10 +104,6 @@ export interface KeymenuKeyAssignments {
     readonly centerOnCrosshairs: KeyString;
   };
   readonly dragSpeed: SpeedModifierKeys;
-  /** Post-insert drag phase directions. The hub key is right-hand in the vim
-   *  profile, so these must be left-hand (wasd); ijkl's hub key is left-hand
-   *  'e', so its normal movement keys work. */
-  readonly hubDrag: DirectionalKeyAssignments;
   readonly moveByNode: {
     readonly submenu: KeyString;
     readonly nodeJump: DirectionalKeyAssignments;
@@ -255,7 +252,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     bigger: 'c',
     smaller: 'z',
   },
-  hubDrag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
@@ -288,7 +284,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
   root: {
-    editSubmenu: 'i',
+    editSubmenu: 'a',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
@@ -372,7 +368,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     bigger: 'x',
     smaller: 'c',
   },
-  hubDrag: {up: 'w', left: 'a', down: 's', right: 'd'},
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},

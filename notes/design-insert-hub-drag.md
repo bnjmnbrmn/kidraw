@@ -34,14 +34,17 @@ Confirmation-driven matters: an anchorless connected insert creates nothing,
 sends no confirmation, and therefore neither strands the user in labelEdit
 nor swaps the submenu.
 
-Rhythm: `hold i → (hold u) → d → release u → wasd… → release i → type label`.
+Rhythm: `hold a → (hold u) → d → release u → hjkl… → release a → type label`.
 
-**Drag keys are left-hand (wasd) in the vim profile** — the hub key `i` and
-hjkl are all right-hand, so hjkl was physically unpressable during the hold
-(Ben's immediate feedback; the Playwright verification can't feel that).
-The `hubDrag` key-assignment section carries the per-profile choice: vim
-wasd, ijkl its normal ijkl (its hub key `e` is left-hand). The regular
-movement-key bindings remain in the phase for completeness.
+**The hub key ended on `a` (left hand), not `i`** — final round of Ben's
+same-day feedback. With the hub on right-hand `i`, hjkl was physically
+unpressable during the hold (Playwright can't feel hands; a wasd stopgap
+shipped briefly), and Ben wants hjkl for both post-insert dragging and the
+directional edge-endpoint picker (`a`+`s`+hjkl). Standing rule extracted:
+**a held key and its action keys must sit in opposite hands.** With the hub
+on left-hand `a` (ijkl profile's is `e`, also left-hand), the plain
+movement-key drag bindings suffice and the wasd special case was deleted.
+Root `i` is unbound.
 
 ## Open: "select where the edge points"
 
