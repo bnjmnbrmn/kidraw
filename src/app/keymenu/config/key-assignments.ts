@@ -117,6 +117,14 @@ export interface KeymenuKeyAssignments {
   readonly edit: {
     readonly overflowSubmenu: KeyString;
     readonly togglePin: KeyString;
+    readonly statusSubmenu: KeyString;
+  };
+  readonly status: {
+    readonly todo: KeyString;
+    readonly inProgress: KeyString;
+    readonly blocked: KeyString;
+    readonly done: KeyString;
+    readonly clear: KeyString;
   };
   readonly overflow: {
     readonly clip: KeyString;
@@ -248,7 +256,10 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'k', togglePin: 'p'},
+  edit: {overflowSubmenu: 'k', togglePin: 'p', statusSubmenu: 's'},
+  // inProgress must avoid the held Edit-submenu key ('i' in the vim profile,
+  // which would be physically unpressable while held) — 'p' = in Progress.
+  status: {todo: 't', inProgress: 'p', blocked: 'b', done: 'd', clear: 'c'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
@@ -356,7 +367,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'u', togglePin: 'p'},
+  edit: {overflowSubmenu: 'u', togglePin: 'p', statusSubmenu: 's'},
+  status: {todo: 't', inProgress: 'p', blocked: 'b', done: 'd', clear: 'c'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

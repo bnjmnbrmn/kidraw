@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
@@ -66,7 +66,8 @@ import {
   serializeGraphDocByFilename,
 } from '../lib/file-format/parser';
 import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
-import { getExtension } from '../extensions/extension-registry';
+import { getExtension, resolveIdentity } from '../extensions/extension-registry';
+import { applyExclusiveTag } from '../extensions/tag-groups';
 import {
   InlineStyleSet,
   KidrawGraphDoc,
@@ -315,6 +316,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_TEXT_OVERFLOW_MODE,
     DACommandType.SET_NODE_SHAPE,
     DACommandType.SET_DIAGRAM_TYPE,
+    DACommandType.SET_TASK_STATUS,
   ]);
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
@@ -356,6 +358,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.APPLY_LAYOUT,
     DACommandType.APPLY_EDGE_ROUTING,
     DACommandType.SET_DIAGRAM_TYPE,
+    DACommandType.SET_TASK_STATUS,
   ]);
 
 
@@ -777,6 +780,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.SET_DIAGRAM_TYPE:
         this.setDiagramType(command.typeId);
         break;
+      case DACommandType.SET_TASK_STATUS:
+        this.setTaskStatus(command.status);
+        break;
       case DACommandType.CONNECT_VAULT:
         void this.connectVault();
         break;
@@ -1078,6 +1084,41 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Apply a registered plugin: restyle existing nodes to its defaults and
    *  record it as active so new nodes follow them too. Undoable; persisted
    *  with the graph. */
+  /** Mark the targeted task nodes (selection, else topmost node under the
+   *  crosshairs) with a status from the identity's `status` tag group.
+   *  Statuses are exclusive semantic tags (`status/done` etc.), so they
+   *  persist with the graph document and survive undo/redo. */
+  private setTaskStatus(status: TaskStatus): void {
+    const group = resolveIdentity(this.drawingLayer.diagramType).tagGroups?.find(g => g.id === 'status');
+    if (!group) {
+      this.emitStatus('⚠ Task statuses need a Todo Graph (m → t)');
+      return;
+    }
+    const choice = status === 'none' ? null : group.choices.find(c => c.tag === `status/${status}`) ?? null;
+    if (status !== 'none' && choice === null) {
+      this.emitStatus(`⚠ Unknown task status: ${status}`);
+      return;
+    }
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const hovered = this.getDANodesContainingCrosshairs();
+    const targets = (selected.length > 0 ? selected
+        : hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [])
+      .filter(n => n.nodeShape !== 'junction' && n.nodeShape !== 'invisible');
+    if (targets.length === 0) {
+      this.emitStatus('⚠ Select or hover a node to set its status');
+      return;
+    }
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    for (const node of targets) {
+      node.tags = applyExclusiveTag(node.tags, group, choice);
+      node.setStatusBadge(choice);
+    }
+    this.drawingLayer.batchDraw();
+    const suffix = targets.length > 1 ? ` (${targets.length} nodes)` : '';
+    this.emitStatus(choice ? `Status: ${choice.label}${suffix}` : `Status cleared${suffix}`);
+  }
+
   private setDiagramType(typeId: string): void {
     const extension = getExtension(typeId);
     if (!extension) {

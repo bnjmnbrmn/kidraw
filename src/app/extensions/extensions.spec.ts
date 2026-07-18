@@ -2,6 +2,7 @@ import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
 import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
 import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
+import { activeTagChoice, applyExclusiveTag } from './tag-groups';
 
 describe('extensions (identity slot)', () => {
   function layerWithNodes(...nodes: DANode[]): DrawingLayer {
@@ -104,5 +105,89 @@ describe('extensions (identity slot)', () => {
     expect(resolveIdentity(undefined)).toBe(DEFAULT_EXTENSION);
     expect(resolveIdentity('no-such-type')).toBe(DEFAULT_EXTENSION);
     expect(resolveIdentity('todo-graph')).toBe(TODO_GRAPH_EXTENSION);
+  });
+});
+
+describe('extensions (tag groups / task status)', () => {
+  const statusGroup = TODO_GRAPH_EXTENSION.tagGroups!.find(g => g.id === 'status')!;
+
+  it('todo-graph declares the four task statuses', () => {
+    expect(statusGroup.choices.map(c => c.tag)).toEqual([
+      'status/todo', 'status/in-progress', 'status/blocked', 'status/done',
+    ]);
+    expect(statusGroup.choices.find(c => c.tag === 'status/done')!.dims).toBeTrue();
+  });
+
+  it('applyExclusiveTag replaces siblings and preserves unrelated tags', () => {
+    const done = statusGroup.choices.find(c => c.tag === 'status/done')!;
+    const blocked = statusGroup.choices.find(c => c.tag === 'status/blocked')!;
+
+    let tags = applyExclusiveTag(['milestone'], statusGroup, blocked);
+    expect(tags).toEqual(['milestone', 'status/blocked']);
+
+    tags = applyExclusiveTag(tags, statusGroup, done);
+    expect(tags).toEqual(['milestone', 'status/done']);
+
+    tags = applyExclusiveTag(tags, statusGroup, null);
+    expect(tags).toEqual(['milestone']);
+  });
+
+  it('activeTagChoice finds the status present on the node, none otherwise', () => {
+    expect(activeTagChoice(TODO_GRAPH_EXTENSION, ['milestone', 'status/blocked'])!.label).toBe('BLOCKED');
+    expect(activeTagChoice(TODO_GRAPH_EXTENSION, ['milestone'])).toBeNull();
+    expect(activeTagChoice(DEFAULT_EXTENSION, ['status/blocked'])).toBeNull();
+  });
+
+  it('setStatusBadge shows a badge, dims done nodes, and clears cleanly', () => {
+    const node = new DANode(0, 0, 'task');
+    const done = statusGroup.choices.find(c => c.tag === 'status/done')!;
+
+    node.setStatusBadge(done);
+    expect(node.statusBadgeVisible).toBeTrue();
+    expect(node.statusBadgeLabel).toBe('DONE');
+    expect(node.konvaGroup.opacity()).toBe(node.STATUS_DIM_OPACITY);
+    expect(node.label.textDecoration()).toBe('line-through');
+
+    node.setStatusBadge(null);
+    expect(node.statusBadgeVisible).toBeFalse();
+    expect(node.konvaGroup.opacity()).toBe(1);
+    expect(node.label.textDecoration()).toBe('');
+  });
+
+  it('junction nodes never render a status badge', () => {
+    const junction = new DANode(0, 0, '', undefined, undefined, 'junction');
+    junction.setStatusBadge(statusGroup.choices[0]);
+    expect(junction.statusBadgeVisible).toBeFalse();
+  });
+
+  it('status tags restore into badges via restoreGraph', () => {
+    const dl = new DrawingLayer();
+    dl.restoreGraph({
+      diagramType: 'todo-graph',
+      nodes: [{
+        id: 'da-1', x: 0, y: 0, text: 'task', width: 120, height: 120, fontSize: 16,
+        isSelected: false, tags: ['status/in-progress'],
+      }],
+      edges: [],
+    });
+    const node = dl.getDANodes()[0];
+    expect(node.statusBadgeVisible).toBeTrue();
+    expect(node.statusBadgeLabel).toBe('IN PROGRESS');
+  });
+
+  it('binding the default identity hides status badges but keeps the tags', () => {
+    const dl = new DrawingLayer();
+    dl.restoreGraph({
+      diagramType: 'todo-graph',
+      nodes: [{
+        id: 'da-1', x: 0, y: 0, text: 'task', width: 120, height: 120, fontSize: 16,
+        isSelected: false, tags: ['status/done'],
+      }],
+      edges: [],
+    });
+    dl.setDiagramType(DEFAULT_EXTENSION);
+    const node = dl.getDANodes()[0];
+    expect(node.statusBadgeVisible).toBeFalse();
+    expect(node.tags).toEqual(['status/done']);
   });
 });

@@ -10,6 +10,7 @@ import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
 import {KidrawExtension} from '../extensions/extension.model';
 import {resolveIdentity} from '../extensions/extension-registry';
+import {activeTagChoice} from '../extensions/tag-groups';
 
 export class DrawingLayer extends Konva.Layer {
   private readonly gridGroup: Konva.Group;
@@ -373,6 +374,16 @@ export class DrawingLayer extends Konva.Layer {
     for (const node of this.daNodes) {
       this.applyIdentityDefaultsToNode(node, extension, false);
     }
+    this.refreshTagBadges();
+  }
+
+  /** Re-derive every node's tag badge (e.g. task status) from its tags and
+   *  the bound identity's tag groups. */
+  refreshTagBadges(): void {
+    const identity = resolveIdentity(this._diagramType);
+    for (const node of this.daNodes) {
+      node.setStatusBadge(activeTagChoice(identity, node.tags));
+    }
   }
 
   get diagramType(): string {
@@ -479,6 +490,7 @@ export class DrawingLayer extends Konva.Layer {
     if (this._palette) {
       this.applyThemeColors(this._palette);
     }
+    this.refreshTagBadges();
     this.updateWaypointVisibility();
   }
 

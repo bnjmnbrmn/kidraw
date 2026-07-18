@@ -20,6 +20,10 @@ export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purple';
 
+/** Task statuses on todo graphs; 'none' clears the status. The tag persisted
+ *  on the node is `status/<value>` (see the todo-graph extension's tag group). */
+export type TaskStatus = 'todo' | 'in-progress' | 'blocked' | 'done' | 'none';
+
 export enum DACommandType {
   MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
@@ -96,6 +100,7 @@ export enum DACommandType {
   EXPORT_ZIP = 'EXPORT_ZIP',
   CYCLE_DISPLAY = 'CYCLE_DISPLAY',
   SET_DIAGRAM_TYPE = 'SET_DIAGRAM_TYPE',
+  SET_TASK_STATUS = 'SET_TASK_STATUS',
   CONNECT_VAULT = 'CONNECT_VAULT',
   VAULT_OPEN = 'VAULT_OPEN',
   VAULT_SAVE_AS = 'VAULT_SAVE_AS',
@@ -198,6 +203,7 @@ export type DACommand =
   | {kind: DACommandType.EXPORT_ZIP}
   | {kind: DACommandType.CYCLE_DISPLAY}
   | {kind: DACommandType.SET_DIAGRAM_TYPE; typeId: string}
+  | {kind: DACommandType.SET_TASK_STATUS; status: TaskStatus}
   | {kind: DACommandType.CONNECT_VAULT}
   | {kind: DACommandType.VAULT_OPEN}
   | {kind: DACommandType.VAULT_SAVE_AS}

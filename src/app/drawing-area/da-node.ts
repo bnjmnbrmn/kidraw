@@ -33,6 +33,11 @@ export class DANode {
   private _showPinIndicator: boolean = false;
   private readonly _resizeHandle: Konva.Circle;
   private _resizeHandleVisible: boolean = false;
+  private readonly _statusBadge: Konva.Group;
+  private readonly _statusBadgeRect: Konva.Rect;
+  private readonly _statusBadgeText: Konva.Text;
+  private _statusDims = false;
+  private _statusBadgeSpec: { label: string; color: string; dims?: boolean } | null = null;
 
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
@@ -54,6 +59,10 @@ export class DANode {
 
   public readonly SELECTION_SHADOW_COLOR = '#33aaff';
   public readonly SELECTION_SHADOW_BLUR = 22;
+  public readonly STATUS_BADGE_HEIGHT = 14;
+  public readonly STATUS_BADGE_PAD_X = 6;
+  /** Opacity of the whole node when its status dims it (e.g. done tasks). */
+  public readonly STATUS_DIM_OPACITY = 0.55;
   private _selectionBlinkFrame: number | null = null;
   public readonly MIN_FONT_SIZE = 10;
   public readonly MAX_FONT_SIZE = 48;
@@ -130,6 +139,30 @@ export class DANode {
       visible: false,
     });
     this.group.add(this._pinIndicator);
+
+    // Status badge — small pill floating above the top-left corner, shown
+    // only when a tag-group choice (e.g. task status) is set on the node.
+    this._statusBadgeRect = new Konva.Rect({
+      height: this.STATUS_BADGE_HEIGHT,
+      cornerRadius: this.STATUS_BADGE_HEIGHT / 2,
+      fill: 'gray',
+    });
+    this._statusBadgeText = new Konva.Text({
+      text: '',
+      fontSize: 9,
+      fontStyle: 'bold',
+      fill: 'white',
+      x: this.STATUS_BADGE_PAD_X,
+      y: (this.STATUS_BADGE_HEIGHT - 9) / 2,
+    });
+    this._statusBadge = new Konva.Group({
+      y: -this.STATUS_BADGE_HEIGHT - 2,
+      visible: false,
+      listening: false,
+    });
+    this._statusBadge.add(this._statusBadgeRect);
+    this._statusBadge.add(this._statusBadgeText);
+    this.group.add(this._statusBadge);
 
     // Resize handle — glowing dot at bottom-right corner, hidden by default
     this._resizeHandle = new Konva.Circle({
@@ -247,6 +280,8 @@ export class DANode {
 
     // Re-apply selection state to new shape
     this.isSelected = this._isSelected;
+    // Badge eligibility depends on the shape (junction/invisible never show one)
+    this.setStatusBadge(this._statusBadgeSpec);
   }
 
   get isSelected(): boolean {
@@ -373,6 +408,32 @@ export class DANode {
   set pinned(value: boolean) {
     this._pinned = value;
     this.updatePinIndicatorVisibility();
+  }
+
+  /** Show (or clear, with null) the tag-group badge above the top-left
+   *  corner. `dims` choices additionally fade the node and strike through
+   *  its label. Junction/invisible nodes never render a badge. */
+  setStatusBadge(badge: { label: string; color: string; dims?: boolean } | null): void {
+    this._statusBadgeSpec = badge;
+    const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
+    const active = badge !== null && eligible;
+    this._statusBadge.visible(active);
+    this._statusDims = active && badge.dims === true;
+    this.group.opacity(this._statusDims ? this.STATUS_DIM_OPACITY : 1);
+    this._label.textDecoration(this._statusDims ? 'line-through' : '');
+    if (!active) return;
+    this._statusBadgeText.text(badge.label);
+    this._statusBadgeText.fill('white');
+    this._statusBadgeRect.fill(badge.color);
+    this._statusBadgeRect.width(this._statusBadgeText.width() + this.STATUS_BADGE_PAD_X * 2);
+  }
+
+  get statusBadgeVisible(): boolean {
+    return this._statusBadge.visible();
+  }
+
+  get statusBadgeLabel(): string {
+    return this._statusBadgeText.text();
   }
 
   setPinIndicatorVisible(show: boolean): void {

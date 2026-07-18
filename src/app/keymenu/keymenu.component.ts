@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode} from '../drawing-area/command.model';
 import {EditContext} from '../drawing-area/da-notification.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
@@ -504,6 +504,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
       [edit.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
+      [edit.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
+    } as SubmenuConfig;
+  }
+
+  private buildStatusSubmenuConfig(): SubmenuConfig {
+    const status = this.keyAssignments.status;
+    const emit = (s: TaskStatus) => () => this.keyMenuOut.emit({kind: DACommandType.SET_TASK_STATUS, status: s});
+    return {
+      [status.todo]:       new LabeledAction('To Do',       emit('todo'), false),
+      [status.inProgress]: new LabeledAction('In Progress', emit('in-progress'), false),
+      [status.blocked]:    new LabeledAction('Blocked',     emit('blocked'), false),
+      [status.done]:       new LabeledAction('Done',        emit('done'), false),
+      [status.clear]:      new LabeledAction('No Status',   emit('none'), false),
     } as SubmenuConfig;
   }
 
