@@ -9,12 +9,13 @@ import { KidrawGraphDoc, KidrawStyleSet } from '../lib/file-format/types';
 
 // Dev-only draft mirror: every draft save is also POSTed to the local log
 // collector (tools/log-server.js), which writes tools/draft-mirror.json so
-// an agent on the dev box can see the graph currently being edited. Same
-// host split as DebugLogService: local dev talks straight to the collector;
-// remote hosts (kidraw.dev.bnjmnbrmn.com, phones) post same-origin to
-// /debug-log/draft, which nginx forwards.
+// an agent on the dev box can see the graph currently being edited.
+// Remote hosts only (kidraw.dev.bnjmnbrmn.com, phones), same-origin via
+// nginx: localhost loads are almost always Playwright repro/QA runs, and
+// their throwaway test drafts were clobbering the mirror of the real
+// session (2026-07-18).
 const DRAFT_MIRROR_URL = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  ? 'http://localhost:9222/draft'
+  ? null
   : '/debug-log/draft';
 
 /**
@@ -73,6 +74,7 @@ export class DraftStorageService {
    *  any failure is swallowed — the mirror is an observation channel,
    *  never a dependency of saving. */
   private mirror(json: string): void {
+    if (DRAFT_MIRROR_URL === null) return;
     try {
       if (!(navigator.sendBeacon && navigator.sendBeacon(DRAFT_MIRROR_URL, json))) {
         fetch(DRAFT_MIRROR_URL, { method: 'POST', body: json, keepalive: true })
