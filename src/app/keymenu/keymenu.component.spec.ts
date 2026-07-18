@@ -106,7 +106,7 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('should have nav submenu on r with zoom inside, not at root level', () => {
+  it('should have pan/zoom submenu on z with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
     const emitSpy = spyOn(component.keyMenuOut, 'emit');
@@ -120,8 +120,10 @@ describe('KeymenuComponent', () => {
     expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
+    // 2026-07-18 rebind: Pan/Zoom moved r → z, Move by node t → r.
+    const panZoomSubmenu = rootConfig['z'] as LabeledSubmenuConfig;
     expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    expect((rootConfig['r'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
     // Zoom should be inside the pan/zoom submenu
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
     expect(zoomIn instanceof LabeledAction).toBeTrue();
@@ -146,11 +148,12 @@ describe('KeymenuComponent', () => {
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
-    // Move-by-node submenu at 't'
-    const moveByNodeSubmenu = rootConfig['t'] as LabeledSubmenuConfig;
+    // Move-by-node submenu at 'r' (rebind 2026-07-18); 't' is now unbound
+    const moveByNodeSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
     expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
+    expect(rootConfig['t']).toBeUndefined();
 
     // Go at 'f': one-shot tap emitting the smart traverse (the nav popup
     // handles everything the old move-by-graph submenu did).

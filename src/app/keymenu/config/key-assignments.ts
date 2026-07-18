@@ -225,7 +225,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 's',
   },
   panZoom: {
-    submenu: 'r',
+    submenu: 'z',
     speed: { bigger: 'e', smaller: 'a' },
     zoomIn: 'o',
     zoomOut: 'u',
@@ -238,7 +238,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 'z',
   },
   moveByNode: {
-    submenu: 't',
+    submenu: 'r',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
   },
   ctrl: {submenu: 'Control'},
@@ -337,7 +337,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 'd',
   },
   panZoom: {
-    submenu: 'r',
+    submenu: 'z',
     speed: { bigger: 'w', smaller: 'e' },
     zoomIn: 'i',
     zoomOut: 'o',
@@ -350,7 +350,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 'c',
   },
   moveByNode: {
-    submenu: 't',
+    submenu: 'r',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
   },
   ctrl: {submenu: 'Control'},
