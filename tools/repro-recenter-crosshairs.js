@@ -1,5 +1,5 @@
 /*
- * Verify Center on Xhairs (t → c, vim profile): vim-zz for the canvas.
+ * Verify Center on Xhairs (r → u, vim profile): vim-zz for the canvas.
  * Pans the view so the graph point under the crosshairs lands at screen
  * center; the crosshairs stay over the same graph point; zoom unchanged.
  */
@@ -54,12 +54,12 @@ async function main() {
   const offCenter = Math.hypot(before.xh.x - before.stage.w / 2, before.xh.y - before.stage.h / 2);
   check('crosshairs start off-center', offCenter > 200, offCenter.toFixed(0));
 
-  // t held → c
-  await page.keyboard.down('t');
+  // r held → u
+  await page.keyboard.down('r');
   await page.waitForTimeout(250);
-  await page.keyboard.press('c');
+  await page.keyboard.press('u');
   await page.waitForTimeout(150);
-  await page.keyboard.up('t');
+  await page.keyboard.up('r');
   await page.waitForTimeout(700); // let the recenter tween finish
 
   const after = await state();
@@ -71,11 +71,11 @@ async function main() {
   check('zoom unchanged', Math.abs(after.scale - before.scale) < 1e-9, `${before.scale} → ${after.scale}`);
 
   // Idempotent: running it again keeps everything put.
-  await page.keyboard.down('t');
+  await page.keyboard.down('r');
   await page.waitForTimeout(250);
-  await page.keyboard.press('c');
+  await page.keyboard.press('u');
   await page.waitForTimeout(150);
-  await page.keyboard.up('t');
+  await page.keyboard.up('r');
   await page.waitForTimeout(700);
   const again = await state();
   const drift2 = Math.hypot(again.layerPt.x - after.layerPt.x, again.layerPt.y - after.layerPt.y);

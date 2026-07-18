@@ -120,14 +120,18 @@ describe('KeymenuComponent', () => {
     expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    // 2026-07-18 rebinds: Pan/Zoom → t, Move by node → g.
-    const panZoomSubmenu = rootConfig['t'] as LabeledSubmenuConfig;
+    // 2026-07-18 rebinds (final): Pan/Zoom back on r, Move by node → g, t unbound.
+    const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
     expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
-    // Zoom should be inside the pan/zoom submenu
+    expect(rootConfig['t']).toBeUndefined();
+    // Zoom should be inside the pan/zoom submenu, recenters on p/y/u
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
     expect(zoomIn instanceof LabeledAction).toBeTrue();
     expect(zoomIn.actionLabel).toBe('Zoom In');
+    expect((panZoomSubmenu.submenuConfig['p'] as LabeledAction).actionLabel).toBe('Recenter View');
+    expect((panZoomSubmenu.submenuConfig['y'] as LabeledAction).actionLabel).toBe('Recenter Xhairs');
+    expect((panZoomSubmenu.submenuConfig['u'] as LabeledAction).actionLabel).toBe('Center on Xhairs');
 
     // Misc submenu at 'm'
     const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
@@ -154,7 +158,6 @@ describe('KeymenuComponent', () => {
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
     expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
-    expect(rootConfig['r']).toBeUndefined();
 
     // Go at 'f': one-shot tap emitting the smart traverse (the nav popup
     // handles everything the old move-by-graph submenu did).

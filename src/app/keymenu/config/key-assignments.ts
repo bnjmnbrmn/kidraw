@@ -240,7 +240,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 's',
   },
   panZoom: {
-    submenu: 't',
+    submenu: 'r',
     speed: { bigger: 'e', smaller: 'a' },
     zoomIn: 'o',
     zoomOut: 'u',
@@ -356,13 +356,13 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     smaller: 'd',
   },
   panZoom: {
-    submenu: 't',
+    submenu: 'r',
     speed: { bigger: 'w', smaller: 'e' },
     zoomIn: 'i',
     zoomOut: 'o',
-    recenterView: 'y',
-    recenterCrosshairs: 'u',
-    centerOnCrosshairs: 'c',
+    recenterView: 'p',
+    recenterCrosshairs: 'y',
+    centerOnCrosshairs: 'u',
   },
   dragSpeed: {
     bigger: 'x',
