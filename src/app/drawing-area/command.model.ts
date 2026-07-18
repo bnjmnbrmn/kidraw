@@ -22,7 +22,7 @@ export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purpl
 
 /** Task statuses on todo graphs; 'none' clears the status. The tag persisted
  *  on the node is `status/<value>` (see the todo-graph extension's tag group). */
-export type TaskStatus = 'todo' | 'in-progress' | 'blocked' | 'done' | 'none';
+export type TaskStatus = 'draft' | 'todo' | 'in-progress' | 'blocked' | 'done' | 'none';
 
 export enum DACommandType {
   MOVE_CROSSHAIRS_LEFT = 'MOVE_CROSSHAIRS_LEFT',

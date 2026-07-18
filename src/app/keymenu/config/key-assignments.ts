@@ -7,11 +7,6 @@ export interface DirectionalKeyAssignments {
   readonly right: KeyString;
 }
 
-export interface ZoomKeyAssignments {
-  readonly out: KeyString;
-  readonly in: KeyString;
-}
-
 export interface SpeedModifierKeys {
   readonly bigger: KeyString;
   readonly smaller: KeyString;
@@ -20,7 +15,6 @@ export interface SpeedModifierKeys {
 export interface KeymenuKeyAssignments {
   readonly movement: DirectionalKeyAssignments;
   readonly drag: DirectionalKeyAssignments;
-  readonly zoom: ZoomKeyAssignments;
   readonly root: {
     readonly editSubmenu: KeyString;
     readonly insertSubmenu: KeyString;
@@ -30,6 +24,9 @@ export interface KeymenuKeyAssignments {
     readonly toggleVisibility: KeyString;
     /** Tap: smart traverse — auto-advance or the nav popup. */
     readonly go: KeyString;
+    /** Held: task-status submenu (todo graphs) — right-hand hold, the
+     *  status choice keys all sit in the left hand. */
+    readonly statusSubmenu: KeyString;
   };
   readonly insert: {
     readonly node: KeyString;
@@ -117,9 +114,9 @@ export interface KeymenuKeyAssignments {
   readonly edit: {
     readonly overflowSubmenu: KeyString;
     readonly togglePin: KeyString;
-    readonly statusSubmenu: KeyString;
   };
   readonly status: {
+    readonly draft: KeyString;
     readonly todo: KeyString;
     readonly inProgress: KeyString;
     readonly blocked: KeyString;
@@ -159,7 +156,6 @@ export interface KeymenuKeyAssignments {
 export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'i', left: 'j', down: 'k', right: 'l'},
   drag: {up: 'i', left: 'j', down: 'k', right: 'l'},
-  zoom: {out: 'p', in: 'y'},
   root: {
     editSubmenu: 'e',
     insertSubmenu: 'a',
@@ -168,6 +164,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     layoutSubmenu: 'b',
     toggleVisibility: 'g',
     go: 'f',
+    statusSubmenu: 'y',
   },
   insert: {
     node: 'j',
@@ -256,10 +253,10 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'k', togglePin: 'p', statusSubmenu: 's'},
-  // inProgress must avoid the held Edit-submenu key ('i' in the vim profile,
-  // which would be physically unpressable while held) — 'p' = in Progress.
-  status: {todo: 't', inProgress: 'p', blocked: 'b', done: 'd', clear: 'c'},
+  edit: {overflowSubmenu: 'k', togglePin: 'p'},
+  // Status submenu is held on right-hand y; every choice is a left-hand key
+  // so the chord is hold-right + tap-left. w = In Progress ("WIP").
+  status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
@@ -269,7 +266,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
 export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
-  zoom: {out: 'p', in: 'y'},
   root: {
     editSubmenu: 'i',
     insertSubmenu: 'a',
@@ -278,6 +274,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     layoutSubmenu: 'b',
     toggleVisibility: 'g',
     go: 'f',
+    statusSubmenu: 'y',
   },
   insert: {
     node: 'd',
@@ -367,8 +364,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'u', togglePin: 'p', statusSubmenu: 's'},
-  status: {todo: 't', inProgress: 'p', blocked: 'b', done: 'd', clear: 'c'},
+  edit: {overflowSubmenu: 'u', togglePin: 'p'},
+  status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

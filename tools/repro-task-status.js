@@ -1,15 +1,17 @@
 /*
  * Verify task statuses on todo graphs end to end (vim profile, real keys):
  *
- *   1. The Edit submenu (held `i` with a selection) carries a Status...
- *      submenu: t To Do, p In Progress, b Blocked, d Done, c No Status.
+ *   1. Root `y` (held, right hand) is the Status... submenu with left-hand
+ *      choices: r Draft, t To Do, w In Progress, b Blocked, d Done,
+ *      c No Status.
  *   2. On a plain (default-identity) graph, setting a status warns instead
  *      of tagging.
- *   3. On a todo graph, i→s→b marks the selected node BLOCKED (tag
- *      `status/blocked` + badge); i→s→d replaces it with DONE (exclusive
- *      tags), dims the node, and strikes through the label.
+ *   3. On a todo graph, y→b marks the selected node BLOCKED (tag
+ *      `status/blocked` + badge); y→d replaces it with DONE (exclusive
+ *      tags), dims the node, and strikes through the label; y→r marks a
+ *      hovered (unselected) node DRAFT.
  *   4. Undo restores the previous status, badge included.
- *   5. i→s→c clears the status entirely.
+ *   5. y→c clears the status entirely.
  *   6. Statuses survive a page reload via the localStorage draft.
  */
 const { chromium } = require('@playwright/test');
@@ -62,7 +64,7 @@ async function main() {
   // --- 1. Menu structure (static config probe) ---
   const menu = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    const edit = km.buildEditSubmenuConfig();
+    const root = km.buildRootSubmenuConfig();
     const status = km.buildStatusSubmenuConfig();
     const labelsOf = (cfg) => {
       const out = {};
@@ -71,11 +73,12 @@ async function main() {
       }
       return out;
     };
-    return { edit: labelsOf(edit), status: labelsOf(status) };
+    return { rootY: labelsOf(root)['y'], status: labelsOf(status) };
   });
-  check('edit submenu has Status... on s', menu.edit['s'] === 'Status...', JSON.stringify(menu.edit));
-  check('status submenu t/p/b/d/c', menu.status['t'] === 'To Do' && menu.status['p'] === 'In Progress'
-    && menu.status['b'] === 'Blocked' && menu.status['d'] === 'Done' && menu.status['c'] === 'No Status',
+  check('root y is the Status... submenu', menu.rootY === 'Status...', JSON.stringify(menu.rootY));
+  check('status submenu r/t/w/b/d/c', menu.status['r'] === 'Draft' && menu.status['t'] === 'To Do'
+    && menu.status['w'] === 'In Progress' && menu.status['b'] === 'Blocked'
+    && menu.status['d'] === 'Done' && menu.status['c'] === 'No Status',
     JSON.stringify(menu.status));
 
   // --- 2. Plain graph: setting a status warns ---
@@ -117,34 +120,31 @@ async function main() {
     && s.nodes[0].text === 'fix parser', JSON.stringify(s.nodes));
 
   // The status flow acts on the selection; re-select in case Escape cleared it.
-  const holdStatusChord = async (key) => {
-    await page.evaluate(() => {
+  const holdStatusChord = async (key, { select = true } = {}) => {
+    await page.evaluate((sel) => {
       const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-      da.drawingLayer.getDANodes()[0].isSelected = true;
+      da.drawingLayer.getDANodes()[0].isSelected = sel;
       da.drawingLayer.batchDraw();
-    });
-    await page.keyboard.down('i');
+    }, select);
+    await page.keyboard.down('y');
     await page.waitForTimeout(250);
-    await page.keyboard.down('s');
-    await page.waitForTimeout(150);
     await page.keyboard.press(key);
     await page.waitForTimeout(150);
-    await page.keyboard.up('s');
-    await page.keyboard.up('i');
+    await page.keyboard.up('y');
     await page.waitForTimeout(150);
   };
 
   await holdStatusChord('b');
   s = await info();
   let n = s.nodes[0];
-  check('i→s→b marks BLOCKED', n.tags.join() === 'status/blocked' && n.badge && n.badgeLabel === 'BLOCKED',
+  check('y→b marks BLOCKED', n.tags.join() === 'status/blocked' && n.badge && n.badgeLabel === 'BLOCKED',
     JSON.stringify(n));
   check('blocked does not dim', n.opacity === 1 && n.deco === '', JSON.stringify({o: n.opacity, deco: n.deco}));
 
   await holdStatusChord('d');
   s = await info();
   n = s.nodes[0];
-  check('i→s→d replaces with DONE (exclusive)', n.tags.join() === 'status/done' && n.badgeLabel === 'DONE',
+  check('y→d replaces with DONE (exclusive)', n.tags.join() === 'status/done' && n.badgeLabel === 'DONE',
     JSON.stringify(n.tags));
   check('done dims and strikes through', n.opacity === 0.55 && n.deco === 'line-through',
     JSON.stringify({o: n.opacity, deco: n.deco}));
@@ -159,16 +159,24 @@ async function main() {
   check('undo restores BLOCKED badge', n.tags.join() === 'status/blocked' && n.badgeLabel === 'BLOCKED'
     && n.opacity === 1, JSON.stringify(n));
 
-  // --- 5. Clear status ---
+  // --- 5. Clear status, then hover-only (unselected) marking ---
   await holdStatusChord('c');
   s = await info();
   n = s.nodes[0];
-  check('i→s→c clears the status', n.tags.length === 0 && !n.badge && n.opacity === 1, JSON.stringify(n));
+  check('y→c clears the status', n.tags.length === 0 && !n.badge && n.opacity === 1, JSON.stringify(n));
+
+  // The node sits centered on the crosshairs, so with nothing selected the
+  // chord targets the hovered node.
+  await holdStatusChord('r', { select: false });
+  s = await info();
+  n = s.nodes[0];
+  check('y→r marks a hovered unselected node DRAFT', n.tags.join() === 'status/draft'
+    && n.badgeLabel === 'DRAFT' && !n.selected, JSON.stringify(n));
 
   // --- 6. Reload persistence via the localStorage draft ---
-  await holdStatusChord('p');
+  await holdStatusChord('w');
   s = await info();
-  check('i→s→p marks IN PROGRESS', s.nodes[0].tags.join() === 'status/in-progress'
+  check('y→w marks IN PROGRESS', s.nodes[0].tags.join() === 'status/in-progress'
     && s.nodes[0].badgeLabel === 'IN PROGRESS', JSON.stringify(s.nodes[0]));
 
   await page.reload({ waitUntil: 'networkidle' });

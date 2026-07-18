@@ -432,6 +432,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
+      [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       [root.toggleVisibility]: new LabeledAction('Hide Keyboard', () => this.visibilityToggle.emit(), false),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
@@ -504,7 +505,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
       [edit.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
-      [edit.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
     } as SubmenuConfig;
   }
 
@@ -512,6 +512,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const status = this.keyAssignments.status;
     const emit = (s: TaskStatus) => () => this.keyMenuOut.emit({kind: DACommandType.SET_TASK_STATUS, status: s});
     return {
+      [status.draft]:      new LabeledAction('Draft',       emit('draft'), false),
       [status.todo]:       new LabeledAction('To Do',       emit('todo'), false),
       [status.inProgress]: new LabeledAction('In Progress', emit('in-progress'), false),
       [status.blocked]:    new LabeledAction('Blocked',     emit('blocked'), false),

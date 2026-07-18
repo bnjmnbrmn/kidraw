@@ -111,9 +111,9 @@ describe('extensions (identity slot)', () => {
 describe('extensions (tag groups / task status)', () => {
   const statusGroup = TODO_GRAPH_EXTENSION.tagGroups!.find(g => g.id === 'status')!;
 
-  it('todo-graph declares the four task statuses', () => {
+  it('todo-graph declares the five task statuses', () => {
     expect(statusGroup.choices.map(c => c.tag)).toEqual([
-      'status/todo', 'status/in-progress', 'status/blocked', 'status/done',
+      'status/draft', 'status/todo', 'status/in-progress', 'status/blocked', 'status/done',
     ]);
     expect(statusGroup.choices.find(c => c.tag === 'status/done')!.dims).toBeTrue();
   });

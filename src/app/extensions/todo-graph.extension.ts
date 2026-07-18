@@ -20,6 +20,7 @@ export const TODO_GRAPH_EXTENSION: KidrawExtension = {
       id: 'status',
       name: 'Status',
       choices: [
+        { tag: 'status/draft',       label: 'DRAFT',       color: '#7c3aed' },
         { tag: 'status/todo',        label: 'TO DO',       color: '#64748b' },
         { tag: 'status/in-progress', label: 'IN PROGRESS', color: '#d97706' },
         { tag: 'status/blocked',     label: 'BLOCKED',     color: '#dc2626' },

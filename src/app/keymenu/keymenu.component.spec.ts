@@ -115,9 +115,9 @@ describe('KeymenuComponent', () => {
     const clearSelection = rootConfig['c'] as LabeledAction;
 
     // Zoom keys should NOT be at root level ('p' belongs to search Prev
-    // Match, not Zoom Out; 'y' stays unbound at root)
+    // Match, not Zoom Out; 'y' is the Status submenu)
     expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Prev Match');
-    expect(rootConfig['y']).toBeUndefined();
+    expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
     const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
@@ -171,13 +171,14 @@ describe('KeymenuComponent', () => {
       ...IJKL_KEYMENU_KEY_ASSIGNMENTS,
       movement: {up: 'u', left: 'y', down: 'o', right: 'p'},
       drag: {up: 'u', left: 'y', down: 'o', right: 'p'},
-      zoom: {out: 'i', in: 'j'},
       root: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.root,
         editSubmenu: 'j',
         insertSubmenu: 'k',
         selectDragSubmenu: 'l',
         toggleVisibility: 'q',
+        // keep clear of the custom movement keys (y is Move Left here)
+        statusSubmenu: 'z',
       },
       shared: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,
