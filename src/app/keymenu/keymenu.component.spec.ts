@@ -133,12 +133,11 @@ describe('KeymenuComponent', () => {
     const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
     expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    // 'i' is Edit (LabeledSubmenuConfig), 'a' is Insert submenu (vim profile)
+    // 'i' is the unified insert/connect hub; root 'a' is unbound (2026-07-18)
     const editAction = rootConfig['i'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();
     expect(editAction instanceof LabeledSubmenuConfig).toBeTrue();
-    const insertSubmenu = rootConfig['a'] as LabeledSubmenuConfig;
-    expect(insertSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    expect(rootConfig['a']).toBeUndefined();
 
     // 'h' is Move Left in vim profile
     const moveLeft = rootConfig['h'] as LabeledAction;
@@ -177,7 +176,6 @@ describe('KeymenuComponent', () => {
       root: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.root,
         editSubmenu: 'j',
-        insertSubmenu: 'k',
         selectDragSubmenu: 'l',
         toggleVisibility: 'q',
         // keep clear of the custom movement keys (y is Move Left here)
@@ -195,8 +193,7 @@ describe('KeymenuComponent', () => {
     expect((rootConfig['u'] as LabeledAction).actionLabel).toBe('Move Up');
     // Zoom keys no longer at root level
     expect(rootConfig['i']).toBeUndefined();
-    expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit is submenu (tap fires on keyup)
-    expect(rootConfig['k'] instanceof LabeledSubmenuConfig).toBeTrue(); // Insert is a submenu
+    expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit/insert hub (tap fires on keyup)
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
     expect((rootConfig['q'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 
@@ -204,53 +201,69 @@ describe('KeymenuComponent', () => {
     expect(hints[0].key).toBe('u/y/o/p');
   });
 
-  describe('edit-context submenus (context-sensitive i key)', () => {
-    function buildContextConfig(context: string | null): Record<string, unknown> | null {
-      const fixture = TestBed.createComponent(KeymenuComponent);
-      const component = fixture.componentInstance;
-      component.setEditContext(context as any);
-      return (component as any).buildEditContextSubmenuConfig();
+  describe('unified insert/connect hub (held i)', () => {
+    function buildHub(component: KeymenuComponent): Record<string, any> {
+      return (component as any).buildEditSubmenuConfig();
     }
 
-    it('offers Insert Node over an item (default vim: d)', () => {
-      const config = buildContextConfig('item')!;
-      const insertNode = config['d'] as LabeledAction;
-      expect(insertNode instanceof LabeledAction).toBeTrue();
-      expect(insertNode.actionLabel).toBe('Insert Node');
+    it('carries the left-hand kinds, edge/label/waypoint, and u/o connect submenus (vim)', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const hub = buildHub(fixture.componentInstance);
+      expect((hub['d'] as LabeledAction).actionLabel).toBe('Box');
+      expect((hub['c'] as LabeledAction).actionLabel).toBe('Circle');
+      expect((hub['e'] as LabeledAction).actionLabel).toBe('Diamond');
+      expect((hub['g'] as LabeledAction).actionLabel).toBe('Junction');
+      expect((hub['x'] as LabeledAction).actionLabel).toBe('Invisible');
+      expect(hub['s'] instanceof LabeledActionSubmenuConfig).toBeTrue(); // ...Edge
+      expect((hub['f'] as LabeledAction).actionLabel).toBe('Add Label');
+      expect((hub['w'] as LabeledAction).actionLabel).toBe('Add Waypoint');
+      expect((hub['u'] as LabeledSubmenuConfig).submenuLabel).toBe('Connect →...');
+      expect((hub['o'] as LabeledSubmenuConfig).submenuLabel).toBe('Connect ←...');
     });
 
-    it('offers Insert Node over empty canvas', () => {
-      const config = buildContextConfig('empty')!;
-      expect((config['d'] as LabeledAction).actionLabel).toBe('Insert Node');
-    });
-
-    it('offers Add Label and Add Waypoint over an edge (vim: f, p)', () => {
-      const config = buildContextConfig('edge')!;
-      expect((config['f'] as LabeledAction).actionLabel).toBe('Add Label');
-      expect((config['p'] as LabeledAction).actionLabel).toBe('Add Waypoint');
-    });
-
-    it('keeps the static Edit submenu when a selection exists', () => {
-      expect(buildContextConfig('single-select')).toBeNull();
-      expect(buildContextConfig('multi-select')).toBeNull();
-      expect(buildContextConfig(null)).toBeNull();
-    });
-
-    it('Insert Node emits CREATE_NEW_NODE and arms the labelEdit transition', () => {
+    it('Box emits CREATE_NEW_NODE, arms labelEdit, and fires once per hold', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);
       const component = fixture.componentInstance;
       const emitSpy = spyOn(component.keyMenuOut, 'emit');
-      component.setEditContext('item' as any);
-      const config = (component as any).buildEditContextSubmenuConfig();
+      const hub = buildHub(component);
 
-      (config['d'] as LabeledAction).action();
-
-      expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CREATE_NEW_NODE});
+      (hub['d'] as LabeledAction).action();
+      expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CREATE_NEW_NODE, nodeShape: undefined});
       expect((component as any).insertViaEditActive).toBeTrue();
 
       // A second fire (key repeat) must not create another node
-      (config['d'] as LabeledAction).action();
+      (hub['d'] as LabeledAction).action();
       expect(emitSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('Junction does not arm the labelEdit transition', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      spyOn(component.keyMenuOut, 'emit');
+      (buildHub(component)['g'] as LabeledAction).action();
+      expect((component as any).insertViaEditActive).toBeFalse();
+    });
+
+    it('connect submenus emit CREATE_NEW_NODE_CONNECTED with their direction', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      const emitSpy = spyOn(component.keyMenuOut, 'emit');
+      const hub = buildHub(component);
+
+      const out = (hub['u'] as LabeledSubmenuConfig).submenuConfig;
+      (out['c'] as LabeledAction).action();
+      expect(emitSpy).toHaveBeenCalledWith(
+        {kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction: 'out', nodeShape: 'circle'});
+      // connected inserts arm labelEdit only via the node-inserted confirmation
+      expect((component as any).insertViaEditActive).toBeFalse();
+      component.notifyNodeInserted();
+      expect((component as any).insertViaEditActive).toBeTrue();
+
+      (component as any).editContextActionFired = false;
+      const inn = (hub['o'] as LabeledSubmenuConfig).submenuConfig;
+      (inn['d'] as LabeledAction).action();
+      expect(emitSpy).toHaveBeenCalledWith(
+        {kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction: 'in', nodeShape: undefined});
     });
   });
 });

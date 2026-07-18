@@ -73,6 +73,9 @@ export class AppComponent implements OnInit, OnDestroy {
       case "label-added":
         this.keymenuComponent.notifyLabelAdded();
         break;
+      case "node-inserted":
+        this.keymenuComponent.notifyNodeInserted();
+        break;
       case "exit-label-editing-mode":
         this.keymenuComponent.exitToNormalMode();
         if (this.headerComponent) this.headerComponent.mode = 'normal';
@@ -98,9 +101,6 @@ export class AppComponent implements OnInit, OnDestroy {
         if (this.headerComponent) {
           this.headerComponent.openFileLabel = daNotification.fileLabel;
         }
-        break;
-      case "edit-context":
-        this.keymenuComponent.setEditContext(daNotification.context);
         break;
       case "popup-state":
         // A DOM popup (nav popup) owns the keyboard while open.

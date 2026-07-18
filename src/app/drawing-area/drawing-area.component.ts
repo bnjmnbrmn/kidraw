@@ -256,7 +256,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.FINALIZE_DIRECTED_EDGE,
     DACommandType.ADD_LABEL,
@@ -292,7 +292,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.BEGIN_DIRECTED_EDGE,
@@ -321,7 +321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_DIRECTED,
+    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.BEGIN_DIRECTED_EDGE,
@@ -531,7 +531,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
         command.kind !== DACommandType.EDIT_OR_INSERT &&
-        command.kind !== DACommandType.QUERY_EDIT_CONTEXT &&
         command.kind !== DACommandType.REDO) {
       this.showMovementIndicators();
     }
@@ -612,8 +611,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CREATE_NEW_NODE:
         this.createNewNode(command.nodeShape);
         break;
-      case DACommandType.CREATE_NEW_NODE_DIRECTED:
-        this.createNewNodeDirected(command.direction, command.nodeShape);
+      case DACommandType.CREATE_NEW_NODE_CONNECTED:
+        this.createNewNodeConnected(command.direction, command.nodeShape);
         break;
       case DACommandType.INSERT_WAYPOINT:
         this.insertWaypointAtCrosshairs();
@@ -692,9 +691,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.EDIT_SELECTED:
         this.handleEditSelected();
-        break;
-      case DACommandType.QUERY_EDIT_CONTEXT:
-        this.daOut.emit({kind: 'edit-context', context: this.computeEditContext()});
         break;
       case DACommandType.EDIT_OR_INSERT:
         this.handleEditOrInsert();
@@ -4143,52 +4139,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
   }
 
-  private createNewNodeDirected(direction: 'up' | 'down' | 'left' | 'right', nodeShape?: NodeShape) {
-    this.finishTweens();
-
-    // Source nodes for auto-connect: selected nodes, OR node under crosshairs as fallback
-    let sourceNodes = this.drawingLayer.getSelectedDANodes();
-    if (sourceNodes.length === 0) {
-      const hoveredNodes = this.getDANodesContainingCrosshairs();
-      if (hoveredNodes.length > 0) {
-        sourceNodes = [hoveredNodes[0]];
-      }
+  /** Connected insert (held-hub u/o flows): new node at the crosshairs plus
+   *  an edge to/from the anchor — the single selected node, else the
+   *  traversal's current node. 'out' wires anchor → new, 'in' new → anchor.
+   *  Emits 'node-inserted' on success so the keymenu can enter labelEdit on
+   *  the hub key's release (confirmation-driven — an anchorless attempt
+   *  must not strand the user in labelEdit). */
+  private createNewNodeConnected(direction: 'out' | 'in', nodeShape?: NodeShape) {
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const anchor = selected.length === 1 ? selected[0] : this.validGraphNavLastNode();
+    if (!anchor) {
+      this.emitStatus('⚠ Connected insert needs an anchor — select or navigate to a node first');
+      return;
     }
-    this.log.log('[directedInsert]', direction, 'sourceNodes:', sourceNodes.length);
-
-    // Anchor in stage coords: source node center if exactly one, else current crosshairs
-    let anchorX: number;
-    let anchorY: number;
-    if (sourceNodes.length === 1) {
-      const center = this.getNodeCenterInStageCoordinates(sourceNodes[0]);
-      anchorX = center.x;
-      anchorY = center.y;
-    } else {
-      anchorX = this.crosshairsLayer.crosshairs.x;
-      anchorY = this.crosshairsLayer.crosshairs.y;
-    }
-
-    // Offset of 300 drawing-layer units, scaled to stage coords
-    const DIRECTED_OFFSET = 300 * this.drawingLayer.scaleX();
-    const deltaX = direction === 'left' ? -DIRECTED_OFFSET : direction === 'right' ? DIRECTED_OFFSET : 0;
-    const deltaY = direction === 'up' ? -DIRECTED_OFFSET : direction === 'down' ? DIRECTED_OFFSET : 0;
-
-    // Move crosshairs to target (handles clamping + auto-pan), then immediately finish
-    this.moveCrosshairsBy(anchorX - this.crosshairsLayer.crosshairs.x + deltaX,
-                          anchorY - this.crosshairsLayer.crosshairs.y + deltaY);
     this.finishTweens();
-
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
     const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
+    this.autoRouteNewEdge(direction === 'out'
+      ? this.drawingLayer.addEdge(anchor, newNode)
+      : this.drawingLayer.addEdge(newNode, anchor));
 
-    for (const srcNode of sourceNodes) {
-      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, newNode));
+    if (newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible') {
+      newNode.showCursor();
+      this.crosshairsLayer.hideCrosshairs();
+      this.daOut.emit({kind: 'node-inserted'});
     }
-
-    newNode.showCursor();
-    this.crosshairsLayer.hideCrosshairs();
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -4634,9 +4611,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return 'empty';
   }
 
-  /** Tap of the edit/insert key: context-sensitive default action. The held-key
-   *  submenu alternatives (insert node over an item; label/waypoint over an
-   *  edge) live in the keymenu, driven by QUERY_EDIT_CONTEXT. */
+  /** Tap of the edit/insert key: context-sensitive default action. The held
+   *  key opens the static insert/connect hub in the keymenu instead. */
   private handleEditOrInsert(): void {
     const context = this.computeEditContext();
     this.log.log(`handleEditOrInsert: context=${context}`);

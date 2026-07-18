@@ -14,7 +14,6 @@ import {
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode} from '../drawing-area/command.model';
-import {EditContext} from '../drawing-area/da-notification.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -67,25 +66,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private configSub?: Subscription;
   private visualSub?: Subscription;
 
-  // State: when true, releasing the insert submenu key switches to labelEdit
-  private insertDragActive = false;
-  // True between waypoint insert and insert-submenu key release. Like
-  // insertDragActive but skips the labelEdit transition on release (waypoints
-  // have no text).
-  private waypointDragActive = false;
-  // Pending-action-on-release: set when a node type key is pressed, cleared by directional action or type key release
-  private insertNodePending = false;
   // When true, releasing the edit submenu key without selecting a child fires EDIT_OR_INSERT
   private editPending = false;
   /** True while a DOM popup (nav popup) owns the keyboard: key-downs are
    *  ignored entirely; key-ups still run so held-key bookkeeping can't go
    *  stale across the popup. Set via setSuspended() from AppComponent. */
   private suspended = false;
-  // Latest crosshairs/selection context from the drawing area, refreshed via
-  // QUERY_EDIT_CONTEXT on each edit-key press (the reply arrives synchronously).
-  private editContext: EditContext | null = null;
-  // Set when 'Insert Node' fires from the held edit-key submenu; releasing the
-  // edit key then enters labelEdit (mirrors the insert-submenu flow).
+  // Set when a labelable node was created from the held insert hub (directly,
+  // or — via the 'node-inserted' confirmation — a connected insert);
+  // releasing the hub key then enters labelEdit.
   private insertViaEditActive = false;
 
   // Set (via AppComponent) when the drawing area confirms a label was added
@@ -97,8 +86,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   // One-shot guard for the held edit-key submenu: action keys auto-repeat
   // (initialRepeatDelayMs is 0), but insert/label/waypoint must fire once per hold.
   private editContextActionFired = false;
-  private pendingNodeShape: NodeShape | undefined = undefined;
-  private pendingInsertTypeKey: string | undefined = undefined;
   private selectDragHoldActive = false;
   private directedEdgeActive = false;
   private lastShiftPressedAt = 0;
@@ -158,7 +145,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return [
       {key: movementKeys, action: 'Move up/left/down/right'},
-      {key: root.insertSubmenu, action: 'Insert submenu'},
+      {key: `${root.editSubmenu} (hold)`, action: 'Insert/connect hub'},
       {key: `${root.selectDragSubmenu} (hold)`, action: 'Select + drag'},
       {key: this.keyAssignments.moveSpeed.bigger, action: 'Bigger move'},
       {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
@@ -404,16 +391,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private resetInteractionState(): void {
-    this.insertDragActive = false;
-    this.waypointDragActive = false;
-    this.insertNodePending = false;
     this.editPending = false;
-    this.editContext = null;
     this.insertViaEditActive = false;
     this.labelAddActive = false;
     this.editContextActionFired = false;
-    this.pendingNodeShape = undefined;
-    this.pendingInsertTypeKey = undefined;
     this.selectDragHoldActive = false;
   }
 
@@ -428,7 +409,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Edit/Insert...', this.buildEditSubmenuConfig()),
-      [root.insertSubmenu]: new LabeledSubmenuConfig('Insert...', this.buildInsertSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
@@ -450,9 +430,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
 
-  /** Called by AppComponent when the drawing area answers QUERY_EDIT_CONTEXT. */
-  setEditContext(context: EditContext): void {
-    this.editContext = context;
+  /** Called by AppComponent when the drawing area confirms a connected
+   *  insert created a labelable node: releasing the held hub key then
+   *  enters labelEdit, same rhythm as the plain inserts. */
+  notifyNodeInserted(): void {
+    this.insertViaEditActive = true;
   }
 
   /** Called by AppComponent when the drawing area confirms an ADD_LABEL
@@ -461,50 +443,63 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.labelAddActive = true;
   }
 
-  /** Swap the just-pushed Edit submenu for context-appropriate insert options.
-   *  Selection contexts (and unknown context) keep the static Edit submenu
-   *  (Overflow..., Toggle Pin), so those remain reachable while items are
-   *  selected. */
-  private applyEditContextSubmenu(): void {
-    const config = this.buildEditContextSubmenuConfig();
-    if (!config) return;
-    const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-    mode.replaceTopSubmenu(config);
-  }
-
-  private buildEditContextSubmenuConfig(): SubmenuConfig | null {
-    const insert = this.keyAssignments.insert;
-    const once = (fire: () => void) => () => {
+  /** One-shot guard shared by the held hub's inserting actions: action keys
+   *  auto-repeat, and one hold should insert at most one thing. */
+  private hubOnce(fire: () => void): () => void {
+    return () => {
       if (this.editContextActionFired) return;
       this.editContextActionFired = true;
       fire();
     };
-    switch (this.editContext) {
-      case 'item':   // over a node/label: default (tap) is edit; option is insert
-      case 'empty':  // over waypoint/nothing: tap inserts too; shown for discoverability
-        return {
-          [insert.node]: new LabeledAction('Insert Node', once(() => {
-            this.insertViaEditActive = true;
-            this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE});
-          })),
-        } as SubmenuConfig;
-      case 'edge':
-        return {
-          [insert.label]: new LabeledAction('Add Label', once(() =>
-            this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL}))),
-          [insert.waypoint]: new LabeledAction('Add Waypoint', once(() =>
-            this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT}))),
-        } as SubmenuConfig;
-      default:
-        return null;
-    }
   }
 
+  /** The unified insert/connect hub under the held edit key: left-hand kind
+   *  choices, plus u/o connected-insert modifiers next to the held key. */
   private buildEditSubmenuConfig(): SubmenuConfig {
-    const edit = this.keyAssignments.edit;
+    const insert = this.keyAssignments.insert;
+    const insertNode = (shape: NodeShape | undefined, label: string) =>
+      new LabeledAction(label, this.hubOnce(() => {
+        // Junction/invisible carry no label — releasing the hub key must not
+        // drop into labelEdit for them.
+        if (shape !== 'junction' && shape !== 'invisible') this.insertViaEditActive = true;
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: shape});
+      }), false);
     return {
-      [edit.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
-      [edit.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
+      [insert.box]:       insertNode(undefined,   'Box'),
+      [insert.circle]:    insertNode('circle',    'Circle'),
+      [insert.diamond]:   insertNode('diamond',   'Diamond'),
+      [insert.junction]:  insertNode('junction',  'Junction'),
+      [insert.invisible]: insertNode('invisible', 'Invisible'),
+      [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
+        this.directedEdgeActive = true;
+        this.keyMenuOut.emit({kind: DACommandType.BEGIN_DIRECTED_EDGE});
+      }),
+      [insert.label]: new LabeledAction('Add Label', this.hubOnce(() =>
+        this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL})), false),
+      [insert.waypoint]: new LabeledAction('Add Waypoint', this.hubOnce(() =>
+        this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT})), false),
+      [insert.connectOut]: new LabeledSubmenuConfig('Connect →...', this.buildConnectedInsertSubmenuConfig('out')),
+      [insert.connectIn]:  new LabeledSubmenuConfig('Connect ←...', this.buildConnectedInsertSubmenuConfig('in')),
+    } as SubmenuConfig;
+  }
+
+  /** Shape picks under the held connect modifier: same left-hand keys as the
+   *  plain inserts, but the node is born wired to the anchor ('out' =
+   *  anchor → new, 'in' = new → anchor). labelEdit arming is
+   *  confirmation-driven via the 'node-inserted' notification, since an
+   *  anchorless attempt creates nothing. */
+  private buildConnectedInsertSubmenuConfig(direction: 'out' | 'in'): SubmenuConfig {
+    const insert = this.keyAssignments.insert;
+    const arrow = direction === 'out' ? '→' : '←';
+    const entry = (shape: NodeShape | undefined, label: string) =>
+      new LabeledAction(`${label} ${arrow}`, this.hubOnce(() =>
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction, nodeShape: shape})), false);
+    return {
+      [insert.box]:       entry(undefined,   'Box'),
+      [insert.circle]:    entry('circle',    'Circle'),
+      [insert.diamond]:   entry('diamond',   'Diamond'),
+      [insert.junction]:  entry('junction',  'Junction'),
+      [insert.invisible]: entry('invisible', 'Invisible'),
     } as SubmenuConfig;
   }
 
@@ -558,67 +553,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildInsertSubmenuConfig(): SubmenuConfig {
-    const insert = this.keyAssignments.insert;
-    const types = this.keyAssignments.nodeTypes;
-    const dirSubmenu = this.buildDirectionalInsertSubmenuConfig();
-
-    const makeShapeEntry = (shape: NodeShape | undefined, label: string) =>
-      new LabeledActionSubmenuConfig(label, dirSubmenu, () => {
-        if (this.insertDragActive) return;
-        this.pendingNodeShape = shape;
-        this.pendingInsertTypeKey = insert.node;
-        this.insertNodePending = true;
-      });
-
-    return {
-      [insert.node]:        makeShapeEntry(undefined,   'Box →'),
-      [types.circle]:       makeShapeEntry('circle',    'Circle →'),
-      [types.diamond]:      makeShapeEntry('diamond',   'Diamond →'),
-      [types.junction]:     makeShapeEntry('junction',  'Junction →'),
-      [insert.invisibleNode]: new LabeledAction('Invisible', () => {
-        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: 'invisible'});
-      }, false),
-      [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
-        this.directedEdgeActive = true;
-        this.keyMenuOut.emit({kind: DACommandType.BEGIN_DIRECTED_EDGE});
-      }),
-      [insert.label]: new LabeledAction('...Label', () => {
-        this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL});
-      }, false),
-      [insert.waypoint]: new LabeledAction('Waypoint', () => {
-        this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT});
-        this.waypointDragActive = true;
-        const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-        mode.actionSchedulingEnabled = false;
-        mode.replaceTopSubmenu(this.dragSubmenuConfig);
-        queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
-      }, false),
-    } as SubmenuConfig;
-  }
-
-  private buildDirectionalInsertSubmenuConfig(): SubmenuConfig {
-    const movement = this.keyAssignments.movement;
-
-    const createDirected = (direction: 'up' | 'down' | 'left' | 'right') => () => {
-      this.insertNodePending = false;
-      this.insertDragActive = true;
-      this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE_DIRECTED, direction, nodeShape: this.pendingNodeShape});
-      const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-      mode.actionSchedulingEnabled = false;
-      mode.replaceTopSubmenu(this.dragSubmenuConfig);
-      queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
-    };
-
-    return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      [movement.up]: new LabeledAction('Above', createDirected('up')),
-      [movement.down]: new LabeledAction('Below', createDirected('down')),
-      [movement.left]: new LabeledAction('Left', createDirected('left')),
-      [movement.right]: new LabeledAction('Right', createDirected('right')),
-    } as SubmenuConfig;
-  }
-
   private buildNodeTypeShapeSubmenuConfig(): SubmenuConfig {
     const types = this.keyAssignments.nodeTypes;
     const emit = (shape: NodeShape) => () => this.keyMenuOut.emit({kind: DACommandType.SET_NODE_SHAPE, shape});
@@ -638,6 +572,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style...', this.buildLineStyleSubmenuConfig()),
       [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
       [style.defaultsSubmenu]: new LabeledSubmenuConfig('Defaults...', this.buildDefaultsSubmenuConfig()),
+      [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
+      [style.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
     } as SubmenuConfig;
   }
 
@@ -1289,23 +1225,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         eventKey === this.keyAssignments.root.editSubmenu;
     if (editKeyPressedAtRoot) {
       this.editPending = true;
-      this.editContext = null;
-      // Synchronous round trip: the drawing area answers with an 'edit-context'
-      // notification, which AppComponent routes into setEditContext() before
-      // this emit returns.
-      this.keyMenuOut.emit({kind: DACommandType.QUERY_EDIT_CONTEXT});
     } else if (this.editPending && eventKey !== this.keyAssignments.root.editSubmenu) {
       // Any child key press cancels tap-to-edit (user is using the submenu)
       this.editPending = false;
     }
 
     this.keyMenu.handleKeyDown(event);
-
-    // The edit-key press just pushed the static Edit submenu; swap it for
-    // context-appropriate insert options when nothing is selected.
-    if (editKeyPressedAtRoot) {
-      this.applyEditContextSubmenu();
-    }
 
     this.refreshActiveKeyPath();
   }
@@ -1355,54 +1280,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.keyMenuOut.emit({kind: DACommandType.EDIT_OR_INSERT});
         return;
       }
-    }
-
-    // If the insert submenu key is released, handle pending/drag states
-    if (eventKey === this.keyAssignments.root.insertSubmenu && !event.ctrlKey) {
-      this.log.log('[keymenu] insert key released, insertNodePending:', this.insertNodePending, 'insertDragActive:', this.insertDragActive, 'waypointDragActive:', this.waypointDragActive);
-      // Capture-and-clear so the flag can never leak into a later interaction.
-      const labelAdded = this.labelAddActive;
-      this.labelAddActive = false;
-      // If node creation was pending (type key pressed but not released), create the node now
-      if (this.insertNodePending) {
-        this.log.log('[keymenu] f released before type key — creating node at crosshairs');
-        this.insertNodePending = false;
-        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: this.pendingNodeShape});
-        if (this.pendingNodeShape !== 'junction') {
-          this.switchMode('labelEdit');
-        }
-        return;
-      }
-      if (this.waypointDragActive) {
-        this.waypointDragActive = false;
-        // Waypoints have no text — just exit drag, no labelEdit transition.
-        return;
-      }
-      // A label was added from the insert submenu → type into it on release.
-      if (labelAdded) {
-        this.switchMode('labelEdit');
-        return;
-      }
-      if (this.insertDragActive) {
-        this.insertDragActive = false;
-        if (this.pendingNodeShape !== 'junction') {
-          this.switchMode('labelEdit');
-        }
-      }
-      return;
-    }
-
-    // Pending node insert: releasing type key without pressing a direction creates node at crosshairs.
-    // Only fires if the insert submenu key is still held (we're still in the insert context).
-    if (this.insertNodePending && eventKey === this.pendingInsertTypeKey) {
-      this.log.log('[keymenu] type key released with pending — creating node at crosshairs');
-      this.insertNodePending = false;
-      this.insertDragActive = true;
-      this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: this.pendingNodeShape});
-      const mode = this.keyMenu.currentMode as USQwertyMode<DACommand>;
-      mode.actionSchedulingEnabled = false;
-      mode.replaceTopSubmenu(this.dragSubmenuConfig);
-      queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
     }
 
     if (this.directedEdgeActive && eventKey === this.keyAssignments.insert.edge) {

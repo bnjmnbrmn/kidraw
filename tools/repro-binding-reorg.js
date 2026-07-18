@@ -2,11 +2,12 @@
  * Verify the 2026-07-13 keymenu binding reorg end to end with real key events
  * (vim profile, the default):
  *
- *   1. Root `a` opens the Insert submenu: hold a → tap d creates a node and
- *      releasing a drops into label-edit mode.
+ *   1. Held `i` is the unified insert hub (2026-07-18; root `a` unbound):
+ *      hold i → tap d creates a node and releasing i drops into label-edit
+ *      mode.
  *   2. Root `f` is the one-shot Go action (nav popup, 2026-07-16); the
  *      traversal checks below drive it with real key events.
- *   3. Root `g` is unbound.
+ *   3. Root `g` toggles the keyboard.
  *   4. The `m` File submenu has the new shape: n New, o Open… (vault),
  *      s Save As… (vault), i Import File…, e Export File…, and no
  *      Save Graph / Load Graph localStorage entries.
@@ -59,7 +60,7 @@ async function main() {
     }
     return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), m: summarize(root['m']), miscLabels };
   });
-  check('root a is the Insert submenu', menu.a?.label === 'Insert...', JSON.stringify(menu.a));
+  check('root a is unbound (insert merged into the i hub)', menu.a === null || menu.a === undefined, JSON.stringify(menu.a));
   // 2026-07-16: f became the one-shot Go action (nav popup rework).
   check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
   check('root g toggles keyboard visibility', menu.g?.label === 'Hide Keyboard', JSON.stringify(menu.g));
@@ -72,7 +73,7 @@ async function main() {
   const labels = Object.values(menu.miscLabels);
   check('no Save Graph / Load Graph entries', !labels.includes('Save Graph') && !labels.includes('Load Graph'), JSON.stringify(labels));
 
-  // --- 1. Hold a → tap d inserts a node; release a → label edit ---
+  // --- 1. Hold i → tap d inserts a node; release i → label edit ---
   // Park the crosshairs on empty canvas first.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -81,15 +82,15 @@ async function main() {
     da.crosshairsLayer.crosshairs.y = 520;
   });
   let before = await state();
-  await page.keyboard.down('a');
+  await page.keyboard.down('i');
   await page.waitForTimeout(250);
   await page.keyboard.press('d');
   await page.waitForTimeout(120);
-  await page.keyboard.up('a');
+  await page.keyboard.up('i');
   await page.waitForTimeout(150);
   let s = await state();
-  check('hold a + d inserts a node', s.nodeCount === before.nodeCount + 1, `${before.nodeCount} → ${s.nodeCount}`);
-  check('releasing a after insert enters label edit', s.mode === 'labelEdit', s.mode);
+  check('hold i + d inserts a node', s.nodeCount === before.nodeCount + 1, `${before.nodeCount} → ${s.nodeCount}`);
+  check('releasing i after insert enters label edit', s.mode === 'labelEdit', s.mode);
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(120);

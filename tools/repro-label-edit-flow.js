@@ -92,9 +92,9 @@ async function main() {
   });
 
   // 1. Add a label with the label key held well past the auto-repeat delay.
-  //    (vim profile: hold `a` = Insert submenu, `f` = Label)
+  //    (vim profile: hold `i` = insert hub, `f` = Add Label)
   await placeAtT(0.5);
-  await page.keyboard.down('a');
+  await page.keyboard.down('i');
   await page.waitForTimeout(120);
   await page.keyboard.down('f');
   await page.waitForTimeout(900);          // repeat would fire several times here
@@ -104,13 +104,13 @@ async function main() {
   check('held Add Label key adds exactly one label', s.labels.length === 1, `${s.labels.length} labels`);
   check('new label starts empty', s.labels[0]?.text === '', JSON.stringify(s.labels[0]?.text));
   check('new label is selected', s.labels[0]?.selected === true);
-  check('still in normal mode while a held', s.mode === 'normal', s.mode);
+  check('still in normal mode while i held', s.mode === 'normal', s.mode);
 
-  // 2. Release a → label edit mode; type into the new label.
-  await page.keyboard.up('a');
+  // 2. Release i → label edit mode; type into the new label.
+  await page.keyboard.up('i');
   await page.waitForTimeout(120);
   s = await state();
-  check('releasing a enters label-edit mode', s.mode === 'labelEdit', s.mode);
+  check('releasing i enters label-edit mode', s.mode === 'labelEdit', s.mode);
   // Explicit slow shift chord for the capital — keyboard.type()'s fast
   // synthetic Shift races the keymenu's shift-submenu push.
   await page.keyboard.down('Shift');
@@ -136,11 +136,11 @@ async function main() {
 
   // 4. A label left empty on exit is pruned.
   await placeAtT(0.1);
-  await page.keyboard.down('a');
+  await page.keyboard.down('i');
   await page.waitForTimeout(120);
   await page.keyboard.press('f');
   await page.waitForTimeout(80);
-  await page.keyboard.up('a');
+  await page.keyboard.up('i');
   await page.waitForTimeout(120);
   s = await state();
   check('second label added and in edit mode', s.labels.length === 2 && s.mode === 'labelEdit',
@@ -206,11 +206,11 @@ async function main() {
 
   // 7. Add Label over empty canvas: nothing added, no label-edit mode.
   await placeAtStage(60, 60);
-  await page.keyboard.down('a');
+  await page.keyboard.down('i');
   await page.waitForTimeout(120);
   await page.keyboard.press('f');
   await page.waitForTimeout(80);
-  await page.keyboard.up('a');
+  await page.keyboard.up('i');
   await page.waitForTimeout(120);
   s = await state();
   check('Add Label over empty canvas adds nothing', s.labels.length === 1, `${s.labels.length} labels`);

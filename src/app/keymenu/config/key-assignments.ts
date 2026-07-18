@@ -16,8 +16,8 @@ export interface KeymenuKeyAssignments {
   readonly movement: DirectionalKeyAssignments;
   readonly drag: DirectionalKeyAssignments;
   readonly root: {
+    /** Held: the unified insert/connect hub (tap: context edit-or-insert). */
     readonly editSubmenu: KeyString;
-    readonly insertSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
     readonly styleSubmenu: KeyString;
     readonly layoutSubmenu: KeyString;
@@ -28,12 +28,21 @@ export interface KeymenuKeyAssignments {
      *  status choice keys all sit in the left hand. */
     readonly statusSubmenu: KeyString;
   };
+  /** Children of the held edit/insert hub. Kinds sit in the left hand;
+   *  connectOut/connectIn are right-hand modifiers next to the held key:
+   *  hub+connectOut+shape births the node wired current → new,
+   *  hub+connectIn+shape wires new → current. */
   readonly insert: {
-    readonly node: KeyString;
-    readonly invisibleNode: KeyString;
+    readonly box: KeyString;
+    readonly circle: KeyString;
+    readonly diamond: KeyString;
+    readonly junction: KeyString;
+    readonly invisible: KeyString;
     readonly edge: KeyString;
     readonly label: KeyString;
     readonly waypoint: KeyString;
+    readonly connectOut: KeyString;
+    readonly connectIn: KeyString;
   };
   readonly nodeTypes: {
     readonly box: KeyString;
@@ -48,6 +57,8 @@ export interface KeymenuKeyAssignments {
     readonly lineStyleSubmenu: KeyString;
     readonly colorSubmenu: KeyString;
     readonly defaultsSubmenu: KeyString;
+    readonly overflowSubmenu: KeyString;
+    readonly togglePin: KeyString;
   };
   readonly directedness: {
     readonly directed: KeyString;
@@ -113,10 +124,6 @@ export interface KeymenuKeyAssignments {
     readonly toggleKeyProfile: KeyString;
     readonly todoGraphType: KeyString;
   };
-  readonly edit: {
-    readonly overflowSubmenu: KeyString;
-    readonly togglePin: KeyString;
-  };
   readonly status: {
     readonly draft: KeyString;
     readonly todo: KeyString;
@@ -160,7 +167,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   drag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   root: {
     editSubmenu: 'e',
-    insertSubmenu: 'a',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
@@ -168,12 +174,18 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     go: 'f',
     statusSubmenu: 'y',
   },
+  // diamond avoids the held hub key ('e' here); vim uses 'e'.
   insert: {
-    node: 'j',
-    invisibleNode: 'k',
-    edge: 'l',
-    label: ';',
-    waypoint: 'n',
+    box: 'd',
+    circle: 'c',
+    diamond: 'v',
+    junction: 'g',
+    invisible: 'x',
+    edge: 's',
+    label: 'f',
+    waypoint: 'w',
+    connectOut: 'u',
+    connectIn: 'o',
   },
   nodeTypes: {
     box: 'b',
@@ -188,6 +200,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     lineStyleSubmenu: 'l',
     colorSubmenu: 'h',
     defaultsSubmenu: 'y',
+    overflowSubmenu: 'u',
+    togglePin: 'p',
   },
   directedness: {
     directed: 'r',
@@ -256,7 +270,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'k', togglePin: 'p'},
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
@@ -271,7 +284,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
   root: {
     editSubmenu: 'i',
-    insertSubmenu: 'a',
     selectDragSubmenu: 'v',
     styleSubmenu: 'w',
     layoutSubmenu: 'b',
@@ -280,12 +292,16 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     statusSubmenu: 'y',
   },
   insert: {
-    node: 'd',
-    invisibleNode: 'i',
+    box: 'd',
+    circle: 'c',
+    diamond: 'e',
+    junction: 'g',
+    invisible: 'x',
     edge: 's',
-    // 'a' is the held submenu key itself now; label sits under the index finger.
     label: 'f',
-    waypoint: 'p',
+    waypoint: 'w',
+    connectOut: 'u',
+    connectIn: 'o',
   },
   nodeTypes: {
     box: 'b',
@@ -300,6 +316,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     lineStyleSubmenu: 'l',
     colorSubmenu: 'h',
     defaultsSubmenu: 'y',
+    overflowSubmenu: 'u',
+    togglePin: 'p',
   },
   directedness: {
     directed: 'r',
@@ -368,7 +386,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  edit: {overflowSubmenu: 'u', togglePin: 'p'},
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},

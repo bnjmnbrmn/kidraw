@@ -73,7 +73,7 @@ export enum DACommandType {
   OPEN_INSERT_SUBMENU = 'OPEN_INSERT_SUBMENU',
   EDIT_SELECTED = 'EDIT_SELECTED',
   DELETE_LAST_CHAR = 'DELETE_LAST_CHAR',
-  CREATE_NEW_NODE_DIRECTED = 'CREATE_NEW_NODE_DIRECTED',
+  CREATE_NEW_NODE_CONNECTED = 'CREATE_NEW_NODE_CONNECTED',
   BEGIN_DIRECTED_EDGE = 'BEGIN_DIRECTED_EDGE',
   SET_EDGE_DESTINATION = 'SET_EDGE_DESTINATION',
   FINALIZE_DIRECTED_EDGE = 'FINALIZE_DIRECTED_EDGE',
@@ -111,7 +111,6 @@ export enum DACommandType {
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
-  QUERY_EDIT_CONTEXT = 'QUERY_EDIT_CONTEXT',
   EDIT_OR_INSERT = 'EDIT_OR_INSERT',
   // Label-edit caret (vim-normal-in-edit motions + delete-under-cursor).
   CURSOR_LEFT = 'CURSOR_LEFT',
@@ -177,7 +176,9 @@ export type DACommand =
   | {kind: DACommandType.ADD_LABEL}
   | {kind: DACommandType.EDIT_SELECTED}
   | {kind: DACommandType.DELETE_LAST_CHAR}
-  | {kind: DACommandType.CREATE_NEW_NODE_DIRECTED; direction: 'up' | 'down' | 'left' | 'right'; nodeShape?: NodeShape}
+  // Connected insert: new node at the crosshairs plus an edge to/from the
+  // anchor node — 'out' wires anchor → new, 'in' wires new → anchor.
+  | {kind: DACommandType.CREATE_NEW_NODE_CONNECTED; direction: 'out' | 'in'; nodeShape?: NodeShape}
   | {kind: DACommandType.BEGIN_DIRECTED_EDGE}
   | {kind: DACommandType.SET_EDGE_DESTINATION, direction: 'up' | 'down' | 'left' | 'right'}
   | {kind: DACommandType.FINALIZE_DIRECTED_EDGE}
@@ -215,7 +216,6 @@ export type DACommand =
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
-  | {kind: DACommandType.QUERY_EDIT_CONTEXT}
   | {kind: DACommandType.EDIT_OR_INSERT}
   | {kind: DACommandType.CURSOR_LEFT}
   | {kind: DACommandType.CURSOR_RIGHT}
