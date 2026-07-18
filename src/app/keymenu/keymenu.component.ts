@@ -822,6 +822,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [pz.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
       [pz.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
+      [pz.centerOnCrosshairs]: new LabeledAction('Center on Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW_ON_CROSSHAIRS}), false),
       [pz.speed.bigger]: new LabeledSubmenuConfig('Coarse Pan...', this.buildPanSpeedSubmenu('coarse')),
       [pz.speed.smaller]: new LabeledSubmenuConfig('Fine Pan...', this.buildPanSpeedSubmenu('fine')),
     } as SubmenuConfig;

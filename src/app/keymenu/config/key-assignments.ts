@@ -88,6 +88,8 @@ export interface KeymenuKeyAssignments {
     readonly zoomOut: KeyString;
     readonly recenterView: KeyString;
     readonly recenterCrosshairs: KeyString;
+    /** Vim-zz: pan so the point under the crosshairs is screen-centered. */
+    readonly centerOnCrosshairs: KeyString;
   };
   readonly dragSpeed: SpeedModifierKeys;
   readonly moveByNode: {
@@ -229,6 +231,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     zoomOut: 'u',
     recenterView: 'h',
     recenterCrosshairs: 'q',
+    centerOnCrosshairs: 'c',
   },
   dragSpeed: {
     bigger: 'c',
@@ -340,6 +343,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     zoomOut: 'o',
     recenterView: 'y',
     recenterCrosshairs: 'u',
+    centerOnCrosshairs: 'c',
   },
   dragSpeed: {
     bigger: 'x',

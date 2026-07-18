@@ -662,6 +662,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.recenterCrosshairs();
         this.checkAndEmitEditState();
         break;
+      case DACommandType.RECENTER_VIEW_ON_CROSSHAIRS:
+        this.recenterViewOnCrosshairs();
+        break;
       case DACommandType.UNSELECT_ALL:
         this.unselectAll();
         this.checkAndEmitEditState();
@@ -3114,6 +3117,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Pan the view (no rescale) so the layer point sits at the stage center,
    *  tweening the crosshairs onto it in step. */
+  /** Vim-`zz` for the canvas: pan the view so the graph point under the
+   *  crosshairs lands at screen center. The crosshairs ride along (still
+   *  over the same graph point) and the zoom level is untouched. */
+  private recenterViewOnCrosshairs(): void {
+    this.finishTweens();
+    const scale = this.drawingLayer.scaleX();
+    this.centerViewOnLayerPoint({
+      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
+      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
+    });
+  }
+
   private centerViewOnLayerPoint(p: {x: number; y: number}): void {
     const scale = this.drawingLayer.scaleX();
     const centerX = this.stage.width() / 2;
