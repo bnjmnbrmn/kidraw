@@ -74,7 +74,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.keymenuComponent.notifyLabelAdded();
         break;
       case "node-inserted":
-        this.keymenuComponent.notifyNodeInserted();
+        this.keymenuComponent.notifyNodeInserted(daNotification.labelable);
         break;
       case "exit-label-editing-mode":
         this.keymenuComponent.exitToNormalMode();

@@ -430,11 +430,27 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
 
-  /** Called by AppComponent when the drawing area confirms a connected
-   *  insert created a labelable node: releasing the held hub key then
-   *  enters labelEdit, same rhythm as the plain inserts. */
-  notifyNodeInserted(): void {
-    this.insertViaEditActive = true;
+  /** Called by AppComponent when the drawing area confirms a hub insert
+   *  created a node (plain or connected). Arms labelEdit-on-release for
+   *  labelable shapes, and starts the post-insert drag phase: any connect
+   *  child submenu collapses back to the hub level, which is swapped for
+   *  the drag submenu — so movement keys reposition the fresh (selected)
+   *  node while the hub key stays held; releasing it then enters labelEdit. */
+  notifyNodeInserted(labelable: boolean): void {
+    if (labelable) this.insertViaEditActive = true;
+    if (!this.keyMenu) return;
+    const mode = this.keyMenu.currentMode;
+    if (!(mode instanceof USQwertyMode) || mode.stack.length <= 1) return;
+    if (mode.submenuKeyStringStack[1] !== this.keyAssignments.root.editSubmenu) return;
+    if (mode.stack.length > 2) {
+      // Pop the u/o connect submenu (and anything deeper). Its opening key
+      // may still be physically held; its later keyup finds no matching
+      // stack entry and no-ops.
+      mode.popSubmenuAndChildren(mode.submenuKeyStringStack[2] as KeyString);
+    }
+    mode.actionSchedulingEnabled = false;
+    mode.replaceTopSubmenu(this.dragSubmenuConfig);
+    queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
   }
 
   /** Called by AppComponent when the drawing area confirms an ADD_LABEL
@@ -457,13 +473,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
    *  choices, plus u/o connected-insert modifiers next to the held key. */
   private buildEditSubmenuConfig(): SubmenuConfig {
     const insert = this.keyAssignments.insert;
+    // labelEdit arming + the post-insert drag phase are confirmation-driven
+    // for every hub insert: the drawing area answers with 'node-inserted'.
     const insertNode = (shape: NodeShape | undefined, label: string) =>
-      new LabeledAction(label, this.hubOnce(() => {
-        // Junction/invisible carry no label — releasing the hub key must not
-        // drop into labelEdit for them.
-        if (shape !== 'junction' && shape !== 'invisible') this.insertViaEditActive = true;
-        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: shape});
-      }), false);
+      new LabeledAction(label, this.hubOnce(() =>
+        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE, nodeShape: shape})), false);
     return {
       [insert.box]:       insertNode(undefined,   'Box'),
       [insert.circle]:    insertNode('circle',    'Circle'),

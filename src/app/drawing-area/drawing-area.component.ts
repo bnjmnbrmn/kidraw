@@ -4135,6 +4135,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     newNode.showCursor();
     this.crosshairsLayer.hideCrosshairs();
+    this.daOut.emit({kind: 'node-inserted',
+      labelable: newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible'});
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
@@ -4161,11 +4163,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ? this.drawingLayer.addEdge(anchor, newNode)
       : this.drawingLayer.addEdge(newNode, anchor));
 
-    if (newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible') {
+    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
+    if (labelable) {
       newNode.showCursor();
       this.crosshairsLayer.hideCrosshairs();
-      this.daOut.emit({kind: 'node-inserted'});
     }
+    this.daOut.emit({kind: 'node-inserted', labelable});
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }

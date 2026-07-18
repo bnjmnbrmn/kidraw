@@ -11,6 +11,9 @@
  *      labelEdit.
  *   5. hold i → g inserts a junction and releasing i stays in normal mode
  *      (junctions have no label).
+ *   6. Post-insert drag phase: after any hub insert, movement keys drag the
+ *      fresh node while the hub key stays held — including after a
+ *      connected insert with the connect modifier already released.
  */
 const { chromium } = require('@playwright/test');
 
@@ -46,6 +49,7 @@ async function main() {
       statuses: window.__statuses ?? [],
       nodes: da.drawingLayer.getDANodes().map(n => ({
         text: n.label.text(), shape: n.nodeShape, selected: n.isSelected,
+        x: n.konvaGroup.x(), y: n.konvaGroup.y(),
       })),
       edges: da.drawingLayer.getDAEdges().map(e => ({
         from: e.srcNode.label.text() || e.srcNode.nodeShape,
@@ -168,6 +172,58 @@ async function main() {
   check('i→g inserts a junction', s.nodes.filter(n => n.shape === 'junction').length === 1,
     JSON.stringify(s.nodes.map(n => n.shape)));
   check('junction insert stays in normal mode', s.mode === 'normal', s.mode);
+
+  // --- 6. Post-insert drag phase ---
+  // Plain insert: keep holding i after d and drag right with l.
+  await escapeToNormal();
+  await park(1000, 600);
+  await page.keyboard.down('i');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('d');
+  await page.waitForTimeout(150);
+  let before = await state();
+  let fresh = before.nodes.find(n => n.selected);
+  await page.keyboard.press('l');
+  await page.keyboard.press('l');
+  await page.waitForTimeout(150);
+  s = await state();
+  let after = s.nodes.find(n => n.selected);
+  check('movement keys drag the fresh node while i held', after && fresh && after.x > fresh.x,
+    `x ${fresh?.x} → ${after?.x}`);
+  await page.keyboard.up('i');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('release after drag still enters labelEdit', s.mode === 'labelEdit', s.mode);
+  await page.keyboard.type('dragged', { delay: 20 });
+  await escapeToNormal();
+
+  // Connected insert: release u first, then drag with only i held.
+  await selectOnly('dragged');
+  await park(1300, 600);
+  await page.keyboard.down('i');
+  await page.waitForTimeout(250);
+  await page.keyboard.down('u');
+  await page.waitForTimeout(150);
+  await page.keyboard.press('d');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('u');
+  await page.waitForTimeout(150);
+  before = await state();
+  fresh = before.nodes.find(n => n.selected);
+  await page.keyboard.press('j');
+  await page.keyboard.press('j');
+  await page.waitForTimeout(150);
+  s = await state();
+  after = s.nodes.find(n => n.selected);
+  check('drag works after releasing the connect modifier (only i held)',
+    after && fresh && after.y > fresh.y, `y ${fresh?.y} → ${after?.y}`);
+  check('connected edge exists from the drag anchor', s.edges.some(e => e.from === 'dragged'),
+    JSON.stringify(s.edges));
+  await page.keyboard.up('i');
+  await page.waitForTimeout(150);
+  s = await state();
+  check('labelEdit after connected drag phase', s.mode === 'labelEdit', s.mode);
+  await escapeToNormal();
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

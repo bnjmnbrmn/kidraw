@@ -58,12 +58,14 @@ async function main() {
     for (const [k, v] of Object.entries(misc)) {
       if (k !== '_repeatConfig') miscLabels[k] = v.actionLabel;
     }
-    return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), m: summarize(root['m']), miscLabels };
+    return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), z: summarize(root['z']), m: summarize(root['m']), miscLabels };
   });
   check('root a is unbound (insert merged into the i hub)', menu.a === null || menu.a === undefined, JSON.stringify(menu.a));
   // 2026-07-16: f became the one-shot Go action (nav popup rework).
   check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
-  check('root g toggles keyboard visibility', menu.g?.label === 'Hide Keyboard', JSON.stringify(menu.g));
+  // 2026-07-18: Move by node → g, Hide Keyboard → z.
+  check('root g is Move by node', menu.g?.label === 'Move by node...', JSON.stringify(menu.g));
+  check('root z toggles keyboard visibility', menu.z?.label === 'Hide Keyboard', JSON.stringify(menu.z));
   check('root m is File...', menu.m?.label === 'File...', JSON.stringify(menu.m));
   check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
   check('m→o Open… (vault)', menu.miscLabels['o'] === 'Open…');

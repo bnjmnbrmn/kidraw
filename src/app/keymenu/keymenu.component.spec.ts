@@ -82,7 +82,7 @@ describe('KeymenuComponent', () => {
     const component = fixture.componentInstance;
     const emitSpy = spyOn(component.visibilityToggle, 'emit');
 
-    const toggleVisibility = buildRootConfig(component)['g'] as LabeledAction;
+    const toggleVisibility = buildRootConfig(component)['z'] as LabeledAction;
 
     expect(toggleVisibility instanceof LabeledAction).toBeTrue();
     expect(toggleVisibility.actionLabel).toBe('Hide Keyboard');
@@ -100,8 +100,8 @@ describe('KeymenuComponent', () => {
     component.visible = false;
     component.enterLabelEditMode();
 
-    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'g', code: 'KeyG'}));
-    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'g', code: 'KeyG', repeat: true}));
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'z', code: 'KeyZ'}));
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'z', code: 'KeyZ', repeat: true}));
 
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
@@ -120,10 +120,10 @@ describe('KeymenuComponent', () => {
     expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    // 2026-07-18 rebind: Pan/Zoom r → t, Move by node t → r.
+    // 2026-07-18 rebinds: Pan/Zoom → t, Move by node → g.
     const panZoomSubmenu = rootConfig['t'] as LabeledSubmenuConfig;
     expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
-    expect((rootConfig['r'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
+    expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
     // Zoom should be inside the pan/zoom submenu
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
     expect(zoomIn instanceof LabeledAction).toBeTrue();
@@ -147,12 +147,13 @@ describe('KeymenuComponent', () => {
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
-    // Move-by-node submenu at 'r' (rebind 2026-07-18); 'z' stays unbound
-    const moveByNodeSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
+    // 2026-07-18 rebinds: Move by node → g, Hide Keyboard → z, r unbound
+    const moveByNodeSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
     expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(nodeLeft.actionLabel).toBe('Node Left');
-    expect(rootConfig['z']).toBeUndefined();
+    expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
+    expect(rootConfig['r']).toBeUndefined();
 
     // Go at 'f': one-shot tap emitting the smart traverse (the nav popup
     // handles everything the old move-by-graph submenu did).
@@ -221,7 +222,7 @@ describe('KeymenuComponent', () => {
       expect((hub['o'] as LabeledSubmenuConfig).submenuLabel).toBe('Connect ←...');
     });
 
-    it('Box emits CREATE_NEW_NODE, arms labelEdit, and fires once per hold', () => {
+    it('Box emits CREATE_NEW_NODE once per hold; labelEdit arms via node-inserted', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);
       const component = fixture.componentInstance;
       const emitSpy = spyOn(component.keyMenuOut, 'emit');
@@ -229,6 +230,9 @@ describe('KeymenuComponent', () => {
 
       (hub['d'] as LabeledAction).action();
       expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CREATE_NEW_NODE, nodeShape: undefined});
+      // arming is confirmation-driven: the drawing area answers node-inserted
+      expect((component as any).insertViaEditActive).toBeFalse();
+      component.notifyNodeInserted(true);
       expect((component as any).insertViaEditActive).toBeTrue();
 
       // A second fire (key repeat) must not create another node
@@ -236,11 +240,12 @@ describe('KeymenuComponent', () => {
       expect(emitSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('Junction does not arm the labelEdit transition', () => {
+    it('a non-labelable insert (junction) does not arm the labelEdit transition', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);
       const component = fixture.componentInstance;
       spyOn(component.keyMenuOut, 'emit');
       (buildHub(component)['g'] as LabeledAction).action();
+      component.notifyNodeInserted(false);
       expect((component as any).insertViaEditActive).toBeFalse();
     });
 
@@ -254,9 +259,9 @@ describe('KeymenuComponent', () => {
       (out['c'] as LabeledAction).action();
       expect(emitSpy).toHaveBeenCalledWith(
         {kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction: 'out', nodeShape: 'circle'});
-      // connected inserts arm labelEdit only via the node-inserted confirmation
+      // an anchorless attempt sends no confirmation, so nothing arms
       expect((component as any).insertViaEditActive).toBeFalse();
-      component.notifyNodeInserted();
+      component.notifyNodeInserted(true);
       expect((component as any).insertViaEditActive).toBeTrue();
 
       (component as any).editContextActionFired = false;
