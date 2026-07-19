@@ -34,16 +34,28 @@ new node has entered the picture:
    `hjkl` hops it node-to-node (snap-to-node directional geometry); a live
    ghost edge from anchor to the highlighted target updates each hop.
    Release `a` → edge anchor→target, stay in normal mode.
-2. **Pressing a shape key (`d/c/e/g/x`) converts to new-node mode**: a
-   ghost node appears (momentum-direction slot ~300u, else right, identity
-   default shape unless the pressed key says otherwise) and from then on
-   `hjkl` nudges the ghost spatially (first press per direction = cardinal
-   slot throw, further presses = grid steps). Release → node + edge +
-   labelEdit. Replaces the post-insert drag phase (position before commit).
+2. **Entering new-node mode (round 3 — per-shape keys dropped, a+x-style
+   chords were awkward):**
+   - **`f` (quick path)**: f-down converts to new-node mode with the
+     **default node type**; a ghost node appears (momentum-direction slot
+     ~300u, else right) and `hjkl` nudges it spatially (first press per
+     direction = cardinal slot throw, further presses = grid steps).
+     Left-hand chord (pinky a + index f) frees the right hand for
+     placement. Whether f stays physically held is irrelevant — release of
+     `a` is the single commit gesture.
+   - **`n` (typed path)**: opens the **node-type popup** (fuzzy list, reuse
+     `NavPopupComponent`) listing identity-defined node types — extension
+     node-kinds slot; e.g. todo-graph: Task/Category/…; plain graphs: the
+     raw shapes. Picking one lands in the same placement mode with that
+     type's shape/color/style applied. Connects to Ben's da-51 idea
+     (category/task kinds instead of raw shapes).
+   Release → node + edge + labelEdit. Replaces the post-insert drag phase
+   (position before commit, not after).
 3. **`/` opens the fuzzy popup** (reuse `NavPopupComponent` filter mode) in
    either sub-mode to pick a far-away existing target by label.
-4. **`o` flips the edge direction** (anchor→target vs target→anchor) in
-   either sub-mode; ghost arrowhead shows it.
+4. **`o` cycles directionality** (proposed 4-state: anchor→target,
+   target→anchor, undirected, bidirectional — would settle case 14); ghost
+   arrowheads show the current state.
 5. Hold-and-release with no keypress = no-op (consistent with tap-`a` over
    a node being a no-op). **Escape** while held cancels. Mode transitions
    stay confirmation-driven (the 07-18 `node-inserted` machinery) so a
@@ -78,11 +90,12 @@ list Ben asked to keep track of.
 | 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✓, **stage 2 (build first of the grow flow)** |
 | 8 | hold `a` over node: `o` direction flip | ghost arrowhead flips | ✓, stage 2 |
 | 9 | hold `a` over node: `/` search target | fuzzy popup by label (big graphs) | ✓, stage 3 |
-| 10 | hold `a` over node: shape key → new node | ghost node, hjkl nudges spatially | ✓, stage 4 (the original motivation, deliberately after 7) |
+| 10 | hold `a` over node: `f` → new node (default type) | ghost node, hjkl places spatially | ✓, stage 4 (the original motivation, deliberately after 7) |
+| 10b | hold `a` over node: `n` → node-type popup | pick identity-defined type (shape/color/style), then place | ✓, stage 4+ (needs extension node-kinds slot) |
 | 11 | hold `a` over edge | add label / waypoint (current submenu) | keep for now; ghost-waypoint slide = later idea |
 | 12 | hold `a` over label | treat as its parent edge | ? tentative |
 | 13 | hold `a` over nothing | free node ghost + hjkl nudge | later; tap-`a` (5) covers the quick case |
-| 14 | undirected/bidirectional edges in grow flow | third `o` state vs style-submenu-after | ? open |
+| 14 | undirected/bidirectional edges in grow flow | proposed: `o` cycles 4 states (out/in/undirected/bidi) | ? awaiting Ben's confirm |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
 | 16 | u/o connect modifiers (07-18 hub) | interim survivors; retire at stage 4 | transitional |
 | 17 | `s`+direction edge picker | retire once 7 lands and proves out | transitional |
