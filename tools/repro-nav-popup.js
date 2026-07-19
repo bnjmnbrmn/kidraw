@@ -115,6 +115,7 @@ async function main() {
 
   const state = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     da.tweens.forEach(t => t.finish()); da.tweens = [];
     const dl = da.drawingLayer;
     const scale = dl.scaleX();
@@ -142,6 +143,7 @@ async function main() {
       searchSelected,
       filtering,
       searchValue,
+      menuMode: km.keyMenu.currentMode.name,
       divider: popup ? !!popup.querySelector('.divider') : false,
       glow: dl.getDAEdges().filter(e => e.navFocused).map(e => `${e.srcNode.id}->${e.destNode.id}`),
       sourceScale: dl.getDANodes().find(n => n.id === 'C')?.group.scaleX() ?? 1,
@@ -170,8 +172,8 @@ async function main() {
   await page.waitForTimeout(150);
   s = await state();
   check('1.5a: single-candidate popup is open but concealed at first',
-    s.popupOpen && s.concealed && s.rows.length === 1,
-    `open=${s.popupOpen} concealed=${s.concealed} rows=${s.rows.length}`);
+    s.popupOpen && s.concealed && s.rows.length === 1 && s.menuMode === 'surfaceNavPopup',
+    `open=${s.popupOpen} concealed=${s.concealed} rows=${s.rows.length} menu=${s.menuMode}`);
   await page.waitForTimeout(600);
   s = await state();
   check('1.5b: still holding after ~500ms reveals the popup',
@@ -214,7 +216,9 @@ async function main() {
   await page.keyboard.down('f');
   await page.waitForTimeout(400);
   s = await state();
-  check('2a: f at the fork opens the popup', s.popupOpen, JSON.stringify(s.status));
+  check('2a: f at the fork opens the popup and updates the keymenu',
+    s.popupOpen && s.menuMode === 'surfaceNavPopup',
+    JSON.stringify({status: s.status, menu: s.menuMode}));
   check('2b: rows show destination labels, edge labels, and kind tags',
     s.rows.length === 5
       && s.rows.some(r => r.includes('alpha task') && r.includes('needs alpha') && r.includes('depends-on'))
@@ -329,7 +333,8 @@ async function main() {
   await page.waitForTimeout(500);
   s = await state();
   check('6a: Enter jumps to the destination and closes the popup',
-    s.under === 'F' && !s.popupOpen, `under=${s.under} popup=${s.popupOpen}`);
+    s.under === 'F' && !s.popupOpen && s.menuMode === 'normal',
+    `under=${s.under} popup=${s.popupOpen} menu=${s.menuMode}`);
   check('6b: source scale restored after commit', Math.abs(s.sourceScale - 1) < 1e-6,
     `scale=${s.sourceScale}`);
   await page.keyboard.press('h'); // keymenu unsuspended? crosshairs should move

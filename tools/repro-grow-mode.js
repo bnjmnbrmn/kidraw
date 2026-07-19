@@ -86,7 +86,8 @@ async function main() {
   await page.keyboard.down('a');
   await page.waitForTimeout(250);
   let s = await state();
-  check('holding a over a node enters grow mode', s.growActive === true, `growActive=${s.growActive}`);
+  check('holding a over a node shows targeting controls', s.growActive === true
+    && s.mode === 'surfaceGrowTargeting', JSON.stringify({growActive: s.growActive, mode: s.mode}));
   await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
@@ -153,8 +154,12 @@ async function main() {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return { open: da.navPopupOpen, purpose: da.navPopupPurpose, grow: da.growActive };
   });
-  check('/ opens the target search popup in grow mode', popup.open && popup.purpose === 'grow-target',
-    JSON.stringify(popup));
+  const targetMenuMode = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-keymenu')).keyMenu.currentMode.name);
+  check('/ opens the target search popup and updates the keymenu',
+    popup.open && popup.purpose === 'grow-target'
+      && targetMenuMode === 'surfaceGrowTargetPopup',
+    JSON.stringify({...popup, menu: targetMenuMode}));
   await page.keyboard.up('a'); // sticky: releasing a must not commit
   await page.waitForTimeout(150);
   s = await state();
@@ -202,17 +207,24 @@ async function main() {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return { open: da.navPopupOpen, purpose: da.navPopupPurpose };
   });
-  check('a+f opens the type popup', popup.open && popup.purpose === 'grow-type', JSON.stringify(popup));
+  const typeMenuMode = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-keymenu')).keyMenu.currentMode.name);
+  check('a+f opens the type popup and updates the keymenu', popup.open
+    && popup.purpose === 'grow-type' && typeMenuMode === 'surfaceGrowTypePopup',
+    JSON.stringify({...popup, menu: typeMenuMode}));
   await page.keyboard.press('j'); // highlight Circle
   await page.waitForTimeout(120);
   await page.keyboard.up('f');    // release selects → placement mode
   await page.waitForTimeout(250);
   let placing = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return { placing: da.growPlacing, shape: da.growShape, open: da.navPopupOpen };
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    return { placing: da.growPlacing, shape: da.growShape, open: da.navPopupOpen,
+      menu: km.keyMenu.currentMode.name };
   });
   check('releasing f selects the type and enters placement', placing.placing === true
-    && placing.shape === 'circle' && !placing.open, JSON.stringify(placing));
+    && placing.shape === 'circle' && !placing.open
+    && placing.menu === 'surfaceGrowPlacement', JSON.stringify(placing));
   await page.keyboard.press('l'); // rough throw right
   await page.keyboard.press('l'); // grid step right
   await page.waitForTimeout(120);
@@ -282,10 +294,13 @@ async function main() {
   await page.waitForTimeout(300);
   popup = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {open: da.navPopupOpen, purpose: da.navPopupPurpose, anchor: da.growAnchor};
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    return {open: da.navPopupOpen, purpose: da.navPopupPurpose, anchor: da.growAnchor,
+      menu: km.keyMenu.currentMode.name};
   });
   check('empty-canvas a+f opens the type popup', popup.open
-    && popup.purpose === 'grow-type' && popup.anchor === null, JSON.stringify(popup));
+    && popup.purpose === 'grow-type' && popup.anchor === null
+    && popup.menu === 'surfaceGrowTypePopup', JSON.stringify(popup));
   await page.keyboard.press('j');
   await page.keyboard.press('j'); // Diamond
   await page.keyboard.up('f');

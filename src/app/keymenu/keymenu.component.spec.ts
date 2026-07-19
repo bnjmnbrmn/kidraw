@@ -106,6 +106,42 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('shows the active popup/grow controls while command handling is suspended', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const keyMenu = (component as any).keyMenu;
+
+    component.setSuspended(true, 'grow-empty');
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowEmpty');
+    expect(keyMenu.currentMode.stackTop.keys['f'].label).toBe('Choose Node Type');
+
+    component.setSuspended(true, 'grow-type-popup');
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowTypePopup');
+    expect(keyMenu.currentMode.stackTop.keys['j'].label).toBe('Next Type');
+
+    component.setSuspended(true, 'grow-placement');
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowPlacement');
+    expect(keyMenu.currentMode.stackTop.keys['h'].label).toBe('Place Left');
+
+    component.setSuspended(false);
+    expect(keyMenu.currentMode.name).toBe('normal');
+  });
+
+  it('restores a mode change requested while a popup surface owns input', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const keyMenu = (component as any).keyMenu;
+
+    component.setSuspended(true, 'grow-type-popup');
+    component.enterLabelEditMode();
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowTypePopup');
+
+    component.setSuspended(false);
+    expect(keyMenu.currentMode.name).toBe('labelEdit');
+  });
+
   it('should have pan/zoom submenu on t with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
@@ -142,6 +178,7 @@ describe('KeymenuComponent', () => {
     const editAction = rootConfig['a'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();
     expect(editAction instanceof LabeledSubmenuConfig).toBeTrue();
+    expect(editAction.submenuLabel).toBe('Add...');
     expect((rootConfig['i'] as LabeledAction).actionLabel).toBe('Edit Text');
 
     // 'h' is Move Left in vim profile

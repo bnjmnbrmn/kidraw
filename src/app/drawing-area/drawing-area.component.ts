@@ -2769,7 +2769,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.navPopupPurpose = 'nav';
       this.navPopupStartFilter = false;
       this.navPopupOpen = true;
-      this.daOut.emit({kind: 'popup-state', open: true});
+      this.daOut.emit({kind: 'popup-state', open: true, surface: 'nav-popup'});
     }
     this.positionNavPopup();
     this.drawingLayer.batchDraw();
@@ -4725,7 +4725,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growMods.clear();
     this.growHoldKey = holdKey;
     this.growKeys = keys;
-    this.daOut.emit({kind: 'popup-state', open: true});
+    this.daOut.emit({
+      kind: 'popup-state',
+      open: true,
+      surface: this.growAnchor ? 'grow-targeting' : 'grow-empty',
+    });
     this.redrawGrowGhost();
   }
 
@@ -4835,6 +4839,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupDark = this.themeService.theme === 'dark';
     this.positionGrowPopup();
     this.navPopupOpen = true;
+    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-target-popup'});
   }
 
   /** Beside the anchor node, east unless clamped. */
@@ -4877,6 +4882,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupDark = this.themeService.theme === 'dark';
     this.positionGrowPopup();
     this.navPopupOpen = true;
+    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-type-popup'});
   }
 
   /** Type picked: enter the placement sub-mode — ghost node of that shape
@@ -4895,6 +4901,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacePos = this.growAnchor
       ? {x: c.x, y: c.y + DrawingAreaComponent.QUICK_ADD_SLOT}
       : {...c};
+    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
     this.redrawGrowGhost();
   }
 

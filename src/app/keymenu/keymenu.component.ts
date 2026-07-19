@@ -34,6 +34,7 @@ import {KeyboardConfigService} from '../services/keyboard-config.service';
 import {VisualConfigService} from '../services/visual-config.service';
 
 import {DoublePressTracker} from '../lib/keymenu/help/doublePressTracker';
+import {KeyboardSurface} from '../drawing-area/da-notification.model';
 
 interface ProfileHint {
   readonly key: string;
@@ -66,12 +67,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private configSub?: Subscription;
   private visualSub?: Subscription;
 
-  // When true, releasing the edit submenu key without selecting a child fires EDIT_OR_INSERT
+  // When true, releasing the add key without selecting a child fires QUICK_ADD.
   private editPending = false;
-  /** True while a DOM popup (nav popup) owns the keyboard: key-downs are
-   *  ignored entirely; key-ups still run so held-key bookkeeping can't go
-   *  stale across the popup. Set via setSuspended() from AppComponent. */
+  /** True while the drawing area or a DOM popup owns the keyboard. Component
+   *  key handlers are ignored; ownership was flushed on entry so swallowed
+   *  releases cannot leave stale keymenu state. */
   private suspended = false;
+  /** The real keymenu mode to restore after a drawing-area/DOM surface gives
+   *  keyboard ownership back. */
+  private modeBeforeSuspend: string | null = null;
+  private activeSurface: KeyboardSurface | null = null;
   // Set when a labelable node was created from the held insert hub (directly,
   // or — via the 'node-inserted' confirmation — a connected insert);
   // releasing the hub key then enters labelEdit.
@@ -146,7 +151,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return [
       {key: movementKeys, action: 'Move up/left/down/right'},
-      {key: `${root.editSubmenu} (hold)`, action: 'Insert/connect hub'},
+      {key: `${root.editSubmenu} (hold)`, action: 'Add / grow'},
       {key: `${root.selectDragSubmenu} (hold)`, action: 'Select + drag'},
       {key: this.keyAssignments.moveSpeed.bigger, action: 'Bigger move'},
       {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
@@ -224,9 +229,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormal: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormalCaps: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowTargetPopup: new USQwertyModeConfig(this.buildGrowTargetPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowTypePopup: new USQwertyModeConfig(this.buildGrowTypePopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowPlacement: new USQwertyModeConfig(this.buildGrowPlacementSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
       },
       onModeSwitch: () => this.refreshActiveKeyPath(),
     });
+    if (this.suspended && this.activeSurface) {
+      this.keyMenu.switchMode(KeymenuComponent.SURFACE_MODES[this.activeSurface]);
+    }
     this.refreshActiveKeyPath();
   }
 
@@ -409,7 +423,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
       [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
 
-      [root.editSubmenu]: new LabeledSubmenuConfig('Edit/Insert...', this.buildEditSubmenuConfig()),
+      [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
@@ -451,6 +465,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
     mode.actionSchedulingEnabled = false;
     mode.replaceTopSubmenu(this.dragSubmenuConfig);
+    this.refreshActiveKeyPath();
     queueMicrotask(() => { mode.actionSchedulingEnabled = true; });
   }
 
@@ -860,26 +875,127 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  /** While a DOM popup owns the keyboard, ignore key events entirely — the
-   *  popup handles its own. When we suspend we flush held-key bookkeeping so
-   *  the key that opened the popup (e.g. a tapped Go) can't get stuck pressed
-   *  while its key-up is swallowed. Called by AppComponent on 'popup-state'. */
-  setSuspended(suspended: boolean): void {
-    this.suspended = suspended;
-    if (suspended && this.keyMenu) {
-      this.keyMenu.cancelAllInputState();
-      this.refreshActiveKeyPath();
+  /** These cards are display-only: the drawing area or DOM popup owns the
+   *  actual listeners while `suspended` is true. Keeping them as ordinary
+   *  keymenu modes reuses the physical-key layout and visual vocabulary. */
+  private surfaceAction(label: string): LabeledAction {
+    return new LabeledAction(label, () => undefined, false);
+  }
+
+  private buildNavPopupSurfaceConfig(): SubmenuConfig {
+    return {
+      'j': this.surfaceAction('Next'),
+      'k': this.surfaceAction('Previous'),
+      'Enter': this.surfaceAction('Jump / Select'),
+      'Tab': this.surfaceAction('Walk + Continue'),
+      '[': this.surfaceAction('Esc: Back / Close'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowTargetingSurfaceConfig(): SubmenuConfig {
+    const m = this.keyAssignments.movement;
+    return {
+      [m.up]: this.surfaceAction('Target Up'),
+      [m.left]: this.surfaceAction('Target Left'),
+      [m.down]: this.surfaceAction('Target Down'),
+      [m.right]: this.surfaceAction('Target Right'),
+      [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
+      [this.keyAssignments.select.cycleDirection]: this.surfaceAction('Cycle Direction'),
+      [this.keyAssignments.search.open]: this.surfaceAction('Find Target'),
+      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Commit'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowEmptySurfaceConfig(): SubmenuConfig {
+    return {
+      [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
+      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Quick Add'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowTargetPopupSurfaceConfig(): SubmenuConfig {
+    return {
+      'j': this.surfaceAction('Next Result'),
+      'k': this.surfaceAction('Previous Result'),
+      'Enter': this.surfaceAction('Connect'),
+      '[': this.surfaceAction('Esc: Cancel Add'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowTypePopupSurfaceConfig(): SubmenuConfig {
+    return {
+      'j': this.surfaceAction('Next Type'),
+      'k': this.surfaceAction('Previous Type'),
+      [this.keyAssignments.insert.label]: this.surfaceAction('Release: Select'),
+      'Enter': this.surfaceAction('Select Type'),
+      '[': this.surfaceAction('Esc: Cancel Add'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowPlacementSurfaceConfig(): SubmenuConfig {
+    const m = this.keyAssignments.movement;
+    return {
+      [m.up]: this.surfaceAction('Place Up'),
+      [m.left]: this.surfaceAction('Place Left'),
+      [m.down]: this.surfaceAction('Place Down'),
+      [m.right]: this.surfaceAction('Place Right'),
+      [this.keyAssignments.moveSpeed.bigger]: this.surfaceAction('Coarse'),
+      [this.keyAssignments.moveSpeed.smaller]: this.surfaceAction('Fine'),
+      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Commit'),
+      'Enter': this.surfaceAction('Commit'),
+      '[': this.surfaceAction('Esc: Cancel Add'),
+    } as SubmenuConfig;
+  }
+
+  private static readonly SURFACE_MODES: Record<KeyboardSurface, string> = {
+    'nav-popup': 'surfaceNavPopup',
+    'grow-targeting': 'surfaceGrowTargeting',
+    'grow-empty': 'surfaceGrowEmpty',
+    'grow-target-popup': 'surfaceGrowTargetPopup',
+    'grow-type-popup': 'surfaceGrowTypePopup',
+    'grow-placement': 'surfaceGrowPlacement',
+  };
+
+  /** While another interaction surface owns the keyboard, render that
+   *  surface's live controls but leave event handling to its owner. On first
+   *  suspension, flush held-key bookkeeping so an opener key cannot stick
+   *  while its release is swallowed. */
+  setSuspended(suspended: boolean, surface?: KeyboardSurface): void {
+    if (!this.keyMenu) return;
+    if (suspended) {
+      if (!surface) return;
+      if (!this.suspended) {
+        this.modeBeforeSuspend = this.keyMenu.currentMode.name;
+        this.keyMenu.cancelAllInputState();
+      }
+      this.suspended = true;
+      this.activeSurface = surface;
+      this.keyMenu.switchMode(KeymenuComponent.SURFACE_MODES[surface]);
+      return;
     }
+
+    if (!this.suspended) return;
+    this.suspended = false;
+    const restore = this.modeBeforeSuspend ?? 'normal';
+    this.modeBeforeSuspend = null;
+    this.activeSurface = null;
+    this.keyMenu.switchMode(restore);
   }
 
   /** Switch keymenu mode and update the mode label. Called by AppComponent. */
   switchMode(modeName: string): void {
+    if (this.suspended) {
+      this.modeBeforeSuspend = modeName;
+      return;
+    }
     this.keyMenu.switchMode(modeName);
   }
 
   /** Whether the keymenu is currently in a CapsLock mode. */
   get isCapsMode(): boolean {
-    const name = this.keyMenu.currentMode.name;
+    const name = this.suspended && this.modeBeforeSuspend
+      ? this.modeBeforeSuspend
+      : this.keyMenu.currentMode.name;
     return name === 'normalCaps' || name === 'labelEditCaps' || name === 'labelEditVimNormalCaps';
   }
 
@@ -912,6 +1028,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     labelEditCaps: '#ed7d31',       // orange
     labelEditVimNormal: '#ffd966',  // yellow
     labelEditVimNormalCaps: '#ed7d31', // orange
+    surfaceNavPopup: '#9b59b6',
+    surfaceGrowTargeting: '#00a6a6',
+    surfaceGrowEmpty: '#00a6a6',
+    surfaceGrowTargetPopup: '#9b59b6',
+    surfaceGrowTypePopup: '#9b59b6',
+    surfaceGrowPlacement: '#00a6a6',
   };
 
   private updateModeLabel() {
@@ -930,6 +1052,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'capslock / edit: normal';
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
+    } else if (modeName === 'surfaceNavPopup') {
+      displayName = 'go > choose destination';
+    } else if (modeName === 'surfaceGrowTargeting') {
+      displayName = 'add > choose target';
+    } else if (modeName === 'surfaceGrowEmpty') {
+      displayName = 'add > empty canvas';
+    } else if (modeName === 'surfaceGrowTargetPopup') {
+      displayName = 'add > find target';
+    } else if (modeName === 'surfaceGrowTypePopup') {
+      displayName = 'add > choose node type';
+    } else if (modeName === 'surfaceGrowPlacement') {
+      displayName = 'add > place node';
     } else {
       displayName = modeName;
     }

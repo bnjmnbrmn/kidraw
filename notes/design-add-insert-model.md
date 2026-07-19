@@ -82,6 +82,9 @@ the `s`+direction edge picker retires once this lands.
   stack — the type popup opens mid-hold and suspends the keymenu, which
   flushes held-key bookkeeping, so the `a` hold has to be tracked by
   document-level keyup listeners with the Go popup's `holdKey` pattern.
+  Suspension changes input ownership but not the keymenu's visual role: the
+  keymenu renders a display-only card for targeting, popup selection, and
+  placement, then restores Normal or Label Edit when ownership returns.
   Chord Bug B (order sensitivity) lurks near any held-key design.
 - Two-hands rule (07-18): held `a` is left-hand; hjkl steering right-hand ✓;
   shape keys are left-hand next to held `a` ✓ (same-hand but reachable, as

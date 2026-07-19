@@ -104,7 +104,10 @@ export class AppComponent implements OnInit, OnDestroy {
         break;
       case "popup-state":
         // A DOM popup (nav popup) owns the keyboard while open.
-        this.keymenuComponent.setSuspended(daNotification.open);
+        this.keymenuComponent.setSuspended(
+          daNotification.open,
+          daNotification.open ? daNotification.surface : undefined,
+        );
         break;
     }
   }
