@@ -14,9 +14,7 @@
       <div class="status-message">{{ statusMessage }}</div>
     }
     <div class="context-strip">
-      @if (openFileLabel) {
-        <span class="file-chip" title="Open file — vault files auto-save">{{ openFileLabel }}</span>
-      }
+      <span class="file-chip" title="Working file — vault files auto-save">{{ workingFileLabel }}</span>
       @if (selectionSummary) {
         <span class="selection-chip">{{ selectionSummary }}</span>
       } @else {

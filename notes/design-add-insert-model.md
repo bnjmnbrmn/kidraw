@@ -108,7 +108,7 @@ list Ben asked to keep track of.
 | 10 | hold `a` + hold `f` → node-type popup; release f selects; hjkl places; release a (or sticky Enter) commits | single new-node path | ✅ built 2026-07-19 (v1 list = raw shapes; node-kinds slot pending) |
 | 11 | hold `a` over edge | add label / waypoint (current submenu) | keep for now; ghost-waypoint slide = later idea |
 | 12 | hold `a` over label | treat as its parent edge | ? tentative |
-| 13 | hold `a` over nothing | free node ghost + hjkl nudge | later; tap-`a` (5) covers the quick case |
+| 13 | hold `a` over nothing | `f` type popup → free node ghost at crosshairs + hjkl placement; release `a` / sticky Enter commits | ✅ built 2026-07-19 |
 | 14 | directionality in grow flow | `o` cycles 4 states (out/in/undirected/bidi), any time | ✓ settled round 4 |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
 | 18 | cancel semantics | no dedicated key: release-early/on-anchor = no-op, `u` after commit, Esc/`ctrl-[` in sticky (popup) phase where `a` is already released | ✓ settled round 6 |

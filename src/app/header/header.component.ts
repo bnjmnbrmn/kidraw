@@ -64,6 +64,12 @@ export class HeaderComponent {
    *  picker-opened files, or null when the graph has no file backing. */
   openFileLabel: string | null = null;
 
+  /** The header always names the graph being edited, even before it has a
+   *  backing file. */
+  get workingFileLabel(): string {
+    return this.openFileLabel ?? 'Untitled';
+  }
+
   get graphStats(): string {
     if (this.totalNodes === 0 && this.totalEdges === 0) return 'empty';
     const parts: string[] = [];

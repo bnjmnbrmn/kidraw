@@ -4672,7 +4672,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   // ---------------------------------------------------------------------
-  // Grow mode (held add key over a node) — notes/design-add-insert-model.md.
+  // Grow mode (held add key over a node or empty canvas) —
+  // notes/design-add-insert-model.md.
   // Drawing-area-owned: the keymenu is suspended (popup-state) and keys are
   // handled by the document-level listeners below, because stage-3/4 popups
   // must be able to open mid-hold without flushing our state.
@@ -4680,6 +4681,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private growActive = false;
   private growAnchor: DANode | null = null;
+  /** Start point for an empty-canvas add, in drawing-layer coordinates. */
+  private growOrigin: {x: number; y: number} | null = null;
   /** null = pristine (no target hopped yet) → release does the default
    *  quick-add-below. */
   private growTarget: DANode | null = null;
@@ -4697,14 +4700,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growMods = new Set<string>();
   private growGhost: Konva.Group | null = null;
 
-  /** ENTER_ADD_MODE: take the hold as grow mode when the crosshairs are over
-   *  a node; otherwise no-op (the keymenu keeps the classic hub submenu). */
+  /** ENTER_ADD_MODE: take the hold as grow mode over a node or genuinely
+   *  empty canvas. Edges/labels retain the classic label/waypoint hub. */
   private maybeEnterGrowMode(holdKey: string, keys: NonNullable<DrawingAreaComponent['growKeys']>): void {
     const nodes = this.getDANodesContainingCrosshairs();
-    if (nodes.length === 0 || this.getLabelUnderCrosshairs()) return;
+    const hasLabel = !!this.getLabelUnderCrosshairs();
+    const hasEdge = this.getDAEdgesContainingCrosshairs().length > 0;
+    const hasWaypoint = !!this.getWaypointUnderCrosshairs();
+    if (hasLabel || (nodes.length === 0 && (hasEdge || hasWaypoint))) return;
     this.finishTweens();
     this.growActive = true;
-    this.growAnchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
+    this.growAnchor = nodes.length > 0
+      ? nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
+      : null;
+    this.growOrigin = this.growAnchor
+      ? this.getNodeCenterInLayerCoordinates(this.growAnchor)
+      : this.crosshairsInLayerCoords();
     this.growTarget = null;
     this.growDirState = 0;
     this.growPlacing = false;
@@ -4728,6 +4739,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dir = key === k.left ? 'left' : key === k.right ? 'right'
       : key === k.up ? 'up' : key === k.down ? 'down' : null;
     if (key === k.cycle) {
+      if (!this.growAnchor) return;
       event.preventDefault();
       this.growDirState = (this.growDirState + 1) % 4;
       this.redrawGrowGhost();
@@ -4756,11 +4768,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     if (dir) {
+      if (!this.growAnchor) return;
       event.preventDefault();
       this.growHop(dir);
       return;
     }
     if (key === k.search) {
+      if (!this.growAnchor) return;
       event.preventDefault();
       this.openGrowTargetPopup();
       return;
@@ -4790,6 +4804,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Hop the target highlight to the nearest node in the given direction,
    *  measured from the current target (the anchor before any hop). */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
+    if (!this.growAnchor) return;
     const from = this.getNodeCenterInStageCoordinates(this.growTarget ?? this.growAnchor!);
     const found = this.findNodeInDirection(direction, from);
     if (!found) return;
@@ -4827,12 +4842,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const POPUP_W = 210;
     const POPUP_H = Math.min(38 + this.navPopupRows.length * 28 + 16, 220);
     const GAP = 14;
-    const n = this.growAnchor!;
     const scale = this.drawingLayer.scaleX();
-    const rect = {
+    const n = this.growAnchor;
+    const origin = this.growOrigin!;
+    const rect = n ? {
       x: this.drawingLayer.x() + n.group.x() * scale,
       y: this.drawingLayer.y() + n.group.y() * scale,
       w: n.NODE_WIDTH * scale,
+    } : {
+      x: this.drawingLayer.x() + origin.x * scale,
+      y: this.drawingLayer.y() + origin.y * scale,
+      w: 0,
     };
     this.navPopupLeft = Math.max(8, Math.min(rect.x + rect.w + GAP, this.stage.width() - POPUP_W - 8));
     this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
@@ -4860,7 +4880,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Type picked: enter the placement sub-mode — ghost node of that shape
-   *  at the below-anchor default; hjkl places (first press = rough slot
+   *  at the below-anchor default (or at the crosshairs on empty canvas);
+   *  hjkl places (first press = rough slot
    *  throw, then grid steps, coarse/fine tier keys held). Release of the
    *  still-held add key commits; Enter commits the sticky variant. */
   private enterGrowPlacement(shapeId: string): void {
@@ -4870,8 +4891,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growShape = shapeId as NodeShape;
     this.growTarget = null;
     this.growPlacedRough = false;
-    const c = this.getNodeCenterInLayerCoordinates(this.growAnchor!);
-    this.growPlacePos = {x: c.x, y: c.y + DrawingAreaComponent.QUICK_ADD_SLOT};
+    const c = this.growOrigin!;
+    this.growPlacePos = this.growAnchor
+      ? {x: c.x, y: c.y + DrawingAreaComponent.QUICK_ADD_SLOT}
+      : {...c};
     this.redrawGrowGhost();
   }
 
@@ -4880,7 +4903,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  scale the step (coarse = a full slot, fine = a tenth-grid). */
   private growPlaceMove(direction: 'left' | 'right' | 'up' | 'down'): void {
     const k = this.growKeys!;
-    const c = this.getNodeCenterInLayerCoordinates(this.growAnchor!);
+    const c = this.growOrigin!;
     const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
     const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     if (!this.growPlacedRough) {
@@ -4899,7 +4922,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private commitGrowPlacement(): void {
-    const anchor = this.growAnchor!;
+    const anchor = this.growAnchor;
     const dirState = this.growDirState;
     const shape = this.growShape;
     const pos = this.growPlacePos!;
@@ -4914,7 +4937,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       pos.x * scale + this.drawingLayer.x(),
       pos.y * scale + this.drawingLayer.y(),
       shape);
-    this.wireGrowEdge(anchor, newNode, dirState);
+    if (anchor) this.wireGrowEdge(anchor, newNode, dirState);
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {
@@ -4948,11 +4971,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private commitGrowMode(): void {
-    const anchor = this.growAnchor!;
+    const anchor = this.growAnchor;
     const target = this.growTarget;
     const dirState = this.growDirState;
     this.exitGrowMode();
 
+    if (!anchor) {
+      // A plain tap on empty canvas keeps the established quick-add behavior.
+      this.handleQuickAdd();
+      return;
+    }
     if (target === null) {
       // Pristine release = the tap default: connected node one slot below.
       this.quickAddBelow(anchor, dirState);
@@ -5015,6 +5043,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growActive = false;
     this.growGhost?.destroy();
     this.growGhost = null;
+    this.growOrigin = null;
     this.daOut.emit({kind: 'popup-state', open: false});
     this.drawingLayer.batchDraw();
   }
@@ -5027,10 +5056,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growGhost?.destroy();
     const ghost = new Konva.Group({listening: false, opacity: 0.55});
     this.growGhost = ghost;
-    const anchor = this.growAnchor!;
+    const anchor = this.growAnchor;
     const scale = this.drawingLayer.scaleX();
-    const aPos = anchor.group.position();
-    const aCenter = {x: aPos.x + anchor.NODE_WIDTH / 2, y: aPos.y + anchor.NODE_HEIGHT / 2};
+    const aCenter = this.growOrigin!;
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const stroke = palette.nodeStroke;
 
@@ -5041,7 +5069,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const w = 140, h = 60;
       endHalf = {w: w / 2, h: h / 2};
       ghost.add(this.growGhostShape(this.growShape ?? this._defaultNodeShape, endCenter, w, h, stroke, scale));
-    } else if (this.growTarget && this.growTarget !== anchor) {
+    } else if (anchor && this.growTarget && this.growTarget !== anchor) {
       const t = this.growTarget;
       const tPos = t.group.position();
       endCenter = {x: tPos.x + t.NODE_WIDTH / 2, y: tPos.y + t.NODE_HEIGHT / 2};
@@ -5053,13 +5081,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }));
     } else {
       const w = 140, h = 60;
-      endCenter = {x: aCenter.x, y: aCenter.y + DrawingAreaComponent.QUICK_ADD_SLOT};
+      endCenter = anchor
+        ? {x: aCenter.x, y: aCenter.y + DrawingAreaComponent.QUICK_ADD_SLOT}
+        : {...aCenter};
       endHalf = {w: w / 2, h: h / 2};
       ghost.add(new Konva.Rect({
         x: endCenter.x - w / 2, y: endCenter.y - h / 2,
         width: w, height: h,
         stroke, dash: [6, 4], strokeWidth: 2 / scale, cornerRadius: 4,
       }));
+    }
+
+    // Empty-canvas adds have no anchor and therefore no ghost edge.
+    if (!anchor) {
+      this.drawingLayer.add(ghost);
+      ghost.moveToTop();
+      this.drawingLayer.batchDraw();
+      return;
     }
 
     // Chord from the anchor boundary to the end boundary (axis-aligned trim).

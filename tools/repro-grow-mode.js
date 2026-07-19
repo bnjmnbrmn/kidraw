@@ -32,6 +32,9 @@ async function main() {
   await page.waitForSelector('#mainDrawingArea canvas', { timeout: 15000 });
   await page.waitForTimeout(400);
 
+  check('header always identifies an unbacked graph as Untitled',
+    (await page.locator('.file-chip').textContent())?.trim() === 'Untitled');
+
   // Three unconnected nodes: anchor A, B to its right, C below-left.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -265,6 +268,41 @@ async function main() {
   check('Escape in placement cancels without creating', s.nodes.length === nodesBefore9
     && s.growActive === false && s.mode === 'normal',
     JSON.stringify({n: s.nodes.length, grow: s.growActive, mode: s.mode}));
+
+  // --- 10. Empty-canvas a+f uses the type popup and creates a free node ---
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.crosshairsLayer.crosshairs.x = 1450;
+    da.crosshairsLayer.crosshairs.y = 850;
+  });
+  const before10 = await state();
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.down('f');
+  await page.waitForTimeout(300);
+  popup = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {open: da.navPopupOpen, purpose: da.navPopupPurpose, anchor: da.growAnchor};
+  });
+  check('empty-canvas a+f opens the type popup', popup.open
+    && popup.purpose === 'grow-type' && popup.anchor === null, JSON.stringify(popup));
+  await page.keyboard.press('j');
+  await page.keyboard.press('j'); // Diamond
+  await page.keyboard.up('f');
+  await page.waitForTimeout(200);
+  await page.keyboard.up('a');
+  await page.waitForTimeout(250);
+  s = await state();
+  const freeDiamond = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const nodes = da.drawingLayer.getDANodes();
+    const node = nodes[nodes.length - 1];
+    return {shape: node.nodeShape, edges: node.connectedEdges.length};
+  });
+  check('empty-canvas type choice commits a free diamond',
+    s.nodes.length === before10.nodes.length + 1 && s.edges.length === before10.edges.length
+      && freeDiamond.shape === 'diamond' && freeDiamond.edges === 0 && s.mode === 'labelEdit',
+    JSON.stringify({node: freeDiamond, mode: s.mode}));
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
