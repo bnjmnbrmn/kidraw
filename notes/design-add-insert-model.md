@@ -95,25 +95,25 @@ list Ben asked to keep track of.
 
 | # | Case | Behavior | Status |
 |---|------|----------|--------|
-| 1 | tap `i` over node | edit node text (vim insert) | ✓, stage 1 |
-| 2 | tap `i` over label | edit label text | ✓, stage 1 |
-| 3 | tap `i` over edge | edit its label; create empty one if none? | ? detail open |
-| 4 | tap `i` over nothing | no-op + hint | ✓, stage 1 |
-| 5 | tap `a` over nothing | quick-add node at crosshairs → labelEdit | ✓ ("sure, let's try") |
-| 6 | tap `a` over node | **default quick-add**: default-type node one slot below the anchor, anchor→new edge, labelEdit (round 4) | ✓, stage 1 |
-| 6b | tap `a` over edge/label | no-op + hint | ✓ |
-| 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✓, **stage 2 (build first of the grow flow)** |
-| 8 | hold `a` over node: `o` direction flip | ghost arrowhead flips | ✓, stage 2 |
-| 9 | hold `a` over node: `/` search target | fuzzy popup by label (big graphs) | ✓, stage 3 |
-| 10 | hold `a` + hold `f` → node-type popup; release f selects; hjkl places; release a commits | single new-node path (a-n dropped, round 4) | ✓, stage 4 (needs node-kinds slot; raw shapes as fallback list) |
+| 1 | tap `i` over node | edit node text (vim insert) | ✅ built 2026-07-19 |
+| 2 | tap `i` over label | edit label text | ✅ built 2026-07-19 |
+| 3 | tap `i` over edge | edits its label; creates an empty one if none (built as such) | ✅ built 2026-07-19 |
+| 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
+| 5 | tap `a` over nothing | quick-add node at crosshairs → labelEdit | ✅ built 2026-07-19 |
+| 6 | tap `a` over node | **default quick-add**: node one slot below, anchor→new, labelEdit | ✅ built 2026-07-19 (= pristine grow release) |
+| 6b | tap `a` over edge/label | no-op + hint | ✅ built 2026-07-19 |
+| 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✅ built 2026-07-19 |
+| 8 | hold `a` over node: `o` cycles 4 states | ghost arrowheads track | ✅ built 2026-07-19 |
+| 9 | hold `a` over node: `/` search target | fuzzy popup by label (big graphs) | ✅ built 2026-07-19 (sticky: Enter commits, Esc cancels) |
+| 10 | hold `a` + hold `f` → node-type popup; release f selects; hjkl places; release a (or sticky Enter) commits | single new-node path | ✅ built 2026-07-19 (v1 list = raw shapes; node-kinds slot pending) |
 | 11 | hold `a` over edge | add label / waypoint (current submenu) | keep for now; ghost-waypoint slide = later idea |
 | 12 | hold `a` over label | treat as its parent edge | ? tentative |
 | 13 | hold `a` over nothing | free node ghost + hjkl nudge | later; tap-`a` (5) covers the quick case |
 | 14 | directionality in grow flow | `o` cycles 4 states (out/in/undirected/bidi), any time | ✓ settled round 4 |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
 | 18 | cancel semantics | no dedicated key: release-early/on-anchor = no-op, `u` after commit, Esc/`ctrl-[` in sticky (popup) phase where `a` is already released | ✓ settled round 6 |
-| 19 | `v` submenu: `o` cycles directionality of selected edge(s) | same 4-state cycle as the grow flow | ✓ round 5, stage 1 |
-| 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers for coarse/fine | proposed round 5, build-and-feel |
+| 19 | `v` submenu: `o` cycles directionality of selected edge(s) | built as 3-state (D→U→B); reversing an existing edge is a separate structural op, deferred | ✅ built 2026-07-19 (scope note) |
+| 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers | ✅ built 2026-07-19 — awaiting Ben's feel |
 | 16 | u/o connect modifiers (07-18 hub) | interim survivors; retire at stage 4 | transitional |
 | 17 | `s`+direction edge picker | retire once 7 lands and proves out | transitional |
 

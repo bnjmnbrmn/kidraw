@@ -228,7 +228,7 @@ export type DACommand =
   // no-op and the keymenu proceeds with the held hub submenu. keys carries
   // the active profile's steering bindings; holdKey's release commits.
   | {kind: DACommandType.ENTER_ADD_MODE; holdKey: string;
-     keys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string}}
+     keys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string}}
   // Tap of the insert-text key: edit the text of whatever is under the
   // crosshairs (node label, edge label, free label).
   | {kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}

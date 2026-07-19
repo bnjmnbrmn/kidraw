@@ -1252,7 +1252,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         holdKey: this.keyAssignments.root.editSubmenu,
         keys: {up: m.up, left: m.left, down: m.down, right: m.right,
                cycle: this.keyAssignments.select.cycleDirection,
-               newNode: insert.label, search: this.keyAssignments.search.open}});
+               newNode: insert.label, search: this.keyAssignments.search.open,
+               coarse: this.keyAssignments.moveSpeed.bigger,
+               fine: this.keyAssignments.moveSpeed.smaller}});
       if (this.suspended) {
         return;
       }

@@ -188,6 +188,84 @@ async function main() {
     && s.statuses.some(m => m.includes('Add canceled')),
     JSON.stringify({edges: s.edges.length, grow: s.growActive, mode: s.mode}));
 
+  // --- 7. a+f type popup → placement → release commits new node ---
+  const nodesBefore7 = s.nodes.length;
+  await parkOnNode('A');
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.down('f');
+  await page.waitForTimeout(300);
+  popup = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return { open: da.navPopupOpen, purpose: da.navPopupPurpose };
+  });
+  check('a+f opens the type popup', popup.open && popup.purpose === 'grow-type', JSON.stringify(popup));
+  await page.keyboard.press('j'); // highlight Circle
+  await page.waitForTimeout(120);
+  await page.keyboard.up('f');    // release selects → placement mode
+  await page.waitForTimeout(250);
+  let placing = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return { placing: da.growPlacing, shape: da.growShape, open: da.navPopupOpen };
+  });
+  check('releasing f selects the type and enters placement', placing.placing === true
+    && placing.shape === 'circle' && !placing.open, JSON.stringify(placing));
+  await page.keyboard.press('l'); // rough throw right
+  await page.keyboard.press('l'); // grid step right
+  await page.waitForTimeout(120);
+  await page.keyboard.up('a');    // commit
+  await page.waitForTimeout(250);
+  s = await state();
+  const circle = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const A = da.drawingLayer.getDANodes().find(n => n.label.text() === 'A');
+    const c = da.drawingLayer.getDANodes().find(n => n.nodeShape === 'circle');
+    return c ? { x: c.konvaGroup.x(), ax: A.konvaGroup.x(), edge: c.connectedEdges.length } : null;
+  });
+  check('release commits a connected circle placed to the right', s.nodes.length === nodesBefore7 + 1
+    && circle && circle.x > circle.ax && circle.edge === 1, JSON.stringify(circle));
+  check('placement commit enters labelEdit', s.mode === 'labelEdit', s.mode);
+  await page.keyboard.type('E', { delay: 25 });
+  await escapeToNormal();
+
+  // --- 8. sticky placement: a released during popup, Enter commits ---
+  const nodesBefore8 = (await state()).nodes.length;
+  await parkOnNode('A');
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.down('f');
+  await page.waitForTimeout(300);
+  await page.keyboard.up('a');   // sticky — popup owns the flow now
+  await page.waitForTimeout(120);
+  await page.keyboard.up('f');   // selects Box (top row)
+  await page.waitForTimeout(250);
+  await page.keyboard.press('h'); // rough throw left
+  await page.waitForTimeout(120);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(250);
+  s = await state();
+  check('sticky placement commits on Enter', s.nodes.length === nodesBefore8 + 1
+    && s.mode === 'labelEdit', JSON.stringify({n: s.nodes.length, mode: s.mode}));
+  await escapeToNormal();
+
+  // --- 9. Escape in placement cancels ---
+  const nodesBefore9 = (await state()).nodes.length;
+  await parkOnNode('A');
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.down('f');
+  await page.waitForTimeout(300);
+  await page.keyboard.up('f');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  await page.keyboard.up('a');
+  await page.waitForTimeout(200);
+  s = await state();
+  check('Escape in placement cancels without creating', s.nodes.length === nodesBefore9
+    && s.growActive === false && s.mode === 'normal',
+    JSON.stringify({n: s.nodes.length, grow: s.growActive, mode: s.mode}));
+
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);

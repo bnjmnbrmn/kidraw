@@ -236,7 +236,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   navPopupHoldKey: string | null = null;
   navPopupStartFilter = false;
   /** Who owns the popup right now: graph navigation or the grow-target search. */
-  private navPopupPurpose: 'nav' | 'grow-target' = 'nav';
+  private navPopupPurpose: 'nav' | 'grow-target' | 'grow-type' = 'nav';
   /** True while a single-candidate popup is concealed (first 500 ms of a
    *  hold — a quick tap walks the chain without flashing UI). */
   navPopupHidden = false;
@@ -2779,6 +2779,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  ghost preview of where it leads. The view (pan and zoom) never moves —
    *  offscreen destinations are represented by the ghost copy instead. */
   onNavPopupHighlight(edgeId: string): void {
+    if (this.navPopupPurpose === 'grow-type') return;
     if (this.navPopupPurpose === 'grow-target') {
       const node = this.drawingLayer.getDANodes().find(n => n.id === edgeId);
       if (node && node !== this.growAnchor) {
@@ -2799,6 +2800,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   onNavPopupCommit(event: {id: string; walk: boolean}): void {
     if (this.navPopupPurpose === 'grow-target') {
       this.growCommitToNodeId(event.id);
+      return;
+    }
+    if (this.navPopupPurpose === 'grow-type') {
+      this.enterGrowPlacement(event.id);
       return;
     }
     const cand = this.navCandidates.get(event.id);
@@ -2823,8 +2828,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Escape / backdrop: close without moving. The crosshairs return to the
    *  source node so the traversal anchor stays meaningful. */
   closeNavPopup(): void {
-    if (this.navPopupPurpose === 'grow-target') {
-      // Esc out of the target search cancels the whole add.
+    if (this.navPopupPurpose === 'grow-target' || this.navPopupPurpose === 'grow-type') {
+      // Esc out of a grow popup cancels the whole add.
       this.navPopupOpen = false;
       this.navPopupPurpose = 'nav';
       this.exitGrowMode();
@@ -4681,7 +4686,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
-  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string} | null = null;
+  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string} | null = null;
+  // Placement sub-mode (after the type popup picked a kind for a NEW node).
+  private growPlacing = false;
+  private growShape: NodeShape | undefined = undefined;
+  /** Ghost position in drawing-layer coordinates (node center). */
+  private growPlacePos: {x: number; y: number} | null = null;
+  /** First directional press = rough slot throw; later presses = grid steps. */
+  private growPlacedRough = false;
+  private growMods = new Set<string>();
   private growGhost: Konva.Group | null = null;
 
   /** ENTER_ADD_MODE: take the hold as grow mode when the crosshairs are over
@@ -4694,6 +4707,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growAnchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
     this.growTarget = null;
     this.growDirState = 0;
+    this.growPlacing = false;
+    this.growShape = undefined;
+    this.growPlacePos = null;
+    this.growPlacedRough = false;
+    this.growMods.clear();
     this.growHoldKey = holdKey;
     this.growKeys = keys;
     this.daOut.emit({kind: 'popup-state', open: true});
@@ -4704,20 +4722,42 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   handleGrowKeyDown(event: KeyboardEvent): void {
     if (!this.growActive || !this.growKeys) return;
     if (this.navPopupOpen) return; // the popup owns the keyboard (sticky phase)
-    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    const key = event.key.toLowerCase();
     if (event.repeat && key === this.growHoldKey) return;
     const k = this.growKeys;
     const dir = key === k.left ? 'left' : key === k.right ? 'right'
       : key === k.up ? 'up' : key === k.down ? 'down' : null;
-    if (dir) {
-      event.preventDefault();
-      this.growHop(dir);
-      return;
-    }
     if (key === k.cycle) {
       event.preventDefault();
       this.growDirState = (this.growDirState + 1) % 4;
       this.redrawGrowGhost();
+      return;
+    }
+    if (key === 'escape') {
+      this.exitGrowMode();
+      this.emitStatus('Add canceled');
+      return;
+    }
+    if (this.growPlacing) {
+      if (dir) {
+        event.preventDefault();
+        this.growPlaceMove(dir);
+        return;
+      }
+      if (key === k.coarse || key === k.fine) {
+        this.growMods.add(key);
+        return;
+      }
+      if (key === 'enter') {
+        // Sticky commit: the hold key was released during the type popup.
+        event.preventDefault();
+        this.commitGrowPlacement();
+      }
+      return;
+    }
+    if (dir) {
+      event.preventDefault();
+      this.growHop(dir);
       return;
     }
     if (key === k.search) {
@@ -4725,20 +4765,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.openGrowTargetPopup();
       return;
     }
-    if (key === 'escape') {
-      this.exitGrowMode();
-      this.emitStatus('Add canceled');
+    if (key === k.newNode) {
+      event.preventDefault();
+      this.openGrowTypePopup();
     }
   }
 
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
     if (!this.growActive) return;
+    const key = event.key.toLowerCase();
+    this.growMods.delete(key);
     // Sticky phase: with a popup open the hold key is expected to be
     // released (typing needs both hands) — Enter/Esc resolve the flow.
     if (this.navPopupOpen) return;
-    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     if (key !== this.growHoldKey) return;
+    if (this.growPlacing) {
+      this.commitGrowPlacement();
+      return;
+    }
     this.commitGrowMode();
   }
 
@@ -4791,6 +4836,95 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
     this.navPopupLeft = Math.max(8, Math.min(rect.x + rect.w + GAP, this.stage.width() - POPUP_W - 8));
     this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
+  }
+
+  /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the
+   *  extension node-kinds slot slots in here later). Held-f rhythm: browse
+   *  with j/k while f is down, releasing f selects (the popup's holdKey
+   *  machinery); Enter also selects. */
+  private openGrowTypePopup(): void {
+    this.navPopupRows = [
+      {id: 'box',       title: 'Box'},
+      {id: 'circle',    title: 'Circle'},
+      {id: 'diamond',   title: 'Diamond'},
+      {id: 'junction',  title: 'Junction'},
+      {id: 'invisible', title: 'Invisible'},
+    ];
+    this.navPopupPurpose = 'grow-type';
+    this.navPopupStartFilter = false;
+    this.navPopupHoldKey = this.growKeys?.newNode ?? 'f';
+    this.navPopupHidden = false;
+    this.navPopupDark = this.themeService.theme === 'dark';
+    this.positionGrowPopup();
+    this.navPopupOpen = true;
+  }
+
+  /** Type picked: enter the placement sub-mode — ghost node of that shape
+   *  at the below-anchor default; hjkl places (first press = rough slot
+   *  throw, then grid steps, coarse/fine tier keys held). Release of the
+   *  still-held add key commits; Enter commits the sticky variant. */
+  private enterGrowPlacement(shapeId: string): void {
+    this.navPopupOpen = false;
+    this.navPopupPurpose = 'nav';
+    this.growPlacing = true;
+    this.growShape = shapeId as NodeShape;
+    this.growTarget = null;
+    this.growPlacedRough = false;
+    const c = this.getNodeCenterInLayerCoordinates(this.growAnchor!);
+    this.growPlacePos = {x: c.x, y: c.y + DrawingAreaComponent.QUICK_ADD_SLOT};
+    this.redrawGrowGhost();
+  }
+
+  /** Placement steering. Rough first (slot throw in the pressed direction,
+   *  replacing the below default), grid steps after; `s`/`d` tier chords
+   *  scale the step (coarse = a full slot, fine = a tenth-grid). */
+  private growPlaceMove(direction: 'left' | 'right' | 'up' | 'down'): void {
+    const k = this.growKeys!;
+    const c = this.getNodeCenterInLayerCoordinates(this.growAnchor!);
+    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+    if (!this.growPlacedRough) {
+      this.growPlacedRough = true;
+      const slot = DrawingAreaComponent.QUICK_ADD_SLOT;
+      this.growPlacePos = {x: c.x + dx * slot, y: c.y + dy * slot};
+    } else {
+      const step = this.growMods.has(k.coarse) ? DrawingAreaComponent.QUICK_ADD_SLOT
+        : this.growMods.has(k.fine) ? 10 : 50;
+      this.growPlacePos = {
+        x: this.growPlacePos!.x + dx * step,
+        y: this.growPlacePos!.y + dy * step,
+      };
+    }
+    this.redrawGrowGhost();
+  }
+
+  private commitGrowPlacement(): void {
+    const anchor = this.growAnchor!;
+    const dirState = this.growDirState;
+    const shape = this.growShape;
+    const pos = this.growPlacePos!;
+    this.exitGrowMode();
+
+    this.finishTweens();
+    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    const scale = this.drawingLayer.scaleX();
+    const newNode = this.drawingLayer.createNewNode(
+      pos.x * scale + this.drawingLayer.x(),
+      pos.y * scale + this.drawingLayer.y(),
+      shape);
+    this.wireGrowEdge(anchor, newNode, dirState);
+
+    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
+    if (labelable) {
+      newNode.showCursor();
+      this.crosshairsLayer.hideCrosshairs();
+      this.daOut.emit({kind: 'started-label-editing-mode'});
+    }
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.scheduleVaultAutoSave();
   }
 
   /** Popup commit for the grow-target search: wire the edge right away
@@ -4857,6 +4991,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+  /** Dashed outline for the placement ghost, per shape. */
+  private growGhostShape(shape: NodeShape, center: {x: number; y: number},
+                         w: number, h: number, stroke: string, scale: number): Konva.Shape {
+    const common = {stroke, dash: [6, 4], strokeWidth: 2 / scale};
+    switch (shape) {
+      case 'circle':
+        return new Konva.Ellipse({x: center.x, y: center.y, radiusX: w / 2, radiusY: h / 2, ...common});
+      case 'diamond':
+        return new Konva.Line({closed: true, ...common, points: [
+          center.x, center.y - h / 2, center.x + w / 2, center.y,
+          center.x, center.y + h / 2, center.x - w / 2, center.y]});
+      case 'junction':
+      case 'invisible':
+        return new Konva.Circle({x: center.x, y: center.y, radius: 10, ...common});
+      default:
+        return new Konva.Rect({x: center.x - w / 2, y: center.y - h / 2,
+          width: w, height: h, cornerRadius: 4, ...common});
+    }
+  }
+
   private exitGrowMode(): void {
     this.growActive = false;
     this.growGhost?.destroy();
@@ -4882,7 +5036,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     let endCenter: {x: number; y: number};
     let endHalf: {w: number; h: number};
-    if (this.growTarget && this.growTarget !== anchor) {
+    if (this.growPlacing && this.growPlacePos) {
+      endCenter = this.growPlacePos;
+      const w = 140, h = 60;
+      endHalf = {w: w / 2, h: h / 2};
+      ghost.add(this.growGhostShape(this.growShape ?? this._defaultNodeShape, endCenter, w, h, stroke, scale));
+    } else if (this.growTarget && this.growTarget !== anchor) {
       const t = this.growTarget;
       const tPos = t.group.position();
       endCenter = {x: tPos.x + t.NODE_WIDTH / 2, y: tPos.y + t.NODE_HEIGHT / 2};
