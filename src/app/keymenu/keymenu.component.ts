@@ -1243,6 +1243,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const editKeyPressedAtRoot = currentMode.name === 'normal' && !event.repeat && atRootLevel &&
         eventKey === this.keyAssignments.root.editSubmenu;
     if (editKeyPressedAtRoot) {
+      // Over a node the drawing area takes the hold as the grow mode
+      // (suspending us synchronously via popup-state); otherwise we keep
+      // the classic held hub submenu + tap-to-quick-add.
+      const m = this.keyAssignments.movement;
+      const insert = this.keyAssignments.insert;
+      this.keyMenuOut.emit({kind: DACommandType.ENTER_ADD_MODE,
+        holdKey: this.keyAssignments.root.editSubmenu,
+        keys: {up: m.up, left: m.left, down: m.down, right: m.right,
+               cycle: this.keyAssignments.select.cycleDirection,
+               newNode: insert.label, search: this.keyAssignments.search.open}});
+      if (this.suspended) {
+        return;
+      }
       this.editPending = true;
     } else if (this.editPending && eventKey !== this.keyAssignments.root.editSubmenu) {
       // Any child key press cancels tap-to-edit (user is using the submenu)

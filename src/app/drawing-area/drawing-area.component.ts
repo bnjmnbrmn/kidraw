@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, EventEmitter, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DemoDataService } from '../services/demo-data.service';
 import { ThemeService } from '../services/theme.service';
@@ -537,6 +537,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
         command.kind !== DACommandType.QUICK_ADD &&
+        command.kind !== DACommandType.ENTER_ADD_MODE &&
         command.kind !== DACommandType.EDIT_TEXT_AT_CROSSHAIRS &&
         command.kind !== DACommandType.REDO) {
       this.showMovementIndicators();
@@ -701,6 +702,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.QUICK_ADD:
         this.handleQuickAdd();
+        break;
+      case DACommandType.ENTER_ADD_MODE:
+        this.maybeEnterGrowMode(command.holdKey, command.keys);
         break;
       case DACommandType.EDIT_TEXT_AT_CROSSHAIRS:
         this.editTextAtCrosshairs();
@@ -3192,11 +3196,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.focusNode(nearestNode);
   }
 
-  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down'): DANode | null {
+  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
+                              fromPoint?: {x: number; y: number}): DANode | null {
     const nodes = this.drawingLayer.getDANodes();
     if (nodes.length === 0) return null;
 
-    const crosshairsPosition = {
+    const crosshairsPosition = fromPoint ?? {
       x: this.crosshairsLayer.crosshairsX(),
       y: this.crosshairsLayer.crosshairsY(),
     };
@@ -4636,10 +4641,201 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Grow mode (held add key over a node) — notes/design-add-insert-model.md.
+  // Drawing-area-owned: the keymenu is suspended (popup-state) and keys are
+  // handled by the document-level listeners below, because stage-3/4 popups
+  // must be able to open mid-hold without flushing our state.
+  // ---------------------------------------------------------------------
+
+  private growActive = false;
+  private growAnchor: DANode | null = null;
+  /** null = pristine (no target hopped yet) → release does the default
+   *  quick-add-below. */
+  private growTarget: DANode | null = null;
+  /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
+  private growDirState = 0;
+  private growHoldKey = 'a';
+  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string} | null = null;
+  private growGhost: Konva.Group | null = null;
+
+  /** ENTER_ADD_MODE: take the hold as grow mode when the crosshairs are over
+   *  a node; otherwise no-op (the keymenu keeps the classic hub submenu). */
+  private maybeEnterGrowMode(holdKey: string, keys: NonNullable<DrawingAreaComponent['growKeys']>): void {
+    const nodes = this.getDANodesContainingCrosshairs();
+    if (nodes.length === 0 || this.getLabelUnderCrosshairs()) return;
+    this.finishTweens();
+    this.growActive = true;
+    this.growAnchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
+    this.growTarget = null;
+    this.growDirState = 0;
+    this.growHoldKey = holdKey;
+    this.growKeys = keys;
+    this.daOut.emit({kind: 'popup-state', open: true});
+    this.redrawGrowGhost();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleGrowKeyDown(event: KeyboardEvent): void {
+    if (!this.growActive || !this.growKeys) return;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (event.repeat && key === this.growHoldKey) return;
+    const k = this.growKeys;
+    const dir = key === k.left ? 'left' : key === k.right ? 'right'
+      : key === k.up ? 'up' : key === k.down ? 'down' : null;
+    if (dir) {
+      event.preventDefault();
+      this.growHop(dir);
+      return;
+    }
+    if (key === k.cycle) {
+      event.preventDefault();
+      this.growDirState = (this.growDirState + 1) % 4;
+      this.redrawGrowGhost();
+      return;
+    }
+    if (key === 'escape') {
+      this.exitGrowMode();
+      this.emitStatus('Add canceled');
+    }
+  }
+
+  @HostListener('document:keyup', ['$event'])
+  handleGrowKeyUp(event: KeyboardEvent): void {
+    if (!this.growActive) return;
+    const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+    if (key !== this.growHoldKey) return;
+    this.commitGrowMode();
+  }
+
+  /** Hop the target highlight to the nearest node in the given direction,
+   *  measured from the current target (the anchor before any hop). */
+  private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
+    const from = this.getNodeCenterInStageCoordinates(this.growTarget ?? this.growAnchor!);
+    const found = this.findNodeInDirection(direction, from);
+    if (!found) return;
+    this.growTarget = found;
+    this.redrawGrowGhost();
+  }
+
+  private commitGrowMode(): void {
+    const anchor = this.growAnchor!;
+    const target = this.growTarget;
+    const dirState = this.growDirState;
+    this.exitGrowMode();
+
+    if (target === null) {
+      // Pristine release = the tap default: connected node one slot below.
+      this.quickAddBelow(anchor, dirState);
+      return;
+    }
+    if (target === anchor) return; // came home to cancel
+
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    this.wireGrowEdge(anchor, target, dirState);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.scheduleVaultAutoSave();
+    this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
+  }
+
+  /** Create the edge for a grow commit per the directionality state. */
+  private wireGrowEdge(anchor: DANode, target: DANode, dirState: number): DAEdge {
+    const src = dirState === 1 ? target : anchor;
+    const dest = dirState === 1 ? anchor : target;
+    const edge = this.drawingLayer.addEdge(src, dest);
+    if (dirState === 2) edge.directedness = 'undirected';
+    if (dirState === 3) edge.directedness = 'bidirectional';
+    this.autoRouteNewEdge(edge);
+    return edge;
+  }
+
+  private growEdgeDescription(anchor: DANode, target: DANode, dirState: number): string {
+    const a = anchor.label.text() || anchor.nodeShape;
+    const t = target.label.text() || target.nodeShape;
+    switch (dirState) {
+      case 1: return `${t} → ${a}`;
+      case 2: return `${a} — ${t}`;
+      case 3: return `${a} ↔ ${t}`;
+      default: return `${a} → ${t}`;
+    }
+  }
+
+  private exitGrowMode(): void {
+    this.growActive = false;
+    this.growGhost?.destroy();
+    this.growGhost = null;
+    this.daOut.emit({kind: 'popup-state', open: false});
+    this.drawingLayer.batchDraw();
+  }
+
+  /** Translucent dashed preview of what releasing the hold would create:
+   *  pristine → ghost node one slot below + ghost edge; targeting → ghost
+   *  edge to the highlighted target plus a ring around it. Arrowheads track
+   *  the directionality state. */
+  private redrawGrowGhost(): void {
+    this.growGhost?.destroy();
+    const ghost = new Konva.Group({listening: false, opacity: 0.55});
+    this.growGhost = ghost;
+    const anchor = this.growAnchor!;
+    const scale = this.drawingLayer.scaleX();
+    const aPos = anchor.group.position();
+    const aCenter = {x: aPos.x + anchor.NODE_WIDTH / 2, y: aPos.y + anchor.NODE_HEIGHT / 2};
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const stroke = palette.nodeStroke;
+
+    let endCenter: {x: number; y: number};
+    let endHalf: {w: number; h: number};
+    if (this.growTarget && this.growTarget !== anchor) {
+      const t = this.growTarget;
+      const tPos = t.group.position();
+      endCenter = {x: tPos.x + t.NODE_WIDTH / 2, y: tPos.y + t.NODE_HEIGHT / 2};
+      endHalf = {w: t.NODE_WIDTH / 2, h: t.NODE_HEIGHT / 2};
+      ghost.add(new Konva.Rect({
+        x: tPos.x - 6, y: tPos.y - 6,
+        width: t.NODE_WIDTH + 12, height: t.NODE_HEIGHT + 12,
+        stroke, dash: [6, 4], strokeWidth: 3 / scale, cornerRadius: 6,
+      }));
+    } else {
+      const w = 140, h = 60;
+      endCenter = {x: aCenter.x, y: aCenter.y + DrawingAreaComponent.QUICK_ADD_SLOT};
+      endHalf = {w: w / 2, h: h / 2};
+      ghost.add(new Konva.Rect({
+        x: endCenter.x - w / 2, y: endCenter.y - h / 2,
+        width: w, height: h,
+        stroke, dash: [6, 4], strokeWidth: 2 / scale, cornerRadius: 4,
+      }));
+    }
+
+    // Chord from the anchor boundary to the end boundary (axis-aligned trim).
+    const dx = endCenter.x - aCenter.x, dy = endCenter.y - aCenter.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len, uy = dy / len;
+    const trimA = Math.min(anchor.NODE_WIDTH, anchor.NODE_HEIGHT) / 2;
+    const trimB = Math.min(endHalf.w * 2, endHalf.h * 2) / 2;
+    const start = {x: aCenter.x + ux * trimA, y: aCenter.y + uy * trimA};
+    const end = {x: endCenter.x - ux * trimB, y: endCenter.y - uy * trimB};
+    const d = this.growDirState;
+    ghost.add(new Konva.Arrow({
+      points: [start.x, start.y, end.x, end.y],
+      stroke, fill: stroke, dash: [8, 6],
+      strokeWidth: 3 / scale,
+      pointerLength: 14, pointerWidth: 14,
+      pointerAtEnding: d === 0 || d === 3,
+      pointerAtBeginning: d === 1 || d === 3,
+    }));
+
+    this.drawingLayer.add(ghost);
+    ghost.moveToTop();
+    this.drawingLayer.batchDraw();
+  }
+
   /** Default quick-add for a node anchor: a new default-type node one slot
    *  directly below the anchor, wired anchor → new, straight into labelEdit.
-   *  Also the pristine-release default of the held-a grow mode. */
-  private quickAddBelow(anchor: DANode): void {
+   *  Also the pristine-release default of the held-a grow mode; dirState
+   *  (grow directionality, default anchor→new) orients the edge. */
+  private quickAddBelow(anchor: DANode, dirState = 0): void {
     this.finishTweens();
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.drawingLayer.unselectAll();
@@ -4648,7 +4844,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const anchorCenter = this.getNodeCenterInStageCoordinates(anchor);
     const slot = DrawingAreaComponent.QUICK_ADD_SLOT * this.drawingLayer.scaleX();
     const newNode = this.drawingLayer.createNewNode(anchorCenter.x, anchorCenter.y + slot);
-    this.autoRouteNewEdge(this.drawingLayer.addEdge(anchor, newNode));
+    this.wireGrowEdge(anchor, newNode, dirState);
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {

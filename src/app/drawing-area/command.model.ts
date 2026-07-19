@@ -112,6 +112,7 @@ export enum DACommandType {
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
   QUICK_ADD = 'QUICK_ADD',
+  ENTER_ADD_MODE = 'ENTER_ADD_MODE',
   EDIT_TEXT_AT_CROSSHAIRS = 'EDIT_TEXT_AT_CROSSHAIRS',
   CYCLE_EDGE_DIRECTEDNESS = 'CYCLE_EDGE_DIRECTEDNESS',
   // Label-edit caret (vim-normal-in-edit motions + delete-under-cursor).
@@ -221,6 +222,13 @@ export type DACommand =
   // Tap of the add key: default node at the crosshairs on empty canvas, or a
   // connected default node one slot below the node under the crosshairs.
   | {kind: DACommandType.QUICK_ADD}
+  // Keydown of the held add key. Over a node the drawing area enters the
+  // grow mode (suspending the keymenu synchronously via popup-state) and
+  // steers it with its own document-level listeners; otherwise this is a
+  // no-op and the keymenu proceeds with the held hub submenu. keys carries
+  // the active profile's steering bindings; holdKey's release commits.
+  | {kind: DACommandType.ENTER_ADD_MODE; holdKey: string;
+     keys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string}}
   // Tap of the insert-text key: edit the text of whatever is under the
   // crosshairs (node label, edge label, free label).
   | {kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}
