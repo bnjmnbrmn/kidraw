@@ -140,6 +140,54 @@ async function main() {
   check('hopping back onto the anchor commits nothing', s.edges.length === edgeCount
     && s.nodes.length === 4 && s.mode === 'normal', JSON.stringify({edges: s.edges.length, mode: s.mode}));
 
+  // --- 5. / fuzzy target search (sticky phase) ---
+  await parkOnNode('A');
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('/');
+  await page.waitForTimeout(250);
+  let popup = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return { open: da.navPopupOpen, purpose: da.navPopupPurpose, grow: da.growActive };
+  });
+  check('/ opens the target search popup in grow mode', popup.open && popup.purpose === 'grow-target',
+    JSON.stringify(popup));
+  await page.keyboard.up('a'); // sticky: releasing a must not commit
+  await page.waitForTimeout(150);
+  s = await state();
+  const edgesBeforeSearch = s.edges.length;
+  check('releasing a with the popup open commits nothing', s.growActive === true
+    && (await page.evaluate(() => window.ng.getComponent(document.querySelector('app-drawing-area')).navPopupOpen)),
+    JSON.stringify({grow: s.growActive}));
+  await page.keyboard.type('c', { delay: 40 });
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(250);
+  s = await state();
+  check('Enter commits the edge to the searched node', s.edges.length === edgesBeforeSearch + 1
+    && s.edges.some(e => e.from === 'A' && e.to === 'C'), JSON.stringify(s.edges));
+  check('grow mode fully exited after search commit', s.growActive === false && s.mode === 'normal',
+    JSON.stringify({grow: s.growActive, mode: s.mode}));
+
+  // --- 6. Esc in the search cancels the whole add ---
+  const edgeCount2 = s.edges.length;
+  await parkOnNode('A');
+  await page.keyboard.down('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('/');
+  await page.waitForTimeout(250);
+  await page.keyboard.up('a');
+  await page.waitForTimeout(100);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  s = await state();
+  check('Esc Esc cancels the add from the search popup', s.edges.length === edgeCount2
+    && s.growActive === false && s.mode === 'normal'
+    && s.statuses.some(m => m.includes('Add canceled')),
+    JSON.stringify({edges: s.edges.length, grow: s.growActive, mode: s.mode}));
+
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);

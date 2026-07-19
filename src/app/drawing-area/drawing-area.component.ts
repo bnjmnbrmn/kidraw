@@ -234,6 +234,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Physical key that fired Go, if still held — releasing it over the
    *  popup's search pseudo-item starts filtering. */
   navPopupHoldKey: string | null = null;
+  navPopupStartFilter = false;
+  /** Who owns the popup right now: graph navigation or the grow-target search. */
+  private navPopupPurpose: 'nav' | 'grow-target' = 'nav';
   /** True while a single-candidate popup is concealed (first 500 ms of a
    *  hold — a quick tap walks the chain without flashing UI). */
   navPopupHidden = false;
@@ -2763,6 +2766,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupDark = this.themeService.theme === 'dark';
     this.emphasizeNavSource(source);
     if (!this.navPopupOpen) {
+      this.navPopupPurpose = 'nav';
+      this.navPopupStartFilter = false;
       this.navPopupOpen = true;
       this.daOut.emit({kind: 'popup-state', open: true});
     }
@@ -2774,6 +2779,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  ghost preview of where it leads. The view (pan and zoom) never moves —
    *  offscreen destinations are represented by the ghost copy instead. */
   onNavPopupHighlight(edgeId: string): void {
+    if (this.navPopupPurpose === 'grow-target') {
+      const node = this.drawingLayer.getDANodes().find(n => n.id === edgeId);
+      if (node && node !== this.growAnchor) {
+        this.growTarget = node;
+        this.redrawGrowGhost();
+      }
+      return;
+    }
     const cand = this.navCandidates.get(edgeId);
     if (!cand || !this.navSource) return;
     this.navHighlightCand = cand;
@@ -2784,6 +2797,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   onNavPopupCommit(event: {id: string; walk: boolean}): void {
+    if (this.navPopupPurpose === 'grow-target') {
+      this.growCommitToNodeId(event.id);
+      return;
+    }
     const cand = this.navCandidates.get(event.id);
     const source = this.navSource;
     this.clearNavGhost();
@@ -2806,6 +2823,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Escape / backdrop: close without moving. The crosshairs return to the
    *  source node so the traversal anchor stays meaningful. */
   closeNavPopup(): void {
+    if (this.navPopupPurpose === 'grow-target') {
+      // Esc out of the target search cancels the whole add.
+      this.navPopupOpen = false;
+      this.navPopupPurpose = 'nav';
+      this.exitGrowMode();
+      this.emitStatus('Add canceled');
+      return;
+    }
     this.clearNavGhost();
     this.navHighlightCand = null;
     this.restoreNavSourceEmphasis();
@@ -4678,6 +4703,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   @HostListener('document:keydown', ['$event'])
   handleGrowKeyDown(event: KeyboardEvent): void {
     if (!this.growActive || !this.growKeys) return;
+    if (this.navPopupOpen) return; // the popup owns the keyboard (sticky phase)
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     if (event.repeat && key === this.growHoldKey) return;
     const k = this.growKeys;
@@ -4694,6 +4720,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.redrawGrowGhost();
       return;
     }
+    if (key === k.search) {
+      event.preventDefault();
+      this.openGrowTargetPopup();
+      return;
+    }
     if (key === 'escape') {
       this.exitGrowMode();
       this.emitStatus('Add canceled');
@@ -4703,6 +4734,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
     if (!this.growActive) return;
+    // Sticky phase: with a popup open the hold key is expected to be
+    // released (typing needs both hands) — Enter/Esc resolve the flow.
+    if (this.navPopupOpen) return;
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     if (key !== this.growHoldKey) return;
     this.commitGrowMode();
@@ -4716,6 +4750,67 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!found) return;
     this.growTarget = found;
     this.redrawGrowGhost();
+  }
+
+  /** `/` in grow mode: fuzzy-search the target by label (sticky phase —
+   *  the hold key is naturally released to type; Enter commits the edge,
+   *  Esc backs out to the list then cancels the whole add). */
+  private openGrowTargetPopup(): void {
+    const anchor = this.growAnchor!;
+    this.navPopupRows = this.drawingLayer.getDANodes()
+      .filter(n => n !== anchor)
+      .map(n => ({
+        id: n.id,
+        title: n.label.text() || n.nodeShape,
+        tags: n.tags.length > 0 ? n.tags : undefined,
+      }));
+    if (this.navPopupRows.length === 0) {
+      this.emitStatus('⚠ No other nodes to connect to');
+      return;
+    }
+    this.navPopupPurpose = 'grow-target';
+    this.navPopupStartFilter = true;
+    this.navPopupHoldKey = null;
+    this.navPopupHidden = false;
+    this.navPopupDark = this.themeService.theme === 'dark';
+    this.positionGrowPopup();
+    this.navPopupOpen = true;
+  }
+
+  /** Beside the anchor node, east unless clamped. */
+  private positionGrowPopup(): void {
+    const POPUP_W = 210;
+    const POPUP_H = Math.min(38 + this.navPopupRows.length * 28 + 16, 220);
+    const GAP = 14;
+    const n = this.growAnchor!;
+    const scale = this.drawingLayer.scaleX();
+    const rect = {
+      x: this.drawingLayer.x() + n.group.x() * scale,
+      y: this.drawingLayer.y() + n.group.y() * scale,
+      w: n.NODE_WIDTH * scale,
+    };
+    this.navPopupLeft = Math.max(8, Math.min(rect.x + rect.w + GAP, this.stage.width() - POPUP_W - 8));
+    this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
+  }
+
+  /** Popup commit for the grow-target search: wire the edge right away
+   *  (sticky semantics — Enter is the commit gesture once the popup owns
+   *  the flow). */
+  private growCommitToNodeId(nodeId: string): void {
+    const anchor = this.growAnchor!;
+    const dirState = this.growDirState;
+    const target = this.drawingLayer.getDANodes().find(n => n.id === nodeId);
+    this.navPopupOpen = false;
+    this.navPopupPurpose = 'nav';
+    this.exitGrowMode();
+    if (!target || target === anchor) return;
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    this.wireGrowEdge(anchor, target, dirState);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.scheduleVaultAutoSave();
+    this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
   }
 
   private commitGrowMode(): void {

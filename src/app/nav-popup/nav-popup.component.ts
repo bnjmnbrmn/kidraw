@@ -54,6 +54,10 @@ export class NavPopupComponent implements OnChanges {
   /** Physical key whose tap opened the popup (and may still be held).
    *  Releasing it while the search pseudo-item is selected starts filtering. */
   @Input() holdKey: string | null = null;
+  /** Open directly in filter mode (typing filters immediately) — used by
+   *  flows like the grow-target search where the hold key is naturally
+   *  released to type. */
+  @Input() startFilter = false;
 
   /** Selection moved (id of the newly highlighted row). */
   @Output() highlightRow = new EventEmitter<string>();
@@ -74,7 +78,7 @@ export class NavPopupComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['rows']) {
       this.query = '';
-      this.filterMode = false;
+      this.filterMode = this.startFilter;
       if (this.searchInput) this.searchInput.nativeElement.value = '';
       // Compute rows synchronously so the template renders, but defer the
       // highlight emit: ngOnChanges runs inside the parent's change-detection
