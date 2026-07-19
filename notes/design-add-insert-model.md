@@ -45,9 +45,10 @@ new node has entered the picture:
    slot directly below the anchor**, wired per the current `o` state;
    `hjkl` then adjusts placement (first press per direction = cardinal
    slot throw, further presses = grid steps). Release `a` → node + edge +
-   labelEdit. Releasing `a` while the popup is still open **cancels**
-   everything — `a`-release only commits after the popup has resolved.
-   Replaces the post-insert drag phase (position before commit).
+   labelEdit. Releasing `a` while a popup is open does **not** cancel
+   (round 6): the flow goes sticky — popup resolves, hjkl places, **Enter
+   commits**, Esc cancels. With `a` still held the release-to-commit rhythm
+   applies unchanged. Replaces the post-insert drag phase.
 
    **Placement rule (round 5, build-and-feel):** the *first* directional
    press replaces the below-anchor default with a rough slot throw in that
@@ -60,9 +61,14 @@ new node has entered the picture:
 4. **`o` cycles directionality — all four states** (anchor→target,
    target→anchor, undirected, bidirectional), tappable at any point in any
    sub-mode; ghost arrowheads show the current state. (Case 14 settled.)
-5. Hold-and-release before any keypress commits nothing. **`q` cancels**
-   at any later point (round 5: Esc is unreachable while the left pinky
-   holds `a`; `q` is one row up, "quit"). Mode transitions stay
+5. **No dedicated cancel key (round 6; `q` rejected).** The `a` hold is an
+   accelerator, not a requirement: once a popup opens, `a` has naturally
+   been released (typing needs both hands) and the flow turns **sticky** —
+   the popup carries it, **Enter commits, Esc/`ctrl-[` cancels** (the
+   sticky-persistence idea from `discussion-interaction-surfaces.md`).
+   While still held: release before any keypress = no-op; release with the
+   target hopped back onto the anchor = no-op ("come home to cancel");
+   otherwise release commits and `u` undoes. Mode transitions stay
    confirmation-driven (the 07-18 `node-inserted` machinery) so a cancel
    never strands in labelEdit.
 
@@ -105,7 +111,7 @@ list Ben asked to keep track of.
 | 13 | hold `a` over nothing | free node ghost + hjkl nudge | later; tap-`a` (5) covers the quick case |
 | 14 | directionality in grow flow | `o` cycles 4 states (out/in/undirected/bidi), any time | ✓ settled round 4 |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
-| 18 | cancel key while grow mode held | `q` (Esc unreachable during the a hold) | proposed round 5, awaiting Ben's ok |
+| 18 | cancel semantics | no dedicated key: release-early/on-anchor = no-op, `u` after commit, Esc/`ctrl-[` in sticky (popup) phase where `a` is already released | ✓ settled round 6 |
 | 19 | `v` submenu: `o` cycles directionality of selected edge(s) | same 4-state cycle as the grow flow | ✓ round 5, stage 1 |
 | 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers for coarse/fine | proposed round 5, build-and-feel |
 | 16 | u/o connect modifiers (07-18 hub) | interim survivors; retire at stage 4 | transitional |
