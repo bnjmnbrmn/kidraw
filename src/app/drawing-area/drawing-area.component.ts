@@ -30,7 +30,7 @@ interface MetaBox {
   halfW: number;
   halfH: number;
 }
-import { DANotification, EditContext } from './da-notification.model';
+import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
@@ -195,6 +195,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public CROSSHAIRS_MOVEMENT_DISTANCE = 50; // one grid cell
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
+  /** Layer-space offset of a quick-added node below its anchor (one "slot"). */
+  private static readonly QUICK_ADD_SLOT = 300;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
   public readonly STEERING_SPEED_STEP = 10;
@@ -284,7 +286,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS,
     DACommandType.SET_DEFAULT_LINE_STYLE,
     DACommandType.SET_NODE_SHAPE,
-    DACommandType.EDIT_OR_INSERT,
+    DACommandType.QUICK_ADD,
+    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.SEARCH_GRAPH,
     DACommandType.SEARCH_NEXT_MATCH,
     DACommandType.SEARCH_PREV_MATCH,
@@ -293,6 +296,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
     DACommandType.CREATE_NEW_NODE_CONNECTED,
+    DACommandType.QUICK_ADD,
+    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.BEGIN_DIRECTED_EDGE,
@@ -329,7 +334,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.FINALIZE_DIRECTED_EDGE,
     DACommandType.ADD_LABEL,
     DACommandType.EDIT_SELECTED,
-    DACommandType.EDIT_OR_INSERT,
+    DACommandType.QUICK_ADD,
+    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.INSERT_CHAR,
     DACommandType.DELETE_LAST_CHAR,
     DACommandType.DELETE,
@@ -530,7 +536,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         command.kind !== DACommandType.DELETE_LAST_CHAR &&
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
-        command.kind !== DACommandType.EDIT_OR_INSERT &&
+        command.kind !== DACommandType.QUICK_ADD &&
+        command.kind !== DACommandType.EDIT_TEXT_AT_CROSSHAIRS &&
         command.kind !== DACommandType.REDO) {
       this.showMovementIndicators();
     }
@@ -692,8 +699,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.EDIT_SELECTED:
         this.handleEditSelected();
         break;
-      case DACommandType.EDIT_OR_INSERT:
-        this.handleEditOrInsert();
+      case DACommandType.QUICK_ADD:
+        this.handleQuickAdd();
+        break;
+      case DACommandType.EDIT_TEXT_AT_CROSSHAIRS:
+        this.editTextAtCrosshairs();
+        break;
+      case DACommandType.CYCLE_EDGE_DIRECTEDNESS:
+        this.cycleEdgeDirectedness();
         break;
       case DACommandType.DELETE_LAST_CHAR:
         this.deleteLastChar();
@@ -4596,100 +4609,118 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log('  -> Nothing targeted. Edit command ignored.');
   }
 
-  /** Selection wins over crosshairs position. Among crosshairs targets, a
-   *  node or label beats everything; a waypoint beats the edge it sits on and
-   *  counts as 'empty' (the i-key spec says a waypoint gets a node inserted
-   *  on top of it, not edge treatment). */
-  private computeEditContext(): EditContext {
-    const selectedCount =
-      this.drawingLayer.getSelectedDANodes().length +
-      this.drawingLayer.getSelectedDAEdges().length +
-      this.drawingLayer.getSelectedDAWaypoints().length +
-      this.getSelectedLabels().length;
-    if (selectedCount > 1) return 'multi-select';
-    if (selectedCount === 1) return 'single-select';
-    if (this.getLabelUnderCrosshairs() || this.getDANodesContainingCrosshairs().length > 0) return 'item';
-    if (this.getWaypointUnderCrosshairs()) return 'empty';
-    if (this.getDAEdgesContainingCrosshairs().length > 0) return 'edge';
-    return 'empty';
-  }
-
-  /** Tap of the edit/insert key: context-sensitive default action. The held
-   *  key opens the static insert/connect hub in the keymenu instead. */
-  private handleEditOrInsert(): void {
-    const context = this.computeEditContext();
-    this.log.log(`handleEditOrInsert: context=${context}`);
-    switch (context) {
-      case 'multi-select':
-        this.daOut.emit({kind: 'status-message', message: '⚠ Multiple items selected — deselect (Esc) before edit/insert.'});
-        return;
-      case 'single-select':
-        this.focusAndReleaseSelectedItem();
-        return;
-      case 'item':
-        this.handleEditSelected();
-        return;
-      case 'edge':
-        this.daOut.emit({kind: 'status-message', message: 'Edge under crosshairs — hold the edit/insert key to add a label or waypoint.'});
-        return;
-      case 'empty': {
-        this.pushUndoSnapshot({kind: DACommandType.CREATE_NEW_NODE});
-        const shape = this._defaultNodeShape;
-        this.createNewNode();
-        if (shape !== 'junction') {
-          this.daOut.emit({kind: 'started-label-editing-mode'});
-        }
-        return;
-      }
+  /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):
+   *  quick-add based on what the crosshairs are over. Empty (or waypoint) →
+   *  default node at the crosshairs; node → connected default node one slot
+   *  below; edge/label → hint. Selection is irrelevant to adding. */
+  private handleQuickAdd(): void {
+    if (this.getLabelUnderCrosshairs()) {
+      this.daOut.emit({kind: 'status-message', message: 'Label under crosshairs — tap the edit-text key to edit it.'});
+      return;
+    }
+    const nodes = this.getDANodesContainingCrosshairs();
+    if (nodes.length > 0) {
+      const anchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
+      this.quickAddBelow(anchor);
+      return;
+    }
+    if (!this.getWaypointUnderCrosshairs() && this.getDAEdgesContainingCrosshairs().length > 0) {
+      this.daOut.emit({kind: 'status-message', message: 'Edge under crosshairs — hold the add key for label/waypoint options.'});
+      return;
+    }
+    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
+    const shape = this._defaultNodeShape;
+    this.createNewNode();
+    if (shape !== 'junction') {
+      this.daOut.emit({kind: 'started-label-editing-mode'});
     }
   }
 
-  /** Tap of the edit/insert key with exactly one item selected: recenter the
-   *  view, move the crosshairs onto the item, and release the selection.
-   *  Recenter runs before the crosshairs jump because panning the layer
-   *  changes the item's stage position. */
-  private focusAndReleaseSelectedItem(): void {
+  /** Default quick-add for a node anchor: a new default-type node one slot
+   *  directly below the anchor, wired anchor → new, straight into labelEdit.
+   *  Also the pristine-release default of the held-a grow mode. */
+  private quickAddBelow(anchor: DANode): void {
     this.finishTweens();
-    this.recenterView();
-    this.finishTweens();
-    const target = this.selectedItemStagePoint();
-    if (target) {
-      this.moveCrosshairsBy(
-        target.x - this.crosshairsLayer.crosshairsX(),
-        target.y - this.crosshairsLayer.crosshairsY(),
-      );
-    }
+    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
+
+    const anchorCenter = this.getNodeCenterInStageCoordinates(anchor);
+    const slot = DrawingAreaComponent.QUICK_ADD_SLOT * this.drawingLayer.scaleX();
+    const newNode = this.drawingLayer.createNewNode(anchorCenter.x, anchorCenter.y + slot);
+    this.autoRouteNewEdge(this.drawingLayer.addEdge(anchor, newNode));
+
+    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
+    if (labelable) {
+      newNode.showCursor();
+      this.crosshairsLayer.hideCrosshairs();
+      this.daOut.emit({kind: 'started-label-editing-mode'});
+    }
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
   }
 
-  /** Stage-coordinate position of the single selected item: node center,
-   *  label/waypoint position, or the selected edge's path midpoint. */
-  private selectedItemStagePoint(): {x: number; y: number} | null {
-    const node = this.drawingLayer.getSelectedDANodes()[0];
-    if (node) return this.getNodeCenterInStageCoordinates(node);
-
-    const scale = this.drawingLayer.scaleX();
-    const toStage = (p: {x: number; y: number}) => ({
-      x: this.drawingLayer.x() + p.x * scale,
-      y: this.drawingLayer.y() + p.y * scale,
-    });
-
-    const label = this.getSelectedLabels()[0];
-    if (label) return toStage({x: label.x, y: label.y});
-
-    const waypoint = this.drawingLayer.getSelectedDAWaypoints()[0];
-    if (waypoint) return toStage({x: waypoint.x, y: waypoint.y});
-
-    const edge = this.drawingLayer.getSelectedDAEdges()[0];
-    if (edge) {
-      const points = edge.getPathPoints();
-      if (points.length > 0) return toStage(points[Math.floor(points.length / 2)]);
+  /** Tap of the edit-text key: enter label edit on whatever text-bearing
+   *  thing is under the crosshairs. Never grows the graph — except that an
+   *  edge with no label gets an empty one to type into. */
+  private editTextAtCrosshairs(): void {
+    const label = this.getLabelUnderCrosshairs();
+    const node = this.getDANodesContainingCrosshairs().length > 0;
+    if (label || node) {
+      this.drawingLayer.unselectAll();
+      this.unselectAllLabels();
+      this.singleItemSelect();
+      this.crosshairsLayer.hideCrosshairs();
+      this.showEditCarets();
+      this.drawingLayer.batchDraw();
+      this.daOut.emit({kind: 'started-label-editing-mode'});
+      return;
     }
-    return null;
+    const edges = this.getDAEdgesContainingCrosshairs();
+    if (edges.length > 0) {
+      const edge = edges[0];
+      this.drawingLayer.unselectAll();
+      this.unselectAllLabels();
+      if (edge.labels.length > 0) {
+        edge.labels[0].isSelected = true;
+      } else {
+        // No label yet: create an empty one at the crosshairs projection
+        // (addLabel selects it), then type straight into it.
+        this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
+        this.addLabel();
+        if (edge.labels.length === 0) return; // addLabel failed; stay put
+      }
+      this.crosshairsLayer.hideCrosshairs();
+      this.showEditCarets();
+      this.drawingLayer.batchDraw();
+      this.daOut.emit({kind: 'started-label-editing-mode'});
+      return;
+    }
+    this.daOut.emit({kind: 'status-message', message: 'Nothing to edit here — tap the add key to create a node.'});
   }
+
+  /** v+o: cycle directedness of the selected edge(s) — directed →
+   *  undirected → bidirectional → directed. (Reversing a directed edge is a
+   *  future structural op; in the grow mode the pre-commit `o` covers it.) */
+  private cycleEdgeDirectedness(): void {
+    const edges = this.drawingLayer.getSelectedDAEdges();
+    if (edges.length === 0) {
+      this.daOut.emit({kind: 'status-message', message: '⚠ Select an edge first (hold v over it).'});
+      return;
+    }
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    const next: Record<EdgeDirectedness, EdgeDirectedness> =
+      {directed: 'undirected', undirected: 'bidirectional', bidirectional: 'directed'};
+    for (const edge of edges) {
+      edge.directedness = next[edge.directedness];
+    }
+    this.drawingLayer.batchDraw();
+    const suffix = edges.length > 1 ? ` (${edges.length} edges)` : '';
+    this.emitStatus(`Direction: ${edges[0].directedness}${suffix}`);
+  }
+
+
 
   private getSelectedLabels(): DALabel[] {
     const selectedLabels: DALabel[] = [];

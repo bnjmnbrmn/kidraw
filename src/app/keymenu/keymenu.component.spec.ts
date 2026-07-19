@@ -137,12 +137,12 @@ describe('KeymenuComponent', () => {
     const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
     expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    // 'a' is the unified insert/connect hub (left-hand hold, hjkl free for
-    // dragging/edge targeting); root 'i' is unbound (2026-07-18, final round)
+    // 'a' = add (held hub / tap quick-add); 'i' = insert text (tap) —
+    // the a=add / i=insert model, 2026-07-19
     const editAction = rootConfig['a'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();
     expect(editAction instanceof LabeledSubmenuConfig).toBeTrue();
-    expect(rootConfig['i']).toBeUndefined();
+    expect((rootConfig['i'] as LabeledAction).actionLabel).toBe('Edit Text');
 
     // 'h' is Move Left in vim profile
     const moveLeft = rootConfig['h'] as LabeledAction;

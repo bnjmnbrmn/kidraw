@@ -24,6 +24,8 @@ export interface KeymenuKeyAssignments {
     readonly toggleVisibility: KeyString;
     /** Tap: smart traverse — auto-advance or the nav popup. */
     readonly go: KeyString;
+    /** Tap: edit the text of whatever is under the crosshairs. */
+    readonly editText: KeyString;
     /** Held: task-status submenu (todo graphs) — right-hand hold, the
      *  status choice keys all sit in the left hand. */
     readonly statusSubmenu: KeyString;
@@ -91,6 +93,13 @@ export interface KeymenuKeyAssignments {
   };
   readonly select: {
     readonly editItem: KeyString;
+    /** Cycle directedness of the selected edge(s) inside the held select
+     *  submenu (directed → undirected → bidirectional). */
+    readonly cycleDirection: KeyString;
+    /** Zoom keys inside the held select submenu (kept off the
+     *  cycleDirection key). */
+    readonly zoomIn: KeyString;
+    readonly zoomOut: KeyString;
   };
   readonly moveSpeed: SpeedModifierKeys;
   readonly panZoom: {
@@ -173,6 +182,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
+    editText: ';',
     statusSubmenu: 'y',
   },
   // diamond avoids the held hub key ('e' here); vim uses 'e'.
@@ -234,6 +244,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   select: {
     editItem: ';',
+    cycleDirection: 'o',
+    zoomIn: 'y',
+    zoomOut: 'u',
   },
   moveSpeed: {
     bigger: 'd',
@@ -290,6 +303,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
+    editText: 'i',
     statusSubmenu: 'y',
   },
   insert: {
@@ -350,6 +364,9 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   select: {
     editItem: ';',
+    cycleDirection: 'o',
+    zoomIn: 'i',
+    zoomOut: 'u',
   },
   moveSpeed: {
     bigger: 's',

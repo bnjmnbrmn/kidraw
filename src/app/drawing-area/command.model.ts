@@ -111,7 +111,9 @@ export enum DACommandType {
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
-  EDIT_OR_INSERT = 'EDIT_OR_INSERT',
+  QUICK_ADD = 'QUICK_ADD',
+  EDIT_TEXT_AT_CROSSHAIRS = 'EDIT_TEXT_AT_CROSSHAIRS',
+  CYCLE_EDGE_DIRECTEDNESS = 'CYCLE_EDGE_DIRECTEDNESS',
   // Label-edit caret (vim-normal-in-edit motions + delete-under-cursor).
   CURSOR_LEFT = 'CURSOR_LEFT',
   CURSOR_RIGHT = 'CURSOR_RIGHT',
@@ -216,7 +218,15 @@ export type DACommand =
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
-  | {kind: DACommandType.EDIT_OR_INSERT}
+  // Tap of the add key: default node at the crosshairs on empty canvas, or a
+  // connected default node one slot below the node under the crosshairs.
+  | {kind: DACommandType.QUICK_ADD}
+  // Tap of the insert-text key: edit the text of whatever is under the
+  // crosshairs (node label, edge label, free label).
+  | {kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}
+  // Cycle directedness of the selected edge(s): directed -> undirected ->
+  // bidirectional. (Reversal of existing edges is a future structural op.)
+  | {kind: DACommandType.CYCLE_EDGE_DIRECTEDNESS}
   | {kind: DACommandType.CURSOR_LEFT}
   | {kind: DACommandType.CURSOR_RIGHT}
   | {kind: DACommandType.CURSOR_UP}

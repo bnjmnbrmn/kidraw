@@ -177,7 +177,7 @@ async function main() {
   // 6. No size limit: long text grows the box, and the grown box is still
   //    hit-testable at its edge (select via v works out there).
   await placeOverLabel(0);
-  await page.keyboard.press('a');           // tap edit key over the label
+  await page.keyboard.press('i');           // tap the edit-text key over the label
   await page.waitForTimeout(150);
   await page.keyboard.type(' and quite a lot more text to stretch the box', { delay: 10 });
   s = await state();

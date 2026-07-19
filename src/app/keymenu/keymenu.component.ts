@@ -690,7 +690,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildSelectSubmenuConfig(): SubmenuConfig {
     const drag = this.keyAssignments.drag;
-    const pz = this.keyAssignments.panZoom;
     const ds = this.keyAssignments.dragSpeed;
     const select = this.keyAssignments.select;
 
@@ -699,8 +698,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.left]: new LabeledAction('Drag Left', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT})),
       [drag.down]: new LabeledAction('Drag Down', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN})),
       [drag.right]: new LabeledAction('Drag Right', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT})),
-      [pz.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
-      [pz.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      [select.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
+      [select.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
+      [select.cycleDirection]: new LabeledAction('Cycle Direction', () =>
+        this.keyMenuOut.emit({kind: DACommandType.CYCLE_EDGE_DIRECTEDNESS}), false),
       [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag...', this.buildDragSpeedSubmenu('coarse')),
       [ds.smaller]: new LabeledSubmenuConfig('Fine Drag...', this.buildDragSpeedSubmenu('fine')),
       [select.editItem]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
@@ -731,6 +732,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // queue further traversals behind it.
       [this.keyAssignments.root.go]: new LabeledAction('Go',
         () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART, holdKey: this.keyAssignments.root.go}), false),
+      // Tap: enter text editing on whatever the crosshairs are over.
+      [this.keyAssignments.root.editText]: new LabeledAction('Edit Text',
+        () => this.keyMenuOut.emit({kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}), false),
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
@@ -1292,7 +1296,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // Tap without selecting a child → context-sensitive default action
       if (this.editPending) {
         this.editPending = false;
-        this.keyMenuOut.emit({kind: DACommandType.EDIT_OR_INSERT});
+        this.keyMenuOut.emit({kind: DACommandType.QUICK_ADD});
         return;
       }
     }

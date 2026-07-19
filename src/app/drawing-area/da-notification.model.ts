@@ -1,10 +1,5 @@
 import {EdgeDirectedness, LineStyle, NodeShape} from './command.model';
 
-/** What a tap/hold of the edit/insert key would act on right now.
- *  Selection wins over crosshairs position; a waypoint under the crosshairs
- *  counts as 'empty' (insert node) rather than 'edge', per the i-key spec. */
-export type EditContext = 'multi-select' | 'single-select' | 'item' | 'edge' | 'empty';
-
 export type DANotification =
   | {kind: "started-label-editing-mode"}
   | {kind: "label-added"}
