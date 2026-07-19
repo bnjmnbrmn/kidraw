@@ -48,15 +48,23 @@ new node has entered the picture:
    labelEdit. Releasing `a` while the popup is still open **cancels**
    everything — `a`-release only commits after the popup has resolved.
    Replaces the post-insert drag phase (position before commit).
+
+   **Placement rule (round 5, build-and-feel):** the *first* directional
+   press replaces the below-anchor default with a rough slot throw in that
+   direction; *every* subsequent press is a grid-step drag; the standard
+   movement tiers apply — `s`+hjkl coarse (slot-sized, the "re-rough"
+   escape hatch), `d`+hjkl fine. Ben unsure yet; ship this and let the
+   hands vote — it's tuning, not architecture.
 3. **`/` opens the fuzzy popup** (reuse `NavPopupComponent` filter mode) in
    either sub-mode to pick a far-away existing target by label.
 4. **`o` cycles directionality — all four states** (anchor→target,
    target→anchor, undirected, bidirectional), tappable at any point in any
    sub-mode; ghost arrowheads show the current state. (Case 14 settled.)
-5. Hold-and-release with no keypress = no-op (consistent with tap-`a` over
-   a node being a no-op). **Escape** while held cancels. Mode transitions
-   stay confirmation-driven (the 07-18 `node-inserted` machinery) so a
-   cancel never strands in labelEdit.
+5. Hold-and-release before any keypress commits nothing. **`q` cancels**
+   at any later point (round 5: Esc is unreachable while the left pinky
+   holds `a`; `q` is one row up, "quit"). Mode transitions stay
+   confirmation-driven (the 07-18 `node-inserted` machinery) so a cancel
+   never strands in labelEdit.
 
 Consequence: existing↔existing connection is the primary gesture here, so
 the `s`+direction edge picker retires once this lands.
@@ -97,6 +105,9 @@ list Ben asked to keep track of.
 | 13 | hold `a` over nothing | free node ghost + hjkl nudge | later; tap-`a` (5) covers the quick case |
 | 14 | directionality in grow flow | `o` cycles 4 states (out/in/undirected/bidi), any time | ✓ settled round 4 |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
+| 18 | cancel key while grow mode held | `q` (Esc unreachable during the a hold) | proposed round 5, awaiting Ben's ok |
+| 19 | `v` submenu: `o` cycles directionality of selected edge(s) | same 4-state cycle as the grow flow | ✓ round 5, stage 1 |
+| 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers for coarse/fine | proposed round 5, build-and-feel |
 | 16 | u/o connect modifiers (07-18 hub) | interim survivors; retire at stage 4 | transitional |
 | 17 | `s`+direction edge picker | retire once 7 lands and proves out | transitional |
 
