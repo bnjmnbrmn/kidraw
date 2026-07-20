@@ -117,8 +117,8 @@ list Ben asked to keep track of.
 | 18 | cancel semantics | no dedicated key: release-early/on-anchor = no-op, `u` after commit, Esc/`ctrl-[` in sticky (popup) phase where `a` is already released | ✓ settled round 6 |
 | 19 | `v` submenu: `o` cycles directionality of selected edge(s) | built as 3-state (D→U→B); reversing an existing edge is a separate structural op, deferred | ✅ built 2026-07-19 (scope note) |
 | 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers | ✅ built 2026-07-19 — awaiting Ben's feel |
-| 16 | u/o connect modifiers (07-18 hub) | interim survivors; retire at stage 4 | transitional |
-| 17 | `s`+direction edge picker | retire once 7 lands and proves out | transitional |
+| 16 | u/o connect modifiers (07-18 hub) | **retired 2026-07-20** — grow mode covers connecting; code + `CREATE_NEW_NODE_CONNECTED` deleted (in git history) | ✅ done |
+| 17 | `s`+direction edge picker | **retired 2026-07-20** — superseded by grow targeting; `BEGIN_/SET_/FINALIZE_DIRECTED_EDGE` deleted (in git history) | ✅ done |
 
 ## Staging
 

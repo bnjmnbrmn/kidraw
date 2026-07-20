@@ -92,7 +92,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   // (initialRepeatDelayMs is 0), but insert/label/waypoint must fire once per hold.
   private editContextActionFired = false;
   private selectDragHoldActive = false;
-  private directedEdgeActive = false;
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 3000;
@@ -500,38 +499,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [insert.diamond]:   insertNode('diamond',   'Diamond'),
       [insert.junction]:  insertNode('junction',  'Junction'),
       [insert.invisible]: insertNode('invisible', 'Invisible'),
-      [insert.edge]: new LabeledActionSubmenuConfig('...Edge', this.buildDirectionalEdgeSubmenuConfig(), () => {
-        this.directedEdgeActive = true;
-        this.keyMenuOut.emit({kind: DACommandType.BEGIN_DIRECTED_EDGE});
-      }),
       [insert.label]: new LabeledAction('Add Label', this.hubOnce(() =>
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL})), false),
       [insert.waypoint]: new LabeledAction('Add Waypoint', this.hubOnce(() =>
         this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT})), false),
-      [insert.connectOut]: new LabeledSubmenuConfig('Connect →...', this.buildConnectedInsertSubmenuConfig('out')),
-      [insert.connectIn]:  new LabeledSubmenuConfig('Connect ←...', this.buildConnectedInsertSubmenuConfig('in')),
     } as SubmenuConfig;
   }
 
-  /** Shape picks under the held connect modifier: same left-hand keys as the
-   *  plain inserts, but the node is born wired to the anchor ('out' =
-   *  anchor → new, 'in' = new → anchor). labelEdit arming is
-   *  confirmation-driven via the 'node-inserted' notification, since an
-   *  anchorless attempt creates nothing. */
-  private buildConnectedInsertSubmenuConfig(direction: 'out' | 'in'): SubmenuConfig {
-    const insert = this.keyAssignments.insert;
-    const arrow = direction === 'out' ? '→' : '←';
-    const entry = (shape: NodeShape | undefined, label: string) =>
-      new LabeledAction(`${label} ${arrow}`, this.hubOnce(() =>
-        this.keyMenuOut.emit({kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction, nodeShape: shape})), false);
-    return {
-      [insert.box]:       entry(undefined,   'Box'),
-      [insert.circle]:    entry('circle',    'Circle'),
-      [insert.diamond]:   entry('diamond',   'Diamond'),
-      [insert.junction]:  entry('junction',  'Junction'),
-      [insert.invisible]: entry('invisible', 'Invisible'),
-    } as SubmenuConfig;
-  }
 
   private buildStatusSubmenuConfig(): SubmenuConfig {
     const status = this.keyAssignments.status;
@@ -675,21 +649,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildDirectionalEdgeSubmenuConfig(): SubmenuConfig {
-    const nodeJump = this.keyAssignments.moveByNode.nodeJump;
-
-    const setDestination = (direction: 'up' | 'down' | 'left' | 'right') => () => {
-      this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DESTINATION, direction});
-    };
-
-    return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      [nodeJump.up]: new LabeledAction('Above', setDestination('up')),
-      [nodeJump.down]: new LabeledAction('Below', setDestination('down')),
-      [nodeJump.left]: new LabeledAction('Left', setDestination('left')),
-      [nodeJump.right]: new LabeledAction('Right', setDestination('right')),
-    } as SubmenuConfig;
-  }
 
   private buildSelectDragSubmenuRootAction(): LabeledActionSubmenuConfig {
     return new LabeledActionSubmenuConfig(
@@ -1251,7 +1210,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (!this.keyMenu) return;
     this.keyMenu.cancelAllInputState();
     this.resetInteractionState();
-    this.directedEdgeActive = false;
     this.resetHelpMode();
     this.refreshActiveKeyPath();
   }
@@ -1448,11 +1406,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.keyMenuOut.emit({kind: DACommandType.QUICK_ADD});
         return;
       }
-    }
-
-    if (this.directedEdgeActive && eventKey === this.keyAssignments.insert.edge) {
-      this.directedEdgeActive = false;
-      this.keyMenuOut.emit({kind: DACommandType.FINALIZE_DIRECTED_EDGE});
     }
 
     if (this.selectDragHoldActive && eventKey === this.keyAssignments.root.selectDragSubmenu) {

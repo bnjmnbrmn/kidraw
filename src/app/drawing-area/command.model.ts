@@ -73,10 +73,6 @@ export enum DACommandType {
   OPEN_INSERT_SUBMENU = 'OPEN_INSERT_SUBMENU',
   EDIT_SELECTED = 'EDIT_SELECTED',
   DELETE_LAST_CHAR = 'DELETE_LAST_CHAR',
-  CREATE_NEW_NODE_CONNECTED = 'CREATE_NEW_NODE_CONNECTED',
-  BEGIN_DIRECTED_EDGE = 'BEGIN_DIRECTED_EDGE',
-  SET_EDGE_DESTINATION = 'SET_EDGE_DESTINATION',
-  FINALIZE_DIRECTED_EDGE = 'FINALIZE_DIRECTED_EDGE',
   UNDO = 'UNDO',
   REDO = 'REDO',
   SET_TEXT_OVERFLOW_MODE = 'SET_TEXT_OVERFLOW_MODE',
@@ -179,12 +175,6 @@ export type DACommand =
   | {kind: DACommandType.ADD_LABEL}
   | {kind: DACommandType.EDIT_SELECTED}
   | {kind: DACommandType.DELETE_LAST_CHAR}
-  // Connected insert: new node at the crosshairs plus an edge to/from the
-  // anchor node — 'out' wires anchor → new, 'in' wires new → anchor.
-  | {kind: DACommandType.CREATE_NEW_NODE_CONNECTED; direction: 'out' | 'in'; nodeShape?: NodeShape}
-  | {kind: DACommandType.BEGIN_DIRECTED_EDGE}
-  | {kind: DACommandType.SET_EDGE_DESTINATION, direction: 'up' | 'down' | 'left' | 'right'}
-  | {kind: DACommandType.FINALIZE_DIRECTED_EDGE}
   | {kind: DACommandType.UNDO}
   | {kind: DACommandType.REDO}
   | {kind: DACommandType.SET_TEXT_OVERFLOW_MODE; mode: TextOverflowMode}

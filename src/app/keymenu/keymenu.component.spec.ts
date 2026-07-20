@@ -243,12 +243,12 @@ describe('KeymenuComponent', () => {
     expect(hints[0].key).toBe('u/y/o/p');
   });
 
-  describe('unified insert/connect hub (held i)', () => {
+  describe('add hub (held a)', () => {
     function buildHub(component: KeymenuComponent): Record<string, any> {
       return (component as any).buildEditSubmenuConfig();
     }
 
-    it('carries the left-hand kinds, edge/label/waypoint, and u/o connect submenus (vim)', () => {
+    it('carries the left-hand kinds plus label/waypoint, and no retired entries (vim)', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);
       const hub = buildHub(fixture.componentInstance);
       expect((hub['d'] as LabeledAction).actionLabel).toBe('Box');
@@ -256,11 +256,14 @@ describe('KeymenuComponent', () => {
       expect((hub['e'] as LabeledAction).actionLabel).toBe('Diamond');
       expect((hub['g'] as LabeledAction).actionLabel).toBe('Junction');
       expect((hub['x'] as LabeledAction).actionLabel).toBe('Invisible');
-      expect(hub['s'] instanceof LabeledActionSubmenuConfig).toBeTrue(); // ...Edge
       expect((hub['f'] as LabeledAction).actionLabel).toBe('Add Label');
       expect((hub['w'] as LabeledAction).actionLabel).toBe('Add Waypoint');
-      expect((hub['u'] as LabeledSubmenuConfig).submenuLabel).toBe('Connect →...');
-      expect((hub['o'] as LabeledSubmenuConfig).submenuLabel).toBe('Connect ←...');
+      // Retired with the grow flow (2026-07-20): the ...Edge directional
+      // picker and the u/o connect modifiers — connecting nodes is grow
+      // mode's job now.
+      expect(hub['s']).toBeUndefined();
+      expect(hub['u']).toBeUndefined();
+      expect(hub['o']).toBeUndefined();
     });
 
     it('Box emits CREATE_NEW_NODE once per hold; labelEdit arms via node-inserted', () => {
@@ -290,27 +293,6 @@ describe('KeymenuComponent', () => {
       expect((component as any).insertViaEditActive).toBeFalse();
     });
 
-    it('connect submenus emit CREATE_NEW_NODE_CONNECTED with their direction', () => {
-      const fixture = TestBed.createComponent(KeymenuComponent);
-      const component = fixture.componentInstance;
-      const emitSpy = spyOn(component.keyMenuOut, 'emit');
-      const hub = buildHub(component);
-
-      const out = (hub['u'] as LabeledSubmenuConfig).submenuConfig;
-      (out['c'] as LabeledAction).action();
-      expect(emitSpy).toHaveBeenCalledWith(
-        {kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction: 'out', nodeShape: 'circle'});
-      // an anchorless attempt sends no confirmation, so nothing arms
-      expect((component as any).insertViaEditActive).toBeFalse();
-      component.notifyNodeInserted(true);
-      expect((component as any).insertViaEditActive).toBeTrue();
-
-      (component as any).editContextActionFired = false;
-      const inn = (hub['o'] as LabeledSubmenuConfig).submenuConfig;
-      (inn['d'] as LabeledAction).action();
-      expect(emitSpy).toHaveBeenCalledWith(
-        {kind: DACommandType.CREATE_NEW_NODE_CONNECTED, direction: 'in', nodeShape: undefined});
-    });
   });
 });
 

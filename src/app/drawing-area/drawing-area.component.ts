@@ -163,8 +163,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private undoRedoService = new UndoRedoService();
   private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
-  private directedEdgeSource: DANode | null = null;
-  private directedEdgeInProgress: DAEdge | null = null;
   private _defaultNodeShape: NodeShape = 'box';
   private _defaultEdgeDirectedness: EdgeDirectedness = 'directed';
   private _defaultLineStyle: LineStyle = 'solid';
@@ -261,9 +259,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.FINALIZE_DIRECTED_EDGE,
     DACommandType.ADD_LABEL,
     DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
     DACommandType.MULTI_ITEM_SELECT,
@@ -298,13 +294,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.QUICK_ADD,
     DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.BEGIN_DIRECTED_EDGE,
-    DACommandType.SET_EDGE_DESTINATION,
     DACommandType.ADD_LABEL,
     DACommandType.DELETE,
     DACommandType.TOGGLE_PIN_SELECTED,
@@ -329,12 +322,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
-    DACommandType.CREATE_NEW_NODE_CONNECTED,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.BEGIN_DIRECTED_EDGE,
-    DACommandType.SET_EDGE_DESTINATION,
-    DACommandType.FINALIZE_DIRECTED_EDGE,
     DACommandType.ADD_LABEL,
     DACommandType.EDIT_SELECTED,
     DACommandType.QUICK_ADD,
@@ -622,9 +611,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CREATE_NEW_NODE:
         this.createNewNode(command.nodeShape);
         break;
-      case DACommandType.CREATE_NEW_NODE_CONNECTED:
-        this.createNewNodeConnected(command.direction, command.nodeShape);
-        break;
       case DACommandType.INSERT_WAYPOINT:
         this.insertWaypointAtCrosshairs();
         this.checkAndEmitEditState();
@@ -653,15 +639,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CONNECT_SELECTED_NODES:
         this.connectSelectedNodes();
         this.checkAndEmitEditState();
-        break;
-      case DACommandType.BEGIN_DIRECTED_EDGE:
-        this.beginDirectedEdge();
-        break;
-      case DACommandType.SET_EDGE_DESTINATION:
-        this.setEdgeDestination(command.direction);
-        break;
-      case DACommandType.FINALIZE_DIRECTED_EDGE:
-        this.finalizeDirectedEdge();
         break;
       case DACommandType.RECENTER_VIEW:
         this.recenterView();
@@ -3300,49 +3277,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  private beginDirectedEdge() {
-    this.finishTweens();
 
-    // Source: node under crosshairs, or first selected node
-    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const srcNode = nodesUnderCrosshairs.length > 0
-      ? nodesUnderCrosshairs[0]
-      : (selectedNodes.length > 0 ? selectedNodes[0] : null);
-    if (!srcNode) return;
 
-    this.directedEdgeSource = srcNode;
-    // Create self-edge initially
-    this.drawingLayer.addEdge(srcNode, srcNode);
-    const edges = this.drawingLayer.getDAEdges();
-    this.directedEdgeInProgress = edges[edges.length - 1];
-    this.drawingLayer.batchDraw();
-  }
-
-  private setEdgeDestination(direction: 'left' | 'right' | 'up' | 'down') {
-    if (!this.directedEdgeSource || !this.directedEdgeInProgress) return;
-
-    const targetNode = this.findNodeInDirection(direction);
-    if (!targetNode) return;
-
-    // Remove the current in-progress edge and create a new one to the target
-    this.drawingLayer.removeEdge(this.directedEdgeInProgress);
-    this.directedEdgeInProgress = this.drawingLayer.addEdge(this.directedEdgeSource, targetNode);
-    this.autoRouteNewEdge(this.directedEdgeInProgress);
-
-    // Move crosshairs to target so subsequent direction presses work relative to new position
-    const targetCenter = this.getNodeCenterInStageCoordinates(targetNode);
-    const deltaX = targetCenter.x - this.crosshairsLayer.crosshairs.x;
-    const deltaY = targetCenter.y - this.crosshairsLayer.crosshairs.y;
-    this.moveCrosshairsBy(deltaX, deltaY);
-
-    this.drawingLayer.batchDraw();
-  }
-
-  private finalizeDirectedEdge() {
-    this.directedEdgeSource = null;
-    this.directedEdgeInProgress = null;
-  }
 
   /** Explicit Gather (the `Gather` key): a persistent toggle. Pressing it
    *  over the gathered anchor (or with no anchor at all) restores; over a
@@ -4211,37 +4147,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
   }
 
-  /** Connected insert (held-hub u/o flows): new node at the crosshairs plus
-   *  an edge to/from the anchor — the single selected node, else the
-   *  traversal's current node. 'out' wires anchor → new, 'in' new → anchor.
-   *  Emits 'node-inserted' on success so the keymenu can enter labelEdit on
-   *  the hub key's release (confirmation-driven — an anchorless attempt
-   *  must not strand the user in labelEdit). */
-  private createNewNodeConnected(direction: 'out' | 'in', nodeShape?: NodeShape) {
-    const selected = this.drawingLayer.getSelectedDANodes();
-    const anchor = selected.length === 1 ? selected[0] : this.validGraphNavLastNode();
-    if (!anchor) {
-      this.emitStatus('⚠ Connected insert needs an anchor — select or navigate to a node first');
-      return;
-    }
-    this.finishTweens();
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-
-    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
-    this.autoRouteNewEdge(direction === 'out'
-      ? this.drawingLayer.addEdge(anchor, newNode)
-      : this.drawingLayer.addEdge(newNode, anchor));
-
-    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
-    if (labelable) {
-      newNode.showCursor();
-      this.crosshairsLayer.hideCrosshairs();
-    }
-    this.daOut.emit({kind: 'node-inserted', labelable});
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-  }
 
   private getCrosshairsBBoxInDrawingLayer(): { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number } {
     const rect = this.crosshairsLayer.crosshairs.konvaGroup.getClientRect();

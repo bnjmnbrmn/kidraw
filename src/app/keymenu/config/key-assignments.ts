@@ -30,22 +30,18 @@ export interface KeymenuKeyAssignments {
      *  status choice keys all sit in the left hand. */
     readonly statusSubmenu: KeyString;
   };
-  /** Children of the held edit/insert hub. The hub key is left-hand in both
-   *  profiles, so kinds sit in the left hand next to it and the right hand
-   *  stays free for movement/drag; connectOut/connectIn are right-hand
-   *  modifiers: hub+connectOut+shape births the node wired current → new,
-   *  hub+connectIn+shape wires new → current. */
+  /** Children of the held add hub. The hub key is left-hand in both
+   *  profiles, so the kind keys sit in the left hand next to it and the
+   *  right hand stays free for movement. (Connecting to another node is the
+   *  grow mode's job now — see notes/design-add-insert-model.md.) */
   readonly insert: {
     readonly box: KeyString;
     readonly circle: KeyString;
     readonly diamond: KeyString;
     readonly junction: KeyString;
     readonly invisible: KeyString;
-    readonly edge: KeyString;
     readonly label: KeyString;
     readonly waypoint: KeyString;
-    readonly connectOut: KeyString;
-    readonly connectIn: KeyString;
   };
   readonly nodeTypes: {
     readonly box: KeyString;
@@ -192,11 +188,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     diamond: 'v',
     junction: 'g',
     invisible: 'x',
-    edge: 's',
     label: 'f',
     waypoint: 'w',
-    connectOut: 'u',
-    connectIn: 'o',
   },
   nodeTypes: {
     box: 'b',
@@ -312,11 +305,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     diamond: 'e',
     junction: 'g',
     invisible: 'x',
-    edge: 's',
     label: 'f',
     waypoint: 'w',
-    connectOut: 'u',
-    connectIn: 'o',
   },
   nodeTypes: {
     box: 'b',
