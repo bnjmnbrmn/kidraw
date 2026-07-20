@@ -3276,19 +3276,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const dy = center.y - crosshairsPosition.y;
 
       const MIN_OFFSET = 5;
-      let inDirection = false;
-      switch (direction) {
-        case 'left':  inDirection = dx < -MIN_OFFSET; break;
-        case 'right': inDirection = dx > MIN_OFFSET; break;
-        case 'up':    inDirection = dy < -MIN_OFFSET; break;
-        case 'down':  inDirection = dy > MIN_OFFSET; break;
-      }
-      if (!inDirection) return;
-
       const isHorizontal = direction === 'left' || direction === 'right';
-      const primaryDist = isHorizontal ? Math.abs(dx) : Math.abs(dy);
-      const offAxisDist = isHorizontal ? Math.abs(dy) : Math.abs(dx);
-      const score = primaryDist + offAxisDist * 2;
+      // Signed distance along the intended direction (positive = that way)
+      // and the perpendicular offset.
+      const along = direction === 'right' ? dx
+        : direction === 'left' ? -dx
+        : direction === 'down' ? dy
+        : -dy;
+      const offAxis = Math.abs(isHorizontal ? dy : dx);
+      // 45° cone: a node only counts for this direction if it is genuinely
+      // more that-way than perpendicular. Without this, a mostly-vertical
+      // node with a small horizontal offset gets grabbed by a horizontal
+      // press whenever it happens to be nearer than the true target — the
+      // "hard to get the node I want" bug (da-88). Fixed cone; no fallback,
+      // so a press is either the on-axis node or a no-op (predictable).
+      if (along <= MIN_OFFSET || along < offAxis) return;
+      const score = along + offAxis * 2;
 
       if (score < bestScore) {
         bestScore = score;
