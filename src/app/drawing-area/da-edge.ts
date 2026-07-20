@@ -30,6 +30,8 @@ export class DAEdge {
   private _navFocused: boolean = false;
   private _navUnderlay: Konva.Line | null = null;
   private _directionGradient: {from: string; to: string} | null = null;
+  private _undirectedColor: string | null = null;
+  private _bidirectionalColor: string | null = null;
   public readonly _line: Konva.Arrow;
   // Not readonly: reverseDirection() swaps them in place so an edge can be
   // flipped without losing its id, labels or waypoints.
@@ -113,20 +115,43 @@ export class DAEdge {
     this.applyNavFocus();
   }
 
-  /** Direction gradient: stroke fades from one color at the source to
-   *  another at the destination (e.g. cyan → yellow), making flow direction
-   *  readable even when arrowheads are subpixel at low zoom. The arrowhead
-   *  fill takes the destination color. Null restores the plain stroke. */
-  setDirectionGradient(gradient: {from: string; to: string} | null): void {
-    this._directionGradient = gradient;
-    this.applyDirectionGradient();
+  /** Set the directedness-aware color scheme. `gradient` fades source → dest
+   *  for *directed* edges (readable flow at any zoom); `undirected` and
+   *  `bidirectional` are flat hues used when there is no single direction —
+   *  the gradient is meaningless there. Any field null falls back to the
+   *  plain stroke color. */
+  setDirectionColors(scheme: {gradient?: {from: string; to: string} | null;
+                              undirected?: string | null;
+                              bidirectional?: string | null} | null): void {
+    this._directionGradient = scheme?.gradient ?? null;
+    this._undirectedColor = scheme?.undirected ?? null;
+    this._bidirectionalColor = scheme?.bidirectional ?? null;
+    this.applyEdgeStroke();
   }
 
-  private applyDirectionGradient(): void {
+  /** Resolve the stroke/fill from the edge's directedness: undirected and
+   *  bidirectional get their own flat color (no gradient — there is no
+   *  single flow direction to depict); a directed edge uses the gradient if
+   *  one is set, else the plain stroke. */
+  private applyEdgeStroke(): void {
+    const flat = (color: string) => {
+      // Clear to null, not []: Konva's hasStroke() treats an empty stops
+      // array as truthy and then renders a zero-stop (transparent) gradient
+      // instead of the flat stroke — the line would vanish.
+      this._line.strokeLinearGradientColorStops(null as unknown as number[]);
+      this._line.stroke(color);
+      this._line.fill(color);
+    };
+    if (this._directedness === 'undirected') {
+      flat(this._undirectedColor ?? this._strokeColor);
+      return;
+    }
+    if (this._directedness === 'bidirectional') {
+      flat(this._bidirectionalColor ?? this._strokeColor);
+      return;
+    }
     if (!this._directionGradient) {
-      this._line.strokeLinearGradientColorStops([]);
-      this._line.stroke(this._strokeColor);
-      this._line.fill(this._fillColor);
+      flat(this._strokeColor);
       return;
     }
     const points = this.getPathPoints();
@@ -202,6 +227,8 @@ export class DAEdge {
     this._line.pointerLength(pointerLength);
     this._line.pointerWidth(pointerWidth);
     this._line.pointerAtBeginning(this._directedness === 'bidirectional');
+    // Directedness drives the color scheme (undirected/bidirectional are flat).
+    this.applyEdgeStroke();
   }
 
   private applyLineStyle(): void {
@@ -217,7 +244,7 @@ export class DAEdge {
     this._line.fill(this._fillColor);
     this._waypointGlyphs.forEach(wp => wp.applyColors({stroke: this._strokeColor}));
     this.applyNavFocus(); // the glow follows the stroke color
-    if (this._directionGradient) this.applyDirectionGradient(); // gradient outranks theme stroke
+    this.applyEdgeStroke(); // directedness color scheme outranks theme stroke
   }
 
   get labels(): DALabel[] {
@@ -591,7 +618,7 @@ export class DAEdge {
   refreshGeometry(): void {
     this._line.points(this.renderPoints().flatMap(p => [p.x, p.y]));
     if (this._navFocused) this.applyNavFocus(); // underlay tracks the path
-    if (this._directionGradient) this.applyDirectionGradient(); // endpoints move
+    this.applyEdgeStroke(); // endpoints moved → gradient coords refresh
     this.positionLabels();
   }
 

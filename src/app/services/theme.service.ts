@@ -23,10 +23,15 @@ export interface ThemePalette {
   nodeText: string;
   edgeStroke: string;
   edgeFill: string;
-  /** Direction gradient for edges (stroke fades source → dest, arrowhead
-   *  takes the dest color) so flow direction reads at any zoom. Omit for
-   *  flat edgeStroke coloring. */
+  /** Direction gradient for *directed* edges (stroke fades source → dest,
+   *  arrowhead takes the dest color) so flow direction reads at any zoom.
+   *  Omit for flat edgeStroke coloring. */
   edgeGradient?: { from: string; to: string };
+  /** Flat colors for edges with no single flow direction — the gradient is
+   *  meaningless there, so undirected/bidirectional get their own solid
+   *  hues, distinct from the gradient endpoints. Fall back to edgeStroke. */
+  edgeUndirected?: string;
+  edgeBidirectional?: string;
   labelFill: string;
   labelStroke: string;
   labelText: string;
@@ -57,6 +62,8 @@ export const DEFAULT_DARK_PALETTE: ThemePalette = {
   edgeStroke: '#b0b0b0',
   edgeFill: '#b0b0b0',
   edgeGradient: { from: '#22d3ee', to: '#facc15' },
+  edgeUndirected: '#4ade80',
+  edgeBidirectional: '#c084fc',
   labelFill: '#1a1a1a',
   labelStroke: '#c0c0c0',
   labelText: '#f0f0f0',
@@ -87,6 +94,8 @@ export const DEFAULT_LIGHT_PALETTE: ThemePalette = {
   edgeStroke: '#334155',
   edgeFill: '#334155',
   edgeGradient: { from: '#0e7490', to: '#b45309' },
+  edgeUndirected: '#15803d',
+  edgeBidirectional: '#9333ea',
   labelFill: '#ffffff',
   labelStroke: '#2563eb',
   labelText: '#1e293b',
