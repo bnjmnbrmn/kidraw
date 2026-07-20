@@ -60,7 +60,8 @@ async function main() {
     }
     return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), z: summarize(root['z']), m: summarize(root['m']), miscLabels };
   });
-  check('root a is the Edit/Insert hub', menu.a?.label === 'Edit/Insert...', JSON.stringify(menu.a));
+  // Renamed 'Edit/Insert...' → 'Add...' when a=add / i=insert landed.
+  check('root a is the Add hub', menu.a?.label === 'Add...', JSON.stringify(menu.a));
   // 2026-07-16: f became the one-shot Go action (nav popup rework).
   check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
   // 2026-07-18: Move by node → g, Hide Keyboard → z.

@@ -31,8 +31,10 @@ export class DAEdge {
   private _navUnderlay: Konva.Line | null = null;
   private _directionGradient: {from: string; to: string} | null = null;
   public readonly _line: Konva.Arrow;
-  public readonly srcNode: DANode;
-  public readonly destNode: DANode;
+  // Not readonly: reverseDirection() swaps them in place so an edge can be
+  // flipped without losing its id, labels or waypoints.
+  public srcNode: DANode;
+  public destNode: DANode;
   private _labels: DALabel[] = [];
   private _waypointGlyphs: Map<string, DAWaypoint> = new Map();
 
@@ -220,6 +222,29 @@ export class DAEdge {
 
   get labels(): DALabel[] {
     return this._labels;
+  }
+
+  /** Flip which end is the source, keeping the rendered path where it is.
+   *  The node adjacency lists are re-hung, the bend points are reversed (the
+   *  polyline is stored source→dest) and every label's arc-length anchor is
+   *  mirrored (t → 1-t) so labels stay physically put. `side` is
+   *  screen-stable by definition, so it is left alone. */
+  reverseDirection(): void {
+    this.srcNode.removeOutgoingEdge(this);
+    this.destNode.removeIncomingEdge(this);
+
+    const oldSrc = this.srcNode;
+    this.srcNode = this.destNode;
+    this.destNode = oldSrc;
+
+    this.srcNode.addOutgoingEdge(this);
+    this.destNode.addIncomingEdge(this);
+
+    this._controlPoints = [...this._controlPoints].reverse();
+    for (const label of this._labels) {
+      label.edgeT = 1 - label.edgeT;
+    }
+    this.refreshGeometry();
   }
 
   addLabel(label: DALabel): void {

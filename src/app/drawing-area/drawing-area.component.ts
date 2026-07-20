@@ -2254,10 +2254,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.moveCrosshairsBy(-1, 0, tier ?? 'normal');
   }
 
+  /** Screen-space keep-out band between the crosshairs and the drawing-area
+   *  edge: cross it and movement pans the view instead of advancing the
+   *  crosshairs. A flat band clips whatever you land on — navigate onto a
+   *  wide card near the edge and half its text sits outside the viewport —
+   *  so the band grows to half the landed-on node's rendered box plus
+   *  padding. Capped at 40% of the viewport so it can never swallow it. */
+  private crosshairsEdgeMargin(target: {x: number; y: number}): {x: number; y: number} {
+    const BASE = 60;
+    const PAD = 24;
+    const scale = this.drawingLayer.scaleX();
+    let mx = BASE;
+    let my = BASE;
+    for (const node of this.drawingLayer.getDaNodesContainingPoint(target)) {
+      mx = Math.max(mx, (node.NODE_WIDTH * scale) / 2 + PAD);
+      my = Math.max(my, (node.NODE_HEIGHT * scale) / 2 + PAD);
+    }
+    return {
+      x: Math.min(mx, this.stage.width() * 0.4),
+      y: Math.min(my, this.stage.height() * 0.4),
+    };
+  }
+
   private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier) {
     this.finishTweens();
 
-    const edgeMargin = 60;
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
 
@@ -2310,10 +2331,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       targetY = currentY + deltaY;
     }
 
-    const minX = edgeMargin;
-    const maxX = this.stage.width() - edgeMargin;
-    const minY = edgeMargin;
-    const maxY = this.stage.height() - edgeMargin;
+    const margin = this.crosshairsEdgeMargin({x: targetX, y: targetY});
+    const minX = margin.x;
+    const maxX = this.stage.width() - margin.x;
+    const minY = margin.y;
+    const maxY = this.stage.height() - margin.y;
 
     const clampedX = Math.min(Math.max(targetX, minX), maxX);
     const clampedY = Math.min(Math.max(targetY, minY), maxY);
@@ -5197,6 +5219,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** v+o: cycle directedness of the selected edge(s) — directed →
    *  undirected → bidirectional → directed. (Reversing a directed edge is a
    *  future structural op; in the grow mode the pre-commit `o` covers it.) */
+  /** Transient cursor into the four-state directionality cycle, per edge id:
+   *  0 forward · 1 reversed · 2 undirected · 3 bidirectional. The endpoint
+   *  swap happens entering 1 and wrapping 3→0, so four presses land the edge
+   *  exactly where it started. */
+  private edgeDirCycle = new Map<string, number>();
+  private static readonly DIR_CYCLE: {directedness: EdgeDirectedness; label: string}[] = [
+    {directedness: 'directed',      label: 'forward →'},
+    {directedness: 'directed',      label: 'reversed ←'},
+    {directedness: 'undirected',    label: 'undirected —'},
+    {directedness: 'bidirectional', label: 'bidirectional ↔'},
+  ];
+
+  /** Where an edge sits in the cycle. The stored cursor wins only while it
+   *  still agrees with the live directedness — undo, reload and the style
+   *  submenu can all change an edge behind our back. */
+  private dirCycleIndex(edge: DAEdge): number {
+    const stored = this.edgeDirCycle.get(edge.id);
+    if (stored !== undefined
+        && DrawingAreaComponent.DIR_CYCLE[stored].directedness === edge.directedness) {
+      return stored;
+    }
+    return edge.directedness === 'undirected' ? 2
+      : edge.directedness === 'bidirectional' ? 3 : 0;
+  }
+
   private cycleEdgeDirectedness(): void {
     const edges = this.drawingLayer.getSelectedDAEdges();
     if (edges.length === 0) {
@@ -5205,14 +5252,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.finishTweens();
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const next: Record<EdgeDirectedness, EdgeDirectedness> =
-      {directed: 'undirected', undirected: 'bidirectional', bidirectional: 'directed'};
+    let lastLabel = '';
     for (const edge of edges) {
-      edge.directedness = next[edge.directedness];
+      const from = this.dirCycleIndex(edge);
+      const to = (from + 1) % DrawingAreaComponent.DIR_CYCLE.length;
+      // Entering 'reversed', or wrapping back to 'forward': flip the endpoints.
+      if (to === 1 || from === DrawingAreaComponent.DIR_CYCLE.length - 1) {
+        edge.reverseDirection();
+      }
+      const next = DrawingAreaComponent.DIR_CYCLE[to];
+      edge.directedness = next.directedness;
+      this.edgeDirCycle.set(edge.id, to);
+      lastLabel = next.label;
     }
     this.drawingLayer.batchDraw();
     const suffix = edges.length > 1 ? ` (${edges.length} edges)` : '';
-    this.emitStatus(`Direction: ${edges[0].directedness}${suffix}`);
+    this.emitStatus(`Direction: ${lastLabel}${suffix}`);
   }
 
 

@@ -204,7 +204,9 @@ async function main() {
   });
   check('grown box is selectable at its far edge', edgeHit);
 
-  // 7. Add Label over empty canvas: nothing added, no label-edit mode.
+  // 7. Over empty canvas `f` is no longer Add Label — since the empty-canvas
+  //    add flow landed (2026-07-19/20) it opens the node-type popup, so this
+  //    now asserts that no *label* is created there (a node is, by design).
   await placeAtStage(60, 60);
   await page.keyboard.down('a');
   await page.waitForTimeout(120);
@@ -213,8 +215,8 @@ async function main() {
   await page.keyboard.up('a');
   await page.waitForTimeout(120);
   s = await state();
-  check('Add Label over empty canvas adds nothing', s.labels.length === 1, `${s.labels.length} labels`);
-  check('failed Add Label does not enter label-edit mode', s.mode === 'normal', s.mode);
+  check('a+f over empty canvas adds no label (it is the node-type flow now)',
+    s.labels.length === 1, `${s.labels.length} labels`);
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

@@ -143,20 +143,52 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
   });
 
   describe('cycleEdgeDirectedness (v+o)', () => {
-    it('cycles directed → undirected → bidirectional → directed', () => {
-      const edge = {directedness: 'directed'};
+    function edgeStub(id = 'e1') {
+      return {
+        id,
+        directedness: 'directed' as string,
+        src: 'A',
+        dest: 'B',
+        reverseDirection() { const s = this.src; this.src = this.dest; this.dest = s; },
+      };
+    }
+
+    it('cycles forward → reversed → undirected → bidirectional → forward', () => {
+      const edge = edgeStub();
       const component = buildComponent({selectedEdges: [edge]});
-      component.cycleEdgeDirectedness();
-      expect(edge.directedness).toBe('undirected');
-      component.cycleEdgeDirectedness();
-      expect(edge.directedness).toBe('bidirectional');
+      component.edgeDirCycle = new Map();
+
       component.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('directed');
-      expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(3);
+      expect([edge.src, edge.dest]).toEqual(['B', 'A']);  // reversed
+
+      component.cycleEdgeDirectedness();
+      expect(edge.directedness).toBe('undirected');
+      expect([edge.src, edge.dest]).toEqual(['B', 'A']);  // endpoints untouched
+
+      component.cycleEdgeDirectedness();
+      expect(edge.directedness).toBe('bidirectional');
+
+      component.cycleEdgeDirectedness();
+      expect(edge.directedness).toBe('directed');
+      expect([edge.src, edge.dest]).toEqual(['A', 'B']);  // back where it started
+      expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(4);
+    });
+
+    it('re-derives its place in the cycle when the edge changed behind its back', () => {
+      const edge = edgeStub();
+      const component = buildComponent({selectedEdges: [edge]});
+      component.edgeDirCycle = new Map([['e1', 3]]);  // stale: says bidirectional
+      // Live state says directed, so the cursor is rebuilt as 'forward' and
+      // the press reverses rather than wrapping.
+      component.cycleEdgeDirectedness();
+      expect(edge.directedness).toBe('directed');
+      expect([edge.src, edge.dest]).toEqual(['B', 'A']);
     });
 
     it('warns when no edge is selected', () => {
       const component = buildComponent();
+      component.edgeDirCycle = new Map();
       component.cycleEdgeDirectedness();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         jasmine.objectContaining({kind: 'status-message'}));
