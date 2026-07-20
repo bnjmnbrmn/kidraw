@@ -139,6 +139,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private visualConfigService = inject(VisualConfigService);
   private metrics = inject(RoutingMetricsService);
   private draftStorage = inject(DraftStorageService);
+  /** Viewport from the draft loaded at startup, so a vault reopen keeps the
+   *  user's place instead of re-fitting. Consumed once by initVault. */
+  private startupDraftView: {x: number; y: number; scale: number} | null = null;
   private fileIo = inject(FileIoService);
   private graphStorage = inject(GraphStorageService);
   private vaultService = inject(VaultService);
@@ -403,6 +406,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           const snapshot = this.draftStorage.draftToSnapshot(draft);
           this.drawingLayer.restoreGraph(snapshot);
           this.drawingLayer.applyThemeColors(effectivePalette());
+          // Keep the user's place across a refresh; fall back to fit only
+          // when the draft predates viewport persistence. Stash it so the
+          // vault reopen (initVault) honors it instead of re-fitting.
+          this.startupDraftView = draft.view ?? null;
+          if (!this.restoreViewport(draft.view) && snapshot.nodes.length > 0) {
+            this.fitViewToContent();
+          }
         } catch {
           // Ignore corrupt stored data
         }
@@ -990,7 +1000,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private saveGraphToStorage(): void {
     this.finishTweens();
     const snapshot = this.drawingLayer.serializeGraph();
-    this.draftStorage.saveSnapshot(snapshot);
+    this.draftStorage.saveSnapshot(snapshot, {view: this.currentViewport()});
+  }
+
+  /** The drawing-layer viewport: pan (stage px) + uniform scale. */
+  private currentViewport(): {x: number; y: number; scale: number} {
+    return {x: this.drawingLayer.x(), y: this.drawingLayer.y(), scale: this.drawingLayer.scaleX()};
+  }
+
+  /** Restore a saved viewport (pan + zoom) and re-center the crosshairs in
+   *  the visible area. Returns false if the view was absent/invalid so the
+   *  caller can fall back to fit-to-content. */
+  private restoreViewport(view: {x: number; y: number; scale: number} | undefined): boolean {
+    if (!view || !isFinite(view.x) || !isFinite(view.y) || !(view.scale > 0)) return false;
+    this.drawingLayer.scale({x: view.scale, y: view.scale});
+    this.drawingLayer.position({x: view.x, y: view.y});
+    this.crosshairsLayer.crosshairs.x = this.stage.width() / 2;
+    this.crosshairsLayer.crosshairs.y = this.stage.height() / 2;
+    this.drawingLayer.batchDraw();
+    this.emitZoomLevel();
+    return true;
   }
 
   private async openFile(): Promise<void> {
@@ -1322,7 +1351,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log('[vault] startup restore:', status, 'storedPath:', this.vaultService.currentFilePath ?? '(none)');
     if (status === 'connected') {
       const path = this.vaultService.currentFilePath;
-      if (path && await this.loadVaultFile(path, { recenter: true })) {
+      if (path && await this.loadVaultFile(path, { restoreView: this.startupDraftView, recenter: true })) {
         this.emitStatus(`Vault: opened ${path}`);
       }
     } else if (status === 'needs-permission') {
@@ -1421,7 +1450,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * own. `recenter` is for user-initiated opens; external-change reloads
    * leave the viewport and crosshairs alone.
    */
-  private async loadVaultFile(path: string, opts: { recenter?: boolean } = {}): Promise<boolean> {
+  private async loadVaultFile(path: string,
+      opts: { recenter?: boolean; restoreView?: {x: number; y: number; scale: number} | null } = {}): Promise<boolean> {
     const vault = this.vaultService.vault;
     if (!vault) return false;
     this.log.log('[vault] loading', path);
@@ -1458,7 +1488,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.restoreGraph(snapshot);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     this.drawingLayer.applyThemeColors(palette);
-    if (opts.recenter) {
+    if (opts.restoreView && this.restoreViewport(opts.restoreView)) {
+      // Draft viewport wins on a startup reopen — keeps the user's place.
+    } else if (opts.recenter) {
       this.fitViewToContent();
       this.recenterCrosshairs();
       this.emitZoomLevel();

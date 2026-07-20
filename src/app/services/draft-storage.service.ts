@@ -88,7 +88,8 @@ export class DraftStorageService {
   /** Convenience: snapshot + metadata → saved draft. */
   saveSnapshot(
     snap: GraphSnapshot,
-    options: { filePath?: string | null; dirty?: boolean } = {},
+    options: { filePath?: string | null; dirty?: boolean;
+               view?: { x: number; y: number; scale: number } } = {},
   ): void {
     const { doc, style } = snapshotToFiles(snap);
     this.save({
@@ -98,6 +99,7 @@ export class DraftStorageService {
       filePath: options.filePath ?? null,
       dirty: options.dirty ?? true,
       savedAt: Date.now(),
+      ...(options.view ? { view: options.view } : {}),
     });
   }
 
@@ -163,6 +165,10 @@ export interface DraftStateV2 {
   dirty: boolean;
   /** Wall-clock timestamp (ms) when this draft was last written. */
   savedAt: number;
+  /** Drawing-layer viewport (pan x/y in stage px, uniform scale) at save
+   *  time, so a page refresh restores your place instead of resetting.
+   *  Optional: older drafts and non-viewport saves omit it. */
+  view?: { x: number; y: number; scale: number };
 }
 
 function isShallowValidDraft(raw: unknown): raw is DraftStateV2 {
