@@ -16,6 +16,9 @@ export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'inc
 
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 
+/** Which kinds of stop move-by-node steps between (tiered by modifier). */
+export type NavTargetKind = 'nodes' | 'labels' | 'all';
+
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purple';
@@ -144,10 +147,12 @@ export type DACommand =
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
-  | {kind: DACommandType.SNAP_TO_NODE_LEFT}
-  | {kind: DACommandType.SNAP_TO_NODE_RIGHT}
-  | {kind: DACommandType.SNAP_TO_NODE_UP}
-  | {kind: DACommandType.SNAP_TO_NODE_DOWN}
+  // targets: which stops move-by-node jumps between — 'nodes' (coarse),
+  // 'labels' = nodes+labels (default), 'all' = nodes+labels+waypoints (fine).
+  | {kind: DACommandType.SNAP_TO_NODE_LEFT; targets?: NavTargetKind}
+  | {kind: DACommandType.SNAP_TO_NODE_RIGHT; targets?: NavTargetKind}
+  | {kind: DACommandType.SNAP_TO_NODE_UP; targets?: NavTargetKind}
+  | {kind: DACommandType.SNAP_TO_NODE_DOWN; targets?: NavTargetKind}
   | {kind: DACommandType.INCREASE_SELECTED_NODE_SIZE}
   | {kind: DACommandType.DECREASE_SELECTED_NODE_SIZE}
   | {kind: DACommandType.INCREASE_SELECTED_TEXT_SIZE}

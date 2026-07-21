@@ -90,3 +90,10 @@ origin's cone); those nodes are reached by a fresh gesture. Verified in
 
 Alternatives considered and not taken: widening the cone on a modifier
 (weaker guarantee); accepting the limitation (Ben wanted the fix).
+
+## Idea (Ben, 2026-07-21) — hjkl inside the Go / nav popup
+
+Try bringing the same directional idiom into the **Go / nav popup**: use
+hjkl to move through the *restricted* set of directly-connected candidates
+(the edges out of the current node), spatially rather than as a flat list.
+Parked for a later session.

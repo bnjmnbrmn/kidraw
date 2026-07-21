@@ -319,6 +319,37 @@ async function main() {
       && freeDiamond.shape === 'diamond' && freeDiamond.edges === 0 && s.mode === 'labelEdit',
     JSON.stringify({node: freeDiamond, mode: s.mode}));
 
+  // --- 10. grow-mode target hop cycles (reaches an otherwise-shadowed node) ---
+  // Anchor X; U1 straight up (near); U2 up-and-right — in X's up cone but NOT
+  // in U1's up cone, so plain walking dead-ends at U1 while cycling reaches U2.
+  await escapeToNormal();
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    const mk = (id, cx, cy) => ({id, x: cx - 60, y: cy - 30, text: id, width: 120, height: 60, fontSize: 14, isSelected: false});
+    da.drawingLayer.restoreGraph({nodes: [mk('X', 600, 700), mk('U1', 600, 500), mk('U2', 750, 450)], edges: []});
+    const dl = da.drawingLayer, X = dl.getDANodes().find(n => n.id === 'X'), p = X.group.position();
+    da.crosshairsLayer.crosshairs.x = (p.x + X.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
+    da.crosshairsLayer.crosshairs.y = (p.y + X.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
+  });
+  const growTarget = () => page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.growTarget ? da.growTarget.label.text() : null;
+  });
+  await page.keyboard.down('a');
+  await page.waitForTimeout(260);
+  await page.keyboard.press('k'); // up
+  await page.waitForTimeout(160);
+  check('grow up #1 targets the near node U1', await growTarget() === 'U1', `target ${await growTarget()}`);
+  await page.keyboard.press('k'); // up again — cycles past U1 to U2
+  await page.waitForTimeout(160);
+  check('grow up #2 cycles to U2 (shadowed from U1, unreachable by walking)',
+    await growTarget() === 'U2', `target ${await growTarget()}`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(100);
+  await page.keyboard.up('a');
+  await page.waitForTimeout(150);
+
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);

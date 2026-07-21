@@ -189,11 +189,17 @@ describe('KeymenuComponent', () => {
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
-    // 2026-07-18 rebinds: Move by node → g, Hide Keyboard → z, r unbound
+    // 2026-07-18 rebinds: Move by node → g, Hide Keyboard → z, r unbound.
+    // 2026-07-21: default jump steps between nodes + labels ("Stop Left"),
+    // with coarse (nodes only) / fine (+waypoints) tier sub-submenus.
     const moveByNodeSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
     expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
-    const nodeLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
-    expect(nodeLeft.actionLabel).toBe('Node Left');
+    const stopLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
+    expect(stopLeft.actionLabel).toBe('Stop Left');
+    // coarse (moveSpeed.bigger = 's') = nodes only
+    const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledSubmenuConfig;
+    expect(coarse instanceof LabeledSubmenuConfig).toBeTrue();
+    expect((coarse.submenuConfig['h'] as LabeledAction).actionLabel).toBe('Node Left');
     expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 
     // Go at 'f': one-shot tap emitting the smart traverse (the nav popup

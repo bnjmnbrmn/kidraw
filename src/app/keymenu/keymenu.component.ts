@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -787,13 +787,32 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMoveByNodeSubmenuConfig(): SubmenuConfig {
     const mbn = this.keyAssignments.moveByNode;
-
+    const ms = this.keyAssignments.moveSpeed;
+    // Default jumps step between nodes + labels; the coarse modifier narrows
+    // to nodes only, the fine modifier widens to include waypoints too.
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
-      [mbn.nodeJump.left]: new LabeledAction('Node Left', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT})),
-      [mbn.nodeJump.down]: new LabeledAction('Node Down', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN})),
-      [mbn.nodeJump.up]: new LabeledAction('Node Up', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP})),
-      [mbn.nodeJump.right]: new LabeledAction('Node Right', () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT})),
+      ...this.moveByNodeJumpKeys('labels'),
+      [ms.bigger]: new LabeledSubmenuConfig('Coarse: nodes only...', this.buildMoveByNodeTierSubmenu('nodes')),
+      [ms.smaller]: new LabeledSubmenuConfig('Fine: +waypoints...', this.buildMoveByNodeTierSubmenu('all')),
+    } as SubmenuConfig;
+  }
+
+  private buildMoveByNodeTierSubmenu(targets: NavTargetKind): SubmenuConfig {
+    return {
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      ...this.moveByNodeJumpKeys(targets),
+    } as SubmenuConfig;
+  }
+
+  private moveByNodeJumpKeys(targets: NavTargetKind): SubmenuConfig {
+    const nj = this.keyAssignments.moveByNode.nodeJump;
+    const label = targets === 'nodes' ? 'Node' : targets === 'all' ? 'Stop' : 'Stop';
+    return {
+      [nj.left]:  new LabeledAction(`${label} Left`,  () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_LEFT, targets})),
+      [nj.down]:  new LabeledAction(`${label} Down`,  () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_DOWN, targets})),
+      [nj.up]:    new LabeledAction(`${label} Up`,    () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_UP, targets})),
+      [nj.right]: new LabeledAction(`${label} Right`, () => this.keyMenuOut.emit({kind: DACommandType.SNAP_TO_NODE_RIGHT, targets})),
     } as SubmenuConfig;
   }
 

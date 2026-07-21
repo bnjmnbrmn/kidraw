@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
@@ -595,16 +595,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.snapToNearestNode();
         break;
       case DACommandType.SNAP_TO_NODE_LEFT:
-        this.snapToNodeInDirection('left');
+        this.snapToNodeInDirection('left', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_RIGHT:
-        this.snapToNodeInDirection('right');
+        this.snapToNodeInDirection('right', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_UP:
-        this.snapToNodeInDirection('up');
+        this.snapToNodeInDirection('up', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_DOWN:
-        this.snapToNodeInDirection('down');
+        this.snapToNodeInDirection('down', command.targets ?? 'labels');
         break;
       case DACommandType.INCREASE_SELECTED_NODE_SIZE:
         this.increaseSelectedNodeSize();
@@ -3257,36 +3257,72 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.focusNode(nearestNode);
   }
 
-  /** All nodes inside the direction's 45° cone from `fromPoint` (default: the
-   *  crosshairs), ordered nearest-first by `score = along + 2·offAxis`.
-   *
-   *  The cone (`along ≥ offAxis`, `along > 5px`) means a node counts for a
-   *  direction only if it is genuinely more that-way than perpendicular —
-   *  without it a mostly-vertical node with a small horizontal offset gets
-   *  grabbed by a horizontal press (da-88). */
-  private nodesInDirection(direction: 'left' | 'right' | 'up' | 'down',
-                           fromPoint?: {x: number; y: number}): DANode[] {
-    const origin = fromPoint ?? {
-      x: this.crosshairsLayer.crosshairsX(),
-      y: this.crosshairsLayer.crosshairsY(),
-    };
+  /** A place move-by-node can land: a node, an edge label, or a waypoint,
+   *  with its center in stage coords. */
+  private navStops(targets: NavTargetKind): {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] {
+    const scale = this.drawingLayer.scaleX();
+    const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
+    const stops: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] = [];
+    for (const n of this.drawingLayer.getDANodes()) {
+      const c = this.getNodeCenterInStageCoordinates(n);
+      stops.push({id: n.id, kind: 'node', cx: c.x, cy: c.y});
+    }
+    if (targets === 'labels' || targets === 'all') {
+      for (const e of this.drawingLayer.getDAEdges()) for (const l of e.labels) {
+        stops.push({id: l.id, kind: 'label', cx: lx + (l.x + l.width / 2) * scale, cy: ly + (l.y + l.height / 2) * scale});
+      }
+    }
+    if (targets === 'all') {
+      for (const w of this.drawingLayer.getDAWaypoints()) {
+        stops.push({id: w.id, kind: 'waypoint', cx: lx + w.x * scale, cy: ly + w.y * scale});
+      }
+    }
+    return stops;
+  }
+
+  /** Current stage center of a stop by id+kind (positions move under pan). */
+  private navStopCenter(id: string, kind: 'node'|'label'|'waypoint'): {x: number; y: number} | null {
+    const scale = this.drawingLayer.scaleX();
+    const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
+    if (kind === 'node') {
+      const n = this.drawingLayer.getDANodes().find(n => n.id === id);
+      return n ? this.getNodeCenterInStageCoordinates(n) : null;
+    }
+    if (kind === 'label') {
+      for (const e of this.drawingLayer.getDAEdges()) for (const l of e.labels)
+        if (l.id === id) return {x: lx + (l.x + l.width / 2) * scale, y: ly + (l.y + l.height / 2) * scale};
+      return null;
+    }
+    const w = this.drawingLayer.getDAWaypoints().find(w => w.id === id);
+    return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
+  }
+
+  /** Nav stops of `targets` inside the direction's 45° cone from `origin`,
+   *  nearest-first by `score = along + 2·offAxis`. */
+  private stopsInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind,
+                           origin: {x: number; y: number}):
+      {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] {
     const MIN_OFFSET = 5;
     const isHorizontal = direction === 'left' || direction === 'right';
-    const scored: {node: DANode; score: number}[] = [];
-    for (const node of this.drawingLayer.getDANodes()) {
-      const center = this.getNodeCenterInStageCoordinates(node);
-      const dx = center.x - origin.x;
-      const dy = center.y - origin.y;
-      const along = direction === 'right' ? dx
-        : direction === 'left' ? -dx
-        : direction === 'down' ? dy
-        : -dy;
+    const scored: {stop: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}; score: number}[] = [];
+    for (const stop of this.navStops(targets)) {
+      const dx = stop.cx - origin.x, dy = stop.cy - origin.y;
+      const along = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
       const offAxis = Math.abs(isHorizontal ? dy : dx);
       if (along <= MIN_OFFSET || along < offAxis) continue;
-      scored.push({node, score: along + offAxis * 2});
+      scored.push({stop, score: along + offAxis * 2});
     }
     scored.sort((a, b) => a.score - b.score);
-    return scored.map(s => s.node);
+    return scored.map(s => s.stop);
+  }
+
+  /** All nodes inside the direction's 45° cone from `fromPoint`, nearest
+   *  first (grow-mode target hop; node-only). */
+  private nodesInDirection(direction: 'left' | 'right' | 'up' | 'down',
+                           fromPoint?: {x: number; y: number}): DANode[] {
+    const origin = fromPoint ?? {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
+    const byId = new Map(this.drawingLayer.getDANodes().map(n => [n.id, n]));
+    return this.stopsInDirection(direction, 'nodes', origin).map(s => byId.get(s.id)!).filter(Boolean);
   }
 
   private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
@@ -3295,44 +3331,43 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Repeated-press cycling for move-by-node: the first press in a direction
-   *  jumps to the nearest node in that cone and remembers the full ordered
+   *  jumps to the nearest stop in that cone and remembers the full ordered
    *  candidate list anchored at the origin; pressing the same direction again
-   *  while still standing on the last-served node steps to the next candidate.
-   *  This makes every in-cone node reachable — e.g. up, up walks past the
-   *  nearest to the one behind it — closing the "unreachable node" gap
-   *  (notes/analysis-move-by-node-reachability.md). Any other movement or a
-   *  different direction starts a fresh cycle. */
-  private nodeDirCycle: {dir: 'left' | 'right' | 'up' | 'down'; ids: string[]; index: number} | null = null;
+   *  while still standing on the last-served stop steps to the next candidate.
+   *  This makes every in-cone stop reachable — up, up walks past the nearest
+   *  to the one behind it — closing the "unreachable node" gap
+   *  (notes/analysis-move-by-node-reachability.md). The `targets` tier decides
+   *  whether labels/waypoints are stops. Any other movement or a different
+   *  direction/tier starts a fresh cycle. */
+  private nodeDirCycle: {dir: 'left' | 'right' | 'up' | 'down'; targets: NavTargetKind;
+                         stops: {id: string; kind: 'node'|'label'|'waypoint'}[]; index: number} | null = null;
 
-  private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down') {
+  private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
     this.finishTweens();
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
 
-    // Continue an active cycle if we're still on its last-served node.
+    // Continue an active cycle if we're still on its last-served stop.
     const cyc = this.nodeDirCycle;
-    if (cyc && cyc.dir === direction && cyc.index + 1 < cyc.ids.length) {
-      const landed = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index]);
-      const next = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index + 1]);
-      if (landed && next) {
-        const c = this.getNodeCenterInStageCoordinates(landed);
-        if (Math.abs(c.x - cx) < 3 && Math.abs(c.y - cy) < 3) {
-          cyc.index++;
-          this.jumpCrosshairsToNode(next);
-          return;
-        }
+    if (cyc && cyc.dir === direction && cyc.targets === targets && cyc.index + 1 < cyc.stops.length) {
+      const landed = cyc.stops[cyc.index];
+      const c = this.navStopCenter(landed.id, landed.kind);
+      const next = cyc.stops[cyc.index + 1];
+      if (c && Math.abs(c.x - cx) < 3 && Math.abs(c.y - cy) < 3 && this.navStopCenter(next.id, next.kind)) {
+        cyc.index++;
+        this.jumpCrosshairsToStopCenter(this.navStopCenter(next.id, next.kind)!);
+        return;
       }
     }
 
     // Fresh cycle from the current position.
-    const candidates = this.nodesInDirection(direction);
+    const candidates = this.stopsInDirection(direction, targets, {x: cx, y: cy});
     if (candidates.length === 0) { this.nodeDirCycle = null; return; }
-    this.nodeDirCycle = {dir: direction, ids: candidates.map(n => n.id), index: 0};
-    this.jumpCrosshairsToNode(candidates[0]);
+    this.nodeDirCycle = {dir: direction, targets, stops: candidates.map(s => ({id: s.id, kind: s.kind})), index: 0};
+    this.jumpCrosshairsToStopCenter({x: candidates[0].cx, y: candidates[0].cy});
   }
 
-  private jumpCrosshairsToNode(node: DANode): void {
-    const c = this.getNodeCenterInStageCoordinates(node);
+  private jumpCrosshairsToStopCenter(c: {x: number; y: number}): void {
     this.moveCrosshairsBy(c.x - this.crosshairsLayer.crosshairs.x,
                           c.y - this.crosshairsLayer.crosshairs.y);
   }
@@ -4710,6 +4745,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacePos = null;
     this.growPlacedRough = false;
     this.growMods.clear();
+    this.growNavCycle = null;
     this.growHoldKey = holdKey;
     this.growKeys = keys;
     this.daOut.emit({
@@ -4792,14 +4828,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.commitGrowMode();
   }
 
-  /** Hop the target highlight to the nearest node in the given direction,
-   *  measured from the current target (the anchor before any hop). */
+  /** Hop the target highlight in the given direction. Same repeated-press
+   *  cycling as move-by-node: the first press jumps to the nearest node in
+   *  the cone (from the current target, or the anchor before any hop) and
+   *  remembers the candidate list; pressing the same direction again steps to
+   *  the next candidate, so every in-cone node is reachable as a target. The
+   *  anchor is never a candidate (no self-connection). */
+  private growNavCycle: {dir: 'left' | 'right' | 'up' | 'down'; ids: string[]; index: number} | null = null;
+
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
-    const from = this.getNodeCenterInStageCoordinates(this.growTarget ?? this.growAnchor!);
-    const found = this.findNodeInDirection(direction, from);
-    if (!found) return;
-    this.growTarget = found;
+    const cyc = this.growNavCycle;
+    if (cyc && cyc.dir === direction && cyc.index + 1 < cyc.ids.length
+        && this.growTarget && this.growTarget.id === cyc.ids[cyc.index]) {
+      const next = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index + 1]);
+      if (next) {
+        cyc.index++;
+        this.growTarget = next;
+        this.redrawGrowGhost();
+        return;
+      }
+    }
+    // The anchor stays a valid hop target on purpose: hopping back onto it is
+    // the "come home to cancel" gesture (commit treats target === anchor as a
+    // no-op). The current target sits at the cone origin, so the cone gate
+    // already excludes it.
+    const from = this.getNodeCenterInStageCoordinates(this.growTarget ?? this.growAnchor);
+    const candidates = this.nodesInDirection(direction, from);
+    if (candidates.length === 0) return;
+    this.growNavCycle = {dir: direction, ids: candidates.map(n => n.id), index: 0};
+    this.growTarget = candidates[0];
     this.redrawGrowGhost();
   }
 
