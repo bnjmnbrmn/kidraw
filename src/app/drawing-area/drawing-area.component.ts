@@ -3297,23 +3297,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
   }
 
-  /** Nav stops of `targets` inside the direction's 45° cone from `origin`,
-   *  nearest-first by `score = along + 2·offAxis`. */
+  /** Nav stops of `targets` in the given direction from `origin`, ordered for
+   *  move-by-node.
+   *
+   *  Stops in `connectedIds` (the directly-connected neighbours of the node
+   *  you're on) are admitted by the loose **half-plane** (anything that way)
+   *  and sorted first — so you can always reach a connected node by pressing
+   *  roughly toward it, even a hub that sits nearly in-line with its
+   *  neighbours. Everything else keeps the strict **45° cone** (which stops
+   *  a mostly-perpendicular unconnected node from being grabbed, da-88).
+   *  Within each group, nearest-first by `score = along + 2·offAxis`. */
   private stopsInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind,
-                           origin: {x: number; y: number}):
+                           origin: {x: number; y: number}, connectedIds?: Set<string>):
       {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] {
     const MIN_OFFSET = 5;
     const isHorizontal = direction === 'left' || direction === 'right';
-    const scored: {stop: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}; score: number}[] = [];
+    const scored: {stop: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number};
+                   score: number; connected: boolean}[] = [];
     for (const stop of this.navStops(targets)) {
       const dx = stop.cx - origin.x, dy = stop.cy - origin.y;
       const along = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
       const offAxis = Math.abs(isHorizontal ? dy : dx);
-      if (along <= MIN_OFFSET || along < offAxis) continue;
-      scored.push({stop, score: along + offAxis * 2});
+      if (along <= MIN_OFFSET) continue;
+      const connected = connectedIds?.has(stop.id) ?? false;
+      if (!connected && along < offAxis) continue; // cone for unconnected stops
+      scored.push({stop, score: along + offAxis * 2, connected});
     }
-    scored.sort((a, b) => a.score - b.score);
+    scored.sort((a, b) => a.connected === b.connected ? a.score - b.score : (a.connected ? -1 : 1));
     return scored.map(s => s.stop);
+  }
+
+  /** Ids of the stops directly connected to `node`: its edge-neighbour nodes,
+   *  plus (per tier) the labels/waypoints on its incident edges. */
+  private connectedStopIds(node: DANode, targets: NavTargetKind): Set<string> {
+    const ids = new Set<string>();
+    for (const e of node.connectedEdges) {
+      ids.add(e.srcNode === node ? e.destNode.id : e.srcNode.id);
+      if (targets === 'labels' || targets === 'all') for (const l of e.labels) ids.add(l.id);
+      if (targets === 'all') for (const w of e.waypoints) ids.add(w.id);
+    }
+    return ids;
   }
 
   /** All nodes inside the direction's 45° cone from `fromPoint`, nearest
@@ -3360,8 +3383,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
     }
 
-    // Fresh cycle from the current position.
-    const candidates = this.stopsInDirection(direction, targets, {x: cx, y: cy});
+    // Fresh cycle from the current position. If the crosshairs are on a node,
+    // its connected neighbours get loose (half-plane) admission and sort first
+    // — press roughly toward a connected node and you reach it.
+    const onNodes = this.getDANodesContainingCrosshairs();
+    const current = onNodes.length > 0 ? onNodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b) : null;
+    const connectedIds = current ? this.connectedStopIds(current, targets) : undefined;
+    const candidates = this.stopsInDirection(direction, targets, {x: cx, y: cy}, connectedIds);
     if (candidates.length === 0) { this.nodeDirCycle = null; return; }
     this.nodeDirCycle = {dir: direction, targets, stops: candidates.map(s => ({id: s.id, kind: s.kind})), index: 0};
     this.jumpCrosshairsToStopCenter({x: candidates[0].cx, y: candidates[0].cy});
