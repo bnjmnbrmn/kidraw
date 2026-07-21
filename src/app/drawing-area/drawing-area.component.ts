@@ -3257,59 +3257,84 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.focusNode(nearestNode);
   }
 
-  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
-                              fromPoint?: {x: number; y: number}): DANode | null {
-    const nodes = this.drawingLayer.getDANodes();
-    if (nodes.length === 0) return null;
-
-    const crosshairsPosition = fromPoint ?? {
+  /** All nodes inside the direction's 45° cone from `fromPoint` (default: the
+   *  crosshairs), ordered nearest-first by `score = along + 2·offAxis`.
+   *
+   *  The cone (`along ≥ offAxis`, `along > 5px`) means a node counts for a
+   *  direction only if it is genuinely more that-way than perpendicular —
+   *  without it a mostly-vertical node with a small horizontal offset gets
+   *  grabbed by a horizontal press (da-88). */
+  private nodesInDirection(direction: 'left' | 'right' | 'up' | 'down',
+                           fromPoint?: {x: number; y: number}): DANode[] {
+    const origin = fromPoint ?? {
       x: this.crosshairsLayer.crosshairsX(),
       y: this.crosshairsLayer.crosshairsY(),
     };
-
-    let bestNode: DANode | null = null;
-    let bestScore = Number.POSITIVE_INFINITY;
-
-    nodes.forEach((node) => {
+    const MIN_OFFSET = 5;
+    const isHorizontal = direction === 'left' || direction === 'right';
+    const scored: {node: DANode; score: number}[] = [];
+    for (const node of this.drawingLayer.getDANodes()) {
       const center = this.getNodeCenterInStageCoordinates(node);
-      const dx = center.x - crosshairsPosition.x;
-      const dy = center.y - crosshairsPosition.y;
-
-      const MIN_OFFSET = 5;
-      const isHorizontal = direction === 'left' || direction === 'right';
-      // Signed distance along the intended direction (positive = that way)
-      // and the perpendicular offset.
+      const dx = center.x - origin.x;
+      const dy = center.y - origin.y;
       const along = direction === 'right' ? dx
         : direction === 'left' ? -dx
         : direction === 'down' ? dy
         : -dy;
       const offAxis = Math.abs(isHorizontal ? dy : dx);
-      // 45° cone: a node only counts for this direction if it is genuinely
-      // more that-way than perpendicular. Without this, a mostly-vertical
-      // node with a small horizontal offset gets grabbed by a horizontal
-      // press whenever it happens to be nearer than the true target — the
-      // "hard to get the node I want" bug (da-88). Fixed cone; no fallback,
-      // so a press is either the on-axis node or a no-op (predictable).
-      if (along <= MIN_OFFSET || along < offAxis) return;
-      const score = along + offAxis * 2;
-
-      if (score < bestScore) {
-        bestScore = score;
-        bestNode = node;
-      }
-    });
-
-    return bestNode;
+      if (along <= MIN_OFFSET || along < offAxis) continue;
+      scored.push({node, score: along + offAxis * 2});
+    }
+    scored.sort((a, b) => a.score - b.score);
+    return scored.map(s => s.node);
   }
 
+  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
+                              fromPoint?: {x: number; y: number}): DANode | null {
+    return this.nodesInDirection(direction, fromPoint)[0] ?? null;
+  }
+
+  /** Repeated-press cycling for move-by-node: the first press in a direction
+   *  jumps to the nearest node in that cone and remembers the full ordered
+   *  candidate list anchored at the origin; pressing the same direction again
+   *  while still standing on the last-served node steps to the next candidate.
+   *  This makes every in-cone node reachable — e.g. up, up walks past the
+   *  nearest to the one behind it — closing the "unreachable node" gap
+   *  (notes/analysis-move-by-node-reachability.md). Any other movement or a
+   *  different direction starts a fresh cycle. */
+  private nodeDirCycle: {dir: 'left' | 'right' | 'up' | 'down'; ids: string[]; index: number} | null = null;
+
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down') {
-    const bestNode = this.findNodeInDirection(direction);
-    if (bestNode) {
-      const nodeCenterInStage = this.getNodeCenterInStageCoordinates(bestNode);
-      const deltaX = nodeCenterInStage.x - this.crosshairsLayer.crosshairs.x;
-      const deltaY = nodeCenterInStage.y - this.crosshairsLayer.crosshairs.y;
-      this.moveCrosshairsBy(deltaX, deltaY);
+    this.finishTweens();
+    const cx = this.crosshairsLayer.crosshairs.x;
+    const cy = this.crosshairsLayer.crosshairs.y;
+
+    // Continue an active cycle if we're still on its last-served node.
+    const cyc = this.nodeDirCycle;
+    if (cyc && cyc.dir === direction && cyc.index + 1 < cyc.ids.length) {
+      const landed = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index]);
+      const next = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index + 1]);
+      if (landed && next) {
+        const c = this.getNodeCenterInStageCoordinates(landed);
+        if (Math.abs(c.x - cx) < 3 && Math.abs(c.y - cy) < 3) {
+          cyc.index++;
+          this.jumpCrosshairsToNode(next);
+          return;
+        }
+      }
     }
+
+    // Fresh cycle from the current position.
+    const candidates = this.nodesInDirection(direction);
+    if (candidates.length === 0) { this.nodeDirCycle = null; return; }
+    this.nodeDirCycle = {dir: direction, ids: candidates.map(n => n.id), index: 0};
+    this.jumpCrosshairsToNode(candidates[0]);
+  }
+
+  private jumpCrosshairsToNode(node: DANode): void {
+    const c = this.getNodeCenterInStageCoordinates(node);
+    this.moveCrosshairsBy(c.x - this.crosshairsLayer.crosshairs.x,
+                          c.y - this.crosshairsLayer.crosshairs.y);
   }
 
 

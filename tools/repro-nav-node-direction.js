@@ -12,6 +12,9 @@
  *   3. A steep ~68° node is DOWN-only; a RIGHT press finds nothing.
  *   4. End-to-end: the move-by-node submenu (g) jump lands on the on-axis
  *      node, driven by real keys.
+ *   5. Repeated-press cycling: on the 3-node counterexample where A is
+ *      otherwise unreachable, C up then up lands on A (steps through the
+ *      cone's candidates); a third up stays; a different direction resets.
  */
 const { chromium } = require('@playwright/test');
 
@@ -89,6 +92,43 @@ async function main() {
     return Math.hypot(cx - rc.x, cy - rc.y) < 5;
   });
   check('g→l jump lands the crosshairs on the true-right node', onR);
+
+  // --- 5. repeated-press cycling reaches an otherwise-unreachable node ---
+  // The proven counterexample: A only ever falls in a cone where B or C wins.
+  await load([N('A', 450, 550), N('B', 100, 800), N('C', 200, 900)]);
+  // park on C
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    const dl = da.drawingLayer, C = dl.getDANodes().find(n => n.id === 'C'), p = C.group.position();
+    da.crosshairsLayer.crosshairs.x = (p.x + C.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
+    da.crosshairsLayer.crosshairs.y = (p.y + C.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
+  });
+  const at = () => page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer, cx = da.crosshairsLayer.crosshairsX(), cy = da.crosshairsLayer.crosshairsY();
+    let best = '(none)', bd = 1e9;
+    for (const n of dl.getDANodes()) {
+      const c = {x: (n.konvaGroup.x() + n.NODE_WIDTH / 2) * dl.scaleX() + dl.x(),
+                 y: (n.konvaGroup.y() + n.NODE_HEIGHT / 2) * dl.scaleY() + dl.y()};
+      const d = Math.hypot(c.x - cx, c.y - cy);
+      if (d < bd) { bd = d; best = n.id; }
+    }
+    return bd < 6 ? best : '(none)';
+  });
+  const jump = async (key) => {
+    await page.keyboard.down('g'); await page.waitForTimeout(200);
+    await page.keyboard.press(key); await page.waitForTimeout(280);
+    await page.keyboard.up('g'); await page.waitForTimeout(250);
+  };
+  await jump('k'); // up
+  check('C + up lands on the nearer node B', await at() === 'B', `at ${await at()}`);
+  await jump('k'); // up again — cycle to the next candidate
+  check('C + up + up cycles to the otherwise-unreachable A', await at() === 'A', `at ${await at()}`);
+  await jump('k'); // up again — cycle exhausted, stays
+  check('a third up stays on A (cycle exhausted, no wrap)', await at() === 'A', `at ${await at()}`);
+  await jump('j'); // down — different direction resets the cycle
+  check('a different direction starts a fresh cycle (down from A → C)', await at() === 'C', `at ${await at()}`);
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

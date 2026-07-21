@@ -71,20 +71,22 @@ movement** (arrow keys move the crosshairs continuously — land next to the
 node and press toward it, nothing shadows it at close range), the **`/`
 in-graph search**, and the **Go / nav popup**. So the user is never stuck.
 
-## If we want move-by-node itself to reach everything
+## Fix shipped: repeated-press cycling (2026-07-21)
 
-Options, in rough order of interaction cost (none built — Ben's call):
+**Option 1, built at Ben's request.** `snapToNodeInDirection` now anchors a
+cycle at the origin: the first press in a direction jumps to the nearest
+node in that cone and remembers the full ordered candidate list; pressing
+the *same* direction again while still standing on the last-served node
+steps to the next candidate. So on the counterexample, from C: up → B,
+up → A. A third press stays (cycle exhausted, no wrap); any other movement
+or a different direction starts a fresh cycle. Every in-cone node is now
+reachable, so every node gets an in-edge → the graph is strongly connected.
 
-1. **Repeated-press cycling.** Pressing the same direction again cycles to
-   the *next* candidate in that cone (by score) instead of re-selecting the
-   winner; reset on any other movement. In the example, from B: right→C,
-   right→A. This makes every in-cone node reachable, so every node gets an
-   in-edge → strong connectivity. Cost: a second right-press no longer means
-   "go right again from the new spot"; needs the graph-nav "next candidate"
-   idiom.
-2. **Widen the cone toward the whole half-plane** on a repeat/modifier, so a
-   press can escape a local shadow. Weaker guarantee than (1).
-3. **Accept the limitation** and lean on free movement + search (status quo).
+For straight or gently-curving (<45°) columns this is identical to walking
+the column, since every column node lies in the bottom node's cone. Only a
+column curving *beyond* 45° cumulatively differs (cycling stays within the
+origin's cone); those nodes are reached by a fresh gesture. Verified in
+`tools/repro-nav-node-direction.js` (section 5).
 
-Recommendation: (3) unless Ben finds it annoying in real use; (1) is the
-principled fix if so.
+Alternatives considered and not taken: widening the cone on a modifier
+(weaker guarantee); accepting the limitation (Ben wanted the fix).
