@@ -3297,55 +3297,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
   }
 
-  /** Nav stops of `targets` in the given direction from `origin`, ordered for
-   *  move-by-node.
-   *
-   *  Stops in `connectedIds` (the directly-connected neighbours of the node
-   *  you're on) are admitted by the loose **half-plane** (anything that way)
-   *  and sorted first — so you can always reach a connected node by pressing
-   *  roughly toward it, even a hub that sits nearly in-line with its
-   *  neighbours. Everything else keeps the strict **45° cone** (which stops
-   *  a mostly-perpendicular unconnected node from being grabbed, da-88).
-   *  Within each group, nearest-first by `score = along + 2·offAxis`. */
-  private stopsInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind,
-                           origin: {x: number; y: number}, connectedIds?: Set<string>):
-      {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] {
-    const MIN_OFFSET = 5;
-    const isHorizontal = direction === 'left' || direction === 'right';
-    const scored: {stop: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number};
-                   score: number; connected: boolean}[] = [];
-    for (const stop of this.navStops(targets)) {
-      const dx = stop.cx - origin.x, dy = stop.cy - origin.y;
-      const along = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
-      const offAxis = Math.abs(isHorizontal ? dy : dx);
-      if (along <= MIN_OFFSET) continue;
-      const connected = connectedIds?.has(stop.id) ?? false;
-      if (!connected && along < offAxis) continue; // cone for unconnected stops
-      scored.push({stop, score: along + offAxis * 2, connected});
-    }
-    scored.sort((a, b) => a.connected === b.connected ? a.score - b.score : (a.connected ? -1 : 1));
-    return scored.map(s => s.stop);
-  }
-
-  /** Ids of the stops directly connected to `node`: its edge-neighbour nodes,
-   *  plus (per tier) the labels/waypoints on its incident edges. */
-  private connectedStopIds(node: DANode, targets: NavTargetKind): Set<string> {
-    const ids = new Set<string>();
-    for (const e of node.connectedEdges) {
-      ids.add(e.srcNode === node ? e.destNode.id : e.srcNode.id);
-      if (targets === 'labels' || targets === 'all') for (const l of e.labels) ids.add(l.id);
-      if (targets === 'all') for (const w of e.waypoints) ids.add(w.id);
-    }
-    return ids;
-  }
-
   /** All nodes inside the direction's 45° cone from `fromPoint`, nearest
    *  first (grow-mode target hop; node-only). */
   private nodesInDirection(direction: 'left' | 'right' | 'up' | 'down',
                            fromPoint?: {x: number; y: number}): DANode[] {
     const origin = fromPoint ?? {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
-    const byId = new Map(this.drawingLayer.getDANodes().map(n => [n.id, n]));
-    return this.stopsInDirection(direction, 'nodes', origin).map(s => byId.get(s.id)!).filter(Boolean);
+    const MIN_OFFSET = 5;
+    const isHorizontal = direction === 'left' || direction === 'right';
+    const scored: {node: DANode; score: number}[] = [];
+    for (const node of this.drawingLayer.getDANodes()) {
+      const c = this.getNodeCenterInStageCoordinates(node);
+      const dx = c.x - origin.x, dy = c.y - origin.y;
+      const along = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
+      const offAxis = Math.abs(isHorizontal ? dy : dx);
+      if (along <= MIN_OFFSET || along < offAxis) continue;
+      scored.push({node, score: along + offAxis * 2});
+    }
+    scored.sort((a, b) => a.score - b.score);
+    return scored.map(s => s.node);
   }
 
   private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
@@ -3353,46 +3322,77 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.nodesInDirection(direction, fromPoint)[0] ?? null;
   }
 
-  /** Repeated-press cycling for move-by-node: the first press in a direction
-   *  jumps to the nearest stop in that cone and remembers the full ordered
-   *  candidate list anchored at the origin; pressing the same direction again
-   *  while still standing on the last-served stop steps to the next candidate.
-   *  This makes every in-cone stop reachable — up, up walks past the nearest
-   *  to the one behind it — closing the "unreachable node" gap
-   *  (notes/analysis-move-by-node-reachability.md). The `targets` tier decides
-   *  whether labels/waypoints are stops. Any other movement or a different
-   *  direction/tier starts a fresh cycle. */
-  private nodeDirCycle: {dir: 'left' | 'right' | 'up' | 'down'; targets: NavTargetKind;
-                         stops: {id: string; kind: 'node'|'label'|'waypoint'}[]; index: number} | null = null;
+  // ── Grid navigation (move-by-node): notes/design-grid-navigation.md ──
+  // Purely spatial (no edges). Visible stops form a loose grid; a press steps
+  // one row/column and snaps to the goal position on the perpendicular axis
+  // (text-editor "goal column", both axes). goalX is preserved across
+  // vertical moves, goalY across horizontal; both reset when the crosshairs
+  // move by any other means.
+  private navGoalX: number | null = null;
+  private navGoalY: number | null = null;
+  /** The stop the last grid step landed on. Reset detection recomputes its
+   *  center (pan-safe): if the crosshairs are no longer on it, a fresh
+   *  navigation started and the goal position is reset. */
+  private navGridLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
+
+  /** "Same row/column" tolerance in stage px: two stops within this on the
+   *  primary axis are the same row/column (and can't be stepped between on
+   *  that axis). Smaller when more stops are visible (finer grid). Kept well
+   *  below typical row spacing so adjacent rows stay distinguishable; tunable
+   *  by feel. */
+  private navGridTolerance(visibleCount: number): number {
+    return Math.max(12, Math.min(60, 180 / Math.sqrt(Math.max(1, visibleCount))));
+  }
 
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
     this.finishTweens();
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
+    const vertical = direction === 'up' || direction === 'down';
+    const positive = direction === 'down' || direction === 'right';
 
-    // Continue an active cycle if we're still on its last-served stop.
-    const cyc = this.nodeDirCycle;
-    if (cyc && cyc.dir === direction && cyc.targets === targets && cyc.index + 1 < cyc.stops.length) {
-      const landed = cyc.stops[cyc.index];
-      const c = this.navStopCenter(landed.id, landed.kind);
-      const next = cyc.stops[cyc.index + 1];
-      if (c && Math.abs(c.x - cx) < 3 && Math.abs(c.y - cy) < 3 && this.navStopCenter(next.id, next.kind)) {
-        cyc.index++;
-        this.jumpCrosshairsToStopCenter(this.navStopCenter(next.id, next.kind)!);
-        return;
-      }
+    // Fresh navigation? The goal position resets unless we're still standing
+    // on the stop the last grid step landed on.
+    const lastCenter = this.navGridLast ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind) : null;
+    const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
+    if (!onLast) { this.navGoalX = cx; this.navGoalY = cy; }
+
+    const allStops = this.navStops(targets);
+    const inView = (s: {cx: number; cy: number}) =>
+      s.cx >= 0 && s.cx <= this.stage.width() && s.cy >= 0 && s.cy <= this.stage.height();
+    const visible = allStops.filter(inView);
+    const T = this.navGridTolerance(visible.length);
+    const prim = (s: {cx: number; cy: number}) => vertical ? s.cy : s.cx;
+    const perp = (s: {cx: number; cy: number}) => vertical ? s.cx : s.cy;
+    const goal = vertical ? (this.navGoalX ?? cx) : (this.navGoalY ?? cy);
+    const here = vertical ? cy : cx;
+    const ahead = (pool: typeof allStops) => pool.filter(s =>
+      positive ? prim(s) > here + T : prim(s) < here - T);
+
+    // Prefer a stop in the visible grid; if none that way, reach an off-screen
+    // stop and let the view follow (moveCrosshairsBy pans past the margin).
+    let pool = ahead(visible);
+    const offscreen = pool.length === 0;
+    if (offscreen) { pool = ahead(allStops); if (pool.length === 0) return; }
+
+    // Nearest row/column band that way, then the stop nearest the goal on the
+    // perpendicular axis.
+    const bandEdge = positive ? Math.min(...pool.map(prim)) : Math.max(...pool.map(prim));
+    const band = pool.filter(s => Math.abs(prim(s) - bandEdge) <= T);
+    const target = band.reduce((a, b) =>
+      Math.abs(perp(a) - goal) <= Math.abs(perp(b) - goal) ? a : b);
+
+    this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
+    if (offscreen) {
+      // Crossed the viewport (the view pans) — stage coords shift, so the
+      // stage-space goal would go stale; reset it to the new position.
+      this.navGoalX = target.cx; this.navGoalY = target.cy;
+    } else if (vertical) {
+      this.navGoalY = target.cy;   // moved along y; keep goalX (the column)
+    } else {
+      this.navGoalX = target.cx;   // moved along x; keep goalY (the row)
     }
-
-    // Fresh cycle from the current position. If the crosshairs are on a node,
-    // its connected neighbours get loose (half-plane) admission and sort first
-    // — press roughly toward a connected node and you reach it.
-    const onNodes = this.getDANodesContainingCrosshairs();
-    const current = onNodes.length > 0 ? onNodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b) : null;
-    const connectedIds = current ? this.connectedStopIds(current, targets) : undefined;
-    const candidates = this.stopsInDirection(direction, targets, {x: cx, y: cy}, connectedIds);
-    if (candidates.length === 0) { this.nodeDirCycle = null; return; }
-    this.nodeDirCycle = {dir: direction, targets, stops: candidates.map(s => ({id: s.id, kind: s.kind})), index: 0};
-    this.jumpCrosshairsToStopCenter({x: candidates[0].cx, y: candidates[0].cy});
+    this.navGridLast = {id: target.id, kind: target.kind};
   }
 
   private jumpCrosshairsToStopCenter(c: {x: number; y: number}): void {
