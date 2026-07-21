@@ -9,6 +9,8 @@
  *      gratuitous over-panning).
  *   3. The band never exceeds 40% of the viewport, so a card wider than the
  *      screen still lands (clamped) rather than deadlocking movement.
+ *   4. A second-axis move after an off-screen pan keeps the intended goal
+ *      column in drawing coordinates.
  */
 const { chromium } = require('@playwright/test');
 
@@ -77,6 +79,14 @@ async function main() {
     await page.keyboard.up('g');
     await page.waitForTimeout(300);
   };
+  const jumpDown = async () => {
+    await page.keyboard.down('g');
+    await page.waitForTimeout(220);
+    await page.keyboard.press('j');
+    await page.waitForTimeout(200);
+    await page.keyboard.up('g');
+    await page.waitForTimeout(300);
+  };
 
   // --- 1. wide card lands fully visible ---
   await setup(280);
@@ -104,6 +114,39 @@ async function main() {
   check('over-wide card still jumps (band clamped at 40% of viewport)',
     b.xh <= b.stageW * 0.6 + 1 && b.xh >= b.stageW * 0.4 - 1,
     `xh=${b.xh.toFixed(0)} stageW=${b.stageW}`);
+
+  // --- 4. the goal column survives the stage-coordinate shift from panning ---
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    const mk = (id, cx, cy) => ({id, x: cx - 50, y: cy - 30, text: id,
+      width: 100, height: 60, fontSize: 14, isSelected: false, textOverflowMode: 'clip'});
+    da.drawingLayer.restoreGraph({
+      nodes: [mk('A', 160, 180), mk('B', 1860, 180),
+              mk('goal-column', 1860, 850), mk('stale-screen-column', 2460, 850)],
+      edges: [],
+    });
+    da.drawingLayer.x(0); da.drawingLayer.y(0);
+    da.crosshairsLayer.crosshairs.x = 160;
+    da.crosshairsLayer.crosshairs.y = 180;
+    da.navGridLast = null; da.navGoalX = null; da.navGoalY = null;
+    da.drawingLayer.batchDraw();
+  });
+  await jumpRight();
+  await jumpDown();
+  const landed = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const cx = da.crosshairsLayer.crosshairsX(), cy = da.crosshairsLayer.crosshairsY();
+    let best = null, distance = Infinity;
+    for (const node of da.drawingLayer.getDANodes()) {
+      const center = da.getNodeCenterInStageCoordinates(node);
+      const d = Math.hypot(center.x - cx, center.y - cy);
+      if (d < distance) { best = node.id; distance = d; }
+    }
+    return {id: distance < 8 ? best : '(none)', distance};
+  });
+  check('off-screen pan preserves the drawing-space goal column for the next axis',
+    landed.id === 'goal-column', `${landed.id}, distance=${landed.distance.toFixed(1)}`);
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

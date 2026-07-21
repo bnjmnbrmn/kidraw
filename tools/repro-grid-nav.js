@@ -9,6 +9,8 @@
  *      nearest stop, but the goal column is preserved and re-acquired on the
  *      next row that has it.
  *   3. Everything is reachable (row then column).
+ *   4. The held-key overlay is made of spreadsheet bands/boundaries and
+ *      replaces the ordinary drawing grid.
  */
 const { chromium } = require('@playwright/test');
 
@@ -59,6 +61,26 @@ async function main() {
     await page.keyboard.press(k); await page.waitForTimeout(230);
     await page.keyboard.up('g'); await page.waitForTimeout(180);
   };
+
+  // 0. The overlay is a shaded spreadsheet, not centerlines over the normal
+  //    movement grid. The synthetic graph has three row and column bands.
+  await park('r0c0');
+  await page.keyboard.down('g'); await page.waitForTimeout(200);
+  const overlay = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const children = da.nodeGridGroup ? [...da.nodeGridGroup.getChildren()] : [];
+    return {
+      rects: children.filter(shape => shape.getClassName() === 'Rect').length,
+      lines: children.filter(shape => shape.getClassName() === 'Line').length,
+      ordinaryGridVisible: da.drawingLayer.gridVisible,
+    };
+  });
+  check('overlay uses shaded row/column bands plus cell boundaries',
+    overlay.rects >= 5 && overlay.lines >= 3,
+    `${overlay.rects} fills, ${overlay.lines} boundaries`);
+  check('move-by-node overlay replaces the ordinary drawing grid',
+    !overlay.ordinaryGridVisible, `ordinary grid visible=${overlay.ordinaryGridVisible}`);
+  await page.keyboard.up('g'); await page.waitForTimeout(120);
 
   // 1. step right along the top row, then down the right column
   await park('r0c0');

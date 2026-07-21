@@ -1,7 +1,7 @@
 ---
-title: Grid navigation for move-by-node (viewport-relative, goal-column)
+title: Spreadsheet-band navigation for move-by-node (viewport-relative, goal-column)
 type: proposal
-status: building core, 2026-07-21
+status: spreadsheet-band iteration implemented, awaiting feel check, 2026-07-21
 ---
 
 # Grid navigation for move-by-node
@@ -13,30 +13,36 @@ awareness**: navigation is purely spatial.
 
 ## Core idea
 
-Treat the **visible** stops as a loose **grid**. Stops whose primary-axis
-coordinate is within a tolerance `T` are the same row (or column). Pressing
-a direction moves one row/column that way and snaps to the **goal position**
-on the perpendicular axis (the text-editor "goal column" idea, applied to
-both axes).
+Treat the **visible** stops as a loose **spreadsheet grid**. On each axis,
+sorted stop coordinates are collected into fixed, bounded-span bands: the
+distance from the first to last coordinate in one band cannot exceed tolerance
+`T`. Boundaries lie halfway between neighboring band centers, so the bands
+cover the viewport as variable-sized spreadsheet rows and columns. Pressing a
+direction moves one fixed row/column that way and snaps to the **goal position**
+on the perpendicular axis (the text-editor "goal column" idea, applied to both
+axes).
 
-- `g`+`j` (down): among visible stops with `cy > cur.cy + T`, take the
-  nearest lower **row band** (all within `T` of the smallest such `cy`), and
-  within it pick the stop nearest the remembered **goalX**. Symmetric for
-  up / left / right.
+- `g`+`j` (down): move to the next fixed row band and, within it, pick the
+  stop nearest the remembered **goalX**. Symmetric for up / left / right.
+- Bounded-span clustering intentionally avoids single-linkage chaining. With
+  coordinates 0, 10, 20, 30 and `T=12`, the rows are `[0,10]` and `[20,30]`,
+  not one 30-pixel-tall row.
 - **Goal memory:** `goalX` is preserved across vertical moves and reset on
   horizontal moves; `goalY` preserved across horizontal moves, reset on
   vertical. So moving down a "column" tracks your x even when a row has no
   stop exactly there, and returns to it when one does — for both axes. Reset
   entirely when the crosshairs move by anything other than a grid step.
-- **Tolerance `T`** = "close enough to be the same row/column." Depends on
-  the visible stop count `N` (denser view → finer grid): current default
-  `T = clamp(300 / sqrt(N), 25, 150)` px, tunable by feel.
+- **Tolerance `T`** = the maximum coordinate span of one row/column. Depends
+  on the visible stop count `N` (denser view → finer grid): current default
+  `T = clamp(180 / sqrt(N), 12, 60)` px, tunable by feel.
 - **Tiers unchanged:** the stop set is still nodes (default + labels; coarse
   = nodes only; fine = + waypoints). "No edges" means no connectivity in the
   *selection*, not removing label/waypoint stops.
 
-Reachability: every stop defines a row and a column; step vertically to its
-row, then horizontally along that row to it. Fully reachable.
+Each stop belongs to exactly one visible row and column, and the overlay and
+movement use the same membership. Multiple stops that occupy the same row
+*and* column remain an ambiguity for a later iteration; the implementation no
+longer claims unconditional reachability from the grid construction alone.
 
 ## Viewport behaviour
 
@@ -50,22 +56,26 @@ row, then horizontally along that row to it. Fully reachable.
 
 ## Grid overlay (stage 2)
 
-While `g` is held, draw the grid lines (row bands as horizontal lines, column
-bands as vertical lines) as a temporary overlay so the navigation structure
-is visible. Hide on release.
+While `g` is held, draw the inferred spreadsheet cells as a temporary overlay:
+subtle alternating row/column fills, boundaries between bands, highlighted
+current row and column, and a stronger current-cell intersection. Hide on
+release. This replaces (and suppresses) the ordinary drawing grid rather than
+being drawn as another set of centerlines over it. Coarse/default/fine tier
+changes rebuild the overlay from the exact stop set used by navigation.
 
 ## Build stages
 
-1. **Core (this pass):** viewport-relative grid step + goal-column memory
+1. **Core (done):** viewport-relative grid step + goal-column memory
    (both axes) + basic viewport pan to off-screen stops. Revert the
    connected-neighbour / cone / cycling selection.
-2. Grid overlay while `g` held.
+2. **Spreadsheet-band overlay (done):** filled bands and midpoint boundaries
+   shared with the navigation model while `g` is held.
 3. Skip arrows with fade.
 4. Tune `T` (criterion) by feel.
 
 ## Open questions / defaults chosen
 
-- `T` formula: chose `clamp(300/sqrt(N), 25, 150)`; revisit by feel.
+- `T` formula: chose `clamp(180/sqrt(N), 12, 60)`; revisit by feel.
 - "Same row" uses primary-axis proximity only (not 2-D cells); simpler and
   enough for row/column stepping.
 - Grow-mode target hop keeps its own cone + cycling (a different flow that

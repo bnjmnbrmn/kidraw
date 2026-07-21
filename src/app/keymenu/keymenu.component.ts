@@ -705,7 +705,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
       [mbn.submenu]: new LabeledActionSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig(), () => {
         this.moveByNodeHoldActive = true;
-        this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID});
+        this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
       }),
       // One-shot: the popup takes the keyboard, so auto-repeat must not
       // queue further traversals behind it.
@@ -798,8 +798,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       ...this.moveByNodeJumpKeys('labels'),
-      [ms.bigger]: new LabeledSubmenuConfig('Coarse: nodes only...', this.buildMoveByNodeTierSubmenu('nodes')),
-      [ms.smaller]: new LabeledSubmenuConfig('Fine: +waypoints...', this.buildMoveByNodeTierSubmenu('all')),
+      [ms.bigger]: new LabeledActionSubmenuConfig(
+        'Coarse: nodes only...',
+        this.buildMoveByNodeTierSubmenu('nodes'),
+        () => this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'nodes'}),
+      ),
+      [ms.smaller]: new LabeledActionSubmenuConfig(
+        'Fine: +waypoints...',
+        this.buildMoveByNodeTierSubmenu('all'),
+        () => this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'all'}),
+      ),
     } as SubmenuConfig;
   }
 
@@ -1440,6 +1448,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.moveByNodeHoldActive && eventKey === this.keyAssignments.moveByNode.submenu) {
       this.moveByNodeHoldActive = false;
       this.keyMenuOut.emit({kind: DACommandType.HIDE_NODE_GRID});
+    } else if (this.moveByNodeHoldActive &&
+               (eventKey === this.keyAssignments.moveSpeed.bigger ||
+                eventKey === this.keyAssignments.moveSpeed.smaller)) {
+      // Releasing a tier modifier returns to the default nodes+labels grid
+      // while the move-by-node root key remains held.
+      this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
     }
   }
 }

@@ -195,11 +195,15 @@ describe('KeymenuComponent', () => {
     // submenu is hold-aware (shows the grid overlay) — LabeledActionSubmenuConfig.
     const moveByNodeSubmenu = rootConfig['g'] as LabeledActionSubmenuConfig;
     expect(moveByNodeSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
+    moveByNodeSubmenu.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
     const stopLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(stopLeft.actionLabel).toBe('Stop Left');
     // coarse (moveSpeed.bigger = 's') = nodes only
-    const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledSubmenuConfig;
-    expect(coarse instanceof LabeledSubmenuConfig).toBeTrue();
+    const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledActionSubmenuConfig;
+    expect(coarse instanceof LabeledActionSubmenuConfig).toBeTrue();
+    coarse.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_NODE_GRID, targets: 'nodes'});
     expect((coarse.submenuConfig['h'] as LabeledAction).actionLabel).toBe('Node Left');
     expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 

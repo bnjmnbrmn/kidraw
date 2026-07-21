@@ -15,6 +15,13 @@ import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
+import {
+  bandIndexAtCoordinate,
+  bandIndexForStop,
+  buildNavigationGrid,
+  NavigationAxisBand,
+  NavigationGridStop,
+} from './navigation-grid';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -295,6 +302,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SEARCH_PREV_MATCH,
   ]);
 
+  /** Move-by-node has its own spatial overlay. Showing the ordinary drawing
+   * grid for these commands makes the band model visually ambiguous. */
+  private static readonly MOVE_BY_NODE_COMMANDS = new Set<DACommandType>([
+    DACommandType.SHOW_NODE_GRID,
+    DACommandType.HIDE_NODE_GRID,
+    DACommandType.SNAP_TO_NODE_LEFT,
+    DACommandType.SNAP_TO_NODE_RIGHT,
+    DACommandType.SNAP_TO_NODE_UP,
+    DACommandType.SNAP_TO_NODE_DOWN,
+  ]);
+
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
     DACommandType.QUICK_ADD,
@@ -534,7 +552,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     // Show grid and indicators for any spatial/manipulation command
-    if (command.kind !== DACommandType.INSERT_CHAR &&
+    if (!DrawingAreaComponent.MOVE_BY_NODE_COMMANDS.has(command.kind) &&
+        command.kind !== DACommandType.INSERT_CHAR &&
         command.kind !== DACommandType.DELETE_LAST_CHAR &&
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
@@ -595,7 +614,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.snapToNearestNode();
         break;
       case DACommandType.SHOW_NODE_GRID:
-        this.showNodeGrid();
+        this.showNodeGrid(command.targets ?? 'labels');
         break;
       case DACommandType.HIDE_NODE_GRID:
         this.hideNodeGrid();
@@ -2291,7 +2310,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
-  private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier) {
+  private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier,
+                           showMovementGrid = true) {
     this.finishTweens();
 
     const currentX = this.crosshairsLayer.crosshairs.x;
@@ -2365,7 +2385,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         x: clampedX,
         y: clampedY,
         easing: Konva.Easings.Linear,
-        onFinish: () => this.checkResizeHandleProximity(),
+        onFinish: () => {
+          this.checkResizeHandleProximity();
+          if (this.nodeGridVisible) this.redrawNodeGrid();
+        },
       }).play());
     }
 
@@ -2376,11 +2399,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         x: this.drawingLayer.x() - overflowX,
         y: this.drawingLayer.y() - overflowY,
         easing: Konva.Easings.Linear,
+        onFinish: () => {
+          if (this.nodeGridVisible) this.redrawNodeGrid();
+        },
       }).play());
     }
 
     // Show grid and indicators on movement, then fade after 5s
-    this.showMovementIndicators();
+    if (showMovementGrid) this.showMovementIndicators();
   }
 
   private resolveNormalMovementSteps(
@@ -3265,17 +3291,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** A place move-by-node can land: a node, an edge label, or a waypoint,
    *  with its center in stage coords. */
-  private navStops(targets: NavTargetKind): {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] {
+  private navStops(targets: NavTargetKind): NavigationGridStop[] {
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
-    const stops: {id: string; kind: 'node'|'label'|'waypoint'; cx: number; cy: number}[] = [];
+    const stops: NavigationGridStop[] = [];
     for (const n of this.drawingLayer.getDANodes()) {
       const c = this.getNodeCenterInStageCoordinates(n);
       stops.push({id: n.id, kind: 'node', cx: c.x, cy: c.y});
     }
     if (targets === 'labels' || targets === 'all') {
       for (const e of this.drawingLayer.getDAEdges()) for (const l of e.labels) {
-        stops.push({id: l.id, kind: 'label', cx: lx + (l.x + l.width / 2) * scale, cy: ly + (l.y + l.height / 2) * scale});
+        // DALabel's group origin is the center of its rendered box.
+        stops.push({id: l.id, kind: 'label', cx: lx + l.x * scale, cy: ly + l.y * scale});
       }
     }
     if (targets === 'all') {
@@ -3296,7 +3323,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if (kind === 'label') {
       for (const e of this.drawingLayer.getDAEdges()) for (const l of e.labels)
-        if (l.id === id) return {x: lx + (l.x + l.width / 2) * scale, y: ly + (l.y + l.height / 2) * scale};
+        if (l.id === id) return {x: lx + l.x * scale, y: ly + l.y * scale};
       return null;
     }
     const w = this.drawingLayer.getDAWaypoints().find(w => w.id === id);
@@ -3329,11 +3356,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   // ── Grid navigation (move-by-node): notes/design-grid-navigation.md ──
-  // Purely spatial (no edges). Visible stops form a loose grid; a press steps
-  // one row/column and snaps to the goal position on the perpendicular axis
-  // (text-editor "goal column", both axes). goalX is preserved across
-  // vertical moves, goalY across horizontal; both reset when the crosshairs
-  // move by any other means.
+  // Purely spatial (no edges). Visible stops form a fixed spreadsheet-like
+  // grid; navigation and the overlay share the same band model. A press steps
+  // one row/column and snaps to the goal position on the perpendicular axis.
+  // Goals live in drawing-layer coordinates so viewport pans cannot stale them.
   private navGoalX: number | null = null;
   private navGoalY: number | null = null;
   /** The stop the last grid step landed on. Reset detection recomputes its
@@ -3341,11 +3367,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  navigation started and the goal position is reset. */
   private navGridLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
 
-  /** "Same row/column" tolerance in stage px: two stops within this on the
-   *  primary axis are the same row/column (and can't be stepped between on
-   *  that axis). Smaller when more stops are visible (finer grid). Kept well
-   *  below typical row spacing so adjacent rows stay distinguishable; tunable
-   *  by feel. */
+  /** Maximum stage-pixel span of one row/column band. Smaller when more stops
+   *  are visible (finer grid); tunable by feel. */
   private navGridTolerance(visibleCount: number): number {
     return Math.max(12, Math.min(60, 180 / Math.sqrt(Math.max(1, visibleCount))));
   }
@@ -3354,6 +3377,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
+    const scale = this.drawingLayer.scaleX();
+    const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
+    const currentLayerX = (cx - lx) / scale;
+    const currentLayerY = (cy - ly) / scale;
     const vertical = direction === 'up' || direction === 'down';
     const positive = direction === 'down' || direction === 'right';
 
@@ -3361,50 +3388,78 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // on the stop the last grid step landed on.
     const lastCenter = this.navGridLast ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind) : null;
     const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (!onLast) { this.navGoalX = cx; this.navGoalY = cy; }
+    if (!onLast) { this.navGoalX = currentLayerX; this.navGoalY = currentLayerY; }
+
+    this.nodeGridTargets = targets;
 
     const allStops = this.navStops(targets);
-    const inView = (s: {cx: number; cy: number}) =>
+    const inView = (s: NavigationGridStop) =>
       s.cx >= 0 && s.cx <= this.stage.width() && s.cy >= 0 && s.cy <= this.stage.height();
     const visible = allStops.filter(inView);
     const T = this.navGridTolerance(visible.length);
-    const prim = (s: {cx: number; cy: number}) => vertical ? s.cy : s.cx;
-    const perp = (s: {cx: number; cy: number}) => vertical ? s.cx : s.cy;
-    const goal = vertical ? (this.navGoalX ?? cx) : (this.navGoalY ?? cy);
+    const grid = buildNavigationGrid(visible, this.stage.width(), this.stage.height(), T);
+    const bands = vertical ? grid.rows : grid.columns;
+    const prim = (s: NavigationGridStop) => vertical ? s.cy : s.cx;
+    const perp = (s: NavigationGridStop) => vertical ? s.cx : s.cy;
+    const goal = vertical
+      ? lx + (this.navGoalX ?? currentLayerX) * scale
+      : ly + (this.navGoalY ?? currentLayerY) * scale;
     const here = vertical ? cy : cx;
-    const ahead = (pool: typeof allStops) => pool.filter(s =>
-      positive ? prim(s) > here + T : prim(s) < here - T);
+    const currentStop = visible.find(stop =>
+      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
 
-    // Prefer a stop in the visible grid; if none that way, reach an off-screen
-    // stop and let the view follow (moveCrosshairsBy pans past the margin).
-    let pool = ahead(visible);
-    const offscreen = pool.length === 0;
-    if (offscreen) { pool = ahead(allStops); if (pool.length === 0) return; }
+    let targetBandIndex: number;
+    if (currentStop) {
+      const currentBandIndex = bandIndexForStop(bands, currentStop);
+      targetBandIndex = currentBandIndex + (positive ? 1 : -1);
+    } else if (positive) {
+      targetBandIndex = bands.findIndex(band => band.center > here);
+    } else {
+      targetBandIndex = -1;
+      for (let i = bands.length - 1; i >= 0; i--) {
+        if (bands[i].center < here) { targetBandIndex = i; break; }
+      }
+    }
 
-    // Nearest row/column band that way, then the stop nearest the goal on the
-    // perpendicular axis.
-    const bandEdge = positive ? Math.min(...pool.map(prim)) : Math.max(...pool.map(prim));
-    const band = pool.filter(s => Math.abs(prim(s) - bandEdge) <= T);
-    const target = band.reduce((a, b) =>
+    let targetBand: NavigationGridStop[] | null =
+      targetBandIndex >= 0 && targetBandIndex < bands.length
+        ? bands[targetBandIndex].stops
+        : null;
+
+    // Past the visible spreadsheet edge, choose the nearest off-screen band
+    // and let moveCrosshairsBy pan it into view. It will be part of the fixed
+    // visible grid rebuilt after the pan completes.
+    if (!targetBand) {
+      const offscreenAhead = allStops.filter(stop => !inView(stop) &&
+        (positive ? prim(stop) > here + T : prim(stop) < here - T));
+      if (offscreenAhead.length === 0) {
+        if (this.nodeGridVisible) this.redrawNodeGrid();
+        return;
+      }
+      const bandEdge = positive
+        ? Math.min(...offscreenAhead.map(prim))
+        : Math.max(...offscreenAhead.map(prim));
+      targetBand = offscreenAhead.filter(stop => Math.abs(prim(stop) - bandEdge) <= T);
+    }
+
+    const target = targetBand.reduce((a, b) =>
       Math.abs(perp(a) - goal) <= Math.abs(perp(b) - goal) ? a : b);
 
     this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
-    if (offscreen) {
-      // Crossed the viewport (the view pans) — stage coords shift, so the
-      // stage-space goal would go stale; reset it to the new position.
-      this.navGoalX = target.cx; this.navGoalY = target.cy;
-    } else if (vertical) {
-      this.navGoalY = target.cy;   // moved along y; keep goalX (the column)
+    const targetLayerX = (target.cx - lx) / scale;
+    const targetLayerY = (target.cy - ly) / scale;
+    if (vertical) {
+      this.navGoalY = targetLayerY; // moved along y; keep goalX (the column)
     } else {
-      this.navGoalX = target.cx;   // moved along x; keep goalY (the row)
+      this.navGoalX = targetLayerX; // moved along x; keep goalY (the row)
     }
     this.navGridLast = {id: target.id, kind: target.kind};
-    if (this.nodeGridVisible) this.redrawNodeGrid();
   }
 
   private jumpCrosshairsToStopCenter(c: {x: number; y: number}): void {
     this.moveCrosshairsBy(c.x - this.crosshairsLayer.crosshairs.x,
-                          c.y - this.crosshairsLayer.crosshairs.y);
+                          c.y - this.crosshairsLayer.crosshairs.y,
+                          undefined, false);
   }
 
   // ── Move-by-node grid overlay (design-grid-navigation.md, stage 2) ──
@@ -3413,9 +3468,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   // crosshairs sit in is emphasised. Redrawn on every step (the view pans).
   private nodeGridVisible = false;
   private nodeGridGroup: Konva.Group | null = null;
+  private nodeGridTargets: NavTargetKind = 'labels';
 
-  private showNodeGrid(): void {
+  private showNodeGrid(targets: NavTargetKind = 'labels'): void {
     this.nodeGridVisible = true;
+    this.nodeGridTargets = targets;
+    // Move-by-node's band grid replaces the ordinary drawing grid while held.
+    this.drawingLayer.hideGrid();
+    this.drawingLayer.batchDraw();
     this.redrawNodeGrid();
   }
 
@@ -3426,19 +3486,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.batchDraw();
   }
 
-  /** Group nearly-equal coordinates (within `T`) into bands; return each
-   *  band's mean. */
-  private clusterCoords(values: number[], T: number): number[] {
-    if (values.length === 0) return [];
-    const sorted = [...values].sort((a, b) => a - b);
-    const bands: number[][] = [[sorted[0]]];
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] - sorted[i - 1] <= T) bands[bands.length - 1].push(sorted[i]);
-      else bands.push([sorted[i]]);
-    }
-    return bands.map(b => b.reduce((a, c) => a + c, 0) / b.length);
-  }
-
   private redrawNodeGrid(): void {
     if (!this.nodeGridVisible) return;
     this.nodeGridGroup?.destroy();
@@ -3446,21 +3493,62 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.nodeGridGroup = group;
 
     const W = this.stage.width(), H = this.stage.height();
-    const stops = this.navStops('labels').filter(s => s.cx >= 0 && s.cx <= W && s.cy >= 0 && s.cy <= H);
+    const stops = this.navStops(this.nodeGridTargets)
+      .filter(s => s.cx >= 0 && s.cx <= W && s.cy >= 0 && s.cy <= H);
     const T = this.navGridTolerance(stops.length);
-    const cols = this.clusterCoords(stops.map(s => s.cx), T);
-    const rows = this.clusterCoords(stops.map(s => s.cy), T);
+    const grid = buildNavigationGrid(stops, W, H, T);
     const cx = this.crosshairsLayer.crosshairs.x, cy = this.crosshairsLayer.crosshairs.y;
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const stroke = palette.crosshairsStroke;
 
-    const line = (pts: number[], active: boolean) => new Konva.Line({
-      points: pts, stroke, strokeWidth: active ? 1.5 : 0.75,
-      opacity: active ? 0.5 : 0.16, dash: active ? undefined : [4, 5],
-      listening: false,
+    const stopUnderCrosshairs = stops.find(stop =>
+      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
+    const activeColumn = stopUnderCrosshairs
+      ? bandIndexForStop(grid.columns, stopUnderCrosshairs)
+      : bandIndexAtCoordinate(grid.columns, cx);
+    const activeRow = stopUnderCrosshairs
+      ? bandIndexForStop(grid.rows, stopUnderCrosshairs)
+      : bandIndexAtCoordinate(grid.rows, cy);
+
+    // Alternating low-opacity fills make rows and columns read as areas rather
+    // than centerlines. The active row/column, then their cell intersection,
+    // are layered on top like a spreadsheet selection.
+    const fillBand = (band: NavigationAxisBand, vertical: boolean, opacity: number) =>
+      new Konva.Rect({
+        x: vertical ? band.start : 0,
+        y: vertical ? 0 : band.start,
+        width: vertical ? band.end - band.start : W,
+        height: vertical ? H : band.end - band.start,
+        fill: stroke,
+        opacity,
+        listening: false,
+      });
+    grid.columns.forEach((band, index) => {
+      if (index % 2 === 1) group.add(fillBand(band, true, 0.035));
     });
-    for (const x of cols) group.add(line([x, 0, x, H], Math.abs(x - cx) <= T));
-    for (const y of rows) group.add(line([0, y, W, y], Math.abs(y - cy) <= T));
+    grid.rows.forEach((band, index) => {
+      if (index % 2 === 1) group.add(fillBand(band, false, 0.035));
+    });
+    if (activeColumn >= 0) group.add(fillBand(grid.columns[activeColumn], true, 0.075));
+    if (activeRow >= 0) group.add(fillBand(grid.rows[activeRow], false, 0.075));
+    if (activeColumn >= 0 && activeRow >= 0) {
+      const column = grid.columns[activeColumn], row = grid.rows[activeRow];
+      group.add(new Konva.Rect({
+        x: column.start, y: row.start,
+        width: column.end - column.start, height: row.end - row.start,
+        fill: stroke, opacity: 0.1, listening: false,
+      }));
+    }
+
+    const boundary = (points: number[]) => new Konva.Line({
+      points, stroke, strokeWidth: 1, opacity: 0.3, listening: false,
+    });
+    for (let i = 1; i < grid.columns.length; i++) {
+      group.add(boundary([grid.columns[i].start, 0, grid.columns[i].start, H]));
+    }
+    for (let i = 1; i < grid.rows.length; i++) {
+      group.add(boundary([0, grid.rows[i].start, W, grid.rows[i].start]));
+    }
 
     this.crosshairsLayer.add(group);
     group.moveToBottom();

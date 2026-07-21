@@ -51,7 +51,7 @@ async function main() {
     for (const n of dl.getDANodes()) stops.push(['node:' + n.id,
       lx + (n.konvaGroup.x() + n.NODE_WIDTH / 2) * scale, ly + (n.konvaGroup.y() + n.NODE_HEIGHT / 2) * scale]);
     for (const e of dl.getDAEdges()) for (const l of e.labels) stops.push(['label:' + l.id,
-      lx + (l.x + l.width / 2) * scale, ly + (l.y + l.height / 2) * scale]);
+      lx + l.x * scale, ly + l.y * scale]);
     for (const w of dl.getDAWaypoints()) stops.push(['waypoint:' + w.id, lx + w.x * scale, ly + w.y * scale]);
     let best = '(none)', bd = 1e9;
     for (const [tag, x, y] of stops) { const d = Math.hypot(x - cx, y - cy); if (d < bd) { bd = d; best = tag; } }
@@ -66,12 +66,28 @@ async function main() {
     await page.keyboard.up('g'); await page.waitForTimeout(220);
   };
 
+  // The visible spreadsheet must track the same tier as the movement keys.
+  await setup();
+  await page.keyboard.down('g'); await page.waitForTimeout(120);
+  const defaultOverlayTier = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+  await page.keyboard.down('d'); await page.waitForTimeout(120);
+  const fineOverlayTier = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+  await page.keyboard.up('d'); await page.waitForTimeout(120);
+  const restoredOverlayTier = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  check('overlay follows the active tier and returns to default on modifier release',
+    defaultOverlayTier === 'labels' && fineOverlayTier === 'all' && restoredOverlayTier === 'labels',
+    `${defaultOverlayTier} → ${fineOverlayTier} → ${restoredOverlayTier}`);
+
   // --- default tier: nodes + labels; label is nearest, then B (skips waypoint) ---
   await setup();
   await down();
   check('default down lands on the edge label', await at() === 'label:lb', `at ${await at()}`);
   await down();
-  check('default down again cycles to B, skipping the waypoint', await at() === 'node:B', `at ${await at()}`);
+  check('default down again steps to B, skipping the waypoint', await at() === 'node:B', `at ${await at()}`);
 
   // --- coarse tier (hold s): nodes only, jumps straight to B ---
   await setup();
@@ -83,9 +99,9 @@ async function main() {
   await down('d');
   check('fine down (hold d) lands on the label first', await at() === 'label:lb', `at ${await at()}`);
   await down('d');
-  check('fine down again cycles to the waypoint', await at() === 'waypoint:wp', `at ${await at()}`);
+  check('fine down again steps to the waypoint', await at() === 'waypoint:wp', `at ${await at()}`);
   await down('d');
-  check('fine down a third time cycles to B', await at() === 'node:B', `at ${await at()}`);
+  check('fine down a third time steps to B', await at() === 'node:B', `at ${await at()}`);
 
   await browser.close();
   console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);

@@ -2,11 +2,12 @@
 
 _Updated 2026-07-21. Branch: `main`._
 
-> ## ⚡ IN PROGRESS / HANDOFF: grid navigation for move-by-node (2026-07-21)
+> ## ⚡ IN PROGRESS / FEEL CHECK: spreadsheet-band move-by-node (2026-07-21)
 >
-> **Ben's verdict on the current implementation: "this isn't quite what I
-> want."** He is handing off to Codex to iterate. The direction, feel, or
-> specifics are unspecified — **ask Ben what's off before large changes.**
+> Ben clarified that a main problem with the first grid iteration was the
+> overlay: it looked like one horizontal and vertical line over the ordinary
+> drawing grid, rather than spreadsheet rows/columns. Codex implemented the
+> spreadsheet-band iteration; it now needs Ben's live feel check.
 > Full spec + design decisions: [`notes/design-grid-navigation.md`](notes/design-grid-navigation.md)
 > (read it first). Conventions:
 > `CHROME_BIN=~/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome node tools/repro-<x>.js`
@@ -17,36 +18,40 @@ _Updated 2026-07-21. Branch: `main`._
 > `pkill -f dev-server.js; pkill -f "ng serve"` then `nohup npm start &` and
 > wait for "generation complete".
 >
-> **What's built (move-by-node = held `g`, then hjkl; purely spatial, NO edges):**
-> - **Grid stepping + goal-column memory** (`snapToNodeInDirection` in
->   `drawing-area.component.ts`): visible stops form a loose grid; a press
->   steps one row/column and snaps to the goal position on the perpendicular
->   axis. `goalX` preserved across vertical moves, `goalY` across horizontal;
->   both reset when the crosshairs move by anything else (`navGoalX/Y`,
->   `navGridLast`). Same-row/col tolerance `T = navGridTolerance(N) =
->   clamp(180/sqrt(N), 12, 60)` px. Off-screen stops reached via a viewport
->   pan. Tiers preserved (`navStops(targets)`: nodes / +labels / +waypoints;
->   coarse `s` = nodes only, fine `d` = +waypoints).
-> - **Live grid overlay while `g` held** (`showNodeGrid`/`hideNodeGrid`/
->   `redrawNodeGrid`/`clusterCoords`): dashed band lines over the viewport,
->   solid on the crosshairs' row+column; on the crosshairs layer (stage
->   space); redrawn each step. Toggled by the move-by-node submenu, now a
->   `LabeledActionSubmenuConfig` emitting `SHOW_NODE_GRID`/`HIDE_NODE_GRID`
->   (mirrors select-drag hold; `moveByNodeHoldActive` in keymenu).
+> **What's built (move-by-node = held `g`, then hjkl; purely spatial, NO semantic edges):**
+> - **One shared, fixed band model** (`navigation-grid.ts`): visible stop
+>   coordinates are clustered into bounded-span rows and columns (no
+>   single-linkage chaining), with cell boundaries halfway between adjacent
+>   band centers. Movement steps to the adjacent band and picks the stop
+>   nearest the remembered perpendicular goal.
+> - **Spreadsheet overlay while `g` is held:** alternating subtle band fills,
+>   explicit row/column boundaries, highlighted current row+column, and a
+>   stronger active cell. The ordinary drawing grid is suppressed during this
+>   mode. Navigation and rendering consume the exact same bands.
+> - **Tier-accurate overlay:** default nodes+labels, coarse `s` nodes-only,
+>   fine `d` +waypoints; the displayed bands update when the modifier is held
+>   and return to default on release.
+> - **Correctness repairs found during handoff:** label `x/y` are now treated as
+>   their actual centers (the old code added half the label size), and goal
+>   coordinates are stored in drawing-layer space so a viewport pan cannot
+>   skew the following row/column choice.
 >
-> **Known limitation Ben hit:** the todo graph is scattered, not grid-like
+> **Still to judge by feel:** the todo graph is scattered, not grid-like
 > (e.g. "Bugs" and "When using the todo" are ~6px apart in y → same row but
 > far apart in x), so column-stepping threads through intermediate nodes.
 > Bugs IS reachable (up to its row, then left along it) but not intuitively.
 > This may be the crux of "not quite what I want."
 >
-> **Deferred (Ben's spec, not built):** fading skip-arrows at the viewport
-> edge pointing to off-screen stops; tuning `T`; overlay line visibility
-> (currently opacity 0.16 inactive / 0.5 active — faint on light theme).
+> **Deferred:** fading skip-arrows at the viewport edge; tuning `T` and band
+> fill/boundary opacity after the live feel check. If fixed spreadsheet bands
+> still feel wrong, the next experiment is a purely spatial local-neighbor
+> graph (for example Delaunay), not the diagram's semantic edges.
 >
-> **Repros:** `repro-grid-nav.js` (grid step + goal-column across a gap),
-> `repro-nav-tiers.js` (tier stops), `repro-nav-margin.js` (content-aware
-> margin). Removed as obsolete: `repro-nav-node-direction.js`,
+> **Repros:** `repro-grid-nav.js` (spreadsheet fills/boundaries, ordinary-grid
+> suppression, band steps + goal-column across a gap), `repro-nav-tiers.js`
+> (tier stops + overlay tier switching), `repro-nav-margin.js` (content-aware
+> margin + drawing-space goal after pan). Pure clustering coverage is in
+> `navigation-grid.spec.ts`. Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
 > Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +
 > cycling and is unrelated to this — leave it.
@@ -134,6 +139,8 @@ _Updated 2026-07-21. Branch: `main`._
 38. **Grid navigation for move-by-node — stage 1 core (2026-07-21).** Ben's replacement for the cone/cycling/connected models (`notes/design-grid-navigation.md`), **purely spatial — no edges** (the connected-neighbour fix from item 37 is reverted). Visible stops form a loose grid: a press steps one row/column that way and snaps to the **goal position** on the perpendicular axis — the text-editor "goal column" idea applied to *both* axes (goalX preserved across vertical moves, goalY across horizontal; both reset when the crosshairs move by anything else). "Same row/column" tolerance `T = clamp(180/√N, 12, 60)` px (finer with more visible stops; kept below typical row spacing so adjacent rows stay steppable). Off-screen stops in the pressed direction are reached with a viewport pan (moveCrosshairsBy's margin). Tiers preserved (nodes / +labels / +waypoints). Everything is reachable (row then column) — verified Bugs on Ben's real graph is reached by up-to-its-row then left-along-it. `snapToNodeInDirection` rewritten; `stopsInDirection`/`connectedStopIds`/`nodeDirCycle` removed; grow-mode's own cone+cycling target hop is unchanged (it *is* about connecting). Verified: new `tools/repro-grid-nav.js` (4 checks: column stepping, goal-column across a gap on both axes), `repro-nav-tiers`/`repro-nav-margin`/`repro-grow-mode` green, 304/304 unit tests, build clean. **Deferred (Ben's spec, next passes):** skip-arrows (fading edge markers pointing at off-screen stops); tune `T` by feel.
 
 39. **Grid navigation stage 2 — live grid overlay (2026-07-21).** While the move-by-node key (`g`) is held, the row/column bands the navigation uses are drawn over the viewport so the grid structure is visible (the scattered todo graph is much easier to navigate when you can see the columns). The move-by-node submenu became a `LabeledActionSubmenuConfig` that emits `SHOW_NODE_GRID` on hold and `HIDE_NODE_GRID` on the `g` release (mirroring the select-drag hold). `redrawNodeGrid` clusters the visible default-tier stop centers into bands (`clusterCoords`, single-linkage at tolerance `T`) and draws a faint dashed line per band, emphasising the row and column the crosshairs sit in; it re-runs after every step since navigation pans the view. Overlay lives on the (untransformed) crosshairs layer in stage space, below the crosshairs. Verified: overlay shows on hold / clears on release (screenshot on Ben's graph), `repro-grid-nav`/`repro-nav-tiers` green, 304/304 unit tests, build clean. Still deferred: fading skip-arrows to off-screen stops; tune `T`.
+
+40. **Spreadsheet-band grid iteration (2026-07-21, awaiting Ben's feel check).** Replaced stage 2's centerline overlay and context-dependent selection with one fixed `navigation-grid.ts` model shared by navigation and rendering. Sorted coordinates form bounded-span bands (not single-linkage chains); midpoint boundaries tile the viewport. The overlay now has alternating row/column fills, explicit boundaries, highlighted active row+column/cell, and suppresses the ordinary movement grid while `g` is held. Coarse/default/fine modifiers rebuild the overlay from their actual target tier. Fixed two handoff bugs at the same time: labels now use their true centered anchor, and goal coordinates live in drawing-layer space so panning cannot stale them. Verified visually in the light theme, 307/307 unit tests, spreadsheet/tier/margin browser repros, and production build.
 
 ## Routing-eval harness
 

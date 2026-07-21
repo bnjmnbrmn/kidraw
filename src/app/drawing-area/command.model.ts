@@ -152,7 +152,7 @@ export type DACommand =
   // targets: which stops move-by-node jumps between — 'nodes' (coarse),
   // 'labels' = nodes+labels (default), 'all' = nodes+labels+waypoints (fine).
   // Move-by-node grid overlay: shown while the move-by-node key is held.
-  | {kind: DACommandType.SHOW_NODE_GRID}
+  | {kind: DACommandType.SHOW_NODE_GRID; targets?: NavTargetKind}
   | {kind: DACommandType.HIDE_NODE_GRID}
   | {kind: DACommandType.SNAP_TO_NODE_LEFT; targets?: NavTargetKind}
   | {kind: DACommandType.SNAP_TO_NODE_RIGHT; targets?: NavTargetKind}
