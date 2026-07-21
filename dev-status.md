@@ -1,23 +1,61 @@
 # dev-status
 
-_Updated 2026-07-19. Branch: `main`._
+_Updated 2026-07-21. Branch: `main`._
 
-> ## ⚡ IN PROGRESS: a=add / i=insert rework (2026-07-19) — HANDOFF SECTION
+> ## ⚡ IN PROGRESS / HANDOFF: grid navigation for move-by-node (2026-07-21)
 >
-> Claude is implementing [`notes/design-add-insert-model.md`](notes/design-add-insert-model.md)
-> (read it first — it has the full spec + case ledger) in four stages while Ben
-> is away. **If picking this up mid-stream (Codex): the checklist below is
-> ground truth; finish unchecked items in order.** Repro conventions:
+> **Ben's verdict on the current implementation: "this isn't quite what I
+> want."** He is handing off to Codex to iterate. The direction, feel, or
+> specifics are unspecified — **ask Ben what's off before large changes.**
+> Full spec + design decisions: [`notes/design-grid-navigation.md`](notes/design-grid-navigation.md)
+> (read it first). Conventions:
 > `CHROME_BIN=~/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome node tools/repro-<x>.js`
-> against the running dev server; unit tests `npx ng test --watch=false --browsers=ChromeHeadless`.
+> against the running dev server; unit tests
+> `npx ng test --watch=false --browsers=ChromeHeadless` (needs the same
+> `CHROME_BIN`). **Dev-server caveat:** the long-lived `ng serve` watcher went
+> stale earlier (edits stopped hot-reloading); if changes don't appear,
+> `pkill -f dev-server.js; pkill -f "ng serve"` then `nohup npm start &` and
+> wait for "generation complete".
 >
-> - [x] **Stage 1** (done, commit follows): root `i` = edit text under crosshairs (node label / edge label / label; hint on empty); tap-`a` quick-add (empty → node at crosshairs [existing behavior]; **node → connected default node one slot below** + labelEdit; edge/label → hint); `v`-hold + `o` cycles selected-edge directionality (dir-fwd → dir-rev [transient flag] → undirected → bidi).
-> - [x] **Stage 2** (done): hold-`a` over node = grow mode, **drawing-area-owned** (keymenu suspended via popup-state, document-level key listeners — the Go-popup pattern; grow mode CANNOT be a keymenu submenu because stage-4 popups flush keymenu held state). hjkl hops a target among existing nodes (snap-to-node geometry) with a live ghost edge; `o` cycles 4 dir states; release-`a` commits (pristine release = same default add-below as tap; release with target back on anchor = no-op). Undo snapshot before commit.
-> - [x] **Stage 3** (done): `/` in grow mode opens fuzzy node search (generalize `NavPopupComponent` rows); Enter commits the edge (sticky semantics — `a` naturally released while typing), Esc/^[ cancels grow mode.
-> - [x] **Stage 4** (done): `f`-held in grow mode opens type popup (v1 list = raw shapes; extension node-kinds slot later), f-release selects, ghost node appears one slot below anchor, hjkl places (first directional press = slot throw, then grid steps; s/d tier chords), release-`a` or Enter commits → labelEdit; sticky if `a` released during popup. Retire hub u/o connect modifiers + s-edge picker when this lands (ledger cases 16–17).
-> - [x] Full pass (2026-07-19): all seven repro suites green, 302/302 unit tests, build clean. **Deliberately NOT done:** retiring the hub's u/o connect modifiers and the s+direction edge picker (ledger cases 16–17) — the ledger says retire once the grow flow "proves out", which means Ben dogfooding first. Original: Full pass: unit tests, repro suites (expect repro-insert-hub + repro-binding-reorg + repro-label-edit-flow + repro-task-status to need updates for the new tap semantics), build, update this section + item 30 below, commit per stage.
-> - [x] **Dogfood fixes (2026-07-19):** header always identifies the working graph (`Untitled` until file-backed; open/vault path thereafter); empty-canvas `a+f` now opens the type popup and commits a free typed node at/around the crosshairs instead of exposing the legacy Box/Circle/Diamond hub. Node grow behavior unchanged. Verified by 302/302 unit tests, build, and the expanded grow-mode browser repro.
-> - [x] **Keymenu surface sync (2026-07-19):** drawing-area-owned grow and DOM popup flows now publish their exact keyboard surface instead of merely suspending the keymenu. The visible card follows `add > empty canvas` → `choose node type` → `place node`, node targeting / target search, and Go destination popups, then restores Normal or Label Edit on close/commit. Input remains owned by the drawing area/popup, so held-key state cannot leak. Verified by 304/304 unit tests plus grow/nav/tap browser repros.
+> **What's built (move-by-node = held `g`, then hjkl; purely spatial, NO edges):**
+> - **Grid stepping + goal-column memory** (`snapToNodeInDirection` in
+>   `drawing-area.component.ts`): visible stops form a loose grid; a press
+>   steps one row/column and snaps to the goal position on the perpendicular
+>   axis. `goalX` preserved across vertical moves, `goalY` across horizontal;
+>   both reset when the crosshairs move by anything else (`navGoalX/Y`,
+>   `navGridLast`). Same-row/col tolerance `T = navGridTolerance(N) =
+>   clamp(180/sqrt(N), 12, 60)` px. Off-screen stops reached via a viewport
+>   pan. Tiers preserved (`navStops(targets)`: nodes / +labels / +waypoints;
+>   coarse `s` = nodes only, fine `d` = +waypoints).
+> - **Live grid overlay while `g` held** (`showNodeGrid`/`hideNodeGrid`/
+>   `redrawNodeGrid`/`clusterCoords`): dashed band lines over the viewport,
+>   solid on the crosshairs' row+column; on the crosshairs layer (stage
+>   space); redrawn each step. Toggled by the move-by-node submenu, now a
+>   `LabeledActionSubmenuConfig` emitting `SHOW_NODE_GRID`/`HIDE_NODE_GRID`
+>   (mirrors select-drag hold; `moveByNodeHoldActive` in keymenu).
+>
+> **Known limitation Ben hit:** the todo graph is scattered, not grid-like
+> (e.g. "Bugs" and "When using the todo" are ~6px apart in y → same row but
+> far apart in x), so column-stepping threads through intermediate nodes.
+> Bugs IS reachable (up to its row, then left along it) but not intuitively.
+> This may be the crux of "not quite what I want."
+>
+> **Deferred (Ben's spec, not built):** fading skip-arrows at the viewport
+> edge pointing to off-screen stops; tuning `T`; overlay line visibility
+> (currently opacity 0.16 inactive / 0.5 active — faint on light theme).
+>
+> **Repros:** `repro-grid-nav.js` (grid step + goal-column across a gap),
+> `repro-nav-tiers.js` (tier stops), `repro-nav-margin.js` (content-aware
+> margin). Removed as obsolete: `repro-nav-node-direction.js`,
+> `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
+> Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +
+> cycling and is unrelated to this — leave it.
+>
+> **History of superseded approaches** (all in git; do not resurrect without
+> reason): 45° direction cone (da-88 fix, item 34), repeated-press cycling
+> (item 35), connected-neighbour priority (item 37) — reverted per Ben's "no
+> edges." Analysis of why pure spatial nav can strand nodes:
+> [`notes/analysis-move-by-node-reachability.md`](notes/analysis-move-by-node-reachability.md).
 
 > Read this at the start of every session for **where work currently stands**. Everything historical, topical, or design-rationale lives in [`notes/`](notes/) — see [`notes/README.md`](notes/README.md) for the Map of Content. Canonical instructions are in [`AGENTS.md`](AGENTS.md).
 
