@@ -44,6 +44,8 @@ export enum DACommandType {
   NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
   NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
   SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
+  SHOW_NODE_GRID = 'SHOW_NODE_GRID',
+  HIDE_NODE_GRID = 'HIDE_NODE_GRID',
   SNAP_TO_NODE_LEFT = 'SNAP_TO_NODE_LEFT',
   SNAP_TO_NODE_RIGHT = 'SNAP_TO_NODE_RIGHT',
   SNAP_TO_NODE_UP = 'SNAP_TO_NODE_UP',
@@ -149,6 +151,9 @@ export type DACommand =
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
   // targets: which stops move-by-node jumps between — 'nodes' (coarse),
   // 'labels' = nodes+labels (default), 'all' = nodes+labels+waypoints (fine).
+  // Move-by-node grid overlay: shown while the move-by-node key is held.
+  | {kind: DACommandType.SHOW_NODE_GRID}
+  | {kind: DACommandType.HIDE_NODE_GRID}
   | {kind: DACommandType.SNAP_TO_NODE_LEFT; targets?: NavTargetKind}
   | {kind: DACommandType.SNAP_TO_NODE_RIGHT; targets?: NavTargetKind}
   | {kind: DACommandType.SNAP_TO_NODE_UP; targets?: NavTargetKind}

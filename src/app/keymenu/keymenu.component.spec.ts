@@ -191,9 +191,10 @@ describe('KeymenuComponent', () => {
 
     // 2026-07-18 rebinds: Move by node → g, Hide Keyboard → z, r unbound.
     // 2026-07-21: default jump steps between nodes + labels ("Stop Left"),
-    // with coarse (nodes only) / fine (+waypoints) tier sub-submenus.
-    const moveByNodeSubmenu = rootConfig['g'] as LabeledSubmenuConfig;
-    expect(moveByNodeSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    // with coarse (nodes only) / fine (+waypoints) tier sub-submenus. The
+    // submenu is hold-aware (shows the grid overlay) — LabeledActionSubmenuConfig.
+    const moveByNodeSubmenu = rootConfig['g'] as LabeledActionSubmenuConfig;
+    expect(moveByNodeSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
     const stopLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(stopLeft.actionLabel).toBe('Stop Left');
     // coarse (moveSpeed.bigger = 's') = nodes only

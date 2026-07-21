@@ -92,6 +92,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   // (initialRepeatDelayMs is 0), but insert/label/waypoint must fire once per hold.
   private editContextActionFired = false;
   private selectDragHoldActive = false;
+  private moveByNodeHoldActive = false;
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 3000;
@@ -410,6 +411,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.labelAddActive = false;
     this.editContextActionFired = false;
     this.selectDragHoldActive = false;
+    this.moveByNodeHoldActive = false;
   }
 
   private buildRootSubmenuConfig(): SubmenuConfig {
@@ -701,7 +703,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
-      [mbn.submenu]: new LabeledSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig()),
+      [mbn.submenu]: new LabeledActionSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig(), () => {
+        this.moveByNodeHoldActive = true;
+        this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID});
+      }),
       // One-shot: the popup takes the keyboard, so auto-repeat must not
       // queue further traversals behind it.
       [this.keyAssignments.root.go]: new LabeledAction('Go',
@@ -1430,6 +1435,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.selectDragHoldActive && eventKey === this.keyAssignments.root.selectDragSubmenu) {
       this.selectDragHoldActive = false;
       this.keyMenuOut.emit({kind: DACommandType.EXIT_DRAG_MODE});
+    }
+
+    if (this.moveByNodeHoldActive && eventKey === this.keyAssignments.moveByNode.submenu) {
+      this.moveByNodeHoldActive = false;
+      this.keyMenuOut.emit({kind: DACommandType.HIDE_NODE_GRID});
     }
   }
 }

@@ -594,6 +594,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
         break;
+      case DACommandType.SHOW_NODE_GRID:
+        this.showNodeGrid();
+        break;
+      case DACommandType.HIDE_NODE_GRID:
+        this.hideNodeGrid();
+        break;
       case DACommandType.SNAP_TO_NODE_LEFT:
         this.snapToNodeInDirection('left', command.targets ?? 'labels');
         break;
@@ -3393,11 +3399,72 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.navGoalX = target.cx;   // moved along x; keep goalY (the row)
     }
     this.navGridLast = {id: target.id, kind: target.kind};
+    if (this.nodeGridVisible) this.redrawNodeGrid();
   }
 
   private jumpCrosshairsToStopCenter(c: {x: number; y: number}): void {
     this.moveCrosshairsBy(c.x - this.crosshairsLayer.crosshairs.x,
                           c.y - this.crosshairsLayer.crosshairs.y);
+  }
+
+  // ── Move-by-node grid overlay (design-grid-navigation.md, stage 2) ──
+  // While the move-by-node key is held, the row/column bands the navigation
+  // uses are drawn over the viewport so the grid is visible; the band the
+  // crosshairs sit in is emphasised. Redrawn on every step (the view pans).
+  private nodeGridVisible = false;
+  private nodeGridGroup: Konva.Group | null = null;
+
+  private showNodeGrid(): void {
+    this.nodeGridVisible = true;
+    this.redrawNodeGrid();
+  }
+
+  private hideNodeGrid(): void {
+    this.nodeGridVisible = false;
+    this.nodeGridGroup?.destroy();
+    this.nodeGridGroup = null;
+    this.crosshairsLayer.batchDraw();
+  }
+
+  /** Group nearly-equal coordinates (within `T`) into bands; return each
+   *  band's mean. */
+  private clusterCoords(values: number[], T: number): number[] {
+    if (values.length === 0) return [];
+    const sorted = [...values].sort((a, b) => a - b);
+    const bands: number[][] = [[sorted[0]]];
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] - sorted[i - 1] <= T) bands[bands.length - 1].push(sorted[i]);
+      else bands.push([sorted[i]]);
+    }
+    return bands.map(b => b.reduce((a, c) => a + c, 0) / b.length);
+  }
+
+  private redrawNodeGrid(): void {
+    if (!this.nodeGridVisible) return;
+    this.nodeGridGroup?.destroy();
+    const group = new Konva.Group({listening: false});
+    this.nodeGridGroup = group;
+
+    const W = this.stage.width(), H = this.stage.height();
+    const stops = this.navStops('labels').filter(s => s.cx >= 0 && s.cx <= W && s.cy >= 0 && s.cy <= H);
+    const T = this.navGridTolerance(stops.length);
+    const cols = this.clusterCoords(stops.map(s => s.cx), T);
+    const rows = this.clusterCoords(stops.map(s => s.cy), T);
+    const cx = this.crosshairsLayer.crosshairs.x, cy = this.crosshairsLayer.crosshairs.y;
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const stroke = palette.crosshairsStroke;
+
+    const line = (pts: number[], active: boolean) => new Konva.Line({
+      points: pts, stroke, strokeWidth: active ? 1.5 : 0.75,
+      opacity: active ? 0.5 : 0.16, dash: active ? undefined : [4, 5],
+      listening: false,
+    });
+    for (const x of cols) group.add(line([x, 0, x, H], Math.abs(x - cx) <= T));
+    for (const y of rows) group.add(line([0, y, W, y], Math.abs(y - cy) <= T));
+
+    this.crosshairsLayer.add(group);
+    group.moveToBottom();
+    this.crosshairsLayer.batchDraw();
   }
 
 
