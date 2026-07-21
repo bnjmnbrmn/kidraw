@@ -8,7 +8,7 @@
  *   2. Goal-column memory: descending a column past a GAP row lands on the
  *      nearest stop, but the goal column is preserved and re-acquired on the
  *      next row that has it.
- *   3. Everything is reachable (row then column).
+ *   3. Every spatially distinct stop owns one cell.
  *   4. The held-key overlay is made of spreadsheet bands/boundaries and
  *      replaces the ordinary drawing grid.
  */
@@ -98,6 +98,36 @@ async function main() {
   await press('j'); const g2 = await at();
   check('down past the middle-column gap lands on the gap row then re-acquires c1',
     g1 !== 'r0c1' && g2 === 'r2c1', `${g1}, ${g2}`);
+
+  // 2b. While sitting off-column in the gap row, the overlay shows the
+  //     remembered column that the following vertical step will re-acquire.
+  await park('r0c1');
+  await page.keyboard.down('g'); await page.waitForTimeout(120);
+  await page.keyboard.press('j'); await page.waitForTimeout(230);
+  const goalGuide = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const guide = da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+    return guide ? {
+      points: guide.points(),
+      dash: guide.dash(),
+      crosshairX: da.crosshairsLayer.crosshairsX(),
+    } : null;
+  });
+  check('gap row shows the remembered return column as a dashed guide',
+    !!goalGuide && goalGuide.dash.length > 0 &&
+      Math.abs(goalGuide.points[0] - 650) < 3 &&
+      Math.abs(goalGuide.crosshairX - goalGuide.points[0]) > 100,
+    JSON.stringify(goalGuide));
+  await page.keyboard.press('j'); await page.waitForTimeout(230);
+  const reacquired = await at();
+  const guideAfterReacquire = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return !!da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+  });
+  check('return guide clears after its column is re-acquired',
+    reacquired === 'r2c1' && !guideAfterReacquire,
+    `at=${reacquired}, guide=${guideAfterReacquire}`);
+  await page.keyboard.up('g'); await page.waitForTimeout(120);
 
   // 3. up from the bottom-left returns up the column
   await park('r2c0');

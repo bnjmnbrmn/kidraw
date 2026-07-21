@@ -1,7 +1,7 @@
 ---
 title: Spreadsheet-band navigation for move-by-node (viewport-relative, goal-column)
 type: proposal
-status: spreadsheet-band iteration implemented, awaiting feel check, 2026-07-21
+status: collision-free-cell + goal-guide iteration implemented, awaiting feel check, 2026-07-21
 ---
 
 # Grid navigation for move-by-node
@@ -14,7 +14,7 @@ awareness**: navigation is purely spatial.
 ## Core idea
 
 Treat the **visible** stops as a loose **spreadsheet grid**. On each axis,
-sorted stop coordinates are collected into fixed, bounded-span bands: the
+sorted stop coordinates are collected into loose, bounded-span bands: the
 distance from the first to last coordinate in one band cannot exceed tolerance
 `T`. Boundaries lie halfway between neighboring band centers, so the bands
 cover the viewport as variable-sized spreadsheet rows and columns. Pressing a
@@ -27,6 +27,11 @@ axes).
 - Bounded-span clustering intentionally avoids single-linkage chaining. With
   coordinates 0, 10, 20, 30 and `T=12`, the rows are `[0,10]` and `[20,30]`,
   not one 30-pixel-tall row.
+- Rows and columns begin as those loose bands. If two spatially distinct stops
+  would occupy the same cell, only that ambiguous row or column is split at
+  the larger local gap. Refinement repeats until each occupied cell contains
+  one stop. This preserves broad alignments elsewhere instead of shrinking the
+  global tolerance to accommodate one close pair.
 - **Goal memory:** `goalX` is preserved across vertical moves and reset on
   horizontal moves; `goalY` preserved across horizontal moves, reset on
   vertical. So moving down a "column" tracks your x even when a row has no
@@ -40,9 +45,9 @@ axes).
   *selection*, not removing label/waypoint stops.
 
 Each stop belongs to exactly one visible row and column, and the overlay and
-movement use the same membership. Multiple stops that occupy the same row
-*and* column remain an ambiguity for a later iteration; the implementation no
-longer claims unconditional reachability from the grid construction alone.
+movement use the same membership. Each occupied cell has one stop, except for
+truly co-located stops with identical centers: no purely spatial model can
+distinguish those without inventing a non-spatial ordering.
 
 ## Viewport behaviour
 
@@ -63,6 +68,12 @@ release. This replaces (and suppresses) the ordinary drawing grid rather than
 being drawn as another set of centerlines over it. Coarse/default/fine tier
 changes rebuild the overlay from the exact stop set used by navigation.
 
+When a gap forces a temporary landing away from the remembered goal column
+(during vertical travel) or goal row (during horizontal travel), a stronger
+dashed guide appears at that axis. It shows where a later same-axis step will
+try to return, then disappears once the crosshairs reacquire it; the existing
+active-band highlight is enough while already on the goal.
+
 ## Build stages
 
 1. **Core (done):** viewport-relative grid step + goal-column memory
@@ -70,13 +81,19 @@ changes rebuild the overlay from the exact stop set used by navigation.
    connected-neighbour / cone / cycling selection.
 2. **Spreadsheet-band overlay (done):** filled bands and midpoint boundaries
    shared with the navigation model while `g` is held.
-3. Skip arrows with fade.
-4. Tune `T` (criterion) by feel.
+3. **Cell disambiguation + goal guide (done):** locally split ambiguous cells
+   to one stop each; draw the remembered return row/column.
+4. Skip arrows with fade.
+5. Tune `T` and the boundary construction by feel.
 
 ## Open questions / defaults chosen
 
 - `T` formula: chose `clamp(180/sqrt(N), 12, 60)`; revisit by feel.
 - "Same row" uses primary-axis proximity only (not 2-D cells); simpler and
-  enough for row/column stepping.
+  enough for initial grouping. Cell refinement adds the 2-D uniqueness
+  constraint afterward.
+- Midpoint boundaries remain an inferred visual aid rather than a claim that
+  the diagram has literal rows and columns. Their intuitiveness is still under
+  live evaluation.
 - Grow-mode target hop keeps its own cone + cycling (a different flow that
   *is* about connecting) — unaffected by this.

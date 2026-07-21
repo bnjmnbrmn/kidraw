@@ -2,12 +2,13 @@
 
 _Updated 2026-07-21. Branch: `main`._
 
-> ## ⚡ IN PROGRESS / FEEL CHECK: spreadsheet-band move-by-node (2026-07-21)
+> ## ⚡ IN PROGRESS / FEEL CHECK: collision-free move-by-node grid (2026-07-21)
 >
-> Ben clarified that a main problem with the first grid iteration was the
-> overlay: it looked like one horizontal and vertical line over the ordinary
-> drawing grid, rather than spreadsheet rows/columns. Codex implemented the
-> spreadsheet-band iteration; it now needs Ben's live feel check.
+> Ben liked the spreadsheet overlay's styling but found the inferred boundary
+> placement unintuitive, did not expect multiple stops in one cell, and asked
+> for a cue showing the row/column that goal-memory will return to. The current
+> iteration locally splits ambiguous cells and draws that return axis; it needs
+> another live feel check.
 > Full spec + design decisions: [`notes/design-grid-navigation.md`](notes/design-grid-navigation.md)
 > (read it first). Conventions:
 > `CHROME_BIN=~/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome node tools/repro-<x>.js`
@@ -19,15 +20,21 @@ _Updated 2026-07-21. Branch: `main`._
 > wait for "generation complete".
 >
 > **What's built (move-by-node = held `g`, then hjkl; purely spatial, NO semantic edges):**
-> - **One shared, fixed band model** (`navigation-grid.ts`): visible stop
+> - **One shared, refined band model** (`navigation-grid.ts`): visible stop
 >   coordinates are clustered into bounded-span rows and columns (no
->   single-linkage chaining), with cell boundaries halfway between adjacent
->   band centers. Movement steps to the adjacent band and picks the stop
->   nearest the remembered perpendicular goal.
+>   single-linkage chaining). If two spatially distinct stops initially land
+>   in one cell, only the ambiguous row or column splits at its largest local
+>   gap; refinement repeats until occupied cells contain one stop. Cell
+>   boundaries remain halfway between adjacent band centers. Movement steps to
+>   the adjacent band and picks the stop nearest the remembered perpendicular
+>   goal.
 > - **Spreadsheet overlay while `g` is held:** alternating subtle band fills,
 >   explicit row/column boundaries, highlighted current row+column, and a
 >   stronger active cell. The ordinary drawing grid is suppressed during this
->   mode. Navigation and rendering consume the exact same bands.
+>   mode. Navigation and rendering consume the exact same bands. When a gap
+>   displaces the landing from the remembered goal column/row, a stronger
+>   dashed guide appears there and shows where the next same-axis step will try
+>   to return; it stays absent while the active band already is the goal.
 > - **Tier-accurate overlay:** default nodes+labels, coarse `s` nodes-only,
 >   fine `d` +waypoints; the displayed bands update when the modifier is held
 >   and return to default on release.
@@ -36,7 +43,8 @@ _Updated 2026-07-21. Branch: `main`._
 >   coordinates are stored in drawing-layer space so a viewport pan cannot
 >   skew the following row/column choice.
 >
-> **Still to judge by feel:** the todo graph is scattered, not grid-like
+> **Still to judge by feel:** whether midpoint boundary placement reads
+> intuitively enough on a scattered graph. The todo graph is not grid-like
 > (e.g. "Bugs" and "When using the todo" are ~6px apart in y → same row but
 > far apart in x), so column-stepping threads through intermediate nodes.
 > Bugs IS reachable (up to its row, then left along it) but not intuitively.
@@ -48,7 +56,7 @@ _Updated 2026-07-21. Branch: `main`._
 > graph (for example Delaunay), not the diagram's semantic edges.
 >
 > **Repros:** `repro-grid-nav.js` (spreadsheet fills/boundaries, ordinary-grid
-> suppression, band steps + goal-column across a gap), `repro-nav-tiers.js`
+> suppression, band steps + visible goal-column across a gap), `repro-nav-tiers.js`
 > (tier stops + overlay tier switching), `repro-nav-margin.js` (content-aware
 > margin + drawing-space goal after pan). Pure clustering coverage is in
 > `navigation-grid.spec.ts`. Removed as obsolete: `repro-nav-node-direction.js`,

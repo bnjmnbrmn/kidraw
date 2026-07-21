@@ -46,4 +46,29 @@ describe('spreadsheet navigation grid', () => {
     expect(bandIndexAtCoordinate(grid.columns, 50)).toBe(0);
     expect(bandIndexAtCoordinate(grid.columns, 80)).toBe(1);
   });
+
+  it('splits an ambiguous band so each spatial stop owns one cell', () => {
+    const a = stop('a', 20, 20);
+    const b = stop('b', 28, 24);
+    const c = stop('c', 100, 80);
+
+    const grid = buildNavigationGrid([a, b, c], 140, 100, 20);
+
+    // a and b begin in the same loose row and column. Their larger separation
+    // is horizontal, so only that local column is split.
+    expect(grid.rows.length).toBe(2);
+    expect(grid.columns.length).toBe(3);
+    expect(bandIndexForStop(grid.rows, a)).toBe(bandIndexForStop(grid.rows, b));
+    expect(bandIndexForStop(grid.columns, a)).not.toBe(bandIndexForStop(grid.columns, b));
+  });
+
+  it('keeps refining when three stops begin in one cell', () => {
+    const stops = [stop('a', 20, 20), stop('b', 26, 24), stop('c', 29, 30)];
+
+    const grid = buildNavigationGrid(stops, 100, 100, 20);
+    const cells = stops.map(item =>
+      `${bandIndexForStop(grid.rows, item)}:${bandIndexForStop(grid.columns, item)}`);
+
+    expect(new Set(cells).size).toBe(stops.length);
+  });
 });

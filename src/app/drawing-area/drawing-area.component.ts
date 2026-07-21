@@ -3362,6 +3362,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   // Goals live in drawing-layer coordinates so viewport pans cannot stale them.
   private navGoalX: number | null = null;
   private navGoalY: number | null = null;
+  /** Which remembered perpendicular coordinate the next same-axis step will
+   *  try to return to: x for vertical travel, y for horizontal travel. */
+  private navGoalAxis: 'x' | 'y' | null = null;
   /** The stop the last grid step landed on. Reset detection recomputes its
    *  center (pan-safe): if the crosshairs are no longer on it, a fresh
    *  navigation started and the goal position is reset. */
@@ -3388,7 +3391,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // on the stop the last grid step landed on.
     const lastCenter = this.navGridLast ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind) : null;
     const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (!onLast) { this.navGoalX = currentLayerX; this.navGoalY = currentLayerY; }
+    if (!onLast) {
+      this.navGoalX = currentLayerX;
+      this.navGoalY = currentLayerY;
+      this.navGoalAxis = null;
+    }
 
     this.nodeGridTargets = targets;
 
@@ -3450,8 +3457,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const targetLayerY = (target.cy - ly) / scale;
     if (vertical) {
       this.navGoalY = targetLayerY; // moved along y; keep goalX (the column)
+      this.navGoalAxis = 'x';
     } else {
       this.navGoalX = targetLayerX; // moved along x; keep goalY (the row)
+      this.navGoalAxis = 'y';
     }
     this.navGridLast = {id: target.id, kind: target.kind};
   }
@@ -3548,6 +3557,39 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     for (let i = 1; i < grid.rows.length; i++) {
       group.add(boundary([0, grid.rows[i].start, W, grid.rows[i].start]));
+    }
+
+    // A text-editor-style goal column/row survives a gap: the current stop
+    // may sit off it temporarily, then a later step re-acquires it. Paint that
+    // remembered coordinate more strongly than the cell boundaries so the
+    // snap-back behavior is visible rather than surprising.
+    const lastCenter = this.navGridLast
+      ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind)
+      : null;
+    const stillInSequence = !!lastCenter &&
+      Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
+    if (stillInSequence && this.navGoalAxis) {
+      const scale = this.drawingLayer.scaleX();
+      const guideCoordinate = this.navGoalAxis === 'x'
+        ? this.drawingLayer.x() + (this.navGoalX ?? 0) * scale
+        : this.drawingLayer.y() + (this.navGoalY ?? 0) * scale;
+      const currentCoordinate = this.navGoalAxis === 'x' ? cx : cy;
+      const points = this.navGoalAxis === 'x'
+        ? [guideCoordinate, 0, guideCoordinate, H]
+        : [0, guideCoordinate, W, guideCoordinate];
+      // The highlighted active row/column is enough while we are already on
+      // the goal. Reveal the extra guide only when a gap has displaced us.
+      if (Math.abs(currentCoordinate - guideCoordinate) >= 4) {
+        group.add(new Konva.Line({
+          name: 'node-grid-goal-guide',
+          points,
+          stroke,
+          strokeWidth: 2,
+          opacity: 0.75,
+          dash: [8, 6],
+          listening: false,
+        }));
+      }
     }
 
     this.crosshairsLayer.add(group);
