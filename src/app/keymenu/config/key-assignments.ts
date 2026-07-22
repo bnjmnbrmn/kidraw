@@ -115,6 +115,12 @@ export interface KeymenuKeyAssignments {
     readonly strategy: {
       /** Editor-style sparse rows/columns with preferred-axis memory. */
       readonly adaptiveBandGrid: KeyString;
+      /** Fixed-origin rings/spokes with quadrant-relative cardinal movement. */
+      readonly adaptivePolarGrid: KeyString;
+    };
+    readonly polarTurn: {
+      readonly nextClockwise: KeyString;
+      readonly previousCounterclockwise: KeyString;
     };
   };
   readonly ctrl: {
@@ -265,7 +271,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
-    strategy: {adaptiveBandGrid: 'e'},
+    strategy: {adaptiveBandGrid: 'e', adaptivePolarGrid: 'o'},
+    polarTurn: {nextClockwise: 'n', previousCounterclockwise: 'p'},
   },
   ctrl: {submenu: 'Control'},
   misc: {
@@ -383,7 +390,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
-    strategy: {adaptiveBandGrid: 'e'},
+    strategy: {adaptiveBandGrid: 'e', adaptivePolarGrid: 'o'},
+    polarTurn: {nextClockwise: 'n', previousCounterclockwise: 'p'},
   },
   ctrl: {submenu: 'Control'},
   misc: {

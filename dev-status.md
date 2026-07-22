@@ -2,7 +2,7 @@
 
 _Updated 2026-07-22. Branch: `main`._
 
-> ## ⚡ IN PROGRESS / FEEL CHECK: collision-free move-by-node grid (2026-07-21)
+> ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
 > Ben's second feel check was positive: the collision-free cells plus
 > conditional goal-column/goal-row guide are good and may be optimal, though
@@ -51,8 +51,19 @@ _Updated 2026-07-22. Branch: `main`._
 >   light/dark band; the vertical arm independently encodes its column. A
 >   node-fill halo keeps both readable when an inferred boundary crosses a
 >   wide node. Chosen over synchronized blinking to avoid constant animation.
+> - **Adaptive polar grid experiment (2026-07-22):** `g → o` selects a
+>   fixed-origin polar sibling; `g → e` returns to Adaptive band grid. The
+>   origin is captured at the start of a `g` hold in drawing coordinates and
+>   cleared on release. Rings/spokes use separate adaptive tolerances, split
+>   ambiguous cells, and include all tier stops (including off-screen) for the
+>   strongest reachability. Cardinal directions rotate their polar roles by
+>   quadrant; `n`/`p` are explicit clockwise/counterclockwise. Overlay:
+>   alternating rings/sectors, active polar cell, origin marker, rotated
+>   per-item membership marks, and dashed goal-angle/goal-radius guides. Design
+>   and open feel questions: [`notes/design-polar-grid-navigation.md`](notes/design-polar-grid-navigation.md).
 >
-> **Still to judge by feel:** whether midpoint boundary placement reads
+> **Still to judge by feel:** whether the new per-item crosshairs solve
+> Cartesian boundary ambiguity without obscuring labels; whether midpoint boundary placement reads
 > intuitively enough on a scattered graph. The todo graph is not grid-like
 > (e.g. "Bugs" and "When using the todo" are ~6px apart in y → same row but
 > far apart in x), so column-stepping threads through intermediate nodes.
@@ -64,11 +75,15 @@ _Updated 2026-07-22. Branch: `main`._
 > still feel wrong, the next experiment is a purely spatial local-neighbor
 > graph (for example Delaunay), not the diagram's semantic edges.
 >
-> **Repros:** `repro-grid-nav.js` (spreadsheet fills/boundaries, ordinary-grid
+> **Repros:** `repro-grid-nav.js` (spreadsheet fills/boundaries, membership
+> markers, ordinary-grid
 > suppression, band steps + visible goal-column across a gap), `repro-nav-tiers.js`
 > (tier stops + overlay tier switching), `repro-nav-margin.js` (content-aware
 > margin + drawing-space goal after pan). Pure clustering coverage is in
-> `navigation-grid.spec.ts`. Removed as obsolete: `repro-nav-node-direction.js`,
+> `navigation-grid.spec.ts`. `repro-polar-grid-nav.js` covers strategy
+> selection, overlay, quadrant-relative hjkl, explicit n/p turns, and fixed-
+> per-hold origin; pure polar geometry is in `navigation-polar-grid.spec.ts`.
+> Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
 > Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +
 > cycling and is unrelated to this — leave it.

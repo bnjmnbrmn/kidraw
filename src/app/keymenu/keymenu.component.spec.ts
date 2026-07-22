@@ -209,6 +209,19 @@ describe('KeymenuComponent', () => {
       kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
       strategy: 'adaptive-band-grid',
     });
+    const polarGrid = moveByNodeSubmenu.submenuConfig['o'] as LabeledAction;
+    expect(polarGrid.actionLabel).toBe('Use adaptive polar grid');
+    polarGrid.action();
+    expect(emitSpy).toHaveBeenCalledWith({
+      kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+      strategy: 'adaptive-polar-grid',
+    });
+    const clockwise = moveByNodeSubmenu.submenuConfig['n'] as LabeledAction;
+    const counterclockwise = moveByNodeSubmenu.submenuConfig['p'] as LabeledAction;
+    clockwise.action();
+    counterclockwise.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE, targets: 'labels'});
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE, targets: 'labels'});
     // coarse (moveSpeed.bigger = 's') = nodes only
     const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledActionSubmenuConfig;
     expect(coarse instanceof LabeledActionSubmenuConfig).toBeTrue();

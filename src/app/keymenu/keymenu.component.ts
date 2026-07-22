@@ -806,6 +806,22 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         }),
         false,
       ),
+      [mbn.strategy.adaptivePolarGrid]: new LabeledAction(
+        'Use adaptive polar grid',
+        () => this.keyMenuOut.emit({
+          kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+          strategy: 'adaptive-polar-grid',
+        }),
+        false,
+      ),
+      [mbn.polarTurn.nextClockwise]: new LabeledAction(
+        'Polar: clockwise',
+        () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE, targets: 'labels'}),
+      ),
+      [mbn.polarTurn.previousCounterclockwise]: new LabeledAction(
+        'Polar: counterclockwise',
+        () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE, targets: 'labels'}),
+      ),
       [ms.bigger]: new LabeledActionSubmenuConfig(
         'Coarse: nodes only...',
         this.buildMoveByNodeTierSubmenu('nodes'),

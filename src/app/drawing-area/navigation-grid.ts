@@ -19,6 +19,11 @@ export interface NavigationGrid<T extends NavigationGridStop = NavigationGridSto
   columns: NavigationAxisBand<T>[];
 }
 
+export interface NavigationGridTolerances {
+  x: number;
+  y: number;
+}
+
 function bandsFromGroups<T extends NavigationGridStop>(
   groups: readonly T[][],
   coordinate: (stop: T) => number,
@@ -171,10 +176,12 @@ export function buildNavigationGrid<T extends NavigationGridStop>(
   stops: readonly T[],
   viewportWidth: number,
   viewportHeight: number,
-  tolerance: number,
+  tolerance: number | NavigationGridTolerances,
 ): NavigationGrid<T> {
-  const rows = buildNavigationAxisBands(stops, stop => stop.cy, tolerance, viewportHeight);
-  const columns = buildNavigationAxisBands(stops, stop => stop.cx, tolerance, viewportWidth);
+  const xTolerance = typeof tolerance === 'number' ? tolerance : tolerance.x;
+  const yTolerance = typeof tolerance === 'number' ? tolerance : tolerance.y;
+  const rows = buildNavigationAxisBands(stops, stop => stop.cy, yTolerance, viewportHeight);
+  const columns = buildNavigationAxisBands(stops, stop => stop.cx, xTolerance, viewportWidth);
   return makeCellsUnambiguous(stops, rows, columns, viewportWidth, viewportHeight);
 }
 
