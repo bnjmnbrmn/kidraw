@@ -80,6 +80,13 @@ async function main() {
     `${overlay.rects} fills, ${overlay.lines} boundaries`);
   check('move-by-node overlay replaces the ordinary drawing grid',
     !overlay.ordinaryGridVisible, `ordinary grid visible=${overlay.ordinaryGridVisible}`);
+  await page.keyboard.press('e'); await page.waitForTimeout(120);
+  const selectedStrategy = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.graphItemNavigationStrategy;
+  });
+  check('g→e explicitly selects the adaptive band-grid strategy',
+    selectedStrategy === 'adaptive-band-grid', String(selectedStrategy));
   await page.keyboard.up('g'); await page.waitForTimeout(120);
 
   // 1. step right along the top row, then down the right column

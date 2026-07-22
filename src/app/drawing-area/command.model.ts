@@ -19,6 +19,10 @@ export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 /** Which kinds of stop move-by-node steps between (tiered by modifier). */
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
 
+/** Spatial policies available to graph-item navigation. Kept as a union even
+ *  with one member so experiments can land alongside a known-good option. */
+export type GraphItemNavigationStrategy = 'adaptive-band-grid';
+
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purple';
@@ -44,6 +48,7 @@ export enum DACommandType {
   NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
   NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
   SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
+  SET_GRAPH_ITEM_NAVIGATION_STRATEGY = 'SET_GRAPH_ITEM_NAVIGATION_STRATEGY',
   SHOW_NODE_GRID = 'SHOW_NODE_GRID',
   HIDE_NODE_GRID = 'HIDE_NODE_GRID',
   SNAP_TO_NODE_LEFT = 'SNAP_TO_NODE_LEFT',
@@ -149,6 +154,7 @@ export type DACommand =
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
+  | {kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY; strategy: GraphItemNavigationStrategy}
   // targets: which stops move-by-node jumps between — 'nodes' (coarse),
   // 'labels' = nodes+labels (default), 'all' = nodes+labels+waypoints (fine).
   // Move-by-node grid overlay: shown while the move-by-node key is held.

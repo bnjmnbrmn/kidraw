@@ -1,10 +1,15 @@
 ---
 title: Spreadsheet-band navigation for move-by-node (viewport-relative, goal-column)
 type: proposal
-status: collision-free-cell + goal-guide iteration implemented, awaiting feel check, 2026-07-21
+status: preserved as selectable adaptive band-grid strategy, 2026-07-22
 ---
 
 # Grid navigation for move-by-node
+
+The approach's short name is **adaptive band-grid navigation**. It is the
+default graph-item navigation strategy and is explicitly selectable with
+`g → e`, so it remains available as a known-good option while alternatives are
+tested. The strategy choice is session state, not graph content.
 
 Ben's model (2026-07-21), replacing the cone / cycling / connected-neighbour
 approaches. Supersedes the reachability analysis fixes for move-by-node
@@ -83,8 +88,10 @@ active-band highlight is enough while already on the goal.
    shared with the navigation model while `g` is held.
 3. **Cell disambiguation + goal guide (done):** locally split ambiguous cells
    to one stop each; draw the remembered return row/column.
-4. Skip arrows with fade.
-5. Tune `T` and the boundary construction by feel.
+4. **Strategy slot (done):** preserve this implementation as Adaptive band
+   grid, selectable with `g → e`, before adding competing experiments.
+5. Skip arrows with fade.
+6. Tune `T` and the boundary construction by feel.
 
 ## Open questions / defaults chosen
 

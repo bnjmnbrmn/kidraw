@@ -199,6 +199,16 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
     const stopLeft = moveByNodeSubmenu.submenuConfig['h'] as LabeledAction;
     expect(stopLeft.actionLabel).toBe('Stop Left');
+    // 2026-07-22: the known-good adaptive grid is an explicit strategy on g→e,
+    // ready to remain available alongside later navigation experiments.
+    const adaptiveGrid = moveByNodeSubmenu.submenuConfig['e'] as LabeledAction;
+    expect(adaptiveGrid.actionLabel).toBe('Use adaptive band grid');
+    expect(adaptiveGrid.repeat).toBeFalse();
+    adaptiveGrid.action();
+    expect(emitSpy).toHaveBeenCalledWith({
+      kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+      strategy: 'adaptive-band-grid',
+    });
     // coarse (moveSpeed.bigger = 's') = nodes only
     const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledActionSubmenuConfig;
     expect(coarse instanceof LabeledActionSubmenuConfig).toBeTrue();

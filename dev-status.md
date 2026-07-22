@@ -1,14 +1,14 @@
 # dev-status
 
-_Updated 2026-07-21. Branch: `main`._
+_Updated 2026-07-22. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: collision-free move-by-node grid (2026-07-21)
 >
-> Ben liked the spreadsheet overlay's styling but found the inferred boundary
-> placement unintuitive, did not expect multiple stops in one cell, and asked
-> for a cue showing the row/column that goal-memory will return to. The current
-> iteration locally splits ambiguous cells and draws that return axis; it needs
-> another live feel check.
+> Ben's second feel check was positive: the collision-free cells plus
+> conditional goal-column/goal-row guide are good and may be optimal, though
+> he wants to keep experimenting. The current approach is therefore preserved
+> as the **Adaptive band grid** strategy: it remains the default and `g → e`
+> explicitly switches back to it when future alternatives are added.
 > Full spec + design decisions: [`notes/design-grid-navigation.md`](notes/design-grid-navigation.md)
 > (read it first). Conventions:
 > `CHROME_BIN=~/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome node tools/repro-<x>.js`
@@ -42,6 +42,10 @@ _Updated 2026-07-21. Branch: `main`._
 >   their actual centers (the old code added half the label size), and goal
 >   coordinates are stored in drawing-layer space so a viewport pan cannot
 >   skew the following row/column choice.
+> - **Preserved as a strategy (2026-07-22):** the approach is named **Adaptive
+>   band grid** and remains the default. `g → e` explicitly selects it, giving
+>   future navigation experiments a sibling slot without replacing this
+>   known-good behavior. The selection is session state, not graph content.
 >
 > **Still to judge by feel:** whether midpoint boundary placement reads
 > intuitively enough on a scattered graph. The todo graph is not grid-like

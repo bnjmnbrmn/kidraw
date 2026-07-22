@@ -798,6 +798,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       ...this.moveByNodeJumpKeys('labels'),
+      [mbn.strategy.adaptiveBandGrid]: new LabeledAction(
+        'Use adaptive band grid',
+        () => this.keyMenuOut.emit({
+          kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+          strategy: 'adaptive-band-grid',
+        }),
+        false,
+      ),
       [ms.bigger]: new LabeledActionSubmenuConfig(
         'Coarse: nodes only...',
         this.buildMoveByNodeTierSubmenu('nodes'),

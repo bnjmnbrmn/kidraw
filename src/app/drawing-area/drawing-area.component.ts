@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
@@ -305,6 +305,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Move-by-node has its own spatial overlay. Showing the ordinary drawing
    * grid for these commands makes the band model visually ambiguous. */
   private static readonly MOVE_BY_NODE_COMMANDS = new Set<DACommandType>([
+    DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
     DACommandType.SHOW_NODE_GRID,
     DACommandType.HIDE_NODE_GRID,
     DACommandType.SNAP_TO_NODE_LEFT,
@@ -612,6 +613,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.SNAP_TO_NEAREST_NODE:
         this.snapToNearestNode();
+        break;
+      case DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY:
+        this.setGraphItemNavigationStrategy(command.strategy);
         break;
       case DACommandType.SHOW_NODE_GRID:
         this.showNodeGrid(command.targets ?? 'labels');
@@ -3362,6 +3366,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   // Goals live in drawing-layer coordinates so viewport pans cannot stale them.
   private navGoalX: number | null = null;
   private navGoalY: number | null = null;
+  /** The selected policy is explicit even while there is only one choice, so
+   *  the known-good grid remains available beside later experiments. */
+  private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-band-grid';
   /** Which remembered perpendicular coordinate the next same-axis step will
    *  try to return to: x for vertical travel, y for horizontal travel. */
   private navGoalAxis: 'x' | 'y' | null = null;
@@ -3376,7 +3383,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return Math.max(12, Math.min(60, 180 / Math.sqrt(Math.max(1, visibleCount))));
   }
 
+  private setGraphItemNavigationStrategy(strategy: GraphItemNavigationStrategy): void {
+    this.graphItemNavigationStrategy = strategy;
+    this.navGoalX = null;
+    this.navGoalY = null;
+    this.navGoalAxis = null;
+    this.navGridLast = null;
+    if (this.nodeGridVisible) this.redrawNodeGrid();
+    this.emitStatus('Graph-item navigation: Adaptive band grid');
+  }
+
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
+    switch (this.graphItemNavigationStrategy) {
+      case 'adaptive-band-grid':
+        this.snapWithAdaptiveBandGrid(direction, targets);
+        return;
+    }
+  }
+
+  private snapWithAdaptiveBandGrid(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind) {
     this.finishTweens();
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
