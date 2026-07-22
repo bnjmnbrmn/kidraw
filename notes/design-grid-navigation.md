@@ -79,6 +79,13 @@ dashed guide appears at that axis. It shows where a later same-axis step will
 try to return, then disappears once the crosshairs reacquire it; the existing
 active-band highlight is enough while already on the goal.
 
+Because midpoint boundaries can cross wide nodes and labels, every stop also
+gets a small **band-membership crosshair**. Its horizontal arm uses the light
+or dark cadence of the stop's row, while its vertical arm uses the cadence of
+its column. The arms have a node-fill halo so they remain legible on top of an
+item. This is static rather than blinking: it gives the same membership cue
+without adding a viewport-wide animation or synchronisation burden.
+
 ## Build stages
 
 1. **Core (done):** viewport-relative grid step + goal-column memory
@@ -90,8 +97,10 @@ active-band highlight is enough while already on the goal.
    to one stop each; draw the remembered return row/column.
 4. **Strategy slot (done):** preserve this implementation as Adaptive band
    grid, selectable with `g → e`, before adding competing experiments.
-5. Skip arrows with fade.
-6. Tune `T` and the boundary construction by feel.
+5. **Per-item membership markers (done):** row/column-coded micro-crosshairs
+   disambiguate wide items crossed by inferred boundaries.
+6. Skip arrows with fade.
+7. Tune `T` and the boundary construction by feel.
 
 ## Open questions / defaults chosen
 

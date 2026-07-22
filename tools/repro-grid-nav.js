@@ -72,6 +72,11 @@ async function main() {
     return {
       rects: children.filter(shape => shape.getClassName() === 'Rect').length,
       lines: children.filter(shape => shape.getClassName() === 'Line').length,
+      membershipMarkers: da.nodeGridGroup?.find('.node-grid-membership-marker').length ?? 0,
+      rowArmOpacities: da.nodeGridGroup?.find('.node-grid-row-arm').map(line => line.opacity()) ?? [],
+      columnArmOpacities: da.nodeGridGroup?.find('.node-grid-column-arm').map(line => line.opacity()) ?? [],
+      visibleStops: da.navStops('labels').filter(stop =>
+        stop.cx >= 0 && stop.cx <= da.stage.width() && stop.cy >= 0 && stop.cy <= da.stage.height()).length,
       ordinaryGridVisible: da.drawingLayer.gridVisible,
     };
   });
@@ -80,6 +85,11 @@ async function main() {
     `${overlay.rects} fills, ${overlay.lines} boundaries`);
   check('move-by-node overlay replaces the ordinary drawing grid',
     !overlay.ordinaryGridVisible, `ordinary grid visible=${overlay.ordinaryGridVisible}`);
+  check('every stop has a two-axis light/dark band-membership marker',
+    overlay.membershipMarkers === overlay.visibleStops &&
+      new Set(overlay.rowArmOpacities).size === 2 &&
+      new Set(overlay.columnArmOpacities).size === 2,
+    `${overlay.membershipMarkers}/${overlay.visibleStops} markers; rows=${overlay.rowArmOpacities}; columns=${overlay.columnArmOpacities}`);
   await page.keyboard.press('e'); await page.waitForTimeout(120);
   const selectedStrategy = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));

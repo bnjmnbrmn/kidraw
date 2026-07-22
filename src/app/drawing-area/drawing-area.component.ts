@@ -3584,6 +3584,45 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       group.add(boundary([0, grid.rows[i].start, W, grid.rows[i].start]));
     }
 
+    // Boundaries are inferred from centers and can legitimately cross a wide
+    // item. Give every stop its own compact membership legend: the horizontal
+    // arm carries its row's light/dark cadence, and the vertical arm carries
+    // its column's. A node remains readable even when the distant boundary is
+    // visually ambiguous.
+    const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
+    for (const stop of stops) {
+      const rowIndex = bandIndexForStop(grid.rows, stop);
+      const columnIndex = bandIndexForStop(grid.columns, stop);
+      const marker = new Konva.Group({
+        name: 'node-grid-membership-marker',
+        x: stop.cx,
+        y: stop.cy,
+        listening: false,
+      });
+      const arm = (points: number[], name: string, opacity: number) => {
+        marker.add(new Konva.Line({
+          points,
+          stroke: palette.nodeFill,
+          strokeWidth: 5,
+          opacity: 0.9,
+          lineCap: 'round',
+          listening: false,
+        }));
+        marker.add(new Konva.Line({
+          name,
+          points,
+          stroke,
+          strokeWidth: 2,
+          opacity,
+          lineCap: 'round',
+          listening: false,
+        }));
+      };
+      arm([-9, 0, 9, 0], 'node-grid-row-arm', markerOpacity(rowIndex));
+      arm([0, -9, 0, 9], 'node-grid-column-arm', markerOpacity(columnIndex));
+      group.add(marker);
+    }
+
     // A text-editor-style goal column/row survives a gap: the current stop
     // may sit off it temporarily, then a later step re-acquires it. Paint that
     // remembered coordinate more strongly than the cell boundaries so the

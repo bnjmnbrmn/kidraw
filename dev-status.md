@@ -46,6 +46,11 @@ _Updated 2026-07-22. Branch: `main`._
 >   band grid** and remains the default. `g → e` explicitly selects it, giving
 >   future navigation experiments a sibling slot without replacing this
 >   known-good behavior. The selection is session state, not graph content.
+> - **Band-membership crosshairs (2026-07-22):** each visible stop has a tiny
+>   two-axis marker over it. The horizontal arm's opacity encodes its row's
+>   light/dark band; the vertical arm independently encodes its column. A
+>   node-fill halo keeps both readable when an inferred boundary crosses a
+>   wide node. Chosen over synchronized blinking to avoid constant animation.
 >
 > **Still to judge by feel:** whether midpoint boundary placement reads
 > intuitively enough on a scattered graph. The todo graph is not grid-like
