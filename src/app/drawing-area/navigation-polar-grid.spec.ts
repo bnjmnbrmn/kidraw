@@ -1,5 +1,6 @@
 import {bandIndexForStop, NavigationGridStop} from './navigation-grid';
 import {
+  boxPolarRadius,
   buildPolarNavigationGrid,
   choosePolarSeam,
   circularAngleDistance,
@@ -11,6 +12,20 @@ function stop(id: string, cx: number, cy: number): NavigationGridStop {
 }
 
 describe('adaptive polar navigation grid', () => {
+  it('uses square radius so radial membership matches concentric boxes', () => {
+    expect(boxPolarRadius(80, 80)).toBe(80);
+    expect(boxPolarRadius(-40, 110)).toBe(110);
+
+    const grid = buildPolarNavigationGrid([
+      stop('diagonal', 80, 80),
+      stop('east', 100, 0),
+    ], {x: 0, y: 0}, 20, 15 * Math.PI / 180);
+
+    expect(grid.stops.find(item => item.id === 'diagonal')?.radius).toBe(80);
+    expect(grid.stops.find(item => item.id === 'east')?.radius).toBe(100);
+    expect(grid.radialBands.length).toBe(1);
+  });
+
   it('puts the seam in the largest empty gap so angles around east stay together', () => {
     const degrees = (value: number) => value * Math.PI / 180;
     const seam = choosePolarSeam([degrees(358), degrees(2), degrees(6)]);

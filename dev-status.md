@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-07-22. Branch: `main`._
+_Updated 2026-07-23. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -54,13 +54,16 @@ _Updated 2026-07-22. Branch: `main`._
 > - **Adaptive polar grid experiment (2026-07-22):** `g → o` selects a
 >   fixed-origin polar sibling; `g → e` returns to Adaptive band grid. The
 >   origin is captured at the start of a `g` hold in drawing coordinates and
->   cleared on release. Rings/spokes use separate adaptive tolerances, split
->   ambiguous cells, and include all tier stops (including off-screen) for the
->   strongest reachability. Cardinal directions rotate their polar roles by
->   quadrant; `n`/`p` are explicit clockwise/counterclockwise. Overlay:
->   alternating rings/sectors, active polar cell, origin marker, rotated
->   per-item membership marks, and dashed goal-angle/goal-radius guides. Design
->   and open feel questions: [`notes/design-polar-grid-navigation.md`](notes/design-polar-grid-navigation.md).
+>   cleared on release. **Concentric-box iteration (2026-07-23):** radial
+>   membership now uses box/Chebyshev radius so the interaction agrees with
+>   the square overlay. Box bands/spokes use separate adaptive tolerances,
+>   split ambiguous cells, and include all tier stops (including off-screen)
+>   for the strongest reachability. Cardinal directions rotate their polar
+>   roles by quadrant; `n`/`p` are explicit clockwise/counterclockwise.
+>   Overlay: alternating square bands/sectors, active box-polar cell, origin
+>   marker, rotated per-item membership marks, and dashed goal-angle/goal-box
+>   guides. Design and open feel questions:
+>   [`notes/design-polar-grid-navigation.md`](notes/design-polar-grid-navigation.md).
 >
 > **Still to judge by feel:** whether the new per-item crosshairs solve
 > Cartesian boundary ambiguity without obscuring labels; whether midpoint boundary placement reads

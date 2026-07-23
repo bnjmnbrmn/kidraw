@@ -65,14 +65,14 @@ async function main() {
       strategy: da.graphItemNavigationStrategy,
       origin,
       originMarkers: da.nodeGridGroup?.find('.polar-grid-origin').length ?? 0,
-      rings: da.nodeGridGroup?.find('.polar-grid-ring-boundary').length ?? 0,
+      boxes: da.nodeGridGroup?.find('.polar-grid-box-boundary').length ?? 0,
       spokes: da.nodeGridGroup?.find('.polar-grid-spoke-boundary').length ?? 0,
       markers: da.nodeGridGroup?.find('.polar-grid-membership-marker').length ?? 0,
     };
   });
   check('g→o selects a rendered adaptive polar grid',
     overlay.strategy === 'adaptive-polar-grid' && overlay.originMarkers === 1 &&
-      overlay.rings >= 1 && overlay.spokes === 4 && overlay.markers === 8,
+      overlay.boxes >= 1 && overlay.spokes === 4 && overlay.markers === 8,
     JSON.stringify(overlay));
   check('polar origin begins at the item under the crosshairs',
     Math.abs(overlay.origin.x - 700) < 2 && Math.abs(overlay.origin.y - 200) < 2,

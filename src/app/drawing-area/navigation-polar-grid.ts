@@ -10,12 +10,13 @@ const ORIGIN_EPSILON = 4;
 export type CardinalDirection = 'left' | 'right' | 'up' | 'down';
 export type PolarLogicalDirection = 'outward' | 'inward' | 'clockwise' | 'counterclockwise';
 
-/** A graph-item stop represented in both stage and fixed-origin polar space. */
+/** A graph-item stop represented in both stage and fixed-origin box-polar space. */
 export interface PolarNavigationStop<T extends NavigationGridStop = NavigationGridStop>
   extends NavigationGridStop {
   source: T;
   stageX: number;
   stageY: number;
+  /** Chebyshev distance from the origin: the half-size of its containing box. */
   radius: number;
   /** Screen-space angle: zero=east, increasing clockwise. */
   angle: number;
@@ -43,6 +44,11 @@ export function normalizeAngle(angle: number): number {
 export function circularAngleDistance(a: number, b: number): number {
   const delta = Math.abs(normalizeAngle(a) - normalizeAngle(b));
   return Math.min(delta, FULL_TURN - delta);
+}
+
+/** Axis-aligned square radius, so radial bands agree with concentric boxes. */
+export function boxPolarRadius(dx: number, dy: number): number {
+  return Math.max(Math.abs(dx), Math.abs(dy));
 }
 
 /** Put the linear 0/2π seam halfway through the largest empty angular gap,
@@ -75,7 +81,7 @@ export function buildPolarNavigationGrid<T extends NavigationGridStop>(
   const measured = stops.map(source => {
     const dx = source.cx - origin.x;
     const dy = source.cy - origin.y;
-    return {source, radius: Math.hypot(dx, dy), angle: normalizeAngle(Math.atan2(dy, dx))};
+    return {source, radius: boxPolarRadius(dx, dy), angle: normalizeAngle(Math.atan2(dy, dx))};
   });
   const originStops = measured
     .filter(stop => stop.radius < ORIGIN_EPSILON)

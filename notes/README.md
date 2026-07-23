@@ -68,7 +68,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Labels without visible boxes by default](idea-label-no-default-box.md)
 - [Movement acceleration](idea-movement-acceleration.md)
 - [Crosshair visual treatment](idea-crosshair-visual-treatment.md)
-- [Adaptive polar-grid graph-item navigation](design-polar-grid-navigation.md)
+- [Adaptive box-polar graph-item navigation](design-polar-grid-navigation.md)
 - [Rich text in nodes and labels (markdown, math)](idea-rich-text.md)
 - [Cut / copy / paste](idea-cut-copy-paste.md)
 - [Naming — edges vs links](idea-naming-edges-vs-links.md)

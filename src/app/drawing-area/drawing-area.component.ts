@@ -3424,7 +3424,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.nodeGridVisible) this.redrawNodeGrid();
     this.emitStatus(strategy === 'adaptive-band-grid'
       ? 'Graph-item navigation: Adaptive band grid'
-      : 'Graph-item navigation: Adaptive polar grid (origin fixed until g is released)');
+      : 'Graph-item navigation: Adaptive box-polar grid (origin fixed until g is released)');
   }
 
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
@@ -3900,21 +3900,48 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const stroke = palette.crosshairsStroke;
     const toDegrees = 180 / Math.PI;
-    const displayRadius = Math.max(
+    const displayBoxRadius = Math.max(
+      Math.abs(origin.x),
+      Math.abs(W - origin.x),
+      Math.abs(origin.y),
+      Math.abs(H - origin.y),
+    ) + 2;
+    const displayRayRadius = Math.max(
       Math.hypot(origin.x, origin.y),
       Math.hypot(W - origin.x, origin.y),
       Math.hypot(origin.x, H - origin.y),
       Math.hypot(W - origin.x, H - origin.y),
     ) + 2;
 
-    const ring = (band: NavigationAxisBand<PolarNavigationStop>, opacity: number) => {
-      const outerRadius = Math.min(band.end, displayRadius);
+    const boxBandPath = (
+      context: Konva.Context,
+      innerRadius: number,
+      outerRadius: number,
+    ) => {
+      context.beginPath();
+      context.moveTo(origin.x - outerRadius, origin.y - outerRadius);
+      context.lineTo(origin.x + outerRadius, origin.y - outerRadius);
+      context.lineTo(origin.x + outerRadius, origin.y + outerRadius);
+      context.lineTo(origin.x - outerRadius, origin.y + outerRadius);
+      context.closePath();
+      if (innerRadius > 0) {
+        // Counter-clockwise inner path makes a transparent square hole.
+        context.moveTo(origin.x - innerRadius, origin.y - innerRadius);
+        context.lineTo(origin.x - innerRadius, origin.y + innerRadius);
+        context.lineTo(origin.x + innerRadius, origin.y + innerRadius);
+        context.lineTo(origin.x + innerRadius, origin.y - innerRadius);
+        context.closePath();
+      }
+    };
+    const boxBand = (band: NavigationAxisBand<PolarNavigationStop>, opacity: number) => {
+      const outerRadius = Math.min(band.end, displayBoxRadius);
       if (band.start >= outerRadius) return;
-      group.add(new Konva.Ring({
-        x: origin.x,
-        y: origin.y,
-        innerRadius: Math.max(0, band.start),
-        outerRadius,
+      const innerRadius = Math.max(0, band.start);
+      group.add(new Konva.Shape({
+        sceneFunc: (context, shape) => {
+          boxBandPath(context, innerRadius, outerRadius);
+          context.fillShape(shape);
+        },
         fill: stroke,
         opacity,
         listening: false,
@@ -3926,7 +3953,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       group.add(new Konva.Wedge({
         x: origin.x,
         y: origin.y,
-        radius: displayRadius,
+        radius: displayRayRadius,
         rotation: startAngle * toDegrees,
         angle: angle * toDegrees,
         fill: stroke,
@@ -3936,7 +3963,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
 
     grid.radialBands.forEach((band, index) => {
-      if (index % 2 === 1) ring(band, 0.035);
+      if (index % 2 === 1) boxBand(band, 0.035);
     });
     grid.angularBands.forEach((band, index) => {
       if (index % 2 === 1) wedge(band, 0.035);
@@ -3948,18 +3975,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       Math.abs(stop.stageX - cx) < 4 && Math.abs(stop.stageY - cy) < 4);
     const activeRing = current ? bandIndexForStop(grid.radialBands, current) : -1;
     const activeSpoke = current ? bandIndexForStop(grid.angularBands, current) : -1;
-    if (activeRing >= 0) ring(grid.radialBands[activeRing], 0.075);
+    if (activeRing >= 0) boxBand(grid.radialBands[activeRing], 0.075);
     if (activeSpoke >= 0) wedge(grid.angularBands[activeSpoke], 0.075);
     if (activeRing >= 0 && activeSpoke >= 0) {
       const radial = grid.radialBands[activeRing];
       const angular = grid.angularBands[activeSpoke];
-      group.add(new Konva.Arc({
-        x: origin.x,
-        y: origin.y,
-        innerRadius: Math.max(0, radial.start),
-        outerRadius: Math.min(radial.end, displayRadius),
-        rotation: polarBandAngle(grid, angular.start) * toDegrees,
-        angle: (angular.end - angular.start) / grid.angularScale * toDegrees,
+      const innerRadius = Math.max(0, radial.start);
+      const outerRadius = Math.min(radial.end, displayBoxRadius);
+      const startAngle = polarBandAngle(grid, angular.start);
+      const endAngle = startAngle + (angular.end - angular.start) / grid.angularScale;
+      group.add(new Konva.Shape({
+        sceneFunc: (context, shape) => {
+          context.save();
+          context.beginPath();
+          context.moveTo(origin.x, origin.y);
+          context.arc(origin.x, origin.y, displayRayRadius, startAngle, endAngle);
+          context.closePath();
+          context.clip();
+          boxBandPath(context, innerRadius, outerRadius);
+          context.fillShape(shape);
+          context.restore();
+        },
         fill: stroke,
         opacity: 0.1,
         listening: false,
@@ -3968,12 +4004,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     for (let i = 1; i < grid.radialBands.length; i++) {
       const radius = grid.radialBands[i].start;
-      if (radius > displayRadius) continue;
-      group.add(new Konva.Circle({
-        name: 'polar-grid-ring-boundary',
-        x: origin.x,
-        y: origin.y,
-        radius,
+      if (radius > displayBoxRadius) continue;
+      group.add(new Konva.Rect({
+        name: 'polar-grid-ring-boundary polar-grid-box-boundary',
+        x: origin.x - radius,
+        y: origin.y - radius,
+        width: radius * 2,
+        height: radius * 2,
         stroke,
         strokeWidth: 1,
         opacity: 0.3,
@@ -3994,7 +4031,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }));
     }
 
-    // Polar membership legend: the radial arm carries ring cadence; the
+    // Box-polar membership legend: the radial arm carries box-band cadence; the
     // tangential arm carries angular-sector cadence.
     const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
     for (const stop of grid.stops) {
@@ -4046,11 +4083,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }));
     } else if (current && this.polarGoalAxis === 'radius' && this.polarGoalRadius !== null &&
                Math.abs(current.radius - this.polarGoalRadius) >= 4) {
-      group.add(new Konva.Circle({
+      group.add(new Konva.Rect({
         name: 'polar-grid-goal-guide',
-        x: origin.x,
-        y: origin.y,
-        radius: this.polarGoalRadius,
+        x: origin.x - this.polarGoalRadius,
+        y: origin.y - this.polarGoalRadius,
+        width: this.polarGoalRadius * 2,
+        height: this.polarGoalRadius * 2,
         stroke,
         strokeWidth: 2,
         opacity: 0.75,
