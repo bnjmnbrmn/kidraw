@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-07-23. Branch: `main`._
+_Updated 2026-07-24. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -51,19 +51,18 @@ _Updated 2026-07-23. Branch: `main`._
 >   light/dark band; the vertical arm independently encodes its column. A
 >   node-fill halo keeps both readable when an inferred boundary crosses a
 >   wide node. Chosen over synchronized blinking to avoid constant animation.
-> - **Adaptive polar grid experiment (2026-07-22):** `g → o` selects a
->   fixed-origin polar sibling; `g → e` returns to Adaptive band grid. The
->   origin is captured at the start of a `g` hold in drawing coordinates and
->   cleared on release. **Concentric-box iteration (2026-07-23):** radial
->   membership now uses box/Chebyshev radius so the interaction agrees with
->   the square overlay. Box bands/spokes use separate adaptive tolerances,
->   split ambiguous cells, and include all tier stops (including off-screen)
->   for the strongest reachability. Cardinal directions rotate their polar
->   roles by quadrant; `n`/`p` are explicit clockwise/counterclockwise.
->   Overlay: alternating square bands/sectors, active box-polar cell, origin
->   marker, rotated per-item membership marks, and dashed goal-angle/goal-box
->   guides. Design and open feel questions:
->   [`notes/design-polar-grid-navigation.md`](notes/design-polar-grid-navigation.md).
+> - **Adaptive quadrant-grid experiment (2026-07-24):** `g → o` now selects
+>   a mostly rectangular adaptive grid divided into N/S/E/W regions by two
+>   fixed 45° diagonals; `g → e` returns to Adaptive band grid. `hjkl` keep
+>   their ordinary screen directions. Main-axis movement stays in-region
+>   (`h/l` in East/West, `j/k` in North/South), while perpendicular movement
+>   can cross a diagonal. A dashed goal ray always leaves the origin and
+>   chooses the landing within a destination row/column. `n` tilts it toward
+>   screen-south and `p` toward screen-north by an adaptive 5°–15° step,
+>   without moving the crosshairs. Release `g` or any viewport pan/zoom/resize
+>   resets the origin at the current crosshairs. This supersedes the circular
+>   and concentric-box polar attempts. Design and open feel questions:
+>   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 >
 > **Still to judge by feel:** whether the new per-item crosshairs solve
 > Cartesian boundary ambiguity without obscuring labels; whether midpoint boundary placement reads
@@ -83,9 +82,10 @@ _Updated 2026-07-23. Branch: `main`._
 > suppression, band steps + visible goal-column across a gap), `repro-nav-tiers.js`
 > (tier stops + overlay tier switching), `repro-nav-margin.js` (content-aware
 > margin + drawing-space goal after pan). Pure clustering coverage is in
-> `navigation-grid.spec.ts`. `repro-polar-grid-nav.js` covers strategy
-> selection, overlay, quadrant-relative hjkl, explicit n/p turns, and fixed-
-> per-hold origin; pure polar geometry is in `navigation-polar-grid.spec.ts`.
+> `navigation-grid.spec.ts`. `repro-quadrant-grid-nav.js` covers strategy
+> selection, rectangular overlay + diagonal borders, main-axis quadrant
+> constraint, goal-ray n/p adjustment, viewport re-origining, and release;
+> pure geometry is in `navigation-quadrant-grid.spec.ts`.
 > Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
 > Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +

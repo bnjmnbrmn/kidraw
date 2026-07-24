@@ -806,21 +806,21 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         }),
         false,
       ),
-      [mbn.strategy.adaptivePolarGrid]: new LabeledAction(
-        'Use adaptive polar grid',
+      [mbn.strategy.adaptiveQuadrantGrid]: new LabeledAction(
+        'Use adaptive quadrant grid',
         () => this.keyMenuOut.emit({
           kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
-          strategy: 'adaptive-polar-grid',
+          strategy: 'adaptive-quadrant-grid',
         }),
         false,
       ),
-      [mbn.polarTurn.nextClockwise]: new LabeledAction(
-        'Polar: clockwise',
-        () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE, targets: 'labels'}),
+      [mbn.goalAngle.towardSouth]: new LabeledAction(
+        'Goal ray south',
+        () => this.keyMenuOut.emit({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH, targets: 'labels'}),
       ),
-      [mbn.polarTurn.previousCounterclockwise]: new LabeledAction(
-        'Polar: counterclockwise',
-        () => this.keyMenuOut.emit({kind: DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE, targets: 'labels'}),
+      [mbn.goalAngle.towardNorth]: new LabeledAction(
+        'Goal ray north',
+        () => this.keyMenuOut.emit({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH, targets: 'labels'}),
       ),
       [ms.bigger]: new LabeledActionSubmenuConfig(
         'Coarse: nodes only...',

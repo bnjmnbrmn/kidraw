@@ -23,17 +23,16 @@ import {
   NavigationGridStop,
 } from './navigation-grid';
 import {
-  buildPolarNavigationGrid,
+  adaptiveGoalAngleStep,
+  adjustAngleTowardScreenVertical,
   cardinalAngle,
   CardinalDirection,
-  circularAngleDistance,
-  polarBandAngle,
-  polarDirectionForCardinal,
-  polarGridAngleCoordinate,
-  PolarLogicalDirection,
-  PolarNavigationGrid,
-  PolarNavigationStop,
-} from './navigation-polar-grid';
+  distanceToGoalRay,
+  GoalVerticalDirection,
+  moveUsesQuadrantConstraint,
+  navigationQuadrant,
+  quadrantForDirection,
+} from './navigation-quadrant-grid';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -48,6 +47,14 @@ interface MetaBox {
   cy: number;
   halfW: number;
   halfH: number;
+}
+
+interface NavigationViewport {
+  x: number;
+  y: number;
+  scale: number;
+  width: number;
+  height: number;
 }
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -294,8 +301,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SNAP_TO_NODE_RIGHT,
     DACommandType.SNAP_TO_NODE_UP,
     DACommandType.SNAP_TO_NODE_DOWN,
-    DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE,
-    DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE,
+    DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH,
+    DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH,
     DACommandType.TRAVERSE_SMART,
     DACommandType.NAV_HISTORY_BACK,
     DACommandType.NAV_HISTORY_FORWARD,
@@ -326,8 +333,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SNAP_TO_NODE_RIGHT,
     DACommandType.SNAP_TO_NODE_UP,
     DACommandType.SNAP_TO_NODE_DOWN,
-    DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE,
-    DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE,
+    DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH,
+    DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH,
   ]);
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
@@ -471,6 +478,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
       this.stage.height(this.componentNE.offsetHeight);
+      if (this.nodeGridVisible) this.redrawNodeGrid();
     });
     this.resizeObserver.observe(this.componentNE);
 
@@ -651,11 +659,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.SNAP_TO_NODE_DOWN:
         this.snapToNodeInDirection('down', command.targets ?? 'labels');
         break;
-      case DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE:
-        this.snapPolarAngular('clockwise', command.targets ?? 'labels');
+      case DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH:
+        this.adjustQuadrantGoalAngle('south', command.targets ?? 'labels');
         break;
-      case DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE:
-        this.snapPolarAngular('counterclockwise', command.targets ?? 'labels');
+      case DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH:
+        this.adjustQuadrantGoalAngle('north', command.targets ?? 'labels');
         break;
       case DACommandType.INCREASE_SELECTED_NODE_SIZE:
         this.increaseSelectedNodeSize();
@@ -2267,6 +2275,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
       onFinish: () => {
         this.emitZoomLevel();
+        if (this.nodeGridVisible) this.redrawNodeGrid();
       }
 
     }).play());
@@ -2294,6 +2303,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
       onFinish: () => {
         this.emitZoomLevel();
+        if (this.nodeGridVisible) this.redrawNodeGrid();
       }
     }).play());
   }
@@ -2655,6 +2665,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: this.drawingLayer.x() + deltaX,
       y: this.drawingLayer.y() + deltaY,
       easing: Konva.Easings.Linear,
+      onFinish: () => {
+        if (this.nodeGridVisible) this.redrawNodeGrid();
+      },
     }).play());
   }
 
@@ -3391,12 +3404,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Explicit so the known-good Cartesian grid remains available beside
    *  navigation experiments. */
   private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-band-grid';
-  /** Fixed in drawing-layer coordinates for one held-g session. */
-  private polarOriginLayer: {x: number; y: number} | null = null;
-  private polarGoalAngle: number | null = null;
-  private polarGoalRadius: number | null = null;
-  private polarGoalAxis: 'angle' | 'radius' | null = null;
-  private polarNavLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
+  /** Fixed for one held-g session, unless the viewport pans, zooms, or resizes. */
+  private quadrantOriginLayer: {x: number; y: number} | null = null;
+  private quadrantOriginViewport: NavigationViewport | null = null;
+  /** Screen-space bearing of the goal ray from the origin. */
+  private quadrantGoalAngle = 0;
+  private quadrantGoalAdjusted = false;
+  private quadrantNavLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
   /** Which remembered perpendicular coordinate the next same-axis step will
    *  try to return to: x for vertical travel, y for horizontal travel. */
   private navGoalAxis: 'x' | 'y' | null = null;
@@ -3417,14 +3431,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navGoalY = null;
     this.navGoalAxis = null;
     this.navGridLast = null;
-    this.resetPolarNavigation();
-    if (strategy === 'adaptive-polar-grid' && this.nodeGridVisible) {
-      this.capturePolarOrigin();
+    this.resetQuadrantNavigation();
+    if (strategy === 'adaptive-quadrant-grid' && this.nodeGridVisible) {
+      this.captureQuadrantOrigin();
     }
     if (this.nodeGridVisible) this.redrawNodeGrid();
     this.emitStatus(strategy === 'adaptive-band-grid'
       ? 'Graph-item navigation: Adaptive band grid'
-      : 'Graph-item navigation: Adaptive box-polar grid (origin fixed until g is released)');
+      : 'Graph-item navigation: Adaptive quadrant grid');
   }
 
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
@@ -3432,190 +3446,206 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case 'adaptive-band-grid':
         this.snapWithAdaptiveBandGrid(direction, targets);
         return;
-      case 'adaptive-polar-grid':
-        this.snapWithPolarGrid(direction, targets);
+      case 'adaptive-quadrant-grid':
+        this.snapWithQuadrantGrid(direction, targets);
         return;
     }
   }
 
-  private resetPolarNavigation(): void {
-    this.polarOriginLayer = null;
-    this.polarGoalAngle = null;
-    this.polarGoalRadius = null;
-    this.polarGoalAxis = null;
-    this.polarNavLast = null;
+  private resetQuadrantNavigation(): void {
+    this.quadrantOriginLayer = null;
+    this.quadrantOriginViewport = null;
+    this.quadrantGoalAngle = 0;
+    this.quadrantGoalAdjusted = false;
+    this.quadrantNavLast = null;
   }
 
-  private capturePolarOrigin(): void {
-    this.finishTweens();
+  private currentNavigationViewport(): NavigationViewport {
+    return {
+      x: this.drawingLayer.x(),
+      y: this.drawingLayer.y(),
+      scale: this.drawingLayer.scaleX(),
+      width: this.stage.width(),
+      height: this.stage.height(),
+    };
+  }
+
+  private navigationViewportMatches(snapshot: NavigationViewport | null): boolean {
+    if (!snapshot) return false;
+    const current = this.currentNavigationViewport();
+    return Math.abs(current.x - snapshot.x) < 0.01 &&
+      Math.abs(current.y - snapshot.y) < 0.01 &&
+      Math.abs(current.scale - snapshot.scale) < 0.0001 &&
+      current.width === snapshot.width &&
+      current.height === snapshot.height;
+  }
+
+  private captureQuadrantOrigin(): void {
     const scale = this.drawingLayer.scaleX();
-    this.polarOriginLayer = {
+    this.quadrantOriginLayer = {
       x: (this.crosshairsLayer.crosshairs.x - this.drawingLayer.x()) / scale,
       y: (this.crosshairsLayer.crosshairs.y - this.drawingLayer.y()) / scale,
     };
-    this.polarGoalAngle = null;
-    this.polarGoalRadius = null;
-    this.polarGoalAxis = null;
-    this.polarNavLast = null;
+    this.quadrantOriginViewport = this.currentNavigationViewport();
+    this.quadrantGoalAngle = 0;
+    this.quadrantGoalAdjusted = false;
+    this.quadrantNavLast = null;
   }
 
-  private polarOriginInStage(): {x: number; y: number} | null {
-    if (!this.polarOriginLayer) return null;
+  private ensureQuadrantOrigin(): void {
+    if (!this.quadrantOriginLayer ||
+        !this.navigationViewportMatches(this.quadrantOriginViewport)) {
+      this.captureQuadrantOrigin();
+    }
+  }
+
+  private quadrantOriginInStage(): {x: number; y: number} | null {
+    if (!this.quadrantOriginLayer) return null;
     const scale = this.drawingLayer.scaleX();
     return {
-      x: this.drawingLayer.x() + this.polarOriginLayer.x * scale,
-      y: this.drawingLayer.y() + this.polarOriginLayer.y * scale,
+      x: this.drawingLayer.x() + this.quadrantOriginLayer.x * scale,
+      y: this.drawingLayer.y() + this.quadrantOriginLayer.y * scale,
     };
   }
 
-  private polarAngularTolerance(stopCount: number): number {
-    const degrees = 180 / Math.PI;
-    const angle = Math.PI * 0.9 / Math.sqrt(Math.max(1, stopCount));
-    return Math.max(8 / degrees, Math.min(35 / degrees, angle));
-  }
-
-  private currentPolarGrid(targets: NavTargetKind): PolarNavigationGrid | null {
-    const origin = this.polarOriginInStage();
-    if (!origin) return null;
-    const stops = this.navStops(targets);
-    return buildPolarNavigationGrid(
-      stops,
-      origin,
-      this.navGridTolerance(stops.length),
-      this.polarAngularTolerance(stops.length),
+  private adjustQuadrantGoalAngle(
+    direction: GoalVerticalDirection,
+    targets: NavTargetKind,
+  ): void {
+    if (this.graphItemNavigationStrategy !== 'adaptive-quadrant-grid') {
+      this.emitStatus('Select Adaptive quadrant grid with g → o first.');
+      return;
+    }
+    this.finishTweens();
+    this.ensureQuadrantOrigin();
+    const visibleCount = this.navStops(targets).filter(stop =>
+      stop.cx >= 0 && stop.cx <= this.stage.width() &&
+      stop.cy >= 0 && stop.cy <= this.stage.height()).length;
+    const step = adaptiveGoalAngleStep(visibleCount);
+    const adjusted = adjustAngleTowardScreenVertical(
+      this.quadrantGoalAngle,
+      direction,
+      step,
     );
+    const changed = adjusted !== this.quadrantGoalAngle;
+    this.quadrantGoalAngle = adjusted;
+    this.quadrantGoalAdjusted = true;
+    this.nodeGridTargets = targets;
+    if (this.nodeGridVisible) this.redrawNodeGrid();
+    const degrees = Math.round(step * 180 / Math.PI);
+    this.emitStatus(changed
+      ? `Goal ray: ${direction} (${degrees}° step)`
+      : `Goal ray is already due ${direction}`);
   }
 
-  private snapPolarAngular(
-    direction: 'clockwise' | 'counterclockwise',
-    targets: NavTargetKind,
-  ): void {
-    if (this.graphItemNavigationStrategy !== 'adaptive-polar-grid') {
-      this.emitStatus('Select Adaptive polar grid with g → o first.');
-      return;
-    }
-    this.snapWithPolarLogicalDirection(direction, targets);
-  }
-
-  private snapWithPolarGrid(direction: CardinalDirection, targets: NavTargetKind): void {
+  private snapWithQuadrantGrid(direction: CardinalDirection, targets: NavTargetKind): void {
     this.finishTweens();
-    if (!this.polarOriginLayer) this.capturePolarOrigin();
-    const origin = this.polarOriginInStage();
-    const grid = this.currentPolarGrid(targets);
-    if (!origin || !grid || grid.stops.length === 0) return;
-
+    this.ensureQuadrantOrigin();
+    const origin = this.quadrantOriginInStage();
+    if (!origin) return;
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
-    const atOrigin = Math.hypot(cx - origin.x, cy - origin.y) < 4;
-    if (atOrigin) {
-      const desiredAngle = cardinalAngle(direction);
-      const firstRing = grid.radialBands[0]?.stops;
-      if (!firstRing?.length) return;
-      const target = firstRing.reduce((a, b) =>
-        circularAngleDistance(a.angle, desiredAngle) <= circularAngleDistance(b.angle, desiredAngle) ? a : b);
-      this.polarGoalAngle = desiredAngle;
-      this.polarGoalRadius = target.radius;
-      this.polarGoalAxis = 'angle';
-      this.polarNavLast = {id: target.id, kind: target.kind};
-      this.nodeGridTargets = targets;
-      this.jumpCrosshairsToStopCenter({x: target.stageX, y: target.stageY});
-      return;
-    }
+    const vertical = direction === 'up' || direction === 'down';
+    const positive = direction === 'right' || direction === 'down';
+    const allStops = this.navStops(targets);
+    const inView = (stop: NavigationGridStop) =>
+      stop.cx >= 0 && stop.cx <= this.stage.width() &&
+      stop.cy >= 0 && stop.cy <= this.stage.height();
+    const visible = allStops.filter(inView);
+    if (visible.length === 0) return;
+    const tolerance = this.navGridTolerance(visible.length);
+    const grid = buildNavigationGrid(
+      visible,
+      this.stage.width(),
+      this.stage.height(),
+      tolerance,
+    );
+    const bands = vertical ? grid.rows : grid.columns;
+    const primary = (stop: NavigationGridStop) => vertical ? stop.cy : stop.cx;
+    const here = vertical ? cy : cx;
+    const currentStop = visible.find(stop =>
+      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
+    const atOrigin = Math.max(Math.abs(cx - origin.x), Math.abs(cy - origin.y)) < 4;
+    const currentQuadrant = navigationQuadrant(cx - origin.x, cy - origin.y)
+      ?? quadrantForDirection(direction);
 
-    const current = grid.stops.find(stop =>
-      Math.abs(stop.stageX - cx) < 4 && Math.abs(stop.stageY - cy) < 4);
-    if (!current) {
-      this.emitStatus('Polar grid lost its current item; release g to choose a new origin.');
-      return;
-    }
-    this.snapWithPolarLogicalDirection(polarDirectionForCardinal(current.angle, direction), targets, grid, current);
-  }
-
-  private snapWithPolarLogicalDirection(
-    direction: PolarLogicalDirection,
-    targets: NavTargetKind,
-    preparedGrid?: PolarNavigationGrid,
-    preparedCurrent?: PolarNavigationStop,
-  ): void {
-    this.finishTweens();
-    if (!this.polarOriginLayer) this.capturePolarOrigin();
-    const origin = this.polarOriginInStage();
-    const grid = preparedGrid ?? this.currentPolarGrid(targets);
-    if (!origin || !grid || grid.stops.length === 0) return;
-
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-    if (Math.hypot(cx - origin.x, cy - origin.y) < 4) {
-      this.emitStatus('At the polar origin; use h/j/k/l to move outward first.');
-      return;
-    }
-    const current = preparedCurrent ?? grid.stops.find(stop =>
-      Math.abs(stop.stageX - cx) < 4 && Math.abs(stop.stageY - cy) < 4);
-    if (!current) return;
-
-    const lastCenter = this.polarNavLast
-      ? this.navStopCenter(this.polarNavLast.id, this.polarNavLast.kind)
+    const lastCenter = this.quadrantNavLast
+      ? this.navStopCenter(this.quadrantNavLast.id, this.quadrantNavLast.kind)
       : null;
     const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (!onLast) {
-      this.polarGoalAngle = current.angle;
-      this.polarGoalRadius = current.radius;
-      this.polarGoalAxis = null;
+    if (this.quadrantNavLast && !onLast) {
+      this.quadrantGoalAngle = Math.atan2(cy - origin.y, cx - origin.x);
+      this.quadrantGoalAdjusted = false;
+    } else if (atOrigin && !this.quadrantGoalAdjusted) {
+      this.quadrantGoalAngle = cardinalAngle(direction);
     }
 
-    let target: PolarNavigationStop | null = null;
-    if (direction === 'outward' || direction === 'inward') {
-      const ringIndex = bandIndexForStop(grid.radialBands, current);
-      const targetIndex = ringIndex + (direction === 'outward' ? 1 : -1);
-      if (targetIndex < 0) {
-        const originStop = grid.originStops[0];
-        if (!originStop) return;
-        target = {
-          ...current,
-          id: originStop.id,
-          kind: originStop.kind,
-          source: originStop,
-          stageX: originStop.cx,
-          stageY: originStop.cy,
-          radius: 0,
-        };
-      } else {
-        const ring = grid.radialBands[targetIndex]?.stops;
-        if (!ring?.length) return;
-        const goalAngle = this.polarGoalAngle ?? current.angle;
-        const goalSpoke = bandIndexAtCoordinate(
-          grid.angularBands,
-          polarGridAngleCoordinate(grid, goalAngle),
-        );
-        const matchingCell = ring.filter(stop =>
-          bandIndexForStop(grid.angularBands, stop) === goalSpoke);
-        const candidates = matchingCell.length > 0 ? matchingCell : ring;
-        target = candidates.reduce((a, b) =>
-          circularAngleDistance(a.angle, goalAngle) <= circularAngleDistance(b.angle, goalAngle) ? a : b);
-      }
-      this.polarGoalRadius = target.radius;
-      this.polarGoalAxis = 'angle';
+    const constrainToQuadrant = moveUsesQuadrantConstraint(currentQuadrant, direction);
+    const candidatesFor = (stops: NavigationGridStop[]) => constrainToQuadrant
+      ? stops.filter(stop => {
+          const stopQuadrant = navigationQuadrant(stop.cx - origin.x, stop.cy - origin.y);
+          return stopQuadrant === null || stopQuadrant === currentQuadrant;
+        })
+      : stops;
+
+    let startIndex: number;
+    if (currentStop) {
+      startIndex = bandIndexForStop(bands, currentStop) + (positive ? 1 : -1);
+    } else if (positive) {
+      startIndex = bands.findIndex(band => band.center > here);
     } else {
-      const spokes = grid.angularBands;
-      if (spokes.length < 2) return;
-      const spokeIndex = bandIndexForStop(spokes, current);
-      const delta = direction === 'clockwise' ? 1 : -1;
-      const targetIndex = (spokeIndex + delta + spokes.length) % spokes.length;
-      const spoke = spokes[targetIndex].stops;
-      const goalRadius = this.polarGoalRadius ?? current.radius;
-      const goalRing = bandIndexAtCoordinate(grid.radialBands, goalRadius);
-      const matchingCell = spoke.filter(stop =>
-        bandIndexForStop(grid.radialBands, stop) === goalRing);
-      const candidates = matchingCell.length > 0 ? matchingCell : spoke;
-      target = candidates.reduce((a, b) =>
-        Math.abs(a.radius - goalRadius) <= Math.abs(b.radius - goalRadius) ? a : b);
-      this.polarGoalAngle = target.angle;
-      this.polarGoalAxis = 'radius';
+      startIndex = -1;
+      for (let i = bands.length - 1; i >= 0; i--) {
+        if (bands[i].center < here) {
+          startIndex = i;
+          break;
+        }
+      }
+    }
+
+    let candidates: NavigationGridStop[] | null = null;
+    for (let index = startIndex;
+         index >= 0 && index < bands.length;
+         index += positive ? 1 : -1) {
+      const inBand = candidatesFor(bands[index].stops);
+      if (inBand.length > 0) {
+        candidates = inBand;
+        break;
+      }
+    }
+
+    // If the constrained region has no visible destination, bring the nearest
+    // matching off-screen band into view. That pan deliberately re-origins the
+    // quadrant grid when it finishes.
+    if (!candidates) {
+      const offscreenAhead = candidatesFor(allStops.filter(stop =>
+        !inView(stop) &&
+        (positive
+          ? primary(stop) > here + tolerance
+          : primary(stop) < here - tolerance)));
+      if (offscreenAhead.length === 0) {
+        if (this.nodeGridVisible) this.redrawNodeGrid();
+        return;
+      }
+      const bandEdge = positive
+        ? Math.min(...offscreenAhead.map(primary))
+        : Math.max(...offscreenAhead.map(primary));
+      candidates = offscreenAhead.filter(stop =>
+        Math.abs(primary(stop) - bandEdge) <= tolerance);
     }
 
     this.nodeGridTargets = targets;
-    this.polarNavLast = {id: target.id, kind: target.kind};
-    this.jumpCrosshairsToStopCenter({x: target.stageX, y: target.stageY});
+    const perpendicular = (stop: NavigationGridStop) => vertical ? stop.cx : stop.cy;
+    const currentPerpendicular = vertical ? cx : cy;
+    const target = candidates.reduce((a, b) => {
+      const aRay = distanceToGoalRay(origin, this.quadrantGoalAngle, a);
+      const bRay = distanceToGoalRay(origin, this.quadrantGoalAngle, b);
+      if (Math.abs(aRay - bRay) >= 0.01) return aRay < bRay ? a : b;
+      return Math.abs(perpendicular(a) - currentPerpendicular) <=
+        Math.abs(perpendicular(b) - currentPerpendicular) ? a : b;
+    });
+    this.quadrantNavLast = {id: target.id, kind: target.kind};
+    this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
   }
 
   private snapWithAdaptiveBandGrid(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind) {
@@ -3725,8 +3755,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const opening = !this.nodeGridVisible;
     this.nodeGridVisible = true;
     this.nodeGridTargets = targets;
-    if (opening && this.graphItemNavigationStrategy === 'adaptive-polar-grid') {
-      this.capturePolarOrigin();
+    if (opening && this.graphItemNavigationStrategy === 'adaptive-quadrant-grid') {
+      this.captureQuadrantOrigin();
     }
     // Move-by-node's band grid replaces the ordinary drawing grid while held.
     this.drawingLayer.hideGrid();
@@ -3736,7 +3766,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private hideNodeGrid(): void {
     this.nodeGridVisible = false;
-    this.resetPolarNavigation();
+    this.resetQuadrantNavigation();
     this.nodeGridGroup?.destroy();
     this.nodeGridGroup = null;
     this.crosshairsLayer.batchDraw();
@@ -3748,8 +3778,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const group = new Konva.Group({listening: false});
     this.nodeGridGroup = group;
 
-    if (this.graphItemNavigationStrategy === 'adaptive-polar-grid') {
-      this.drawPolarNodeGrid(group);
+    if (this.graphItemNavigationStrategy === 'adaptive-quadrant-grid') {
+      this.drawQuadrantNodeGrid(group);
       this.crosshairsLayer.add(group);
       group.moveToBottom();
       this.crosshairsLayer.batchDraw();
@@ -3891,158 +3921,113 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.batchDraw();
   }
 
-  private drawPolarNodeGrid(group: Konva.Group): void {
-    const origin = this.polarOriginInStage();
-    const grid = this.currentPolarGrid(this.nodeGridTargets);
-    if (!origin || !grid) return;
+  private drawQuadrantNodeGrid(group: Konva.Group): void {
+    this.ensureQuadrantOrigin();
+    const origin = this.quadrantOriginInStage();
+    if (!origin) return;
 
     const W = this.stage.width(), H = this.stage.height();
+    const stops = this.navStops(this.nodeGridTargets)
+      .filter(stop => stop.cx >= 0 && stop.cx <= W && stop.cy >= 0 && stop.cy <= H);
+    const grid = buildNavigationGrid(
+      stops,
+      W,
+      H,
+      this.navGridTolerance(stops.length),
+    );
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const stroke = palette.crosshairsStroke;
-    const toDegrees = 180 / Math.PI;
-    const displayBoxRadius = Math.max(
-      Math.abs(origin.x),
-      Math.abs(W - origin.x),
-      Math.abs(origin.y),
-      Math.abs(H - origin.y),
-    ) + 2;
-    const displayRayRadius = Math.max(
-      Math.hypot(origin.x, origin.y),
-      Math.hypot(W - origin.x, origin.y),
-      Math.hypot(origin.x, H - origin.y),
-      Math.hypot(W - origin.x, H - origin.y),
-    ) + 2;
-
-    const boxBandPath = (
-      context: Konva.Context,
-      innerRadius: number,
-      outerRadius: number,
-    ) => {
-      context.beginPath();
-      context.moveTo(origin.x - outerRadius, origin.y - outerRadius);
-      context.lineTo(origin.x + outerRadius, origin.y - outerRadius);
-      context.lineTo(origin.x + outerRadius, origin.y + outerRadius);
-      context.lineTo(origin.x - outerRadius, origin.y + outerRadius);
-      context.closePath();
-      if (innerRadius > 0) {
-        // Counter-clockwise inner path makes a transparent square hole.
-        context.moveTo(origin.x - innerRadius, origin.y - innerRadius);
-        context.lineTo(origin.x - innerRadius, origin.y + innerRadius);
-        context.lineTo(origin.x + innerRadius, origin.y + innerRadius);
-        context.lineTo(origin.x + innerRadius, origin.y - innerRadius);
-        context.closePath();
-      }
-    };
-    const boxBand = (band: NavigationAxisBand<PolarNavigationStop>, opacity: number) => {
-      const outerRadius = Math.min(band.end, displayBoxRadius);
-      if (band.start >= outerRadius) return;
-      const innerRadius = Math.max(0, band.start);
-      group.add(new Konva.Shape({
-        sceneFunc: (context, shape) => {
-          boxBandPath(context, innerRadius, outerRadius);
-          context.fillShape(shape);
-        },
-        fill: stroke,
-        opacity,
-        listening: false,
-      }));
-    };
-    const wedge = (band: NavigationAxisBand<PolarNavigationStop>, opacity: number) => {
-      const startAngle = polarBandAngle(grid, band.start);
-      const angle = (band.end - band.start) / grid.angularScale;
-      group.add(new Konva.Wedge({
-        x: origin.x,
-        y: origin.y,
-        radius: displayRayRadius,
-        rotation: startAngle * toDegrees,
-        angle: angle * toDegrees,
-        fill: stroke,
-        opacity,
-        listening: false,
-      }));
-    };
-
-    grid.radialBands.forEach((band, index) => {
-      if (index % 2 === 1) boxBand(band, 0.035);
-    });
-    grid.angularBands.forEach((band, index) => {
-      if (index % 2 === 1) wedge(band, 0.035);
-    });
-
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
-    const current = grid.stops.find(stop =>
-      Math.abs(stop.stageX - cx) < 4 && Math.abs(stop.stageY - cy) < 4);
-    const activeRing = current ? bandIndexForStop(grid.radialBands, current) : -1;
-    const activeSpoke = current ? bandIndexForStop(grid.angularBands, current) : -1;
-    if (activeRing >= 0) boxBand(grid.radialBands[activeRing], 0.075);
-    if (activeSpoke >= 0) wedge(grid.angularBands[activeSpoke], 0.075);
-    if (activeRing >= 0 && activeSpoke >= 0) {
-      const radial = grid.radialBands[activeRing];
-      const angular = grid.angularBands[activeSpoke];
-      const innerRadius = Math.max(0, radial.start);
-      const outerRadius = Math.min(radial.end, displayBoxRadius);
-      const startAngle = polarBandAngle(grid, angular.start);
-      const endAngle = startAngle + (angular.end - angular.start) / grid.angularScale;
-      group.add(new Konva.Shape({
-        sceneFunc: (context, shape) => {
-          context.save();
-          context.beginPath();
-          context.moveTo(origin.x, origin.y);
-          context.arc(origin.x, origin.y, displayRayRadius, startAngle, endAngle);
-          context.closePath();
-          context.clip();
-          boxBandPath(context, innerRadius, outerRadius);
-          context.fillShape(shape);
-          context.restore();
-        },
+    const current = stops.find(stop =>
+      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
+    const activeColumn = current
+      ? bandIndexForStop(grid.columns, current)
+      : bandIndexAtCoordinate(grid.columns, cx);
+    const activeRow = current
+      ? bandIndexForStop(grid.rows, current)
+      : bandIndexAtCoordinate(grid.rows, cy);
+
+    const fillBand = (band: NavigationAxisBand, vertical: boolean, opacity: number) =>
+      new Konva.Rect({
+        x: vertical ? band.start : 0,
+        y: vertical ? 0 : band.start,
+        width: vertical ? band.end - band.start : W,
+        height: vertical ? H : band.end - band.start,
+        fill: stroke,
+        opacity,
+        listening: false,
+      });
+    grid.columns.forEach((band, index) => {
+      if (index % 2 === 1) group.add(fillBand(band, true, 0.035));
+    });
+    grid.rows.forEach((band, index) => {
+      if (index % 2 === 1) group.add(fillBand(band, false, 0.035));
+    });
+    if (activeColumn >= 0) group.add(fillBand(grid.columns[activeColumn], true, 0.075));
+    if (activeRow >= 0) group.add(fillBand(grid.rows[activeRow], false, 0.075));
+    if (activeColumn >= 0 && activeRow >= 0) {
+      const column = grid.columns[activeColumn];
+      const row = grid.rows[activeRow];
+      group.add(new Konva.Rect({
+        x: column.start,
+        y: row.start,
+        width: column.end - column.start,
+        height: row.end - row.start,
         fill: stroke,
         opacity: 0.1,
         listening: false,
       }));
     }
 
-    for (let i = 1; i < grid.radialBands.length; i++) {
-      const radius = grid.radialBands[i].start;
-      if (radius > displayBoxRadius) continue;
-      group.add(new Konva.Rect({
-        name: 'polar-grid-ring-boundary polar-grid-box-boundary',
-        x: origin.x - radius,
-        y: origin.y - radius,
-        width: radius * 2,
-        height: radius * 2,
+    const boundary = (points: number[], name: string, opacity = 0.3) =>
+      new Konva.Line({
+        name,
+        points,
         stroke,
         strokeWidth: 1,
-        opacity: 0.3,
+        opacity,
         listening: false,
-      }));
+      });
+    for (let i = 1; i < grid.columns.length; i++) {
+      group.add(boundary(
+        [grid.columns[i].start, 0, grid.columns[i].start, H],
+        'quadrant-grid-column-boundary',
+      ));
     }
-    for (const band of grid.angularBands) {
-      const angle = polarBandAngle(grid, band.start);
-      const end = this.polarRayEnd(origin, angle, W, H);
-      if (!end) continue;
-      group.add(new Konva.Line({
-        name: 'polar-grid-spoke-boundary',
-        points: [origin.x, origin.y, end.x, end.y],
-        stroke,
-        strokeWidth: 1,
-        opacity: 0.3,
-        listening: false,
-      }));
+    for (let i = 1; i < grid.rows.length; i++) {
+      group.add(boundary(
+        [0, grid.rows[i].start, W, grid.rows[i].start],
+        'quadrant-grid-row-boundary',
+      ));
     }
 
-    // Box-polar membership legend: the radial arm carries box-band cadence; the
-    // tangential arm carries angular-sector cadence.
+    // The two 45-degree diagonals are real navigation borders: they classify
+    // each stop as north, south, east, or west of the held origin.
+    for (const angle of [
+      Math.PI / 4,
+      Math.PI * 3 / 4,
+      Math.PI * 5 / 4,
+      Math.PI * 7 / 4,
+    ]) {
+      const end = this.navigationRayEnd(origin, angle, W, H);
+      if (end) {
+        group.add(boundary(
+          [origin.x, origin.y, end.x, end.y],
+          'quadrant-grid-diagonal-boundary',
+          0.5,
+        ));
+      }
+    }
+
     const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
-    for (const stop of grid.stops) {
-      if (stop.stageX < 0 || stop.stageX > W || stop.stageY < 0 || stop.stageY > H) continue;
-      const ringIndex = bandIndexForStop(grid.radialBands, stop);
-      const spokeIndex = bandIndexForStop(grid.angularBands, stop);
+    for (const stop of stops) {
+      const rowIndex = bandIndexForStop(grid.rows, stop);
+      const columnIndex = bandIndexForStop(grid.columns, stop);
       const marker = new Konva.Group({
-        name: 'polar-grid-membership-marker',
-        x: stop.stageX,
-        y: stop.stageY,
-        rotation: stop.angle * toDegrees,
+        name: 'quadrant-grid-membership-marker',
+        x: stop.cx,
+        y: stop.cy,
         listening: false,
       });
       const arm = (points: number[], name: string, opacity: number) => {
@@ -4064,43 +4049,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           listening: false,
         }));
       };
-      arm([-9, 0, 9, 0], 'polar-grid-ring-arm', markerOpacity(ringIndex));
-      arm([0, -9, 0, 9], 'polar-grid-spoke-arm', markerOpacity(spokeIndex));
+      arm([-9, 0, 9, 0], 'quadrant-grid-row-arm', markerOpacity(rowIndex));
+      arm([0, -9, 0, 9], 'quadrant-grid-column-arm', markerOpacity(columnIndex));
       group.add(marker);
     }
 
-    if (current && this.polarGoalAxis === 'angle' && this.polarGoalAngle !== null &&
-        circularAngleDistance(current.angle, this.polarGoalAngle) >= 2 * Math.PI / 180) {
-      const end = this.polarRayEnd(origin, this.polarGoalAngle, W, H);
-      if (end) group.add(new Konva.Line({
-        name: 'polar-grid-goal-guide',
-        points: [origin.x, origin.y, end.x, end.y],
+    const goalEnd = this.navigationRayEnd(origin, this.quadrantGoalAngle, W, H);
+    if (goalEnd) {
+      group.add(new Konva.Line({
+        name: 'quadrant-grid-goal-ray',
+        points: [origin.x, origin.y, goalEnd.x, goalEnd.y],
         stroke,
         strokeWidth: 2,
-        opacity: 0.75,
-        dash: [8, 6],
-        listening: false,
-      }));
-    } else if (current && this.polarGoalAxis === 'radius' && this.polarGoalRadius !== null &&
-               Math.abs(current.radius - this.polarGoalRadius) >= 4) {
-      group.add(new Konva.Rect({
-        name: 'polar-grid-goal-guide',
-        x: origin.x - this.polarGoalRadius,
-        y: origin.y - this.polarGoalRadius,
-        width: this.polarGoalRadius * 2,
-        height: this.polarGoalRadius * 2,
-        stroke,
-        strokeWidth: 2,
-        opacity: 0.75,
+        opacity: 0.8,
         dash: [8, 6],
         listening: false,
       }));
     }
 
-    // The origin is session state, not necessarily a graph item. Keep it
-    // visible even after navigation pans it away from the current stop.
     group.add(new Konva.Circle({
-      name: 'polar-grid-origin',
+      name: 'quadrant-grid-origin',
       x: origin.x,
       y: origin.y,
       radius: 6,
@@ -4112,7 +4080,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }));
   }
 
-  private polarRayEnd(
+  private navigationRayEnd(
     origin: {x: number; y: number},
     angle: number,
     width: number,

@@ -209,19 +209,21 @@ describe('KeymenuComponent', () => {
       kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
       strategy: 'adaptive-band-grid',
     });
-    const polarGrid = moveByNodeSubmenu.submenuConfig['o'] as LabeledAction;
-    expect(polarGrid.actionLabel).toBe('Use adaptive polar grid');
-    polarGrid.action();
+    const quadrantGrid = moveByNodeSubmenu.submenuConfig['o'] as LabeledAction;
+    expect(quadrantGrid.actionLabel).toBe('Use adaptive quadrant grid');
+    quadrantGrid.action();
     expect(emitSpy).toHaveBeenCalledWith({
       kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
-      strategy: 'adaptive-polar-grid',
+      strategy: 'adaptive-quadrant-grid',
     });
-    const clockwise = moveByNodeSubmenu.submenuConfig['n'] as LabeledAction;
-    const counterclockwise = moveByNodeSubmenu.submenuConfig['p'] as LabeledAction;
-    clockwise.action();
-    counterclockwise.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE, targets: 'labels'});
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE, targets: 'labels'});
+    const goalSouth = moveByNodeSubmenu.submenuConfig['n'] as LabeledAction;
+    const goalNorth = moveByNodeSubmenu.submenuConfig['p'] as LabeledAction;
+    expect(goalSouth.actionLabel).toBe('Goal ray south');
+    expect(goalNorth.actionLabel).toBe('Goal ray north');
+    goalSouth.action();
+    goalNorth.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH, targets: 'labels'});
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH, targets: 'labels'});
     // coarse (moveSpeed.bigger = 's') = nodes only
     const coarse = moveByNodeSubmenu.submenuConfig['s'] as LabeledActionSubmenuConfig;
     expect(coarse instanceof LabeledActionSubmenuConfig).toBeTrue();

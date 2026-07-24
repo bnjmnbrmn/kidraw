@@ -20,7 +20,7 @@ export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
 
 /** Spatial policies available to graph-item navigation. */
-export type GraphItemNavigationStrategy = 'adaptive-band-grid' | 'adaptive-polar-grid';
+export type GraphItemNavigationStrategy = 'adaptive-band-grid' | 'adaptive-quadrant-grid';
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -54,8 +54,8 @@ export enum DACommandType {
   SNAP_TO_NODE_RIGHT = 'SNAP_TO_NODE_RIGHT',
   SNAP_TO_NODE_UP = 'SNAP_TO_NODE_UP',
   SNAP_TO_NODE_DOWN = 'SNAP_TO_NODE_DOWN',
-  NAVIGATE_GRAPH_ITEM_CLOCKWISE = 'NAVIGATE_GRAPH_ITEM_CLOCKWISE',
-  NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE = 'NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE',
+  ADJUST_GRAPH_ITEM_GOAL_SOUTH = 'ADJUST_GRAPH_ITEM_GOAL_SOUTH',
+  ADJUST_GRAPH_ITEM_GOAL_NORTH = 'ADJUST_GRAPH_ITEM_GOAL_NORTH',
   INCREASE_SELECTED_NODE_SIZE = 'INCREASE_SELECTED_NODE_SIZE',
   DECREASE_SELECTED_NODE_SIZE = 'DECREASE_SELECTED_NODE_SIZE',
   INCREASE_SELECTED_TEXT_SIZE = 'INCREASE_SELECTED_TEXT_SIZE',
@@ -165,8 +165,8 @@ export type DACommand =
   | {kind: DACommandType.SNAP_TO_NODE_RIGHT; targets?: NavTargetKind}
   | {kind: DACommandType.SNAP_TO_NODE_UP; targets?: NavTargetKind}
   | {kind: DACommandType.SNAP_TO_NODE_DOWN; targets?: NavTargetKind}
-  | {kind: DACommandType.NAVIGATE_GRAPH_ITEM_CLOCKWISE; targets?: NavTargetKind}
-  | {kind: DACommandType.NAVIGATE_GRAPH_ITEM_COUNTERCLOCKWISE; targets?: NavTargetKind}
+  | {kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH; targets?: NavTargetKind}
+  | {kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH; targets?: NavTargetKind}
   | {kind: DACommandType.INCREASE_SELECTED_NODE_SIZE}
   | {kind: DACommandType.DECREASE_SELECTED_NODE_SIZE}
   | {kind: DACommandType.INCREASE_SELECTED_TEXT_SIZE}

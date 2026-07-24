@@ -9,7 +9,7 @@ status: preserved as selectable adaptive band-grid strategy, 2026-07-22
 The approach's short name is **adaptive band-grid navigation**. It is the
 default graph-item navigation strategy and is explicitly selectable with
 `g → e`, so it remains available as a known-good option while alternatives are
-tested. The first sibling is [Adaptive polar grid](design-polar-grid-navigation.md),
+tested. The current sibling is [Adaptive quadrant grid](design-quadrant-grid-navigation.md),
 selected with `g → o`. The strategy choice is session state, not graph content.
 
 Ben's model (2026-07-21), replacing the cone / cycling / connected-neighbour
