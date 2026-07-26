@@ -102,8 +102,9 @@ tie-break.
 - No rectangular row/column fills, boundaries, or current-cell emphasis.
 - A slightly darker wash marks the active N/S/E/W quadrant.
 - One pronounced dashed set of diagonals follows the crosshairs, previewing
-  the origin frame that a direction change would activate. It is hidden while
-  the crosshairs are at the active origin.
+  the origin frame that a direction change would activate. It appears as soon
+  as `g` is held with this strategy active, including while the crosshairs are
+  at the active origin.
 - No persistent diagonal lines through the active origin; the origin marker
   and quadrant wash carry that state.
 - Per-item row/column membership crosshairs.

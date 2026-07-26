@@ -68,7 +68,8 @@ _Updated 2026-07-26. Branch: `main`._
 >   the rectangular background fills/boundaries and solid origin diagonals
 >   are gone; a slightly darker wash marks the active quadrant, and more
 >   pronounced dashed **ghost diagonals** follow the crosshairs to preview the
->   next turn's frame. This supersedes the circular
+>   next turn's frame. They appear immediately when `g` is held, even before
+>   the first move. This supersedes the circular
 >   and concentric-box polar attempts. Design and open feel questions:
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 >

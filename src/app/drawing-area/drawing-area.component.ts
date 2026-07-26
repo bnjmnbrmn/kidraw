@@ -4067,11 +4067,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Preview the diagonal frame that would become active on the next
     // direction change. It follows the crosshairs; the quadrant wash now
     // communicates the active frame without a second, darker set of lines.
-    const crosshairsAtOrigin =
-      Math.max(Math.abs(cx - origin.x), Math.abs(cy - origin.y)) < 4;
-    if (!crosshairsAtOrigin) {
-      addGhostDiagonalRays({x: cx, y: cy});
-    }
+    addGhostDiagonalRays({x: cx, y: cy});
 
     const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
     for (const stop of stops) {

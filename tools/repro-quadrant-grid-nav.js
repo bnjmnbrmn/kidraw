@@ -98,7 +98,7 @@ async function main() {
   check('g→o selects the quadrant model without a rectangular background grid',
     overlay.strategy === 'adaptive-quadrant-grid' && overlay.originMarkers === 1 &&
       overlay.diagonals === 0 && overlay.goalRays === 0 &&
-      overlay.ghostDiagonals === 0 && overlay.activeQuadrants === 0 &&
+      overlay.ghostDiagonals === 4 && overlay.activeQuadrants === 0 &&
       overlay.rows === 0 && overlay.columns === 0,
     JSON.stringify(overlay));
 
