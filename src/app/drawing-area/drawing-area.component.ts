@@ -507,6 +507,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnDestroy(): void {
     this.stopRouting();
+    this.cancelQuadrantGoalRayFade();
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
     if (this._beforeUnloadHandler) {
@@ -3413,6 +3414,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Screen-space bearing of the goal ray from the origin. */
   private quadrantGoalAngle = 0;
   private quadrantGoalAdjusted = false;
+  /** The goal ray is normally absent. n/p reveal it briefly, then a
+   *  dedicated tween fades it without changing navigation state. */
+  private quadrantGoalRayVisible = false;
+  private quadrantGoalRayFadeDelay: number | null = null;
+  private quadrantGoalRayFadeTween: Konva.Tween | null = null;
   private quadrantNavLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
   /** Which remembered perpendicular coordinate the next same-axis step will
    *  try to return to: x for vertical travel, y for horizontal travel. */
@@ -3461,7 +3467,48 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.quadrantLastDirection = null;
     this.quadrantGoalAngle = 0;
     this.quadrantGoalAdjusted = false;
+    this.hideQuadrantGoalRay();
     this.quadrantNavLast = null;
+  }
+
+  private cancelQuadrantGoalRayFade(): void {
+    if (this.quadrantGoalRayFadeDelay !== null) {
+      window.clearTimeout(this.quadrantGoalRayFadeDelay);
+      this.quadrantGoalRayFadeDelay = null;
+    }
+    this.quadrantGoalRayFadeTween?.destroy();
+    this.quadrantGoalRayFadeTween = null;
+  }
+
+  private hideQuadrantGoalRay(): void {
+    this.cancelQuadrantGoalRayFade();
+    this.quadrantGoalRayVisible = false;
+  }
+
+  private scheduleQuadrantGoalRayFade(): void {
+    this.cancelQuadrantGoalRayFade();
+    if (!this.quadrantGoalRayVisible) return;
+    const ray = this.nodeGridGroup
+      ?.findOne<Konva.Line>('.quadrant-grid-goal-ray');
+    if (!ray) return;
+
+    this.quadrantGoalRayFadeDelay = window.setTimeout(() => {
+      this.quadrantGoalRayFadeDelay = null;
+      const tween = new Konva.Tween({
+        node: ray,
+        duration: 0.8,
+        opacity: 0,
+        onFinish: () => {
+          if (this.quadrantGoalRayFadeTween !== tween) return;
+          this.quadrantGoalRayFadeTween = null;
+          this.quadrantGoalRayVisible = false;
+          ray.destroy();
+          this.crosshairsLayer.batchDraw();
+        },
+      });
+      this.quadrantGoalRayFadeTween = tween;
+      tween.play();
+    }, 650);
   }
 
   private currentNavigationViewport(): NavigationViewport {
@@ -3494,6 +3541,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.quadrantLastDirection = null;
     this.quadrantGoalAngle = 0;
     this.quadrantGoalAdjusted = false;
+    this.hideQuadrantGoalRay();
     this.quadrantNavLast = null;
   }
 
@@ -3535,6 +3583,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const changed = adjusted !== this.quadrantGoalAngle;
     this.quadrantGoalAngle = adjusted;
     this.quadrantGoalAdjusted = true;
+    this.quadrantGoalRayVisible = true;
     this.nodeGridTargets = targets;
     if (this.nodeGridVisible) this.redrawNodeGrid();
     const degrees = Math.round(step * 180 / Math.PI);
@@ -3792,6 +3841,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawQuadrantNodeGrid(group);
       this.crosshairsLayer.add(group);
       group.moveToBottom();
+      this.scheduleQuadrantGoalRayFade();
       this.crosshairsLayer.batchDraw();
       return;
     }
@@ -3949,67 +3999,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const stroke = palette.crosshairsStroke;
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
-    const current = stops.find(stop =>
-      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
-    const activeColumn = current
-      ? bandIndexForStop(grid.columns, current)
-      : bandIndexAtCoordinate(grid.columns, cx);
-    const activeRow = current
-      ? bandIndexForStop(grid.rows, current)
-      : bandIndexAtCoordinate(grid.rows, cy);
 
-    const fillBand = (band: NavigationAxisBand, vertical: boolean, opacity: number) =>
-      new Konva.Rect({
-        x: vertical ? band.start : 0,
-        y: vertical ? 0 : band.start,
-        width: vertical ? band.end - band.start : W,
-        height: vertical ? H : band.end - band.start,
-        fill: stroke,
-        opacity,
-        listening: false,
-      });
-    grid.columns.forEach((band, index) => {
-      if (index % 2 === 1) group.add(fillBand(band, true, 0.035));
-    });
-    grid.rows.forEach((band, index) => {
-      if (index % 2 === 1) group.add(fillBand(band, false, 0.035));
-    });
-    if (activeColumn >= 0) group.add(fillBand(grid.columns[activeColumn], true, 0.075));
-    if (activeRow >= 0) group.add(fillBand(grid.rows[activeRow], false, 0.075));
-    if (activeColumn >= 0 && activeRow >= 0) {
-      const column = grid.columns[activeColumn];
-      const row = grid.rows[activeRow];
-      group.add(new Konva.Rect({
-        x: column.start,
-        y: row.start,
-        width: column.end - column.start,
-        height: row.end - row.start,
+    // Keep the adaptive rows/columns as the invisible movement model, but
+    // replace their spreadsheet rendering with one wash for the active
+    // diagonal quadrant.
+    const activeQuadrant = navigationQuadrant(cx - origin.x, cy - origin.y) ??
+      (this.quadrantLastDirection
+        ? quadrantForDirection(this.quadrantLastDirection)
+        : null);
+    if (activeQuadrant) {
+      const reach = W + H;
+      const quadrantPoints = {
+        north: [
+          origin.x, origin.y,
+          origin.x - reach, origin.y - reach,
+          origin.x + reach, origin.y - reach,
+        ],
+        south: [
+          origin.x, origin.y,
+          origin.x - reach, origin.y + reach,
+          origin.x + reach, origin.y + reach,
+        ],
+        east: [
+          origin.x, origin.y,
+          origin.x + reach, origin.y - reach,
+          origin.x + reach, origin.y + reach,
+        ],
+        west: [
+          origin.x, origin.y,
+          origin.x - reach, origin.y - reach,
+          origin.x - reach, origin.y + reach,
+        ],
+      }[activeQuadrant];
+      group.add(new Konva.Line({
+        name: 'quadrant-grid-active-quadrant',
+        points: quadrantPoints,
+        closed: true,
         fill: stroke,
         opacity: 0.1,
         listening: false,
       }));
-    }
-
-    const boundary = (points: number[], name: string, opacity = 0.3) =>
-      new Konva.Line({
-        name,
-        points,
-        stroke,
-        strokeWidth: 1,
-        opacity,
-        listening: false,
-      });
-    for (let i = 1; i < grid.columns.length; i++) {
-      group.add(boundary(
-        [grid.columns[i].start, 0, grid.columns[i].start, H],
-        'quadrant-grid-column-boundary',
-      ));
-    }
-    for (let i = 1; i < grid.rows.length; i++) {
-      group.add(boundary(
-        [0, grid.rows[i].start, W, grid.rows[i].start],
-        'quadrant-grid-row-boundary',
-      ));
     }
 
     const diagonalAngles = [
@@ -4018,22 +4047,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       Math.PI * 5 / 4,
       Math.PI * 7 / 4,
     ];
-    const addDiagonalRays = (
-      center: {x: number; y: number},
-      name: string,
-      opacity: number,
-      dash?: number[],
-    ) => {
+    const addGhostDiagonalRays = (center: {x: number; y: number}) => {
       for (const angle of diagonalAngles) {
         const end = this.navigationRayEnd(center, angle, W, H);
         if (end) {
           group.add(new Konva.Line({
-            name,
+            name: 'quadrant-grid-ghost-diagonal',
             points: [center.x, center.y, end.x, end.y],
             stroke,
-            strokeWidth: 1,
-            opacity,
-            dash,
+            strokeWidth: 1.5,
+            opacity: 0.42,
+            dash: [7, 5],
             listening: false,
           }));
         }
@@ -4041,22 +4065,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
 
     // Preview the diagonal frame that would become active on the next
-    // direction change. It follows the crosshairs while the stronger active
-    // frame remains anchored at the current origin.
+    // direction change. It follows the crosshairs; the quadrant wash now
+    // communicates the active frame without a second, darker set of lines.
     const crosshairsAtOrigin =
       Math.max(Math.abs(cx - origin.x), Math.abs(cy - origin.y)) < 4;
     if (!crosshairsAtOrigin) {
-      addDiagonalRays(
-        {x: cx, y: cy},
-        'quadrant-grid-ghost-diagonal',
-        0.2,
-        [5, 6],
-      );
+      addGhostDiagonalRays({x: cx, y: cy});
     }
-
-    // The active 45-degree diagonals are real navigation borders: they
-    // classify each stop as north, south, east, or west of the current origin.
-    addDiagonalRays(origin, 'quadrant-grid-diagonal-boundary', 0.5);
 
     const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
     for (const stop of stops) {
@@ -4092,7 +4107,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       group.add(marker);
     }
 
-    const goalEnd = this.navigationRayEnd(origin, this.quadrantGoalAngle, W, H);
+    const goalEnd = this.quadrantGoalRayVisible
+      ? this.navigationRayEnd(origin, this.quadrantGoalAngle, W, H)
+      : null;
     if (goalEnd) {
       group.add(new Konva.Line({
         name: 'quadrant-grid-goal-ray',

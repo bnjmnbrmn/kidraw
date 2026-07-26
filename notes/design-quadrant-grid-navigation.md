@@ -37,8 +37,8 @@ prevents an old off-screen origin from silently governing a new view.
 
 Stops otherwise use the same visible adaptive rows and columns as the plain
 band-grid strategy: bounded-span clustering, midpoint boundaries, and local
-cell refinement. The overlay and movement consume that shared rectangular
-model.
+cell refinement. They remain the movement model, but the quadrant strategy no
+longer renders their rectangular fills or boundaries.
 
 ## Movement
 
@@ -66,18 +66,23 @@ Going to an off-screen stop may pan the viewport; the completed pan then
 re-origins the grid by the viewport-change rule. Within a same-direction run,
 the origin and goal ray otherwise remain stable.
 
-## Goal ray and `n` / `p`
+## Transient goal ray and `n` / `p`
 
-A dashed goal ray is always drawn from the origin. It initially points east.
-The first unadjusted `hjkl` move from the origin points it in that movement's
-cardinal direction. It then stays fixed through the same-direction run. A
-direction change re-origins first and resets the ray to the new direction.
+The goal ray still initially points east and still chooses landings, but it is
+normally hidden. The first unadjusted `hjkl` move from the origin points it in
+that movement's cardinal direction. It then stays fixed through the
+same-direction run. A direction change re-origins first and resets the ray to
+the new direction.
 
 `n` and `p` adjust the ray without moving the crosshairs:
 
 - `n` chooses the angular direction that moves the ray's endpoint toward
   screen-south.
 - `p` chooses the angular direction that moves it toward screen-north.
+
+Either key briefly reveals the dashed ray at its adjusted angle. It remains
+fully visible for 650 ms, then fades over 800 ms. A repeated `n`/`p` press
+restarts that reveal.
 
 These are intentionally not global clockwise/counterclockwise commands. At
 West, moving the endpoint south requires the opposite rotation from the same
@@ -94,14 +99,15 @@ tie-break.
 
 ## Overlay
 
-- Alternating rectangular row and column fills from the adaptive band model.
-- Rectangular row/column boundaries and current-cell emphasis.
-- Two stronger 45-degree diagonals through a marked origin.
-- A faint dashed copy of the diagonals follows the crosshairs, previewing the
-  origin frame that a direction change would activate. It is hidden while the
-  crosshairs are already at the active origin.
+- No rectangular row/column fills, boundaries, or current-cell emphasis.
+- A slightly darker wash marks the active N/S/E/W quadrant.
+- One pronounced dashed set of diagonals follows the crosshairs, previewing
+  the origin frame that a direction change would activate. It is hidden while
+  the crosshairs are at the active origin.
+- No persistent diagonal lines through the active origin; the origin marker
+  and quadrant wash carry that state.
 - Per-item row/column membership crosshairs.
-- One stronger dashed goal ray from the origin.
+- A transient dashed goal ray from the origin only after `n` or `p`.
 
 ## Feel questions
 
@@ -111,7 +117,5 @@ tie-break.
   a second confirming step.
 - Whether `n`/`p` should use the current adaptive 5°–15° increment, a fixed
   minimum, or snap to meaningful stop bearings.
-- Whether the ray should point east initially or remain absent until the first
-  `hjkl`/`n`/`p` input.
 - Whether re-origining after an automatic navigation pan feels helpful or
   breaks an intended sequence.

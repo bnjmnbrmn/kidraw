@@ -52,22 +52,23 @@ _Updated 2026-07-26. Branch: `main`._
 >   node-fill halo keeps both readable when an inferred boundary crosses a
 >   wide node. Chosen over synchronized blinking to avoid constant animation.
 > - **Adaptive quadrant-grid experiment (2026-07-24):** `g → o` now selects
->   a mostly rectangular adaptive grid divided into N/S/E/W regions by two
->   fixed 45° diagonals; `g → e` returns to Adaptive band grid. `hjkl` keep
+>   an adaptive row/column movement model divided into N/S/E/W regions by
+>   45° diagonals; `g → e` returns to Adaptive band grid. `hjkl` keep
 >   their ordinary screen directions. Main-axis movement stays in-region
 >   (`h/l` in East/West, `j/k` in North/South), while perpendicular movement
->   can cross a diagonal. A dashed goal ray always leaves the origin and
->   chooses the landing within a destination row/column. `n` tilts it toward
+>   can cross a diagonal. An ordinarily hidden goal ray chooses the landing
+>   within a destination row/column. `n` tilts it toward
 >   screen-south and `p` toward screen-north by an adaptive 5°–15° step,
->   without moving the crosshairs. Release `g` or any viewport pan/zoom/resize
+>   briefly revealing it before it fades. Release `g` or any viewport pan/zoom/resize
 >   resets the origin at the current crosshairs. **Turn-sensitive origin
 >   (2026-07-26):** a run of repeated presses in one `hjkl` direction keeps
 >   that origin, while the first different direction captures a new origin at
 >   the current stop before executing its move (`h h h j` re-origins at the
->   third `h` landing, then moves south). Faint dashed **ghost diagonals**
->   follow the crosshairs to preview the frame that the next turn would
->   activate; the stronger solid diagonals remain at the active origin. This
->   supersedes the circular
+>   third `h` landing, then moves south). **Simplified overlay (2026-07-26):**
+>   the rectangular background fills/boundaries and solid origin diagonals
+>   are gone; a slightly darker wash marks the active quadrant, and more
+>   pronounced dashed **ghost diagonals** follow the crosshairs to preview the
+>   next turn's frame. This supersedes the circular
 >   and concentric-box polar attempts. Design and open feel questions:
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 >
@@ -90,8 +91,9 @@ _Updated 2026-07-26. Branch: `main`._
 > (tier stops + overlay tier switching), `repro-nav-margin.js` (content-aware
 > margin + drawing-space goal after pan). Pure clustering coverage is in
 > `navigation-grid.spec.ts`. `repro-quadrant-grid-nav.js` covers strategy
-> selection, rectangular overlay + diagonal borders, main-axis quadrant
-> constraint, goal-ray n/p adjustment, viewport re-origining, and release;
+> selection, simplified quadrant wash + moving ghost diagonals, main-axis
+> quadrant constraint, transient goal-ray n/p adjustment, viewport
+> re-origining, and release;
 > pure geometry is in `navigation-quadrant-grid.spec.ts`.
 > Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).

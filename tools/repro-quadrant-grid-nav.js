@@ -88,19 +88,18 @@ async function main() {
       originMarkers: da.nodeGridGroup?.find('.quadrant-grid-origin').length ?? 0,
       diagonals: da.nodeGridGroup?.find('.quadrant-grid-diagonal-boundary').length ?? 0,
       ghostDiagonals: da.nodeGridGroup?.find('.quadrant-grid-ghost-diagonal').length ?? 0,
+      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant').length ?? 0,
       goalRays: da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0,
       rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
       columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
-      rowBoundaries: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').map(line => line.points()) ?? [],
-      columnBoundaries: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').map(line => line.points()) ?? [],
       stops: da.navStops('labels').map(stop => ({id: stop.id, x: stop.cx, y: stop.cy})),
     };
   });
-  check('g→o selects a rectangular quadrant grid',
+  check('g→o selects the quadrant model without a rectangular background grid',
     overlay.strategy === 'adaptive-quadrant-grid' && overlay.originMarkers === 1 &&
-      overlay.diagonals === 4 && overlay.goalRays === 1 &&
-      overlay.ghostDiagonals === 0 &&
-      overlay.rows >= 1 && overlay.columns >= 1,
+      overlay.diagonals === 0 && overlay.goalRays === 0 &&
+      overlay.ghostDiagonals === 0 && overlay.activeQuadrants === 0 &&
+      overlay.rows === 0 && overlay.columns === 0,
     JSON.stringify(overlay));
 
   const initialAngle = await page.evaluate(() =>
@@ -108,13 +107,28 @@ async function main() {
   await press('n');
   const southAngle = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantGoalAngle);
+  const rayAfterN = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+  });
   await press('p');
   const northAgainAngle = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantGoalAngle);
+  const rayAfterP = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+  });
   check('n tilts the goal ray south and p tilts it north',
     Math.sin(southAngle) > Math.sin(initialAngle) &&
-      Math.sin(northAgainAngle) < Math.sin(southAngle),
+      Math.sin(northAgainAngle) < Math.sin(southAngle) &&
+      rayAfterN === 1 && rayAfterP === 1,
     `${initialAngle.toFixed(3)} → ${southAngle.toFixed(3)} → ${northAgainAngle.toFixed(3)}`);
+  await page.waitForTimeout(1700);
+  const fadedRay = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+  });
+  check('the n/p goal ray fades away', fadedRay === 0, `${fadedRay} rays remain`);
 
   await press('l');
   const first = await at();
@@ -123,8 +137,12 @@ async function main() {
     const starts = name => da.nodeGridGroup?.find(`.${name}`)
       .map(line => line.points().slice(0, 2)) ?? [];
     return {
-      active: starts('quadrant-grid-diagonal-boundary'),
       ghost: starts('quadrant-grid-ghost-diagonal'),
+      activeBoundaries: starts('quadrant-grid-diagonal-boundary'),
+      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
+        .map(shape => shape.points()) ?? [],
+      rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
+      columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
     };
   });
   await press('l');
@@ -134,8 +152,12 @@ async function main() {
     const starts = name => da.nodeGridGroup?.find(`.${name}`)
       .map(line => line.points().slice(0, 2)) ?? [];
     return {
-      active: starts('quadrant-grid-diagonal-boundary'),
       ghost: starts('quadrant-grid-ghost-diagonal'),
+      activeBoundaries: starts('quadrant-grid-diagonal-boundary'),
+      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
+        .map(shape => shape.points()) ?? [],
+      rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
+      columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
     };
   });
   check('rightward travel in east skips a north-quadrant column',
@@ -143,11 +165,21 @@ async function main() {
     `${first} → ${second}`);
   const allStartAt = (starts, x, y) => starts.length === 4 &&
     starts.every(([sx, sy]) => Math.abs(sx - x) < 2 && Math.abs(sy - y) < 2);
-  check('ghost diagonals follow the crosshairs while active diagonals stay anchored',
-    allStartAt(firstFrames.active, 700, 200) &&
-      allStartAt(firstFrames.ghost, 800, 200) &&
-      allStartAt(secondFrames.active, 700, 200) &&
-      allStartAt(secondFrames.ghost, 940, 220),
+  check('only the pronounced ghost diagonals follow the crosshairs',
+    allStartAt(firstFrames.ghost, 800, 200) &&
+      allStartAt(secondFrames.ghost, 940, 220) &&
+      firstFrames.activeBoundaries.length === 0 &&
+      secondFrames.activeBoundaries.length === 0,
+    JSON.stringify({firstFrames, secondFrames}));
+  check('the active quadrant wash replaces the rectangular background grid',
+    firstFrames.activeQuadrants.length === 1 &&
+      secondFrames.activeQuadrants.length === 1 &&
+      firstFrames.activeQuadrants[0][2] > firstFrames.activeQuadrants[0][0] &&
+      firstFrames.activeQuadrants[0][4] > firstFrames.activeQuadrants[0][0] &&
+      secondFrames.activeQuadrants[0][2] > secondFrames.activeQuadrants[0][0] &&
+      secondFrames.activeQuadrants[0][4] > secondFrames.activeQuadrants[0][0] &&
+      firstFrames.rows === 0 && firstFrames.columns === 0 &&
+      secondFrames.rows === 0 && secondFrames.columns === 0,
     JSON.stringify({firstFrames, secondFrames}));
 
   await press('k');
