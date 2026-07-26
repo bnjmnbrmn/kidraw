@@ -3,7 +3,8 @@
  *
  *   g→o selects a rectangular adaptive grid divided by fixed diagonals.
  *   hjkl remain screen directions. Main-axis travel stays in the current
- *   N/S/E/W region; n/p tilt the origin's goal ray south/north.
+ *   N/S/E/W region; changing hjkl direction re-origins before moving; n/p
+ *   tilt the origin's goal ray south/north.
  */
 const { chromium } = require('@playwright/test');
 
@@ -37,7 +38,12 @@ async function main() {
       mk('east-2', 940, 220),
       mk('east-up', 930, 120),
       mk('south', 700, 360),
-      mk('west', 540, 200),
+      mk('west-1', 620, 200),
+      mk('west-2', 540, 200),
+      mk('west-3', 460, 200),
+      // Keep this far enough from the viewport margin that the j step does
+      // not also trigger the separate automatic-pan re-origining rule.
+      mk('turn-down', 460, 300),
     ];
     da.drawingLayer.restoreGraph({nodes, edges: []});
     da.drawingLayer.position({x: 0, y: 0});
@@ -62,6 +68,15 @@ async function main() {
     await page.keyboard.press(key);
     await page.waitForTimeout(220);
   };
+  const park = async id => page.evaluate(nodeId => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(tween => tween.finish()); da.tweens = [];
+    const node = da.drawingLayer.getDANodes().find(candidate => candidate.id === nodeId);
+    const center = da.getNodeCenterInStageCoordinates(node);
+    da.crosshairsLayer.crosshairs.x = center.x;
+    da.crosshairsLayer.crosshairs.y = center.y;
+    da.crosshairsLayer.batchDraw();
+  }, id);
 
   await page.keyboard.down('g'); await page.waitForTimeout(120);
   await press('o');
@@ -115,12 +130,34 @@ async function main() {
   await press('h');
   const inward = await at();
   await press('h');
-  const originAgain = await at();
+  const farther = await at();
+  check('a new horizontal run uses the turn point as its origin',
+    inward === 'east-1' && farther === 'origin',
+    `${inward} → ${farther}`);
+
+  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await park('origin');
+  await page.keyboard.down('g'); await page.waitForTimeout(120);
   await press('h');
-  const crossed = await at();
-  check('the origin is a gateway between opposite quadrants',
-    inward === 'east-1' && originAgain === 'origin' && crossed === 'west',
-    `${inward} → ${originAgain} → ${crossed}`);
+  const left1 = await at();
+  await press('h');
+  const left2 = await at();
+  await press('h');
+  const left3 = await at();
+  const originBeforeTurn = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginInStage());
+  await press('j');
+  const downAfterTurn = await at();
+  const originAfterTurn = await page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginInStage());
+  check('h h h j re-origins at the third landing, then moves down',
+    left1 === 'west-1' && left2 === 'west-2' && left3 === 'west-3' &&
+      downAfterTurn === 'turn-down' &&
+      Math.abs(originBeforeTurn.x - 700) < 2 &&
+      Math.abs(originBeforeTurn.y - 200) < 2 &&
+      Math.abs(originAfterTurn.x - 460) < 2 &&
+      Math.abs(originAfterTurn.y - 200) < 2,
+    JSON.stringify({left1, left2, left3, downAfterTurn, originBeforeTurn, originAfterTurn}));
 
   const beforePan = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -139,7 +176,7 @@ async function main() {
     }};
   });
   check('a viewport change resets the origin to the crosshairs',
-    Math.abs(beforePan.origin.x - beforePan.crosshairs.x) > 20 &&
+    Math.abs(beforePan.origin.y - beforePan.crosshairs.y) > 20 &&
       Math.abs(afterPan.origin.x - afterPan.crosshairs.x) < 2 &&
       Math.abs(afterPan.origin.y - afterPan.crosshairs.y) < 2,
     JSON.stringify({beforePan, afterPan}));

@@ -1,7 +1,7 @@
 ---
 title: Adaptive quadrant-grid navigation for graph items
 type: proposal
-status: first rectangular-quadrant experiment implemented, 2026-07-24
+status: turn-sensitive rectangular-quadrant experiment implemented, 2026-07-26
 ---
 
 # Adaptive quadrant-grid navigation
@@ -23,9 +23,16 @@ diagonals through it divide the viewport according to the dominant offset:
 - East/West when `abs(dx) >= abs(dy)`.
 - South/North when `abs(dy) > abs(dx)`.
 
-The origin is fixed until `g` is released **or the viewport changes**. A pan,
-zoom, or resize captures a new origin at the then-current crosshairs position
-and resets the goal ray. This makes the diagonal regions screen-relative and
+The origin is fixed for a run of the same `hjkl` direction. Pressing a
+different direction captures a new origin at the current crosshairs **before**
+executing that move. Thus `h h h j` makes three westward steps using the
+original frame, then moves the origin to the third landing and evaluates `j`
+as a southward step from there. Reversals such as `h l` count as direction
+changes too; `n` and `p` do not.
+
+Releasing `g` or changing the viewport also resets the origin. A pan, zoom, or
+resize captures a new origin at the then-current crosshairs position and
+resets the goal ray. This makes the diagonal regions screen-relative and
 prevents an old off-screen origin from silently governing a new view.
 
 Stops otherwise use the same visible adaptive rows and columns as the plain
@@ -56,13 +63,15 @@ Within the destination band, the stop nearest the **goal ray** wins. Exact
 ties fall back to the current perpendicular coordinate, which keeps a
 horizontal ray from making vertical steps arbitrary (and vice versa).
 Going to an off-screen stop may pan the viewport; the completed pan then
-re-origins the grid by the viewport-change rule.
+re-origins the grid by the viewport-change rule. Within a same-direction run,
+the origin and goal ray otherwise remain stable.
 
 ## Goal ray and `n` / `p`
 
 A dashed goal ray is always drawn from the origin. It initially points east.
 The first unadjusted `hjkl` move from the origin points it in that movement's
-cardinal direction. It then stays fixed while `hjkl` moves through the grid.
+cardinal direction. It then stays fixed through the same-direction run. A
+direction change re-origins first and resets the ray to the new direction.
 
 `n` and `p` adjust the ray without moving the crosshairs:
 

@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-07-24. Branch: `main`._
+_Updated 2026-07-26. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -60,7 +60,11 @@ _Updated 2026-07-24. Branch: `main`._
 >   chooses the landing within a destination row/column. `n` tilts it toward
 >   screen-south and `p` toward screen-north by an adaptive 5°–15° step,
 >   without moving the crosshairs. Release `g` or any viewport pan/zoom/resize
->   resets the origin at the current crosshairs. This supersedes the circular
+>   resets the origin at the current crosshairs. **Turn-sensitive origin
+>   (2026-07-26):** a run of repeated presses in one `hjkl` direction keeps
+>   that origin, while the first different direction captures a new origin at
+>   the current stop before executing its move (`h h h j` re-origins at the
+>   third `h` landing, then moves south). This supersedes the circular
 >   and concentric-box polar attempts. Design and open feel questions:
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 >

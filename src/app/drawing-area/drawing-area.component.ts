@@ -3404,9 +3404,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Explicit so the known-good Cartesian grid remains available beside
    *  navigation experiments. */
   private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-band-grid';
-  /** Fixed for one held-g session, unless the viewport pans, zooms, or resizes. */
+  /** Fixed for one run of the same hjkl direction, unless the viewport changes. */
   private quadrantOriginLayer: {x: number; y: number} | null = null;
   private quadrantOriginViewport: NavigationViewport | null = null;
+  /** The direction of the current run. A different hjkl key re-origins at
+   *  the current stop before that move is evaluated. */
+  private quadrantLastDirection: CardinalDirection | null = null;
   /** Screen-space bearing of the goal ray from the origin. */
   private quadrantGoalAngle = 0;
   private quadrantGoalAdjusted = false;
@@ -3455,6 +3458,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private resetQuadrantNavigation(): void {
     this.quadrantOriginLayer = null;
     this.quadrantOriginViewport = null;
+    this.quadrantLastDirection = null;
     this.quadrantGoalAngle = 0;
     this.quadrantGoalAdjusted = false;
     this.quadrantNavLast = null;
@@ -3487,6 +3491,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: (this.crosshairsLayer.crosshairs.y - this.drawingLayer.y()) / scale,
     };
     this.quadrantOriginViewport = this.currentNavigationViewport();
+    this.quadrantLastDirection = null;
     this.quadrantGoalAngle = 0;
     this.quadrantGoalAdjusted = false;
     this.quadrantNavLast = null;
@@ -3541,6 +3546,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private snapWithQuadrantGrid(direction: CardinalDirection, targets: NavTargetKind): void {
     this.finishTweens();
     this.ensureQuadrantOrigin();
+    if (this.quadrantLastDirection !== null &&
+        this.quadrantLastDirection !== direction) {
+      this.captureQuadrantOrigin();
+    }
+    this.quadrantLastDirection = direction;
     const origin = this.quadrantOriginInStage();
     if (!origin) return;
     const cx = this.crosshairsLayer.crosshairs.x;
