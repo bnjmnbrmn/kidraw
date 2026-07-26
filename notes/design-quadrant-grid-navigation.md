@@ -37,8 +37,8 @@ prevents an old off-screen origin from silently governing a new view.
 
 Stops otherwise use the same visible adaptive rows and columns as the plain
 band-grid strategy: bounded-span clustering, midpoint boundaries, and local
-cell refinement. They remain the movement model, but the quadrant strategy no
-longer renders their rectangular fills or boundaries.
+cell refinement. They remain the movement model and are rendered only as a
+very faint background layer in the quadrant strategy.
 
 ## Movement
 
@@ -99,7 +99,9 @@ tie-break.
 
 ## Overlay
 
-- No rectangular row/column fills, boundaries, or current-cell emphasis.
+- Very faint alternating row/column fills and boundaries show the underlying
+  adaptive movement grid. They use roughly one third of the former opacity
+  and have no active row, column, or cell emphasis.
 - A slightly darker wash marks the active N/S/E/W quadrant.
 - One pronounced dashed set of diagonals follows the crosshairs, previewing
   the origin frame that a direction change would activate. It appears as soon

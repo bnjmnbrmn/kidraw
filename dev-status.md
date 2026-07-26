@@ -65,8 +65,10 @@ _Updated 2026-07-26. Branch: `main`._
 >   that origin, while the first different direction captures a new origin at
 >   the current stop before executing its move (`h h h j` re-origins at the
 >   third `h` landing, then moves south). **Simplified overlay (2026-07-26):**
->   the rectangular background fills/boundaries and solid origin diagonals
->   are gone; a slightly darker wash marks the active quadrant, and more
+>   solid origin diagonals and strong spreadsheet treatment are gone; very
+>   faint rectangular fills/boundaries show the underlying movement grid
+>   without active-row/column/cell emphasis. A slightly darker wash marks the
+>   active quadrant, and more
 >   pronounced dashed **ghost diagonals** follow the crosshairs to preview the
 >   next turn's frame. They appear immediately when `g` is held, even before
 >   the first move. This supersedes the circular

@@ -92,14 +92,27 @@ async function main() {
       goalRays: da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0,
       rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
       columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
+      rowFills: da.nodeGridGroup?.find('.quadrant-grid-row-band').length ?? 0,
+      columnFills: da.nodeGridGroup?.find('.quadrant-grid-column-band').length ?? 0,
+      boundaryOpacities: [
+        ...(da.nodeGridGroup?.find('.quadrant-grid-row-boundary') ?? []),
+        ...(da.nodeGridGroup?.find('.quadrant-grid-column-boundary') ?? []),
+      ].map(line => line.opacity()),
+      fillOpacities: [
+        ...(da.nodeGridGroup?.find('.quadrant-grid-row-band') ?? []),
+        ...(da.nodeGridGroup?.find('.quadrant-grid-column-band') ?? []),
+      ].map(fill => fill.opacity()),
       stops: da.navStops('labels').map(stop => ({id: stop.id, x: stop.cx, y: stop.cy})),
     };
   });
-  check('g→o selects the quadrant model without a rectangular background grid',
+  check('g→o shows a deliberately faint rectangular movement grid',
     overlay.strategy === 'adaptive-quadrant-grid' && overlay.originMarkers === 1 &&
       overlay.diagonals === 0 && overlay.goalRays === 0 &&
       overlay.ghostDiagonals === 4 && overlay.activeQuadrants === 0 &&
-      overlay.rows === 0 && overlay.columns === 0,
+      overlay.rows >= 1 && overlay.columns >= 1 &&
+      overlay.rowFills >= 1 && overlay.columnFills >= 1 &&
+      overlay.boundaryOpacities.every(opacity => opacity <= 0.1) &&
+      overlay.fillOpacities.every(opacity => opacity <= 0.012),
     JSON.stringify(overlay));
 
   const initialAngle = await page.evaluate(() =>
@@ -171,15 +184,15 @@ async function main() {
       firstFrames.activeBoundaries.length === 0 &&
       secondFrames.activeBoundaries.length === 0,
     JSON.stringify({firstFrames, secondFrames}));
-  check('the active quadrant wash replaces the rectangular background grid',
+  check('the active quadrant wash remains above the faint movement grid',
     firstFrames.activeQuadrants.length === 1 &&
       secondFrames.activeQuadrants.length === 1 &&
       firstFrames.activeQuadrants[0][2] > firstFrames.activeQuadrants[0][0] &&
       firstFrames.activeQuadrants[0][4] > firstFrames.activeQuadrants[0][0] &&
       secondFrames.activeQuadrants[0][2] > secondFrames.activeQuadrants[0][0] &&
       secondFrames.activeQuadrants[0][4] > secondFrames.activeQuadrants[0][0] &&
-      firstFrames.rows === 0 && firstFrames.columns === 0 &&
-      secondFrames.rows === 0 && secondFrames.columns === 0,
+      firstFrames.rows >= 1 && firstFrames.columns >= 1 &&
+      secondFrames.rows >= 1 && secondFrames.columns >= 1,
     JSON.stringify({firstFrames, secondFrames}));
 
   await press('k');

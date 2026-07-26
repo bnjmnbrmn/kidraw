@@ -4000,9 +4000,55 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const cx = this.crosshairsLayer.crosshairs.x;
     const cy = this.crosshairsLayer.crosshairs.y;
 
-    // Keep the adaptive rows/columns as the invisible movement model, but
-    // replace their spreadsheet rendering with one wash for the active
-    // diagonal quadrant.
+    // The adaptive rows/columns remain visible as a deliberately subordinate
+    // movement grid. These are roughly one third of the former fill/boundary
+    // opacity, with no active row, column, or cell highlight.
+    const fillBand = (
+      band: NavigationAxisBand,
+      vertical: boolean,
+      name: string,
+    ) => new Konva.Rect({
+      name,
+      x: vertical ? band.start : 0,
+      y: vertical ? 0 : band.start,
+      width: vertical ? band.end - band.start : W,
+      height: vertical ? H : band.end - band.start,
+      fill: stroke,
+      opacity: 0.012,
+      listening: false,
+    });
+    grid.columns.forEach((band, index) => {
+      if (index % 2 === 1) {
+        group.add(fillBand(band, true, 'quadrant-grid-column-band'));
+      }
+    });
+    grid.rows.forEach((band, index) => {
+      if (index % 2 === 1) {
+        group.add(fillBand(band, false, 'quadrant-grid-row-band'));
+      }
+    });
+    for (let index = 1; index < grid.columns.length; index++) {
+      group.add(new Konva.Line({
+        name: 'quadrant-grid-column-boundary',
+        points: [grid.columns[index].start, 0, grid.columns[index].start, H],
+        stroke,
+        strokeWidth: 1,
+        opacity: 0.1,
+        listening: false,
+      }));
+    }
+    for (let index = 1; index < grid.rows.length; index++) {
+      group.add(new Konva.Line({
+        name: 'quadrant-grid-row-boundary',
+        points: [0, grid.rows[index].start, W, grid.rows[index].start],
+        stroke,
+        strokeWidth: 1,
+        opacity: 0.1,
+        listening: false,
+      }));
+    }
+
+    // The darker diagonal wash remains the primary region cue.
     const activeQuadrant = navigationQuadrant(cx - origin.x, cy - origin.y) ??
       (this.quadrantLastDirection
         ? quadrantForDirection(this.quadrantLastDirection)
