@@ -20,7 +20,10 @@ export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
 
 /** Spatial policies available to graph-item navigation. */
-export type GraphItemNavigationStrategy = 'adaptive-band-grid' | 'adaptive-quadrant-grid';
+export type GraphItemNavigationStrategy =
+  | 'adaptive-band-grid'
+  | 'adaptive-quadrant-grid'
+  | 'adaptive-quadrant-rings';
 
 export type LineStyle = 'solid' | 'dashed' | 'dotted';
 

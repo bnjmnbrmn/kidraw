@@ -33,6 +33,12 @@ import {
   navigationQuadrant,
   quadrantForDirection,
 } from './navigation-quadrant-grid';
+import {
+  buildQuadrantRingGrid,
+  nextQuadrantRingStop,
+  quadrantArcAngles,
+  quarterArcPoints,
+} from './navigation-quadrant-rings';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -3434,6 +3440,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return Math.max(12, Math.min(60, 180 / Math.sqrt(Math.max(1, visibleCount))));
   }
 
+  private usesQuadrantOrigin(strategy = this.graphItemNavigationStrategy): boolean {
+    return strategy === 'adaptive-quadrant-grid' ||
+      strategy === 'adaptive-quadrant-rings';
+  }
+
   private setGraphItemNavigationStrategy(strategy: GraphItemNavigationStrategy): void {
     this.graphItemNavigationStrategy = strategy;
     this.navGoalX = null;
@@ -3441,13 +3452,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navGoalAxis = null;
     this.navGridLast = null;
     this.resetQuadrantNavigation();
-    if (strategy === 'adaptive-quadrant-grid' && this.nodeGridVisible) {
+    if (this.usesQuadrantOrigin(strategy) && this.nodeGridVisible) {
       this.captureQuadrantOrigin();
     }
     if (this.nodeGridVisible) this.redrawNodeGrid();
-    this.emitStatus(strategy === 'adaptive-band-grid'
-      ? 'Graph-item navigation: Adaptive band grid'
-      : 'Graph-item navigation: Adaptive quadrant grid');
+    this.emitStatus(({
+      'adaptive-band-grid': 'Graph-item navigation: Adaptive band grid',
+      'adaptive-quadrant-grid': 'Graph-item navigation: Adaptive quadrant grid',
+      'adaptive-quadrant-rings': 'Graph-item navigation: Adaptive quadrant rings',
+    } as const)[strategy]);
   }
 
   private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
@@ -3457,6 +3470,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         return;
       case 'adaptive-quadrant-grid':
         this.snapWithQuadrantGrid(direction, targets);
+        return;
+      case 'adaptive-quadrant-rings':
+        this.snapWithQuadrantRings(direction, targets);
         return;
     }
   }
@@ -3707,6 +3723,65 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
   }
 
+  /**
+   * Each same-direction run walks outward through the one-stop rings in that
+   * direction's quadrant. A turn captures the current stop as a fresh origin,
+   * preserving the existing h h h j turn-sensitive interaction.
+   */
+  private snapWithQuadrantRings(
+    direction: CardinalDirection,
+    targets: NavTargetKind,
+  ): void {
+    this.finishTweens();
+    this.ensureQuadrantOrigin();
+    if (this.quadrantLastDirection !== null &&
+        this.quadrantLastDirection !== direction) {
+      this.captureQuadrantOrigin();
+    }
+    this.quadrantLastDirection = direction;
+
+    const origin = this.quadrantOriginInStage();
+    if (!origin) return;
+    const grid = buildQuadrantRingGrid(this.navStops(targets), origin);
+    const cx = this.crosshairsLayer.crosshairs.x;
+    const cy = this.crosshairsLayer.crosshairs.y;
+    const lastCenter = this.quadrantNavLast
+      ? this.navStopCenter(
+          this.quadrantNavLast.id,
+          this.quadrantNavLast.kind,
+        )
+      : null;
+    const onLast = !!lastCenter &&
+      Math.abs(lastCenter.x - cx) < 4 &&
+      Math.abs(lastCenter.y - cy) < 4;
+    const current = (onLast
+      ? grid.stops.find(stop =>
+          stop.source.id === this.quadrantNavLast?.id &&
+          stop.source.kind === this.quadrantNavLast?.kind)
+      : grid.stops.find(stop =>
+          Math.abs(stop.source.cx - cx) < 4 &&
+          Math.abs(stop.source.cy - cy) < 4)) ?? null;
+    const target = nextQuadrantRingStop(
+      grid,
+      quadrantForDirection(direction),
+      current,
+    );
+    if (!target) {
+      if (this.nodeGridVisible) this.redrawNodeGrid();
+      return;
+    }
+
+    this.nodeGridTargets = targets;
+    this.quadrantNavLast = {
+      id: target.source.id,
+      kind: target.source.kind,
+    };
+    this.jumpCrosshairsToStopCenter({
+      x: target.source.cx,
+      y: target.source.cy,
+    });
+  }
+
   private snapWithAdaptiveBandGrid(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind) {
     this.finishTweens();
     const cx = this.crosshairsLayer.crosshairs.x;
@@ -3814,7 +3889,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const opening = !this.nodeGridVisible;
     this.nodeGridVisible = true;
     this.nodeGridTargets = targets;
-    if (opening && this.graphItemNavigationStrategy === 'adaptive-quadrant-grid') {
+    if (opening && this.usesQuadrantOrigin()) {
       this.captureQuadrantOrigin();
     }
     // Move-by-node's band grid replaces the ordinary drawing grid while held.
@@ -3842,6 +3917,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsLayer.add(group);
       group.moveToBottom();
       this.scheduleQuadrantGoalRayFade();
+      this.crosshairsLayer.batchDraw();
+      return;
+    }
+    if (this.graphItemNavigationStrategy === 'adaptive-quadrant-rings') {
+      this.drawQuadrantRingGrid(group);
+      this.crosshairsLayer.add(group);
+      group.moveToBottom();
       this.crosshairsLayer.batchDraw();
       return;
     }
@@ -3979,6 +4061,132 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.add(group);
     group.moveToBottom();
     this.crosshairsLayer.batchDraw();
+  }
+
+  private drawQuadrantRingGrid(group: Konva.Group): void {
+    this.ensureQuadrantOrigin();
+    const origin = this.quadrantOriginInStage();
+    if (!origin) return;
+
+    const W = this.stage.width(), H = this.stage.height();
+    const grid = buildQuadrantRingGrid(
+      this.navStops(this.nodeGridTargets),
+      origin,
+    );
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const stroke = palette.crosshairsStroke;
+    const cx = this.crosshairsLayer.crosshairs.x;
+    const cy = this.crosshairsLayer.crosshairs.y;
+    const activeStop = grid.stops.find(stop =>
+      Math.abs(stop.source.cx - cx) < 4 &&
+      Math.abs(stop.source.cy - cy) < 4) ?? null;
+    const activeQuadrant = activeStop?.quadrant ??
+      (this.quadrantLastDirection
+        ? quadrantForDirection(this.quadrantLastDirection)
+        : null);
+    const maxReach = Math.max(
+      Math.hypot(origin.x, origin.y),
+      Math.hypot(W - origin.x, origin.y),
+      Math.hypot(origin.x, H - origin.y),
+      Math.hypot(W - origin.x, H - origin.y),
+    );
+    const toDegrees = 180 / Math.PI;
+    const quadrants = ['north', 'south', 'east', 'west'] as const;
+
+    // A low-opacity wash makes the active radial region legible without
+    // overwhelming the independently alternating ring bands.
+    if (activeQuadrant) {
+      const angles = quadrantArcAngles(activeQuadrant);
+      group.add(new Konva.Arc({
+        name: 'quadrant-ring-active-quadrant',
+        x: origin.x,
+        y: origin.y,
+        innerRadius: 0,
+        outerRadius: maxReach,
+        angle: 90,
+        rotation: angles.start * toDegrees,
+        fill: stroke,
+        opacity: 0.035,
+        listening: false,
+      }));
+    }
+
+    for (const quadrant of quadrants) {
+      const angles = quadrantArcAngles(quadrant);
+      const rings = grid.rings[quadrant];
+      rings.forEach((ring, index) => {
+        const innerRadius = Math.min(ring.innerRadius, maxReach);
+        const outerRadius = Math.min(ring.outerRadius, maxReach);
+        const active = ring.stop === activeStop;
+        if (outerRadius > innerRadius && (index % 2 === 1 || active)) {
+          group.add(new Konva.Arc({
+            name: active
+              ? 'quadrant-ring-active-band'
+              : 'quadrant-ring-band',
+            x: origin.x,
+            y: origin.y,
+            innerRadius,
+            outerRadius,
+            angle: 90,
+            rotation: angles.start * toDegrees,
+            fill: stroke,
+            opacity: active ? 0.105 : 0.025,
+            listening: false,
+          }));
+        }
+
+        if (Number.isFinite(ring.outerRadius) &&
+            ring.outerRadius > 0 &&
+            ring.outerRadius <= maxReach) {
+          group.add(new Konva.Line({
+            name: 'quadrant-ring-boundary',
+            points: quarterArcPoints(
+              origin,
+              ring.outerRadius,
+              quadrant,
+            ),
+            stroke,
+            strokeWidth: 1,
+            opacity: 0.34,
+            listening: false,
+          }));
+        }
+      });
+    }
+
+    // Unlike the moving ghost frame in the rectangular experiment, these
+    // diagonals are the actual edges of the four independently spaced ring
+    // systems, so they stay attached to the active origin.
+    for (const angle of [
+      Math.PI / 4,
+      Math.PI * 3 / 4,
+      Math.PI * 5 / 4,
+      Math.PI * 7 / 4,
+    ]) {
+      const end = this.navigationRayEnd(origin, angle, W, H);
+      if (!end) continue;
+      group.add(new Konva.Line({
+        name: 'quadrant-ring-diagonal',
+        points: [origin.x, origin.y, end.x, end.y],
+        stroke,
+        strokeWidth: 1.5,
+        opacity: 0.46,
+        dash: [7, 5],
+        listening: false,
+      }));
+    }
+
+    group.add(new Konva.Circle({
+      name: 'quadrant-ring-origin',
+      x: origin.x,
+      y: origin.y,
+      radius: 6,
+      fill: palette.nodeFill,
+      stroke,
+      strokeWidth: 2,
+      opacity: 0.9,
+      listening: false,
+    }));
   }
 
   private drawQuadrantNodeGrid(group: Konva.Group): void {

@@ -216,6 +216,14 @@ describe('KeymenuComponent', () => {
       kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
       strategy: 'adaptive-quadrant-grid',
     });
+    const quadrantRings = moveByNodeSubmenu.submenuConfig['r'] as LabeledAction;
+    expect(quadrantRings.actionLabel).toBe('Use adaptive quadrant rings');
+    expect(quadrantRings.repeat).toBeFalse();
+    quadrantRings.action();
+    expect(emitSpy).toHaveBeenCalledWith({
+      kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+      strategy: 'adaptive-quadrant-rings',
+    });
     const goalSouth = moveByNodeSubmenu.submenuConfig['n'] as LabeledAction;
     const goalNorth = moveByNodeSubmenu.submenuConfig['p'] as LabeledAction;
     expect(goalSouth.actionLabel).toBe('Goal ray south');

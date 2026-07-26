@@ -69,6 +69,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Movement acceleration](idea-movement-acceleration.md)
 - [Crosshair visual treatment](idea-crosshair-visual-treatment.md)
 - [Adaptive quadrant-grid graph-item navigation](design-quadrant-grid-navigation.md)
+- [Adaptive quadrant-ring graph-item navigation](design-quadrant-ring-navigation.md)
 - [Rich text in nodes and labels (markdown, math)](idea-rich-text.md)
 - [Cut / copy / paste](idea-cut-copy-paste.md)
 - [Naming — edges vs links](idea-naming-edges-vs-links.md)

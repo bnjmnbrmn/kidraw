@@ -117,6 +117,8 @@ export interface KeymenuKeyAssignments {
       readonly adaptiveBandGrid: KeyString;
       /** Adaptive rows/columns divided into diagonal N/S/E/W regions. */
       readonly adaptiveQuadrantGrid: KeyString;
+      /** Independently spaced, one-item radial bands in each N/S/E/W region. */
+      readonly adaptiveQuadrantRings: KeyString;
     };
     readonly goalAngle: {
       readonly towardSouth: KeyString;
@@ -271,7 +273,11 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'i', left: 'j', down: 'k', right: 'l'},
-    strategy: {adaptiveBandGrid: 'e', adaptiveQuadrantGrid: 'o'},
+    strategy: {
+      adaptiveBandGrid: 'e',
+      adaptiveQuadrantGrid: 'o',
+      adaptiveQuadrantRings: 'r',
+    },
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },
   ctrl: {submenu: 'Control'},
@@ -390,7 +396,11 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   moveByNode: {
     submenu: 'g',
     nodeJump: {up: 'k', left: 'h', down: 'j', right: 'l'},
-    strategy: {adaptiveBandGrid: 'e', adaptiveQuadrantGrid: 'o'},
+    strategy: {
+      adaptiveBandGrid: 'e',
+      adaptiveQuadrantGrid: 'o',
+      adaptiveQuadrantRings: 'r',
+    },
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },
   ctrl: {submenu: 'Control'},

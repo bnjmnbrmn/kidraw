@@ -814,6 +814,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         }),
         false,
       ),
+      [mbn.strategy.adaptiveQuadrantRings]: new LabeledAction(
+        'Use adaptive quadrant rings',
+        () => this.keyMenuOut.emit({
+          kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
+          strategy: 'adaptive-quadrant-rings',
+        }),
+        false,
+      ),
       [mbn.goalAngle.towardSouth]: new LabeledAction(
         'Goal ray south',
         () => this.keyMenuOut.emit({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH, targets: 'labels'}),

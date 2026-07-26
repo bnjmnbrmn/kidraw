@@ -74,6 +74,19 @@ _Updated 2026-07-26. Branch: `main`._
 >   the first move. This supersedes the circular
 >   and concentric-box polar attempts. Design and open feel questions:
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
+> - **Adaptive quadrant-ring experiment (2026-07-26):** `g → r` is a third,
+>   preserved sibling strategy (`g → e` band grid; `g → o` rectangular
+>   quadrant grid). The same diagonal N/S/E/W classification is used, but
+>   every stop gets its own Euclidean-distance rank within its quadrant.
+>   Midpoint ring boundaries are computed independently per quadrant, so East,
+>   North, South, and West have different quarter-ring spacing. Repeated
+>   `hjkl` walks outward one occupied ring at a time in the pressed direction;
+>   changing direction re-origins at the current landing before entering the
+>   new quadrant. The overlay shows alternating quarter-ring fills, independent
+>   arc boundaries, fixed-origin dashed diagonals, an active-ring highlight,
+>   and the origin marker. `n`/`p` remain specific to the rectangular
+>   quadrant-grid goal ray. Design + feel questions:
+>   [`notes/design-quadrant-ring-navigation.md`](notes/design-quadrant-ring-navigation.md).
 >
 > **Still to judge by feel:** whether the new per-item crosshairs solve
 > Cartesian boundary ambiguity without obscuring labels; whether midpoint boundary placement reads
@@ -98,6 +111,9 @@ _Updated 2026-07-26. Branch: `main`._
 > quadrant constraint, transient goal-ray n/p adjustment, viewport
 > re-origining, and release;
 > pure geometry is in `navigation-quadrant-grid.spec.ts`.
+> `repro-quadrant-ring-nav.js` covers `g → r`, independent quarter-ring
+> rendering, repeated outward traversal, turn re-origining, and release;
+> pure radial ordering is in `navigation-quadrant-rings.spec.ts`.
 > Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
 > Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +
