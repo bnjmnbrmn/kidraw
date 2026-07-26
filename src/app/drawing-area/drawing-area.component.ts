@@ -4012,23 +4012,51 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ));
     }
 
-    // The two 45-degree diagonals are real navigation borders: they classify
-    // each stop as north, south, east, or west of the held origin.
-    for (const angle of [
+    const diagonalAngles = [
       Math.PI / 4,
       Math.PI * 3 / 4,
       Math.PI * 5 / 4,
       Math.PI * 7 / 4,
-    ]) {
-      const end = this.navigationRayEnd(origin, angle, W, H);
-      if (end) {
-        group.add(boundary(
-          [origin.x, origin.y, end.x, end.y],
-          'quadrant-grid-diagonal-boundary',
-          0.5,
-        ));
+    ];
+    const addDiagonalRays = (
+      center: {x: number; y: number},
+      name: string,
+      opacity: number,
+      dash?: number[],
+    ) => {
+      for (const angle of diagonalAngles) {
+        const end = this.navigationRayEnd(center, angle, W, H);
+        if (end) {
+          group.add(new Konva.Line({
+            name,
+            points: [center.x, center.y, end.x, end.y],
+            stroke,
+            strokeWidth: 1,
+            opacity,
+            dash,
+            listening: false,
+          }));
+        }
       }
+    };
+
+    // Preview the diagonal frame that would become active on the next
+    // direction change. It follows the crosshairs while the stronger active
+    // frame remains anchored at the current origin.
+    const crosshairsAtOrigin =
+      Math.max(Math.abs(cx - origin.x), Math.abs(cy - origin.y)) < 4;
+    if (!crosshairsAtOrigin) {
+      addDiagonalRays(
+        {x: cx, y: cy},
+        'quadrant-grid-ghost-diagonal',
+        0.2,
+        [5, 6],
+      );
     }
+
+    // The active 45-degree diagonals are real navigation borders: they
+    // classify each stop as north, south, east, or west of the current origin.
+    addDiagonalRays(origin, 'quadrant-grid-diagonal-boundary', 0.5);
 
     const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
     for (const stop of stops) {

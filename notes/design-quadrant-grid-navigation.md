@@ -97,6 +97,9 @@ tie-break.
 - Alternating rectangular row and column fills from the adaptive band model.
 - Rectangular row/column boundaries and current-cell emphasis.
 - Two stronger 45-degree diagonals through a marked origin.
+- A faint dashed copy of the diagonals follows the crosshairs, previewing the
+  origin frame that a direction change would activate. It is hidden while the
+  crosshairs are already at the active origin.
 - Per-item row/column membership crosshairs.
 - One stronger dashed goal ray from the origin.
 

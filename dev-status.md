@@ -64,7 +64,10 @@ _Updated 2026-07-26. Branch: `main`._
 >   (2026-07-26):** a run of repeated presses in one `hjkl` direction keeps
 >   that origin, while the first different direction captures a new origin at
 >   the current stop before executing its move (`h h h j` re-origins at the
->   third `h` landing, then moves south). This supersedes the circular
+>   third `h` landing, then moves south). Faint dashed **ghost diagonals**
+>   follow the crosshairs to preview the frame that the next turn would
+>   activate; the stronger solid diagonals remain at the active origin. This
+>   supersedes the circular
 >   and concentric-box polar attempts. Design and open feel questions:
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 >
