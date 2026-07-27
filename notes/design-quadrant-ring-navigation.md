@@ -9,7 +9,8 @@ status: one-item-per-quarter-ring experiment implemented, 2026-07-26
 A radial sibling of both the known-good [adaptive band grid](design-grid-navigation.md)
 and the [rectangular quadrant grid](design-quadrant-grid-navigation.md). It is
 selected with `g → r`; `g → e` and `g → o` return to those two preserved
-strategies. The strategy choice is session state, not graph content.
+strategies. As of 2026-07-27 it is the default graph-item navigation strategy.
+The strategy choice is session state, not graph content.
 
 ## Coordinate model
 

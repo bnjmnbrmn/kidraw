@@ -3410,7 +3410,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navGoalY: number | null = null;
   /** Explicit so the known-good Cartesian grid remains available beside
    *  navigation experiments. */
-  private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-band-grid';
+  private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-quadrant-rings';
   /** Fixed for one run of the same hjkl direction, unless the viewport changes. */
   private quadrantOriginLayer: {x: number; y: number} | null = null;
   private quadrantOriginViewport: NavigationViewport | null = null;

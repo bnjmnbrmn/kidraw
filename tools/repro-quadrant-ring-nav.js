@@ -88,6 +88,14 @@ async function main() {
     return bestDistance < 8 ? best : '(none)';
   });
 
+  const defaultStrategy = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.graphItemNavigationStrategy;
+  });
+  check('adaptive quadrant rings are the session default',
+    defaultStrategy === 'adaptive-quadrant-rings',
+    String(defaultStrategy));
+
   await page.keyboard.down('g');
   await page.waitForTimeout(120);
   await press('r');

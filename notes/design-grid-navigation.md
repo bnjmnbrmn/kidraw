@@ -7,10 +7,13 @@ status: preserved as selectable adaptive band-grid strategy, 2026-07-22
 # Grid navigation for move-by-node
 
 The approach's short name is **adaptive band-grid navigation**. It is the
-default graph-item navigation strategy and is explicitly selectable with
+original graph-item navigation strategy and is explicitly selectable with
 `g → e`, so it remains available as a known-good option while alternatives are
-tested. The current sibling is [Adaptive quadrant grid](design-quadrant-grid-navigation.md),
-selected with `g → o`. The strategy choice is session state, not graph content.
+tested. The current default is
+[Adaptive quadrant rings](design-quadrant-ring-navigation.md), selected with
+`g → r`; [Adaptive quadrant grid](design-quadrant-grid-navigation.md) remains
+available with `g → o`. The strategy choice is session state, not graph
+content.
 
 Ben's model (2026-07-21), replacing the cone / cycling / connected-neighbour
 approaches. Supersedes the reachability analysis fixes for move-by-node

@@ -1,14 +1,15 @@
 # dev-status
 
-_Updated 2026-07-26. Branch: `main`._
+_Updated 2026-07-27. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
 > Ben's second feel check was positive: the collision-free cells plus
 > conditional goal-column/goal-row guide are good and may be optimal, though
 > he wants to keep experimenting. The current approach is therefore preserved
-> as the **Adaptive band grid** strategy: it remains the default and `g → e`
-> explicitly switches back to it when future alternatives are added.
+> as the **Adaptive band grid** strategy: `g → e` explicitly switches back to
+> it while alternatives are tested. As of 2026-07-27, the newer **Adaptive
+> quadrant rings** strategy is the default (`g → r`).
 > Full spec + design decisions: [`notes/design-grid-navigation.md`](notes/design-grid-navigation.md)
 > (read it first). Conventions:
 > `CHROME_BIN=~/.cache/puppeteer/chrome/linux-144.0.7559.96/chrome-linux64/chrome node tools/repro-<x>.js`
@@ -43,9 +44,10 @@ _Updated 2026-07-26. Branch: `main`._
 >   coordinates are stored in drawing-layer space so a viewport pan cannot
 >   skew the following row/column choice.
 > - **Preserved as a strategy (2026-07-22):** the approach is named **Adaptive
->   band grid** and remains the default. `g → e` explicitly selects it, giving
->   future navigation experiments a sibling slot without replacing this
->   known-good behavior. The selection is session state, not graph content.
+>   band grid**. `g → e` explicitly selects it, giving navigation experiments
+>   a sibling slot without replacing this known-good behavior. It was the
+>   default through 2026-07-26; Adaptive quadrant rings became the default on
+>   2026-07-27. The selection is session state, not graph content.
 > - **Band-membership crosshairs (2026-07-22):** each visible stop has a tiny
 >   two-axis marker over it. The horizontal arm's opacity encodes its row's
 >   light/dark band; the vertical arm independently encodes its column. A
@@ -76,7 +78,8 @@ _Updated 2026-07-26. Branch: `main`._
 >   [`notes/design-quadrant-grid-navigation.md`](notes/design-quadrant-grid-navigation.md).
 > - **Adaptive quadrant-ring experiment (2026-07-26):** `g → r` is a third,
 >   preserved sibling strategy (`g → e` band grid; `g → o` rectangular
->   quadrant grid). The same diagonal N/S/E/W classification is used, but
+>   quadrant grid), and became the default on 2026-07-27. The same diagonal
+>   N/S/E/W classification is used, but
 >   every stop gets its own Euclidean-distance rank within its quadrant.
 >   Midpoint ring boundaries are computed independently per quadrant, so East,
 >   North, South, and West have different quarter-ring spacing. Repeated
