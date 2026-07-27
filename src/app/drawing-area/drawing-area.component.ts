@@ -203,6 +203,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
+  /** Labelable node created by the held insert hub. It is focused only when
+   *  the hold ends, after the optional drag phase has established its final
+   *  position. */
+  private pendingNodeLabelEdit: DANode | null = null;
   /** Node the current gather view is centered on. */
   private gatherAnchor: DANode | null = null;
   /** Explicitly gathered (Gather key); restored by Ungather or re-toggle. */
@@ -239,6 +243,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly TEXT_SIZE_STEP = 2;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
   public readonly RESIZE_REFLOW_GAP = 16;
+  /** Preserve closer views, but never label a new node below natural scale. */
+  private static readonly NODE_EDIT_MIN_ZOOM = 1;
   /** Stage-pixel radius within which the crosshairs count as standing on a
    *  traversal stop (label/waypoint pseudo-node). */
   private headingRadians = -Math.PI / 2;
@@ -590,6 +596,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
         command.kind !== DACommandType.EDIT_SELECTED &&
         command.kind !== DACommandType.QUICK_ADD &&
+        command.kind !== DACommandType.BEGIN_NEW_NODE_LABEL_EDIT &&
         command.kind !== DACommandType.ENTER_ADD_MODE &&
         command.kind !== DACommandType.EDIT_TEXT_AT_CROSSHAIRS &&
         command.kind !== DACommandType.REDO) {
@@ -758,6 +765,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.QUICK_ADD:
         this.handleQuickAdd();
+        break;
+      case DACommandType.BEGIN_NEW_NODE_LABEL_EDIT:
+        this.beginPendingNodeLabelEdit();
         break;
       case DACommandType.ENTER_ADD_MODE:
         this.maybeEnterGrowMode(command.holdKey, command.keys);
@@ -3281,16 +3291,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private centerViewOnLayerPoint(p: {x: number; y: number}): void {
-    const scale = this.drawingLayer.scaleX();
+  private centerViewOnLayerPoint(
+    p: {x: number; y: number},
+    targetScale = this.drawingLayer.scaleX(),
+  ): void {
     const centerX = this.stage.width() / 2;
     const centerY = this.stage.height() / 2;
     this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
-      x: centerX - p.x * scale,
-      y: centerY - p.y * scale,
+      scaleX: targetScale,
+      scaleY: targetScale,
+      x: centerX - p.x * targetScale,
+      y: centerY - p.y * targetScale,
       easing: Konva.Easings.EaseInOut,
+      onFinish: () => this.emitZoomLevel(),
     }).play());
     this.tweens.push(new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
@@ -5248,7 +5263,48 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {edge: bestEdge, point: bestSnap, segmentIndex: bestSeg};
   }
 
-  private createNewNode(nodeShape?: NodeShape) {
+  private focusNewNodeForLabelEdit(node: DANode): void {
+    this.finishTweens();
+    const targetScale = Math.min(
+      this.MAX_ZOOM,
+      Math.max(
+        this.drawingLayer.scaleX(),
+        DrawingAreaComponent.NODE_EDIT_MIN_ZOOM,
+      ),
+    );
+    this.centerViewOnLayerPoint(
+      this.getNodeCenterInLayerCoordinates(node),
+      targetScale,
+    );
+  }
+
+  /** Enter label editing for a node that has just been added. Existing-node
+   *  edits intentionally keep their current viewport; insertion gets this
+   *  stronger focus treatment because the new node may have landed far from
+   *  its anchor or while the whole graph was fit at a tiny scale. */
+  private beginNewNodeLabelEdit(node: DANode): void {
+    this.pendingNodeLabelEdit = null;
+    if (node.nodeShape === 'junction' || node.nodeShape === 'invisible') return;
+    node.setCursorToEnd();
+    node.showCursor();
+    this.crosshairsLayer.hideCrosshairs();
+    this.focusNewNodeForLabelEdit(node);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.daOut.emit({kind: 'started-label-editing-mode'});
+  }
+
+  private beginPendingNodeLabelEdit(): void {
+    const node = this.pendingNodeLabelEdit;
+    this.pendingNodeLabelEdit = null;
+    if (!node || !this.drawingLayer.getDANodes().includes(node)) return;
+    this.beginNewNodeLabelEdit(node);
+  }
+
+  private createNewNode(
+    nodeShape?: NodeShape,
+    notifyHeldInsert = true,
+  ): DANode {
     this.finishTweens();
 
     // Get currently selected nodes (sources for auto-connect edges)
@@ -5265,12 +5321,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, newNode));
     }
 
-    newNode.showCursor();
-    this.crosshairsLayer.hideCrosshairs();
-    this.daOut.emit({kind: 'node-inserted',
-      labelable: newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible'});
+    const labelable = newNode.nodeShape !== 'junction' &&
+      newNode.nodeShape !== 'invisible';
+    if (notifyHeldInsert) {
+      this.pendingNodeLabelEdit = labelable ? newNode : null;
+      if (labelable) {
+        newNode.showCursor();
+        this.crosshairsLayer.hideCrosshairs();
+      }
+      this.daOut.emit({kind: 'node-inserted', labelable});
+    } else {
+      this.pendingNodeLabelEdit = null;
+    }
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
+    return newNode;
   }
 
 
@@ -5717,11 +5782,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
-    const shape = this._defaultNodeShape;
-    this.createNewNode();
-    if (shape !== 'junction') {
-      this.daOut.emit({kind: 'started-label-editing-mode'});
-    }
+    const newNode = this.createNewNode(undefined, false);
+    this.beginNewNodeLabelEdit(newNode);
   }
 
   // ---------------------------------------------------------------------
@@ -6024,12 +6086,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {
-      newNode.showCursor();
-      this.crosshairsLayer.hideCrosshairs();
-      this.daOut.emit({kind: 'started-label-editing-mode'});
+      this.beginNewNodeLabelEdit(newNode);
+    } else {
+      this.drawingLayer.batchDraw();
+      this.checkAndEmitEditState();
     }
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
     this.scheduleVaultAutoSave();
   }
 
@@ -6223,12 +6284,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {
-      newNode.showCursor();
-      this.crosshairsLayer.hideCrosshairs();
-      this.daOut.emit({kind: 'started-label-editing-mode'});
+      this.beginNewNodeLabelEdit(newNode);
+    } else {
+      this.drawingLayer.batchDraw();
+      this.checkAndEmitEditState();
     }
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
   }
 
   /** Tap of the edit-text key: enter label edit on whatever text-bearing

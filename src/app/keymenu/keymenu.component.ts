@@ -1456,7 +1456,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // release (same rhythm as the insert-submenu flow).
       if (this.insertViaEditActive) {
         this.insertViaEditActive = false;
-        this.switchMode('labelEdit');
+        // The drawing area focuses the node at its final post-drag position,
+        // then confirms the label-edit transition back through AppComponent.
+        this.keyMenuOut.emit({kind: DACommandType.BEGIN_NEW_NODE_LABEL_EDIT});
         return;
       }
       // A label was added from the held edit-key submenu → type into it.

@@ -122,6 +122,7 @@ export enum DACommandType {
   APPLY_LAYOUT = 'APPLY_LAYOUT',
   APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
   QUICK_ADD = 'QUICK_ADD',
+  BEGIN_NEW_NODE_LABEL_EDIT = 'BEGIN_NEW_NODE_LABEL_EDIT',
   ENTER_ADD_MODE = 'ENTER_ADD_MODE',
   EDIT_TEXT_AT_CROSSHAIRS = 'EDIT_TEXT_AT_CROSSHAIRS',
   CYCLE_EDGE_DIRECTEDNESS = 'CYCLE_EDGE_DIRECTEDNESS',
@@ -234,6 +235,8 @@ export type DACommand =
   // Tap of the add key: default node at the crosshairs on empty canvas, or a
   // connected default node one slot below the node under the crosshairs.
   | {kind: DACommandType.QUICK_ADD}
+  // Release of a held node-insert flow after its optional drag phase.
+  | {kind: DACommandType.BEGIN_NEW_NODE_LABEL_EDIT}
   // Keydown of the held add key. Over a node the drawing area enters the
   // grow mode (suspending the keymenu synchronously via popup-state) and
   // steers it with its own document-level listeners; otherwise this is a

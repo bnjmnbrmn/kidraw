@@ -3,6 +3,7 @@
  * vim profile, real keys:
  *
  *   1. tap `a` on empty canvas → default node at the crosshairs → labelEdit.
+ *      The new node is centered and raised to at least 100% zoom for editing.
  *   2. tap `a` over a node → connected default node one slot below → labelEdit.
  *   3. tap `a` over an edge → hint, nothing added.
  *   4. tap `i` over a node → edit its text (append to existing).
@@ -33,6 +34,10 @@ async function main() {
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.drawingLayer.clearAll();
+    // Reproduce the dogfood case: the graph is zoomed far out when a new
+    // node is added and immediately needs readable label editing.
+    da.drawingLayer.scale({x: 0.25, y: 0.25});
+    da.drawingLayer.position({x: 0, y: 0});
     window.__statuses = [];
     da.daOut.subscribe(n => { if (n.kind === 'status-message') window.__statuses.push(n.message); });
   });
@@ -40,11 +45,20 @@ async function main() {
   const state = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    const dl = da.drawingLayer;
+    const scale = dl.scaleX();
     return {
       mode: km.keyMenu.currentMode.name,
+      scale,
+      stageCenter: {x: da.stage.width() / 2, y: da.stage.height() / 2},
       statuses: window.__statuses ?? [],
       nodes: da.drawingLayer.getDANodes().map(n => ({
-        text: n.label.text(), x: n.konvaGroup.x(), y: n.konvaGroup.y(), selected: n.isSelected,
+        text: n.label.text(),
+        x: n.konvaGroup.x(),
+        y: n.konvaGroup.y(),
+        stageX: dl.x() + (n.konvaGroup.x() + n.NODE_WIDTH / 2) * scale,
+        stageY: dl.y() + (n.konvaGroup.y() + n.NODE_HEIGHT / 2) * scale,
+        selected: n.isSelected,
       })),
       edges: da.drawingLayer.getDAEdges().map(e => ({
         from: e.srcNode.label.text() || 'unnamed',
@@ -81,17 +95,27 @@ async function main() {
   // --- 1. tap a on empty ---
   await park(400, 300);
   await page.keyboard.press('a');
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(420);
   let s = await state();
   check('tap a on empty creates a node and enters labelEdit',
     s.nodes.length === 1 && s.mode === 'labelEdit', JSON.stringify({n: s.nodes.length, mode: s.mode}));
+  const editingNode = s.nodes[0];
+  check('new node is centered and zoomed to a readable editing scale',
+    s.scale >= 1 &&
+      Math.abs(editingNode.stageX - s.stageCenter.x) < 4 &&
+      Math.abs(editingNode.stageY - s.stageCenter.y) < 4,
+    JSON.stringify({
+      scale: s.scale,
+      node: {x: editingNode.stageX, y: editingNode.stageY},
+      center: s.stageCenter,
+    }));
   await page.keyboard.type('alpha', { delay: 25 });
   await escapeToNormal();
 
   // --- 2. tap a over a node: connected quick-add below ---
   await parkOnNode('alpha');
   await page.keyboard.press('a');
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(420);
   s = await state();
   const alpha = s.nodes.find(n => n.text === 'alpha');
   const fresh = s.nodes.find(n => n.text === '');
@@ -100,6 +124,14 @@ async function main() {
   check('new node sits below the anchor', fresh && alpha && fresh.y > alpha.y + 100,
     `anchor y=${alpha?.y}, new y=${fresh?.y}`);
   check('labelEdit after quick-add below', s.mode === 'labelEdit', s.mode);
+  check('connected quick-add centers its new editable node',
+    fresh &&
+      Math.abs(fresh.stageX - s.stageCenter.x) < 4 &&
+      Math.abs(fresh.stageY - s.stageCenter.y) < 4,
+    JSON.stringify({
+      node: fresh && {x: fresh.stageX, y: fresh.stageY},
+      center: s.stageCenter,
+    }));
   await page.keyboard.type('beta', { delay: 25 });
   await escapeToNormal();
 

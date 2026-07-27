@@ -337,6 +337,24 @@ describe('KeymenuComponent', () => {
       expect((component as any).insertViaEditActive).toBeFalse();
     });
 
+    it('focuses the inserted node before labelEdit when the held add key is released', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      fixture.detectChanges();
+      const component = fixture.componentInstance;
+      const emitSpy = spyOn(component.keyMenuOut, 'emit');
+      component.notifyNodeInserted(true);
+
+      component.handleKeyUp(new KeyboardEvent('keyup', {
+        key: 'a',
+        code: 'KeyA',
+      }));
+
+      expect(emitSpy).toHaveBeenCalledWith({
+        kind: DACommandType.BEGIN_NEW_NODE_LABEL_EDIT,
+      });
+      expect((component as any).insertViaEditActive).toBeFalse();
+    });
+
   });
 });
 

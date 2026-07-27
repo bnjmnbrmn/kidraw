@@ -22,6 +22,19 @@ model Ben partly liked; its weakness was blind direction commitment).
   - over an **edge** → add label / waypoint (label treated as its edge);
   - over **nothing** → free node ghost at the crosshairs.
 
+## New-node edit focus
+
+As of 2026-07-27, entering label edit after adding a labelable node also
+centers that node in the viewport and raises the drawing to at least 100%
+zoom. A view already closer than 100% is not zoomed out. This applies to
+tap-add, connected quick-add, grow/type placement, and insert-hub additions.
+
+For held insert-hub additions, the focus is deliberately deferred until the
+add key is released: the optional `hjkl` drag establishes the node's final
+position first, then that position is centered and label editing begins.
+Junction/invisible additions remain non-editable and unfocused. Editing an
+existing node does not recenter or change zoom.
+
 ## The grow flow (hold `a` over a node) — targeting-first (round 2)
 
 Ben's round-1 correction: connecting to an *existing* node should feel like
@@ -102,8 +115,8 @@ list Ben asked to keep track of.
 | 2 | tap `i` over label | edit label text | ✅ built 2026-07-19 |
 | 3 | tap `i` over edge | edits its label; creates an empty one if none (built as such) | ✅ built 2026-07-19 |
 | 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
-| 5 | tap `a` over nothing | quick-add node at crosshairs → labelEdit | ✅ built 2026-07-19 |
-| 6 | tap `a` over node | **default quick-add**: node one slot below, anchor→new, labelEdit | ✅ built 2026-07-19 (= pristine grow release) |
+| 5 | tap `a` over nothing | quick-add node at crosshairs → center + zoom to ≥100% → labelEdit | ✅ built 2026-07-19; focus added 2026-07-27 |
+| 6 | tap `a` over node | **default quick-add**: node one slot below, anchor→new, center + zoom to ≥100%, labelEdit | ✅ built 2026-07-19 (= pristine grow release); focus added 2026-07-27 |
 | 6b | tap `a` over edge/label | no-op + hint | ✅ built 2026-07-19 |
 | 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✅ built 2026-07-19 |
 | 8 | hold `a` over node: `o` cycles 4 states | ghost arrowheads track | ✅ built 2026-07-19 |

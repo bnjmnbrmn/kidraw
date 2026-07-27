@@ -28,7 +28,14 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.getDAEdgesContainingCrosshairs = () => overrides.edgesUnderCrosshairs ?? [];
     component._defaultNodeShape = overrides.defaultNodeShape ?? 'box';
     component.pushUndoSnapshot = jasmine.createSpy('pushUndoSnapshot');
-    component.createNewNode = jasmine.createSpy('createNewNode');
+    const createdNode = {nodeShape: component._defaultNodeShape};
+    component.createNewNode = jasmine.createSpy('createNewNode').and.returnValue(createdNode);
+    component.beginNewNodeLabelEdit = jasmine.createSpy('beginNewNodeLabelEdit')
+      .and.callFake((node: {nodeShape: string}) => {
+        if (node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
+          component.daOut.emit({kind: 'started-label-editing-mode'});
+        }
+      });
     component.quickAddBelow = jasmine.createSpy('quickAddBelow');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.singleItemSelect = jasmine.createSpy('singleItemSelect');
@@ -46,7 +53,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent();
       component.handleQuickAdd();
       expect(component.pushUndoSnapshot).toHaveBeenCalledWith({kind: DACommandType.QUICK_ADD});
-      expect(component.createNewNode).toHaveBeenCalled();
+      expect(component.createNewNode).toHaveBeenCalledWith(undefined, false);
+      expect(component.beginNewNodeLabelEdit).toHaveBeenCalled();
       expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
     });
 
