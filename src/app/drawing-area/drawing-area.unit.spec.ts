@@ -252,22 +252,53 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
-  describe('adaptive normal movement', () => {
-    it('uses one minor step in a tight corridor between nearby axis features', () => {
+  describe('normal movement snapping', () => {
+    it('collects a nearby node center when the goal line crosses its box', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
-      component.crosshairsLayer = {crosshairs: new DACrosshairs({x: 0, y: 0})};
+      const node = new DANode(20, -30, 'near');
       component.drawingLayer = {
-        scaleX: () => 1,
-        getDANodes: () => [
-          new DANode(-20, -30, 'top'),
-          new DANode(-20, 5, 'bottom'),
-        ],
+        getDANodes: () => [node],
         getDAEdges: () => [],
       };
 
-      const steps = component.resolveNormalMovementSteps('y', 1, 0, 0, 5);
+      const candidates = component.collectNormalMovementSnapCandidates('x', 0, 24);
 
-      expect(steps).toBe(1);
+      expect(candidates).toEqual([
+        jasmine.objectContaining({
+          id: `node:${node.id}`,
+          point: {
+            x: node.group.x() + node.NODE_WIDTH / 2,
+            y: node.group.y() + node.NODE_HEIGHT / 2,
+          },
+        }),
+      ]);
+    });
+
+    it('collects nearby waypoints, labels, and exact edge crossings', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      component.drawingLayer = {
+        getDANodes: () => [],
+        getDAEdges: () => [{
+          id: 'edge-1',
+          waypoints: [{id: 'wp-1', x: 20, y: 8}],
+          labels: [{
+            id: 'label-1',
+            x: 35,
+            y: 10,
+            width: 30,
+            height: 20,
+          }],
+          getPathPoints: () => [{x: 0, y: 20}, {x: 100, y: -20}],
+        }],
+      };
+
+      const candidates = component.collectNormalMovementSnapCandidates('x', 0, 24);
+      const byId = new Map(candidates.map((c: any) => [c.id, c]));
+
+      expect(byId.has('waypoint:wp-1')).toBeTrue();
+      expect(byId.has('label:label-1')).toBeTrue();
+      const edgeCandidate = byId.get('edge:edge-1:0') as any;
+      expect(edgeCandidate.point).toEqual({x: 50, y: 0});
     });
   });
 

@@ -8,9 +8,8 @@
  *   3. tap `a` over an edge → hint, nothing added.
  *   4. tap `i` over a node → edit its text (append to existing).
  *   5. tap `i` over a label-less edge → empty label created and edited.
- *   6. hold `v` over an edge + `o` → four-state cycle: forward → reversed
- *      (endpoints swapped, labels mirrored) → undirected → bidirectional →
- *      back to the original wiring.
+ *   6. hold `v` over the new undirected edge + `o` → four-state cycle:
+ *      bidirectional → directed one way → directed the other way → undirected.
  */
 const { chromium } = require('@playwright/test');
 
@@ -213,29 +212,34 @@ async function main() {
   await page.keyboard.press('o');
   await page.waitForTimeout(120);
   let w = await wiring();
-  check('v+o 1: endpoints reversed, still directed', w.from === start.to && w.to === start.from
+  check('v+o 1: bidirectional with stable endpoints', w.from === start.from && w.to === start.to
+    && w.dir === 'bidirectional', JSON.stringify(w));
+  check('label anchor stays put without a reversal',
+    w.labelT !== null && Math.abs(w.labelT - start.labelT) < 0.001,
+    `t ${start.labelT} → ${w.labelT}`);
+
+  await page.keyboard.press('o');
+  await page.waitForTimeout(120);
+  w = await wiring();
+  check('v+o 2: first directed orientation', w.from === start.to && w.to === start.from
     && w.dir === 'directed', JSON.stringify(w));
-  check('label anchor mirrored with the reversal',
+  check('label anchor mirrors with the reversal',
     w.labelT !== null && Math.abs(w.labelT - (1 - start.labelT)) < 0.001,
     `t ${start.labelT} → ${w.labelT}`);
 
   await page.keyboard.press('o');
   await page.waitForTimeout(120);
   w = await wiring();
-  check('v+o 2: undirected', w.dir === 'undirected', JSON.stringify(w));
-
-  await page.keyboard.press('o');
-  await page.waitForTimeout(120);
-  w = await wiring();
-  check('v+o 3: bidirectional', w.dir === 'bidirectional', JSON.stringify(w));
+  check('v+o 3: opposite directed orientation', w.from === start.from && w.to === start.to
+    && w.dir === 'directed', JSON.stringify(w));
 
   await page.keyboard.press('o');
   await page.waitForTimeout(120);
   await page.keyboard.up('v');
   await page.waitForTimeout(150);
   w = await wiring();
-  check('v+o 4: back to the original forward wiring', w.from === start.from && w.to === start.to
-    && w.dir === 'directed', JSON.stringify(w));
+  check('v+o 4: back to the original undirected wiring', w.from === start.from && w.to === start.to
+    && w.dir === 'undirected', JSON.stringify(w));
   check('label anchor restored', Math.abs(w.labelT - start.labelT) < 0.001,
     `t ${start.labelT} → ${w.labelT}`);
 

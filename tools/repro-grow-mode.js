@@ -4,10 +4,11 @@
  *
  *   1. hold a over a node, release with no keypress → the tap default:
  *      connected node one slot right + labelEdit (pristine release).
- *   2. hold a + l → target hops to the node on the right (ghost edge);
+ *   2. hold a + l + l → target cycles past the quick-added node to B
+ *      on the right (ghost edge);
  *      release → edge anchor→target, NO new node, normal mode.
- *   3. hold a + l + o + o → directionality cycled twice (rev, undirected);
- *      release → undirected edge.
+ *   3. hold a + l + l + o + o → default undirected directionality cycled
+ *      twice (bidirectional, directed); release → directed edge.
  *   4. hold a + l + h (come home to the anchor) → release commits nothing.
  *   5. While the grow mode is held, movement keys do NOT move the
  *      crosshairs (keymenu suspended).
@@ -97,11 +98,12 @@ async function main() {
   await page.keyboard.type('D', { delay: 25 });
   await escapeToNormal();
 
-  // --- 2. targeting: hold a + l → B; release wires A→B ---
+  // --- 2. targeting: hold a + l + l → cycle past D to B; release wires A—B ---
   await parkOnNode('A');
   const before = await state();
   await page.keyboard.down('a');
   await page.waitForTimeout(250);
+  await page.keyboard.press('l');
   await page.keyboard.press('l');
   await page.waitForTimeout(150);
   s = await state();
@@ -111,7 +113,7 @@ async function main() {
   await page.waitForTimeout(200);
   s = await state();
   check('release wires anchor→target, no new node', s.nodes.length === 4
-    && s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'directed'), JSON.stringify(s.edges));
+    && s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'undirected'), JSON.stringify(s.edges));
   check('stays in normal mode after existing-target commit', s.mode === 'normal', s.mode);
   check('grow mode exited', (await state()).growActive === false);
 
@@ -120,14 +122,15 @@ async function main() {
   await page.keyboard.down('a');
   await page.waitForTimeout(250);
   await page.keyboard.press('l');
+  await page.keyboard.press('l');
   await page.keyboard.press('o');
   await page.keyboard.press('o');
   await page.waitForTimeout(150);
   await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
-  check('o o before release commits an undirected edge',
-    s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'undirected'), JSON.stringify(s.edges));
+  check('o o before release commits a directed edge',
+    s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'directed'), JSON.stringify(s.edges));
 
   // --- 4. come home to cancel ---
   const edgeCount = s.edges.length;

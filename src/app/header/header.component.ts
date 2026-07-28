@@ -56,7 +56,7 @@ export class HeaderComponent {
   totalNodes: number = 0;
   totalEdges: number = 0;
   defaultNodeShape: NodeShape = 'box';
-  defaultEdgeDirectedness: EdgeDirectedness = 'directed';
+  defaultEdgeDirectedness: EdgeDirectedness = 'undirected';
   defaultLineStyle: LineStyle = 'solid';
   canUndo: boolean = false;
   canRedo: boolean = false;

@@ -68,6 +68,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Labels without visible boxes by default](idea-label-no-default-box.md)
 - [Movement acceleration](idea-movement-acceleration.md)
 - [Crosshair visual treatment](idea-crosshair-visual-treatment.md)
+- [Normal movement goal line](design-normal-movement-goal-line.md) — ordinary movement snaps to nearby graph items, returns to their projection, and shows the traversed axis.
 - [Adaptive quadrant-grid graph-item navigation](design-quadrant-grid-navigation.md)
 - [Adaptive quadrant-ring graph-item navigation](design-quadrant-ring-navigation.md)
 - [Rich text in nodes and labels (markdown, math)](idea-rich-text.md)

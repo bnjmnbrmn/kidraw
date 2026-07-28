@@ -39,6 +39,13 @@ import {
   quadrantArcAngles,
   quarterArcPoints,
 } from './navigation-quadrant-rings';
+import {
+  nextNormalMovementStep,
+  NormalMovementAxis,
+  NormalMovementGoal,
+  NormalMovementSnapCandidate,
+  startNormalMovementGoal,
+} from './normal-movement';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -225,6 +232,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private gatherDeferredRouting: number | null = null;
   private gridFadeTimeout: number | null = null;
   private gridInitialized = false;
+  /** Ordinary hjkl movement follows this fixed line until the axis changes
+   *  or the movement indicators time out. */
+  private normalMovementGoal: NormalMovementGoal | null = null;
+  private normalMovementGoalLine: Konva.Line | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -430,6 +441,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.stage.container().style.backgroundColor = palette.drawingStageBackground;
       this.drawingLayer.applyThemeColors(palette);
       this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
+      if (this.normalMovementGoal) this.redrawNormalMovementGoalLine();
     };
     const reapplyConfig = () => {
       reapplyTheme();
@@ -582,6 +594,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.isRoutingInProgress() && DrawingAreaComponent.ROUTING_LOCKED_COMMANDS.has(command.kind)) {
       this.daOut.emit({ kind: 'status-message', message: 'Layout is running; graph edits are locked.' });
       return;
+    }
+
+    // The ordinary goal line describes one uninterrupted normal-movement
+    // gesture. Any other command ends that gesture immediately rather than
+    // leaving a stale guide over editing, dragging, or graph navigation.
+    switch (command.kind) {
+      case DACommandType.MOVE_CROSSHAIRS_LEFT:
+      case DACommandType.MOVE_CROSSHAIRS_RIGHT:
+      case DACommandType.MOVE_CROSSHAIRS_UP:
+      case DACommandType.MOVE_CROSSHAIRS_DOWN:
+        if (command.gridTier && command.gridTier !== 'normal') {
+          this.clearNormalMovementGoal();
+        }
+        break;
+      default:
+        this.clearNormalMovementGoal();
     }
 
     // Push undo snapshot before mutating commands
@@ -2385,36 +2413,54 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const currentDlY = (currentY - this.drawingLayer.y()) / scale;
       const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
 
-      // 'normal' movement is half a major cell, snapped to the minor grid
-      // (minorSpacing is 1/10th of majorSpacing, so 5 minor steps == half a
-      // major cell). 'fine' is one minor cell; 'coarse' is ten major cells.
-      let spacing: number;
-      let steps: number;
-      if (tier === 'fine') {
-        spacing = minorSpacing;
-        steps = 1;
-      } else if (tier === 'coarse') {
-        spacing = majorSpacing;
-        steps = 10;
+      // Normal movement follows a visible goal line and interleaves nearby
+      // graph features with ordinary half-cell steps. Fine/coarse retain
+      // direct grid movement and start a fresh goal on the next normal key.
+      if (tier === 'normal' && axis) {
+        const current = {x: currentDlX, y: currentDlY};
+        if (!this.normalMovementGoal || this.normalMovementGoal.axis !== axis) {
+          this.normalMovementGoal = startNormalMovementGoal(axis, current);
+        }
+        const sign = (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1;
+        const stepDistance = minorSpacing * 5;
+        const snapDistance = Math.max(24 / scale, minorSpacing * 2);
+        const candidates = this.collectNormalMovementSnapCandidates(
+          axis,
+          this.normalMovementGoal.line,
+          snapDistance,
+        );
+        const step = nextNormalMovementStep(
+          this.normalMovementGoal,
+          sign,
+          stepDistance,
+          candidates,
+        );
+        this.normalMovementGoal = step.state;
+        this.redrawNormalMovementGoalLine();
+        this.updateCrosshairsProbeShape(
+          axis, tier, minorSpacing, majorSpacing, stepDistance, scale,
+        );
+        targetX = step.target.x * scale + this.drawingLayer.x();
+        targetY = step.target.y * scale + this.drawingLayer.y();
       } else {
-        spacing = minorSpacing;
-        steps = axis
-          ? this.resolveNormalMovementSteps(axis, axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY), currentDlX, currentDlY, minorSpacing)
-          : 5;
+        this.clearNormalMovementGoal();
+        const spacing = tier === 'fine' ? minorSpacing : majorSpacing;
+        const steps = tier === 'coarse' ? 10 : 1;
+        this.updateCrosshairsProbeShape(
+          axis, tier, minorSpacing, majorSpacing, steps * spacing, scale,
+        );
+        const snappedDlX = deltaX !== 0
+          ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
+          : Math.round(currentDlX / spacing) * spacing;
+        const snappedDlY = deltaY !== 0
+          ? Math.round(currentDlY / spacing) * spacing + steps * spacing * Math.sign(deltaY)
+          : Math.round(currentDlY / spacing) * spacing;
+        targetX = snappedDlX * scale + this.drawingLayer.x();
+        targetY = snappedDlY * scale + this.drawingLayer.y();
       }
-      this.updateCrosshairsProbeShape(axis, tier, minorSpacing, majorSpacing, steps * spacing, scale);
-
-      const snappedDlX = deltaX !== 0
-        ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
-        : Math.round(currentDlX / spacing) * spacing;
-      const snappedDlY = deltaY !== 0
-        ? Math.round(currentDlY / spacing) * spacing + steps * spacing * Math.sign(deltaY)
-        : Math.round(currentDlY / spacing) * spacing;
-
-      targetX = snappedDlX * scale + this.drawingLayer.x();
-      targetY = snappedDlY * scale + this.drawingLayer.y();
     } else {
       // Raw pixel movement (focusNode, moveByNode, zoom, etc.)
+      this.clearNormalMovementGoal();
       targetX = currentX + deltaX;
       targetY = currentY + deltaY;
     }
@@ -2439,6 +2485,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         y: clampedY,
         easing: Konva.Easings.Linear,
         onFinish: () => {
+          // Konva can finish a short tween one frame shy of its requested
+          // endpoint. Snapping must be exact or the following goal-line step
+          // slowly accumulates screen-pixel drift.
+          this.crosshairsLayer.crosshairs.konvaGroup.position({
+            x: clampedX,
+            y: clampedY,
+          });
           this.checkResizeHandleProximity();
           if (this.nodeGridVisible) this.redrawNodeGrid();
         },
@@ -2446,13 +2499,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     if (overflowX !== 0 || overflowY !== 0) {
+      const layerTarget = {
+        x: this.drawingLayer.x() - overflowX,
+        y: this.drawingLayer.y() - overflowY,
+      };
       this.tweens.push(new Konva.Tween({
         node: this.drawingLayer,
         duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: this.drawingLayer.x() - overflowX,
-        y: this.drawingLayer.y() - overflowY,
+        x: layerTarget.x,
+        y: layerTarget.y,
         easing: Konva.Easings.Linear,
         onFinish: () => {
+          this.drawingLayer.position(layerTarget);
           if (this.nodeGridVisible) this.redrawNodeGrid();
         },
       }).play());
@@ -2462,115 +2520,141 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (showMovementGrid) this.showMovementIndicators();
   }
 
-  private resolveNormalMovementSteps(
-    axis: 'x' | 'y',
-    sign: number,
-    currentDlX: number,
-    currentDlY: number,
-    minorSpacing: number,
-  ): number {
-    const normalSteps = 5;
-    const coords = this.collectMovementFeatureCoordinates(axis, currentDlX, currentDlY, minorSpacing);
-    if (coords.length < 1) return normalSteps;
-
-    const current = axis === 'x' ? currentDlX : currentDlY;
-    const before = coords.filter(c => c < current - 0.01).at(-1);
-    const after = coords.find(c => c > current + 0.01);
-    if (before !== undefined && after !== undefined) {
-      const gapSteps = (after - before) / minorSpacing;
-      if (gapSteps <= normalSteps * 2) return 1;
-      if (gapSteps <= normalSteps * 3) return 2;
-      if (gapSteps <= normalSteps * 4) return 3;
-    }
-
-    const next = sign > 0 ? after : before;
-    if (next !== undefined) {
-      const distanceSteps = Math.abs(next - current) / minorSpacing;
-      if (distanceSteps > 1 && distanceSteps < normalSteps) return 1;
-    }
-
-    return normalSteps;
-  }
-
-  private collectMovementFeatureCoordinates(
-    axis: 'x' | 'y',
-    currentDlX: number,
-    currentDlY: number,
-    minorSpacing: number,
-  ): number[] {
-    const perpendicular = axis === 'x' ? currentDlY : currentDlX;
-    const scale = this.drawingLayer.scaleX();
-    const radius = axis === 'x'
-      ? this.crosshairsLayer.crosshairs.hitRadiusY / scale
-      : this.crosshairsLayer.crosshairs.hitRadiusX / scale;
-    const tolerance = Math.max(radius, minorSpacing);
-    const coords: number[] = [];
-    const add = (value: number) => {
-      if (Number.isFinite(value)) coords.push(value);
+  /** Graph-item centers and edge points close enough to the ordinary
+   *  movement goal line to become intermediate stops. Node/label proximity
+   *  is measured from the box (not its center), so a goal line through a
+   *  large card still snaps to the card's center. */
+  private collectNormalMovementSnapCandidates(
+    axis: NormalMovementAxis,
+    line: number,
+    tolerance: number,
+  ): NormalMovementSnapCandidate[] {
+    const out: NormalMovementSnapCandidate[] = [];
+    const distanceToSpan = (min: number, max: number) =>
+      line < min ? min - line : line > max ? line - max : 0;
+    const add = (
+      id: string,
+      point: {x: number; y: number},
+      priority: number,
+      distance: number,
+    ) => {
+      if (Number.isFinite(point.x) && Number.isFinite(point.y) &&
+          distance <= tolerance) {
+        out.push({id, point, priority, distance});
+      }
     };
-    const spansPerpendicular = (min: number, max: number) =>
-      perpendicular >= min - tolerance && perpendicular <= max + tolerance;
 
     for (const node of this.drawingLayer.getDANodes()) {
       const minX = node.group.x();
       const maxX = minX + node.NODE_WIDTH;
       const minY = node.group.y();
       const maxY = minY + node.NODE_HEIGHT;
-      if (axis === 'y' && spansPerpendicular(minX, maxX)) {
-        add(minY);
-        add(maxY);
-      } else if (axis === 'x' && spansPerpendicular(minY, maxY)) {
-        add(minX);
-        add(maxX);
-      }
+      add(
+        `node:${node.id}`,
+        {x: (minX + maxX) / 2, y: (minY + maxY) / 2},
+        0,
+        axis === 'x' ? distanceToSpan(minY, maxY) : distanceToSpan(minX, maxX),
+      );
     }
 
     for (const edge of this.drawingLayer.getDAEdges()) {
       for (const waypoint of edge.waypoints) {
-        const wpPerpendicular = axis === 'x' ? waypoint.y : waypoint.x;
-        if (Math.abs(wpPerpendicular - perpendicular) <= tolerance) {
-          add(axis === 'x' ? waypoint.x : waypoint.y);
-        }
+        add(
+          `waypoint:${waypoint.id}`,
+          {x: waypoint.x, y: waypoint.y},
+          1,
+          Math.abs((axis === 'x' ? waypoint.y : waypoint.x) - line),
+        );
       }
       for (const label of edge.labels) {
         const minX = label.x - label.width / 2;
         const maxX = label.x + label.width / 2;
         const minY = label.y - label.height / 2;
         const maxY = label.y + label.height / 2;
-        if (axis === 'y' && spansPerpendicular(minX, maxX)) {
-          add(minY);
-          add(maxY);
-        } else if (axis === 'x' && spansPerpendicular(minY, maxY)) {
-          add(minX);
-          add(maxX);
-        }
+        add(
+          `label:${label.id}`,
+          {x: label.x, y: label.y},
+          2,
+          axis === 'x' ? distanceToSpan(minY, maxY) : distanceToSpan(minX, maxX),
+        );
       }
 
+      // Each rendered segment contributes its closest meaningful point:
+      // the exact goal-line crossing when one exists, otherwise the nearer
+      // endpoint when the whole segment runs beside the line.
       const points = edge.getPathPoints();
       for (let i = 0; i < points.length - 1; i++) {
         const a = points[i];
         const b = points[i + 1];
-        const primaryA = axis === 'x' ? a.x : a.y;
-        const primaryB = axis === 'x' ? b.x : b.y;
         const perpA = axis === 'x' ? a.y : a.x;
         const perpB = axis === 'x' ? b.y : b.x;
         const dPerp = perpB - perpA;
-        if (Math.abs(dPerp) < 0.01) {
-          if (Math.abs(perpA - perpendicular) <= tolerance) {
-            add(primaryA);
-            add(primaryB);
+        if (Math.abs(dPerp) > 1e-9) {
+          const t = (line - perpA) / dPerp;
+          if (t >= 0 && t <= 1) {
+            add(
+              `edge:${edge.id}:${i}`,
+              {x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t},
+              3,
+              0,
+            );
+            continue;
           }
-          continue;
         }
-        const t = (perpendicular - perpA) / dPerp;
-        if (t >= -0.01 && t <= 1.01) {
-          add(primaryA + (primaryB - primaryA) * Math.max(0, Math.min(1, t)));
-        }
+        const point = Math.abs(perpA - line) <= Math.abs(perpB - line) ? a : b;
+        add(
+          `edge:${edge.id}:${i}`,
+          {x: point.x, y: point.y},
+          3,
+          Math.min(Math.abs(perpA - line), Math.abs(perpB - line)),
+        );
       }
     }
 
-    coords.sort((a, b) => a - b);
-    return coords.filter((value, index) => index === 0 || Math.abs(value - coords[index - 1]) > minorSpacing * 0.25);
+    return out;
+  }
+
+  /** Draw the current goal in drawing-layer space, just above the ordinary
+   *  grid and below graph content. It therefore stays registered with the
+   *  diagram during any edge-of-viewport pan. */
+  private redrawNormalMovementGoalLine(): void {
+    this.normalMovementGoalLine?.destroy();
+    this.normalMovementGoalLine = null;
+    const goal = this.normalMovementGoal;
+    if (!goal) return;
+
+    const scale = this.drawingLayer.scaleX();
+    const minX = -this.drawingLayer.x() / scale - this.stage.width() / scale;
+    const maxX = (this.stage.width() - this.drawingLayer.x()) / scale +
+      this.stage.width() / scale;
+    const minY = -this.drawingLayer.y() / scale - this.stage.height() / scale;
+    const maxY = (this.stage.height() - this.drawingLayer.y()) / scale +
+      this.stage.height() / scale;
+    const line = new Konva.Line({
+      name: 'normal-movement-goal-line',
+      points: goal.axis === 'x'
+        ? [minX, goal.line, maxX, goal.line]
+        : [goal.line, minY, goal.line, maxY],
+      stroke: this.visualConfigService
+        .getEffectivePalette(this.themeService.theme).crosshairsStroke,
+      strokeWidth: 1.5 / scale,
+      dash: [10 / scale, 7 / scale],
+      opacity: 0.58,
+      listening: false,
+    });
+    this.drawingLayer.add(line);
+    line.zIndex(1);
+    this.normalMovementGoalLine = line;
+    this.drawingLayer.batchDraw();
+  }
+
+  private clearNormalMovementGoal(draw = true): void {
+    this.normalMovementGoal = null;
+    if (this.normalMovementGoalLine) {
+      this.normalMovementGoalLine.destroy();
+      this.normalMovementGoalLine = null;
+      if (draw) this.drawingLayer.batchDraw();
+    }
   }
 
   private updateCrosshairsProbeShape(
@@ -2612,6 +2696,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.hideGrid();
       this.setGridIndicatorsVisible(false);
       this.refreshWaypointVisibility(false);
+      this.clearNormalMovementGoal(false);
       this.drawingLayer.batchDraw();
       this.gridFadeTimeout = null;
     }, 5000);
