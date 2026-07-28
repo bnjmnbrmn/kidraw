@@ -15,6 +15,8 @@ The four base-level held keys are:
 
 - **Add+Drag** (`f` in both profiles) — opens a submenu to add a node / waypoint / edge / label. The new item is auto-selected and draggable while the key is held. Releasing exits.
 - **Select+Drag** (`v`) — selects the item under the crosshairs and drags it while held. Releasing exits. A second tap of `v` while the same item is selected toggles it off, via `toggleTopItemSelection`.
+  When the item is an edge, the first movement inserts a waypoint at the
+  crosshairs and drags that waypoint; a plain tap still only selects the edge.
 - **Move** (the movement keys themselves) — every press moves the crosshairs; auto-repeats while held.
 - **Delete** (`x`) — deletes the selected item or the item under the crosshairs.
 

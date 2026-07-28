@@ -5247,20 +5247,37 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let bestSeg = 0;
     let bestDist = Infinity;
     for (const edge of edges) {
-      const pts = edge.getPathPoints();
-      for (let i = 0; i < pts.length - 1; i++) {
-        const closest = closestPointOnSeg(point.x, point.y, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
-        const d = Math.hypot(closest.x - point.x, closest.y - point.y);
-        if (d < bestDist) {
-          bestDist = d;
-          bestEdge = edge;
-          bestSnap = closest;
-          bestSeg = i;
-        }
+      const snap = this.findSnapOnEdge(edge, point);
+      if (snap && snap.distance < bestDist) {
+        bestDist = snap.distance;
+        bestEdge = edge;
+        bestSnap = snap.point;
+        bestSeg = snap.segmentIndex;
       }
     }
     if (!bestEdge || !bestSnap) return undefined;
     return {edge: bestEdge, point: bestSnap, segmentIndex: bestSeg};
+  }
+
+  /** Closest point on one edge to a drawing-layer point. Keeping this
+   *  edge-specific lets Select+Drag turn the exact edge under `v` into a
+   *  waypoint drag, even when another edge passes very close by. */
+  private findSnapOnEdge(edge: DAEdge, point: {x: number; y: number}):
+      {point: {x: number; y: number}; segmentIndex: number; distance: number} | undefined {
+    const pts = edge.getPathPoints();
+    let best: {point: {x: number; y: number}; segmentIndex: number; distance: number} | undefined;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const closest = closestPointOnSeg(
+        point.x, point.y,
+        pts[i].x, pts[i].y,
+        pts[i + 1].x, pts[i + 1].y,
+      );
+      const distance = Math.hypot(closest.x - point.x, closest.y - point.y);
+      if (!best || distance < best.distance) {
+        best = {point: closest, segmentIndex: i, distance};
+      }
+    }
+    return best;
   }
 
   private focusNewNodeForLabelEdit(node: DANode): void {
@@ -5545,7 +5562,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // above/on/below placement.
     const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
+    let selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
+    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+
+    // Holding v over an edge selects it. The first movement key turns the
+    // point under the crosshairs into a waypoint and immediately applies
+    // that same drag step, so the gesture is v+hjkl rather than v, add, v.
+    // Restrict the insertion to the selected edge under the crosshairs:
+    // crossing/parallel edges must not steal the waypoint.
+    if (selectedEdges.length > 0 && selectedLabels.length === 0 &&
+        selectedNodes.length === 0 && selectedWaypoints.length === 0) {
+      const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()
+        .filter(edge => edge.isSelected)
+        .reduce<DAEdge | null>(
+          (top, edge) => !top || edge.zIndex() > top.zIndex() ? edge : top,
+          null,
+        );
+      const edge = edgeUnderCrosshairs ?? selectedEdges[0];
+      const snap = this.findSnapOnEdge(edge, this.crosshairsInLayerCoords());
+      if (snap) {
+        this.drawingLayer.unselectAll();
+        this.unselectAllLabels();
+        const waypoint = edge.insertWaypointAt(snap.point, snap.segmentIndex);
+        waypoint.isSelected = true;
+        selectedWaypoints = [waypoint];
+      }
+    }
+
     if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
       const effectiveTier = tier ?? 'normal';
       selectedLabels.forEach(label => {
