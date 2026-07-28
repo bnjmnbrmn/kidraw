@@ -41,7 +41,6 @@ export class DALabel {
   /** Insertion index of the label-edit caret (0..text.length); null = end. */
   private _cursorIndex: number | null = null;
   private readonly _cursor: Konva.Line;
-  private _cursorBlinkTimer?: number;
   private static _measureText: Konva.Text | null = null;
 
   constructor(x: number, y: number, label: string, id?: string,
@@ -75,7 +74,9 @@ export class DALabel {
     // Label-edit caret — hidden until edit mode.
     this._cursor = new Konva.Line({
       stroke: this._textColor,
-      strokeWidth: 2,
+      strokeWidth: 3,
+      lineCap: 'round',
+      listening: false,
       visible: false,
     });
     this.group.add(this._cursor);
@@ -179,6 +180,7 @@ export class DALabel {
     this._textColor = colors.text;
     this._rect.fill(this._fillColor);
     this._text.fill(this._textColor);
+    this._cursor.stroke(this._textColor);
     this.updateAppearance();
   }
 
@@ -199,17 +201,10 @@ export class DALabel {
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);
-    this._cursorBlinkTimer = window.setInterval(() => {
-      this._cursor.opacity(this._cursor.opacity() > 0 ? 0 : 1);
-    }, 530);
   }
 
   hideCursor(): void {
     this._cursor.visible(false);
-    if (this._cursorBlinkTimer !== undefined) {
-      window.clearInterval(this._cursorBlinkTimer);
-      this._cursorBlinkTimer = undefined;
-    }
   }
 
   appendText(text: string): void {

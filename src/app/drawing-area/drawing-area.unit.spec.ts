@@ -89,6 +89,22 @@ describe('DrawingArea Unit Tests', () => {
       expect(node.FONT_SIZE).toBe(node.MIN_FONT_SIZE);
       expect(node.adjustLabelFontSizeBy(-1)).toBe(false);
     });
+
+    it('keeps the edit caret solid and synchronized with text color', () => {
+      const node = new DANode(0, 0, 'test');
+      const cursor = (node as any)._cursor as Konva.Line;
+
+      node.showCursor();
+      expect(cursor.visible()).toBeTrue();
+      expect(cursor.opacity()).toBe(1);
+      expect(cursor.strokeWidth()).toBe(3);
+
+      node.applyColors({fill: '#ffffff', stroke: '#333333', text: '#123456'});
+      expect(cursor.stroke()).toBe('#123456');
+
+      node.hideCursor();
+      expect(cursor.visible()).toBeFalse();
+    });
   });
 
   describe('DAEdge', () => {
@@ -649,6 +665,22 @@ describe('DrawingArea Unit Tests', () => {
       expect(label.adjustFontSizeBy(-10000)).toBe(true);
       expect(labelText.fontSize()).toBe(label.MIN_FONT_SIZE);
       expect(label.adjustFontSizeBy(-1)).toBe(false);
+    });
+
+    it('keeps the edit caret solid and synchronized with text color', () => {
+      const label = new DALabel(100, 200, 'test');
+      const cursor = (label as any)._cursor as Konva.Line;
+
+      label.showCursor();
+      expect(cursor.visible()).toBeTrue();
+      expect(cursor.opacity()).toBe(1);
+      expect(cursor.strokeWidth()).toBe(3);
+
+      label.applyColors({fill: '#ffffff', stroke: '#333333', text: '#654321'});
+      expect(cursor.stroke()).toBe('#654321');
+
+      label.hideCursor();
+      expect(cursor.visible()).toBeFalse();
     });
   });
 

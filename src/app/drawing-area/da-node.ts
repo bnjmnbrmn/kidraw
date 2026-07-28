@@ -26,7 +26,6 @@ export class DANode {
   private _shape: Konva.Shape;
   private readonly _label: Konva.Text;
   private readonly _cursor: Konva.Line;
-  private _cursorBlinkTimer?: number;
   private _isSelected: boolean = false;
   private _pinned: boolean = false;
   private readonly _pinIndicator: Konva.Text;
@@ -124,7 +123,9 @@ export class DANode {
     this._cursor = new Konva.Line({
       points: [0, 0, 0, this._fontSize],
       stroke: colors?.text ?? 'black',
-      strokeWidth: 2,
+      strokeWidth: 3,
+      lineCap: 'round',
+      listening: false,
       visible: false,
     });
     this.group.add(this._cursor);
@@ -231,6 +232,7 @@ export class DANode {
       this._shape.stroke(colors.stroke);
       this._label.fill(colors.text);
     }
+    this._cursor.stroke(colors.text);
     this._pinIndicator.fill(colors.stroke);
     this._resizeHandle.fill(colors.stroke);
     this._resizeHandle.shadowColor(colors.stroke);
@@ -822,17 +824,10 @@ export class DANode {
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);
-    this._cursorBlinkTimer = window.setInterval(() => {
-      this._cursor.opacity(this._cursor.opacity() > 0 ? 0 : 1);
-    }, 530);
   }
 
   hideCursor(): void {
     this._cursor.visible(false);
-    if (this._cursorBlinkTimer !== undefined) {
-      window.clearInterval(this._cursorBlinkTimer);
-      this._cursorBlinkTimer = undefined;
-    }
   }
 
   // --- Label-edit caret: position model + rendering ---
