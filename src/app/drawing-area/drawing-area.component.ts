@@ -199,7 +199,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
   private _defaultNodeShape: NodeShape = 'box';
-  private _defaultEdgeDirectedness: EdgeDirectedness = 'directed';
+  private _defaultEdgeDirectedness: EdgeDirectedness = 'undirected';
   private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
@@ -232,7 +232,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public CROSSHAIRS_MOVEMENT_DISTANCE = 50; // one grid cell
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
-  /** Layer-space offset of a quick-added node below its anchor (one "slot"). */
+  /** Layer-space offset of a quick-added node from its anchor (one "slot"). */
   private static readonly QUICK_ADD_SLOT = 300;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
@@ -2253,7 +2253,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if(daNodesContainingCrosshairs.length == 1) {
         const destNode = daNodesContainingCrosshairs[0];
         const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
-        this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, destNode));
+        this.addDefaultEdge(srcNode, destNode);
         this.unselectAll();
       } else {
         return;
@@ -2262,7 +2262,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
       if (srcNode === destNode) return; // no self-edges
-      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, destNode));
+      this.addDefaultEdge(srcNode, destNode);
       this.unselectAll();
       return;
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
@@ -5318,7 +5318,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Create edges from each previously selected node to the new node
     for (const srcNode of selectedNodes) {
-      this.autoRouteNewEdge(this.drawingLayer.addEdge(srcNode, newNode));
+      this.addDefaultEdge(srcNode, newNode);
     }
 
     const labelable = newNode.nodeShape !== 'junction' &&
@@ -5765,7 +5765,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):
    *  quick-add based on what the crosshairs are over. Empty (or waypoint) →
    *  default node at the crosshairs; node → connected default node one slot
-   *  below; edge/label → hint. Selection is irrelevant to adding. */
+   *  to the right; edge/label → hint. Selection is irrelevant to adding. */
   private handleQuickAdd(): void {
     if (this.getLabelUnderCrosshairs()) {
       this.daOut.emit({kind: 'status-message', message: 'Label under crosshairs — tap the edit-text key to edit it.'});
@@ -5774,7 +5774,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodes = this.getDANodesContainingCrosshairs();
     if (nodes.length > 0) {
       const anchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
-      this.quickAddBelow(anchor);
+      this.quickAddConnectedRight(anchor);
       return;
     }
     if (!this.getWaypointUnderCrosshairs() && this.getDAEdgesContainingCrosshairs().length > 0) {
@@ -5799,7 +5799,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Start point for an empty-canvas add, in drawing-layer coordinates. */
   private growOrigin: {x: number; y: number} | null = null;
   /** null = pristine (no target hopped yet) → release does the default
-   *  quick-add-below. */
+   *  connected quick-add to the right. */
   private growTarget: DANode | null = null;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
@@ -5832,7 +5832,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ? this.getNodeCenterInLayerCoordinates(this.growAnchor)
       : this.crosshairsInLayerCoords();
     this.growTarget = null;
-    this.growDirState = 0;
+    this.growDirState = this.defaultGrowDirection(this.growAnchor);
     this.growPlacing = false;
     this.growShape = undefined;
     this.growPlacePos = null;
@@ -6024,7 +6024,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Type picked: enter the placement sub-mode — ghost node of that shape
-   *  at the below-anchor default (or at the crosshairs on empty canvas);
+   *  at the right-of-anchor default (or at the crosshairs on empty canvas);
    *  hjkl places (first press = rough slot
    *  throw, then grid steps, coarse/fine tier keys held). Release of the
    *  still-held add key commits; Enter commits the sticky variant. */
@@ -6037,7 +6037,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacedRough = false;
     const c = this.growOrigin!;
     this.growPlacePos = this.growAnchor
-      ? {x: c.x, y: c.y + DrawingAreaComponent.QUICK_ADD_SLOT}
+      ? {x: c.x + DrawingAreaComponent.QUICK_ADD_SLOT, y: c.y}
       : {...c};
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
     this.redrawGrowGhost();
@@ -6126,8 +6126,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     if (target === null) {
-      // Pristine release = the tap default: connected node one slot below.
-      this.quickAddBelow(anchor, dirState);
+      // Pristine release = the tap default: connected node one slot right.
+      this.quickAddConnectedRight(anchor, dirState);
       return;
     }
     if (target === anchor) return; // came home to cancel
@@ -6141,13 +6141,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
   }
 
+  /** Directionality state used when a grow/add gesture begins. Todo
+   *  categories are special: tasks depend on their category, so the edge
+   *  points from the new/target node back into the category. */
+  private defaultGrowDirection(anchor: DANode | null): number {
+    if (anchor && this.isTodoCategory(anchor)) return 1;
+    switch (this._defaultEdgeDirectedness) {
+      case 'undirected': return 2;
+      case 'bidirectional': return 3;
+      default: return 0;
+    }
+  }
+
+  /** Until the todo extension gains typed node kinds, the dogfood graph's
+   *  established circle=category convention is the fallback. Accept likely
+   *  semantic tags too so files can migrate without changing this gesture. */
+  private isTodoCategory(node: DANode): boolean {
+    if (this.drawingLayer.diagramType !== 'todo-graph') return false;
+    return node.nodeShape === 'circle' ||
+      node.tags.some(tag => tag === 'category' ||
+        tag === 'kind/category' || tag === 'type/category');
+  }
+
+  /** Add an edge using the user's current defaults. Labels are absent by
+   *  default because DAEdge starts with an empty label list. */
+  private addDefaultEdge(src: DANode, dest: DANode): DAEdge {
+    const edge = this.drawingLayer.addEdge(src, dest);
+    edge.directedness = this._defaultEdgeDirectedness;
+    edge.lineStyle = this._defaultLineStyle;
+    this.autoRouteNewEdge(edge);
+    return edge;
+  }
+
   /** Create the edge for a grow commit per the directionality state. */
   private wireGrowEdge(anchor: DANode, target: DANode, dirState: number): DAEdge {
     const src = dirState === 1 ? target : anchor;
     const dest = dirState === 1 ? anchor : target;
     const edge = this.drawingLayer.addEdge(src, dest);
-    if (dirState === 2) edge.directedness = 'undirected';
-    if (dirState === 3) edge.directedness = 'bidirectional';
+    edge.directedness = dirState === 2 ? 'undirected'
+      : dirState === 3 ? 'bidirectional' : 'directed';
+    edge.lineStyle = this._defaultLineStyle;
     this.autoRouteNewEdge(edge);
     return edge;
   }
@@ -6193,7 +6226,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Translucent dashed preview of what releasing the hold would create:
-   *  pristine → ghost node one slot below + ghost edge; targeting → ghost
+   *  pristine → ghost node one slot right + ghost edge; targeting → ghost
    *  edge to the highlighted target plus a ring around it. Arrowheads track
    *  the directionality state. */
   private redrawGrowGhost(): void {
@@ -6226,7 +6259,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } else {
       const w = 140, h = 60;
       endCenter = anchor
-        ? {x: aCenter.x, y: aCenter.y + DrawingAreaComponent.QUICK_ADD_SLOT}
+        ? {x: aCenter.x + DrawingAreaComponent.QUICK_ADD_SLOT, y: aCenter.y}
         : {...aCenter};
       endHalf = {w: w / 2, h: h / 2};
       ghost.add(new Konva.Rect({
@@ -6268,10 +6301,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Default quick-add for a node anchor: a new default-type node one slot
-   *  directly below the anchor, wired anchor → new, straight into labelEdit.
-   *  Also the pristine-release default of the held-a grow mode; dirState
-   *  (grow directionality, default anchor→new) orients the edge. */
-  private quickAddBelow(anchor: DANode, dirState = 0): void {
+   *  directly right of the anchor, wired with the current edge default,
+   *  straight into labelEdit. Todo categories override the default with a
+   *  directed new-task → category edge. Also used by pristine held-a release. */
+  private quickAddConnectedRight(
+    anchor: DANode,
+    dirState = this.defaultGrowDirection(anchor),
+  ): void {
     this.finishTweens();
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.drawingLayer.unselectAll();
@@ -6279,7 +6315,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const anchorCenter = this.getNodeCenterInStageCoordinates(anchor);
     const slot = DrawingAreaComponent.QUICK_ADD_SLOT * this.drawingLayer.scaleX();
-    const newNode = this.drawingLayer.createNewNode(anchorCenter.x, anchorCenter.y + slot);
+    const newNode = this.drawingLayer.createNewNode(anchorCenter.x + slot, anchorCenter.y);
     this.wireGrowEdge(anchor, newNode, dirState);
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';

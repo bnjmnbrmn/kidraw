@@ -55,7 +55,7 @@ new node has entered the picture:
    node kinds carrying shape/color/style (extension node-kinds slot; e.g.
    todo-graph Task/Category/…; plain graphs the raw shapes; Ben's da-51
    idea). On selection the ghost node appears at the **default spot: one
-   slot directly below the anchor**, wired per the current `o` state;
+   slot directly right of the anchor**, wired per the current `o` state;
    `hjkl` then adjusts placement (first press per direction = cardinal
    slot throw, further presses = grid steps). Release `a` → node + edge +
    labelEdit. Releasing `a` while a popup is open does **not** cancel
@@ -64,7 +64,7 @@ new node has entered the picture:
    applies unchanged. Replaces the post-insert drag phase.
 
    **Placement rule (round 5, build-and-feel):** the *first* directional
-   press replaces the below-anchor default with a rough slot throw in that
+   press replaces the right-of-anchor default with a rough slot throw in that
    direction; *every* subsequent press is a grid-step drag; the standard
    movement tiers apply — `s`+hjkl coarse (slot-sized, the "re-rough"
    escape hatch), `d`+hjkl fine. Ben unsure yet; ship this and let the
@@ -116,7 +116,7 @@ list Ben asked to keep track of.
 | 3 | tap `i` over edge | edits its label; creates an empty one if none (built as such) | ✅ built 2026-07-19 |
 | 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
 | 5 | tap `a` over nothing | quick-add node at crosshairs → center + zoom to ≥100% → labelEdit | ✅ built 2026-07-19; focus added 2026-07-27 |
-| 6 | tap `a` over node | **default quick-add**: node one slot below, anchor→new, center + zoom to ≥100%, labelEdit | ✅ built 2026-07-19 (= pristine grow release); focus added 2026-07-27 |
+| 6 | tap `a` over node | **default quick-add**: node one slot right, current default edge direction/type, center + zoom to ≥100%, labelEdit; todo category creates directed task→category | ✅ built 2026-07-19; defaults revised 2026-07-28; focus added 2026-07-27 |
 | 6b | tap `a` over edge/label | no-op + hint | ✅ built 2026-07-19 |
 | 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✅ built 2026-07-19 |
 | 8 | hold `a` over node: `o` cycles 4 states | ghost arrowheads track | ✅ built 2026-07-19 |

@@ -12,6 +12,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     waypointUnderCrosshairs?: unknown;
     edgesUnderCrosshairs?: unknown[];
     defaultNodeShape?: string;
+    diagramType?: string;
   } = {}): any {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
     component.log = {log: () => {}};
@@ -21,6 +22,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       unselectAll: jasmine.createSpy('unselectAll'),
       batchDraw: jasmine.createSpy('batchDraw'),
       serializeGraph: () => ({nodes: [], edges: []}),
+      diagramType: overrides.diagramType ?? 'default',
     };
     component.getLabelUnderCrosshairs = () => overrides.labelUnderCrosshairs ?? null;
     component.getDANodesContainingCrosshairs = () => overrides.nodesUnderCrosshairs ?? [];
@@ -36,7 +38,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
           component.daOut.emit({kind: 'started-label-editing-mode'});
         }
       });
-    component.quickAddBelow = jasmine.createSpy('quickAddBelow');
+    component.quickAddConnectedRight = jasmine.createSpy('quickAddConnectedRight');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.singleItemSelect = jasmine.createSpy('singleItemSelect');
     component.showEditCarets = jasmine.createSpy('showEditCarets');
@@ -64,12 +66,12 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.createNewNode).toHaveBeenCalled();
     });
 
-    it('quick-adds a connected node below the topmost node under the crosshairs', () => {
+    it('quick-adds a connected node right of the topmost node under the crosshairs', () => {
       const top = {zIndex: () => 2};
       const bottom = {zIndex: () => 1};
       const component = buildComponent({nodesUnderCrosshairs: [bottom, top]});
       component.handleQuickAdd();
-      expect(component.quickAddBelow).toHaveBeenCalledWith(top);
+      expect(component.quickAddConnectedRight).toHaveBeenCalledWith(top);
       expect(component.createNewNode).not.toHaveBeenCalled();
     });
 
@@ -86,7 +88,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.handleQuickAdd();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         jasmine.objectContaining({kind: 'status-message'}));
-      expect(component.quickAddBelow).not.toHaveBeenCalled();
+      expect(component.quickAddConnectedRight).not.toHaveBeenCalled();
     });
 
     it('skips label edit when the default shape is junction', () => {
@@ -94,6 +96,28 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.handleQuickAdd();
       expect(component.createNewNode).toHaveBeenCalled();
       expect(component.daOut.emit).not.toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+    });
+  });
+
+  describe('connected-add defaults', () => {
+    it('starts ordinary connected adds with the configured undirected default', () => {
+      const component = buildComponent();
+      component._defaultEdgeDirectedness = 'undirected';
+
+      expect(component.defaultGrowDirection({
+        nodeShape: 'box',
+        tags: [],
+      })).toBe(2);
+    });
+
+    it('points a new todo task into a category represented by the current circle convention', () => {
+      const component = buildComponent({diagramType: 'todo-graph'});
+      component._defaultEdgeDirectedness = 'undirected';
+
+      expect(component.defaultGrowDirection({
+        nodeShape: 'circle',
+        tags: [],
+      })).toBe(1);
     });
   });
 

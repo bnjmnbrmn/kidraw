@@ -3,7 +3,7 @@
  * (notes/design-add-insert-model.md), vim profile, real keys:
  *
  *   1. hold a over a node, release with no keypress → the tap default:
- *      connected node one slot below + labelEdit (pristine release).
+ *      connected node one slot right + labelEdit (pristine release).
  *   2. hold a + l → target hops to the node on the right (ghost edge);
  *      release → edge anchor→target, NO new node, normal mode.
  *   3. hold a + l + o + o → directionality cycled twice (rev, undirected);
@@ -81,7 +81,7 @@ async function main() {
     await page.waitForTimeout(120);
   };
 
-  // --- 1. pristine release = default add-below ---
+  // --- 1. pristine release = default add-right ---
   await parkOnNode('A');
   await page.keyboard.down('a');
   await page.waitForTimeout(250);
@@ -91,7 +91,7 @@ async function main() {
   await page.keyboard.up('a');
   await page.waitForTimeout(200);
   s = await state();
-  check('pristine release quick-adds below', s.nodes.length === 4 && s.edges.length === 1
+  check('pristine release quick-adds right', s.nodes.length === 4 && s.edges.length === 1
     && s.edges[0].from === 'A', JSON.stringify(s.edges));
   check('pristine release enters labelEdit', s.mode === 'labelEdit', s.mode);
   await page.keyboard.type('D', { delay: 25 });

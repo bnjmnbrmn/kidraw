@@ -4,7 +4,7 @@
  *
  *   1. tap `a` on empty canvas → default node at the crosshairs → labelEdit.
  *      The new node is centered and raised to at least 100% zoom for editing.
- *   2. tap `a` over a node → connected default node one slot below → labelEdit.
+ *   2. tap `a` over a node → connected default node one slot right → labelEdit.
  *   3. tap `a` over an edge → hint, nothing added.
  *   4. tap `i` over a node → edit its text (append to existing).
  *   5. tap `i` over a label-less edge → empty label created and edited.
@@ -112,7 +112,7 @@ async function main() {
   await page.keyboard.type('alpha', { delay: 25 });
   await escapeToNormal();
 
-  // --- 2. tap a over a node: connected quick-add below ---
+  // --- 2. tap a over a node: connected quick-add right ---
   await parkOnNode('alpha');
   await page.keyboard.press('a');
   await page.waitForTimeout(420);
@@ -121,9 +121,9 @@ async function main() {
   const fresh = s.nodes.find(n => n.text === '');
   check('tap a over a node adds a connected node', s.nodes.length === 2 && s.edges.length === 1
     && s.edges[0].from === 'alpha', JSON.stringify(s.edges));
-  check('new node sits below the anchor', fresh && alpha && fresh.y > alpha.y + 100,
-    `anchor y=${alpha?.y}, new y=${fresh?.y}`);
-  check('labelEdit after quick-add below', s.mode === 'labelEdit', s.mode);
+  check('new node sits right of the anchor', fresh && alpha && fresh.x > alpha.x + 100,
+    `anchor x=${alpha?.x}, new x=${fresh?.x}`);
+  check('labelEdit after quick-add right', s.mode === 'labelEdit', s.mode);
   check('connected quick-add centers its new editable node',
     fresh &&
       Math.abs(fresh.stageX - s.stageCenter.x) < 4 &&
