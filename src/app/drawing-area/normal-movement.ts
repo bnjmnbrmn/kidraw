@@ -9,6 +9,12 @@ export interface NormalMovementPoint {
 export interface NormalMovementSnapCandidate {
   id: string;
   point: NormalMovementPoint;
+  /**
+   * Primary-axis interval where the goal line actually crosses this item.
+   * Movement stops at the boundary it encounters instead of pulling to the
+   * item's center. This keeps pass-throughs on the goal line.
+   */
+  crossingSpan?: {min: number; max: number};
   /** Lower values win when features share the same progress coordinate. */
   priority: number;
   /** Perpendicular distance from the feature to the goal line. */
@@ -90,22 +96,28 @@ export function nextNormalMovementStep(
 
   const eligible = candidates
     .filter(candidate => !visited.has(candidate.id))
-    .map(candidate => ({
-      candidate,
-      progress: sign * (primaryOf(state.axis, candidate.point) - state.primary),
-    }))
+    .map(candidate => {
+      const point = candidateTarget(state, sign, candidate);
+      return {
+        candidate,
+        point,
+        progress: sign * (primaryOf(state.axis, point) - state.primary),
+      };
+    })
     .filter(({progress}) => progress > EPS && progress <= distance + EPS)
     .sort((a, b) => a.progress - b.progress ||
       a.candidate.priority - b.candidate.priority ||
       a.candidate.distance - b.candidate.distance);
 
-  const next = eligible[0]?.candidate;
-  if (next) {
+  const eligibleNext = eligible[0];
+  if (eligibleNext) {
+    const next = eligibleNext.candidate;
+    const target = eligibleNext.point;
     const nextVisited = new Set(visited);
     nextVisited.add(next.id);
-    const primary = primaryOf(state.axis, next.point);
+    const primary = primaryOf(state.axis, target);
     const projection = pointOnLine(state.axis, primary, state.line);
-    const offLine = Math.abs(perpendicularOf(state.axis, next.point) - state.line) > EPS;
+    const offLine = Math.abs(perpendicularOf(state.axis, target) - state.line) > EPS;
     return {
       state: {
         ...state,
@@ -114,7 +126,7 @@ export function nextNormalMovementStep(
         visited: nextVisited,
         lastSign: sign,
       },
-      target: next.point,
+      target,
       kind: 'snap',
       snappedId: next.id,
     };
@@ -133,6 +145,27 @@ export function nextNormalMovementStep(
     target,
     kind: 'line',
   };
+}
+
+/**
+ * Resolve the point encountered in this direction. When already inside a
+ * crossing span, the exit boundary is the next meaningful point.
+ */
+function candidateTarget(
+  state: NormalMovementGoal,
+  sign: -1 | 1,
+  candidate: NormalMovementSnapCandidate,
+): NormalMovementPoint {
+  const span = candidate.crossingSpan;
+  if (!span) return candidate.point;
+
+  let primary: number;
+  if (sign > 0) {
+    primary = state.primary < span.min - EPS ? span.min : span.max;
+  } else {
+    primary = state.primary > span.max + EPS ? span.max : span.min;
+  }
+  return pointOnLine(state.axis, primary, state.line);
 }
 
 function primaryOf(axis: NormalMovementAxis, point: NormalMovementPoint): number {

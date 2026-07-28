@@ -253,7 +253,7 @@ describe('DrawingArea Unit Tests', () => {
   });
 
   describe('normal movement snapping', () => {
-    it('collects a nearby node center when the goal line crosses its box', () => {
+    it('collects the crossing span instead of center-magnetizing through a node', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const node = new DANode(20, -30, 'near');
       component.drawingLayer = {
@@ -269,6 +269,10 @@ describe('DrawingArea Unit Tests', () => {
           point: {
             x: node.group.x() + node.NODE_WIDTH / 2,
             y: node.group.y() + node.NODE_HEIGHT / 2,
+          },
+          crossingSpan: {
+            min: node.group.x(),
+            max: node.group.x() + node.NODE_WIDTH,
           },
         }),
       ]);

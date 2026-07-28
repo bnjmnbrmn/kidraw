@@ -236,6 +236,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  or the movement indicators time out. */
   private normalMovementGoal: NormalMovementGoal | null = null;
   private normalMovementGoalLine: Konva.Line | null = null;
+  /** Dashed crosshair-colored trace around the single top-priority graph item
+   *  currently under the crosshairs. This is intentionally separate from
+   *  selection state and is never serialized. */
+  private crosshairHoverHighlight: Konva.Shape | null = null;
+  private crosshairHoverRefreshTimer: number | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -442,6 +447,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.applyThemeColors(palette);
       this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
       if (this.normalMovementGoal) this.redrawNormalMovementGoalLine();
+      this.refreshCrosshairHoverHighlight();
     };
     const reapplyConfig = () => {
       reapplyTheme();
@@ -498,6 +504,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitZoomLevel();
     this.emitMovementSpeed();
     this.emitContextState();
+    this.refreshCrosshairHoverHighlight();
 
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
@@ -539,6 +546,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if (this.vaultSaveTimer !== null) clearTimeout(this.vaultSaveTimer);
     if (this.vaultPollTimer !== null) clearInterval(this.vaultPollTimer);
+    if (this.crosshairHoverRefreshTimer !== null) {
+      clearTimeout(this.crosshairHoverRefreshTimer);
+    }
+    this.crosshairHoverHighlight?.destroy();
   }
 
   private canEdit = false;
@@ -954,6 +965,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitContextState();
     }
     this.refreshWaypointVisibility();
+    // Commands may tween either the crosshairs or the drawing beneath them.
+    // Refresh just after the standard movement tween, coalescing held-key
+    // repeats so the highlight never trails several landings behind.
+    if (this.crosshairsLayer.crosshairs.konvaGroup.visible()) {
+      this.scheduleCrosshairHoverRefresh();
+    } else {
+      this.refreshCrosshairHoverHighlight();
+    }
 
     if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind) ||
         command.kind === DACommandType.UNDO ||
@@ -2302,6 +2321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private zoomIn() {
     this.finishTweens()
+    this.clearCrosshairHoverHighlight(false);
 
     const oldScale = this.drawingLayer.scaleX();
 
@@ -2321,6 +2341,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       onFinish: () => {
         this.emitZoomLevel();
         if (this.nodeGridVisible) this.redrawNodeGrid();
+        this.scheduleCrosshairHoverRefresh(20);
       }
 
     }).play());
@@ -2328,6 +2349,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private zoomOut() {
     this.finishTweens()
+    this.clearCrosshairHoverHighlight(false);
 
     const oldScale = this.drawingLayer.scaleX();
 
@@ -2349,6 +2371,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       onFinish: () => {
         this.emitZoomLevel();
         if (this.nodeGridVisible) this.redrawNodeGrid();
+        this.scheduleCrosshairHoverRefresh(20);
       }
     }).play());
   }
@@ -2394,6 +2417,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier,
                            showMovementGrid = true) {
     this.finishTweens();
+    this.clearCrosshairHoverHighlight(false);
 
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
@@ -2494,6 +2518,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           });
           this.checkResizeHandleProximity();
           if (this.nodeGridVisible) this.redrawNodeGrid();
+          this.scheduleCrosshairHoverRefresh(20);
         },
       }).play());
     }
@@ -2512,6 +2537,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         onFinish: () => {
           this.drawingLayer.position(layerTarget);
           if (this.nodeGridVisible) this.redrawNodeGrid();
+          this.scheduleCrosshairHoverRefresh(20);
         },
       }).play());
     }
@@ -2520,10 +2546,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (showMovementGrid) this.showMovementIndicators();
   }
 
-  /** Graph-item centers and edge points close enough to the ordinary
-   *  movement goal line to become intermediate stops. Node/label proximity
-   *  is measured from the box (not its center), so a goal line through a
-   *  large card still snaps to the card's center. */
+  /** Graph items close enough to the ordinary movement goal line to become
+   *  intermediate stops. When the line crosses a node or label, its span is
+   *  retained so movement stops at the encountered boundary instead of being
+   *  pulled to the center. Nearby-but-off-line items still use their center. */
   private collectNormalMovementSnapCandidates(
     axis: NormalMovementAxis,
     line: number,
@@ -2537,10 +2563,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       point: {x: number; y: number},
       priority: number,
       distance: number,
+      crossingSpan?: {min: number; max: number},
     ) => {
       if (Number.isFinite(point.x) && Number.isFinite(point.y) &&
           distance <= tolerance) {
-        out.push({id, point, priority, distance});
+        out.push({id, point, priority, distance, crossingSpan});
       }
     };
 
@@ -2549,11 +2576,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const maxX = minX + node.NODE_WIDTH;
       const minY = node.group.y();
       const maxY = minY + node.NODE_HEIGHT;
+      const distance = axis === 'x'
+        ? distanceToSpan(minY, maxY)
+        : distanceToSpan(minX, maxX);
       add(
         `node:${node.id}`,
         {x: (minX + maxX) / 2, y: (minY + maxY) / 2},
         0,
-        axis === 'x' ? distanceToSpan(minY, maxY) : distanceToSpan(minX, maxX),
+        distance,
+        distance === 0
+          ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
+          : undefined,
       );
     }
 
@@ -2571,11 +2604,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const maxX = label.x + label.width / 2;
         const minY = label.y - label.height / 2;
         const maxY = label.y + label.height / 2;
+        const distance = axis === 'x'
+          ? distanceToSpan(minY, maxY)
+          : distanceToSpan(minX, maxX);
         add(
           `label:${label.id}`,
           {x: label.x, y: label.y},
           2,
-          axis === 'x' ? distanceToSpan(minY, maxY) : distanceToSpan(minX, maxX),
+          distance,
+          distance === 0
+            ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
+            : undefined,
         );
       }
 
@@ -2600,6 +2639,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             );
             continue;
           }
+        } else if (Math.abs(perpA - line) < 1e-9) {
+          const primaryA = axis === 'x' ? a.x : a.y;
+          const primaryB = axis === 'x' ? b.x : b.y;
+          add(
+            `edge:${edge.id}:${i}`,
+            {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2},
+            3,
+            0,
+            {min: Math.min(primaryA, primaryB), max: Math.max(primaryA, primaryB)},
+          );
+          continue;
         }
         const point = Math.abs(perpA - line) <= Math.abs(perpB - line) ? a : b;
         add(
@@ -2655,6 +2705,132 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.normalMovementGoalLine = null;
       if (draw) this.drawingLayer.batchDraw();
     }
+  }
+
+  private scheduleCrosshairHoverRefresh(delayMs?: number): void {
+    if (this.crosshairHoverRefreshTimer !== null) {
+      clearTimeout(this.crosshairHoverRefreshTimer);
+    }
+    const delay = delayMs ??
+      Math.ceil(this.CROSSHAIR_MOVEMENT_DURATION * 1000) + 30;
+    this.crosshairHoverRefreshTimer = window.setTimeout(() => {
+      this.crosshairHoverRefreshTimer = null;
+      this.refreshCrosshairHoverHighlight();
+    }, delay);
+  }
+
+  /**
+   * Show one non-semantic hover trace for the top item under the crosshairs.
+   * The hit priority matches selection: label, waypoint, top node, top edge.
+   * Using a separate overlay keeps this cue visually and behaviorally
+   * independent from the blue selection treatment.
+   */
+  private refreshCrosshairHoverHighlight(): void {
+    this.clearCrosshairHoverHighlight(false);
+    if (!this.drawingLayer || !this.crosshairsLayer ||
+        !this.crosshairsLayer.crosshairs.konvaGroup.visible()) {
+      this.drawingLayer?.batchDraw();
+      return;
+    }
+
+    const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
+    const palette = this.visualConfigService
+      .getEffectivePalette(this.themeService.theme);
+    const color = palette.crosshairsStroke;
+    const pad = 6 / scale;
+    const common = {
+      name: 'crosshair-hover-highlight',
+      stroke: color,
+      strokeWidth: 2,
+      strokeScaleEnabled: false,
+      dash: [7 / scale, 5 / scale],
+      opacity: 0.9,
+      lineCap: 'round' as const,
+      lineJoin: 'round' as const,
+      listening: false,
+      shadowColor: color,
+      shadowBlur: 5,
+      shadowOpacity: 0.3,
+    };
+
+    let highlight: Konva.Shape | null = null;
+    let targetKind = '';
+    let targetId = '';
+
+    const label = this.getLabelUnderCrosshairs();
+    if (label) {
+      targetKind = 'label';
+      targetId = label.id;
+      highlight = new Konva.Rect({
+        ...common,
+        x: label.x - label.width / 2 - pad,
+        y: label.y - label.height / 2 - pad,
+        width: label.width + pad * 2,
+        height: label.height + pad * 2,
+        cornerRadius: 5 / scale,
+      });
+    } else {
+      const waypoint = this.getWaypointUnderCrosshairs();
+      if (waypoint) {
+        targetKind = 'waypoint';
+        targetId = waypoint.id;
+        highlight = new Konva.Circle({
+          ...common,
+          x: waypoint.x,
+          y: waypoint.y,
+          radius: waypoint.RADIUS + pad,
+        });
+      } else {
+        const nodes = this.getDANodesContainingCrosshairs();
+        if (nodes.length > 0) {
+          const node = nodes.reduce((a, b) =>
+            a.zIndex() > b.zIndex() ? a : b);
+          targetKind = 'node';
+          targetId = node.id;
+          highlight = new Konva.Rect({
+            ...common,
+            x: node.group.x() - pad,
+            y: node.group.y() - pad,
+            width: node.NODE_WIDTH + pad * 2,
+            height: node.NODE_HEIGHT + pad * 2,
+            cornerRadius: node.nodeShape === 'circle'
+              ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2 + pad
+              : 7 / scale,
+          });
+        } else {
+          const edges = this.getDAEdgesContainingCrosshairs();
+          if (edges.length > 0) {
+            const edge = edges.reduce((a, b) =>
+              a.zIndex() > b.zIndex() ? a : b);
+            targetKind = 'edge';
+            targetId = edge.id;
+            highlight = new Konva.Line({
+              ...common,
+              points: edge.getPathPoints().flatMap(p => [p.x, p.y]),
+              tension: edge.smoothRendering ? edge.SMOOTH_TENSION : 0,
+              strokeWidth: 5,
+              opacity: 0.72,
+            });
+          }
+        }
+      }
+    }
+
+    if (highlight) {
+      highlight.setAttr('targetKind', targetKind);
+      highlight.setAttr('targetId', targetId);
+      this.drawingLayer.add(highlight);
+      highlight.moveToTop();
+      this.crosshairHoverHighlight = highlight;
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  private clearCrosshairHoverHighlight(draw = true): void {
+    if (!this.crosshairHoverHighlight) return;
+    this.crosshairHoverHighlight.destroy();
+    this.crosshairHoverHighlight = null;
+    if (draw) this.drawingLayer.batchDraw();
   }
 
   private updateCrosshairsProbeShape(
@@ -2761,6 +2937,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private panViewport(deltaX: number, deltaY: number) {
     this.finishTweens();
+    this.clearCrosshairHoverHighlight(false);
     this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
@@ -2769,6 +2946,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       easing: Konva.Easings.Linear,
       onFinish: () => {
         if (this.nodeGridVisible) this.redrawNodeGrid();
+        this.scheduleCrosshairHoverRefresh(20);
       },
     }).play());
   }
@@ -5587,6 +5765,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private recenterCrosshairs() {
     this.finishTweens();
+    this.clearCrosshairHoverHighlight(false);
 
     const stageWidth = this.stage.width();
     const stageHeight = this.stage.height();
@@ -5602,6 +5781,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         if (index > -1) {
           this.tweens.splice(index, 1);
         }
+        this.scheduleCrosshairHoverRefresh(20);
       }
     });
 

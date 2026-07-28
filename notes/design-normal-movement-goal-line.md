@@ -18,11 +18,29 @@ Each normal step considers graph features within a screen-stable snap corridor:
 - exact crossings of rendered edge segments, or a nearby segment endpoint.
 
 The next feature ahead takes precedence over the ordinary half-grid step.
-After snapping to a feature away from the goal line, the following same-axis
-keypress visits the feature's perpendicular projection on the line before
-continuing. This return can move perpendicular to the pressed direction by
-design: the goal line remains a complete traversable backbone rather than
-being silently skipped by magnetic snapping.
+There are now two deliberately different cases:
+
+- When the goal line crosses a node or label box, movement stops at the first
+  boundary it encounters and stays on the line. Starting inside stops at the
+  exit boundary. It does not pull to the item's center.
+- When the line only passes near an item, movement may still snap to its
+  center. The following same-axis keypress visits the feature's perpendicular
+  projection on the line before continuing.
+
+The latter return can move perpendicular to the pressed direction by design:
+the goal line remains a complete traversable backbone rather than being
+silently skipped by magnetic snapping. Equal-position ambiguity is resolved
+by the existing priority order, so a waypoint on an edge wins over the edge.
+
+Normal-mode held movement fires once immediately, pauses for 300 ms, and then
+repeats every 200 ms. This is local to the root movement keys; faster repeat
+settings used by other continuous controls are unchanged.
+
+The graph item under the crosshairs gets a non-semantic dashed hover trace in
+the crosshairs color. It never changes selection and follows selection's hit
+priority: label, waypoint, top node, top edge. This makes the active target
+visible while keeping it distinct from the blue selection glow. The trace is
+removed while the crosshairs themselves are hidden.
 
 The dashed goal line renders above the ordinary grid but below graph content.
 It disappears on the same five-second timeout as the grid. Fine and coarse

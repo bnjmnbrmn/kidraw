@@ -419,6 +419,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const root = this.keyAssignments.root;
 
     return {
+      // Normal movement should feel deliberate: fire once on keydown, then
+      // wait before a restrained held-key cadence. The global 0/100 ms repeat
+      // remains useful for other continuous controls.
+      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
       [movement.up]: new LabeledAction('Move Up', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP})),
       [movement.left]: new LabeledAction('Move Left', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})),
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),

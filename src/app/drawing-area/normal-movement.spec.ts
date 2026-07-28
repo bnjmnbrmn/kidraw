@@ -62,4 +62,60 @@ describe('normal movement goal line', () => {
     expect(reversed.kind).toBe('snap');
     expect(reversed.snappedId).toBe('node:a');
   });
+
+  it('stops at an item boundary when the goal line passes through it', () => {
+    const crossingNode: NormalMovementSnapCandidate = {
+      id: 'node:a',
+      point: {x: 60, y: 0},
+      crossingSpan: {min: 40, max: 80},
+      priority: 0,
+      distance: 0,
+    };
+
+    const entering = nextNormalMovementStep(
+      startNormalMovementGoal('x', {x: 0, y: 0}),
+      1,
+      100,
+      [crossingNode],
+    );
+
+    expect(entering.kind).toBe('snap');
+    expect(entering.target).toEqual({x: 40, y: 0});
+    expect(entering.state.pendingReturn).toBeUndefined();
+  });
+
+  it('uses the exit boundary when movement starts inside a crossing item', () => {
+    const crossingLabel: NormalMovementSnapCandidate = {
+      id: 'label:a',
+      point: {x: 60, y: 0},
+      crossingSpan: {min: 40, max: 80},
+      priority: 2,
+      distance: 0,
+    };
+
+    const exiting = nextNormalMovementStep(
+      startNormalMovementGoal('x', {x: 50, y: 0}),
+      1,
+      100,
+      [crossingLabel],
+    );
+
+    expect(exiting.target).toEqual({x: 80, y: 0});
+  });
+
+  it('uses feature priority to disambiguate a waypoint on an edge', () => {
+    const candidates: NormalMovementSnapCandidate[] = [
+      {id: 'edge:a', point: {x: 30, y: 0}, priority: 3, distance: 0},
+      {id: 'waypoint:a', point: {x: 30, y: 0}, priority: 1, distance: 0},
+    ];
+
+    const step = nextNormalMovementStep(
+      startNormalMovementGoal('x', {x: 0, y: 0}),
+      1,
+      50,
+      candidates,
+    );
+
+    expect(step.snappedId).toBe('waypoint:a');
+  });
 });
