@@ -96,8 +96,9 @@ async function main() {
     near(nearby.x, nearby.nodeCenter.x) && near(nearby.y, 200),
     JSON.stringify(nearby));
 
-  // The root movement menu now fires immediately, waits 300 ms, then repeats
-  // every 200 ms. At 180 ms there must still be exactly one movement.
+  // The root movement menu fires immediately, then uses a configured 250 ms
+  // pause and 100 ms target interval. At 200 ms there must still be exactly
+  // one movement.
   await page.evaluate(() => {
     const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
     c.finishTweens();
@@ -105,16 +106,44 @@ async function main() {
     c.crosshairsLayer.crosshairs.x = 300;
     c.crosshairsLayer.crosshairs.y = 500;
     c.clearNormalMovementGoal();
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    window.__movementRepeatTimes = [];
+    const emitter = km.keyMenuOut;
+    const originalEmit = emitter.emit;
+    emitter.emit = function(command) {
+      if (command.kind === 'MOVE_CROSSHAIRS_RIGHT') {
+        window.__movementRepeatTimes.push(performance.now());
+      }
+      return originalEmit.call(this, command);
+    };
+    window.__restoreMovementEmitter = () => {
+      emitter.emit = originalEmit;
+    };
   });
   await page.keyboard.down('l');
-  await page.waitForTimeout(180);
+  await page.waitForTimeout(200);
   let repeatedX = (await state()).x;
   check('held movement pauses before its first repeat', near(repeatedX, 350), `x=${repeatedX}`);
-  await page.waitForTimeout(250);
-  repeatedX = (await state()).x;
+  await page.waitForTimeout(400);
   await page.keyboard.up('l');
-  check('held movement repeats at the restrained cadence',
-    repeatedX >= 385 && repeatedX <= 405, `x=${repeatedX}`);
+  const repeatTiming = await page.evaluate(() => {
+    window.__restoreMovementEmitter();
+    const [first, ...rest] = window.__movementRepeatTimes;
+    return rest.map(t => Math.round(t - first));
+  });
+  check('held movement uses the faster 100 ms target cadence',
+    repeatTiming.length >= 3 &&
+      // The first action's synchronous canvas work finishes before the
+      // initial timeout is armed, so wall-clock onset is modestly above the
+      // configured 250 ms pause.
+      repeatTiming[0] >= 280 && repeatTiming[0] <= 360 &&
+      repeatTiming.slice(1).every((time, i) => {
+        const previous = repeatTiming[i];
+        // Synchronous canvas work is part of the wall-clock interval because
+        // the repeater schedules its next timeout after each action returns.
+        return time - previous >= 100 && time - previous <= 200;
+      }),
+    JSON.stringify(repeatTiming));
 
   // One graph containing all target kinds. A waypoint lies directly on its
   // edge; it must win that ambiguity.
@@ -172,6 +201,38 @@ async function main() {
     check(`crosshair hover distinctly highlights the ${kind}`,
       hoverKinds[kind]?.kind === kind && hoverKinds[kind]?.selected === false,
       JSON.stringify(hoverKinds[kind]));
+  }
+
+  const hoverDashByZoom = await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = c.drawingLayer;
+    const node = dl.getDANodes()[0];
+    const xh = c.crosshairsLayer.crosshairs;
+    xh.x = node.group.x() + node.NODE_WIDTH / 2;
+    xh.y = node.group.y() + node.NODE_HEIGHT / 2;
+    const inspectAt = (scale) => {
+      dl.scale({x: scale, y: scale});
+      xh.x = dl.x() + (node.group.x() + node.NODE_WIDTH / 2) * scale;
+      xh.y = dl.y() + (node.group.y() + node.NODE_HEIGHT / 2) * scale;
+      c.refreshCrosshairHoverHighlight();
+      const trace = dl.findOne('.crosshair-hover-highlight');
+      return {
+        dash: trace?.dash(),
+        strokeWidth: trace?.strokeWidth(),
+        strokeScaleEnabled: trace?.strokeScaleEnabled(),
+      };
+    };
+    return {
+      zoomedOut: inspectAt(0.25),
+      normal: inspectAt(1),
+      zoomedIn: inspectAt(4),
+    };
+  });
+  for (const [zoom, trace] of Object.entries(hoverDashByZoom)) {
+    check(`crosshair hover dash is screen-stable when ${zoom}`,
+      JSON.stringify(trace.dash) === JSON.stringify([7, 5]) &&
+        trace.strokeWidth === 2 && trace.strokeScaleEnabled === false,
+      JSON.stringify(trace));
   }
 
   await page.waitForTimeout(5200);

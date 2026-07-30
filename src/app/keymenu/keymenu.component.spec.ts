@@ -92,15 +92,15 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('uses a restrained repeat cadence for normal crosshair movement', () => {
+  it('uses a 250 ms pause and 100 ms target cadence for normal movement', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
 
     const rootConfig = buildRootConfig(component);
 
     expect(rootConfig['_repeatConfig']).toEqual({
-      initialDelayMs: 300,
-      intervalMs: 200,
+      initialDelayMs: 250,
+      intervalMs: 100,
     });
   });
 

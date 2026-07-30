@@ -306,6 +306,38 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
+  describe('crosshair hover trace', () => {
+    it('keeps its dash, stroke, and padding stable in screen pixels across zoom', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(20, 30, 'hovered');
+      component.drawingLayer = drawingLayer;
+      component.crosshairHoverHighlight = null;
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: new Konva.Group({visible: true})},
+      };
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getLabelUnderCrosshairs = () => undefined;
+      component.getWaypointUnderCrosshairs = () => undefined;
+      component.getDANodesContainingCrosshairs = () => [node];
+
+      for (const scale of [0.25, 1, 4]) {
+        drawingLayer.scale({x: scale, y: scale});
+        component.refreshCrosshairHoverHighlight();
+        const trace = component.crosshairHoverHighlight as Konva.Rect;
+
+        expect(trace.dash()).withContext(`dash at ${scale}×`).toEqual([7, 5]);
+        expect(trace.strokeWidth()).withContext(`stroke at ${scale}×`).toBe(2);
+        expect(trace.strokeScaleEnabled()).withContext(`stroke scaling at ${scale}×`).toBeFalse();
+        expect((node.group.x() - trace.x()) * scale)
+          .withContext(`padding at ${scale}×`).toBeCloseTo(6, 5);
+      }
+    });
+  });
+
   describe('DrawingLayer', () => {
     let drawingLayer: DrawingLayer;
 

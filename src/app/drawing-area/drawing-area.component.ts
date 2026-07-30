@@ -2743,7 +2743,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       stroke: color,
       strokeWidth: 2,
       strokeScaleEnabled: false,
-      dash: [7 / scale, 5 / scale],
+      // With stroke scaling disabled, Konva applies dash lengths in screen
+      // pixels too. Dividing by zoom here would compensate a second time.
+      dash: [7, 5],
       opacity: 0.9,
       lineCap: 'round' as const,
       lineJoin: 'round' as const,
