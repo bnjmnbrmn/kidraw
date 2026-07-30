@@ -1,0 +1,21 @@
+[Unit]
+Description=KiDraw development web server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bot
+Group=bot
+WorkingDirectory=/home/bot/projects/kidraw
+Environment=HOME=/home/bot
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=NG_CLI_ANALYTICS=false
+ExecStart=/snap/node/current/bin/node tools/dev-server.js --host 127.0.0.1 --port 4200
+Restart=always
+RestartSec=5
+TimeoutStopSec=20
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

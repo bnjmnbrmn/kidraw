@@ -40,4 +40,8 @@ process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
 start(process.execPath, [path.join('tools', 'log-server.js')], 'log server');
-start('npx', ['ng', 'serve', ...extraArgs], 'ng serve');
+start(process.execPath, [
+  path.join('node_modules', '@angular', 'cli', 'bin', 'ng.js'),
+  'serve',
+  ...extraArgs,
+], 'ng serve');
