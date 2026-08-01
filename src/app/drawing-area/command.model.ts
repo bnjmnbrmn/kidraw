@@ -16,6 +16,9 @@ export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'inc
 
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 
+/** Visual shape of the caret while editing graph text. */
+export type TextCursorMode = 'insert' | 'vimNormal';
+
 /** Which kinds of stop move-by-node steps between (tiered by modifier). */
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
 
@@ -134,7 +137,9 @@ export enum DACommandType {
   CURSOR_LINE_START = 'CURSOR_LINE_START',
   CURSOR_LINE_END = 'CURSOR_LINE_END',
   CURSOR_WORD_FORWARD = 'CURSOR_WORD_FORWARD',
+  CURSOR_WORD_END = 'CURSOR_WORD_END',
   CURSOR_WORD_BACK = 'CURSOR_WORD_BACK',
+  SET_TEXT_CURSOR_MODE = 'SET_TEXT_CURSOR_MODE',
   DELETE_CHAR_AT_CURSOR = 'DELETE_CHAR_AT_CURSOR',
 }
 
@@ -153,9 +158,8 @@ export type DACommand =
   | {kind: DACommandType.ROTATE_HEADING_RIGHT}
   | {kind: DACommandType.INCREASE_MOVE_SPEED}
   | {kind: DACommandType.DECREASE_MOVE_SPEED}
-  // holdKey: the physical key bound to Go, still held from the tap that fired
-  // this — the popup treats its release as "activate the search pseudo-item".
-  | {kind: DACommandType.TRAVERSE_SMART, holdKey?: string}
+  | {kind: DACommandType.TRAVERSE_SMART;
+     keys?: {up: string; left: string; down: string; right: string}}
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
@@ -257,5 +261,7 @@ export type DACommand =
   | {kind: DACommandType.CURSOR_LINE_START}
   | {kind: DACommandType.CURSOR_LINE_END}
   | {kind: DACommandType.CURSOR_WORD_FORWARD}
+  | {kind: DACommandType.CURSOR_WORD_END}
   | {kind: DACommandType.CURSOR_WORD_BACK}
+  | {kind: DACommandType.SET_TEXT_CURSOR_MODE; mode: TextCursorMode}
   | {kind: DACommandType.DELETE_CHAR_AT_CURSOR}

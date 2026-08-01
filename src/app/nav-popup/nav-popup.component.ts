@@ -58,9 +58,12 @@ export class NavPopupComponent implements OnChanges {
    *  flows like the grow-target search where the hold key is naturally
    *  released to type. */
   @Input() startFilter = false;
+  @Input() selectedId: string | null = null;
+  @Input() directionKeys = {up: 'k', left: 'h', down: 'j', right: 'l'};
 
   /** Selection moved (id of the newly highlighted row). */
   @Output() highlightRow = new EventEmitter<string>();
+  @Output() moveDirection = new EventEmitter<'north' | 'east' | 'south' | 'west'>();
   /** Row committed; walk = keep navigating (Tab) vs jump and close (Enter). */
   @Output() commitRow = new EventEmitter<{id: string; walk: boolean}>();
   @Output() closed = new EventEmitter<void>();
@@ -93,12 +96,17 @@ export class NavPopupComponent implements OnChanges {
         if (topId !== null) this.highlightRow.emit(topId);
       });
     }
+    if (changes['selectedId'] && this.selectedId !== null) {
+      const selected = this.filtered.findIndex(item => item.row.id === this.selectedId);
+      if (selected >= 0) this.selectedIndex = selected;
+    }
   }
 
   get hint(): string {
     return this.filterMode
-      ? '^j ^k move · Enter jump · Tab walk · Esc list'
-      : 'j k move · Enter jump · Tab walk · Esc close';
+      ? '^j ^k results · Enter jump · Tab walk · Esc list'
+      : `${this.directionKeys.left} ${this.directionKeys.down} ${this.directionKeys.up} `
+        + `${this.directionKeys.right} quadrants · Enter jump · Esc close`;
   }
 
   onInput(value: string): void {
@@ -151,10 +159,20 @@ export class NavPopupComponent implements OnChanges {
       return;
     }
     if (!this.filterMode) {
-      // List mode: plain vim keys navigate (n/p keep the old traversal
-      // muscle memory and work while the Go key is still held)...
-      if (key === 'j' || key === 'n') { move(1); return; }
-      if (key === 'k' || key === 'p') { move(-1); return; }
+      const normalized = key.toLowerCase();
+      const direction = normalized === this.directionKeys.up.toLowerCase() ? 'north'
+        : normalized === this.directionKeys.right.toLowerCase() ? 'east'
+        : normalized === this.directionKeys.down.toLowerCase() ? 'south'
+        : normalized === this.directionKeys.left.toLowerCase() ? 'west' : null;
+      if (direction) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.moveDirection.emit(direction);
+        return;
+      }
+      // n/p retain list-order browsing as an alternative to geometry.
+      if (key === 'n') { move(1); return; }
+      if (key === 'p') { move(-1); return; }
       // ...and everything else is swallowed so nothing types into the box.
       event.preventDefault();
       event.stopPropagation();

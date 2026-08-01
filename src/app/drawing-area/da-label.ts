@@ -1,9 +1,10 @@
 import Konva from 'konva';
 import {nextId} from './id-generator';
 import {EdgeLabelSide} from './edge-label-anchor';
+import {TextCursorMode} from './command.model';
 import {
   clampIndex, LineRange, lineIndexAt, logicalLineEnd, logicalLineStart,
-  moveVertical, wordBack, wordForward,
+  moveVertical, wordBack, wordEnd, wordForward,
 } from './text-cursor';
 
 export class DALabel {
@@ -40,6 +41,8 @@ export class DALabel {
 
   /** Insertion index of the label-edit caret (0..text.length); null = end. */
   private _cursorIndex: number | null = null;
+  private _cursorMode: TextCursorMode = 'insert';
+  private _cursorBlinkTimer: number | null = null;
   private readonly _cursor: Konva.Line;
   private static _measureText: Konva.Text | null = null;
 
@@ -201,10 +204,31 @@ export class DALabel {
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);
+    this.startCursorBlink();
   }
 
   hideCursor(): void {
+    this.stopCursorBlink();
     this._cursor.visible(false);
+  }
+
+  setCursorMode(mode: TextCursorMode): void {
+    this._cursorMode = mode;
+    this.updateCursorPosition();
+    this._cursor.opacity(1);
+  }
+
+  private startCursorBlink(): void {
+    this.stopCursorBlink();
+    this._cursorBlinkTimer = window.setInterval(() => {
+      if (this._cursor.visible()) this._cursor.opacity(this._cursor.opacity() === 0 ? 1 : 0);
+    }, 530);
+  }
+
+  private stopCursorBlink(): void {
+    if (this._cursorBlinkTimer === null) return;
+    window.clearInterval(this._cursorBlinkTimer);
+    this._cursorBlinkTimer = null;
   }
 
   appendText(text: string): void {
@@ -273,6 +297,11 @@ export class DALabel {
     this.updateCursorPosition();
   }
 
+  cursorWordEnd(): void {
+    this._cursorIndex = wordEnd(this._label, this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
   cursorWordBack(): void {
     this._cursorIndex = wordBack(this._label, this.cursorIndex);
     this.updateCursorPosition();
@@ -314,8 +343,29 @@ export class DALabel {
     const cursorX = -boxW / 2 + (boxW - this.measure(lineText)) / 2 + prefixWidth;
     const cursorY = -boxH / 2 + (boxH - blockH) / 2 + li * lineHeight;
 
-    this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
+    if (this._cursorMode === 'vimNormal') {
+      const visualIndex = Math.max(line.start, Math.min(i, line.start + Math.max(line.length - 1, 0)));
+      const ch = line.length > 0 ? this._label[visualIndex] : ' ';
+      const charWidth = Math.max(this.measure(ch || ' '), 2);
+      const visualPrefixWidth = this.measure(this._label.substr(line.start, visualIndex - line.start));
+      const visualX = -boxW / 2 + (boxW - this.measure(lineText)) / 2 + visualPrefixWidth;
+      this._cursor.points([
+        visualX, cursorY,
+        visualX + charWidth, cursorY,
+        visualX + charWidth, cursorY + this._fontSize,
+        visualX, cursorY + this._fontSize,
+      ]);
+      this._cursor.closed(true);
+      this._cursor.strokeWidth(2);
+      this._cursor.lineCap('butt');
+    } else {
+      this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
+      this._cursor.closed(false);
+      this._cursor.strokeWidth(3);
+      this._cursor.lineCap('round');
+    }
     this._cursor.stroke(this._textColor);
+    if (this._cursor.visible()) this._cursor.opacity(1);
   }
 
   private updateAppearance(): void {

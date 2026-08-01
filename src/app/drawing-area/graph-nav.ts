@@ -28,6 +28,92 @@ export interface NavStop extends Point {
   t: number;
 }
 
+export type LinkCardinalDirection = 'north' | 'east' | 'south' | 'west';
+
+export interface LinkQuadrantCandidate {
+  id: string;
+  /** Unit direction in which the edge leaves the current node. */
+  direction: Point | null;
+}
+
+export interface LinkQuadrantMove {
+  id: string | null;
+  /** True when the directional key points along the already-focused edge. */
+  traverse: boolean;
+}
+
+const CARDINAL_AXIS: Record<LinkCardinalDirection, Point> = {
+  north: {x: 0, y: -1},
+  east: {x: 1, y: 0},
+  south: {x: 0, y: 1},
+  west: {x: -1, y: 0},
+};
+
+/** NSEW quadrant containing a direction. Diagonal boundary rays belong to
+ *  E/W so the result remains deterministic. */
+export function linkQuadrant(direction: Point | null): LinkCardinalDirection | null {
+  if (!direction || Math.hypot(direction.x, direction.y) < 1e-9) return null;
+  if (Math.abs(direction.x) >= Math.abs(direction.y)) {
+    return direction.x >= 0 ? 'east' : 'west';
+  }
+  return direction.y >= 0 ? 'south' : 'north';
+}
+
+const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y;
+
+/** Pick the link closest to a quadrant's center ray. */
+function axisMost(
+  candidates: readonly LinkQuadrantCandidate[],
+  quadrant: LinkCardinalDirection,
+): LinkQuadrantCandidate | null {
+  const axis = CARDINAL_AXIS[quadrant];
+  return [...candidates]
+    .filter(c => linkQuadrant(c.direction) === quadrant)
+    .sort((a, b) => dot(b.direction!, axis) - dot(a.direction!, axis))[0] ?? null;
+}
+
+/** Quadrant navigation for incident links.
+ *
+ * With no directional focus, a key chooses the most central edge in that
+ * quadrant. With a focus, a perpendicular key walks edge-by-edge in that
+ * screen direction inside the current quadrant, then crosses into the
+ * requested quadrant at the corner nearest the old one. Pressing the key
+ * matching the focused quadrant traverses that edge. */
+export function moveLinkQuadrant(
+  candidates: readonly LinkQuadrantCandidate[],
+  focusedId: string | null,
+  requested: LinkCardinalDirection,
+): LinkQuadrantMove {
+  const focused = focusedId === null ? null : candidates.find(c => c.id === focusedId) ?? null;
+  const current = linkQuadrant(focused?.direction ?? null);
+  if (!focused || !current) {
+    return {id: axisMost(candidates, requested)?.id ?? null, traverse: false};
+  }
+  if (current === requested) return {id: focused.id, traverse: true};
+
+  const currentAxis = CARDINAL_AXIS[current];
+  const requestedAxis = CARDINAL_AXIS[requested];
+  const perpendicular = Math.abs(dot(currentAxis, requestedAxis)) < 1e-9;
+  if (perpendicular) {
+    const focusedProgress = dot(focused.direction!, requestedAxis);
+    const next = [...candidates]
+      .filter(c => c.id !== focused.id && linkQuadrant(c.direction) === current)
+      .map(c => ({candidate: c, delta: dot(c.direction!, requestedAxis) - focusedProgress}))
+      .filter(c => c.delta > 1e-9)
+      .sort((a, b) => a.delta - b.delta)[0]?.candidate;
+    if (next) return {id: next.id, traverse: false};
+
+    // Crossing a corner: W→S chooses the leftmost S link, E→N the
+    // rightmost N link, and so on.
+    const corner = [...candidates]
+      .filter(c => linkQuadrant(c.direction) === requested)
+      .sort((a, b) => dot(b.direction!, currentAxis) - dot(a.direction!, currentAxis))[0];
+    return {id: corner?.id ?? focused.id, traverse: false};
+  }
+
+  return {id: axisMost(candidates, requested)?.id ?? focused.id, traverse: false};
+}
+
 const T_EPS = 1e-6;
 
 /** Assemble the tier-filtered stop list for one edge, ordered src → dest.

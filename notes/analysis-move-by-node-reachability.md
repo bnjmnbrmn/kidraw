@@ -91,9 +91,9 @@ origin's cone); those nodes are reached by a fresh gesture. Verified in
 Alternatives considered and not taken: widening the cone on a modifier
 (weaker guarantee); accepting the limitation (Ben wanted the fix).
 
-## Idea (Ben, 2026-07-21) — hjkl inside the Go / nav popup
+## Implemented (2026-08-01) — hjkl inside Move by Link
 
-Try bringing the same directional idiom into the **Go / nav popup**: use
-hjkl to move through the *restricted* set of directly-connected candidates
-(the edges out of the current node), spatially rather than as a flat list.
-Parked for a later session.
+The Go popup is now **Move by Link**. `hjkl` move spatially through the
+restricted set of incident edges using NSEW quadrants, and pressing along the
+focused edge walks it. See
+[`design-move-by-link-quadrants.md`](design-move-by-link-quadrants.md).

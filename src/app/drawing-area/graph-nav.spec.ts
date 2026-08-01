@@ -4,6 +4,8 @@ import {
   clockwiseOrder,
   endpointFlowDirection,
   nearestStopIndex,
+  linkQuadrant,
+  moveLinkQuadrant,
   pickEntryCandidate,
 } from './graph-nav';
 
@@ -128,6 +130,39 @@ describe('graph-nav', () => {
     it('returns -1 only for an empty candidate list', () => {
       expect(pickEntryCandidate([], {x: 1, y: 0})).toBe(-1);
       expect(pickEntryCandidate([null], null)).toBe(0);
+    });
+  });
+
+  describe('moveLinkQuadrant', () => {
+    const links = [
+      {id: 'w-top', direction: {x: -1, y: -0.35}},
+      {id: 'w-bottom', direction: {x: -1, y: 0.35}},
+      {id: 's-left', direction: {x: -0.4, y: 1}},
+      {id: 's-right', direction: {x: 0.4, y: 1}},
+      {id: 'e', direction: {x: 1, y: 0}},
+    ];
+
+    it('classifies links into NSEW quadrants', () => {
+      expect(linkQuadrant({x: -1, y: 0.2})).toBe('west');
+      expect(linkQuadrant({x: 0.2, y: 1})).toBe('south');
+      expect(linkQuadrant({x: 0, y: -1})).toBe('north');
+      expect(linkQuadrant(null)).toBeNull();
+    });
+
+    it('chooses a requested quadrant on the first directional press', () => {
+      expect(moveLinkQuadrant(links, null, 'west')).toEqual({id: 'w-top', traverse: false});
+    });
+
+    it('moves down within W, then crosses to the leftmost S link', () => {
+      expect(moveLinkQuadrant(links, 'w-top', 'south'))
+        .toEqual({id: 'w-bottom', traverse: false});
+      expect(moveLinkQuadrant(links, 'w-bottom', 'south'))
+        .toEqual({id: 's-left', traverse: false});
+    });
+
+    it('traverses when the key points along the focused link', () => {
+      expect(moveLinkQuadrant(links, 'w-top', 'west'))
+        .toEqual({id: 'w-top', traverse: true});
     });
   });
 });

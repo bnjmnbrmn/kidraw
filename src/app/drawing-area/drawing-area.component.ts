@@ -12,7 +12,7 @@ import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
-import { endpointFlowDirection, pickEntryCandidate } from './graph-nav';
+import { endpointFlowDirection, LinkCardinalDirection, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
@@ -206,7 +206,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
   private _defaultNodeShape: NodeShape = 'box';
-  private _defaultEdgeDirectedness: EdgeDirectedness = 'undirected';
+  private _defaultEdgeDirectedness: EdgeDirectedness = 'directed';
   private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   private gatheredNodePositions: Map<DANode, {x: number; y: number}> = new Map();
@@ -290,6 +290,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  popup's search pseudo-item starts filtering. */
   navPopupHoldKey: string | null = null;
   navPopupStartFilter = false;
+  navPopupSelectedId: string | null = null;
+  navPopupDirectionKeys = {up: 'k', left: 'h', down: 'j', right: 'l'};
   /** Who owns the popup right now: graph navigation or the grow-target search. */
   private navPopupPurpose: 'nav' | 'grow-target' | 'grow-type' = 'nav';
   /** True while a single-candidate popup is concealed (first 500 ms of a
@@ -306,6 +308,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The candidate currently highlighted in the popup — drives the ghost
    *  preview and which side of the source the popup sits on. */
   private navHighlightCand: NavCandidate | null = null;
+  /** Initial row highlighting is only a preview; the first directional key
+   *  establishes the geometric edge focus. */
+  private navDirectionalFocus = false;
   /** Translucent dashed preview of the highlighted candidate (copies of the
    *  source node, a straightened edge + labels, and the destination node
    *  pulled into the viewport). The view itself never moves while browsing. */
@@ -680,7 +685,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.decreaseMoveSpeed();
         break;
       case DACommandType.TRAVERSE_SMART:
-        this.traverseSmart(command.holdKey);
+        this.traverseSmart(command.keys);
         break;
       case DACommandType.NAV_HISTORY_BACK:
         this.navHistoryGo(-1);
@@ -844,8 +849,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CURSOR_WORD_FORWARD:
         this.moveEditCursor(t => t.cursorWordForward());
         break;
+      case DACommandType.CURSOR_WORD_END:
+        this.moveEditCursor(t => t.cursorWordEnd());
+        break;
       case DACommandType.CURSOR_WORD_BACK:
         this.moveEditCursor(t => t.cursorWordBack());
+        break;
+      case DACommandType.SET_TEXT_CURSOR_MODE:
+        this.drawingLayer.getSelectedDANodes().forEach(n => n.setCursorMode(command.mode));
+        this.getSelectedLabels().forEach(l => l.setCursorMode(command.mode));
+        this.drawingLayer.batchDraw();
         break;
       case DACommandType.DELETE:
         this.deleteSelected();
@@ -2238,7 +2251,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private moveEditCursor(motion: (target: {
     moveCursorH(d: number): void; moveCursorV(d: number): void;
     cursorToLineStart(): void; cursorToLineEnd(): void;
-    cursorWordForward(): void; cursorWordBack(): void;
+    cursorWordForward(): void; cursorWordEnd(): void; cursorWordBack(): void;
   }) => void) {
     this.drawingLayer.getSelectedDANodes().forEach(n => motion(n));
     this.getSelectedLabels().forEach(l => motion(l));
@@ -3064,13 +3077,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
 
-  /** Press of the Go key. Always presents every candidate — momentum only
-   *  decides the default (top) row, and the move happens on the key's
-   *  release. A node with exactly one candidate conceals the popup for half
-   *  a second so tap-walking a chain doesn't flash UI; the concealed popup
-   *  is fully live (its keyup commit still fires), it's just not painted. */
-  private traverseSmart(holdKey?: string): void {
-    this.navPopupHoldKey = holdKey ?? null;
+  /** Enter the sticky Move by Link surface. Every candidate is available;
+   *  momentum only decides the initial preview row. Directional movement or
+   *  an explicit Enter/Tab performs traversal — opener release never does. */
+  private traverseSmart(keys?: {up: string; left: string; down: string; right: string}): void {
+    // Move by Link is sticky: releasing its opener does not accidentally
+    // traverse whichever row happened to be first.
+    this.navPopupHoldKey = null;
+    if (keys) this.navPopupDirectionKeys = {...keys};
     this.finishTweens();
     const source = this.getTraversalAnchorNode();
     if (!source) {
@@ -3136,9 +3150,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const hasForward = ordered.some(c => c.direction === forwardDir);
     this.navCandidates = new Map(ordered.map(c => [c.edge.id, c]));
     this.navSource = source;
+    this.navDirectionalFocus = false;
     // The popup opens with the top row selected; its highlight emit is
     // deferred, so seed the candidate now for the initial popup placement.
     this.navHighlightCand = ordered[0];
+    this.navPopupSelectedId = ordered[0].edge.id;
     this.navPopupRows = ordered.map(c => ({
       id: c.edge.id,
       glyph: c.direction === 'out' ? '→' : '←',
@@ -3175,10 +3191,48 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const cand = this.navCandidates.get(edgeId);
     if (!cand || !this.navSource) return;
     this.navHighlightCand = cand;
+    this.navPopupSelectedId = edgeId;
     this.setGraphNavEdge(cand.edge);
     if (!this.navPopupHidden) this.renderNavGhost(cand);
     this.positionNavPopup();
     this.drawingLayer.batchDraw();
+  }
+
+  /** NSEW movement among the incident links. The first directional press
+   *  chooses a quadrant; subsequent perpendicular presses scan within it,
+   *  and pressing along the focused link walks to its other node. */
+  onNavPopupDirection(direction: LinkCardinalDirection): void {
+    if (this.navPopupPurpose !== 'nav' || !this.navSource) return;
+    const source = this.navSource;
+    const candidates = [...this.navCandidates.values()].map(c => {
+      const path = c.edge.getPathPoints();
+      const flow = endpointFlowDirection(path, c.direction === 'out' ? 'src' : 'dest');
+      const away = flow
+        ? (c.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
+        : (() => {
+            const s = this.getNodeCenterInLayerCoordinates(source);
+            const d = this.getNodeCenterInLayerCoordinates(c.other);
+            const length = Math.hypot(d.x - s.x, d.y - s.y);
+            return length > 1e-9 ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length} : null;
+          })();
+      return {id: c.edge.id, direction: away};
+    });
+    const move = moveLinkQuadrant(
+      candidates,
+      this.navDirectionalFocus ? this.navHighlightCand?.edge.id ?? null : null,
+      direction,
+    );
+    if (!move.id) {
+      this.emitStatus(`No link in the ${direction} quadrant.`);
+      return;
+    }
+    this.navDirectionalFocus = true;
+    if (move.traverse) {
+      this.onNavPopupCommit({id: move.id, walk: true});
+    } else {
+      this.navPopupSelectedId = move.id;
+      this.onNavPopupHighlight(move.id);
+    }
   }
 
   onNavPopupCommit(event: {id: string; walk: boolean}): void {
@@ -3194,6 +3248,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const source = this.navSource;
     this.clearNavGhost();
     this.navHighlightCand = null;
+    this.navPopupSelectedId = null;
     this.restoreNavSourceEmphasis();
     if (!cand || !source) {
       this.closeNavPopup();
@@ -3222,6 +3277,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.clearNavGhost();
     this.navHighlightCand = null;
+    this.navPopupSelectedId = null;
     this.restoreNavSourceEmphasis();
     this.crosshairsLayer.showCrosshairs();
     this.setGraphNavEdge(null);
@@ -6451,26 +6507,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
   }
 
-  /** Directionality state used when a grow/add gesture begins. Todo
-   *  categories are special: tasks depend on their category, so the edge
-   *  points from the new/target node back into the category. */
-  private defaultGrowDirection(anchor: DANode | null): number {
-    if (anchor && this.isTodoCategory(anchor)) return 1;
+  /** Directionality state used when a grow/add gesture begins. The default
+   *  directed state is always outgoing from the anchor; explicit user
+   *  defaults (undirected/bidirectional) are still respected. */
+  private defaultGrowDirection(_anchor: DANode | null): number {
     switch (this._defaultEdgeDirectedness) {
       case 'undirected': return 2;
       case 'bidirectional': return 3;
       default: return 0;
     }
-  }
-
-  /** Until the todo extension gains typed node kinds, the dogfood graph's
-   *  established circle=category convention is the fallback. Accept likely
-   *  semantic tags too so files can migrate without changing this gesture. */
-  private isTodoCategory(node: DANode): boolean {
-    if (this.drawingLayer.diagramType !== 'todo-graph') return false;
-    return node.nodeShape === 'circle' ||
-      node.tags.some(tag => tag === 'category' ||
-        tag === 'kind/category' || tag === 'type/category');
   }
 
   /** Add an edge using the user's current defaults. Labels are absent by

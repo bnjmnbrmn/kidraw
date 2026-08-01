@@ -2,6 +2,7 @@ import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {AppComponent} from './app.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
+import {DACommandType} from './drawing-area/command.model';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -65,5 +66,19 @@ describe('AppComponent', () => {
 
     expect(keymenuDebug.nativeElement.classList).not.toContain('keymenu-hidden');
     expect(keymenuDebug.componentInstance.visible).toBeTrue();
+  });
+
+  it('relays label edit submodes to the drawing cursor', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    const app = fixture.componentInstance;
+    const next = spyOn(app.commandsSubject, 'next');
+
+    app.handleLabelEditModeChange('vimNormal');
+    app.handleLabelEditModeChange('insert');
+
+    expect(next.calls.allArgs()).toEqual([
+      [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'vimNormal'}],
+      [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'}],
+    ]);
   });
 });

@@ -26,6 +26,19 @@ export function wordForward(text: string, i: number): number {
   return j;
 }
 
+/** Vim `e` (simplified: words are runs of non-whitespace): end of the
+ *  current word, or the next word when already at a word end. */
+export function wordEnd(text: string, i: number): number {
+  if (text.length === 0) return 0;
+  let j = Math.min(clampIndex(text, i), text.length - 1);
+  if (isWordChar(text[j]) && (j + 1 >= text.length || !isWordChar(text[j + 1]))) {
+    j++;
+  }
+  while (j < text.length && !isWordChar(text[j])) j++;
+  while (j + 1 < text.length && isWordChar(text[j + 1])) j++;
+  return Math.min(j, text.length - 1);
+}
+
 /** Vim `b`: start of the current word if mid-word, else start of the
  *  previous word. */
 export function wordBack(text: string, i: number): number {

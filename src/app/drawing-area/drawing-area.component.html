@@ -7,7 +7,10 @@
                  [dark]="navPopupDark"
                  [holdKey]="navPopupHoldKey"
                  [startFilter]="navPopupStartFilter"
+                 [selectedId]="navPopupSelectedId"
+                 [directionKeys]="navPopupDirectionKeys"
                  (highlightRow)="onNavPopupHighlight($event)"
+                 (moveDirection)="onNavPopupDirection($event)"
                  (commitRow)="onNavPopupCommit($event)"
                  (closed)="closeNavPopup()" />
 }

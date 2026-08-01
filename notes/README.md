@@ -71,6 +71,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Normal movement goal line](design-normal-movement-goal-line.md) — ordinary movement snaps to nearby graph items, returns to their projection, and shows the traversed axis.
 - [Adaptive quadrant-grid graph-item navigation](design-quadrant-grid-navigation.md)
 - [Adaptive quadrant-ring graph-item navigation](design-quadrant-ring-navigation.md)
+- [Move by Link quadrant navigation](design-move-by-link-quadrants.md) — sticky connected-edge navigation with NSEW focus, scanning, corner transitions, and traversal.
 - [Rich text in nodes and labels (markdown, math)](idea-rich-text.md)
 - [Cut / copy / paste](idea-cut-copy-paste.md)
 - [Naming — edges vs links](idea-naming-edges-vs-links.md)

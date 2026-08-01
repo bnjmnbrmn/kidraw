@@ -7,6 +7,7 @@ import {
   logicalLineStart,
   moveVertical,
   wordBack,
+  wordEnd,
   wordForward,
 } from './text-cursor';
 
@@ -46,6 +47,25 @@ describe('text-cursor', () => {
     it('crosses newlines', () => {
       const t = 'foo\nbar';
       expect(wordBack(t, 4)).toBe(0);
+    });
+  });
+
+  describe('wordEnd', () => {
+    it('moves to the end of the current word', () => {
+      const t = 'foo bar baz';
+      expect(wordEnd(t, 0)).toBe(2);
+      expect(wordEnd(t, 4)).toBe(6);
+    });
+
+    it('moves to the next word end from whitespace or a word end', () => {
+      const t = 'foo  bar';
+      expect(wordEnd(t, 2)).toBe(7);
+      expect(wordEnd(t, 3)).toBe(7);
+      expect(wordEnd(t, 7)).toBe(7);
+    });
+
+    it('stays at zero for empty text', () => {
+      expect(wordEnd('', 0)).toBe(0);
     });
   });
 

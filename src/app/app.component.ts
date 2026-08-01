@@ -58,6 +58,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   handleLabelEditModeChange(subMode: 'insert' | 'vimNormal') {
+    this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: subMode});
     if (this.headerComponent) {
       this.headerComponent.mode = subMode === 'vimNormal' ? 'labelEditVimNormal' : 'labelEdit';
     }
@@ -68,6 +69,7 @@ export class AppComponent implements OnInit, OnDestroy {
     switch (daNotification.kind) {
       case "started-label-editing-mode":
         this.keymenuComponent.enterLabelEditMode();
+        this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'});
         if (this.headerComponent) this.headerComponent.mode = 'labelEdit';
         break;
       case "label-added":

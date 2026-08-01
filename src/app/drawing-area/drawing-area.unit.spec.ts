@@ -90,7 +90,7 @@ describe('DrawingArea Unit Tests', () => {
       expect(node.adjustLabelFontSizeBy(-1)).toBe(false);
     });
 
-    it('keeps the edit caret solid and synchronized with text color', () => {
+    it('blinks the edit caret, uses a box in vim-normal, and synchronizes its color', () => {
       const node = new DANode(0, 0, 'test');
       const cursor = (node as any)._cursor as Konva.Line;
 
@@ -98,12 +98,23 @@ describe('DrawingArea Unit Tests', () => {
       expect(cursor.visible()).toBeTrue();
       expect(cursor.opacity()).toBe(1);
       expect(cursor.strokeWidth()).toBe(3);
+      expect((node as any)._cursorBlinkTimer).not.toBeNull();
+
+      node.setCursorMode('vimNormal');
+      expect(cursor.closed()).toBeTrue();
+      expect(cursor.points().length).toBe(8);
+      expect(cursor.strokeWidth()).toBe(2);
+
+      node.setCursorMode('insert');
+      expect(cursor.closed()).toBeFalse();
+      expect(cursor.points().length).toBe(4);
 
       node.applyColors({fill: '#ffffff', stroke: '#333333', text: '#123456'});
       expect(cursor.stroke()).toBe('#123456');
 
       node.hideCursor();
       expect(cursor.visible()).toBeFalse();
+      expect((node as any)._cursorBlinkTimer).toBeNull();
     });
   });
 
@@ -734,7 +745,7 @@ describe('DrawingArea Unit Tests', () => {
       expect(label.adjustFontSizeBy(-1)).toBe(false);
     });
 
-    it('keeps the edit caret solid and synchronized with text color', () => {
+    it('blinks the edit caret, uses a box in vim-normal, and synchronizes its color', () => {
       const label = new DALabel(100, 200, 'test');
       const cursor = (label as any)._cursor as Konva.Line;
 
@@ -742,12 +753,22 @@ describe('DrawingArea Unit Tests', () => {
       expect(cursor.visible()).toBeTrue();
       expect(cursor.opacity()).toBe(1);
       expect(cursor.strokeWidth()).toBe(3);
+      expect((label as any)._cursorBlinkTimer).not.toBeNull();
+
+      label.setCursorMode('vimNormal');
+      expect(cursor.closed()).toBeTrue();
+      expect(cursor.points().length).toBe(8);
+
+      label.setCursorMode('insert');
+      expect(cursor.closed()).toBeFalse();
+      expect(cursor.points().length).toBe(4);
 
       label.applyColors({fill: '#ffffff', stroke: '#333333', text: '#654321'});
       expect(cursor.stroke()).toBe('#654321');
 
       label.hideCursor();
       expect(cursor.visible()).toBeFalse();
+      expect((label as any)._cursorBlinkTimer).toBeNull();
     });
   });
 

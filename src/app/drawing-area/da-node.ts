@@ -1,10 +1,10 @@
 import Konva from 'konva';
 import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
-import { NodeShape, TextOverflowMode } from './command.model';
+import { NodeShape, TextCursorMode, TextOverflowMode } from './command.model';
 import {
   clampIndex, LineRange, lineIndexAt, lineRangesFromWrapped,
-  logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordForward,
+  logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordEnd, wordForward,
 } from './text-cursor';
 
 // Use the un-patched requestAnimationFrame so Zone.js doesn't track the blink
@@ -79,6 +79,8 @@ export class DANode {
    *  The text can change out from under it (undo, load), so it is always
    *  read clamped via {@link cursorIndex}. */
   private _cursorIndex: number | null = null;
+  private _cursorMode: TextCursorMode = 'insert';
+  private _cursorBlinkTimer: number | null = null;
 
   private static _measureText: Konva.Text | null = null;
 
@@ -824,10 +826,31 @@ export class DANode {
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);
+    this.startCursorBlink();
   }
 
   hideCursor(): void {
+    this.stopCursorBlink();
     this._cursor.visible(false);
+  }
+
+  setCursorMode(mode: TextCursorMode): void {
+    this._cursorMode = mode;
+    this.updateCursorPosition();
+    this._cursor.opacity(1);
+  }
+
+  private startCursorBlink(): void {
+    this.stopCursorBlink();
+    this._cursorBlinkTimer = window.setInterval(() => {
+      if (this._cursor.visible()) this._cursor.opacity(this._cursor.opacity() === 0 ? 1 : 0);
+    }, 530);
+  }
+
+  private stopCursorBlink(): void {
+    if (this._cursorBlinkTimer === null) return;
+    window.clearInterval(this._cursorBlinkTimer);
+    this._cursorBlinkTimer = null;
   }
 
   // --- Label-edit caret: position model + rendering ---
@@ -905,6 +928,11 @@ export class DANode {
     this.updateCursorPosition();
   }
 
+  cursorWordEnd(): void {
+    this._cursorIndex = wordEnd(this._label.text(), this.cursorIndex);
+    this.updateCursorPosition();
+  }
+
   cursorWordBack(): void {
     this._cursorIndex = wordBack(this._label.text(), this.cursorIndex);
     this.updateCursorPosition();
@@ -951,7 +979,29 @@ export class DANode {
     const textStartY = (this._nodeHeight - totalHeight) / 2;
     const cursorY = textStartY + li * lineHeight;
 
-    this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
+    if (this._cursorMode === 'vimNormal') {
+      const visualIndex = Math.max(line.start, Math.min(i, line.start + Math.max(line.length - 1, 0)));
+      const ch = line.length > 0 ? text[visualIndex] : ' ';
+      const charWidth = Math.max(measure.measureSize(ch || ' ').width, 2);
+      const visualPrefix = text.substr(line.start, visualIndex - line.start);
+      const visualX = (this._nodeWidth - lineWidth) / 2
+        + (visualPrefix.length === 0 ? 0 : measure.measureSize(visualPrefix).width);
+      this._cursor.points([
+        visualX, cursorY,
+        visualX + charWidth, cursorY,
+        visualX + charWidth, cursorY + this._fontSize,
+        visualX, cursorY + this._fontSize,
+      ]);
+      this._cursor.closed(true);
+      this._cursor.strokeWidth(2);
+      this._cursor.lineCap('butt');
+    } else {
+      this._cursor.points([cursorX, cursorY, cursorX, cursorY + this._fontSize]);
+      this._cursor.closed(false);
+      this._cursor.strokeWidth(3);
+      this._cursor.lineCap('round');
+    }
+    if (this._cursor.visible()) this._cursor.opacity(1);
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

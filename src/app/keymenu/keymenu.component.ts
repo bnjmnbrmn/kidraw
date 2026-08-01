@@ -341,6 +341,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // Word motions and line anchors.
     (config as any)['w'] = new LabeledAction('word →', emit(DACommandType.CURSOR_WORD_FORWARD));
+    (config as any)['e'] = new LabeledAction('word end', emit(DACommandType.CURSOR_WORD_END));
     (config as any)['b'] = new LabeledAction('word ←', emit(DACommandType.CURSOR_WORD_BACK));
     (config as any)['0'] = new LabeledAction('line start', emit(DACommandType.CURSOR_LINE_START));
 
@@ -710,10 +711,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.moveByNodeHoldActive = true;
         this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
       }),
-      // One-shot: the popup takes the keyboard, so auto-repeat must not
-      // queue further traversals behind it.
-      [this.keyAssignments.root.go]: new LabeledAction('Go',
-        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART, holdKey: this.keyAssignments.root.go}), false),
+      // One-shot entry: the sticky popup owns subsequent link movement.
+      [this.keyAssignments.root.go]: new LabeledAction('Move by Link',
+        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART,
+          keys: {...this.keyAssignments.movement}}), false),
       // Tap: enter text editing on whatever the crosshairs are over.
       [this.keyAssignments.root.editText]: new LabeledAction('Edit Text',
         () => this.keyMenuOut.emit({kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}), false),
@@ -909,9 +910,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private buildNavPopupSurfaceConfig(): SubmenuConfig {
+    const m = this.keyAssignments.movement;
     return {
-      'j': this.surfaceAction('Next'),
-      'k': this.surfaceAction('Previous'),
+      [m.up]: this.surfaceAction('North link'),
+      [m.left]: this.surfaceAction('West link'),
+      [m.down]: this.surfaceAction('South link'),
+      [m.right]: this.surfaceAction('East link'),
       'Enter': this.surfaceAction('Jump / Select'),
       'Tab': this.surfaceAction('Walk + Continue'),
       '[': this.surfaceAction('Esc: Back / Close'),
@@ -1079,7 +1083,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
     } else if (modeName === 'surfaceNavPopup') {
-      displayName = 'go > choose destination';
+      displayName = 'move by link > choose edge';
     } else if (modeName === 'surfaceGrowTargeting') {
       displayName = 'add > choose target';
     } else if (modeName === 'surfaceGrowEmpty') {

@@ -29,6 +29,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.getWaypointUnderCrosshairs = () => overrides.waypointUnderCrosshairs ?? undefined;
     component.getDAEdgesContainingCrosshairs = () => overrides.edgesUnderCrosshairs ?? [];
     component._defaultNodeShape = overrides.defaultNodeShape ?? 'box';
+    component._defaultEdgeDirectedness = 'directed';
     component.pushUndoSnapshot = jasmine.createSpy('pushUndoSnapshot');
     const createdNode = {nodeShape: component._defaultNodeShape};
     component.createNewNode = jasmine.createSpy('createNewNode').and.returnValue(createdNode);
@@ -100,6 +101,13 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
   });
 
   describe('connected-add defaults', () => {
+    it('starts connected adds as outgoing directed edges by default', () => {
+      const component = buildComponent();
+
+      expect(component._defaultEdgeDirectedness).toBe('directed');
+      expect(component.defaultGrowDirection({nodeShape: 'box', tags: []})).toBe(0);
+    });
+
     it('starts ordinary connected adds with the configured undirected default', () => {
       const component = buildComponent();
       component._defaultEdgeDirectedness = 'undirected';
@@ -110,14 +118,14 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       })).toBe(2);
     });
 
-    it('points a new todo task into a category represented by the current circle convention', () => {
+    it('does not reverse outgoing adds for todo category nodes', () => {
       const component = buildComponent({diagramType: 'todo-graph'});
-      component._defaultEdgeDirectedness = 'undirected';
+      component._defaultEdgeDirectedness = 'directed';
 
       expect(component.defaultGrowDirection({
         nodeShape: 'circle',
         tags: [],
-      })).toBe(1);
+      })).toBe(0);
     });
   });
 

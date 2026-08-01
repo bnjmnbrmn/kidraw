@@ -104,6 +104,18 @@ describe('KeymenuComponent', () => {
     });
   });
 
+  it('binds vim-normal e to move to the word end', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    const config = (component as any).buildLabelEditVimNormalSubmenuConfig(false) as Record<string, unknown>;
+    const wordEnd = config['e'] as LabeledAction;
+
+    expect(wordEnd.actionLabel).toBe('word end');
+    wordEnd.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CURSOR_WORD_END});
+  });
+
   it('should restore a hidden keyboard from any keymenu mode', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     fixture.detectChanges();
@@ -252,15 +264,14 @@ describe('KeymenuComponent', () => {
     expect((coarse.submenuConfig['h'] as LabeledAction).actionLabel).toBe('Node Left');
     expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 
-    // Go at 'f': one-shot tap emitting the smart traverse (the nav popup
-    // handles everything the old move-by-graph submenu did).
+    // Move by Link at 'f': one-shot entry into the sticky edge navigator.
     const go = rootConfig['f'] as LabeledAction;
     expect(go instanceof LabeledAction).toBeTrue();
-    expect(go.actionLabel).toBe('Go');
+    expect(go.actionLabel).toBe('Move by Link');
     expect(go.repeat).toBeFalse();
     go.action();
-    // holdKey rides along so the popup can watch for the Go key's release.
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART, holdKey: 'f'});
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART,
+      keys: {up: 'k', left: 'h', down: 'j', right: 'l'}});
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {
