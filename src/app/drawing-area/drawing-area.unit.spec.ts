@@ -116,6 +116,24 @@ describe('DrawingArea Unit Tests', () => {
       expect(cursor.visible()).toBeFalse();
       expect((node as any)._cursorBlinkTimer).toBeNull();
     });
+
+    it('extends a visual selection and replaces every selected character', () => {
+      const node = new DANode(0, 0, 'abcd');
+      const selection = (node as any)._visualSelection as Konva.Group;
+
+      node.setCursorToEnd();
+      node.setCursorMode('vimVisual');
+      node.moveCursorH(-1);
+      node.moveCursorH(-1);
+
+      expect(selection.visible()).toBeTrue();
+      expect(selection.getChildren().length).toBeGreaterThan(0);
+      node.replaceAtCursor('X');
+      expect(node.label.text()).toBe('abXX');
+
+      node.setCursorMode('vimNormal');
+      expect(selection.visible()).toBeFalse();
+    });
   });
 
   describe('DAEdge', () => {
@@ -346,6 +364,33 @@ describe('DrawingArea Unit Tests', () => {
         expect((node.group.x() - trace.x()) * scale)
           .withContext(`padding at ${scale}×`).toBeCloseTo(6, 5);
       }
+    });
+
+    it('traces the exact sampled render path of a smooth edge', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const src = new DANode(0, 0, 'src');
+      const dest = new DANode(360, 100, 'dest');
+      const edge = new DAEdge(src, dest, 'edge');
+      edge.setControlPoints([{x: 170, y: -80}, {x: 240, y: 180}]);
+      component.drawingLayer = drawingLayer;
+      component.crosshairHoverHighlight = null;
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: new Konva.Group({visible: true})},
+      };
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getLabelUnderCrosshairs = () => undefined;
+      component.getWaypointUnderCrosshairs = () => undefined;
+      component.getDANodesContainingCrosshairs = () => [];
+      component.getDAEdgesContainingCrosshairs = () => [edge];
+
+      component.refreshCrosshairHoverHighlight();
+      const trace = component.crosshairHoverHighlight as Konva.Line;
+      expect(trace.points()).toEqual(edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]));
+      expect(trace.tension()).toBe(0);
     });
   });
 
@@ -769,6 +814,17 @@ describe('DrawingArea Unit Tests', () => {
       label.hideCursor();
       expect(cursor.visible()).toBeFalse();
       expect((label as any)._cursorBlinkTimer).toBeNull();
+    });
+
+    it('deletes a character-wise visual selection', () => {
+      const label = new DALabel(100, 200, 'abcd');
+      label.setCursorToEnd();
+      label.setCursorMode('vimVisual');
+      label.moveCursorH(-1);
+      label.moveCursorH(-1);
+
+      label.deleteAtCursor();
+      expect(label.label).toBe('ab');
     });
   });
 

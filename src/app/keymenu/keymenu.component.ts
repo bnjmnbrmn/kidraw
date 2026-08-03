@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode} from '../drawing-area/command.model';
+import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -54,7 +54,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   @Input() visible = true;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
-  @Output() labelEditModeOut = new EventEmitter<'insert' | 'vimNormal'>();
+  @Output() labelEditModeOut = new EventEmitter<TextCursorMode>();
   @Output() visibilityToggle = new EventEmitter<void>();
 
   private keyMenu!: KeyMenu<DACommand>;
@@ -93,6 +93,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private editContextActionFired = false;
   private selectDragHoldActive = false;
   private moveByNodeHoldActive = false;
+  private moveByLinkHoldActive = false;
+  /** Set by Vim `r`; the next printable key supplies the replacement. */
+  private vimReplacePending = false;
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 3000;
@@ -156,7 +159,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: this.keyAssignments.moveSpeed.bigger, action: 'Bigger move'},
       {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
       {key: this.keyAssignments.moveByNode.submenu, action: 'Move by node'},
-      {key: this.keyAssignments.root.go, action: 'Go (nav popup)'},
+      {key: this.keyAssignments.root.go, action: 'Move by link'},
       {key: shared.select, action: 'Clear selection'},
       {key: shared.delete, action: 'Delete'},
     ];
@@ -229,6 +232,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditCaps: new USQwertyModeConfig(this.buildLabelEditSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormal: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimNormalCaps: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        labelEditVimVisual: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -347,6 +352,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // x → delete the char under the caret.
     (config as any)['x'] = new LabeledAction('del char', emit(DACommandType.DELETE_CHAR_AT_CURSOR));
+    (config as any)['r'] = new LabeledAction('replace char', () => {
+      this.vimReplacePending = true;
+    }, false);
+    (config as any)['v'] = new LabeledAction('visual', () => {
+      this.switchMode(capsMode ? 'labelEditVimVisualCaps' : 'labelEditVimVisual');
+      this.labelEditModeOut.emit('vimVisual');
+    }, false);
 
     // Shifted vim commands: $ (line end), A (append at line end), I (insert
     // at line start).
@@ -366,6 +378,46 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', shift);
     (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', shift);
 
+    return config;
+  }
+
+  private buildLabelEditVimVisualSubmenuConfig(capsMode: boolean): SubmenuConfig {
+    const emit = (kind: DACommandType) => () => this.keyMenuOut.emit({kind} as DACommand);
+    const cursor = this.visualConfig.config.cursor;
+    const leaveVisual = () => {
+      this.vimReplacePending = false;
+      this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
+      this.labelEditModeOut.emit('vimNormal');
+    };
+    const config: SubmenuConfig = {
+      _repeatConfig: {initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs},
+    } as SubmenuConfig;
+
+    (config as any)['h'] = new LabeledAction('← extend', emit(DACommandType.CURSOR_LEFT));
+    (config as any)['j'] = new LabeledAction('↓ extend', emit(DACommandType.CURSOR_DOWN));
+    (config as any)['k'] = new LabeledAction('↑ extend', emit(DACommandType.CURSOR_UP));
+    (config as any)['l'] = new LabeledAction('→ extend', emit(DACommandType.CURSOR_RIGHT));
+    (config as any)['Backspace'] = new LabeledAction('← extend', emit(DACommandType.CURSOR_LEFT));
+    (config as any)['w'] = new LabeledAction('word →', emit(DACommandType.CURSOR_WORD_FORWARD));
+    (config as any)['e'] = new LabeledAction('word end', emit(DACommandType.CURSOR_WORD_END));
+    (config as any)['b'] = new LabeledAction('word ←', emit(DACommandType.CURSOR_WORD_BACK));
+    (config as any)['0'] = new LabeledAction('line start', emit(DACommandType.CURSOR_LINE_START));
+    (config as any)['v'] = new LabeledAction('leave visual', leaveVisual, false);
+    (config as any)['x'] = new LabeledAction('delete selection', () => {
+      this.keyMenuOut.emit({kind: DACommandType.DELETE_CHAR_AT_CURSOR});
+      leaveVisual();
+    }, false);
+    (config as any)['r'] = new LabeledAction('replace selection', () => {
+      this.vimReplacePending = true;
+    }, false);
+
+    const shift: SubmenuConfig = {
+      _repeatConfig: {initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs},
+    } as SubmenuConfig;
+    (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
+    (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', shift);
     return config;
   }
 
@@ -413,6 +465,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.editContextActionFired = false;
     this.selectDragHoldActive = false;
     this.moveByNodeHoldActive = false;
+    this.moveByLinkHoldActive = false;
+    this.vimReplacePending = false;
   }
 
   private buildRootSubmenuConfig(): SubmenuConfig {
@@ -711,10 +765,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.moveByNodeHoldActive = true;
         this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
       }),
-      // One-shot entry: the sticky popup owns subsequent link movement.
-      [this.keyAssignments.root.go]: new LabeledAction('Move by Link',
-        () => this.keyMenuOut.emit({kind: DACommandType.TRAVERSE_SMART,
-          keys: {...this.keyAssignments.movement}}), false),
+      [this.keyAssignments.root.go]: new LabeledActionSubmenuConfig(
+        'Move by Link...',
+        this.buildMoveByLinkSubmenuConfig(),
+        () => {
+          this.moveByLinkHoldActive = true;
+          this.keyMenuOut.emit({kind: DACommandType.ENTER_LINK_NAV});
+        },
+      ),
       // Tap: enter text editing on whatever the crosshairs are over.
       [this.keyAssignments.root.editText]: new LabeledAction('Edit Text',
         () => this.keyMenuOut.emit({kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}), false),
@@ -844,6 +902,21 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.buildMoveByNodeTierSubmenu('all'),
         () => this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'all'}),
       ),
+    } as SubmenuConfig;
+  }
+
+  private buildMoveByLinkSubmenuConfig(): SubmenuConfig {
+    const movement = this.keyAssignments.movement;
+    return {
+      _repeatConfig: {initialDelayMs: 300, intervalMs: 200},
+      [movement.up]: new LabeledAction('North link', () =>
+        this.keyMenuOut.emit({kind: DACommandType.MOVE_LINK_UP})),
+      [movement.left]: new LabeledAction('West link', () =>
+        this.keyMenuOut.emit({kind: DACommandType.MOVE_LINK_LEFT})),
+      [movement.down]: new LabeledAction('South link', () =>
+        this.keyMenuOut.emit({kind: DACommandType.MOVE_LINK_DOWN})),
+      [movement.right]: new LabeledAction('East link', () =>
+        this.keyMenuOut.emit({kind: DACommandType.MOVE_LINK_RIGHT})),
     } as SubmenuConfig;
   }
 
@@ -1026,7 +1099,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const name = this.suspended && this.modeBeforeSuspend
       ? this.modeBeforeSuspend
       : this.keyMenu.currentMode.name;
-    return name === 'normalCaps' || name === 'labelEditCaps' || name === 'labelEditVimNormalCaps';
+    return name === 'normalCaps' || name === 'labelEditCaps' || name === 'labelEditVimNormalCaps'
+      || name === 'labelEditVimVisualCaps';
   }
 
   /** Enter label-edit mode, choosing caps variant if currently in a caps mode. */
@@ -1058,6 +1132,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     labelEditCaps: '#ed7d31',       // orange
     labelEditVimNormal: '#ffd966',  // yellow
     labelEditVimNormalCaps: '#ed7d31', // orange
+    labelEditVimVisual: '#c084fc',
+    labelEditVimVisualCaps: '#ed7d31',
     surfaceNavPopup: '#9b59b6',
     surfaceGrowTargeting: '#00a6a6',
     surfaceGrowEmpty: '#00a6a6',
@@ -1080,6 +1156,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'edit: normal';
     } else if (modeName === 'labelEditVimNormalCaps') {
       displayName = 'capslock / edit: normal';
+    } else if (modeName === 'labelEditVimVisual') {
+      displayName = 'edit: visual';
+    } else if (modeName === 'labelEditVimVisualCaps') {
+      displayName = 'capslock / edit: visual';
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
     } else if (modeName === 'surfaceNavPopup') {
@@ -1139,7 +1219,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     const modeName = this.keyMenu.currentMode.name;
     const inLabelEdit = modeName === 'labelEdit' || modeName === 'labelEditCaps'
-      || modeName === 'labelEditVimNormal' || modeName === 'labelEditVimNormalCaps';
+      || modeName === 'labelEditVimNormal' || modeName === 'labelEditVimNormalCaps'
+      || modeName === 'labelEditVimVisual' || modeName === 'labelEditVimVisualCaps';
 
     if (!isDoubleShift) {
       // First shift press in edit mode — show the timing bar
@@ -1156,7 +1237,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
     }
 
-    const targetMode = (modeName === 'labelEditCaps' || modeName === 'labelEditVimNormalCaps') ? 'normalCaps' : 'normal';
+    const targetMode = (modeName === 'labelEditCaps' || modeName === 'labelEditVimNormalCaps'
+      || modeName === 'labelEditVimVisualCaps') ? 'normalCaps' : 'normal';
     this.switchMode(targetMode);
     this.resetInteractionState();
     this.resetHelpMode();
@@ -1365,6 +1447,26 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const currentModeName = this.keyMenu.currentMode.name;
     const inLabelEdit = currentModeName === 'labelEdit' || currentModeName === 'labelEditCaps';
     const inLabelEditVimNormal = currentModeName === 'labelEditVimNormal' || currentModeName === 'labelEditVimNormalCaps';
+    const inLabelEditVimVisual = currentModeName === 'labelEditVimVisual' || currentModeName === 'labelEditVimVisualCaps';
+
+    if (this.vimReplacePending && (inLabelEditVimNormal || inLabelEditVimVisual)) {
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        event.preventDefault();
+        this.vimReplacePending = false;
+        return;
+      }
+      if (!event.repeat && event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey) {
+        event.preventDefault();
+        this.vimReplacePending = false;
+        this.keyMenuOut.emit({kind: DACommandType.REPLACE_CHAR_AT_CURSOR, value: event.key});
+        if (inLabelEditVimVisual) {
+          const capsMode = currentModeName === 'labelEditVimVisualCaps';
+          this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
+          this.labelEditModeOut.emit('vimNormal');
+        }
+        return;
+      }
+    }
 
     if (inLabelEdit) {
       const capsMode = currentModeName === 'labelEditCaps';
@@ -1387,6 +1489,16 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         // Second Escape → exit label edit entirely
         this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
         this.switchMode(capsMode ? 'normalCaps' : 'normal');
+        return;
+      }
+    }
+
+    if (inLabelEditVimVisual) {
+      const capsMode = currentModeName === 'labelEditVimVisualCaps';
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        this.vimReplacePending = false;
+        this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
+        this.labelEditModeOut.emit('vimNormal');
         return;
       }
     }
@@ -1495,6 +1607,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // Releasing a tier modifier returns to the default nodes+labels grid
       // while the move-by-node root key remains held.
       this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
+    }
+
+    if (this.moveByLinkHoldActive && eventKey === this.keyAssignments.root.go) {
+      this.moveByLinkHoldActive = false;
+      this.keyMenuOut.emit({kind: DACommandType.EXIT_LINK_NAV});
     }
   }
 }

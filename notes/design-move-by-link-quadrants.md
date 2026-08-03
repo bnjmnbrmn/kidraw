@@ -1,15 +1,15 @@
 ---
 title: Move by Link — quadrant navigation
 status: implemented
-date: 2026-08-01
+date: 2026-08-03
 ---
 
 # Move by Link — quadrant navigation
 
-Root `f` is labeled **Move by Link**. It opens the connected-edge popup as a
-sticky interaction surface; releasing `f` does not commit the initially
-highlighted row. This supersedes the tap-to-follow behavior of the original
-Go popup.
+Root `f` is a held submenu labeled **Move by Link...**. While it is held, the
+active key profile's movement keys focus or traverse incident links directly
+on the canvas. Releasing `f` exits and clears the focus. No popup, ghost copy,
+or row-list navigation participates in this interaction.
 
 ## Direction model
 
@@ -26,18 +26,20 @@ other node is the fallback for a degenerate path.
   for example, moving down from the bottom West link chooses the leftmost
   South link.
 - Pressing the direction that matches the focused link's quadrant walks that
-  link and reopens Move by Link at the landing node.
+  link, moves the crosshairs to the landing node, and starts a fresh quadrant
+  choice there while `f` remains held.
 - Pressing the opposite direction chooses a central link in that opposite
   quadrant.
 
 The focus is `DAEdge.navFocused`, not graph selection, and is never serialized.
-The popup's existing fuzzy filter, Enter jump, Tab walk, n/p list browsing,
-Escape, source emphasis, ghost preview, and jumplist remain available.
+Vim-style `Ctrl+O` / `Ctrl+I` jump history continues to record landings.
 
-Pure geometry lives in `drawing-area/graph-nav.ts`; profile-aware popup event
-handling lives in `nav-popup/`. `tools/repro-next-five.js` covers the canonical
-West scan, West→South corner transition, and same-direction traversal in a
-real browser.
+Pure geometry lives in `drawing-area/graph-nav.ts`; the keymenu emits explicit
+enter/move/exit commands for the held surface. Add-edge target selection reuses
+the same quadrant cursor over candidate nodes, so its `hjkl` behavior matches
+Move by Link. `tools/repro-next-five.js` covers the canonical West scan,
+West→South corner transition, same-direction traversal, held-key exit, and
+matching add-edge targeting in a real browser.
 
 Related: [move-by-node reachability analysis](analysis-move-by-node-reachability.md),
 [original nav popup idea](idea-nav-popup.md).

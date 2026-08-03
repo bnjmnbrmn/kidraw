@@ -17,7 +17,7 @@ export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'inc
 export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 
 /** Visual shape of the caret while editing graph text. */
-export type TextCursorMode = 'insert' | 'vimNormal';
+export type TextCursorMode = 'insert' | 'vimNormal' | 'vimVisual';
 
 /** Which kinds of stop move-by-node steps between (tiered by modifier). */
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
@@ -50,6 +50,12 @@ export enum DACommandType {
   INCREASE_MOVE_SPEED = 'INCREASE_MOVE_SPEED',
   DECREASE_MOVE_SPEED = 'DECREASE_MOVE_SPEED',
   TRAVERSE_SMART = 'TRAVERSE_SMART',
+  ENTER_LINK_NAV = 'ENTER_LINK_NAV',
+  MOVE_LINK_LEFT = 'MOVE_LINK_LEFT',
+  MOVE_LINK_RIGHT = 'MOVE_LINK_RIGHT',
+  MOVE_LINK_UP = 'MOVE_LINK_UP',
+  MOVE_LINK_DOWN = 'MOVE_LINK_DOWN',
+  EXIT_LINK_NAV = 'EXIT_LINK_NAV',
   NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
   NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
   SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
@@ -141,6 +147,7 @@ export enum DACommandType {
   CURSOR_WORD_BACK = 'CURSOR_WORD_BACK',
   SET_TEXT_CURSOR_MODE = 'SET_TEXT_CURSOR_MODE',
   DELETE_CHAR_AT_CURSOR = 'DELETE_CHAR_AT_CURSOR',
+  REPLACE_CHAR_AT_CURSOR = 'REPLACE_CHAR_AT_CURSOR',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -160,6 +167,12 @@ export type DACommand =
   | {kind: DACommandType.DECREASE_MOVE_SPEED}
   | {kind: DACommandType.TRAVERSE_SMART;
      keys?: {up: string; left: string; down: string; right: string}}
+  | {kind: DACommandType.ENTER_LINK_NAV}
+  | {kind: DACommandType.MOVE_LINK_LEFT}
+  | {kind: DACommandType.MOVE_LINK_RIGHT}
+  | {kind: DACommandType.MOVE_LINK_UP}
+  | {kind: DACommandType.MOVE_LINK_DOWN}
+  | {kind: DACommandType.EXIT_LINK_NAV}
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
@@ -265,3 +278,4 @@ export type DACommand =
   | {kind: DACommandType.CURSOR_WORD_BACK}
   | {kind: DACommandType.SET_TEXT_CURSOR_MODE; mode: TextCursorMode}
   | {kind: DACommandType.DELETE_CHAR_AT_CURSOR}
+  | {kind: DACommandType.REPLACE_CHAR_AT_CURSOR; value: string}

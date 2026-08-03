@@ -91,9 +91,10 @@ origin's cone); those nodes are reached by a fresh gesture. Verified in
 Alternatives considered and not taken: widening the cone on a modifier
 (weaker guarantee); accepting the limitation (Ben wanted the fix).
 
-## Implemented (2026-08-01) — hjkl inside Move by Link
+## Implemented (2026-08-03) — held hjkl Move by Link
 
-The Go popup is now **Move by Link**. `hjkl` move spatially through the
-restricted set of incident edges using NSEW quadrants, and pressing along the
-focused edge walks it. See
+The former Go popup is now the held **Move by Link...** submenu. `hjkl` move
+spatially through the restricted set of incident edges using NSEW quadrants,
+pressing along the focused edge walks it, and releasing the root key exits.
+Add-edge target selection uses the same quadrant cursor. See
 [`design-move-by-link-quadrants.md`](design-move-by-link-quadrants.md).

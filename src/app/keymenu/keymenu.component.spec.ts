@@ -116,6 +116,41 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CURSOR_WORD_END});
   });
 
+  it('enters visual mode with v and exposes selection motions', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const modeSpy = spyOn(component.labelEditModeOut, 'emit');
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    const normal = (component as any).buildLabelEditVimNormalSubmenuConfig(false) as Record<string, unknown>;
+
+    (normal['v'] as LabeledAction).action();
+    expect(modeSpy).toHaveBeenCalledWith('vimVisual');
+
+    const visual = (component as any).buildLabelEditVimVisualSubmenuConfig(false) as Record<string, unknown>;
+    expect((visual['h'] as LabeledAction).actionLabel).toBe('← extend');
+    (visual['h'] as LabeledAction).action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.CURSOR_LEFT});
+    (visual['x'] as LabeledAction).action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.DELETE_CHAR_AT_CURSOR});
+    expect(modeSpy).toHaveBeenCalledWith('vimNormal');
+  });
+
+  it('implements sequential Vim r replacement', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    component.switchMode('labelEditVimNormal');
+    const normal = (component as any).buildLabelEditVimNormalSubmenuConfig(false) as Record<string, unknown>;
+
+    (normal['r'] as LabeledAction).action();
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'Z', code: 'KeyZ'}));
+
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.REPLACE_CHAR_AT_CURSOR, value: 'Z'});
+    expect((component as any).vimReplacePending).toBeFalse();
+  });
+
   it('should restore a hidden keyboard from any keymenu mode', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     fixture.detectChanges();
@@ -264,14 +299,16 @@ describe('KeymenuComponent', () => {
     expect((coarse.submenuConfig['h'] as LabeledAction).actionLabel).toBe('Node Left');
     expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
 
-    // Move by Link at 'f': one-shot entry into the sticky edge navigator.
-    const go = rootConfig['f'] as LabeledAction;
-    expect(go instanceof LabeledAction).toBeTrue();
-    expect(go.actionLabel).toBe('Move by Link');
-    expect(go.repeat).toBeFalse();
+    // Move by Link at 'f': held NSEW edge navigator, with no popup.
+    const go = rootConfig['f'] as LabeledActionSubmenuConfig;
+    expect(go instanceof LabeledActionSubmenuConfig).toBeTrue();
+    expect(go.submenuLabel).toBe('Move by Link...');
     go.action();
-    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.TRAVERSE_SMART,
-      keys: {up: 'k', left: 'h', down: 'j', right: 'l'}});
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ENTER_LINK_NAV});
+    (go.submenuConfig['h'] as LabeledAction).action();
+    (go.submenuConfig['j'] as LabeledAction).action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.MOVE_LINK_LEFT});
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.MOVE_LINK_DOWN});
   });
 
   it('should build root bindings and hints from configurable key assignments', () => {

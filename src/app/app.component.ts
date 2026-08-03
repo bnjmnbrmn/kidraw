@@ -3,7 +3,7 @@ import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {Subject, Subscription} from 'rxjs';
-import {DACommand, DACommandType} from './drawing-area/command.model';
+import {DACommand, DACommandType, TextCursorMode} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
 import {DebugLogService} from './services/debug-log.service';
 import {KeyboardConfigService} from './services/keyboard-config.service';
@@ -57,10 +57,12 @@ export class AppComponent implements OnInit, OnDestroy {
     this.keymenuVisible = !this.keymenuVisible;
   }
 
-  handleLabelEditModeChange(subMode: 'insert' | 'vimNormal') {
+  handleLabelEditModeChange(subMode: TextCursorMode) {
     this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: subMode});
     if (this.headerComponent) {
-      this.headerComponent.mode = subMode === 'vimNormal' ? 'labelEditVimNormal' : 'labelEdit';
+      this.headerComponent.mode = subMode === 'vimNormal'
+        ? 'labelEditVimNormal'
+        : subMode === 'vimVisual' ? 'labelEditVimVisual' : 'labelEdit';
     }
   }
 

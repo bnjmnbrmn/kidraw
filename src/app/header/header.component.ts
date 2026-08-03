@@ -49,7 +49,7 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
 })
 export class HeaderComponent {
   zoomLevel: number = 100;
-  mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' = 'normal';
+  mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' | 'labelEditVimVisual' = 'normal';
   statusMessage: string = '';
   private statusMessageTimer?: number;
   selectionSummary: string = '';

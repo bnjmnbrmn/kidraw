@@ -8,7 +8,10 @@
       <div class="mode-badge" title="Esc → vim normal · ⇧⇧ → exit">Label Edit</div>
     }
     @if (mode === 'labelEditVimNormal') {
-      <div class="mode-badge vim-normal-badge" title="i/a → insert · Esc → exit label edit">Label Edit (N)</div>
+      <div class="mode-badge vim-normal-badge" title="i/a → insert · v → visual · r → replace · Esc → exit label edit">Label Edit (N)</div>
+    }
+    @if (mode === 'labelEditVimVisual') {
+      <div class="mode-badge vim-normal-badge" title="motions extend · x deletes · r replaces · Esc → normal">Label Edit (V)</div>
     }
     @if (statusMessage) {
       <div class="status-message">{{ statusMessage }}</div>

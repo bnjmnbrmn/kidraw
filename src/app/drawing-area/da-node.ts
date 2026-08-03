@@ -26,6 +26,7 @@ export class DANode {
   private _shape: Konva.Shape;
   private readonly _label: Konva.Text;
   private readonly _cursor: Konva.Line;
+  private readonly _visualSelection: Konva.Group;
   private _isSelected: boolean = false;
   private _pinned: boolean = false;
   private readonly _pinIndicator: Konva.Text;
@@ -80,6 +81,7 @@ export class DANode {
    *  read clamped via {@link cursorIndex}. */
   private _cursorIndex: number | null = null;
   private _cursorMode: TextCursorMode = 'insert';
+  private _visualAnchor: number | null = null;
   private _cursorBlinkTimer: number | null = null;
 
   private static _measureText: Konva.Text | null = null;
@@ -120,6 +122,10 @@ export class DANode {
       visible: !labelless,
     });
     this.group.add(this._label);
+
+    this._visualSelection = new Konva.Group({listening: false, visible: false});
+    this.group.add(this._visualSelection);
+    this._visualSelection.moveDown();
 
     // Text cursor — hidden until label edit mode
     this._cursor = new Konva.Line({
@@ -235,6 +241,7 @@ export class DANode {
       this._label.fill(colors.text);
     }
     this._cursor.stroke(colors.text);
+    this._visualSelection.getChildren().forEach(child => child.setAttr('fill', colors.text));
     this._pinIndicator.fill(colors.stroke);
     this._resizeHandle.fill(colors.stroke);
     this._resizeHandle.shadowColor(colors.stroke);
@@ -835,6 +842,11 @@ export class DANode {
   }
 
   setCursorMode(mode: TextCursorMode): void {
+    if (mode === 'vimVisual' && this._cursorMode !== 'vimVisual') {
+      this._visualAnchor = this.visualCursorIndex();
+    } else if (mode !== 'vimVisual') {
+      this._visualAnchor = null;
+    }
     this._cursorMode = mode;
     this.updateCursorPosition();
     this._cursor.opacity(1);
@@ -894,9 +906,38 @@ export class DANode {
   deleteAtCursor(): boolean {
     const current = this._label.text();
     if (current.length === 0) return false;
+    const range = this.visualSelectionRange();
+    if (range) {
+      this._label.text(current.slice(0, range.start) + current.slice(range.end));
+      this._cursorIndex = Math.min(range.start, Math.max(this._label.text().length - 1, 0));
+      const resized = this.applyTextOverflow();
+      this.updateCursorPosition();
+      return resized;
+    }
     const i = Math.min(this.cursorIndex, current.length - 1);
     this._label.text(current.slice(0, i) + current.slice(i + 1));
     this._cursorIndex = Math.min(i, current.length - 1);
+    const resized = this.applyTextOverflow();
+    this.updateCursorPosition();
+    return resized;
+  }
+
+  /** Vim `r`: replace the character under the cursor, or every selected
+   *  non-newline character in visual mode. Returns whether the node resized. */
+  replaceAtCursor(value: string): boolean {
+    const current = this._label.text();
+    if (current.length === 0 || value.length === 0) return false;
+    const replacement = value[0];
+    const range = this.visualSelectionRange();
+    if (range) {
+      const selected = current.slice(range.start, range.end).replace(/[^\n]/g, replacement);
+      this._label.text(current.slice(0, range.start) + selected + current.slice(range.end));
+      this._cursorIndex = range.start;
+    } else {
+      const i = Math.min(this.cursorIndex, current.length - 1);
+      this._label.text(current.slice(0, i) + replacement + current.slice(i + 1));
+      this._cursorIndex = i;
+    }
     const resized = this.applyTextOverflow();
     this.updateCursorPosition();
     return resized;
@@ -979,7 +1020,7 @@ export class DANode {
     const textStartY = (this._nodeHeight - totalHeight) / 2;
     const cursorY = textStartY + li * lineHeight;
 
-    if (this._cursorMode === 'vimNormal') {
+    if (this._cursorMode !== 'insert') {
       const visualIndex = Math.max(line.start, Math.min(i, line.start + Math.max(line.length - 1, 0)));
       const ch = line.length > 0 ? text[visualIndex] : ' ';
       const charWidth = Math.max(measure.measureSize(ch || ' ').width, 2);
@@ -1001,7 +1042,54 @@ export class DANode {
       this._cursor.strokeWidth(3);
       this._cursor.lineCap('round');
     }
+    this.updateVisualSelection(ranges, textArr, measure, lineHeight, textStartY);
     if (this._cursor.visible()) this._cursor.opacity(1);
+  }
+
+  private visualCursorIndex(): number | null {
+    const length = this._label.text().length;
+    return length === 0 ? null : Math.min(this.cursorIndex, length - 1);
+  }
+
+  private visualSelectionRange(): {start: number; end: number} | null {
+    const cursor = this.visualCursorIndex();
+    if (this._cursorMode !== 'vimVisual' || this._visualAnchor === null || cursor === null) return null;
+    return {start: Math.min(this._visualAnchor, cursor), end: Math.max(this._visualAnchor, cursor) + 1};
+  }
+
+  private updateVisualSelection(
+    ranges: LineRange[],
+    textArr: {text: string; width: number; lastInParagraph: boolean}[],
+    measure: Konva.Text,
+    lineHeight: number,
+    textStartY: number,
+  ): void {
+    this._visualSelection.destroyChildren();
+    const selection = this.visualSelectionRange();
+    if (!selection) {
+      this._visualSelection.visible(false);
+      return;
+    }
+    const text = this._label.text();
+    ranges.forEach((line, lineIndex) => {
+      const from = Math.max(selection.start, line.start);
+      const to = Math.min(selection.end, line.start + line.length);
+      if (from >= to) return;
+      const lineWidth = textArr[lineIndex]?.width ?? 0;
+      const lineX = (this._nodeWidth - lineWidth) / 2;
+      const prefix = text.slice(line.start, from);
+      const selected = text.slice(from, to);
+      this._visualSelection.add(new Konva.Rect({
+        x: lineX + (prefix ? measure.measureSize(prefix).width : 0),
+        y: textStartY + lineIndex * lineHeight,
+        width: Math.max(measure.measureSize(selected).width, 2),
+        height: this._fontSize,
+        fill: this._label.fill() ?? 'black',
+        opacity: 0.28,
+        listening: false,
+      }));
+    });
+    this._visualSelection.visible(true);
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

@@ -1,7 +1,7 @@
 /*
- * Browser smoke test for the five 2026-08-01 Next items: blinking/mode-aware
- * text cursor, vim `e`, outgoing connected-add default, quadrant Move by
- * Link behavior, and the Move by Link label.
+ * Browser smoke test for the six 2026-08-03 Next items: held NSEW Move by
+ * Link, its ellipsis label, exact edge hover tracing, Vim visual mode, grow
+ * target quadrant selection, and sequential Vim `r` replacement.
  */
 const {chromium} = require('@playwright/test');
 
@@ -102,23 +102,69 @@ async function main() {
     return da.drawingLayer.getSelectedDANodes()[0].cursorIndex;
   });
   check('vim e moves to the current word end', wordEnd === 2, `cursor=${wordEnd}`);
+
+  await page.keyboard.press('v');
+  await page.keyboard.press('l');
+  const visual = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const node = da.drawingLayer.getSelectedDANodes()[0];
+    return {
+      mode: document.querySelector('.mode-badge')?.textContent?.trim(),
+      visible: node._visualSelection.visible(),
+      blocks: node._visualSelection.getChildren().length,
+    };
+  });
+  check('v enters character-wise visual mode and motions extend the highlight',
+    visual.mode === 'Label Edit (V)' && visual.visible && visual.blocks > 0, JSON.stringify(visual));
+
+  await page.keyboard.press('r');
+  await page.keyboard.press('Z');
+  let replaced = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.drawingLayer.getSelectedDANodes()[0].label.text();
+  });
+  check('visual r replaces every selected character and returns to normal',
+    replaced === 'foZZbar', replaced);
+
+  await page.keyboard.press('0');
+  await page.keyboard.press('r');
+  await page.keyboard.press('Q');
+  replaced = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.drawingLayer.getSelectedDANodes()[0].label.text();
+  });
+  check('normal-mode r consumes the next key and replaces one character',
+    replaced === 'QoZZbar', replaced);
   await page.keyboard.press('Escape');
 
   await makeGraph('links');
   await placeOn('source');
   const label = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    return km.buildRootSubmenuConfig().f.actionLabel;
+    return km.buildRootSubmenuConfig().f.submenuLabel;
   });
-  check('Go is relabeled Move by Link', label === 'Move by Link', label);
+  check('Move by Link submenu is labeled with an ellipsis', label === 'Move by Link...', label);
 
-  await page.keyboard.press('f');
-  await page.waitForTimeout(150);
+  // Add-edge target selection uses the same W scan and corner flow.
+  await page.keyboard.down('a');
+  await page.keyboard.press('h');
+  await page.keyboard.press('j');
+  let growState = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {target: da.growTarget?.id ?? null, popup: da.navPopupOpen};
+  });
+  check('add-edge target selection scans links like Move by Link',
+    growState.target === 'west-below' && !growState.popup, JSON.stringify(growState));
+  await page.keyboard.press('Escape');
+  await page.keyboard.up('a');
+
+  await page.keyboard.down('f');
+  await page.waitForTimeout(50);
   let linkState = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return {open: da.navPopupOpen, focus: da.graphNavEdge?.id ?? null};
   });
-  check('Move by Link remains open after releasing its opener', linkState.open, JSON.stringify(linkState));
+  check('held Move by Link does not open a popup', !linkState.open, JSON.stringify(linkState));
 
   await page.keyboard.press('h');
   linkState = await page.evaluate(() => {
@@ -143,12 +189,17 @@ async function main() {
   });
   check('j crosses from the bottom of W to the leftmost S link',
     linkState.focus === linkState.ids['south-left'], JSON.stringify(linkState));
+  await page.keyboard.up('f');
 
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(100);
+  linkState = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {focus: da.graphNavEdge?.id ?? null, source: da.linkNavSource?.id ?? null};
+  });
+  check('releasing Move by Link exits and clears edge focus',
+    linkState.focus === null && linkState.source === null, JSON.stringify(linkState));
+
   await placeOn('source');
-  await page.keyboard.press('f');
-  await page.waitForTimeout(100);
+  await page.keyboard.down('f');
   await page.keyboard.press('h');
   await page.waitForTimeout(50);
   await page.keyboard.press('h');
@@ -158,7 +209,29 @@ async function main() {
     return {landed: da.graphNavLastNode?.id, open: da.navPopupOpen};
   });
   check('pressing h again walks the focused W link',
-    linkState.landed === 'west-center' && linkState.open, JSON.stringify(linkState));
+    linkState.landed === 'west-center' && !linkState.open, JSON.stringify(linkState));
+  await page.keyboard.up('f');
+
+  // The dotted hover overlay is an untensioned trace of the exact points the
+  // smooth edge renderer paints, not a second approximation of the curve.
+  const hover = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const edge = da.drawingLayer.getDAEdges()[0];
+    da.getLabelUnderCrosshairs = () => undefined;
+    da.getWaypointUnderCrosshairs = () => undefined;
+    da.getDANodesContainingCrosshairs = () => [];
+    da.getDAEdgesContainingCrosshairs = () => [edge];
+    da.refreshCrosshairHoverHighlight();
+    const trace = da.crosshairHoverHighlight;
+    return {
+      tension: trace.tension(),
+      points: trace.points(),
+      expected: edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]),
+    };
+  });
+  check('edge hover trace follows the exact rendered path',
+    hover.tension === 0 && JSON.stringify(hover.points) === JSON.stringify(hover.expected),
+    `tension=${hover.tension}, points=${hover.points.length}`);
 
   check('no browser errors', errors.length === 0, errors.join(' | '));
   await browser.close();

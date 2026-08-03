@@ -42,6 +42,8 @@ export class DALabel {
   /** Insertion index of the label-edit caret (0..text.length); null = end. */
   private _cursorIndex: number | null = null;
   private _cursorMode: TextCursorMode = 'insert';
+  private _visualAnchor: number | null = null;
+  private readonly _visualSelection: Konva.Group;
   private _cursorBlinkTimer: number | null = null;
   private readonly _cursor: Konva.Line;
   private static _measureText: Konva.Text | null = null;
@@ -73,6 +75,10 @@ export class DALabel {
 
     this.group.add(this._rect);
     this.group.add(this._text);
+
+    this._visualSelection = new Konva.Group({listening: false, visible: false});
+    this.group.add(this._visualSelection);
+    this._visualSelection.moveDown();
 
     // Label-edit caret — hidden until edit mode.
     this._cursor = new Konva.Line({
@@ -184,6 +190,7 @@ export class DALabel {
     this._rect.fill(this._fillColor);
     this._text.fill(this._textColor);
     this._cursor.stroke(this._textColor);
+    this._visualSelection.getChildren().forEach(child => child.setAttr('fill', this._textColor));
     this.updateAppearance();
   }
 
@@ -213,6 +220,11 @@ export class DALabel {
   }
 
   setCursorMode(mode: TextCursorMode): void {
+    if (mode === 'vimVisual' && this._cursorMode !== 'vimVisual') {
+      this._visualAnchor = this.visualCursorIndex();
+    } else if (mode !== 'vimVisual') {
+      this._visualAnchor = null;
+    }
     this._cursorMode = mode;
     this.updateCursorPosition();
     this._cursor.opacity(1);
@@ -263,9 +275,39 @@ export class DALabel {
    *  caret sits at the very end, where vim's block cursor would be. */
   deleteAtCursor(): void {
     if (this._label.length === 0) return;
+    const range = this.visualSelectionRange();
+    if (range) {
+      this._label = this._label.slice(0, range.start) + this._label.slice(range.end);
+      this._cursorIndex = Math.min(range.start, Math.max(this._label.length - 1, 0));
+      this._text.text(this._label);
+      this.resizeToFitText();
+      this.updateCursorPosition();
+      return;
+    }
     const i = Math.min(this.cursorIndex, this._label.length - 1);
     this._label = this._label.slice(0, i) + this._label.slice(i + 1);
     this._cursorIndex = Math.min(i, this._label.length - 1);
+    this._text.text(this._label);
+    this.resizeToFitText();
+    this.updateCursorPosition();
+  }
+
+  /** Vim `r`: replace the character under the cursor, or every selected
+   *  non-newline character in visual mode. */
+  replaceAtCursor(value: string): void {
+    if (this._label.length === 0 || value.length === 0) return;
+    const replacement = value[0];
+    const range = this.visualSelectionRange();
+    if (range) {
+      const selected = this._label.slice(range.start, range.end)
+        .replace(/[^\n]/g, replacement);
+      this._label = this._label.slice(0, range.start) + selected + this._label.slice(range.end);
+      this._cursorIndex = range.start;
+    } else {
+      const i = Math.min(this.cursorIndex, this._label.length - 1);
+      this._label = this._label.slice(0, i) + replacement + this._label.slice(i + 1);
+      this._cursorIndex = i;
+    }
     this._text.text(this._label);
     this.resizeToFitText();
     this.updateCursorPosition();
@@ -343,7 +385,7 @@ export class DALabel {
     const cursorX = -boxW / 2 + (boxW - this.measure(lineText)) / 2 + prefixWidth;
     const cursorY = -boxH / 2 + (boxH - blockH) / 2 + li * lineHeight;
 
-    if (this._cursorMode === 'vimNormal') {
+    if (this._cursorMode !== 'insert') {
       const visualIndex = Math.max(line.start, Math.min(i, line.start + Math.max(line.length - 1, 0)));
       const ch = line.length > 0 ? this._label[visualIndex] : ' ';
       const charWidth = Math.max(this.measure(ch || ' '), 2);
@@ -365,7 +407,43 @@ export class DALabel {
       this._cursor.lineCap('round');
     }
     this._cursor.stroke(this._textColor);
+    this.updateVisualSelection(ranges, boxW, boxH, lineHeight, blockH);
     if (this._cursor.visible()) this._cursor.opacity(1);
+  }
+
+  private visualCursorIndex(): number | null {
+    return this._label.length === 0 ? null : Math.min(this.cursorIndex, this._label.length - 1);
+  }
+
+  private visualSelectionRange(): {start: number; end: number} | null {
+    const cursor = this.visualCursorIndex();
+    if (this._cursorMode !== 'vimVisual' || this._visualAnchor === null || cursor === null) return null;
+    return {start: Math.min(this._visualAnchor, cursor), end: Math.max(this._visualAnchor, cursor) + 1};
+  }
+
+  private updateVisualSelection(ranges: LineRange[], boxW: number, boxH: number,
+                                lineHeight: number, blockH: number): void {
+    this._visualSelection.destroyChildren();
+    const selection = this.visualSelectionRange();
+    if (!selection) {
+      this._visualSelection.visible(false);
+      return;
+    }
+    ranges.forEach((line, lineIndex) => {
+      const from = Math.max(selection.start, line.start);
+      const to = Math.min(selection.end, line.start + line.length);
+      if (from >= to) return;
+      const lineText = this._label.slice(line.start, line.start + line.length);
+      const lineX = -boxW / 2 + (boxW - this.measure(lineText)) / 2;
+      const x = lineX + this.measure(this._label.slice(line.start, from));
+      const width = Math.max(this.measure(this._label.slice(from, to)), 2);
+      const y = -boxH / 2 + (boxH - blockH) / 2 + lineIndex * lineHeight;
+      this._visualSelection.add(new Konva.Rect({
+        x, y, width, height: this._fontSize,
+        fill: this._textColor, opacity: 0.28, listening: false,
+      }));
+    });
+    this._visualSelection.visible(true);
   }
 
   private updateAppearance(): void {

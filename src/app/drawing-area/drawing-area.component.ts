@@ -275,6 +275,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The traversal's current node: where the last nav jump landed (or
    *  anchored). Anchor of last resort for navigation and gather. */
   private graphNavLastNode: DANode | null = null;
+  /** Source and focus state for the held, popup-free Move by Link mode. */
+  private linkNavSource: DANode | null = null;
+  private linkNavDirectionalFocus = false;
   /** In/out sense of the last nav jump — the popup's "momentum": candidates
    *  continuing this direction are the primary group, and a single one
    *  auto-advances without a popup. */
@@ -337,6 +340,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH,
     DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH,
     DACommandType.TRAVERSE_SMART,
+    DACommandType.ENTER_LINK_NAV,
+    DACommandType.MOVE_LINK_LEFT,
+    DACommandType.MOVE_LINK_RIGHT,
+    DACommandType.MOVE_LINK_UP,
+    DACommandType.MOVE_LINK_DOWN,
+    DACommandType.EXIT_LINK_NAV,
     DACommandType.NAV_HISTORY_BACK,
     DACommandType.NAV_HISTORY_FORWARD,
     DACommandType.GATHER_CONNECTED_NODES,
@@ -687,6 +696,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.TRAVERSE_SMART:
         this.traverseSmart(command.keys);
         break;
+      case DACommandType.ENTER_LINK_NAV:
+        this.enterLinkNav();
+        break;
+      case DACommandType.MOVE_LINK_LEFT:
+        this.moveLinkNav('west');
+        break;
+      case DACommandType.MOVE_LINK_RIGHT:
+        this.moveLinkNav('east');
+        break;
+      case DACommandType.MOVE_LINK_UP:
+        this.moveLinkNav('north');
+        break;
+      case DACommandType.MOVE_LINK_DOWN:
+        this.moveLinkNav('south');
+        break;
+      case DACommandType.EXIT_LINK_NAV:
+        this.exitLinkNav();
+        break;
       case DACommandType.NAV_HISTORY_BACK:
         this.navHistoryGo(-1);
         break;
@@ -827,6 +854,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.DELETE_CHAR_AT_CURSOR:
         this.deleteCharAtCursor();
+        break;
+      case DACommandType.REPLACE_CHAR_AT_CURSOR:
+        this.replaceCharAtCursor(command.value);
         break;
       case DACommandType.CURSOR_LEFT:
         this.moveEditCursor(t => t.moveCursorH(-1));
@@ -2246,6 +2276,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  private replaceCharAtCursor(value: string) {
+    this.finishTweens();
+    const resized = this.drawingLayer.getSelectedDANodes()
+      .filter(node => node.replaceAtCursor(value));
+    this.updateEdgesForResizedNodes(resized);
+    this.getSelectedLabels().forEach(label => {
+      label.replaceAtCursor(value);
+      this.getEdgeForLabel(label)?.refreshGeometry();
+    });
+    this.drawingLayer.batchDraw();
+  }
+
   /** Apply a caret motion to everything being edited (selected nodes and
    *  edge labels). Motions never change geometry — just the caret. */
   private moveEditCursor(motion: (target: {
@@ -2821,8 +2863,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             targetId = edge.id;
             highlight = new Konva.Line({
               ...common,
-              points: edge.getPathPoints().flatMap(p => [p.x, p.y]),
-              tension: edge.smoothRendering ? edge.SMOOTH_TENSION : 0,
+              // Trace the exact polyline Konva paints, including the
+              // render-only endpoint stubs used by smooth edges. Applying
+              // tension to the raw control points produced a similar, but
+              // visibly different, dotted curve.
+              points: edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]),
+              tension: 0,
               strokeWidth: 5,
               opacity: 0.72,
             });
@@ -3073,6 +3119,86 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.graphNavEdge = edge;
     if (edge) edge.navFocused = true;
     this.drawingLayer.batchDraw();
+  }
+
+  /** Begin a held Move by Link session at the node under the crosshairs. */
+  private enterLinkNav(): void {
+    this.finishTweens();
+    const source = this.getTraversalAnchorNode();
+    this.linkNavSource = source;
+    this.linkNavDirectionalFocus = false;
+    this.setGraphNavEdge(null);
+    if (!source) {
+      this.emitStatus('Move the crosshairs onto a node to navigate.');
+      return;
+    }
+    this.graphNavLastNode = source;
+    if (this.navCandidatesFor(source).length === 0) {
+      this.emitStatus('No edges here.');
+    }
+  }
+
+  /** Select/scan an NSEW link, or traverse when the key points along it. */
+  private moveLinkNav(direction: LinkCardinalDirection): void {
+    const source = this.linkNavSource;
+    if (!source) return;
+    const navCandidates = this.navCandidatesFor(source);
+    const candidates = navCandidates.map(candidate => {
+      const path = candidate.edge.getPathPoints();
+      const flow = endpointFlowDirection(path, candidate.direction === 'out' ? 'src' : 'dest');
+      const away = flow
+        ? (candidate.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
+        : (() => {
+            const s = this.getNodeCenterInLayerCoordinates(source);
+            const d = this.getNodeCenterInLayerCoordinates(candidate.other);
+            const length = Math.hypot(d.x - s.x, d.y - s.y);
+            return length > 1e-9
+              ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length}
+              : null;
+          })();
+      return {id: candidate.edge.id, direction: away};
+    });
+    const move = moveLinkQuadrant(
+      candidates,
+      this.linkNavDirectionalFocus ? this.graphNavEdge?.id ?? null : null,
+      direction,
+    );
+    if (!move.id) {
+      this.emitStatus(`No link in the ${direction} quadrant.`);
+      return;
+    }
+    const candidate = navCandidates.find(c => c.edge.id === move.id);
+    if (!candidate) return;
+    if (!move.traverse) {
+      this.linkNavDirectionalFocus = true;
+      this.setGraphNavEdge(candidate.edge);
+      const label = (candidate.other.label?.text() ?? '').trim() || '(unlabeled)';
+      this.emitStatus(`${direction}: ${label}`);
+      return;
+    }
+
+    const dest = candidate.other;
+    this.recordNavVisit(source.id, dest.id);
+    this.graphNavLastNode = dest;
+    this.navDirection = candidate.direction;
+    const sC = this.getNodeCenterInLayerCoordinates(source);
+    const dC = this.getNodeCenterInLayerCoordinates(dest);
+    const length = Math.hypot(dC.x - sC.x, dC.y - sC.y);
+    if (length > 1e-6) {
+      this.graphNavMomentum = {x: (dC.x - sC.x) / length, y: (dC.y - sC.y) / length};
+    }
+    this.linkNavSource = dest;
+    this.linkNavDirectionalFocus = false;
+    this.setGraphNavEdge(null);
+    this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
+    const label = (dest.label?.text() ?? '').trim() || '(unlabeled)';
+    this.emitStatus(`${candidate.direction === 'out' ? '→' : '←'} ${label}`);
+  }
+
+  private exitLinkNav(): void {
+    this.linkNavSource = null;
+    this.linkNavDirectionalFocus = false;
+    this.setGraphNavEdge(null);
   }
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
@@ -6167,6 +6293,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** null = pristine (no target hopped yet) → release does the default
    *  connected quick-add to the right. */
   private growTarget: DANode | null = null;
+  private growDirectionalFocus = false;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
@@ -6204,7 +6331,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacePos = null;
     this.growPlacedRough = false;
     this.growMods.clear();
-    this.growNavCycle = null;
+    this.growDirectionalFocus = false;
     this.growHoldKey = holdKey;
     this.growKeys = keys;
     this.daOut.emit({
@@ -6287,36 +6414,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.commitGrowMode();
   }
 
-  /** Hop the target highlight in the given direction. Same repeated-press
-   *  cycling as move-by-node: the first press jumps to the nearest node in
-   *  the cone (from the current target, or the anchor before any hop) and
-   *  remembers the candidate list; pressing the same direction again steps to
-   *  the next candidate, so every in-cone node is reachable as a target. The
-   *  anchor is never a candidate (no self-connection). */
-  private growNavCycle: {dir: 'left' | 'right' | 'up' | 'down'; ids: string[]; index: number} | null = null;
-
+  /** Choose an edge target with the same fixed-anchor NSEW quadrant model as
+   *  Move by Link. Perpendicular keys scan within a quadrant and flow around
+   *  its corners; the anchor itself is never a candidate. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
-    const cyc = this.growNavCycle;
-    if (cyc && cyc.dir === direction && cyc.index + 1 < cyc.ids.length
-        && this.growTarget && this.growTarget.id === cyc.ids[cyc.index]) {
-      const next = this.drawingLayer.getDANodes().find(n => n.id === cyc.ids[cyc.index + 1]);
-      if (next) {
-        cyc.index++;
-        this.growTarget = next;
-        this.redrawGrowGhost();
-        return;
-      }
-    }
-    // The anchor stays a valid hop target on purpose: hopping back onto it is
-    // the "come home to cancel" gesture (commit treats target === anchor as a
-    // no-op). The current target sits at the cone origin, so the cone gate
-    // already excludes it.
-    const from = this.getNodeCenterInStageCoordinates(this.growTarget ?? this.growAnchor);
-    const candidates = this.nodesInDirection(direction, from);
-    if (candidates.length === 0) return;
-    this.growNavCycle = {dir: direction, ids: candidates.map(n => n.id), index: 0};
-    this.growTarget = candidates[0];
+    const anchorCenter = this.getNodeCenterInLayerCoordinates(this.growAnchor);
+    const nodes = this.drawingLayer.getDANodes().filter(node => node !== this.growAnchor);
+    const candidates = nodes.map(node => {
+      const center = this.getNodeCenterInLayerCoordinates(node);
+      const length = Math.hypot(center.x - anchorCenter.x, center.y - anchorCenter.y);
+      return {
+        id: node.id,
+        direction: length > 1e-9
+          ? {x: (center.x - anchorCenter.x) / length, y: (center.y - anchorCenter.y) / length}
+          : null,
+      };
+    });
+    const cardinal: Record<typeof direction, LinkCardinalDirection> = {
+      left: 'west', right: 'east', up: 'north', down: 'south',
+    };
+    const move = moveLinkQuadrant(
+      candidates,
+      this.growDirectionalFocus ? this.growTarget?.id ?? null : null,
+      cardinal[direction],
+    );
+    if (!move.id) return;
+    const target = nodes.find(node => node.id === move.id);
+    if (!target) return;
+    this.growDirectionalFocus = true;
+    this.growTarget = target;
     this.redrawGrowGhost();
   }
 
