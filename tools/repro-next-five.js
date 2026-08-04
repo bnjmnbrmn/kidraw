@@ -3,7 +3,8 @@
  * Move by Link entry/release refinements: held NSEW navigation, its ellipsis
  * label, exact edge hover tracing, Vim visual mode, grow target quadrant
  * selection, sequential Vim `r` replacement, nearest-node snapping,
- * immediate link focus, quadrant overlay, and release-to-walk.
+ * immediate link focus, quadrant overlay, release-to-walk, and one-press
+ * traversal when a quadrant has only one incident link.
  */
 const {chromium} = require('@playwright/test');
 
@@ -49,7 +50,8 @@ async function main() {
       const westBelow = mk('west-below', 'west below', 500, 440);
       const southLeft = mk('south-left', 'south left', 680, 650);
       const southRight = mk('south-right', 'south right', 920, 650);
-      const edges = [westCenter, westBelow, southLeft, southRight]
+      const east = mk('east', 'east', 1100, 300);
+      const edges = [westCenter, westBelow, southLeft, southRight, east]
         .map(node => dl.addEdge(source, node));
       window.__nextFiveEdges = Object.fromEntries(edges.map(edge => [edge.destNode.id, edge.id]));
     }
@@ -256,6 +258,24 @@ async function main() {
   });
   check('pressing h again walks the focused W link',
     linkState.landed === 'west-center' && !linkState.open, JSON.stringify(linkState));
+  await page.keyboard.up('f');
+
+  await page.waitForTimeout(150);
+  await placeOn('source');
+  await page.keyboard.down('f');
+  await page.keyboard.press('l');
+  await page.waitForTimeout(200);
+  linkState = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {
+      landed: da.graphNavLastNode?.id,
+      source: da.linkNavSource?.id,
+      focus: da.graphNavEdge?.id ?? null,
+    };
+  });
+  check('one directional press walks the only link in a quadrant',
+    linkState.landed === 'east' && linkState.source === 'east' && linkState.focus === null,
+    JSON.stringify(linkState));
   await page.keyboard.up('f');
 
   // The dotted hover overlay is an untensioned trace of the exact points the

@@ -3183,7 +3183,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Link: ${label}`);
   }
 
-  /** Select/scan an NSEW link, or traverse when the key points along it. */
+  /** Select/scan an NSEW link. A unique link in the requested quadrant walks
+   *  immediately; ambiguous quadrants focus before an along-link press. */
   private moveLinkNav(direction: LinkCardinalDirection): void {
     const source = this.linkNavSource;
     if (!source) return;
@@ -3193,6 +3194,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       candidates,
       this.linkNavDirectionalFocus ? this.graphNavEdge?.id ?? null : null,
       direction,
+      true,
     );
     if (!move.id) {
       this.emitStatus(`No link in the ${direction} quadrant.`);
@@ -3474,9 +3476,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** NSEW movement among the incident links. The first directional press
-   *  chooses a quadrant; subsequent perpendicular presses scan within it,
-   *  and pressing along the focused link walks to its other node. */
+  /** NSEW movement among the incident links. A unique link in the requested
+   *  quadrant walks immediately; otherwise the first press focuses and
+   *  subsequent perpendicular presses scan before an along-link press walks. */
   onNavPopupDirection(direction: LinkCardinalDirection): void {
     if (this.navPopupPurpose !== 'nav' || !this.navSource) return;
     const source = this.navSource;
@@ -3497,6 +3499,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       candidates,
       this.navDirectionalFocus ? this.navHighlightCand?.edge.id ?? null : null,
       direction,
+      true,
     );
     if (!move.id) {
       this.emitStatus(`No link in the ${direction} quadrant.`);

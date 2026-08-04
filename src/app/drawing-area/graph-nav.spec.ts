@@ -153,6 +153,19 @@ describe('graph-nav', () => {
       expect(moveLinkQuadrant(links, null, 'west')).toEqual({id: 'w-top', traverse: false});
     });
 
+    it('traverses a requested quadrant immediately when it has one link', () => {
+      expect(moveLinkQuadrant(links, null, 'east', true))
+        .toEqual({id: 'e', traverse: true});
+      expect(moveLinkQuadrant(links, null, 'east'))
+        .toEqual({id: 'e', traverse: false});
+    });
+
+    it('traverses immediately when a corner crosses into a unique quadrant', () => {
+      const cornerLinks = links.filter(link => link.id !== 's-right');
+      expect(moveLinkQuadrant(cornerLinks, 'w-bottom', 'south', true))
+        .toEqual({id: 's-left', traverse: true});
+    });
+
     it('moves down within W, then crosses to the leftmost S link', () => {
       expect(moveLinkQuadrant(links, 'w-top', 'south'))
         .toEqual({id: 'w-bottom', traverse: false});

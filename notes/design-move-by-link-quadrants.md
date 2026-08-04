@@ -36,6 +36,9 @@ other node is the fallback for a degenerate path.
 - Pressing the direction that matches the focused link's quadrant walks that
   link, moves the crosshairs to the landing node, and starts a fresh quadrant
   choice there while `f` remains held.
+- If the requested quadrant contains exactly one link, the first directional
+  press walks it immediately. Focus-then-traverse is reserved for quadrants
+  with multiple links that actually need disambiguation.
 - Pressing the opposite direction chooses a central link in that opposite
   quadrant.
 
@@ -50,8 +53,9 @@ Pure geometry lives in `drawing-area/graph-nav.ts`; the keymenu emits explicit
 enter/move/release commands for the held surface. Add-edge target selection reuses
 the same quadrant cursor over candidate nodes, so its `hjkl` behavior matches
 Move by Link. `tools/repro-next-five.js` covers the canonical West scan,
-West→South corner transition, same-direction traversal, release traversal, and
-matching add-edge targeting in a real browser.
+West→South corner transition, same-direction traversal, unique-quadrant
+one-press traversal, release traversal, and matching add-edge targeting in a
+real browser.
 
 Related: [move-by-node reachability analysis](analysis-move-by-node-reachability.md),
 [original nav popup idea](idea-nav-popup.md).

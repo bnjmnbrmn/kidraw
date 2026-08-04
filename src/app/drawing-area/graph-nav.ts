@@ -78,16 +78,25 @@ function axisMost(
  * quadrant. With a focus, a perpendicular key walks edge-by-edge in that
  * screen direction inside the current quadrant, then crosses into the
  * requested quadrant at the corner nearest the old one. Pressing the key
- * matching the focused quadrant traverses that edge. */
+ * matching the focused quadrant traverses that edge. Move by Link can opt
+ * into traversing immediately when the requested quadrant has exactly one
+ * candidate; target-picking surfaces retain focus-only behavior. */
 export function moveLinkQuadrant(
   candidates: readonly LinkQuadrantCandidate[],
   focusedId: string | null,
   requested: LinkCardinalDirection,
+  traverseUnique = false,
 ): LinkQuadrantMove {
+  const requestedCandidates = candidates
+    .filter(candidate => linkQuadrant(candidate.direction) === requested);
   const focused = focusedId === null ? null : candidates.find(c => c.id === focusedId) ?? null;
   const current = linkQuadrant(focused?.direction ?? null);
   if (!focused || !current) {
-    return {id: axisMost(candidates, requested)?.id ?? null, traverse: false};
+    const candidate = axisMost(candidates, requested);
+    return {
+      id: candidate?.id ?? null,
+      traverse: traverseUnique && requestedCandidates.length === 1,
+    };
   }
   if (current === requested) return {id: focused.id, traverse: true};
 
@@ -108,10 +117,17 @@ export function moveLinkQuadrant(
     const corner = [...candidates]
       .filter(c => linkQuadrant(c.direction) === requested)
       .sort((a, b) => dot(b.direction!, currentAxis) - dot(a.direction!, currentAxis))[0];
-    return {id: corner?.id ?? focused.id, traverse: false};
+    return {
+      id: corner?.id ?? focused.id,
+      traverse: traverseUnique && requestedCandidates.length === 1 && !!corner,
+    };
   }
 
-  return {id: axisMost(candidates, requested)?.id ?? focused.id, traverse: false};
+  const candidate = axisMost(candidates, requested);
+  return {
+    id: candidate?.id ?? focused.id,
+    traverse: traverseUnique && requestedCandidates.length === 1 && !!candidate,
+  };
 }
 
 const T_EPS = 1e-6;
