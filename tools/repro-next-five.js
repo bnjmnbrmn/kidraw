@@ -4,7 +4,8 @@
  * label, exact edge hover tracing, Vim visual mode, grow target quadrant
  * selection, sequential Vim `r` replacement, nearest-node snapping,
  * immediate link focus, quadrant overlay, release-to-walk, and one-press
- * traversal when a quadrant has only one incident link.
+ * traversal when a quadrant has only one incident link, plus nearest-corner
+ * transitions between adjacent quadrants.
  */
 const {chromium} = require('@playwright/test');
 
@@ -44,6 +45,15 @@ async function main() {
     };
     if (graphKind === 'add') {
       mk('anchor', 'anchor', 400, 350);
+    } else if (graphKind === 'corner') {
+      const source = mk('source', 'source', 800, 300);
+      const eastNorth = mk('east-north', 'east north', 1150, 220);
+      const eastSouth = mk('east-south', 'east south', 1150, 480);
+      const northEast = mk('north-east', 'north east', 1000, -150);
+      const northWest = mk('north-west', 'north west', 600, -150);
+      const edges = [eastNorth, eastSouth, northEast, northWest]
+        .map(node => dl.addEdge(source, node));
+      window.__cornerEdges = Object.fromEntries(edges.map(edge => [edge.destNode.id, edge.id]));
     } else {
       const source = mk('source', 'source', 800, 300);
       const westCenter = mk('west-center', 'west center', 500, 300);
@@ -275,6 +285,27 @@ async function main() {
   });
   check('one directional press walks the only link in a quadrant',
     linkState.landed === 'east' && linkState.source === 'east' && linkState.focus === null,
+    JSON.stringify(linkState));
+  await page.keyboard.up('f');
+
+  await makeGraph('corner');
+  await placeOn('source');
+  await page.keyboard.down('f');
+  await page.keyboard.press('l');
+  await page.keyboard.press('k');
+  await page.waitForTimeout(100);
+  linkState = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {
+      focus: da.graphNavEdge?.id ?? null,
+      ids: window.__cornerEdges,
+      source: da.linkNavSource?.id ?? null,
+      landed: da.graphNavLastNode?.id ?? null,
+    };
+  });
+  check('k crosses from the northernmost E link to the easternmost N link',
+    linkState.focus === linkState.ids['north-east'] &&
+      linkState.source === 'source' && linkState.landed === 'source',
     JSON.stringify(linkState));
   await page.keyboard.up('f');
 

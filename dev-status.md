@@ -224,6 +224,8 @@ _Updated 2026-08-04. Branch: `main`._
 
 48. **Move by Link unique-quadrant shortcut (2026-08-04).** A directional press now walks immediately when its requested quadrant contains exactly one incident link; focus-then-traverse remains only where multiple links in that quadrant require disambiguation. Corner crossings into a unique quadrant get the same shortcut. Grow-mode target picking still focuses rather than committing because the pure quadrant helper exposes this as an opt-in traversal policy. Verified by `tools/repro-next-five.js` (21/21 live browser checks), the full unit suite (355/355), and a clean production build (existing budget/CommonJS warnings only).
 
+49. **Move by Link symmetric corner transitions (2026-08-04).** Perpendicular movement at the end of a quadrant now explicitly remains a focus move, including when the adjacent quadrant has only one link: East→North chooses the easternmost North link, West→North the westernmost North link, North→East the northernmost East link, and likewise for all eight adjacent-quadrant transitions. This narrows item 48's one-press traversal shortcut to fresh/opposite quadrant choices; it no longer consumes a corner transition as a traversal. Verified by the eight-transition geometry table, `tools/repro-next-five.js` (22/22 live browser checks, including E→N), the full unit suite (356/356), and a clean production build (existing budget/CommonJS warnings only).
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.

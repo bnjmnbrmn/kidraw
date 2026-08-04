@@ -112,15 +112,13 @@ export function moveLinkQuadrant(
       .sort((a, b) => a.delta - b.delta)[0]?.candidate;
     if (next) return {id: next.id, traverse: false};
 
-    // Crossing a corner: W→S chooses the leftmost S link, E→N the
-    // rightmost N link, and so on.
+    // Crossing a corner: W→S chooses the westernmost S link, E→N the
+    // easternmost N link, and so on. A corner crossing always focuses first,
+    // even when the destination quadrant contains just one link.
     const corner = [...candidates]
       .filter(c => linkQuadrant(c.direction) === requested)
       .sort((a, b) => dot(b.direction!, currentAxis) - dot(a.direction!, currentAxis))[0];
-    return {
-      id: corner?.id ?? focused.id,
-      traverse: traverseUnique && requestedCandidates.length === 1 && !!corner,
-    };
+    return {id: corner?.id ?? focused.id, traverse: false};
   }
 
   const candidate = axisMost(candidates, requested);

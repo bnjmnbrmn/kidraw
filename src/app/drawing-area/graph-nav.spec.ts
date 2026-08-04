@@ -4,6 +4,7 @@ import {
   clockwiseOrder,
   endpointFlowDirection,
   nearestStopIndex,
+  LinkCardinalDirection,
   linkQuadrant,
   moveLinkQuadrant,
   pickEntryCandidate,
@@ -160,10 +161,10 @@ describe('graph-nav', () => {
         .toEqual({id: 'e', traverse: false});
     });
 
-    it('traverses immediately when a corner crosses into a unique quadrant', () => {
+    it('focuses rather than traversing when a corner crosses into a unique quadrant', () => {
       const cornerLinks = links.filter(link => link.id !== 's-right');
       expect(moveLinkQuadrant(cornerLinks, 'w-bottom', 'south', true))
-        .toEqual({id: 's-left', traverse: true});
+        .toEqual({id: 's-left', traverse: false});
     });
 
     it('moves down within W, then crosses to the leftmost S link', () => {
@@ -171,6 +172,35 @@ describe('graph-nav', () => {
         .toEqual({id: 'w-bottom', traverse: false});
       expect(moveLinkQuadrant(links, 'w-bottom', 'south'))
         .toEqual({id: 's-left', traverse: false});
+    });
+
+    it('crosses every adjacent corner at the side nearest the current quadrant', () => {
+      const around = [
+        {id: 'n-west', direction: {x: -0.45, y: -1}},
+        {id: 'n-east', direction: {x: 0.45, y: -1}},
+        {id: 'e-north', direction: {x: 1, y: -0.45}},
+        {id: 'e-south', direction: {x: 1, y: 0.45}},
+        {id: 's-east', direction: {x: 0.45, y: 1}},
+        {id: 's-west', direction: {x: -0.45, y: 1}},
+        {id: 'w-south', direction: {x: -1, y: 0.45}},
+        {id: 'w-north', direction: {x: -1, y: -0.45}},
+      ];
+      const corners: Array<[string, LinkCardinalDirection, string]> = [
+        ['e-north', 'north', 'n-east'],
+        ['e-south', 'south', 's-east'],
+        ['s-east', 'east', 'e-south'],
+        ['s-west', 'west', 'w-south'],
+        ['w-south', 'south', 's-west'],
+        ['w-north', 'north', 'n-west'],
+        ['n-west', 'west', 'w-north'],
+        ['n-east', 'east', 'e-north'],
+      ];
+
+      for (const [focused, requested, expected] of corners) {
+        expect(moveLinkQuadrant(around, focused, requested, true))
+          .withContext(`${focused} → ${requested}`)
+          .toEqual({id: expected, traverse: false});
+      }
     });
 
     it('traverses when the key points along the focused link', () => {

@@ -31,14 +31,17 @@ other node is the fallback for a degenerate path.
 - Pressing a perpendicular direction scans links in that screen direction
   within the current quadrant.
 - At the end of a quadrant it crosses the corner into the requested quadrant:
-  for example, moving down from the bottom West link chooses the leftmost
-  South link.
+  for example, moving up from the top East link chooses the easternmost North
+  link. The same nearest-corner rule applies symmetrically to all eight
+  adjacent-quadrant transitions, and a corner crossing always focuses before
+  traversing.
 - Pressing the direction that matches the focused link's quadrant walks that
   link, moves the crosshairs to the landing node, and starts a fresh quadrant
   choice there while `f` remains held.
-- If the requested quadrant contains exactly one link, the first directional
-  press walks it immediately. Focus-then-traverse is reserved for quadrants
-  with multiple links that actually need disambiguation.
+- If a fresh or opposite-direction quadrant choice contains exactly one link,
+  the directional press walks it immediately. Corner crossings remain
+  focus-only because the perpendicular key is navigating around the compass,
+  not pointing along that link.
 - Pressing the opposite direction chooses a central link in that opposite
   quadrant.
 
