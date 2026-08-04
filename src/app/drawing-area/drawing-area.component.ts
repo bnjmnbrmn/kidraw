@@ -12,7 +12,7 @@ import { DAWaypoint } from './da-waypoint';
 import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
-import { endpointFlowDirection, LinkCardinalDirection, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
+import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
@@ -278,6 +278,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Source and focus state for the held, popup-free Move by Link mode. */
   private linkNavSource: DANode | null = null;
   private linkNavDirectionalFocus = false;
+  private linkNavQuadrantLines: Konva.Group | null = null;
+  private linkNavQuadrantRefreshTimer: number | null = null;
   /** In/out sense of the last nav jump — the popup's "momentum": candidates
    *  continuing this direction are the primary group, and a single one
    *  auto-advances without a popup. */
@@ -345,7 +347,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.MOVE_LINK_RIGHT,
     DACommandType.MOVE_LINK_UP,
     DACommandType.MOVE_LINK_DOWN,
-    DACommandType.EXIT_LINK_NAV,
+    DACommandType.RELEASE_LINK_NAV,
     DACommandType.NAV_HISTORY_BACK,
     DACommandType.NAV_HISTORY_FORWARD,
     DACommandType.GATHER_CONNECTED_NODES,
@@ -461,6 +463,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.applyThemeColors(palette);
       this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
       if (this.normalMovementGoal) this.redrawNormalMovementGoalLine();
+      if (this.linkNavSource) this.redrawLinkNavQuadrantLines(this.linkNavSource);
       this.refreshCrosshairHoverHighlight();
     };
     const reapplyConfig = () => {
@@ -524,6 +527,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.stage.width(this.componentNE.offsetWidth);
       this.stage.height(this.componentNE.offsetHeight);
       if (this.nodeGridVisible) this.redrawNodeGrid();
+      if (this.linkNavSource) this.redrawLinkNavQuadrantLines(this.linkNavSource);
     });
     this.resizeObserver.observe(this.componentNE);
 
@@ -563,6 +567,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.crosshairHoverRefreshTimer !== null) {
       clearTimeout(this.crosshairHoverRefreshTimer);
     }
+    this.clearLinkNavQuadrantLines();
     this.crosshairHoverHighlight?.destroy();
   }
 
@@ -711,8 +716,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.MOVE_LINK_DOWN:
         this.moveLinkNav('south');
         break;
-      case DACommandType.EXIT_LINK_NAV:
-        this.exitLinkNav();
+      case DACommandType.RELEASE_LINK_NAV:
+        this.releaseLinkNav();
         break;
       case DACommandType.NAV_HISTORY_BACK:
         this.navHistoryGo(-1);
@@ -3121,10 +3126,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  private nearestNodeToCrosshairs(): DANode | null {
+    const nodes = this.drawingLayer.getDANodes();
+    if (nodes.length === 0) return null;
+    const x = this.crosshairsLayer.crosshairsX();
+    const y = this.crosshairsLayer.crosshairsY();
+    return nodes.reduce((best, node) => {
+      const b = this.getNodeCenterInStageCoordinates(best);
+      const n = this.getNodeCenterInStageCoordinates(node);
+      return Math.hypot(n.x - x, n.y - y) < Math.hypot(b.x - x, b.y - y)
+        ? node
+        : best;
+    });
+  }
+
   /** Begin a held Move by Link session at the node under the crosshairs. */
   private enterLinkNav(): void {
     this.finishTweens();
-    const source = this.getTraversalAnchorNode();
+    const underCrosshairs = this.getDANodesContainingCrosshairs();
+    const source = underCrosshairs.length > 0
+      ? underCrosshairs.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
+      : this.nearestNodeToCrosshairs();
     this.linkNavSource = source;
     this.linkNavDirectionalFocus = false;
     this.setGraphNavEdge(null);
@@ -3132,10 +3154,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('Move the crosshairs onto a node to navigate.');
       return;
     }
-    this.graphNavLastNode = source;
-    if (this.navCandidatesFor(source).length === 0) {
-      this.emitStatus('No edges here.');
+    const snappedToNearest = underCrosshairs.length === 0;
+    if (snappedToNearest) {
+      this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
     }
+    const continuingJourney = source === this.validGraphNavLastNode();
+    this.graphNavLastNode = source;
+    const navCandidates = this.navCandidatesFor(source);
+    if (navCandidates.length === 0) {
+      this.redrawLinkNavQuadrantLines(source);
+      if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
+      this.emitStatus('No edges here.');
+      return;
+    }
+    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
+    const entryIndex = pickEntryCandidate(
+      geometry.map(candidate => candidate.direction),
+      continuingJourney ? this.graphNavMomentum : null,
+    );
+    const entry = entryIndex >= 0 ? navCandidates[entryIndex] : navCandidates[0];
+    // The entry edge is a release-to-walk preview. The first NSEW key still
+    // gets to establish an explicit quadrant, independent of that preview.
+    this.linkNavDirectionalFocus = false;
+    this.setGraphNavEdge(entry.edge);
+    this.redrawLinkNavQuadrantLines(source);
+    if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
+    const label = (entry.other.label?.text() ?? '').trim() || '(unlabeled)';
+    this.emitStatus(`Link: ${label}`);
   }
 
   /** Select/scan an NSEW link, or traverse when the key points along it. */
@@ -3143,21 +3188,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const source = this.linkNavSource;
     if (!source) return;
     const navCandidates = this.navCandidatesFor(source);
-    const candidates = navCandidates.map(candidate => {
-      const path = candidate.edge.getPathPoints();
-      const flow = endpointFlowDirection(path, candidate.direction === 'out' ? 'src' : 'dest');
-      const away = flow
-        ? (candidate.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
-        : (() => {
-            const s = this.getNodeCenterInLayerCoordinates(source);
-            const d = this.getNodeCenterInLayerCoordinates(candidate.other);
-            const length = Math.hypot(d.x - s.x, d.y - s.y);
-            return length > 1e-9
-              ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length}
-              : null;
-          })();
-      return {id: candidate.edge.id, direction: away};
-    });
+    const candidates = this.linkNavGeometryCandidates(source, navCandidates);
     const move = moveLinkQuadrant(
       candidates,
       this.linkNavDirectionalFocus ? this.graphNavEdge?.id ?? null : null,
@@ -3172,11 +3203,37 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!move.traverse) {
       this.linkNavDirectionalFocus = true;
       this.setGraphNavEdge(candidate.edge);
+      this.redrawLinkNavQuadrantLines(source);
       const label = (candidate.other.label?.text() ?? '').trim() || '(unlabeled)';
       this.emitStatus(`${direction}: ${label}`);
       return;
     }
 
+    this.traverseLinkNavCandidate(source, candidate);
+  }
+
+  private linkNavGeometryCandidates(
+    source: DANode,
+    navCandidates: readonly NavCandidate[],
+  ): {id: string; direction: {x: number; y: number} | null}[] {
+    return navCandidates.map(candidate => {
+      const path = candidate.edge.getPathPoints();
+      const flow = endpointFlowDirection(path, candidate.direction === 'out' ? 'src' : 'dest');
+      const away = flow
+        ? (candidate.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
+        : (() => {
+            const s = this.getNodeCenterInLayerCoordinates(source);
+            const d = this.getNodeCenterInLayerCoordinates(candidate.other);
+            const length = Math.hypot(d.x - s.x, d.y - s.y);
+            return length > 1e-9
+              ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length}
+              : null;
+          })();
+      return {id: candidate.edge.id, direction: away};
+    });
+  }
+
+  private traverseLinkNavCandidate(source: DANode, candidate: NavCandidate): void {
     const dest = candidate.other;
     this.recordNavVisit(source.id, dest.id);
     this.graphNavLastNode = dest;
@@ -3191,14 +3248,107 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.linkNavDirectionalFocus = false;
     this.setGraphNavEdge(null);
     this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
+    this.redrawLinkNavQuadrantLines(dest);
+    this.scheduleLinkNavQuadrantRefresh(dest);
     const label = (dest.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`${candidate.direction === 'out' ? '→' : '←'} ${label}`);
   }
 
-  private exitLinkNav(): void {
+  /** Releasing the held root key commits a focused link, then leaves the
+   *  mode. With no focus it is simply a cancel/exit gesture. */
+  private releaseLinkNav(): void {
+    const source = this.linkNavSource;
+    const focused = this.graphNavEdge;
+    if (source && focused) {
+      const candidate = this.navCandidatesFor(source)
+        .find(item => item.edge === focused);
+      if (candidate) this.traverseLinkNavCandidate(source, candidate);
+    }
     this.linkNavSource = null;
     this.linkNavDirectionalFocus = false;
     this.setGraphNavEdge(null);
+    this.clearLinkNavQuadrantLines();
+  }
+
+  /** Dashed 45° rays expose the exact N/E/S/W quadrant boundaries used by
+   *  moveLinkQuadrant. They live in stage coordinates so their dash/stroke
+   *  stays screen-stable at every drawing zoom. */
+  private redrawLinkNavQuadrantLines(source: DANode): void {
+    this.linkNavQuadrantLines?.destroy();
+    const group = new Konva.Group({name: 'move-by-link-quadrants', listening: false});
+    const origin = this.getNodeCenterInStageCoordinates(source);
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const focused = this.graphNavEdge;
+    const navCandidates = this.navCandidatesFor(source);
+    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
+    const focusedDirection = focused
+      ? geometry.find(candidate => candidate.id === focused.id)?.direction ?? null
+      : null;
+    const activeQuadrant = linkQuadrant(focusedDirection);
+    if (activeQuadrant) {
+      const reach = this.stage.width() + this.stage.height();
+      const points = {
+        north: [origin.x, origin.y, origin.x - reach, origin.y - reach,
+          origin.x + reach, origin.y - reach],
+        south: [origin.x, origin.y, origin.x - reach, origin.y + reach,
+          origin.x + reach, origin.y + reach],
+        east: [origin.x, origin.y, origin.x + reach, origin.y - reach,
+          origin.x + reach, origin.y + reach],
+        west: [origin.x, origin.y, origin.x - reach, origin.y - reach,
+          origin.x - reach, origin.y + reach],
+      }[activeQuadrant];
+      group.add(new Konva.Line({
+        name: 'move-by-link-active-quadrant',
+        points,
+        closed: true,
+        fill: palette.crosshairsStroke,
+        opacity: 0.1,
+        listening: false,
+      }));
+    }
+    for (const angle of [
+      Math.PI / 4,
+      Math.PI * 3 / 4,
+      Math.PI * 5 / 4,
+      Math.PI * 7 / 4,
+    ]) {
+      const end = this.navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
+      if (!end) continue;
+      group.add(new Konva.Line({
+        name: 'move-by-link-diagonal',
+        points: [origin.x, origin.y, end.x, end.y],
+        stroke: palette.crosshairsStroke,
+        strokeWidth: 1.5,
+        strokeScaleEnabled: false,
+        opacity: 0.46,
+        dash: [7, 5],
+        listening: false,
+      }));
+    }
+    this.crosshairsLayer.add(group);
+    group.moveToBottom();
+    this.linkNavQuadrantLines = group;
+    this.crosshairsLayer.batchDraw();
+  }
+
+  private scheduleLinkNavQuadrantRefresh(source: DANode): void {
+    if (this.linkNavQuadrantRefreshTimer !== null) {
+      window.clearTimeout(this.linkNavQuadrantRefreshTimer);
+    }
+    this.linkNavQuadrantRefreshTimer = window.setTimeout(() => {
+      this.linkNavQuadrantRefreshTimer = null;
+      if (this.linkNavSource === source) this.redrawLinkNavQuadrantLines(source);
+    }, Math.ceil(this.CROSSHAIR_MOVEMENT_DURATION * 1000) + 30);
+  }
+
+  private clearLinkNavQuadrantLines(): void {
+    if (this.linkNavQuadrantRefreshTimer !== null) {
+      window.clearTimeout(this.linkNavQuadrantRefreshTimer);
+      this.linkNavQuadrantRefreshTimer = null;
+    }
+    this.linkNavQuadrantLines?.destroy();
+    this.linkNavQuadrantLines = null;
+    this.crosshairsLayer?.batchDraw();
   }
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---

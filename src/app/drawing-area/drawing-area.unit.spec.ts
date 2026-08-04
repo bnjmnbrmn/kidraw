@@ -394,6 +394,92 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
+  describe('Move by Link quadrant overlay', () => {
+    it('draws four zoom-stable diagonal boundary rays through the source', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const source = new DANode(340, 240, 'source');
+      const dest = new DANode(640, 240, 'dest');
+      const edge = new DAEdge(source, dest, '');
+      component.drawingLayer = drawingLayer;
+      component.stage = {width: () => 800, height: () => 600};
+      component.crosshairsLayer = new Konva.Layer();
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.linkNavQuadrantLines = null;
+      component.graphNavEdge = edge;
+
+      component.redrawLinkNavQuadrantLines(source);
+
+      const group = component.linkNavQuadrantLines as Konva.Group;
+      const lines = group.find<Konva.Line>('.move-by-link-diagonal');
+      expect(lines.length).toBe(4);
+      expect(group.find('.move-by-link-active-quadrant').length).toBe(1);
+      lines.forEach(line => {
+        expect(line.points().slice(0, 2)).toEqual([400, 300]);
+        expect(line.dash()).toEqual([7, 5]);
+        expect(line.strokeScaleEnabled()).toBeFalse();
+      });
+
+      component.clearLinkNavQuadrantLines();
+      expect(component.linkNavQuadrantLines).toBeNull();
+    });
+
+    it('snaps to the nearest node and immediately focuses an incident link', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const nearest = new DANode(100, 100, 'nearest');
+      const dest = new DANode(400, 100, 'dest');
+      const farther = new DANode(700, 500, 'farther');
+      const edge = new DAEdge(nearest, dest, '');
+      drawingLayer.addRawNode(nearest);
+      drawingLayer.addRawNode(dest);
+      drawingLayer.addRawNode(farther);
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = {crosshairsX: () => 190, crosshairsY: () => 180};
+      component.finishTweens = () => undefined;
+      component.getDANodesContainingCrosshairs = () => [];
+      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.validGraphNavLastNode = () => null;
+      component.redrawLinkNavQuadrantLines = jasmine.createSpy('redrawLinkNavQuadrantLines');
+      component.scheduleLinkNavQuadrantRefresh = jasmine.createSpy('scheduleLinkNavQuadrantRefresh');
+      component.emitStatus = () => undefined;
+      component.graphNavMomentum = null;
+
+      component.enterLinkNav();
+
+      expect(component.linkNavSource).toBe(nearest);
+      expect(component.graphNavEdge).toBe(edge);
+      expect(component.linkNavDirectionalFocus).toBeFalse();
+      expect(component.jumpCrosshairsToStopCenter).toHaveBeenCalledWith({x: 160, y: 160});
+      expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(nearest);
+    });
+
+    it('traverses the focused link when the held mode is released', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const source = new DANode(0, 0, 'source');
+      const dest = new DANode(300, 0, 'dest');
+      const edge = new DAEdge(source, dest, '');
+      const candidate = {edge, direction: 'out', other: dest};
+      component.linkNavSource = source;
+      component.linkNavDirectionalFocus = true;
+      component.graphNavEdge = edge;
+      component.navCandidatesFor = () => [candidate];
+      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.clearLinkNavQuadrantLines = () => undefined;
+      const traverse = spyOn(component, 'traverseLinkNavCandidate');
+
+      component.releaseLinkNav();
+
+      expect(traverse).toHaveBeenCalledOnceWith(source, candidate);
+      expect(component.linkNavSource).toBeNull();
+      expect(component.graphNavEdge).toBeNull();
+    });
+  });
+
   describe('DrawingLayer', () => {
     let drawingLayer: DrawingLayer;
 

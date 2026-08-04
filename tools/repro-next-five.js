@@ -1,7 +1,9 @@
 /*
- * Browser smoke test for the six 2026-08-03 Next items: held NSEW Move by
- * Link, its ellipsis label, exact edge hover tracing, Vim visual mode, grow
- * target quadrant selection, and sequential Vim `r` replacement.
+ * Browser smoke test for the six 2026-08-03 Next items plus the 2026-08-04
+ * Move by Link entry/release refinements: held NSEW navigation, its ellipsis
+ * label, exact edge hover tracing, Vim visual mode, grow target quadrant
+ * selection, sequential Vim `r` replacement, nearest-node snapping,
+ * immediate link focus, quadrant overlay, and release-to-walk.
  */
 const {chromium} = require('@playwright/test');
 
@@ -56,6 +58,7 @@ async function main() {
 
   const placeOn = async (id) => page.evaluate((nodeId) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.finishTweens();
     const dl = da.drawingLayer;
     const node = dl.getDANodes().find(candidate => candidate.id === nodeId);
     da.crosshairsLayer.crosshairs.x = dl.x() + (node.group.x() + node.NODE_WIDTH / 2) * dl.scaleX();
@@ -158,13 +161,43 @@ async function main() {
   await page.keyboard.press('Escape');
   await page.keyboard.up('a');
 
+  // Start just off the source: entry should snap onto it before choosing a
+  // default incident edge.
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    const source = dl.getDANodes().find(node => node.id === 'source');
+    da.crosshairsLayer.crosshairs.x = dl.x() +
+      (source.group.x() + source.NODE_WIDTH / 2 + 100) * dl.scaleX();
+    da.crosshairsLayer.crosshairs.y = dl.y() +
+      (source.group.y() + source.NODE_HEIGHT / 2) * dl.scaleY();
+  });
   await page.keyboard.down('f');
-  await page.waitForTimeout(50);
+  await page.waitForTimeout(150);
   let linkState = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {open: da.navPopupOpen, focus: da.graphNavEdge?.id ?? null};
+    const dl = da.drawingLayer;
+    const source = dl.getDANodes().find(node => node.id === 'source');
+    const sx = dl.x() + (source.group.x() + source.NODE_WIDTH / 2) * dl.scaleX();
+    const sy = dl.y() + (source.group.y() + source.NODE_HEIGHT / 2) * dl.scaleY();
+    return {
+      open: da.navPopupOpen,
+      focus: da.graphNavEdge?.id ?? null,
+      source: da.linkNavSource?.id ?? null,
+      snapDistance: Math.hypot(da.crosshairsLayer.crosshairs.x - sx,
+        da.crosshairsLayer.crosshairs.y - sy),
+      diagonals: da.linkNavQuadrantLines?.find('.move-by-link-diagonal').length ?? 0,
+      activeQuadrants: da.linkNavQuadrantLines?.find('.move-by-link-active-quadrant').length ?? 0,
+    };
   });
   check('held Move by Link does not open a popup', !linkState.open, JSON.stringify(linkState));
+  check('Move by Link snaps to the nearest node and immediately highlights an edge',
+    linkState.source === 'source' && linkState.snapDistance < 1 && linkState.focus !== null,
+    JSON.stringify(linkState));
+  check('held Move by Link shows four diagonal quadrant boundaries',
+    linkState.diagonals === 4, JSON.stringify(linkState));
+  check('the highlighted link quadrant is shaded',
+    linkState.activeQuadrants === 1, JSON.stringify(linkState));
 
   await page.keyboard.press('h');
   linkState = await page.evaluate(() => {
@@ -193,11 +226,19 @@ async function main() {
 
   linkState = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {focus: da.graphNavEdge?.id ?? null, source: da.linkNavSource?.id ?? null};
+    return {
+      focus: da.graphNavEdge?.id ?? null,
+      source: da.linkNavSource?.id ?? null,
+      landed: da.graphNavLastNode?.id ?? null,
+      diagonals: da.linkNavQuadrantLines?.find('.move-by-link-diagonal').length ?? 0,
+    };
   });
-  check('releasing Move by Link exits and clears edge focus',
-    linkState.focus === null && linkState.source === null, JSON.stringify(linkState));
+  check('releasing Move by Link traverses its focus, then clears the overlay',
+    linkState.focus === null && linkState.source === null &&
+      linkState.landed === 'south-left' && linkState.diagonals === 0,
+    JSON.stringify(linkState));
 
+  await page.waitForTimeout(150);
   await placeOn('source');
   await page.keyboard.down('f');
   await page.keyboard.press('h');
@@ -206,7 +247,12 @@ async function main() {
   await page.waitForTimeout(200);
   linkState = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {landed: da.graphNavLastNode?.id, open: da.navPopupOpen};
+    return {
+      landed: da.graphNavLastNode?.id,
+      source: da.linkNavSource?.id,
+      focus: da.graphNavEdge?.destNode?.id ?? null,
+      open: da.navPopupOpen,
+    };
   });
   check('pressing h again walks the focused W link',
     linkState.landed === 'west-center' && !linkState.open, JSON.stringify(linkState));

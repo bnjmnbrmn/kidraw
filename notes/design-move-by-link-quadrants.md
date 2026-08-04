@@ -1,15 +1,23 @@
 ---
 title: Move by Link — quadrant navigation
 status: implemented
-date: 2026-08-03
+date: 2026-08-04
 ---
 
 # Move by Link — quadrant navigation
 
 Root `f` is a held submenu labeled **Move by Link...**. While it is held, the
 active key profile's movement keys focus or traverse incident links directly
-on the canvas. Releasing `f` exits and clears the focus. No popup, ghost copy,
-or row-list navigation participates in this interaction.
+on the canvas. Releasing `f` traverses the focused link and then exits; with no
+focus it simply exits. No popup, ghost copy, or row-list navigation
+participates in this interaction.
+
+Entry always has a concrete node anchor. If the crosshairs are not already on
+a node, they jump to the nearest node before navigation starts. An incident
+edge is highlighted immediately: continued journeys prefer the edge best
+aligned with their incoming momentum, while cold starts choose the first edge
+clockwise from North. That entry highlight is a release-to-walk preview; the
+first NSEW key still chooses its requested quadrant independently.
 
 ## Direction model
 
@@ -33,12 +41,16 @@ other node is the fallback for a degenerate path.
 
 The focus is `DAEdge.navFocused`, not graph selection, and is never serialized.
 Vim-style `Ctrl+O` / `Ctrl+I` jump history continues to record landings.
+Four dashed 45° rays through the current source show the exact boundaries of
+the North, East, South, and West quadrants. A translucent wash marks the
+quadrant containing the focused link. Both use screen-stable crosshair styling,
+move to each landing while the mode remains held, and disappear on release.
 
 Pure geometry lives in `drawing-area/graph-nav.ts`; the keymenu emits explicit
-enter/move/exit commands for the held surface. Add-edge target selection reuses
+enter/move/release commands for the held surface. Add-edge target selection reuses
 the same quadrant cursor over candidate nodes, so its `hjkl` behavior matches
 Move by Link. `tools/repro-next-five.js` covers the canonical West scan,
-West→South corner transition, same-direction traversal, held-key exit, and
+West→South corner transition, same-direction traversal, release traversal, and
 matching add-edge targeting in a real browser.
 
 Related: [move-by-node reachability analysis](analysis-move-by-node-reachability.md),

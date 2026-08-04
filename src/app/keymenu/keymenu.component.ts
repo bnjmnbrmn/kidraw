@@ -1611,7 +1611,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (this.moveByLinkHoldActive && eventKey === this.keyAssignments.root.go) {
       this.moveByLinkHoldActive = false;
-      this.keyMenuOut.emit({kind: DACommandType.EXIT_LINK_NAV});
+      this.keyMenuOut.emit({kind: DACommandType.RELEASE_LINK_NAV});
     }
   }
 }

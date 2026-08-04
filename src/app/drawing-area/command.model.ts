@@ -55,7 +55,7 @@ export enum DACommandType {
   MOVE_LINK_RIGHT = 'MOVE_LINK_RIGHT',
   MOVE_LINK_UP = 'MOVE_LINK_UP',
   MOVE_LINK_DOWN = 'MOVE_LINK_DOWN',
-  EXIT_LINK_NAV = 'EXIT_LINK_NAV',
+  RELEASE_LINK_NAV = 'RELEASE_LINK_NAV',
   NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
   NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
   SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
@@ -172,7 +172,7 @@ export type DACommand =
   | {kind: DACommandType.MOVE_LINK_RIGHT}
   | {kind: DACommandType.MOVE_LINK_UP}
   | {kind: DACommandType.MOVE_LINK_DOWN}
-  | {kind: DACommandType.EXIT_LINK_NAV}
+  | {kind: DACommandType.RELEASE_LINK_NAV}
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
   | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
