@@ -3160,27 +3160,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const continuingJourney = source === this.validGraphNavLastNode();
     this.graphNavLastNode = source;
-    const navCandidates = this.navCandidatesFor(source);
-    if (navCandidates.length === 0) {
+    const entry = this.focusLinkNavEntry(
+      source,
+      continuingJourney ? this.graphNavMomentum : null,
+    );
+    if (!entry) {
       this.redrawLinkNavQuadrantLines(source);
       if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
       this.emitStatus('No edges here.');
       return;
     }
-    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
-    const entryIndex = pickEntryCandidate(
-      geometry.map(candidate => candidate.direction),
-      continuingJourney ? this.graphNavMomentum : null,
-    );
-    const entry = entryIndex >= 0 ? navCandidates[entryIndex] : navCandidates[0];
-    // The entry edge is a release-to-walk preview. The first NSEW key still
-    // gets to establish an explicit quadrant, independent of that preview.
-    this.linkNavDirectionalFocus = false;
-    this.setGraphNavEdge(entry.edge);
     this.redrawLinkNavQuadrantLines(source);
     if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
     const label = (entry.other.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`Link: ${label}`);
+  }
+
+  /** Select the entry edge for a source node and make its visible highlight
+   *  the active quadrant cursor. Momentum prefers continuing onward after a
+   *  traversal; a cold start uses clockwise order from North. */
+  private focusLinkNavEntry(
+    source: DANode,
+    momentum: {x: number; y: number} | null,
+  ): NavCandidate | null {
+    const navCandidates = this.navCandidatesFor(source);
+    if (navCandidates.length === 0) {
+      this.linkNavDirectionalFocus = false;
+      this.setGraphNavEdge(null);
+      return null;
+    }
+    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
+    const entryIndex = pickEntryCandidate(
+      geometry.map(candidate => candidate.direction),
+      momentum,
+    );
+    const entry = entryIndex >= 0 ? navCandidates[entryIndex] : navCandidates[0];
+    // The visible highlight is the active scan position. Perpendicular keys
+    // can move away from it without an extra along-quadrant confirmation.
+    this.linkNavDirectionalFocus = true;
+    this.setGraphNavEdge(entry.edge);
+    return entry;
   }
 
   /** Select/scan an NSEW link. A unique link in the requested quadrant walks
@@ -3247,8 +3266,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.graphNavMomentum = {x: (dC.x - sC.x) / length, y: (dC.y - sC.y) / length};
     }
     this.linkNavSource = dest;
-    this.linkNavDirectionalFocus = false;
-    this.setGraphNavEdge(null);
+    this.focusLinkNavEntry(dest, this.graphNavMomentum);
     this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
     this.redrawLinkNavQuadrantLines(dest);
     this.scheduleLinkNavQuadrantRefresh(dest);

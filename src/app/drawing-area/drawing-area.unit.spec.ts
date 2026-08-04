@@ -453,7 +453,7 @@ describe('DrawingArea Unit Tests', () => {
 
       expect(component.linkNavSource).toBe(nearest);
       expect(component.graphNavEdge).toBe(edge);
-      expect(component.linkNavDirectionalFocus).toBeFalse();
+      expect(component.linkNavDirectionalFocus).toBeTrue();
       expect(component.jumpCrosshairsToStopCenter).toHaveBeenCalledWith({x: 160, y: 160});
       expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(nearest);
     });
@@ -477,6 +477,37 @@ describe('DrawingArea Unit Tests', () => {
       expect(traverse).toHaveBeenCalledOnceWith(source, candidate);
       expect(component.linkNavSource).toBeNull();
       expect(component.graphNavEdge).toBeNull();
+    });
+
+    it('focuses a momentum-aligned edge and quadrant after traversing', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const source = new DANode(0, 0, 'source');
+      const landing = new DANode(300, 0, 'landing');
+      const forward = new DANode(600, 0, 'forward');
+      const branch = new DANode(300, 300, 'branch');
+      const arrivedOn = new DAEdge(source, landing, '');
+      const forwardEdge = new DAEdge(landing, forward, '');
+      new DAEdge(landing, branch, '');
+      component.linkNavSource = source;
+      component.graphNavMomentum = null;
+      component.recordNavVisit = () => undefined;
+      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.getNodeCenterInStageCoordinates = () => ({x: 360, y: 60});
+      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.redrawLinkNavQuadrantLines = jasmine.createSpy('redrawLinkNavQuadrantLines');
+      component.scheduleLinkNavQuadrantRefresh = () => undefined;
+      component.emitStatus = () => undefined;
+
+      component.traverseLinkNavCandidate(source, {
+        edge: arrivedOn,
+        direction: 'out',
+        other: landing,
+      });
+
+      expect(component.linkNavSource).toBe(landing);
+      expect(component.graphNavEdge).toBe(forwardEdge);
+      expect(component.linkNavDirectionalFocus).toBeTrue();
+      expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(landing);
     });
   });
 

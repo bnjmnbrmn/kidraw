@@ -4,8 +4,8 @@
  * label, exact edge hover tracing, Vim visual mode, grow target quadrant
  * selection, sequential Vim `r` replacement, nearest-node snapping,
  * immediate link focus, quadrant overlay, release-to-walk, and one-press
- * traversal when a quadrant has only one incident link, plus nearest-corner
- * transitions between adjacent quadrants.
+ * traversal when a quadrant has only one incident link, nearest-corner
+ * transitions, active entry scanning, and post-landing edge/quadrant focus.
  */
 const {chromium} = require('@playwright/test');
 
@@ -45,6 +45,12 @@ async function main() {
     };
     if (graphKind === 'add') {
       mk('anchor', 'anchor', 400, 350);
+    } else if (graphKind === 'entry-scan') {
+      const source = mk('source', 'source', 800, 300);
+      const westCenter = mk('west-center', 'west center', 500, 300);
+      const westBelow = mk('west-below', 'west below', 500, 440);
+      const edges = [westCenter, westBelow].map(node => dl.addEdge(source, node));
+      window.__entryScanEdges = Object.fromEntries(edges.map(edge => [edge.destNode.id, edge.id]));
     } else if (graphKind === 'corner') {
       const source = mk('source', 'source', 800, 300);
       const eastNorth = mk('east-north', 'east north', 1150, 220);
@@ -281,10 +287,15 @@ async function main() {
       landed: da.graphNavLastNode?.id,
       source: da.linkNavSource?.id,
       focus: da.graphNavEdge?.id ?? null,
+      ids: window.__nextFiveEdges,
+      activeQuadrants: da.linkNavQuadrantLines?.find('.move-by-link-active-quadrant').length ?? 0,
     };
   });
   check('one directional press walks the only link in a quadrant',
-    linkState.landed === 'east' && linkState.source === 'east' && linkState.focus === null,
+    linkState.landed === 'east' && linkState.source === 'east',
+    JSON.stringify(linkState));
+  check('a link and its quadrant are selected immediately after a landing',
+    linkState.focus === linkState.ids['east'] && linkState.activeQuadrants === 1,
     JSON.stringify(linkState));
   await page.keyboard.up('f');
 
@@ -307,6 +318,24 @@ async function main() {
     linkState.focus === linkState.ids['north-east'] &&
       linkState.source === 'source' && linkState.landed === 'source',
     JSON.stringify(linkState));
+  await page.keyboard.up('f');
+
+  await makeGraph('entry-scan');
+  await placeOn('source');
+  await page.keyboard.down('f');
+  const entryScanBefore = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {focus: da.graphNavEdge?.id ?? null, ids: window.__entryScanEdges};
+  });
+  await page.keyboard.press('k');
+  const entryScanAfter = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return {focus: da.graphNavEdge?.id ?? null, ids: window.__entryScanEdges};
+  });
+  check('perpendicular movement scans from the edge highlighted on f entry',
+    entryScanBefore.focus === entryScanBefore.ids['west-below'] &&
+      entryScanAfter.focus === entryScanAfter.ids['west-center'],
+    `${JSON.stringify(entryScanBefore)} → ${JSON.stringify(entryScanAfter)}`);
   await page.keyboard.up('f');
 
   // The dotted hover overlay is an untensioned trace of the exact points the

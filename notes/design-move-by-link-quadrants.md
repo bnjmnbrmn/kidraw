@@ -16,8 +16,9 @@ Entry always has a concrete node anchor. If the crosshairs are not already on
 a node, they jump to the nearest node before navigation starts. An incident
 edge is highlighted immediately: continued journeys prefer the edge best
 aligned with their incoming momentum, while cold starts choose the first edge
-clockwise from North. That entry highlight is a release-to-walk preview; the
-first NSEW key still chooses its requested quadrant independently.
+clockwise from North. That entry highlight is both the release-to-walk preview
+and the active scan position: a perpendicular NSEW key can move directly to
+the next link without first confirming the highlighted quadrant.
 
 ## Direction model
 
@@ -36,8 +37,9 @@ other node is the fallback for a degenerate path.
   adjacent-quadrant transitions, and a corner crossing always focuses before
   traversing.
 - Pressing the direction that matches the focused link's quadrant walks that
-  link, moves the crosshairs to the landing node, and starts a fresh quadrant
-  choice there while `f` remains held.
+  link and moves the crosshairs to the landing node. While `f` remains held,
+  the landing immediately highlights a momentum-aligned incident link and its
+  quadrant; that link is the new active scan position.
 - If a fresh or opposite-direction quadrant choice contains exactly one link,
   the directional press walks it immediately. Corner crossings remain
   focus-only because the perpendicular key is navigating around the compass,
