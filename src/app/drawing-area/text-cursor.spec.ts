@@ -9,6 +9,7 @@ import {
   wordBack,
   wordEnd,
   wordForward,
+  vimChangeRange,
 } from './text-cursor';
 
 describe('text-cursor', () => {
@@ -83,6 +84,25 @@ describe('text-cursor', () => {
       expect(logicalLineEnd(t, 4)).toBe(6);
       expect(logicalLineEnd(t, 7)).toBe(7);
       expect(logicalLineEnd(t, 8)).toBe(9);
+    });
+  });
+
+  describe('vimChangeRange', () => {
+    const text = 'alpha beta\ngamma';
+
+    it('implements word changes without consuming the trailing gap', () => {
+      expect(vimChangeRange(text, 0, 'word-forward')).toEqual({start: 0, end: 5});
+      expect(vimChangeRange(text, 0, 'word-end')).toEqual({start: 0, end: 5});
+      expect(vimChangeRange(text, 6, 'word-back')).toEqual({start: 0, end: 6});
+      expect(vimChangeRange('word', 4, 'word-forward')).toEqual({start: 3, end: 4});
+    });
+
+    it('implements character and line changes', () => {
+      expect(vimChangeRange(text, 2, 'char-left')).toEqual({start: 1, end: 2});
+      expect(vimChangeRange(text, 2, 'char-right')).toEqual({start: 2, end: 3});
+      expect(vimChangeRange(text, 8, 'line-start')).toEqual({start: 0, end: 8});
+      expect(vimChangeRange(text, 8, 'line-end')).toEqual({start: 8, end: 10});
+      expect(vimChangeRange(text, 13, 'line')).toEqual({start: 11, end: 16});
     });
   });
 

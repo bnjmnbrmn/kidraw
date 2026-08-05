@@ -11,6 +11,8 @@
  * derived from the renderer's wrapped output — see {@link lineRangesFromWrapped}.
  */
 
+import type {VimChangeMotion} from './command.model';
+
 export function clampIndex(text: string, i: number): number {
   return Math.min(Math.max(i, 0), text.length);
 }
@@ -59,6 +61,50 @@ export function logicalLineEnd(text: string, i: number): number {
   const j = clampIndex(text, i);
   const nl = text.indexOf('\n', j);
   return nl === -1 ? text.length : nl;
+}
+
+/** Character range removed by a Vim `c{motion}` operator. End is exclusive.
+ * `selection` is resolved by the rendered editor because only it owns the
+ * visual anchor; the empty range here is a safe fallback. */
+export function vimChangeRange(
+  text: string,
+  i: number,
+  motion: VimChangeMotion,
+): {start: number; end: number} {
+  // Vim normal mode's block cursor is on a character. Kidraw stores an
+  // insertion index, so its at-end position visually represents the final
+  // character (the same convention used by `x`).
+  const clamped = clampIndex(text, i);
+  const cursor = text.length === 0 ? 0 : Math.min(clamped, text.length - 1);
+  switch (motion) {
+    case 'word-forward': { // Vim `cw`: change this word, not its trailing gap.
+      let end = cursor;
+      const changingWord = end < text.length && isWordChar(text[end]);
+      while (end < text.length && isWordChar(text[end]) === changingWord) end++;
+      return {start: cursor, end};
+    }
+    case 'word-end': {
+      if (cursor >= text.length) return {start: cursor, end: cursor};
+      return {start: cursor, end: Math.min(wordEnd(text, cursor) + 1, text.length)};
+    }
+    case 'word-back':
+      return {start: wordBack(text, cursor), end: cursor};
+    case 'line-start':
+      return {start: logicalLineStart(text, cursor), end: cursor};
+    case 'line-end':
+      return {start: cursor, end: logicalLineEnd(text, cursor)};
+    case 'line':
+      return {
+        start: logicalLineStart(text, cursor),
+        end: logicalLineEnd(text, cursor),
+      };
+    case 'char-left':
+      return {start: Math.max(cursor - 1, 0), end: cursor};
+    case 'char-right':
+      return {start: cursor, end: Math.min(cursor + 1, text.length)};
+    case 'selection':
+      return {start: cursor, end: cursor};
+  }
 }
 
 /** One display line's slice of the raw text: insertion indices `start` to

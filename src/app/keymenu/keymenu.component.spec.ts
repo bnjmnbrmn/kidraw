@@ -151,6 +151,43 @@ describe('KeymenuComponent', () => {
     expect((component as any).vimReplacePending).toBeFalse();
   });
 
+  it('implements the Vim c operator and enters insert mode after its motion', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    const modeSpy = spyOn(component.labelEditModeOut, 'emit');
+    component.switchMode('labelEditVimNormal');
+    const normal = (component as any).buildLabelEditVimNormalSubmenuConfig(false) as Record<string, unknown>;
+
+    (normal['c'] as LabeledAction).action();
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'w', code: 'KeyW'}));
+
+    expect(emitSpy).toHaveBeenCalledWith({
+      kind: DACommandType.CHANGE_TEXT_AT_CURSOR,
+      motion: 'word-forward',
+    });
+    expect(modeSpy).toHaveBeenCalledWith('insert');
+    expect((component as any).vimChangePending).toBeFalse();
+  });
+
+  it('changes a Vim visual selection and enters insert mode', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    const modeSpy = spyOn(component.labelEditModeOut, 'emit');
+    const visual = (component as any).buildLabelEditVimVisualSubmenuConfig(false) as Record<string, unknown>;
+
+    (visual['c'] as LabeledAction).action();
+
+    expect(emitSpy).toHaveBeenCalledWith({
+      kind: DACommandType.CHANGE_TEXT_AT_CURSOR,
+      motion: 'selection',
+    });
+    expect(modeSpy).toHaveBeenCalledWith('insert');
+  });
+
   it('should restore a hidden keyboard from any keymenu mode', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     fixture.detectChanges();

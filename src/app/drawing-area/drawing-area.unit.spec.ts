@@ -134,6 +134,17 @@ describe('DrawingArea Unit Tests', () => {
       node.setCursorMode('vimNormal');
       expect(selection.visible()).toBeFalse();
     });
+
+    it('changes a Vim motion range and leaves the caret ready to insert', () => {
+      const node = new DANode(0, 0, 'alpha beta');
+      node.setCursorToEnd();
+      node.cursorWordBack();
+
+      node.changeAtCursor('word-forward');
+      node.insertAtCursor('gamma');
+
+      expect(node.label.text()).toBe('alpha gamma');
+    });
   });
 
   describe('DAEdge', () => {
@@ -942,6 +953,19 @@ describe('DrawingArea Unit Tests', () => {
 
       label.deleteAtCursor();
       expect(label.label).toBe('ab');
+    });
+
+    it('changes a visual selection and inserts at its beginning', () => {
+      const label = new DALabel(100, 200, 'abcd');
+      label.setCursorToEnd();
+      label.setCursorMode('vimVisual');
+      label.moveCursorH(-1);
+      label.moveCursorH(-1);
+
+      label.changeAtCursor('selection');
+      label.insertAtCursor('XY');
+
+      expect(label.label).toBe('abXY');
     });
   });
 

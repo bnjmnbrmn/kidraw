@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-04. Branch: `main`._
+_Updated 2026-08-05. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -227,6 +227,8 @@ _Updated 2026-08-04. Branch: `main`._
 49. **Move by Link symmetric corner transitions (2026-08-04).** Perpendicular movement at the end of a quadrant now explicitly remains a focus move, including when the adjacent quadrant has only one link: East→North chooses the easternmost North link, West→North the westernmost North link, North→East the northernmost East link, and likewise for all eight adjacent-quadrant transitions. This narrows item 48's one-press traversal shortcut to fresh/opposite quadrant choices; it no longer consumes a corner transition as a traversal. Verified by the eight-transition geometry table, `tools/repro-next-five.js` (22/22 live browser checks, including E→N), the full unit suite (356/356), and a clean production build (existing budget/CommonJS warnings only).
 
 50. **Move by Link active entry and landing focus (2026-08-04).** The edge highlighted immediately on `f` entry is now the active directional scan position, not a visually indistinguishable preview state. Perpendicular movement can therefore switch directly between links in the same quadrant; it no longer requires an along-quadrant key such as `h` first to activate the already-visible focus. After walking a link while `f` remains held, the landing node now immediately highlights a momentum-aligned incident edge and shades its quadrant, making that edge the new active scan position. Release-to-walk still commits whichever edge is visibly highlighted. Verified by `tools/repro-next-five.js` (24/24 live browser checks, including entry scanning without `h` and post-landing focus), focused specs (104/104), the full unit suite (357/357), and a clean production build (existing budget/CommonJS warnings only).
+
+51. **Vim `c` change operator (2026-08-05, via Next).** Vim-normal graph-text editing now supports `cw`, `ce`, `cb`, `c0`/`c^`, `c$`, `ch`, `cl`, and `cc`; uppercase `C` is the direct change-to-line-end form. Every operator deletes its motion range and enters insert mode at the range start. Visual `c` replaces the selected range and enters insert mode; Escape / Ctrl-[ cancels a pending `c` without exiting label editing. `cw` preserves trailing whitespace as in Vim. Pure range math plus shared node/edge-label implementations are documented in [`notes/design-vim-change-operator.md`](notes/design-vim-change-operator.md). Verified by `tools/repro-next-five.js` (25/25 live browser checks), focused specs (125/125), the full unit suite (363/363), and a clean production build (existing budget/CommonJS warnings only).
 
 ## Routing-eval harness
 

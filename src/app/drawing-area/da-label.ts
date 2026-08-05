@@ -1,10 +1,10 @@
 import Konva from 'konva';
 import {nextId} from './id-generator';
 import {EdgeLabelSide} from './edge-label-anchor';
-import {TextCursorMode} from './command.model';
+import {TextCursorMode, VimChangeMotion} from './command.model';
 import {
   clampIndex, LineRange, lineIndexAt, logicalLineEnd, logicalLineStart,
-  moveVertical, wordBack, wordEnd, wordForward,
+  moveVertical, vimChangeRange, wordBack, wordEnd, wordForward,
 } from './text-cursor';
 
 export class DALabel {
@@ -308,6 +308,19 @@ export class DALabel {
       this._label = this._label.slice(0, i) + replacement + this._label.slice(i + 1);
       this._cursorIndex = i;
     }
+    this._text.text(this._label);
+    this.resizeToFitText();
+    this.updateCursorPosition();
+  }
+
+  /** Vim `c{motion}` / visual `c`; mode switching is owned by keymenu. */
+  changeAtCursor(motion: VimChangeMotion): void {
+    const range = motion === 'selection'
+      ? this.visualSelectionRange()
+      : vimChangeRange(this._label, this.cursorIndex, motion);
+    if (!range) return;
+    this._label = this._label.slice(0, range.start) + this._label.slice(range.end);
+    this._cursorIndex = range.start;
     this._text.text(this._label);
     this.resizeToFitText();
     this.updateCursorPosition();

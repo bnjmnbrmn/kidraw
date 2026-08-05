@@ -51,6 +51,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Alternative class hierarchies for the keymenu](idea-keymenu-class-hierarchy.md)
 - [Shift-shift timing](idea-shift-shift-timing.md)
 - [Label-edit mode overhaul](idea-label-edit-overhaul.md)
+- [Vim change operator in graph-text editing](design-vim-change-operator.md) — `c{motion}`, `C`, and visual `c` for node and edge labels.
 
 - [Todo-graph modeling — typed nodes/edges, derived semantics, scenarios](idea-todo-graph-modeling.md) — the ontology brainstorm (2026-07-14): node/edge kinds, ready-frontier/blocked/critical-path payoffs, and the scenario dataset list.
 - [Semantic zoom — important nodes/edges stay visible zoomed out](idea-semantic-zoom-importance.md) — screen-size floors for category/goal nodes, constant-width important edges, cull notes first.

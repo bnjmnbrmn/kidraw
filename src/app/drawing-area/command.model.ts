@@ -19,6 +19,12 @@ export type EdgeDirectedness = 'directed' | 'undirected' | 'bidirectional';
 /** Visual shape of the caret while editing graph text. */
 export type TextCursorMode = 'insert' | 'vimNormal' | 'vimVisual';
 
+/** Motions accepted by Vim's `c` operator in graph-text editors. */
+export type VimChangeMotion =
+  | 'word-forward' | 'word-end' | 'word-back'
+  | 'line-start' | 'line-end' | 'line'
+  | 'char-left' | 'char-right' | 'selection';
+
 /** Which kinds of stop move-by-node steps between (tiered by modifier). */
 export type NavTargetKind = 'nodes' | 'labels' | 'all';
 
@@ -148,6 +154,7 @@ export enum DACommandType {
   SET_TEXT_CURSOR_MODE = 'SET_TEXT_CURSOR_MODE',
   DELETE_CHAR_AT_CURSOR = 'DELETE_CHAR_AT_CURSOR',
   REPLACE_CHAR_AT_CURSOR = 'REPLACE_CHAR_AT_CURSOR',
+  CHANGE_TEXT_AT_CURSOR = 'CHANGE_TEXT_AT_CURSOR',
 }
 
 export type GridTier = 'fine' | 'normal' | 'coarse';
@@ -279,3 +286,4 @@ export type DACommand =
   | {kind: DACommandType.SET_TEXT_CURSOR_MODE; mode: TextCursorMode}
   | {kind: DACommandType.DELETE_CHAR_AT_CURSOR}
   | {kind: DACommandType.REPLACE_CHAR_AT_CURSOR; value: string}
+  | {kind: DACommandType.CHANGE_TEXT_AT_CURSOR; motion: VimChangeMotion}

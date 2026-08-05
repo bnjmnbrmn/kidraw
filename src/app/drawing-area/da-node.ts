@@ -1,10 +1,11 @@
 import Konva from 'konva';
 import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
-import { NodeShape, TextCursorMode, TextOverflowMode } from './command.model';
+import { NodeShape, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
 import {
   clampIndex, LineRange, lineIndexAt, lineRangesFromWrapped,
   logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordEnd, wordForward,
+  vimChangeRange,
 } from './text-cursor';
 
 // Use the un-patched requestAnimationFrame so Zone.js doesn't track the blink
@@ -938,6 +939,21 @@ export class DANode {
       this._label.text(current.slice(0, i) + replacement + current.slice(i + 1));
       this._cursorIndex = i;
     }
+    const resized = this.applyTextOverflow();
+    this.updateCursorPosition();
+    return resized;
+  }
+
+  /** Vim `c{motion}` / visual `c`: remove the addressed range and leave the
+   *  insertion caret at its beginning. The keymenu switches to insert mode. */
+  changeAtCursor(motion: VimChangeMotion): boolean {
+    const current = this._label.text();
+    const range = motion === 'selection'
+      ? this.visualSelectionRange()
+      : vimChangeRange(current, this.cursorIndex, motion);
+    if (!range) return false;
+    this._label.text(current.slice(0, range.start) + current.slice(range.end));
+    this._cursorIndex = range.start;
     const resized = this.applyTextOverflow();
     this.updateCursorPosition();
     return resized;

@@ -156,6 +156,16 @@ async function main() {
   });
   check('normal-mode r consumes the next key and replaces one character',
     replaced === 'QoZZbar', replaced);
+
+  await page.keyboard.press('c');
+  await page.keyboard.press('w');
+  await page.keyboard.type('changed');
+  const changed = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.drawingLayer.getSelectedDANodes()[0].label.text();
+  });
+  check('normal-mode cw changes the word and enters insert mode', changed === 'changed', changed);
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
   await makeGraph('links');

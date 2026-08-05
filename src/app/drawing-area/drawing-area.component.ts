@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode, VimChangeMotion } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -862,6 +862,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.REPLACE_CHAR_AT_CURSOR:
         this.replaceCharAtCursor(command.value);
+        break;
+      case DACommandType.CHANGE_TEXT_AT_CURSOR:
+        this.changeTextAtCursor(command.motion);
         break;
       case DACommandType.CURSOR_LEFT:
         this.moveEditCursor(t => t.moveCursorH(-1));
@@ -2288,6 +2291,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.updateEdgesForResizedNodes(resized);
     this.getSelectedLabels().forEach(label => {
       label.replaceAtCursor(value);
+      this.getEdgeForLabel(label)?.refreshGeometry();
+    });
+    this.drawingLayer.batchDraw();
+  }
+
+  private changeTextAtCursor(motion: VimChangeMotion) {
+    this.finishTweens();
+    const resized = this.drawingLayer.getSelectedDANodes()
+      .filter(node => node.changeAtCursor(motion));
+    this.updateEdgesForResizedNodes(resized);
+    this.getSelectedLabels().forEach(label => {
+      label.changeAtCursor(motion);
       this.getEdgeForLabel(label)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
