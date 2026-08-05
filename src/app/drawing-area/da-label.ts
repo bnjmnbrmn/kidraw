@@ -3,7 +3,7 @@ import {nextId} from './id-generator';
 import {EdgeLabelSide} from './edge-label-anchor';
 import {TextCursorMode, VimChangeMotion} from './command.model';
 import {
-  clampIndex, LineRange, lineIndexAt, logicalLineEnd, logicalLineStart,
+  clampIndex, innerWordRange, LineRange, lineIndexAt, logicalLineEnd, logicalLineStart,
   moveVertical, vimChangeRange, wordBack, wordEnd, wordForward,
 } from './text-cursor';
 
@@ -204,6 +204,42 @@ export class DALabel {
 
   setCursorToEnd(): void {
     this._cursorIndex = null;
+    this.updateCursorPosition();
+  }
+
+  /** Place the insertion caret nearest a point in label-local coordinates. */
+  setCursorFromLocalPoint(point: {x: number; y: number}): void {
+    const ranges = this.lineRanges();
+    const lineHeight = this._fontSize * (this._text.lineHeight() ?? 1);
+    const blockHeight = ranges.length * lineHeight;
+    const blockY = -this._rect.height() / 2 + (this._rect.height() - blockHeight) / 2;
+    const lineIndex = Math.max(0, Math.min(
+      ranges.length - 1,
+      Math.floor((point.y - blockY) / Math.max(lineHeight, 1)),
+    ));
+    const line = ranges[lineIndex];
+    const lineText = this._label.slice(line.start, line.start + line.length);
+    const lineX = -this._rect.width() / 2 + (this._rect.width() - this.measure(lineText)) / 2;
+    let best = line.start;
+    let bestDistance = Math.abs(point.x - lineX);
+    for (let offset = 1; offset <= line.length; offset++) {
+      const distance = Math.abs(point.x - (lineX + this.measure(lineText.slice(0, offset))));
+      if (distance < bestDistance) {
+        best = line.start + offset;
+        bestDistance = distance;
+      }
+    }
+    this._cursorIndex = best;
+    this.updateCursorPosition();
+  }
+
+  /** Complete Vim visual `iw` from the current caret. */
+  selectInnerWord(): void {
+    const range = innerWordRange(this._label, this.cursorIndex);
+    if (!range) return;
+    this._cursorMode = 'vimVisual';
+    this._visualAnchor = range.start;
+    this._cursorIndex = range.end - 1;
     this.updateCursorPosition();
   }
 

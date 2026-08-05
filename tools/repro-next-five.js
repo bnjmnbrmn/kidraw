@@ -1,9 +1,11 @@
 /*
  * Browser smoke test for the six 2026-08-03 Next items plus the 2026-08-04
- * Move by Link entry/release refinements: held NSEW navigation, its ellipsis
+ * Move by Link entry/release refinements and later live Next text-edit items:
+ * held NSEW navigation, its ellipsis
  * label, exact edge hover tracing, Vim visual mode, grow target quadrant
  * selection, sequential Vim `r` replacement, nearest-node snapping,
- * immediate link focus, quadrant overlay, release-to-walk, and one-press
+ * immediate link focus, quadrant overlay, low-zoom edit ghost,
+ * crosshairs-positioned caret, visual iw, release-to-walk, and one-press
  * traversal when a quadrant has only one incident link, nearest-corner
  * transitions, active entry scanning, and post-landing edge/quadrant focus.
  */
@@ -166,6 +168,75 @@ async function main() {
   });
   check('normal-mode cw changes the word and enters insert mode', changed === 'changed', changed);
   await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+
+  // Low-zoom text editing: `i` uses the crosshairs' text position, and a
+  // natural-scale ghost keeps the live text/caret readable without changing
+  // the graph zoom. Then visual `iw` selects the whole word.
+  await makeGraph('add');
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = da.drawingLayer;
+    const node = dl.getDANodes()[0];
+    node.label.text('alpha beta');
+    node.applyTextOverflow();
+    dl.scale({x: 0.25, y: 0.25});
+    const center = {x: 650, y: 200};
+    dl.position({
+      x: center.x - (node.group.x() + node.NODE_WIDTH / 2) * 0.25,
+      y: center.y - (node.group.y() + node.NODE_HEIGHT / 2) * 0.25,
+    });
+    const lineWidth = node.label.measureSize(node.label.text()).width;
+    const betaX = (node.NODE_WIDTH - lineWidth) / 2 +
+      node.label.measureSize('alpha ').width + 1;
+    da.crosshairsLayer.crosshairs.x = dl.x() + (node.group.x() + betaX) * 0.25;
+    da.crosshairsLayer.crosshairs.y = dl.y() +
+      (node.group.y() + node.NODE_HEIGHT / 2) * 0.25;
+    da.crosshairsLayer.showCrosshairs();
+  });
+  await page.keyboard.press('i');
+  await page.waitForTimeout(100);
+  let spatialEdit = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const node = da.drawingLayer.getSelectedDANodes()[0];
+    const ghost = da.crosshairsLayer.findOne('.label-edit-ghost');
+    return {
+      cursor: node?.cursorIndex,
+      zoom: da.drawingLayer.scaleX(),
+      ghostScale: ghost?.scaleX(),
+      ghostText: ghost?.find('Text').map(text => text.text()) ?? [],
+    };
+  });
+  check('i places the edit caret where the crosshairs hit the text',
+    spatialEdit.cursor === 6, JSON.stringify(spatialEdit));
+  check('low-zoom editing shows a natural-scale ghost without changing zoom',
+    spatialEdit.zoom === 0.25 && spatialEdit.ghostScale === 1 &&
+      spatialEdit.ghostText.includes('alpha beta'), JSON.stringify(spatialEdit));
+
+  await page.keyboard.type('x');
+  spatialEdit = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const node = da.drawingLayer.getSelectedDANodes()[0];
+    const ghost = da.crosshairsLayer.findOne('.label-edit-ghost');
+    return {
+      text: node?.label.text(),
+      ghostText: ghost?.find('Text').map(text => text.text()) ?? [],
+    };
+  });
+  check('the low-zoom edit ghost follows typed text',
+    spatialEdit.text === 'alpha xbeta' &&
+      spatialEdit.ghostText.includes('alpha xbeta'), JSON.stringify(spatialEdit));
+
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('v');
+  await page.keyboard.press('i');
+  await page.keyboard.press('w');
+  await page.keyboard.press('x');
+  const innerWord = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.drawingLayer.getSelectedDANodes()[0]?.label.text();
+  });
+  check('viw selects the whole inner word', innerWord === 'alpha ', innerWord);
   await page.keyboard.press('Escape');
 
   await makeGraph('links');

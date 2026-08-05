@@ -42,8 +42,16 @@ priority: label, waypoint, top node, top edge. This makes the active target
 visible while keeping it distinct from the blue selection glow. The trace is
 removed while the crosshairs themselves are hidden.
 
+When normal movement deliberately snaps to an item, that semantic landing
+temporarily overrides geometric hit priority. This matters at a busy hub: an
+edge endpoint can overlap the hub's crosshair hit area, but the edge that was
+actually visited is the thing traced. The perpendicular return step after an
+off-line snap has no item trace, so it does not misleadingly repaint an
+already-visited node.
+
 The dashed goal line renders above the ordinary grid but below graph content.
-It disappears on the same five-second timeout as the grid. Fine and coarse
+It disappears on the same five-second timeout as the grid and crosshairs.
+The next crosshairs movement restores all movement UI. Fine and coarse
 movement remain direct grid movement and clear the normal goal.
 
 Current tuning:

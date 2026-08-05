@@ -19,6 +19,34 @@ export function clampIndex(text: string, i: number): number {
 
 const isWordChar = (ch: string) => /\S/.test(ch);
 
+/** Vim `iw`: the non-whitespace word containing the cursor. When the cursor
+ * sits on whitespace, choose the next word (or the previous one at EOF).
+ * The returned end is exclusive. */
+export function innerWordRange(
+  text: string,
+  i: number,
+): {start: number; end: number} | null {
+  if (text.length === 0) return null;
+  let cursor = Math.min(clampIndex(text, i), text.length - 1);
+  if (!isWordChar(text[cursor])) {
+    let next = cursor;
+    while (next < text.length && !isWordChar(text[next])) next++;
+    if (next < text.length) {
+      cursor = next;
+    } else {
+      let previous = cursor;
+      while (previous >= 0 && !isWordChar(text[previous])) previous--;
+      if (previous < 0) return null;
+      cursor = previous;
+    }
+  }
+  let start = cursor;
+  let end = cursor + 1;
+  while (start > 0 && isWordChar(text[start - 1])) start--;
+  while (end < text.length && isWordChar(text[end])) end++;
+  return {start, end};
+}
+
 /** Vim `w` (simplified: words are runs of non-whitespace): start of the
  *  next word, or end of text. */
 export function wordForward(text: string, i: number): number {

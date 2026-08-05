@@ -4,7 +4,7 @@
  *   2. a genuinely nearby off-line node still snaps + returns;
  *   3. normal held-key repeat pauses before repeating;
  *   4. node/waypoint/label/edge hover traces use selection hit priority;
- *   5. the dashed goal line and grid time out together.
+ *   5. the dashed goal line, grid, and crosshairs time out together.
  */
 const {chromium} = require('@playwright/test');
 
@@ -46,6 +46,7 @@ async function main() {
       } : null,
       goalLine: c.drawingLayer.find('.normal-movement-goal-line').length,
       grid: c.drawingLayer.gridVisible,
+      crosshairsVisible: c.crosshairsLayer.crosshairs.konvaGroup.visible(),
     };
   });
   const near = (a, b) => Math.abs(a - b) <= 3;
@@ -72,6 +73,7 @@ async function main() {
   await page.evaluate(() => {
     const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
     c.finishTweens();
+    c.clearNormalMovementGoal();
     c.drawingLayer.restoreGraph({
       nodes: [{
         id: 'da-2', x: 280, y: 220, text: 'near me',
@@ -150,6 +152,7 @@ async function main() {
   const hoverKinds = await page.evaluate(() => {
     const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
     c.finishTweens();
+    c.clearNormalMovementGoal();
     const dl = c.drawingLayer;
     dl.restoreGraph({
       nodes: [
@@ -237,8 +240,15 @@ async function main() {
 
   await page.waitForTimeout(5200);
   const faded = await state();
-  check('goal line and grid time out together',
-    faded.goalLine === 0 && !faded.grid, JSON.stringify(faded));
+  check('goal line, grid, and crosshairs time out together',
+    faded.goalLine === 0 && !faded.grid && !faded.crosshairsVisible,
+    JSON.stringify(faded));
+
+  await page.keyboard.press('l');
+  await page.waitForTimeout(180);
+  const awakened = await state();
+  check('the next movement restores the crosshairs',
+    awakened.crosshairsVisible, JSON.stringify(awakened));
 
   await browser.close();
 }

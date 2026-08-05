@@ -145,6 +145,29 @@ describe('DrawingArea Unit Tests', () => {
 
       expect(node.label.text()).toBe('alpha gamma');
     });
+
+    it('places the caret nearest the requested text position', () => {
+      const node = new DANode(0, 0, 'alpha beta');
+      const lineWidth = node.label.measureSize(node.label.text()).width;
+      const betaX = (node.NODE_WIDTH - lineWidth) / 2 +
+        node.label.measureSize('alpha ').width;
+
+      node.setCursorFromLocalPoint({x: betaX + 1, y: node.NODE_HEIGHT / 2});
+
+      expect(node.cursorIndex).toBe(6);
+    });
+
+    it('selects the whole inner word for visual iw', () => {
+      const node = new DANode(0, 0, 'alpha beta');
+      node.setCursorToEnd();
+      node.cursorWordBack();
+      node.setCursorMode('vimVisual');
+
+      node.selectInnerWord();
+      node.deleteAtCursor();
+
+      expect(node.label.text()).toBe('alpha ');
+    });
   });
 
   describe('DAEdge', () => {
@@ -402,6 +425,62 @@ describe('DrawingArea Unit Tests', () => {
       const trace = component.crosshairHoverHighlight as Konva.Line;
       expect(trace.points()).toEqual(edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]));
       expect(trace.tension()).toBe(0);
+    });
+
+    it('honors an edge landing over an overlapping node', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const src = new DANode(0, 0, 'src');
+      const dest = new DANode(300, 0, 'dest');
+      const edge = new DAEdge(src, dest, 'edge');
+      drawingLayer.addRawNode(src);
+      drawingLayer.addRawNode(dest);
+      drawingLayer.addRawEdge(edge);
+      component.drawingLayer = drawingLayer;
+      component.crosshairHoverHighlight = null;
+      component.normalMovementHoverTarget = {kind: 'edge', id: edge.id};
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: new Konva.Group({visible: true})},
+      };
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getDANodesContainingCrosshairs = () => [src];
+
+      component.refreshCrosshairHoverHighlight();
+
+      const trace = component.crosshairHoverHighlight as Konva.Shape;
+      expect(trace.getAttr('targetKind')).toBe('edge');
+      expect(trace.getAttr('targetId')).toBe(edge.id);
+    });
+
+    it('renders a natural-scale edit ghost when the graph is zoomed out', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(0, 0, 'read me');
+      drawingLayer.addRawNode(node);
+      drawingLayer.scale({x: 0.25, y: 0.25});
+      node.isSelected = true;
+      node.showCursor();
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = new Konva.Layer();
+      component.stage = {width: () => 800, height: () => 400};
+      component.labelEditGhost = null;
+      component.getNodeCenterInStageCoordinates = () => ({x: 400, y: 200});
+
+      component.refreshLabelEditGhost();
+
+      const ghost = component.labelEditGhost as Konva.Group;
+      expect(ghost).not.toBeNull();
+      expect(ghost.scaleX()).toBe(1);
+      expect(ghost.scaleY()).toBe(1);
+      expect(ghost.name()).toBe('label-edit-ghost');
+      expect(ghost.find('Text').some((text: Konva.Node) =>
+        text.getAttr('text') === 'read me')).toBeTrue();
+
+      component.clearLabelEditGhost();
+      expect(component.labelEditGhost).toBeNull();
     });
   });
 
@@ -966,6 +1045,22 @@ describe('DrawingArea Unit Tests', () => {
       label.insertAtCursor('XY');
 
       expect(label.label).toBe('abXY');
+    });
+
+    it('places its caret spatially and selects an inner word', () => {
+      const label = new DALabel(100, 200, 'alpha beta');
+      const text = (label as any)._text as Konva.Text;
+      const lineWidth = text.measureSize(label.label).width;
+      const betaX = -label.width / 2 + (label.width - lineWidth) / 2 +
+        text.measureSize('alpha ').width;
+
+      label.setCursorFromLocalPoint({x: betaX + 1, y: 0});
+      expect(label.cursorIndex).toBe(6);
+
+      label.setCursorMode('vimVisual');
+      label.selectInnerWord();
+      label.deleteAtCursor();
+      expect(label.label).toBe('alpha ');
     });
   });
 

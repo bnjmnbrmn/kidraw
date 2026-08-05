@@ -98,6 +98,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private vimReplacePending = false;
   /** Set by Vim `c`; the next motion chooses the range to replace. */
   private vimChangePending = false;
+  /** Set by visual `i`; `w` completes the Vim `iw` text object. */
+  private vimTextObjectPending = false;
   private lastShiftPressedAt = 0;
 
   private readonly DOUBLE_SHIFT_INTERVAL_MS = 3000;
@@ -399,6 +401,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const leaveVisual = () => {
       this.vimReplacePending = false;
       this.vimChangePending = false;
+      this.vimTextObjectPending = false;
       this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
       this.labelEditModeOut.emit('vimNormal');
     };
@@ -415,6 +418,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     (config as any)['e'] = new LabeledAction('word end', emit(DACommandType.CURSOR_WORD_END));
     (config as any)['b'] = new LabeledAction('word ←', emit(DACommandType.CURSOR_WORD_BACK));
     (config as any)['0'] = new LabeledAction('line start', emit(DACommandType.CURSOR_LINE_START));
+    (config as any)['i'] = new LabeledAction('inner…', () => {
+      this.vimReplacePending = false;
+      this.vimChangePending = false;
+      this.vimTextObjectPending = true;
+    }, false);
     (config as any)['v'] = new LabeledAction('leave visual', leaveVisual, false);
     (config as any)['x'] = new LabeledAction('delete selection', () => {
       this.keyMenuOut.emit({kind: DACommandType.DELETE_CHAR_AT_CURSOR});
@@ -488,6 +496,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.moveByNodeHoldActive = false;
     this.moveByLinkHoldActive = false;
     this.vimReplacePending = false;
+    this.vimTextObjectPending = false;
     this.vimChangePending = false;
   }
 
@@ -1470,6 +1479,21 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const inLabelEdit = currentModeName === 'labelEdit' || currentModeName === 'labelEditCaps';
     const inLabelEditVimNormal = currentModeName === 'labelEditVimNormal' || currentModeName === 'labelEditVimNormalCaps';
     const inLabelEditVimVisual = currentModeName === 'labelEditVimVisual' || currentModeName === 'labelEditVimVisualCaps';
+
+    if (this.vimTextObjectPending && inLabelEditVimVisual) {
+      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+        event.preventDefault();
+        this.vimTextObjectPending = false;
+        return;
+      }
+      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'].includes(event.key)) return;
+      event.preventDefault();
+      this.vimTextObjectPending = false;
+      if (!event.repeat && event.key.toLowerCase() === 'w') {
+        this.keyMenuOut.emit({kind: DACommandType.SELECT_INNER_WORD});
+      }
+      return;
+    }
 
     if (this.vimChangePending && inLabelEditVimNormal) {
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {

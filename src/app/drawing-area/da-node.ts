@@ -3,7 +3,7 @@ import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';
 import { NodeShape, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
 import {
-  clampIndex, LineRange, lineIndexAt, lineRangesFromWrapped,
+  clampIndex, innerWordRange, LineRange, lineIndexAt, lineRangesFromWrapped,
   logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordEnd, wordForward,
   vimChangeRange,
 } from './text-cursor';
@@ -876,6 +876,47 @@ export class DANode {
 
   setCursorToEnd(): void {
     this._cursorIndex = null;
+    this.updateCursorPosition();
+  }
+
+  /** Place the insertion caret nearest a point in node-local coordinates. */
+  setCursorFromLocalPoint(point: {x: number; y: number}): void {
+    const text = this._label.text();
+    const measure = this.configuredMeasureText();
+    const textArr: {text: string; width: number; lastInParagraph: boolean}[] =
+      (measure as any).textArr ?? [];
+    const ranges = lineRangesFromWrapped(text, textArr);
+    const lineHeight = this._fontSize * (this._label.lineHeight() ?? 1);
+    const textStartY = (this._nodeHeight - measure.height()) / 2;
+    const lineIndex = Math.max(0, Math.min(
+      ranges.length - 1,
+      Math.floor((point.y - textStartY) / Math.max(lineHeight, 1)),
+    ));
+    const line = ranges[lineIndex];
+    const lineText = text.slice(line.start, line.start + line.length);
+    const lineWidth = textArr[lineIndex]?.width ?? 0;
+    const lineX = (this._nodeWidth - lineWidth) / 2;
+    let best = line.start;
+    let bestDistance = Math.abs(point.x - lineX);
+    for (let offset = 1; offset <= line.length; offset++) {
+      const width = measure.measureSize(lineText.slice(0, offset)).width;
+      const distance = Math.abs(point.x - (lineX + width));
+      if (distance < bestDistance) {
+        best = line.start + offset;
+        bestDistance = distance;
+      }
+    }
+    this._cursorIndex = best;
+    this.updateCursorPosition();
+  }
+
+  /** Complete Vim visual `iw` from the current caret. */
+  selectInnerWord(): void {
+    const range = innerWordRange(this._label.text(), this.cursorIndex);
+    if (!range) return;
+    this._cursorMode = 'vimVisual';
+    this._visualAnchor = range.start;
+    this._cursorIndex = range.end - 1;
     this.updateCursorPosition();
   }
 

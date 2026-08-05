@@ -3,6 +3,7 @@ import {
   clampIndex,
   lineIndexAt,
   lineRangesFromWrapped,
+  innerWordRange,
   logicalLineEnd,
   logicalLineStart,
   moveVertical,
@@ -13,6 +14,18 @@ import {
 } from './text-cursor';
 
 describe('text-cursor', () => {
+  describe('innerWordRange', () => {
+    it('selects the word containing the cursor', () => {
+      expect(innerWordRange('alpha beta gamma', 8)).toEqual({start: 6, end: 10});
+    });
+
+    it('chooses the next word from whitespace and the previous word at EOF', () => {
+      expect(innerWordRange('alpha  beta', 5)).toEqual({start: 7, end: 11});
+      expect(innerWordRange('alpha  ', 7)).toEqual({start: 0, end: 5});
+      expect(innerWordRange('   ', 1)).toBeNull();
+    });
+  });
+
   describe('wordForward', () => {
     it('jumps to the start of the next word', () => {
       //         0123456789

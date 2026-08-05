@@ -43,6 +43,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.singleItemSelect = jasmine.createSpy('singleItemSelect');
     component.showEditCarets = jasmine.createSpy('showEditCarets');
+    component.crosshairsInLayerCoords = () => ({x: 10, y: 20});
     component.addLabel = jasmine.createSpy('addLabel');
     component.finishTweens = jasmine.createSpy('finishTweens');
     component.emitStatus = jasmine.createSpy('emitStatus');
@@ -134,7 +135,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({nodesUnderCrosshairs: [{}]});
       component.editTextAtCrosshairs();
       expect(component.singleItemSelect).toHaveBeenCalled();
-      expect(component.showEditCarets).toHaveBeenCalled();
+      expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
     });
 
@@ -142,6 +143,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({labelUnderCrosshairs: {}});
       component.editTextAtCrosshairs();
       expect(component.singleItemSelect).toHaveBeenCalled();
+      expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
     });
 

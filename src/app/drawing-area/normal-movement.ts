@@ -8,6 +8,10 @@ export interface NormalMovementPoint {
 /** One graph feature close enough to a normal-movement goal line to visit. */
 export interface NormalMovementSnapCandidate {
   id: string;
+  /** Canvas item represented by this stop, used to preserve hover feedback
+   *  when overlapping nodes would otherwise win geometric hit priority. */
+  targetKind?: 'node' | 'waypoint' | 'label' | 'edge';
+  targetId?: string;
   point: NormalMovementPoint;
   /**
    * Primary-axis interval where the goal line actually crosses this item.
@@ -40,6 +44,7 @@ export interface NormalMovementStep {
   target: NormalMovementPoint;
   kind: 'line' | 'snap' | 'return';
   snappedId?: string;
+  snappedCandidate?: NormalMovementSnapCandidate;
 }
 
 const EPS = 1e-6;
@@ -129,6 +134,7 @@ export function nextNormalMovementStep(
       target,
       kind: 'snap',
       snappedId: next.id,
+      snappedCandidate: next,
     };
   }
 

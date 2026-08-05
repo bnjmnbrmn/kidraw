@@ -241,6 +241,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  selection state and is never serialized. */
   private crosshairHoverHighlight: Konva.Shape | null = null;
   private crosshairHoverRefreshTimer: number | null = null;
+  /** Normal movement's semantic landing target. `false` suppresses a
+   *  misleading geometric hover on line-return steps through a wide node. */
+  private normalMovementHoverTarget:
+    {kind: 'node' | 'waypoint' | 'label' | 'edge'; id: string} | false | null = null;
+  /** Screen-space copy of one edited node at low graph zoom. The real node
+   *  remains in place; this lens keeps its text and caret readable. */
+  private labelEditGhost: Konva.Group | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -568,6 +575,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       clearTimeout(this.crosshairHoverRefreshTimer);
     }
     this.clearLinkNavQuadrantLines();
+    this.clearLabelEditGhost(false);
     this.crosshairHoverHighlight?.destroy();
   }
 
@@ -893,10 +901,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.CURSOR_WORD_BACK:
         this.moveEditCursor(t => t.cursorWordBack());
         break;
+      case DACommandType.SELECT_INNER_WORD:
+        this.drawingLayer.getSelectedDANodes().forEach(n => n.selectInnerWord());
+        this.getSelectedLabels().forEach(l => l.selectInnerWord());
+        this.drawingLayer.batchDraw();
+        this.refreshLabelEditGhost();
+        break;
       case DACommandType.SET_TEXT_CURSOR_MODE:
         this.drawingLayer.getSelectedDANodes().forEach(n => n.setCursorMode(command.mode));
         this.getSelectedLabels().forEach(l => l.setCursorMode(command.mode));
         this.drawingLayer.batchDraw();
+        this.refreshLabelEditGhost();
         break;
       case DACommandType.DELETE:
         this.deleteSelected();
@@ -2224,6 +2239,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private exitLabelEditMode() {
     this.finishTweens();
     this.log.log("case exit-label-edit-mode")
+    this.clearLabelEditGhost();
     this.crosshairsLayer.showCrosshairs();
     this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
     this.getSelectedLabels().forEach(l => l.hideCursor());
@@ -2241,6 +2257,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private unselectAll() {
     this.finishTweens();
+    this.clearLabelEditGhost();
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
     // Escape also ends the traversal: drop the navigation focus glow.
@@ -2259,6 +2276,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getEdgeForLabel(l)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private deleteLastChar() {
@@ -2271,6 +2289,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getEdgeForLabel(l)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private deleteCharAtCursor() {
@@ -2282,6 +2301,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getEdgeForLabel(l)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private replaceCharAtCursor(value: string) {
@@ -2294,6 +2314,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getEdgeForLabel(label)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private changeTextAtCursor(motion: VimChangeMotion) {
@@ -2306,6 +2327,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getEdgeForLabel(label)?.refreshGeometry();
     });
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   /** Apply a caret motion to everything being edited (selected nodes and
@@ -2318,6 +2340,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.getSelectedDANodes().forEach(n => motion(n));
     this.getSelectedLabels().forEach(l => motion(l));
     this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
@@ -2493,6 +2516,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
                            showMovementGrid = true) {
     this.finishTweens();
     this.clearCrosshairHoverHighlight(false);
+    this.crosshairsLayer.showCrosshairs();
+    this.crosshairsLayer.batchDraw();
 
     const currentX = this.crosshairsLayer.crosshairs.x;
     const currentY = this.crosshairsLayer.crosshairs.y;
@@ -2535,6 +2560,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           candidates,
         );
         this.normalMovementGoal = step.state;
+        this.normalMovementHoverTarget = step.kind === 'snap' &&
+          step.snappedCandidate?.targetKind && step.snappedCandidate.targetId
+          ? {
+              kind: step.snappedCandidate.targetKind,
+              id: step.snappedCandidate.targetId,
+            }
+          : false;
         this.redrawNormalMovementGoalLine();
         this.updateCrosshairsProbeShape(
           axis, tier, minorSpacing, majorSpacing, stepDistance, scale,
@@ -2639,10 +2671,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       priority: number,
       distance: number,
       crossingSpan?: {min: number; max: number},
+      targetKind?: 'node' | 'waypoint' | 'label' | 'edge',
+      targetId?: string,
     ) => {
       if (Number.isFinite(point.x) && Number.isFinite(point.y) &&
           distance <= tolerance) {
-        out.push({id, point, priority, distance, crossingSpan});
+        out.push({id, point, priority, distance, crossingSpan, targetKind, targetId});
       }
     };
 
@@ -2662,6 +2696,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         distance === 0
           ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
           : undefined,
+        'node',
+        node.id,
       );
     }
 
@@ -2672,6 +2708,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           {x: waypoint.x, y: waypoint.y},
           1,
           Math.abs((axis === 'x' ? waypoint.y : waypoint.x) - line),
+          undefined,
+          'waypoint',
+          waypoint.id,
         );
       }
       for (const label of edge.labels) {
@@ -2690,6 +2729,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           distance === 0
             ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
             : undefined,
+          'label',
+          label.id,
         );
       }
 
@@ -2711,6 +2752,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
               {x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t},
               3,
               0,
+              undefined,
+              'edge',
+              edge.id,
             );
             continue;
           }
@@ -2723,6 +2767,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             3,
             0,
             {min: Math.min(primaryA, primaryB), max: Math.max(primaryA, primaryB)},
+            'edge',
+            edge.id,
           );
           continue;
         }
@@ -2732,6 +2778,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           {x: point.x, y: point.y},
           3,
           Math.min(Math.abs(perpA - line), Math.abs(perpB - line)),
+          undefined,
+          'edge',
+          edge.id,
         );
       }
     }
@@ -2775,6 +2824,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private clearNormalMovementGoal(draw = true): void {
     this.normalMovementGoal = null;
+    this.normalMovementHoverTarget = null;
     if (this.normalMovementGoalLine) {
       this.normalMovementGoalLine.destroy();
       this.normalMovementGoalLine = null;
@@ -2807,6 +2857,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer?.batchDraw();
       return;
     }
+    const forcedTarget = this.normalMovementHoverTarget;
+    if (forcedTarget === false) {
+      this.drawingLayer.batchDraw();
+      return;
+    }
 
     const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
     const palette = this.visualConfigService
@@ -2834,7 +2889,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let targetKind = '';
     let targetId = '';
 
-    const label = this.getLabelUnderCrosshairs();
+    const label = forcedTarget?.kind === 'label'
+      ? this.drawingLayer.getDAEdges()
+          .flatMap(edge => edge.labels)
+          .find(candidate => candidate.id === forcedTarget.id) ?? null
+      : forcedTarget
+        ? null
+        : this.getLabelUnderCrosshairs();
     if (label) {
       targetKind = 'label';
       targetId = label.id;
@@ -2847,7 +2908,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         cornerRadius: 5 / scale,
       });
     } else {
-      const waypoint = this.getWaypointUnderCrosshairs();
+      const waypoint = forcedTarget?.kind === 'waypoint'
+        ? this.drawingLayer.getDAWaypoints()
+            .find(candidate => candidate.id === forcedTarget.id)
+        : forcedTarget
+          ? undefined
+          : this.getWaypointUnderCrosshairs();
       if (waypoint) {
         targetKind = 'waypoint';
         targetId = waypoint.id;
@@ -2858,7 +2924,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           radius: waypoint.RADIUS + pad,
         });
       } else {
-        const nodes = this.getDANodesContainingCrosshairs();
+        const nodes = forcedTarget?.kind === 'node'
+          ? this.drawingLayer.getDANodes()
+              .filter(candidate => candidate.id === forcedTarget.id)
+          : forcedTarget
+            ? []
+            : this.getDANodesContainingCrosshairs();
         if (nodes.length > 0) {
           const node = nodes.reduce((a, b) =>
             a.zIndex() > b.zIndex() ? a : b);
@@ -2875,7 +2946,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
               : 7 / scale,
           });
         } else {
-          const edges = this.getDAEdgesContainingCrosshairs();
+          const edges = forcedTarget?.kind === 'edge'
+            ? this.drawingLayer.getDAEdges()
+                .filter(candidate => candidate.id === forcedTarget.id)
+            : forcedTarget
+              ? []
+              : this.getDAEdgesContainingCrosshairs();
           if (edges.length > 0) {
             const edge = edges.reduce((a, b) =>
               a.zIndex() > b.zIndex() ? a : b);
@@ -2954,7 +3030,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.setGridIndicatorsVisible(false);
       this.refreshWaypointVisibility(false);
       this.clearNormalMovementGoal(false);
+      this.clearCrosshairHoverHighlight(false);
+      this.crosshairsLayer.hideCrosshairs();
       this.drawingLayer.batchDraw();
+      this.crosshairsLayer.batchDraw();
       this.gridFadeTimeout = null;
     }, 5000);
   }
@@ -5934,6 +6013,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  its anchor or while the whole graph was fit at a tiny scale. */
   private beginNewNodeLabelEdit(node: DANode): void {
     this.pendingNodeLabelEdit = null;
+    this.clearLabelEditGhost();
     if (node.nodeShape === 'junction' || node.nodeShape === 'invisible') return;
     node.setCursorToEnd();
     node.showCursor();
@@ -6383,17 +6463,74 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log('addLabel: no edge found under crosshairs');
   }
 
-  /** Reset carets to the end and show them on everything about to be
-   *  edited (nodes and edge labels alike). */
-  private showEditCarets(): void {
+  /** Show carets on everything about to be edited. A crosshairs point places
+   *  the caret spatially for the single target under `i`; selection-driven
+   *  editing retains the established end-of-text behavior. */
+  private showEditCarets(point?: {x: number; y: number}): void {
     this.drawingLayer.getSelectedDANodes().forEach(n => {
-      n.setCursorToEnd();
+      if (point) {
+        n.setCursorFromLocalPoint({
+          x: point.x - n.group.x(),
+          y: point.y - n.group.y(),
+        });
+      } else {
+        n.setCursorToEnd();
+      }
       n.showCursor();
     });
     this.getSelectedLabels().forEach(l => {
-      l.setCursorToEnd();
+      if (point) {
+        l.setCursorFromLocalPoint({x: point.x - l.x, y: point.y - l.y});
+      } else {
+        l.setCursorToEnd();
+      }
       l.showCursor();
     });
+    this.refreshLabelEditGhost();
+  }
+
+  /** Rebuild the low-zoom edit lens from the live node so text, selection,
+   *  and caret changes appear immediately without zooming the graph. */
+  private refreshLabelEditGhost(): void {
+    this.clearLabelEditGhost(false);
+    if (!this.crosshairsLayer || !this.drawingLayer ||
+        this.drawingLayer.scaleX() >= DrawingAreaComponent.NODE_EDIT_MIN_ZOOM) {
+      return;
+    }
+    const selected = this.drawingLayer.getSelectedDANodes();
+    if (selected.length !== 1) return;
+    const node = selected[0];
+    const center = this.getNodeCenterInStageCoordinates(node);
+    const padding = 12;
+    const x = Math.max(padding, Math.min(
+      center.x - node.NODE_WIDTH / 2,
+      this.stage.width() - node.NODE_WIDTH - padding,
+    ));
+    const y = Math.max(padding, Math.min(
+      center.y - node.NODE_HEIGHT / 2,
+      this.stage.height() - node.NODE_HEIGHT - padding,
+    ));
+    const ghost = node.konvaGroup.clone({
+      name: 'label-edit-ghost',
+      x,
+      y,
+      scaleX: 1,
+      scaleY: 1,
+      opacity: 0.92,
+      listening: false,
+    });
+    ghost.getChildren().forEach(child => child.listening(false));
+    this.crosshairsLayer.add(ghost);
+    ghost.moveToTop();
+    this.labelEditGhost = ghost;
+    this.crosshairsLayer.batchDraw();
+  }
+
+  private clearLabelEditGhost(draw = true): void {
+    if (!this.labelEditGhost) return;
+    this.labelEditGhost.destroy();
+    this.labelEditGhost = null;
+    if (draw) this.crosshairsLayer?.batchDraw();
   }
 
   private handleEditSelected() {
@@ -6418,7 +6555,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets();
+      this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
@@ -6430,7 +6567,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
       this.singleItemSelect();
       this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets();
+      this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
       this.daOut.emit({kind: "started-label-editing-mode"});
       return;
@@ -7002,11 +7139,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const label = this.getLabelUnderCrosshairs();
     const node = this.getDANodesContainingCrosshairs().length > 0;
     if (label || node) {
+      const cursorPoint = this.crosshairsInLayerCoords();
       this.drawingLayer.unselectAll();
       this.unselectAllLabels();
       this.singleItemSelect();
       this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets();
+      this.showEditCarets(cursorPoint);
       this.drawingLayer.batchDraw();
       this.daOut.emit({kind: 'started-label-editing-mode'});
       return;
@@ -7151,6 +7289,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const currentState = this.drawingLayer.serializeGraph();
     const snapshot = this.undoRedoService.undo(currentState);
     if (snapshot) {
+      this.clearLabelEditGhost();
       this.drawingLayer.restoreGraph(snapshot);
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();
@@ -7165,6 +7304,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const currentState = this.drawingLayer.serializeGraph();
     const snapshot = this.undoRedoService.redo(currentState);
     if (snapshot) {
+      this.clearLabelEditGhost();
       this.drawingLayer.restoreGraph(snapshot);
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();

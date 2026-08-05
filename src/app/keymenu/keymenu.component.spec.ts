@@ -136,6 +136,23 @@ describe('KeymenuComponent', () => {
     expect(modeSpy).toHaveBeenCalledWith('vimNormal');
   });
 
+  it('implements visual iw as a sequential inner-word text object', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    component.switchMode('labelEditVimVisual');
+    const visual = (component as any)
+      .buildLabelEditVimVisualSubmenuConfig(false) as Record<string, unknown>;
+
+    expect((visual['i'] as LabeledAction).actionLabel).toBe('inner…');
+    (visual['i'] as LabeledAction).action();
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'w', code: 'KeyW'}));
+
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SELECT_INNER_WORD});
+    expect((component as any).vimTextObjectPending).toBeFalse();
+  });
+
   it('implements sequential Vim r replacement', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     fixture.detectChanges();
