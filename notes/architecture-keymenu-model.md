@@ -7,6 +7,13 @@ type: architecture
 
 This is the conceptual model for the keymenu system. Invariants I1–I3 are confirmed; I4–I7 are TBD.
 
+The built-in **Keymenu States / Events** sample is the executable overview of
+the current model. It shows physical key down/up and app-owned repeat events,
+submenu stack transitions, the three graph-text modes and their Caps variants,
+and drawing-area surfaces that suspend ordinary keymenu handling. Edge labels
+are events or guards, not shortcut descriptions; keep this sample synchronized
+when a state or transition changes.
+
 ## Definitions
 
 - **Key Menu System** — top-level container (`KeyMenu` class). Owns modes, tracks the current mode.

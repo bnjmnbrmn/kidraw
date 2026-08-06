@@ -46,6 +46,7 @@ import {
   NormalMovementSnapCandidate,
   startNormalMovementGoal,
 } from './normal-movement';
+import {caretVisibilityPanDelta} from './edit-viewport';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -248,6 +249,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Screen-space copy of one edited node at low graph zoom. The real node
    *  remains in place; this lens keeps its text and caret readable. */
   private labelEditGhost: Konva.Group | null = null;
+  /** Natural-scale copy of the node currently reached by crosshair
+   *  navigation, shown only when the real node is not fully readable. */
+  private navigationLandingGhost: Konva.Group | null = null;
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -576,6 +580,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.clearLinkNavQuadrantLines();
     this.clearLabelEditGhost(false);
+    this.clearNavigationLandingGhost(false);
     this.crosshairHoverHighlight?.destroy();
   }
 
@@ -2888,6 +2893,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let highlight: Konva.Shape | null = null;
     let targetKind = '';
     let targetId = '';
+    let targetNode: DANode | null = null;
 
     const label = forcedTarget?.kind === 'label'
       ? this.drawingLayer.getDAEdges()
@@ -2933,6 +2939,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         if (nodes.length > 0) {
           const node = nodes.reduce((a, b) =>
             a.zIndex() > b.zIndex() ? a : b);
+          targetNode = node;
           targetKind = 'node';
           targetId = node.id;
           highlight = new Konva.Rect({
@@ -2980,14 +2987,120 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       highlight.moveToTop();
       this.crosshairHoverHighlight = highlight;
     }
+    if (targetNode) this.refreshNavigationLandingGhost(targetNode);
     this.drawingLayer.batchDraw();
   }
 
   private clearCrosshairHoverHighlight(draw = true): void {
-    if (!this.crosshairHoverHighlight) return;
-    this.crosshairHoverHighlight.destroy();
-    this.crosshairHoverHighlight = null;
-    if (draw) this.drawingLayer.batchDraw();
+    let changed = false;
+    if (this.crosshairHoverHighlight) {
+      this.crosshairHoverHighlight.destroy();
+      this.crosshairHoverHighlight = null;
+      changed = true;
+    }
+    if (this.navigationLandingGhost) {
+      this.clearNavigationLandingGhost(false);
+      changed = true;
+    }
+    if (draw && changed) {
+      this.drawingLayer.batchDraw();
+      this.crosshairsLayer?.batchDraw();
+    }
+  }
+
+  private nodeStageRect(node: DANode): {x: number; y: number; width: number; height: number} {
+    const scaleX = this.drawingLayer.scaleX();
+    const scaleY = this.drawingLayer.scaleY();
+    return {
+      x: this.drawingLayer.x() + node.group.x() * scaleX,
+      y: this.drawingLayer.y() + node.group.y() * scaleY,
+      width: node.NODE_WIDTH * node.group.scaleX() * scaleX,
+      height: node.NODE_HEIGHT * node.group.scaleY() * scaleY,
+    };
+  }
+
+  /** Why the real navigation target needs a readable screen-space copy. */
+  private navigationGhostReasons(node: DANode): string[] {
+    if (!this.stage || node.nodeShape === 'junction' || node.nodeShape === 'invisible') return [];
+    const rect = this.nodeStageRect(node);
+    const pad = 8;
+    const reasons: string[] = [];
+    if (rect.x < pad || rect.y < pad ||
+        rect.x + rect.width > this.stage.width() - pad ||
+        rect.y + rect.height > this.stage.height() - pad) {
+      reasons.push('offscreen');
+    }
+    if (node.FONT_SIZE * node.group.scaleY() * this.drawingLayer.scaleY() < 12) {
+      reasons.push('too-small');
+    }
+    const overlaps = (a: typeof rect, b: typeof rect) =>
+      a.x < b.x + b.width && a.x + a.width > b.x &&
+      a.y < b.y + b.height && a.y + a.height > b.y;
+    if (this.drawingLayer.getDANodes().some(other =>
+      other !== node && other.nodeShape !== 'invisible' && other.konvaGroup.visible() &&
+      other.zIndex() > node.zIndex() && overlaps(rect, this.nodeStageRect(other)))) {
+      reasons.push('occluded');
+    }
+    return reasons;
+  }
+
+  /** Overlay the actual node (shape, text, status, selection) at natural
+   *  scale on the chrome layer. Its position follows the real node when
+   *  possible and clamps wholly inside the viewport otherwise. */
+  private refreshNavigationLandingGhost(node: DANode): void {
+    this.clearNavigationLandingGhost(false);
+    if (!this.stage || !this.crosshairsLayer) return;
+    const reasons = this.navigationGhostReasons(node);
+    if (reasons.length === 0) return;
+    const rect = this.nodeStageRect(node);
+    const center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+    const pad = 12;
+    const clampedStart = (start: number, size: number, extent: number) =>
+      size + pad * 2 > extent
+        ? (extent - size) / 2
+        : Math.max(pad, Math.min(start, extent - size - pad));
+    const x = clampedStart(center.x - node.NODE_WIDTH / 2, node.NODE_WIDTH, this.stage.width());
+    const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT, this.stage.height());
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    const group = new Konva.Group({
+      name: 'navigation-node-ghost',
+      x,
+      y,
+      opacity: 0.94,
+      listening: false,
+    });
+    group.setAttr('targetId', node.id);
+    group.setAttr('reasons', reasons);
+    const clone = node.konvaGroup.clone({
+      x: 0,
+      y: 0,
+      scaleX: 1,
+      scaleY: 1,
+      listening: false,
+    });
+    group.add(clone);
+    group.add(new Konva.Rect({
+      width: node.NODE_WIDTH,
+      height: node.NODE_HEIGHT,
+      stroke: palette.crosshairsStroke,
+      strokeWidth: 2,
+      dash: [7, 5],
+      cornerRadius: node.nodeShape === 'circle'
+        ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2
+        : 7,
+      listening: false,
+    }));
+    this.crosshairsLayer.add(group);
+    group.moveToTop();
+    this.navigationLandingGhost = group;
+    this.crosshairsLayer.batchDraw();
+  }
+
+  private clearNavigationLandingGhost(draw = true): void {
+    if (!this.navigationLandingGhost) return;
+    this.navigationLandingGhost.destroy();
+    this.navigationLandingGhost = null;
+    if (draw) this.crosshairsLayer?.batchDraw();
   }
 
   private updateCrosshairsProbeShape(
@@ -6492,6 +6605,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Rebuild the low-zoom edit lens from the live node so text, selection,
    *  and caret changes appear immediately without zooming the graph. */
   private refreshLabelEditGhost(): void {
+    this.keepEditCaretVisible();
     this.clearLabelEditGhost(false);
     if (!this.crosshairsLayer || !this.drawingLayer ||
         this.drawingLayer.scaleX() >= DrawingAreaComponent.NODE_EDIT_MIN_ZOOM) {
@@ -6524,6 +6638,46 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     ghost.moveToTop();
     this.labelEditGhost = ghost;
     this.crosshairsLayer.batchDraw();
+  }
+
+  /** Pan without zooming whenever the one active text caret approaches a
+   * viewport edge. Three rendered lines remain available above and below. */
+  private keepEditCaretVisible(): void {
+    if (!this.stage || !this.drawingLayer) return;
+    const nodes = this.drawingLayer.getSelectedDANodes();
+    const labels = this.getSelectedLabels();
+    if (nodes.length + labels.length !== 1) return;
+
+    const layerScaleX = this.drawingLayer.scaleX();
+    const layerScaleY = this.drawingLayer.scaleY();
+    let local: {x: number; y: number; width: number; height: number; lineHeight: number};
+    let targetGroup: Konva.Group;
+    if (nodes.length === 1) {
+      local = nodes[0].caretViewportBox();
+      targetGroup = nodes[0].group;
+    } else {
+      local = labels[0].caretViewportBox();
+      targetGroup = labels[0].group;
+    }
+    const caret = {
+      x: this.drawingLayer.x() +
+        (targetGroup.x() + local.x * targetGroup.scaleX()) * layerScaleX,
+      y: this.drawingLayer.y() +
+        (targetGroup.y() + local.y * targetGroup.scaleY()) * layerScaleY,
+      width: local.width * targetGroup.scaleX() * layerScaleX,
+      height: local.height * targetGroup.scaleY() * layerScaleY,
+    };
+    const delta = caretVisibilityPanDelta(
+      caret,
+      {width: this.stage.width(), height: this.stage.height()},
+      local.lineHeight * targetGroup.scaleY() * layerScaleY,
+    );
+    if (delta.x === 0 && delta.y === 0) return;
+    this.drawingLayer.position({
+      x: this.drawingLayer.x() + delta.x,
+      y: this.drawingLayer.y() + delta.y,
+    });
+    this.drawingLayer.batchDraw();
   }
 
   private clearLabelEditGhost(draw = true): void {

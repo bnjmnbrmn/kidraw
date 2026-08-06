@@ -24,6 +24,8 @@ describe('DemoDataService', () => {
     expect(labels).toContain('keyup K · prefix pop');
     expect(labels).toContain('timer tick');
     expect(labels).toContain('tap i over existing node / label');
+    expect(labels).toContain('TRAVERSE_SMART · open popup-state');
+    expect(labels).not.toContain('Move by Link opens popup-state');
     expect(labels).toContain('release add / Enter · create + edit');
     expect(drawingLayer.getDAEdges().every(edge => edge.labels.length === 1)).toBeTrue();
   });

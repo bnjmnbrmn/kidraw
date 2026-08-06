@@ -346,7 +346,7 @@ export class DemoDataService {
       {src: 15, dest: 11, text: 'Shift-Enter / double Shift'},
 
       // DOM/canvas surfaces temporarily replace the active keymenu mode.
-      {src: 10, dest: 18, text: 'Move by Link opens popup-state'},
+      {src: 10, dest: 18, text: 'TRAVERSE_SMART · open popup-state'},
       {src: 18, dest: 10, text: 'commit / cancel · popup-state close'},
       {src: 10, dest: 19, text: 'hold add over node'},
       {src: 10, dest: 20, text: 'hold add over empty canvas'},

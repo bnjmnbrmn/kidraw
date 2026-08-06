@@ -213,6 +213,9 @@ async function main() {
     spatialEdit.zoom === 0.25 && spatialEdit.ghostScale === 1 &&
       spatialEdit.ghostText.includes('alpha beta'), JSON.stringify(spatialEdit));
 
+  // Existing text now opens in Vim normal mode. Enter insert explicitly so
+  // this older lens regression continues to exercise live typed updates.
+  await page.keyboard.press('i');
   await page.keyboard.type('x');
   spatialEdit = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));

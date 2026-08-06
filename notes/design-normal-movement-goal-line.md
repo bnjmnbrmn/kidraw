@@ -32,15 +32,24 @@ the goal line remains a complete traversable backbone rather than being
 silently skipped by magnetic snapping. Equal-position ambiguity is resolved
 by the existing priority order, so a waypoint on an edge wins over the edge.
 
-Normal-mode held movement fires once immediately, pauses for 300 ms, and then
-repeats every 200 ms. This is local to the root movement keys; faster repeat
-settings used by other continuous controls are unchanged.
+Normal-mode held movement fires once immediately, pauses for 250 ms, and then
+repeats every 100 ms. This is local to the root movement keys; repeat settings
+used by other continuous controls are unchanged.
 
 The graph item under the crosshairs gets a non-semantic dashed hover trace in
 the crosshairs color. It never changes selection and follows selection's hit
 priority: label, waypoint, top node, top edge. This makes the active target
 visible while keeping it distinct from the blue selection glow. The trace is
 removed while the crosshairs themselves are hidden.
+
+When the active navigation landing is a node that cannot be read in place, the
+crosshairs layer also shows a natural-scale clone of the actual node, including
+its shape, text, badges, and selection treatment. A landing qualifies when any
+part is outside the viewport, a higher-z node overlaps it, or its rendered font
+is smaller than 12 screen pixels. The clone stays aligned with the real node
+when possible and clamps wholly inside the viewport otherwise. It is
+non-interactive, non-serialized, and is destroyed with the hover landing; a
+fully visible readable node is never duplicated.
 
 When normal movement deliberately snaps to an item, that semantic landing
 temporarily overrides geometric hit priority. This matters at a busy hub: an

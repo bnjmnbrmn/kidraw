@@ -126,7 +126,9 @@ async function main() {
   await page.waitForTimeout(200);
   let repeatedX = (await state()).x;
   check('held movement pauses before its first repeat', near(repeatedX, 350), `x=${repeatedX}`);
-  await page.waitForTimeout(400);
+  // Leave room for the app's synchronous canvas work between nominal 100 ms
+  // repeat timers; slower CI hosts can otherwise stop after only two samples.
+  await page.waitForTimeout(650);
   await page.keyboard.up('l');
   const repeatTiming = await page.evaluate(() => {
     window.__restoreMovementEmitter();

@@ -460,6 +460,25 @@ export class DALabel {
     if (this._cursor.visible()) this._cursor.opacity(1);
   }
 
+  /** Caret box in label-local coordinates, plus its rendered-line height. */
+  caretViewportBox(): {x: number; y: number; width: number; height: number; lineHeight: number} {
+    this.updateCursorPosition();
+    const points = this._cursor.points();
+    const xs = points.filter((_, index) => index % 2 === 0);
+    const ys = points.filter((_, index) => index % 2 === 1);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      lineHeight: this._fontSize * (this._text.lineHeight() ?? 1),
+    };
+  }
+
   private visualCursorIndex(): number | null {
     return this._label.length === 0 ? null : Math.min(this.cursorIndex, this._label.length - 1);
   }

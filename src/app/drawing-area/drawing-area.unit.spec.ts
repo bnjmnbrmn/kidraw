@@ -464,7 +464,11 @@ describe('DrawingArea Unit Tests', () => {
       node.isSelected = true;
       node.showCursor();
       component.drawingLayer = drawingLayer;
-      component.crosshairsLayer = new Konva.Layer();
+      const overlay = new Konva.Group();
+      component.crosshairsLayer = {
+        add: (child: Konva.Group) => overlay.add(child),
+        batchDraw: () => undefined,
+      };
       component.stage = {width: () => 800, height: () => 400};
       component.labelEditGhost = null;
       component.getNodeCenterInStageCoordinates = () => ({x: 400, y: 200});
@@ -481,6 +485,132 @@ describe('DrawingArea Unit Tests', () => {
 
       component.clearLabelEditGhost();
       expect(component.labelEditGhost).toBeNull();
+    });
+
+    it('pans the viewport to keep the active edit caret and line context visible', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(200, 520, 'line one\nline two\nline three');
+      drawingLayer.addRawNode(node);
+      node.isSelected = true;
+      node.setCursorToEnd();
+      node.showCursor();
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
+      component.stage = {width: () => 800, height: () => 400};
+      component.labelEditGhost = null;
+
+      component.refreshLabelEditGhost();
+
+      expect(drawingLayer.y()).toBeLessThan(0);
+      const caret = node.caretViewportBox();
+      const caretBottom = drawingLayer.y() + node.group.y() + caret.y + caret.height;
+      expect(caretBottom).toBeLessThanOrEqual(400 - caret.lineHeight * 3);
+    });
+
+    it('keeps an edge-label caret and its line context visible too', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const label = new DALabel(300, 520, 'first\nsecond\nthird');
+      label.isSelected = true;
+      label.setCursorToEnd();
+      label.showCursor();
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
+      component.stage = {width: () => 800, height: () => 400};
+      component.labelEditGhost = null;
+      component.getSelectedLabels = () => [label];
+
+      component.refreshLabelEditGhost();
+
+      expect(drawingLayer.y()).toBeLessThan(0);
+      const caret = label.caretViewportBox();
+      const caretBottom = drawingLayer.y() + label.y + caret.y + caret.height;
+      expect(caretBottom).toBeLessThanOrEqual(400 - caret.lineHeight * 3);
+    });
+
+    it('shows an actual natural-scale node ghost for an unreadably small navigation landing', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(300, 150, 'tiny target', undefined, undefined, 'diamond');
+      drawingLayer.addRawNode(node);
+      drawingLayer.scale({x: 0.25, y: 0.25});
+      component.drawingLayer = drawingLayer;
+      const overlay = new Konva.Group();
+      component.crosshairsLayer = {
+        add: (child: Konva.Group) => overlay.add(child),
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+
+      component.refreshNavigationLandingGhost(node);
+
+      const ghost = component.navigationLandingGhost as Konva.Group;
+      expect(ghost).not.toBeNull();
+      expect(ghost.name()).toBe('navigation-node-ghost');
+      expect(ghost.getAttr('targetId')).toBe(node.id);
+      expect(ghost.getAttr('reasons')).toContain('too-small');
+      expect(ghost.find('Text').some((text: Konva.Node) =>
+        text.getAttr('text') === 'tiny target')).toBeTrue();
+      expect((ghost.findOne('Line') as Konva.Line).closed()).toBeTrue();
+    });
+
+    it('shows a navigation ghost when a higher node occludes the landing', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const target = new DANode(200, 100, 'underneath');
+      const covering = new DANode(220, 110, 'covering');
+      drawingLayer.addRawNode(target);
+      drawingLayer.addRawNode(covering);
+      component.drawingLayer = drawingLayer;
+      const overlay = new Konva.Group();
+      component.crosshairsLayer = {
+        add: (child: Konva.Group) => overlay.add(child),
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
+      };
+      component.themeService = {theme: 'dark'};
+
+      component.refreshNavigationLandingGhost(target);
+
+      expect(component.navigationLandingGhost.getAttr('reasons')).toContain('occluded');
+      expect(component.navigationLandingGhost.find('Text').some((text: Konva.Node) =>
+        text.getAttr('text') === 'underneath')).toBeTrue();
+    });
+
+    it('does not duplicate a fully visible readable navigation landing', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(200, 100, 'readable');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = new Konva.Layer();
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+
+      component.refreshNavigationLandingGhost(node);
+
+      expect(component.navigationLandingGhost).toBeNull();
+    });
+
+    it('classifies a partially off-screen navigation landing for ghosting', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(-40, 100, 'partial');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.stage = {width: () => 800, height: () => 400};
+
+      expect(component.navigationGhostReasons(node)).toContain('offscreen');
     });
   });
 
