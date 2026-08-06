@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { DANode } from '../drawing-area/da-node';
 import { DAEdge } from '../drawing-area/da-edge';
+import { DALabel } from '../drawing-area/da-label';
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { NodeShape } from '../drawing-area/command.model';
 import { parseGraphDocYaml } from '../lib/file-format/parser';
@@ -23,6 +24,7 @@ interface NodeDef {
 interface EdgeDef {
   src: number;
   dest: number;
+  text?: string;
 }
 
 @Injectable({
@@ -36,7 +38,7 @@ export class DemoDataService {
     { id: 'fan-tree', label: 'Fan Tree (18-way stress)' },
     { id: 'classes', label: 'Kidraw Classes' },
     { id: 'files', label: 'Project Files' },
-    { id: 'modes', label: 'Mode / Shortcut Hierarchy' },
+    { id: 'modes', label: 'Keymenu States / Events' },
     { id: 'nudge-multi', label: '∥ Multi-edges' },
     { id: 'nudge-fan', label: '∥ Fan-out' },
     { id: 'nudge-converge', label: '∥ Converge' },
@@ -124,9 +126,16 @@ export class DemoDataService {
     const nodes = nodeDefs.map(def =>
       new DANode(def.x, def.y, def.text, undefined, undefined, def.shape ?? 'box'));
     nodes.forEach(n => dl.addRawNode(n));
-    edgeDefs.forEach(e => {
+    edgeDefs.forEach((e, index) => {
       const edge = new DAEdge(nodes[e.src], nodes[e.dest], '');
       dl.addRawEdge(edge);
+      if (e.text) {
+        const label = new DALabel(0, 0, e.text);
+        label.edgeT = 0.5;
+        label.side = index % 2 === 0 ? 'above' : 'below';
+        edge.addLabel(label);
+        edge.refreshGeometry();
+      }
     });
     // Theme colors will be applied by the caller
   }
@@ -258,61 +267,98 @@ export class DemoDataService {
   }
 
   private buildModeDiagram(dl: DrawingLayer): void {
-    const col1 = 100, col2 = 350, col3 = 600;
-    const row1 = 50, row2 = 200, row3 = 350, row4 = 500;
-
+    // This is deliberately an event/state graph, not a shortcut inventory.
+    // It mirrors KeyMenu + USQwertyMode + KeymenuComponent: physical key
+    // lifecycle, submenu stack transitions, text-edit modes, and the canvas-
+    // owned surfaces that temporarily suspend the ordinary keymenu.
     this.buildFromDefs(dl, [
-      // Top-level modes
-      { x: col1, y: row1, text: 'Normal Mode' },             // 0
-      { x: col2, y: row1, text: 'Label Edit\nMode' },        // 1
-      { x: col3, y: row1, text: 'Label Edit\nCaps Mode' },   // 2
-      // Normal mode submenus
-      { x: col1 - 100, y: row2, text: 'Insert...\n(f)' },    // 3
-      { x: col1 + 30, y: row2, text: 'Edit...\n(i)' },       // 4
-      { x: col1 + 160, y: row2, text: 'Select+Drag\n(v)' },  // 5
-      { x: col2 - 60, y: row2, text: 'Pan/Zoom\n(r)' },      // 6
-      { x: col2 + 80, y: row2, text: 'Move by\nNode (g)' },  // 7
-      { x: col3 - 60, y: row2, text: 'Bigger\nMove (s)' },   // 8
-      { x: col3 + 70, y: row2, text: 'Shape...\n(t)' },      // 9
-      // Insert children
-      { x: col1 - 170, y: row3, text: 'Node\n(d)' },         // 10
-      { x: col1 - 60, y: row3, text: 'Invisible\n(w)' },     // 11
-      { x: col1 + 50, y: row3, text: 'Edge\n(e)' },          // 12
-      { x: col1 + 150, y: row3, text: 'Label\n(l)' },        // 13
-      // Edit children
-      { x: col2 - 50, y: row3, text: 'Overflow...\n(o)' },   // 14
-      // Pan/Zoom children
-      { x: col2 + 80, y: row3, text: 'Zoom In/Out' },        // 15
-      { x: col3 - 60, y: row3, text: 'Recenter' },           // 16
-      // Label edit submenus
-      { x: col2, y: row4, text: 'Shift...' },                 // 17
-      { x: col3, y: row4, text: 'CapsLock\ntoggle' },         // 18
+      // Physical key lifecycle.
+      {x: 0, y: 0, text: 'Key up\n(not held)', shape: 'circle'},             // 0
+      {x: 300, y: 0, text: 'Fresh bound\nkeydown'},                          // 1
+      {x: 600, y: 0, text: 'Held key'},                                      // 2
+      {x: 900, y: 0, text: 'Repeat\nscheduled'},                             // 3
+      {x: 1200, y: 0, text: 'Unit action\nfired'},                           // 4
+      {x: 600, y: 180, text: 'Browser repeat\nignored'},                     // 5
+
+      // Submenu stack (one mode at a time).
+      {x: 0, y: 380, text: 'Mode root\npath []', shape: 'circle'},            // 6
+      {x: 350, y: 380, text: 'Held submenu\npath [K]'},                       // 7
+      {x: 700, y: 380, text: 'Nested submenu\npath [K,L]'},                   // 8
+      {x: 1050, y: 380, text: 'Replaced submenu\nsame path [K]'},             // 9
+
+      // User-visible modes.
+      {x: 0, y: 760, text: 'normal', shape: 'circle'},                        // 10
+      {x: 0, y: 1140, text: 'normalCaps', shape: 'circle'},                   // 11
+      {x: 400, y: 760, text: 'labelEdit\nVim normal'},                       // 12
+      {x: 400, y: 1140, text: 'labelEdit\nVim normal caps'},                 // 13
+      {x: 800, y: 760, text: 'labelEdit\ninsert'},                           // 14
+      {x: 800, y: 1140, text: 'labelEdit\ninsert caps'},                     // 15
+      {x: 1200, y: 760, text: 'labelEdit\nVim visual'},                      // 16
+      {x: 1200, y: 1140, text: 'labelEdit\nVim visual caps'},                // 17
+
+      // Canvas-owned keyboard surfaces (KeymenuComponent is suspended).
+      {x: 0, y: 1580, text: 'surface\nnav-popup'},                            // 18
+      {x: 300, y: 1580, text: 'surface\ngrow-targeting'},                    // 19
+      {x: 600, y: 1580, text: 'surface\ngrow-empty'},                        // 20
+      {x: 900, y: 1580, text: 'surface\ngrow-target-popup'},                 // 21
+      {x: 1200, y: 1580, text: 'surface\ngrow-type-popup'},                  // 22
+      {x: 1500, y: 1580, text: 'surface\ngrow-placement'},                   // 23
     ], [
-      // Mode transitions
-      { src: 0, dest: 1 },  // normal → labelEdit (via insert or edit)
-      { src: 1, dest: 2 },  // labelEdit ↔ labelEditCaps
-      { src: 2, dest: 1 },
-      // Normal submenus
-      { src: 0, dest: 3 },
-      { src: 0, dest: 4 },
-      { src: 0, dest: 5 },
-      { src: 0, dest: 6 },
-      { src: 0, dest: 7 },
-      { src: 0, dest: 8 },
-      { src: 0, dest: 9 },
-      // Insert children
-      { src: 3, dest: 10 },
-      { src: 3, dest: 11 },
-      { src: 3, dest: 12 },
-      { src: 3, dest: 13 },
-      // Edit children
-      { src: 4, dest: 14 },
-      // Pan/Zoom children
-      { src: 6, dest: 15 },
-      { src: 6, dest: 16 },
-      // Label edit submenus
-      { src: 1, dest: 17 },
-      { src: 1, dest: 18 },
+      // Fresh-press and app-owned repeat lifecycle.
+      {src: 0, dest: 1, text: 'keydown K · bound + not already held'},
+      {src: 1, dest: 2, text: 'keysDown.add · action once'},
+      {src: 2, dest: 3, text: 'repeatable · initial delay'},
+      {src: 3, dest: 4, text: 'timer tick'},
+      {src: 4, dest: 3, text: 'schedule interval'},
+      {src: 2, dest: 0, text: 'keyup K · cancel timer'},
+      {src: 3, dest: 0, text: 'keyup K · stop chain'},
+      {src: 2, dest: 5, text: 'keydown K with event.repeat'},
+      {src: 5, dest: 2, text: 'no action · app timer owns repeat'},
+
+      // Hold, release, prefix-pop, and action replacement.
+      {src: 6, dest: 7, text: 'keydown K · submenu binding'},
+      {src: 7, dest: 8, text: 'keydown L · submenu binding'},
+      {src: 8, dest: 7, text: 'keyup L · pop child'},
+      {src: 8, dest: 6, text: 'keyup K · prefix pop'},
+      {src: 7, dest: 9, text: 'action transition · replaceTopSubmenu'},
+      {src: 9, dest: 6, text: 'keyup K · return root'},
+
+      // Mode switches (non-caps and caps variants are real distinct modes).
+      {src: 10, dest: 11, text: 'CapsLock'},
+      {src: 11, dest: 10, text: 'CapsLock'},
+      {src: 10, dest: 12, text: 'tap i over existing node / label'},
+      {src: 10, dest: 14, text: 'add new node / label'},
+      {src: 14, dest: 12, text: 'Escape or Ctrl-[ · first press'},
+      {src: 12, dest: 14, text: 'i / a / A / I / change'},
+      {src: 12, dest: 16, text: 'v'},
+      {src: 16, dest: 12, text: 'v / Escape / x / r'},
+      {src: 14, dest: 15, text: 'CapsLock'},
+      {src: 15, dest: 14, text: 'CapsLock'},
+      {src: 12, dest: 13, text: 'CapsLock'},
+      {src: 13, dest: 12, text: 'CapsLock'},
+      {src: 16, dest: 17, text: 'CapsLock'},
+      {src: 17, dest: 16, text: 'CapsLock'},
+      {src: 15, dest: 13, text: 'Escape or Ctrl-[ · first press'},
+      {src: 17, dest: 13, text: 'v / Escape'},
+      {src: 12, dest: 10, text: 'Escape / Ctrl-[ · second press'},
+      {src: 13, dest: 11, text: 'Escape / Ctrl-[ · second press'},
+      {src: 14, dest: 10, text: 'Shift-Enter / double Shift'},
+      {src: 15, dest: 11, text: 'Shift-Enter / double Shift'},
+
+      // DOM/canvas surfaces temporarily replace the active keymenu mode.
+      {src: 10, dest: 18, text: 'Move by Link opens popup-state'},
+      {src: 18, dest: 10, text: 'commit / cancel · popup-state close'},
+      {src: 10, dest: 19, text: 'hold add over node'},
+      {src: 10, dest: 20, text: 'hold add over empty canvas'},
+      {src: 19, dest: 21, text: '/ · search target'},
+      {src: 19, dest: 22, text: 'choose new-node type'},
+      {src: 20, dest: 22, text: 'choose new-node type'},
+      {src: 22, dest: 23, text: 'type selected'},
+      {src: 21, dest: 10, text: 'Enter commit / Escape cancel'},
+      {src: 19, dest: 10, text: 'release add · edge commit / cancel'},
+      {src: 19, dest: 14, text: 'release pristine · create + edit'},
+      {src: 20, dest: 14, text: 'release add · create + edit'},
+      {src: 23, dest: 14, text: 'release add / Enter · create + edit'},
     ]);
   }
 
