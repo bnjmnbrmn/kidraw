@@ -70,9 +70,13 @@ export class AppComponent implements OnInit, OnDestroy {
 
     switch (daNotification.kind) {
       case "started-label-editing-mode":
-        this.keymenuComponent.enterLabelEditMode();
-        this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'});
-        if (this.headerComponent) this.headerComponent.mode = 'labelEdit';
+        this.keymenuComponent.enterLabelEditMode(daNotification.mode);
+        this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: daNotification.mode});
+        if (this.headerComponent) {
+          this.headerComponent.mode = daNotification.mode === 'vimNormal'
+            ? 'labelEditVimNormal'
+            : 'labelEdit';
+        }
         break;
       case "label-added":
         this.keymenuComponent.notifyLabelAdded();

@@ -1,4 +1,4 @@
-import {EdgeDirectedness, LineStyle, NodeShape} from './command.model';
+import {EdgeDirectedness, LineStyle, NodeShape, TextCursorMode} from './command.model';
 
 /** The non-keymenu interaction currently owning the keyboard. The keymenu
  *  still renders this surface's live controls while its command handlers are
@@ -12,7 +12,7 @@ export type KeyboardSurface =
   | 'grow-placement';
 
 export type DANotification =
-  | {kind: "started-label-editing-mode"}
+  | {kind: "started-label-editing-mode", mode: Extract<TextCursorMode, 'insert' | 'vimNormal'>}
   | {kind: "label-added"}
   | {kind: "node-inserted", labelable: boolean}
   | {kind: "exit-label-editing-mode"}

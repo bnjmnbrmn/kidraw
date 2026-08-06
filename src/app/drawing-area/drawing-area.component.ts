@@ -9,7 +9,7 @@ import { DANode } from './da-node';
 import { DAEdge, EdgeControlPoint } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextOverflowMode, VimChangeMotion } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -6021,7 +6021,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.focusNewNodeForLabelEdit(node);
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
-    this.daOut.emit({kind: 'started-label-editing-mode'});
+    this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
   }
 
   private beginPendingNodeLabelEdit(): void {
@@ -6545,7 +6545,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
        this.crosshairsLayer.hideCrosshairs();
        this.showEditCarets();
        this.drawingLayer.batchDraw();
-       this.daOut.emit({kind: "started-label-editing-mode"});
+       this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
        return;
     }
 
@@ -6557,7 +6557,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: "started-label-editing-mode"});
+      this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
       return;
     }
 
@@ -6569,7 +6569,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: "started-label-editing-mode"});
+      this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
       return;
     }
 
@@ -7146,12 +7146,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(cursorPoint);
       this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: 'started-label-editing-mode'});
+      this.daOut.emit({kind: 'started-label-editing-mode', mode: 'vimNormal'});
       return;
     }
     const edges = this.getDAEdgesContainingCrosshairs();
     if (edges.length > 0) {
       const edge = edges[0];
+      let mode: Extract<TextCursorMode, 'insert' | 'vimNormal'> = 'vimNormal';
       this.drawingLayer.unselectAll();
       this.unselectAllLabels();
       if (edge.labels.length > 0) {
@@ -7162,11 +7163,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
         this.addLabel();
         if (edge.labels.length === 0) return; // addLabel failed; stay put
+        mode = 'insert';
       }
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets();
       this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: 'started-label-editing-mode'});
+      this.daOut.emit({kind: 'started-label-editing-mode', mode});
       return;
     }
     this.daOut.emit({kind: 'status-message', message: 'Nothing to edit here — tap the add key to create a node.'});

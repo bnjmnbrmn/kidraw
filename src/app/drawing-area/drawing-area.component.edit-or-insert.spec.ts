@@ -36,7 +36,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.beginNewNodeLabelEdit = jasmine.createSpy('beginNewNodeLabelEdit')
       .and.callFake((node: {nodeShape: string}) => {
         if (node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
-          component.daOut.emit({kind: 'started-label-editing-mode'});
+          component.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
         }
       });
     component.quickAddConnectedRight = jasmine.createSpy('quickAddConnectedRight');
@@ -59,7 +59,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.pushUndoSnapshot).toHaveBeenCalledWith({kind: DACommandType.QUICK_ADD});
       expect(component.createNewNode).toHaveBeenCalledWith(undefined, false);
       expect(component.beginNewNodeLabelEdit).toHaveBeenCalled();
-      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode', mode: 'insert'});
     });
 
     it('treats a waypoint under the crosshairs as blank canvas', () => {
@@ -97,7 +97,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({defaultNodeShape: 'junction'});
       component.handleQuickAdd();
       expect(component.createNewNode).toHaveBeenCalled();
-      expect(component.daOut.emit).not.toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).not.toHaveBeenCalledWith(
+        jasmine.objectContaining({kind: 'started-label-editing-mode'}));
     });
   });
 
@@ -136,7 +137,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.editTextAtCrosshairs();
       expect(component.singleItemSelect).toHaveBeenCalled();
       expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
-      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).toHaveBeenCalledWith(
+        {kind: 'started-label-editing-mode', mode: 'vimNormal'});
     });
 
     it('edits a label under the crosshairs', () => {
@@ -144,7 +146,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.editTextAtCrosshairs();
       expect(component.singleItemSelect).toHaveBeenCalled();
       expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
-      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).toHaveBeenCalledWith(
+        {kind: 'started-label-editing-mode', mode: 'vimNormal'});
     });
 
     it('selects an edge label and edits it', () => {
@@ -153,7 +156,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({edgesUnderCrosshairs: [edge]});
       component.editTextAtCrosshairs();
       expect(label.isSelected).toBeTrue();
-      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).toHaveBeenCalledWith(
+        {kind: 'started-label-editing-mode', mode: 'vimNormal'});
       expect(component.addLabel).not.toHaveBeenCalled();
     });
 
@@ -165,14 +169,16 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       });
       component.editTextAtCrosshairs();
       expect(component.addLabel).toHaveBeenCalled();
-      expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).toHaveBeenCalledWith(
+        {kind: 'started-label-editing-mode', mode: 'insert'});
     });
 
     it('stays put when addLabel fails on the edge', () => {
       const edge = {labels: [] as unknown[]};
       const component = buildComponent({edgesUnderCrosshairs: [edge]});
       component.editTextAtCrosshairs();
-      expect(component.daOut.emit).not.toHaveBeenCalledWith({kind: 'started-label-editing-mode'});
+      expect(component.daOut.emit).not.toHaveBeenCalledWith(
+        jasmine.objectContaining({kind: 'started-label-editing-mode'}));
     });
 
     it('hints over blank canvas', () => {

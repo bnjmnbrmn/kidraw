@@ -1134,9 +1134,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       || name === 'labelEditVimVisualCaps';
   }
 
-  /** Enter label-edit mode, choosing caps variant if currently in a caps mode. */
-  enterLabelEditMode(): void {
-    this.switchMode(this.isCapsMode ? 'labelEditCaps' : 'labelEdit');
+  /** Enter label editing in the requested cursor mode, preserving CapsLock. */
+  enterLabelEditMode(mode: Extract<TextCursorMode, 'insert' | 'vimNormal'> = 'insert'): void {
+    const caps = this.isCapsMode;
+    this.switchMode(mode === 'vimNormal'
+      ? (caps ? 'labelEditVimNormalCaps' : 'labelEditVimNormal')
+      : (caps ? 'labelEditCaps' : 'labelEdit'));
   }
 
   /** Exit to normal mode, choosing caps variant if currently in a caps mode. */

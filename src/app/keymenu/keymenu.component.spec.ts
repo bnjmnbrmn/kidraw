@@ -255,6 +255,20 @@ describe('KeymenuComponent', () => {
     expect(keyMenu.currentMode.name).toBe('labelEdit');
   });
 
+  it('enters existing-text editing in Vim normal while preserving caps state', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const keyMenu = (component as any).keyMenu;
+
+    component.enterLabelEditMode('vimNormal');
+    expect(keyMenu.currentMode.name).toBe('labelEditVimNormal');
+
+    component.switchMode('normalCaps');
+    component.enterLabelEditMode('vimNormal');
+    expect(keyMenu.currentMode.name).toBe('labelEditVimNormalCaps');
+  });
+
   it('should have pan/zoom submenu on t with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;

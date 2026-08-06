@@ -81,4 +81,21 @@ describe('AppComponent', () => {
       [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'}],
     ]);
   });
+
+  it('starts existing text in Vim normal and new text in insert mode', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const enter = spyOn(app.keymenuComponent, 'enterLabelEditMode');
+    const next = spyOn(app.commandsSubject, 'next');
+
+    app.handleDANotification({kind: 'started-label-editing-mode', mode: 'vimNormal'});
+    app.handleDANotification({kind: 'started-label-editing-mode', mode: 'insert'});
+
+    expect(enter.calls.allArgs()).toEqual([['vimNormal'], ['insert']]);
+    expect(next.calls.allArgs()).toEqual([
+      [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'vimNormal'}],
+      [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'}],
+    ]);
+  });
 });
