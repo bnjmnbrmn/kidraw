@@ -5,6 +5,30 @@ import {DemoDataService} from './demo-data.service';
 describe('DemoDataService', () => {
   beforeEach(() => TestBed.configureTestingModule({}));
 
+  it('ships the recovered live Next working graph as a built-in sample', () => {
+    const service = TestBed.inject(DemoDataService);
+    const drawingLayer = new DrawingLayer();
+
+    expect(service.sampleGraphs).toContain(jasmine.objectContaining({
+      id: 'next-working',
+    }));
+
+    service.loadGraph('next-working', drawingLayer);
+
+    const nodes = drawingLayer.getDANodes();
+    const edges = drawingLayer.getDAEdges();
+    expect(nodes.length).toBe(19);
+    expect(edges.length).toBe(11);
+    expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
+    expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
+
+    const nextEdges = edges.filter(edge =>
+      edge.srcNode.id === 'da-48' || edge.destNode.id === 'da-48');
+    expect(nextEdges.map(edge => edge.id).sort()).toEqual([
+      'da-132', 'da-138', 'da-140', 'da-142', 'da-144',
+    ]);
+  });
+
   it('ships the current keymenu event/state graph in place of the stale shortcut tree', () => {
     const service = TestBed.inject(DemoDataService);
     const drawingLayer = new DrawingLayer();

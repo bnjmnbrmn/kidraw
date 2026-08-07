@@ -8,6 +8,7 @@ import { parseGraphDocYaml } from '../lib/file-format/parser';
 import { resolveAndApplyToGraph } from '../lib/file-format/resolver';
 import { filesToSnapshot } from '../lib/file-format/snapshot-mapping';
 import { KIDRAW_DEV_SAMPLE_YAML } from './samples/kidraw-dev-sample';
+import { NEXT_WORKING_SAMPLE_YAML } from './samples/next-working-sample';
 
 export interface SampleGraphDef {
   id: string;
@@ -34,6 +35,7 @@ export class DemoDataService {
 
   readonly sampleGraphs: SampleGraphDef[] = [
     { id: 'basic', label: 'Basic Flow' },
+    { id: 'next-working', label: 'Next Working Graph (recovered)' },
     { id: 'kidraw-dev', label: 'KiDraw Dev (typed todo)' },
     { id: 'fan-tree', label: 'Fan Tree (18-way stress)' },
     { id: 'classes', label: 'Kidraw Classes' },
@@ -56,6 +58,8 @@ export class DemoDataService {
   private getGraphBuilder(graphId: string): ((dl: DrawingLayer) => void) | undefined {
     switch (graphId) {
       case 'basic': return dl => this.buildBasicFlow(dl);
+      case 'next-working': return dl => this.buildYamlSample(
+        dl, NEXT_WORKING_SAMPLE_YAML, 'next-working');
       case 'kidraw-dev': return dl => this.buildKidrawDevTodo(dl);
       case 'fan-tree': return dl => this.buildFanTree(dl);
       case 'classes': return dl => this.buildClassDiagram(dl);
@@ -74,9 +78,15 @@ export class DemoDataService {
    *  own tagStyles, so this sample end-to-end exercises the typed-todo file
    *  format (notes/idea-todo-graph-modeling.md). */
   private buildKidrawDevTodo(dl: DrawingLayer): void {
-    const parsed = parseGraphDocYaml(KIDRAW_DEV_SAMPLE_YAML);
+    this.buildYamlSample(dl, KIDRAW_DEV_SAMPLE_YAML, 'kidraw-dev');
+  }
+
+  /** Load a self-contained YAML sample through the same parse, style cascade,
+   *  and snapshot mapping used by ordinary KiDraw files. */
+  private buildYamlSample(dl: DrawingLayer, yaml: string, sampleId: string): void {
+    const parsed = parseGraphDocYaml(yaml);
     if (!parsed.ok) {
-      console.error('kidraw-dev sample failed to parse:', parsed.error);
+      console.error(`${sampleId} sample failed to parse:`, parsed.error);
       return;
     }
     const doc = parsed.value;
@@ -88,7 +98,7 @@ export class DemoDataService {
       ? resolveAndApplyToGraph(doc, inline, () => null)
       : undefined;
     if (resolved && !resolved.ok) {
-      console.error('kidraw-dev sample style failed to resolve:', resolved.error);
+      console.error(`${sampleId} sample style failed to resolve:`, resolved.error);
       return;
     }
     dl.restoreGraph(filesToSnapshot(doc, resolved?.ok ? resolved.value : {kdStyle: 1}));
