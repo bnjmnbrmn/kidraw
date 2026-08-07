@@ -7,12 +7,14 @@ type: architecture
 
 This is the conceptual model for the keymenu system. Invariants I1–I3 are confirmed; I4–I7 are TBD.
 
-The built-in **Keymenu States / Events** sample is the executable overview of
-the current model. It shows physical key down/up and app-owned repeat events,
-submenu stack transitions, the three graph-text modes and their Caps variants,
-and drawing-area surfaces that suspend ordinary keymenu handling. Edge labels
-are events or guards, not shortcut descriptions; keep this sample synchronized
-when a state or transition changes.
+The built-in **Keymenu States / Events** sample is a concrete state-transition
+slice of the current Vim-profile model. Named nodes are active menus; unlabeled
+nodes are physical-key-held states; directed edge labels are `event / action`.
+Its fully expanded Zoom/Pan branch shows `r-down` entering the submenu,
+`i-down / Zoom In` and `o-down / Zoom Out` entering held-action states,
+app-owned repeat as self-loops, and both possible release orders: `i-up`/`o-up`
+returns to Zoom/Pan while `r-up` prefix-pops directly to the main root. Keep the
+sample synchronized when these bindings or release semantics change.
 
 ## Definitions
 

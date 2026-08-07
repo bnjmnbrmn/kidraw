@@ -34,14 +34,21 @@ async function main() {
     return {
       nodes: da.drawingLayer.getDANodes().map(node => node.label.text()),
       labels: da.drawingLayer.getDAEdges().flatMap(edge => edge.labels.map(label => label.label)),
+      selfLoops: da.drawingLayer.getDAEdges().filter(edge => edge.srcNode === edge.destNode)
+        .flatMap(edge => edge.labels.map(label => label.label)),
     };
   });
-  check('the stale mode/shortcut sample is replaced by the current event-state graph',
-    sample.nodes.includes('Fresh bound\nkeydown') &&
-      sample.nodes.includes('Held submenu\npath [K]') &&
-      sample.nodes.includes('surface\ngrow-placement') &&
-      sample.labels.includes('timer tick') &&
-      sample.labels.includes('keyup K · prefix pop'),
+  check('the keymenu sample uses concrete menu states and event/action transitions',
+    sample.nodes.includes('Main Mode Menu') &&
+      sample.nodes.includes('Zoom/Pan') &&
+      sample.nodes.filter(node => node === '').length === 2 &&
+      sample.labels.includes('r-down') &&
+      sample.labels.includes('i-down / Zoom In') &&
+      sample.labels.includes('o-down / Zoom Out') &&
+      sample.selfLoops.includes('key repeat fired / Zoom In') &&
+      sample.selfLoops.includes('key repeat fired / Zoom Out') &&
+      sample.labels.filter(label => label === 'r-up').length === 3 &&
+      sample.labels.includes('i-up') && sample.labels.includes('o-up'),
     `${sample.nodes.length} states / ${sample.labels.length} transitions`);
 
   await loadSample('basic');

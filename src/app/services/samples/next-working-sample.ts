@@ -69,12 +69,18 @@ styles:
       da-139:
         x: -1425
         'y': -845
-      da-141:
-        x: -1170
-        'y': -522
       da-143:
         x: -1040
         'y': -850
+      da-145:
+        x: -1070
+        'y': 194
+    edges:
+      da-149:
+        waypoints:
+          - x: -1131.1737295985477
+            'y': -258.3904168188485
+            id: da-150
 semantics:
   nodes:
     da-4:
@@ -128,14 +134,19 @@ semantics:
         want you to create a graph of the existing states and their transitions.  I want to see
         keypresses and keyreleases and key repeats.  I think we may have an old version of this as
         one of the samples, which I'll want to have you replace if I'm remembering this properly.
-    da-141:
-      label: >-
-        When editing text, I want you to move the viewport to keep the cursor and a few lines on
-        either side always visible
     da-143:
       label: >-
         When navigating, I want you to use ghost nodes to show nodes that are (wholly or partially)
         off screen, occluded, or too small to read.
+    da-145:
+      label: >-
+        the sample graph you created isn't what I had in mind.  I want a node for the main mode
+        menu, then edges coming out of it which will include "r-down"-labeled edge connecting to a
+        "Zoom/Pan" submenu node, which in turn include outgoing edges labeled "i-down / Zoom In"
+        and "o - down / Zoom Out", each going to an unlabeled node.  The unlabeled nodes will have
+        self-loop edges labeled "key repeat fired / Zoom In" and "key repeat fired/ Zoom Out" and
+        will have outgoing edges going back to the main mode menu root and to the "Zoom/Pan"
+        submenu node, marked with "r-up" and "i-up"/"o-up".
   edges:
     da-26:
       from: da-24
@@ -161,13 +172,13 @@ semantics:
     da-138:
       from: da-137
       to: da-48
-    da-140:
-      from: da-139
-      to: da-48
-    da-142:
-      from: da-141
-      to: da-48
     da-144:
       from: da-143
       to: da-48
+    da-146:
+      from: da-145
+      to: da-48
+    da-149:
+      from: da-145
+      to: da-139
 `;
