@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-06. Branch: `main`._
+_Updated 2026-08-07. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -234,6 +234,8 @@ _Updated 2026-08-06. Branch: `main`._
 
 53. **Four live Next items (2026-08-06).** **(a)** `i` over an existing node or edge label now enters Vim normal with a box caret; newly created nodes and labels still enter Insert directly. **(b)** The stale **Mode / Shortcut Hierarchy** sample is replaced by **Keymenu States / Events**, a 24-state / 48-transition graph of physical keydown, keyup, app-owned repeat, submenu-stack, graph-text mode, Caps, and suspended-surface behavior. **(c)** Graph-text editing pans without zooming to keep the caret inside a comfort band with three rendered lines of context where possible. **(d)** A node reached by crosshair navigation gets a viewport-clamped, natural-scale clone when it is wholly or partly offscreen, overlapped by a higher node, or rendered below the readable font threshold; readable visible landings are not duplicated. Designs: [`notes/architecture-keymenu-model.md`](notes/architecture-keymenu-model.md), [`notes/design-label-edit-targeting.md`](notes/design-label-edit-targeting.md), and [`notes/design-normal-movement-goal-line.md`](notes/design-normal-movement-goal-line.md). Verified by `tools/repro-next-items.js` (9/9), the preserved editing/navigation repros (29/29 and 16/16), the full unit suite (384/384), and a clean production build (existing budget/CommonJS warnings only).
 
+54. **Self-loop creation restored under Add → Edge (2026-08-07).** The canvas, snapshots, and file format already supported self-loops, but the last interaction disappeared when the old directional edge picker retired and `connectSelectedNodes` retained a self-edge guard. Add now has an extensible **`s` Edge...** submenu with **`l` Self Loop** (`a → s → l` Vim; `e → s → l` IJKL). Add-over-node is drawing-area-owned grow mode, so it exposes the same `add > edge` surface rather than hiding the new submenu behind the keymenu suspension. The action uses active directedness/line-style defaults, produces the existing four-point visible loop, auto-saves, and is one undo step. The surviving connect command also accepts identical source/destination nodes again. Verified with focused keymenu/drawing specs, the full 388-test suite, a real-key browser check of both menu surfaces and the rendered 8-coordinate Konva path, and a production build.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
@@ -379,7 +381,7 @@ The next.org graph is a **pure tree** (61n/60e, no multi-parent nodes) — strai
 - **Quick settings panel** — persistent sidebar for mode-like settings (shape, directedness, color, line style, font). Orthogonal to keymenu modes.
 - **Style submenu (`w → s`) UX** — user unsure how to use it; needs discoverability work or docs.
 - **Shift-shift timing** — slow to ~3 seconds; current value feels too aggressive.
-- **Self-linking edges** — need control points forming a loop.
+- ~~**Self-linking edges**~~ — shipped 2026-08-07 via Add → Edge → Self Loop.
 - **Parallel edges** — multiple edges between same pair of nodes.
 - **Gather feature** — should be recursive and push away nodes; relates to applying layouts more generally.
 - **Crosshair visual treatment** — make the crosshairs feel like interaction chrome rather than part of the diagram; explore distinct color, animation/pulse, transparency, and less distracting adaptive hit-radius visuals (see [`notes/idea-crosshair-visual-treatment.md`](notes/idea-crosshair-visual-treatment.md)).

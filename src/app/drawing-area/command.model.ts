@@ -79,6 +79,7 @@ export enum DACommandType {
   INCREASE_SELECTED_TEXT_SIZE = 'INCREASE_SELECTED_TEXT_SIZE',
   DECREASE_SELECTED_TEXT_SIZE = 'DECREASE_SELECTED_TEXT_SIZE',
   CREATE_NEW_NODE = 'CREATE_NEW_NODE',
+  ADD_SELF_EDGE = 'ADD_SELF_EDGE',
   INSERT_WAYPOINT = 'INSERT_WAYPOINT',
   INSERT_CHAR = 'INSERT_CHAR',
   EXIT_LABEL_EDIT_MODE = 'EXIT_LABEL_EDIT_MODE',
@@ -201,6 +202,7 @@ export type DACommand =
   | {kind: DACommandType.INCREASE_SELECTED_TEXT_SIZE}
   | {kind: DACommandType.DECREASE_SELECTED_TEXT_SIZE}
   | {kind: DACommandType.CREATE_NEW_NODE; nodeShape?: NodeShape}
+  | {kind: DACommandType.ADD_SELF_EDGE}
   | {kind: DACommandType.INSERT_WAYPOINT}
   | {kind: DACommandType.INSERT_CHAR, value: string}
   | {kind: DACommandType.EXIT_LABEL_EDIT_MODE}
@@ -268,7 +270,7 @@ export type DACommand =
   // no-op and the keymenu proceeds with the held hub submenu. keys carries
   // the active profile's steering bindings; holdKey's release commits.
   | {kind: DACommandType.ENTER_ADD_MODE; holdKey: string;
-     keys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string}}
+     keys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string; edgeSubmenu: string; selfLoop: string}}
   // Tap of the insert-text key: edit the text of whatever is under the
   // crosshairs (node label, edge label, free label).
   | {kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}

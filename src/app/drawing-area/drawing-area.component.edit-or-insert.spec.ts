@@ -7,6 +7,7 @@ import {DACommandType} from './command.model';
 describe('DrawingAreaComponent add/insert tap semantics', () => {
   function buildComponent(overrides: {
     selectedEdges?: unknown[];
+    selectedNodes?: unknown[];
     labelUnderCrosshairs?: unknown;
     nodesUnderCrosshairs?: unknown[];
     waypointUnderCrosshairs?: unknown;
@@ -19,6 +20,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.daOut = jasmine.createSpyObj('daOut', ['emit']);
     component.drawingLayer = {
       getSelectedDAEdges: () => overrides.selectedEdges ?? [],
+      getSelectedDANodes: () => overrides.selectedNodes ?? [],
       unselectAll: jasmine.createSpy('unselectAll'),
       batchDraw: jasmine.createSpy('batchDraw'),
       serializeGraph: () => ({nodes: [], edges: []}),
@@ -49,6 +51,9 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.emitStatus = jasmine.createSpy('emitStatus');
     component.undoRedoService = {pushSnapshot: jasmine.createSpy('pushSnapshot')};
     component.crosshairsLayer = {hideCrosshairs: jasmine.createSpy('hideCrosshairs')};
+    component.checkAndEmitEditState = jasmine.createSpy('checkAndEmitEditState');
+    component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
+    component.growMods = new Set<string>();
     return component;
   }
 
@@ -128,6 +133,71 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
         nodeShape: 'circle',
         tags: [],
       })).toBe(0);
+    });
+  });
+
+  describe('self-loop add', () => {
+    it('adds the default edge from the hovered node back to itself', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent({nodesUnderCrosshairs: [node]});
+      const edge = {};
+      component.addDefaultEdge = jasmine.createSpy('addDefaultEdge').and.returnValue(edge);
+
+      expect(component.addSelfEdge()).toBe(edge);
+      expect(component.addDefaultEdge).toHaveBeenCalledWith(node, node);
+      expect(component.drawingLayer.batchDraw).toHaveBeenCalled();
+      expect(component.emitStatus).toHaveBeenCalledWith('Self loop added to A');
+    });
+
+    it('falls back to the sole selected node', () => {
+      const node = {zIndex: () => 1, label: {text: () => ''}, nodeShape: 'circle'};
+      const component = buildComponent({selectedNodes: [node]});
+      component.addDefaultEdge = jasmine.createSpy('addDefaultEdge').and.returnValue({});
+
+      component.addSelfEdge();
+
+      expect(component.addDefaultEdge).toHaveBeenCalledWith(node, node);
+    });
+
+    it('opens Add > Edge from grow targeting and commits Self Loop', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent();
+      component.growActive = true;
+      component.growAnchor = node;
+      component.growEdgeMenuActive = false;
+      component.growHoldKey = 'a';
+      component.growKeys = {
+        up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
+        search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
+      };
+      component.growGhost = null;
+      component.navPopupOpen = false;
+      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+      expect(component.growEdgeMenuActive).toBeTrue();
+      expect(component.daOut.emit).toHaveBeenCalledWith(
+        {kind: 'popup-state', open: true, surface: 'grow-edge'});
+
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
+      expect(component.commitGrowSelfLoop).not.toHaveBeenCalled();
+      component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
+      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+    });
+
+    it('captures one undo snapshot when the grow Edge submenu commits', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent();
+      component.growAnchor = node;
+      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+      component.addSelfEdge = jasmine.createSpy('addSelfEdge');
+
+      component.commitGrowSelfLoop();
+
+      expect(component.exitGrowMode).toHaveBeenCalled();
+      expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(1);
+      expect(component.addSelfEdge).toHaveBeenCalledWith(node);
+      expect(component.scheduleVaultAutoSave).toHaveBeenCalled();
     });
   });
 

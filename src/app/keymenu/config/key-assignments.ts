@@ -40,8 +40,13 @@ export interface KeymenuKeyAssignments {
     readonly diamond: KeyString;
     readonly junction: KeyString;
     readonly invisible: KeyString;
+    readonly edge: KeyString;
     readonly label: KeyString;
     readonly waypoint: KeyString;
+  };
+  /** Children of the Edge submenu under Add. */
+  readonly edgeKinds: {
+    readonly selfLoop: KeyString;
   };
   readonly nodeTypes: {
     readonly box: KeyString;
@@ -200,8 +205,12 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     diamond: 'v',
     junction: 'g',
     invisible: 'x',
+    edge: 's',
     label: 'f',
     waypoint: 'w',
+  },
+  edgeKinds: {
+    selfLoop: 'l',
   },
   nodeTypes: {
     box: 'b',
@@ -323,8 +332,12 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     diamond: 'e',
     junction: 'g',
     invisible: 'x',
+    edge: 's',
     label: 'f',
     waypoint: 'w',
+  },
+  edgeKinds: {
+    selfLoop: 'l',
   },
   nodeTypes: {
     box: 'b',

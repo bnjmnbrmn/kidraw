@@ -229,6 +229,14 @@ describe('KeymenuComponent', () => {
     expect(keyMenu.currentMode.name).toBe('surfaceGrowEmpty');
     expect(keyMenu.currentMode.stackTop.keys['f'].label).toBe('Choose Node Type');
 
+    component.setSuspended(true, 'grow-targeting');
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowTargeting');
+    expect(keyMenu.currentMode.stackTop.keys['s'].label).toBe('Edge...');
+
+    component.setSuspended(true, 'grow-edge');
+    expect(keyMenu.currentMode.name).toBe('surfaceGrowEdge');
+    expect(keyMenu.currentMode.stackTop.keys['l'].label).toBe('Self Loop');
+
     component.setSuspended(true, 'grow-type-popup');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowTypePopup');
     expect(keyMenu.currentMode.stackTop.keys['j'].label).toBe('Next Type');
@@ -420,9 +428,11 @@ describe('KeymenuComponent', () => {
       return (component as any).buildEditSubmenuConfig();
     }
 
-    it('carries the left-hand kinds plus label/waypoint, and no retired entries (vim)', () => {
+    it('carries node kinds, an Edge submenu, and label/waypoint (vim)', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);
-      const hub = buildHub(fixture.componentInstance);
+      const component = fixture.componentInstance;
+      const emitSpy = spyOn(component.keyMenuOut, 'emit');
+      const hub = buildHub(component);
       expect((hub['d'] as LabeledAction).actionLabel).toBe('Box');
       expect((hub['c'] as LabeledAction).actionLabel).toBe('Circle');
       expect((hub['e'] as LabeledAction).actionLabel).toBe('Diamond');
@@ -430,10 +440,14 @@ describe('KeymenuComponent', () => {
       expect((hub['x'] as LabeledAction).actionLabel).toBe('Invisible');
       expect((hub['f'] as LabeledAction).actionLabel).toBe('Add Label');
       expect((hub['w'] as LabeledAction).actionLabel).toBe('Add Waypoint');
-      // Retired with the grow flow (2026-07-20): the ...Edge directional
-      // picker and the u/o connect modifiers — connecting nodes is grow
-      // mode's job now.
-      expect(hub['s']).toBeUndefined();
+      const edge = hub['s'] as LabeledSubmenuConfig;
+      expect(edge.submenuLabel).toBe('Edge...');
+      const selfLoop = edge.submenuConfig['l'] as LabeledAction;
+      expect(selfLoop.actionLabel).toBe('Self Loop');
+      selfLoop.action();
+      expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ADD_SELF_EDGE});
+      // The old directional picker and u/o connect modifiers remain retired;
+      // grow mode handles ordinary node-to-node edges.
       expect(hub['u']).toBeUndefined();
       expect(hub['o']).toBeUndefined();
     });

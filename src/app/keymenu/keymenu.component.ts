@@ -240,6 +240,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceGrowEdge: new USQwertyModeConfig(this.buildGrowEdgeSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTargetPopup: new USQwertyModeConfig(this.buildGrowTargetPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTypePopup: new USQwertyModeConfig(this.buildGrowTypePopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -590,10 +591,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [insert.diamond]:   insertNode('diamond',   'Diamond'),
       [insert.junction]:  insertNode('junction',  'Junction'),
       [insert.invisible]: insertNode('invisible', 'Invisible'),
+      [insert.edge]: new LabeledSubmenuConfig('Edge...', this.buildEdgeSubmenuConfig()),
       [insert.label]: new LabeledAction('Add Label', this.hubOnce(() =>
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL})), false),
       [insert.waypoint]: new LabeledAction('Add Waypoint', this.hubOnce(() =>
         this.keyMenuOut.emit({kind: DACommandType.INSERT_WAYPOINT})), false),
+    } as SubmenuConfig;
+  }
+
+  private buildEdgeSubmenuConfig(): SubmenuConfig {
+    const edgeKinds = this.keyAssignments.edgeKinds;
+    return {
+      [edgeKinds.selfLoop]: new LabeledAction('Self Loop', this.hubOnce(() =>
+        this.keyMenuOut.emit({kind: DACommandType.ADD_SELF_EDGE})), false),
     } as SubmenuConfig;
   }
 
@@ -1033,10 +1043,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [m.left]: this.surfaceAction('Target Left'),
       [m.down]: this.surfaceAction('Target Down'),
       [m.right]: this.surfaceAction('Target Right'),
+      [this.keyAssignments.insert.edge]: this.surfaceAction('Edge...'),
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
       [this.keyAssignments.select.cycleDirection]: this.surfaceAction('Cycle Direction'),
       [this.keyAssignments.search.open]: this.surfaceAction('Find Target'),
       [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Commit'),
+    } as SubmenuConfig;
+  }
+
+  private buildGrowEdgeSurfaceConfig(): SubmenuConfig {
+    return {
+      [this.keyAssignments.edgeKinds.selfLoop]: this.surfaceAction('Self Loop'),
+      '[': this.surfaceAction('Esc: Back'),
     } as SubmenuConfig;
   }
 
@@ -1084,6 +1102,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly SURFACE_MODES: Record<KeyboardSurface, string> = {
     'nav-popup': 'surfaceNavPopup',
     'grow-targeting': 'surfaceGrowTargeting',
+    'grow-edge': 'surfaceGrowEdge',
     'grow-empty': 'surfaceGrowEmpty',
     'grow-target-popup': 'surfaceGrowTargetPopup',
     'grow-type-popup': 'surfaceGrowTypePopup',
@@ -1170,6 +1189,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     labelEditVimVisualCaps: '#ed7d31',
     surfaceNavPopup: '#9b59b6',
     surfaceGrowTargeting: '#00a6a6',
+    surfaceGrowEdge: '#00a6a6',
     surfaceGrowEmpty: '#00a6a6',
     surfaceGrowTargetPopup: '#9b59b6',
     surfaceGrowTypePopup: '#9b59b6',
@@ -1200,6 +1220,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'move by link > choose edge';
     } else if (modeName === 'surfaceGrowTargeting') {
       displayName = 'add > choose target';
+    } else if (modeName === 'surfaceGrowEdge') {
+      displayName = 'add > edge';
     } else if (modeName === 'surfaceGrowEmpty') {
       displayName = 'add > empty canvas';
     } else if (modeName === 'surfaceGrowTargetPopup') {
@@ -1615,7 +1637,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
                cycle: this.keyAssignments.select.cycleDirection,
                newNode: insert.label, search: this.keyAssignments.search.open,
                coarse: this.keyAssignments.moveSpeed.bigger,
-               fine: this.keyAssignments.moveSpeed.smaller}});
+               fine: this.keyAssignments.moveSpeed.smaller,
+               edgeSubmenu: insert.edge,
+               selfLoop: this.keyAssignments.edgeKinds.selfLoop}});
       if (this.suspended) {
         return;
       }

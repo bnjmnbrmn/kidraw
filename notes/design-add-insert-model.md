@@ -86,7 +86,9 @@ new node has entered the picture:
    never strands in labelEdit.
 
 Consequence: existing↔existing connection is the primary gesture here, so
-the `s`+direction edge picker retires once this lands.
+the old `s`+direction edge picker retired when this landed. A smaller
+`s` **Edge...** submenu returned on 2026-08-07 for edge kinds that grow
+targeting cannot express; its first action is `l` **Self Loop**.
 
 ## Cautions
 
@@ -131,7 +133,7 @@ list Ben asked to keep track of.
 | 19 | `v` submenu: `o` cycles directionality of selected edge(s) | built as 3-state (D→U→B); reversing an existing edge is a separate structural op, deferred | ✅ built 2026-07-19 (scope note) |
 | 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers | ✅ built 2026-07-19 — awaiting Ben's feel |
 | 16 | u/o connect modifiers (07-18 hub) | **retired 2026-07-20** — grow mode covers connecting; code + `CREATE_NEW_NODE_CONNECTED` deleted (in git history) | ✅ done |
-| 17 | `s`+direction edge picker | **retired 2026-07-20** — superseded by grow targeting; `BEGIN_/SET_/FINALIZE_DIRECTED_EDGE` deleted (in git history) | ✅ done |
+| 17 | `s`+direction edge picker | **retired 2026-07-20** — superseded by grow targeting; `BEGIN_/SET_/FINALIZE_DIRECTED_EDGE` deleted (in git history). The `s` key returned 2026-08-07 as an Edge-kind submenu (`l` Self Loop), not as the old directional picker. | ✅ done |
 
 ## Staging
 

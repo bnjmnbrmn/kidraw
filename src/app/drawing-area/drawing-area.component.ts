@@ -337,6 +337,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
+    DACommandType.ADD_SELF_EDGE,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.ADD_LABEL,
     DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
@@ -394,6 +395,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
+    DACommandType.ADD_SELF_EDGE,
     DACommandType.QUICK_ADD,
     DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.INSERT_WAYPOINT,
@@ -422,6 +424,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
+    DACommandType.ADD_SELF_EDGE,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
     DACommandType.ADD_LABEL,
@@ -782,6 +785,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.CREATE_NEW_NODE:
         this.createNewNode(command.nodeShape);
+        break;
+      case DACommandType.ADD_SELF_EDGE:
+        this.addSelfEdge();
         break;
       case DACommandType.INSERT_WAYPOINT:
         this.insertWaypointAtCrosshairs();
@@ -2411,7 +2417,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
-      if (srcNode === destNode) return; // no self-edges
       this.addDefaultEdge(srcNode, destNode);
       this.unselectAll();
       return;
@@ -6774,7 +6779,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
-  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string} | null = null;
+  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string; edgeSubmenu: string; selfLoop: string} | null = null;
+  private growEdgeMenuActive = false;
+  private growSelfLoopPending = false;
   // Placement sub-mode (after the type popup picked a kind for a NEW node).
   private growPlacing = false;
   private growShape: NodeShape | undefined = undefined;
@@ -6809,6 +6816,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacedRough = false;
     this.growMods.clear();
     this.growDirectionalFocus = false;
+    this.growEdgeMenuActive = false;
+    this.growSelfLoopPending = false;
     this.growHoldKey = holdKey;
     this.growKeys = keys;
     this.daOut.emit({
@@ -6828,6 +6837,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const k = this.growKeys;
     const dir = key === k.left ? 'left' : key === k.right ? 'right'
       : key === k.up ? 'up' : key === k.down ? 'down' : null;
+    if (this.growEdgeMenuActive) {
+      if (key === k.selfLoop) {
+        event.preventDefault();
+        this.growSelfLoopPending = true;
+      } else if (key === 'escape') {
+        event.preventDefault();
+        this.growEdgeMenuActive = false;
+        this.growSelfLoopPending = false;
+        this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-targeting'});
+        this.redrawGrowGhost();
+      }
+      return;
+    }
+    if (!this.growPlacing && key === k.edgeSubmenu && this.growAnchor) {
+      event.preventDefault();
+      this.growEdgeMenuActive = true;
+      this.growGhost?.destroy();
+      this.growGhost = null;
+      this.drawingLayer.batchDraw();
+      this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
+      return;
+    }
     if (key === k.cycle) {
       if (!this.growAnchor) return;
       event.preventDefault();
@@ -6880,10 +6911,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!this.growActive) return;
     const key = event.key.toLowerCase();
     this.growMods.delete(key);
+    if (this.growEdgeMenuActive && this.growSelfLoopPending && key === this.growKeys?.selfLoop) {
+      this.growSelfLoopPending = false;
+      this.commitGrowSelfLoop();
+      return;
+    }
     // Sticky phase: with a popup open the hold key is expected to be
     // released (typing needs both hands) — Enter/Esc resolve the flow.
     if (this.navPopupOpen) return;
     if (key !== this.growHoldKey) return;
+    if (this.growEdgeMenuActive) {
+      this.exitGrowMode();
+      return;
+    }
     if (this.growPlacing) {
       this.commitGrowPlacement();
       return;
@@ -7111,6 +7151,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
   }
 
+  private commitGrowSelfLoop(): void {
+    const anchor = this.growAnchor;
+    this.exitGrowMode();
+    if (!anchor) return;
+    this.finishTweens();
+    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
+    this.addSelfEdge(anchor);
+    this.scheduleVaultAutoSave();
+  }
+
   /** Directionality state used when a grow/add gesture begins. The default
    *  directed state is always outgoing from the anchor; explicit user
    *  defaults (undirected/bidirectional) are still respected. */
@@ -7129,6 +7179,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     edge.directedness = this._defaultEdgeDirectedness;
     edge.lineStyle = this._defaultLineStyle;
     this.autoRouteNewEdge(edge);
+    return edge;
+  }
+
+  /** Add a self-loop to an explicit grow anchor, or to the topmost node under
+   *  the crosshairs (falling back to the sole selected node for command-palette
+   *  and classic Add-menu use). */
+  private addSelfEdge(explicitAnchor?: DANode): DAEdge | null {
+    const hovered = this.getDANodesContainingCrosshairs();
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const anchor = explicitAnchor
+      ?? (hovered.length > 0
+        ? hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
+        : (selected.length === 1 ? selected[0] : null));
+    if (!anchor) {
+      this.emitStatus('⚠ Self Loop needs one node under the crosshairs or selected');
+      return null;
+    }
+    const edge = this.addDefaultEdge(anchor, anchor);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.emitStatus(`Self loop added to ${anchor.label.text() || anchor.nodeShape}`);
     return edge;
   }
 
@@ -7177,6 +7248,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private exitGrowMode(): void {
     this.growActive = false;
+    this.growEdgeMenuActive = false;
+    this.growSelfLoopPending = false;
     this.growGhost?.destroy();
     this.growGhost = null;
     this.growOrigin = null;

@@ -6,6 +6,7 @@ import {EdgeDirectedness, LineStyle, NodeShape, TextCursorMode} from './command.
 export type KeyboardSurface =
   | 'nav-popup'
   | 'grow-targeting'
+  | 'grow-edge'
   | 'grow-empty'
   | 'grow-target-popup'
   | 'grow-type-popup'
