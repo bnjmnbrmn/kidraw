@@ -18,20 +18,21 @@ describe('DemoDataService', () => {
 
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
-    expect(nodes.length).toBe(17);
-    expect(edges.length).toBe(9);
+    expect(nodes.length).toBe(16);
+    expect(edges.length).toBe(15);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
-    const nextEdges = edges.filter(edge =>
-      edge.srcNode.id === 'da-48' || edge.destNode.id === 'da-48');
+    const nextEdges = edges.filter(edge => edge.srcNode.id === 'da-48');
     expect(nextEdges.map(edge => edge.id).sort()).toEqual([
-      'da-140', 'da-142', 'da-143',
+      'da-113', 'da-117', 'da-97',
     ]);
-    expect(nodes.find(node => node.id === 'da-139')?.label.text())
-      .toContain('[Edit] Repeat delay');
-    expect(nodes.find(node => node.id === 'da-141')?.label.text())
-      .toContain('Self-loop');
+    expect(nodes.find(node => node.id === 'da-93')?.label.text())
+      .toContain('waypoints to self-loop');
+    expect(nodes.find(node => node.id === 'da-111')?.label.text())
+      .toContain('Move by Node');
+    expect(nodes.find(node => node.id === 'da-115')?.label.text())
+      .toContain('self loops');
   });
 
   it('ships the current keymenu event/state graph in place of the stale shortcut tree', () => {

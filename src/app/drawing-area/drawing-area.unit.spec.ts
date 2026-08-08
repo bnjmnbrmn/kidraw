@@ -236,6 +236,36 @@ describe('DrawingArea Unit Tests', () => {
       expect(node.outgoingEdges).toContain(edge);
       expect(node.incomingEdges).toContain(edge);
     });
+
+    it('lets a waypoint reshape a self-loop without collapsing its default route', () => {
+      const node = new DANode(120, 80, 'self');
+      const edge = new DAEdge(node, node, 'self-loop');
+      const original = edge.getPathPoints();
+      const middle = {
+        x: (original[1].x + original[2].x) / 2,
+        y: (original[1].y + original[2].y) / 2,
+      };
+
+      const waypoint = edge.insertWaypointAt(middle, 1);
+
+      expect(edge.getPathPoints()).toEqual([
+        original[0],
+        original[1],
+        middle,
+        original[2],
+        original[3],
+      ]);
+
+      edge.moveWaypoint(waypoint, 45, -30);
+
+      expect(edge.getPathPoints()[2]).toEqual({
+        x: middle.x + 45,
+        y: middle.y - 30,
+      });
+      expect(edge.line.points()).toEqual(
+        edge.getPathPoints().flatMap(point => [point.x, point.y]),
+      );
+    });
   });
 
   describe('DACrosshairs', () => {

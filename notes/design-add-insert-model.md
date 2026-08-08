@@ -44,8 +44,10 @@ original motivation. hjkl therefore has two meanings, switched by whether a
 new node has entered the picture:
 
 1. **On hold: targeting mode.** A target highlight starts at the anchor.
-   `hjkl` hops it node-to-node (snap-to-node directional geometry); a live
-   ghost edge from anchor to the highlighted target updates each hop.
+   `hjkl` hops it node-to-node through the actual **Move by Node** engine at
+   its nodes-only tier (including the active spatial strategy, overlay,
+   crosshair landing, viewport pan, and turn re-origin behavior); a live ghost
+   edge from anchor to the highlighted target updates each hop.
    Release `a` → edge anchor→target, stay in normal mode.
 2. **Entering new-node mode (round 4 — single path, a-n dropped):**
    **hold `f` while `a` is held** → the **node-type popup** opens (reuse
@@ -91,7 +93,15 @@ the old `s`+direction edge picker retired when this landed. A smaller
 targeting cannot express; its first action is `l` **Self Loop**. The
 drawing-area owner records physical overlap for this chord: if `l` rolls down
 just before `s`, releasing `l` still commits Self Loop instead of leaving the
-temporary rightward target hop as an ordinary edge.
+temporary rightward target hop as an ordinary edge. The Edge surface is also
+sticky once opened: releasing Add before tapping `l` leaves it open, with Esc
+as cancel. From blank-canvas grow it is available for the sole selected node,
+so Self Loop does not require moving the crosshairs back over that node.
+
+Self-loop waypoints use the same editable control-point route as other edges.
+The default loop's two implicit bends materialize on first insertion, keeping
+the visible loop unchanged; moving the inserted waypoint then reshapes the
+painted loop and persists those control points in the file.
 
 ## Cautions
 
@@ -104,8 +114,9 @@ temporary rightward target hop as an ordinary edge.
   keymenu renders a display-only card for targeting, popup selection, and
   placement, then restores Normal or Label Edit when ownership returns.
   Chord Bug B (order sensitivity) lurks near any held-key design. The Edge →
-  Self Loop leaf/submenu roll is explicitly tolerated as of 2026-08-08; other
-  held flows still follow their documented press order.
+  Self Loop leaf/submenu roll is explicitly tolerated as of 2026-08-08, and
+  the Edge surface remains sticky after Add is released; other held flows
+  still follow their documented press order.
 - Two-hands rule (07-18): held `a` is left-hand; hjkl steering right-hand ✓;
   shape keys are left-hand next to held `a` ✓ (same-hand but reachable, as
   the old a-submenu was).

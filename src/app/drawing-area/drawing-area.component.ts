@@ -6779,13 +6779,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** null = pristine (no target hopped yet) → release does the default
    *  connected quick-add to the right. */
   private growTarget: DANode | null = null;
-  private growDirectionalFocus = false;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
   private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string; edgeSubmenu: string; selfLoop: string} | null = null;
   private growEdgeMenuActive = false;
   private growSelfLoopPending = false;
+  /** Edge kinds are a small sticky choice surface: once opened, releasing the
+   *  Add hold does not discard it before the user can press its leaf key. */
+  private growHoldReleased = false;
   /** Physical keys held during grow mode. This makes nested add chords
    *  tolerant of normal human key overlap instead of turning a rolled Self
    *  Loop into a rightward edge hop. */
@@ -6823,9 +6825,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacePos = null;
     this.growPlacedRough = false;
     this.growMods.clear();
-    this.growDirectionalFocus = false;
     this.growEdgeMenuActive = false;
     this.growSelfLoopPending = false;
+    this.growHoldReleased = false;
     this.growHoldKey = holdKey;
     this.growKeys = keys;
     this.daOut.emit({
@@ -6833,6 +6835,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       open: true,
       surface: this.growAnchor ? 'grow-targeting' : 'grow-empty',
     });
+    if (this.growAnchor) this.showNodeGrid('nodes');
     this.redrawGrowGhost();
   }
 
@@ -6852,14 +6855,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.growSelfLoopPending = true;
       } else if (key === 'escape') {
         event.preventDefault();
+        if (this.growHoldReleased) {
+          this.exitGrowMode();
+          this.emitStatus('Add canceled');
+          return;
+        }
         this.growEdgeMenuActive = false;
         this.growSelfLoopPending = false;
         this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-targeting'});
+        this.showNodeGrid('nodes');
         this.redrawGrowGhost();
       }
       return;
     }
-    if (!this.growPlacing && key === k.edgeSubmenu && this.growAnchor) {
+    if (!this.growPlacing && key === k.edgeSubmenu) {
       event.preventDefault();
       this.openGrowEdgeMenu();
       return;
@@ -6927,7 +6936,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.navPopupOpen) return;
     if (key !== this.growHoldKey) return;
     if (this.growEdgeMenuActive) {
-      this.exitGrowMode();
+      this.growHoldReleased = true;
+      this.emitStatus('Choose an edge kind, or Esc to cancel');
       return;
     }
     if (this.growPlacing) {
@@ -6938,47 +6948,40 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private openGrowEdgeMenu(): void {
-    if (!this.growActive || !this.growAnchor || !this.growKeys ||
+    if (!this.growActive || !this.growKeys ||
         this.growPlacing || this.growEdgeMenuActive) return;
+    if (!this.growAnchor) {
+      const selected = this.drawingLayer.getSelectedDANodes();
+      if (selected.length !== 1) {
+        this.emitStatus('⚠ Edge kind needs one node under the crosshairs or selected');
+        return;
+      }
+      this.growAnchor = selected[0];
+      this.growOrigin = this.getNodeCenterInLayerCoordinates(this.growAnchor);
+    }
     this.growEdgeMenuActive = true;
     // If the leaf key arrived just before its submenu key, remember that
     // overlap and commit when the leaf is released.
     this.growSelfLoopPending = this.growPressedKeys.has(this.growKeys.selfLoop);
     this.growGhost?.destroy();
     this.growGhost = null;
+    this.hideNodeGrid();
     this.drawingLayer.batchDraw();
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
   }
 
-  /** Choose an edge target with the same fixed-anchor NSEW quadrant model as
-   *  Move by Link. Perpendicular keys scan within a quadrant and flow around
-   *  its corners; the anchor itself is never a candidate. */
+  /** Choose an edge target through the actual Move by Node engine. This shares
+   *  its selected strategy, nodes-only tier, overlay, crosshair landing,
+   *  viewport panning, same-direction run, and turn re-origin semantics. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
-    const anchorCenter = this.getNodeCenterInLayerCoordinates(this.growAnchor);
-    const nodes = this.drawingLayer.getDANodes().filter(node => node !== this.growAnchor);
-    const candidates = nodes.map(node => {
-      const center = this.getNodeCenterInLayerCoordinates(node);
-      const length = Math.hypot(center.x - anchorCenter.x, center.y - anchorCenter.y);
-      return {
-        id: node.id,
-        direction: length > 1e-9
-          ? {x: (center.x - anchorCenter.x) / length, y: (center.y - anchorCenter.y) / length}
-          : null,
-      };
-    });
-    const cardinal: Record<typeof direction, LinkCardinalDirection> = {
-      left: 'west', right: 'east', up: 'north', down: 'south',
-    };
-    const move = moveLinkQuadrant(
-      candidates,
-      this.growDirectionalFocus ? this.growTarget?.id ?? null : null,
-      cardinal[direction],
-    );
-    if (!move.id) return;
-    const target = nodes.find(node => node.id === move.id);
+    this.snapToNodeInDirection(direction, 'nodes');
+    const last = this.graphItemNavigationStrategy === 'adaptive-band-grid'
+      ? this.navGridLast
+      : this.quadrantNavLast;
+    if (!last || last.kind !== 'node') return;
+    const target = this.drawingLayer.getDANodes().find(node => node.id === last.id);
     if (!target) return;
-    this.growDirectionalFocus = true;
     this.growTarget = target;
     this.redrawGrowGhost();
   }
@@ -6999,6 +7002,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('⚠ No other nodes to connect to');
       return;
     }
+    this.hideNodeGrid();
     this.navPopupPurpose = 'grow-target';
     this.navPopupStartFilter = true;
     this.navPopupHoldKey = null;
@@ -7035,6 +7039,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  with j/k while f is down, releasing f selects (the popup's holdKey
    *  machinery); Enter also selects. */
   private openGrowTypePopup(): void {
+    this.hideNodeGrid();
     this.navPopupRows = [
       {id: 'box',       title: 'Box'},
       {id: 'circle',    title: 'Circle'},
@@ -7269,10 +7274,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growActive = false;
     this.growEdgeMenuActive = false;
     this.growSelfLoopPending = false;
+    this.growHoldReleased = false;
     this.growPressedKeys.clear();
     this.growGhost?.destroy();
     this.growGhost = null;
     this.growOrigin = null;
+    this.hideNodeGrid();
     this.daOut.emit({kind: 'popup-state', open: false});
     this.drawingLayer.batchDraw();
   }

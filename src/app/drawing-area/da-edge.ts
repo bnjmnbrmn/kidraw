@@ -354,7 +354,18 @@ export class DAEdge {
    *  arrowhead base does not clip behind the node face on shallow angles. */
   getPathPoints(): { x: number; y: number }[] {
     if (this.srcNode === this.destNode) {
-      return this.buildSelfLoopPoints(this.srcNode);
+      const defaults = this.buildSelfLoopPoints(this.srcNode);
+      if (this._controlPoints.length === 0) return defaults;
+      // A self-loop has two deliberately distinct attachment points on the
+      // node.  Keep those endpoints, but let its stored control points own the
+      // route between them just like they do for an ordinary edge.  Previously
+      // this branch always returned `defaults`, so waypoint glyphs could be
+      // inserted and moved while the painted loop remained unchanged.
+      return [
+        defaults[0],
+        ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
+        defaults[defaults.length - 1],
+      ];
     }
     const srcAimTarget = this._controlPoints.length > 0
       ? this._controlPoints[0]
@@ -473,8 +484,9 @@ export class DAEdge {
    *  polyline that minimizes the total path-length increase. Returns the
    *  new `DAWaypoint` glyph. */
   insertWaypoint(point: {x: number; y: number}): DAWaypoint {
-    const cps = [...this._controlPoints];
-    const idx = bestInsertionIndex(this.srcAnchor(), this.destAnchor(), cps, point);
+    const cps = this.controlPointsForWaypointInsertion();
+    const path = this.getPathPoints();
+    const idx = bestInsertionIndex(path[0], path[path.length - 1], cps, point);
     return this.spliceWaypoint(cps, point, idx);
   }
 
@@ -485,9 +497,21 @@ export class DAEdge {
    *  `_controlPoints` array (0..length), which maps 1:1 to segments in
    *  `getPathPoints()`. */
   insertWaypointAt(point: {x: number; y: number}, index: number): DAWaypoint {
-    const cps = [...this._controlPoints];
+    const cps = this.controlPointsForWaypointInsertion();
     const clamped = Math.max(0, Math.min(index, cps.length));
     return this.spliceWaypoint(cps, point, clamped);
+  }
+
+  /** A default self-loop's two bends are implicit rather than serialized.
+   *  Materialize them when the first waypoint is inserted so splitting any
+   *  of the three visible segments preserves the existing loop shape. */
+  private controlPointsForWaypointInsertion(): EdgeControlPoint[] {
+    if (this.srcNode !== this.destNode || this._controlPoints.length > 0) {
+      return [...this._controlPoints];
+    }
+    return this.buildSelfLoopPoints(this.srcNode)
+      .slice(1, -1)
+      .map(point => ({x: point.x, y: point.y}));
   }
 
   private spliceWaypoint(cps: EdgeControlPoint[], point: {x: number; y: number}, idx: number): DAWaypoint {

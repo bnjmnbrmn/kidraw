@@ -1066,6 +1066,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildGrowEmptySurfaceConfig(): SubmenuConfig {
     return {
+      [this.keyAssignments.insert.edge]: this.surfaceAction('Edge... (selected node)'),
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
       [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Quick Add'),
     } as SubmenuConfig;

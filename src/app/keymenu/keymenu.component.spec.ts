@@ -254,6 +254,7 @@ describe('KeymenuComponent', () => {
     component.setSuspended(true, 'grow-empty');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowEmpty');
     expect(keyMenu.currentMode.stackTop.keys['f'].label).toBe('Choose Node Type');
+    expect(keyMenu.currentMode.stackTop.keys['s'].label).toBe('Edge... (selected node)');
 
     component.setSuspended(true, 'grow-targeting');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowTargeting');

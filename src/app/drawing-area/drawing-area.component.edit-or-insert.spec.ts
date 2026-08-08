@@ -12,6 +12,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     nodesUnderCrosshairs?: unknown[];
     waypointUnderCrosshairs?: unknown;
     edgesUnderCrosshairs?: unknown[];
+    allNodes?: unknown[];
     defaultNodeShape?: string;
     diagramType?: string;
   } = {}): any {
@@ -21,6 +22,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.drawingLayer = {
       getSelectedDAEdges: () => overrides.selectedEdges ?? [],
       getSelectedDANodes: () => overrides.selectedNodes ?? [],
+      getDANodes: () => overrides.allNodes ?? [],
       unselectAll: jasmine.createSpy('unselectAll'),
       batchDraw: jasmine.createSpy('batchDraw'),
       serializeGraph: () => ({nodes: [], edges: []}),
@@ -50,7 +52,10 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.finishTweens = jasmine.createSpy('finishTweens');
     component.emitStatus = jasmine.createSpy('emitStatus');
     component.undoRedoService = {pushSnapshot: jasmine.createSpy('pushSnapshot')};
-    component.crosshairsLayer = {hideCrosshairs: jasmine.createSpy('hideCrosshairs')};
+    component.crosshairsLayer = {
+      hideCrosshairs: jasmine.createSpy('hideCrosshairs'),
+      batchDraw: jasmine.createSpy('batchDraw'),
+    };
     component.checkAndEmitEditState = jasmine.createSpy('checkAndEmitEditState');
     component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
     component.growMods = new Set<string>();
@@ -186,6 +191,54 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.commitGrowSelfLoop).toHaveBeenCalled();
     });
 
+    it('keeps the Edge submenu open when Add is released before its leaf', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent();
+      component.growActive = true;
+      component.growAnchor = node;
+      component.growEdgeMenuActive = true;
+      component.growSelfLoopPending = false;
+      component.growHoldReleased = false;
+      component.growHoldKey = 'a';
+      component.growKeys = {
+        up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
+        search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
+      };
+      component.navPopupOpen = false;
+      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+
+      component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'a'}));
+
+      expect(component.growHoldReleased).toBeTrue();
+      expect(component.exitGrowMode).not.toHaveBeenCalled();
+
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
+      component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
+      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+    });
+
+    it('opens Edge for the sole selected node from blank-canvas grow mode', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent({selectedNodes: [node]});
+      component.growActive = true;
+      component.growAnchor = null;
+      component.growPlacing = false;
+      component.growEdgeMenuActive = false;
+      component.growKeys = {
+        up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
+        search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
+      };
+      component.getNodeCenterInLayerCoordinates = () => ({x: 100, y: 200});
+      component.growGhost = null;
+
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+
+      expect(component.growAnchor).toBe(node);
+      expect(component.growOrigin).toEqual({x: 100, y: 200});
+      expect(component.growEdgeMenuActive).toBeTrue();
+    });
+
     it('accepts a Self Loop leaf rolled just before its Edge submenu key', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
@@ -224,6 +277,31 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(1);
       expect(component.addSelfEdge).toHaveBeenCalledWith(node);
       expect(component.scheduleVaultAutoSave).toHaveBeenCalled();
+    });
+  });
+
+  describe('grow endpoint navigation', () => {
+    it('delegates nodes-only endpoint selection to the active Move by Node engine', () => {
+      const anchor = {id: 'anchor'};
+      const target = {id: 'target'};
+      const component = buildComponent({
+        allNodes: [anchor, target],
+      });
+      component.growAnchor = anchor;
+      component.growTarget = null;
+      component.graphItemNavigationStrategy = 'adaptive-quadrant-rings';
+      component.quadrantNavLast = null;
+      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
+        .and.callFake(() => {
+          component.quadrantNavLast = {id: 'target', kind: 'node'};
+        });
+      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
+
+      component.growHop('right');
+
+      expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
+      expect(component.growTarget).toBe(target);
+      expect(component.redrawGrowGhost).toHaveBeenCalled();
     });
   });
 
