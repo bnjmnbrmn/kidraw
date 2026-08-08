@@ -34,7 +34,8 @@ export interface NormalMovementGoal {
   primary: number;
   /** After an off-line snap, visit its projection before advancing again. */
   pendingReturn?: NormalMovementPoint;
-  /** Do not repeatedly snap to a long edge or wide node during one pass. */
+  /** Direction-qualified visits. A feature can be crossed once each way,
+   *  but alternating at one boundary must not rediscover it indefinitely. */
   visited: ReadonlySet<string>;
   lastSign: -1 | 1 | null;
 }
@@ -77,12 +78,7 @@ export function nextNormalMovementStep(
   distance: number,
   candidates: readonly NormalMovementSnapCandidate[],
 ): NormalMovementStep {
-  let visited = state.visited;
-  if (state.lastSign !== null && state.lastSign !== sign) {
-    // Reversing direction is a fresh pass: features should be visitable on
-    // the way back too.
-    visited = new Set<string>();
-  }
+  const visited = state.visited;
 
   if (state.pendingReturn) {
     const target = state.pendingReturn;
@@ -100,7 +96,7 @@ export function nextNormalMovementStep(
   }
 
   const eligible = candidates
-    .filter(candidate => !visited.has(candidate.id))
+    .filter(candidate => !visited.has(visitKey(sign, candidate.id)))
     .map(candidate => {
       const point = candidateTarget(state, sign, candidate);
       return {
@@ -119,7 +115,7 @@ export function nextNormalMovementStep(
     const next = eligibleNext.candidate;
     const target = eligibleNext.point;
     const nextVisited = new Set(visited);
-    nextVisited.add(next.id);
+    nextVisited.add(visitKey(sign, next.id));
     const primary = primaryOf(state.axis, target);
     const projection = pointOnLine(state.axis, primary, state.line);
     const offLine = Math.abs(perpendicularOf(state.axis, target) - state.line) > EPS;
@@ -151,6 +147,10 @@ export function nextNormalMovementStep(
     target,
     kind: 'line',
   };
+}
+
+function visitKey(sign: -1 | 1, id: string): string {
+  return `${sign}:${id}`;
 }
 
 /**

@@ -18,16 +18,20 @@ describe('DemoDataService', () => {
 
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
-    expect(nodes.length).toBe(19);
-    expect(edges.length).toBe(11);
+    expect(nodes.length).toBe(17);
+    expect(edges.length).toBe(9);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
     const nextEdges = edges.filter(edge =>
       edge.srcNode.id === 'da-48' || edge.destNode.id === 'da-48');
     expect(nextEdges.map(edge => edge.id).sort()).toEqual([
-      'da-132', 'da-138', 'da-144', 'da-146',
+      'da-140', 'da-142', 'da-143',
     ]);
+    expect(nodes.find(node => node.id === 'da-139')?.label.text())
+      .toContain('[Edit] Repeat delay');
+    expect(nodes.find(node => node.id === 'da-141')?.label.text())
+      .toContain('Self-loop');
   });
 
   it('ships the current keymenu event/state graph in place of the stale shortcut tree', () => {

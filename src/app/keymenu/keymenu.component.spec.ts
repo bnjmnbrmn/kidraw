@@ -10,6 +10,7 @@ import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
 import {LabeledActionSubmenuConfig} from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
 import {DACommandType} from '../drawing-area/command.model';
+import {VisualConfigService} from '../services/visual-config.service';
 
 describe('KeymenuComponent', () => {
   beforeEach(async () => {
@@ -102,6 +103,31 @@ describe('KeymenuComponent', () => {
       initialDelayMs: 250,
       intervalMs: 100,
     });
+  });
+
+  it('keeps edit mode and applies new repeat timing when Settings changes', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const visualConfig = TestBed.inject(VisualConfigService);
+    const previous = {...visualConfig.config.cursor};
+
+    component.enterLabelEditMode('vimNormal');
+    visualConfig.updateConfig({cursor: {
+      ...visualConfig.config.cursor,
+      labelEditInitialDelayMs: 750,
+      labelEditIntervalMs: 180,
+    }});
+
+    const keyMenu = (component as any).keyMenu;
+    expect(keyMenu.currentMode.name).toBe('labelEditVimNormal');
+    const mode = keyMenu.currentMode as any;
+    expect(mode.stack[0].config._repeatConfig).toEqual({
+      initialDelayMs: 750,
+      intervalMs: 180,
+    });
+
+    visualConfig.updateConfig({cursor: previous});
   });
 
   it('binds vim-normal e to move to the word end', () => {

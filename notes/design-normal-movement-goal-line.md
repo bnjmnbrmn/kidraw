@@ -54,9 +54,19 @@ fully visible readable node is never duplicated.
 When normal movement deliberately snaps to an item, that semantic landing
 temporarily overrides geometric hit priority. This matters at a busy hub: an
 edge endpoint can overlap the hub's crosshair hit area, but the edge that was
-actually visited is the thing traced. The perpendicular return step after an
+actually visited is the thing traced. The trace is drawn immediately when the
+landing is chosen, before the movement tween: a held key's 100 ms repeat must
+not clear a thin-edge trace before the delayed geometric hover refresh can
+paint it. The perpendicular return step after an
 off-line snap has no item trace, so it does not misleadingly repaint an
 already-visited node.
+
+Visits are direction-qualified for the lifetime of the goal. A feature may be
+visited once northbound and once southbound (or once eastbound and once
+westbound), but changing direction does not erase the visit in the earlier
+direction. This prevents a small alternating gesture at one node boundary from
+repeatedly reporting the same node without ever making progress. Changing the
+movement axis or letting the indicators time out still starts a fresh goal.
 
 The dashed goal line renders above the ordinary grid but below graph content.
 It disappears on the same five-second timeout as the grid and crosshairs.

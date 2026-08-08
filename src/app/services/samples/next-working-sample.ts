@@ -1,6 +1,6 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-06. Keep the original IDs and geometry: some interaction
+ * session on 2026-08-08. Keep the original IDs and geometry: some interaction
  * repros and development notes refer to the Bugs/Next edges by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
@@ -63,24 +63,13 @@ styles:
       da-127:
         x: -740
         'y': -194.61755877992323
-      da-137:
-        x: -691.1838768796208
-        'y': -778.0937500000009
       da-139:
-        x: -1425
-        'y': -845
-      da-143:
-        x: -1040
-        'y': -850
-      da-145:
-        x: -1070
-        'y': 194
-    edges:
-      da-149:
-        waypoints:
-          - x: -1131.1737295985477
-            'y': -258.3904168188485
-            id: da-150
+        x: -640
+        'y': -786.0937500000009
+      da-141:
+        x: -840.0000000000002
+        'y': -911.0937500000009
+    edges: {}
 semantics:
   nodes:
     da-4:
@@ -122,31 +111,13 @@ semantics:
         When I go up and down over the Bugs node, I seem to be hitting more things than necessary
         (repeatedly hitting the Bugs node, and also some of the edges, the latter being fine) and
         also not highlighting the edges that I hit
-    da-137:
-      label: >-
-        i, over an existing node, should take you into vim normal mode.  You should still go
-        directly into vim insert mode if adding a new node.  (same applies for labels).
     da-139:
       label: >-
-        I want to have a version of the keymenu that doesn't take up so much room.  I'm envisioning
-        something that sits to the left side of the screen, and looks something like a traditional
-        file system explorer in an editor like vscode.  Before I have you implement this, though,  I
-        want you to create a graph of the existing states and their transitions.  I want to see
-        keypresses and keyreleases and key repeats.  I think we may have an old version of this as
-        one of the samples, which I'll want to have you replace if I'm remembering this properly.
-    da-143:
+        [Edit] Repeat delay and [Edit] Repeat interval in the Settings don't seem to be having any
+        effect
+    da-141:
       label: >-
-        When navigating, I want you to use ghost nodes to show nodes that are (wholly or partially)
-        off screen, occluded, or too small to read.
-    da-145:
-      label: >-
-        the sample graph you created isn't what I had in mind.  I want a node for the main mode
-        menu, then edges coming out of it which will include "r-down"-labeled edge connecting to a
-        "Zoom/Pan" submenu node, which in turn include outgoing edges labeled "i-down / Zoom In"
-        and "o - down / Zoom Out", each going to an unlabeled node.  The unlabeled nodes will have
-        self-loop edges labeled "key repeat fired / Zoom In" and "key repeat fired/ Zoom Out" and
-        will have outgoing edges going back to the main mode menu root and to the "Zoom/Pan"
-        submenu node, marked with "r-up" and "i-up"/"o-up".
+        Add...-Edge-Self-loop doesn't seem to be working
   edges:
     da-26:
       from: da-24
@@ -164,21 +135,15 @@ semantics:
       from: da-42
       to: da-41
     da-128:
-      from: da-4
-      to: da-127
-    da-132:
-      from: da-4
+      from: da-127
+      to: da-4
+    da-140:
+      from: da-139
       to: da-48
-    da-138:
-      from: da-137
+    da-142:
+      from: da-141
       to: da-48
-    da-144:
-      from: da-143
+    da-143:
+      from: da-127
       to: da-48
-    da-146:
-      from: da-145
-      to: da-48
-    da-149:
-      from: da-145
-      to: da-139
 `;

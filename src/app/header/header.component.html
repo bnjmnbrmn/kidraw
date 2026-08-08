@@ -112,25 +112,25 @@
               Repeat delay (ms):
               <input type="number" tabindex="-1" min="0" max="1000" step="10"
                      [value]="config.cursor.initialRepeatDelayMs"
-                     (change)="onNumberChange('cursor', 'initialRepeatDelayMs', $event)">
+                     (input)="onNumberChange('cursor', 'initialRepeatDelayMs', $event)">
             </label>
             <label class="swap-label">
               Repeat interval (ms):
               <input type="number" tabindex="-1" min="10" max="500" step="10"
                      [value]="config.cursor.repeatIntervalMs"
-                     (change)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
+                     (input)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
             </label>
             <label class="swap-label">
               Edit repeat delay (ms):
               <input type="number" tabindex="-1" min="0" max="1000" step="50"
                      [value]="config.cursor.labelEditInitialDelayMs"
-                     (change)="onNumberChange('cursor', 'labelEditInitialDelayMs', $event)">
+                     (input)="onNumberChange('cursor', 'labelEditInitialDelayMs', $event)">
             </label>
             <label class="swap-label">
               Edit repeat interval (ms):
               <input type="number" tabindex="-1" min="10" max="500" step="10"
                      [value]="config.cursor.labelEditIntervalMs"
-                     (change)="onNumberChange('cursor', 'labelEditIntervalMs', $event)">
+                     (input)="onNumberChange('cursor', 'labelEditIntervalMs', $event)">
             </label>
           </div>
         </details>

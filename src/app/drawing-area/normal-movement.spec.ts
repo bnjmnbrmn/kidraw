@@ -63,6 +63,25 @@ describe('normal movement goal line', () => {
     expect(reversed.snappedId).toBe('node:a');
   });
 
+  it('does not rediscover the same side after alternating at a boundary', () => {
+    const candidate: NormalMovementSnapCandidate = {
+      id: 'node:a',
+      point: {x: 20, y: 0},
+      priority: 0,
+      distance: 0,
+    };
+    let state = startNormalMovementGoal('x', {x: 0, y: 0});
+
+    const firstForward = nextNormalMovementStep(state, 1, 50, [candidate]);
+    expect(firstForward.snappedId).toBe('node:a');
+
+    state = nextNormalMovementStep(firstForward.state, -1, 50, [candidate]).state;
+    const secondForward = nextNormalMovementStep(state, 1, 50, [candidate]);
+
+    expect(secondForward.kind).toBe('line');
+    expect(secondForward.snappedId).toBeUndefined();
+  });
+
   it('stops at an item boundary when the goal line passes through it', () => {
     const crossingNode: NormalMovementSnapCandidate = {
       id: 'node:a',

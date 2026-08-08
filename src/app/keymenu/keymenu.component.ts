@@ -216,6 +216,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private rebuildKeyMenu() {
+    // Settings and theme changes rebuild every rendered key card. Keep the
+    // logical mode: otherwise changing an edit repeat value silently drops
+    // the user out of the very edit session where they want to try it.
+    const initialModeName = this.keyMenu
+      ? (this.suspended ? this.modeBeforeSuspend ?? 'normal' : this.keyMenu.currentMode.name)
+      : 'normal';
     if (this.keyMenu) {
       this.keyMenu.destroy();
     }
@@ -227,7 +233,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.keyMenu = new KeyMenu<DACommand>({
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
-      initialModeName: 'normal',
+      initialModeName,
       stageBackground: this.visualConfig.getEffectivePalette(this.themeService.theme).keymenuStageBackground,
       modes: {
         normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),

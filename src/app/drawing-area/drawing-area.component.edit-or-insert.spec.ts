@@ -54,6 +54,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.checkAndEmitEditState = jasmine.createSpy('checkAndEmitEditState');
     component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
     component.growMods = new Set<string>();
+    component.growPressedKeys = new Set<string>();
     return component;
   }
 
@@ -181,6 +182,31 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
       expect(component.commitGrowSelfLoop).not.toHaveBeenCalled();
+      component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
+      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+    });
+
+    it('accepts a Self Loop leaf rolled just before its Edge submenu key', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent();
+      component.growActive = true;
+      component.growAnchor = node;
+      component.growEdgeMenuActive = false;
+      component.growHoldKey = 'a';
+      component.growKeys = {
+        up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
+        search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
+      };
+      component.growGhost = null;
+      component.navPopupOpen = false;
+      component.growHop = jasmine.createSpy('growHop');
+      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
+      expect(component.growHop).toHaveBeenCalledWith('right');
+      component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
+      expect(component.growSelfLoopPending).toBeTrue();
+
       component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
       expect(component.commitGrowSelfLoop).toHaveBeenCalled();
     });

@@ -88,7 +88,10 @@ new node has entered the picture:
 Consequence: existing↔existing connection is the primary gesture here, so
 the old `s`+direction edge picker retired when this landed. A smaller
 `s` **Edge...** submenu returned on 2026-08-07 for edge kinds that grow
-targeting cannot express; its first action is `l` **Self Loop**.
+targeting cannot express; its first action is `l` **Self Loop**. The
+drawing-area owner records physical overlap for this chord: if `l` rolls down
+just before `s`, releasing `l` still commits Self Loop instead of leaving the
+temporary rightward target hop as an ordinary edge.
 
 ## Cautions
 
@@ -100,7 +103,9 @@ targeting cannot express; its first action is `l` **Self Loop**.
   Suspension changes input ownership but not the keymenu's visual role: the
   keymenu renders a display-only card for targeting, popup selection, and
   placement, then restores Normal or Label Edit when ownership returns.
-  Chord Bug B (order sensitivity) lurks near any held-key design.
+  Chord Bug B (order sensitivity) lurks near any held-key design. The Edge →
+  Self Loop leaf/submenu roll is explicitly tolerated as of 2026-08-08; other
+  held flows still follow their documented press order.
 - Two-hands rule (07-18): held `a` is left-hand; hjkl steering right-hand ✓;
   shape keys are left-hand next to held `a` ✓ (same-hand but reachable, as
   the old a-submenu was).

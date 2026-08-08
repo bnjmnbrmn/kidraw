@@ -2578,6 +2578,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             }
           : false;
         this.redrawNormalMovementGoalLine();
+        // Render the semantic target as soon as it is chosen. Waiting until
+        // after the 100 ms tween made a held 100 ms repeat clear the trace
+        // before it ever appeared, most noticeably for thin edges.
+        if (step.kind === 'snap') this.refreshCrosshairHoverHighlight();
         this.updateCrosshairsProbeShape(
           axis, tier, minorSpacing, majorSpacing, stepDistance, scale,
         );
@@ -6782,6 +6786,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string; edgeSubmenu: string; selfLoop: string} | null = null;
   private growEdgeMenuActive = false;
   private growSelfLoopPending = false;
+  /** Physical keys held during grow mode. This makes nested add chords
+   *  tolerant of normal human key overlap instead of turning a rolled Self
+   *  Loop into a rightward edge hop. */
+  private growPressedKeys = new Set<string>();
   // Placement sub-mode (after the type popup picked a kind for a NEW node).
   private growPlacing = false;
   private growShape: NodeShape | undefined = undefined;
@@ -6830,9 +6838,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   @HostListener('document:keydown', ['$event'])
   handleGrowKeyDown(event: KeyboardEvent): void {
-    if (!this.growActive || !this.growKeys) return;
-    if (this.navPopupOpen) return; // the popup owns the keyboard (sticky phase)
     const key = event.key.toLowerCase();
+    if (!this.growActive || !this.growKeys) return;
+    this.growPressedKeys.add(key);
+    if (this.navPopupOpen) return; // the popup owns the keyboard (sticky phase)
     if (event.repeat && key === this.growHoldKey) return;
     const k = this.growKeys;
     const dir = key === k.left ? 'left' : key === k.right ? 'right'
@@ -6852,11 +6861,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if (!this.growPlacing && key === k.edgeSubmenu && this.growAnchor) {
       event.preventDefault();
-      this.growEdgeMenuActive = true;
-      this.growGhost?.destroy();
-      this.growGhost = null;
-      this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
+      this.openGrowEdgeMenu();
       return;
     }
     if (key === k.cycle) {
@@ -6908,8 +6913,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
-    if (!this.growActive) return;
     const key = event.key.toLowerCase();
+    this.growPressedKeys.delete(key);
+    if (!this.growActive) return;
     this.growMods.delete(key);
     if (this.growEdgeMenuActive && this.growSelfLoopPending && key === this.growKeys?.selfLoop) {
       this.growSelfLoopPending = false;
@@ -6929,6 +6935,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.commitGrowMode();
+  }
+
+  private openGrowEdgeMenu(): void {
+    if (!this.growActive || !this.growAnchor || !this.growKeys ||
+        this.growPlacing || this.growEdgeMenuActive) return;
+    this.growEdgeMenuActive = true;
+    // If the leaf key arrived just before its submenu key, remember that
+    // overlap and commit when the leaf is released.
+    this.growSelfLoopPending = this.growPressedKeys.has(this.growKeys.selfLoop);
+    this.growGhost?.destroy();
+    this.growGhost = null;
+    this.drawingLayer.batchDraw();
+    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
   }
 
   /** Choose an edge target with the same fixed-anchor NSEW quadrant model as
@@ -7250,6 +7269,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growActive = false;
     this.growEdgeMenuActive = false;
     this.growSelfLoopPending = false;
+    this.growPressedKeys.clear();
     this.growGhost?.destroy();
     this.growGhost = null;
     this.growOrigin = null;
