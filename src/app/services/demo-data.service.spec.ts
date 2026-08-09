@@ -18,18 +18,20 @@ describe('DemoDataService', () => {
 
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
-    expect(nodes.length).toBe(17);
-    expect(edges.length).toBe(12);
+    expect(nodes.length).toBe(18);
+    expect(edges.length).toBe(13);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
     const nextEdges = edges.filter(edge => edge.destNode.id === 'da-48');
-    expect(nextEdges.map(edge => edge.id)).toEqual(['da-144', 'da-148']);
-    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-143', 'da-147']);
-    expect(nodes.find(node => node.id === 'da-143')?.label.text())
-      .toContain('a tapped "Add..." should add a label');
-    expect(nodes.find(node => node.id === 'da-147')?.label.text())
-      .toBe('Make the [Edit] Repeat delay/interval actually work');
+    expect(nextEdges.map(edge => edge.id)).toEqual(['da-150', 'da-152', 'da-155']);
+    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-149', 'da-151', 'da-154']);
+    expect(nodes.find(node => node.id === 'da-149')?.label.text())
+      .toContain('Only have halfway point ghosts for the nodes that are currently visible');
+    expect(nodes.find(node => node.id === 'da-151')?.label.text())
+      .toContain('fine/normal/coarse movement sizes');
+    expect(nodes.find(node => node.id === 'da-154')?.label.text())
+      .toContain('drag-left should never move the label to the right');
     expect(edges.find(edge => edge.id === 'da-124')?.controlPoints[0])
       .toEqual(jasmine.objectContaining({
         x: 787.9005249843403,

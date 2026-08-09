@@ -1,6 +1,6 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-09 at 17:40:38 UTC. Keep the original IDs and geometry:
+ * session on 2026-08-09 at 17:58:37 UTC. Keep the original IDs and geometry:
  * browser repros and development notes refer to the Next edges by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
@@ -65,12 +65,15 @@ styles:
       da-127:
         x: -540
         'y': -542.7586341751829
-      da-143:
-        x: 3060
-        'y': -425
-      da-147:
-        x: 3125
-        'y': -675
+      da-149:
+        x: 2825
+        'y': -861.727599126647
+      da-151:
+        x: 2525
+        'y': -825
+      da-154:
+        x: 2880.6979828035655
+        'y': -550
     edges:
       da-124:
         waypoints:
@@ -109,10 +112,12 @@ semantics:
       label: Side Pane Keymenu (Mini menu)
     da-127:
       label: Mostly hidden Keymenu (keymenu display with only a single line of text at the bottom of the screen)
-    da-143:
-      label: With the crosshairs over an edge, a tapped "Add..." should add a label
-    da-147:
-      label: Make the [Edit] Repeat delay/interval actually work
+    da-149:
+      label: For adding a connected node to the node under the crosshairs, the ghost nodes seem to be too crowded.   Only have halfway point ghosts for the nodes that are currently visible and distinguish the "grid ghosts" from the halfway point ghosts visually.
+    da-151:
+      label: Make the  fine/normal/coarse movement sizes editable in the settings
+    da-154:
+      label: Dragging an edge label should work in a more intuititive way (drag-left should never move the label to the right, though depending on the angle of the edge, it might take the label and put it on the left side of the edge, rather than move it along the edge).
   edges:
     da-36:
       from: da-34
@@ -144,10 +149,13 @@ semantics:
     da-124:
       from: da-24
       to: da-123
-    da-144:
-      from: da-143
+    da-150:
+      from: da-149
       to: da-48
-    da-148:
-      from: da-147
+    da-152:
+      from: da-151
+      to: da-48
+    da-155:
+      from: da-154
       to: da-48
 `;

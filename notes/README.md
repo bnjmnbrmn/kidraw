@@ -71,6 +71,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Movement acceleration](idea-movement-acceleration.md)
 - [Crosshair visual treatment](idea-crosshair-visual-treatment.md)
 - [Normal movement goal line](design-normal-movement-goal-line.md) — ordinary movement snaps to nearby graph items, returns to their projection, and shows the traversed axis.
+- [Screen-directional edge-label dragging](design-edge-label-drag.md) — label movement follows the pressed screen direction regardless of edge orientation, switching sides when that is the better move.
 - [Adaptive quadrant-grid graph-item navigation](design-quadrant-grid-navigation.md)
 - [Adaptive quadrant-ring graph-item navigation](design-quadrant-ring-navigation.md)
 - [Move by Link quadrant navigation](design-move-by-link-quadrants.md) — held, popup-free connected-edge navigation with NSEW focus, scanning, corner transitions, and traversal.

@@ -50,6 +50,9 @@ export function buildGrowGhostTargets(
   majorGridSpacing: number,
   bounds: GrowGhostBounds,
   minimumGridSpacing = 300,
+  // The caller may limit midpoint generation to visible nodes while still
+  // passing every node above so offscreen centers remain occupied.
+  midpointNodes: readonly GrowGhostNodeCenter[] = nodes,
 ): GrowGhostTarget[] {
   const occupied = new Set(nodes.map(positionKey));
   const used = new Set<string>();
@@ -61,10 +64,10 @@ export function buildGrowGhostTargets(
     targets.push(target);
   };
 
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const a = nodes[i];
-      const b = nodes[j];
+  for (let i = 0; i < midpointNodes.length; i++) {
+    for (let j = i + 1; j < midpointNodes.length; j++) {
+      const a = midpointNodes[i];
+      const b = midpointNodes[j];
       const ids = [a.id, b.id].sort();
       add({
         id: `grow-ghost:midpoint:${ids[0]}:${ids[1]}`,

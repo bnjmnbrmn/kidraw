@@ -109,6 +109,24 @@
                      (change)="onNumberChange('cursor', 'gridSpacing', $event)">
             </label>
             <label class="swap-label">
+              Fine movement (px):
+              <input type="number" tabindex="-1" min="1" max="1000" step="1"
+                     [value]="config.cursor.fineMovementSize"
+                     (input)="onNumberChange('cursor', 'fineMovementSize', $event)">
+            </label>
+            <label class="swap-label">
+              Normal movement (px):
+              <input type="number" tabindex="-1" min="1" max="2000" step="5"
+                     [value]="config.cursor.normalMovementSize"
+                     (input)="onNumberChange('cursor', 'normalMovementSize', $event)">
+            </label>
+            <label class="swap-label">
+              Coarse movement (px):
+              <input type="number" tabindex="-1" min="1" max="10000" step="50"
+                     [value]="config.cursor.coarseMovementSize"
+                     (input)="onNumberChange('cursor', 'coarseMovementSize', $event)">
+            </label>
+            <label class="swap-label">
               Repeat delay (ms):
               <input type="number" tabindex="-1" min="0" max="1000" step="10"
                      [value]="config.cursor.initialRepeatDelayMs"

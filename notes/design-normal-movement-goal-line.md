@@ -37,6 +37,13 @@ delay and Repeat interval for its app-owned timer. The defaults remain 250 ms
 and 100 ms. Other repeating normal-mode cards use the same pair; Insert,
 Vim-normal, and Vim-visual text editing use the separate Edit repeat pair.
 
+Cursor settings also expose Fine, Normal, and Coarse movement distances. Their
+defaults preserve the standard desktop behavior: 10, 50, and 1000
+drawing-unit steps. Fine and
+coarse movement use their configured distance directly; Normal uses its value
+as the fallback step while a nearby semantic snap may still land sooner or
+farther away.
+
 The graph item under the crosshairs gets a non-semantic dashed hover trace in
 the crosshairs color. It never changes selection and follows selection's hit
 priority: label, waypoint, top node, top edge. This makes the active target
@@ -76,6 +83,7 @@ movement remain direct grid movement and clear the normal goal.
 
 Current tuning:
 
-- normal step: five minor-grid cells (the established half-major-cell step);
+- fine / normal / coarse fallback steps: 10 / 50 / 1000 drawing units,
+  independently editable in Cursor settings;
 - snap corridor: `max(24 screen px, 2 minor-grid cells)`;
 - same-progress precedence: node, waypoint, label, edge.

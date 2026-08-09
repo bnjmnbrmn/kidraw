@@ -2556,7 +2556,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           this.normalMovementGoal = startNormalMovementGoal(axis, current);
         }
         const sign = (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1;
-        const stepDistance = minorSpacing * 5;
+        const stepDistance = this.movementDistanceForTier('normal');
         const snapDistance = Math.max(24 / scale, minorSpacing * 2);
         const candidates = this.collectNormalMovementSnapCandidates(
           axis,
@@ -2589,16 +2589,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         targetY = step.target.y * scale + this.drawingLayer.y();
       } else {
         this.clearNormalMovementGoal();
-        const spacing = tier === 'fine' ? minorSpacing : majorSpacing;
-        const steps = tier === 'coarse' ? 10 : 1;
+        const spacing = this.movementDistanceForTier(tier);
         this.updateCrosshairsProbeShape(
-          axis, tier, minorSpacing, majorSpacing, steps * spacing, scale,
+          axis, tier, minorSpacing, majorSpacing, spacing, scale,
         );
         const snappedDlX = deltaX !== 0
-          ? Math.round(currentDlX / spacing) * spacing + steps * spacing * Math.sign(deltaX)
+          ? Math.round(currentDlX / spacing) * spacing + spacing * Math.sign(deltaX)
           : Math.round(currentDlX / spacing) * spacing;
         const snappedDlY = deltaY !== 0
-          ? Math.round(currentDlY / spacing) * spacing + steps * spacing * Math.sign(deltaY)
+          ? Math.round(currentDlY / spacing) * spacing + spacing * Math.sign(deltaY)
           : Math.round(currentDlY / spacing) * spacing;
         targetX = snappedDlX * scale + this.drawingLayer.x();
         targetY = snappedDlY * scale + this.drawingLayer.y();
@@ -3130,6 +3129,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       radius = clamp(Math.max((stepDistance * scale) / 2, minorSpacing * scale), 6, 22);
     }
     this.crosshairsLayer.setHitRadii(radius, radius);
+  }
+
+  private movementDistanceForTier(tier: GridTier): number {
+    const cursor = this.visualConfigService?.config.cursor;
+    const configured = tier === 'fine' ? cursor?.fineMovementSize
+      : tier === 'coarse' ? cursor?.coarseMovementSize
+      : cursor?.normalMovementSize;
+    const fallback = tier === 'fine' ? 10 : tier === 'coarse' ? 1000 : 50;
+    return configured !== undefined && Number.isFinite(configured) && configured > 0
+      ? configured
+      : fallback;
   }
 
   private showMovementIndicators(): void {
@@ -6408,10 +6418,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.hasDragged = true;
 
-    // If only labels are selected, the movement keys reposition them on
-    // their edges: left/right slides along the path (coarse tier jumps
-    // between the start/middle/end stops), up/down steps through the
-    // above/on/below placement.
+    // If only labels are selected, movement remains screen-directional even
+    // when the owning edge is reversed or nearly perpendicular to the key.
     const selectedLabels = this.getSelectedLabels();
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     let selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
@@ -6446,16 +6454,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       selectedLabels.forEach(label => {
         const edge = this.getEdgeForLabel(label);
         if (!edge) return;
-        if (axis === 'y') {
-          edge.cycleLabelSide(label, sign);
-        } else if (effectiveTier === 'coarse') {
-          edge.snapLabelToNextStop(label, sign);
-        } else {
-          const spacing = effectiveTier === 'fine'
-            ? this.drawingLayer.getSubGridSpacing()
-            : this.drawingLayer.getGridSpacing();
-          edge.slideLabelBy(label, sign * spacing);
-        }
+        const distance = effectiveTier === 'fine'
+          ? this.drawingLayer.getSubGridSpacing()
+          : this.drawingLayer.getGridSpacing();
+        edge.dragLabelToward(
+          label,
+          axis === 'x' ? {x: sign, y: 0} : {x: 0, y: sign},
+          distance,
+          effectiveTier === 'coarse',
+        );
       });
       this.drawingLayer.batchDraw();
       return;
@@ -6875,22 +6882,32 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x();
     const ly = this.drawingLayer.y();
-    const nodes = this.drawingLayer.getDANodes().map(node => ({
+    const layerNodes = this.drawingLayer.getDANodes();
+    const nodes = layerNodes.map(node => ({
       id: node.id,
       ...this.getNodeCenterInLayerCoordinates(node),
     }));
     const source = nodes.find(node => node.id === anchor.id)!;
+    const bounds = {
+      minX: -lx / scale,
+      minY: -ly / scale,
+      maxX: (this.stage.width() - lx) / scale,
+      maxY: (this.stage.height() - ly) / scale,
+    };
+    const visibleIds = new Set(layerNodes
+      .filter(node => {
+        const p = node.group.position();
+        return p.x + node.NODE_WIDTH >= bounds.minX && p.x <= bounds.maxX &&
+          p.y + node.NODE_HEIGHT >= bounds.minY && p.y <= bounds.maxY;
+      })
+      .map(node => node.id));
     return buildGrowGhostTargets(
       nodes,
       source,
       this.drawingLayer.getGridSpacing(),
-      {
-        minX: -lx / scale,
-        minY: -ly / scale,
-        maxX: (this.stage.width() - lx) / scale,
-        maxY: (this.stage.height() - ly) / scale,
-      },
+      bounds,
       DrawingAreaComponent.QUICK_ADD_SLOT,
+      nodes.filter(node => visibleIds.has(node.id)),
     );
   }
 
@@ -7446,8 +7463,23 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           scale,
         );
         marker.name(active ? 'grow-insertion-target-active' : 'grow-insertion-target');
+        marker.setAttr('ghostSource', target.source);
+        marker.dash(target.source === 'midpoint' ? [10, 5] : [2, 7]);
         marker.opacity(active ? 1 : target.source === 'midpoint' ? 0.42 : 0.24);
         ghost.add(marker);
+        ghost.add(new Konva.Text({
+          name: `grow-insertion-kind grow-insertion-kind-${target.source}`,
+          x: target.x - 24 / scale,
+          y: target.y - 10 / scale,
+          width: 48 / scale,
+          align: 'center',
+          text: target.source === 'midpoint' ? '½' : '+',
+          fontSize: 20 / scale,
+          fontStyle: 'bold',
+          fill: stroke,
+          opacity: active ? 1 : target.source === 'midpoint' ? 0.7 : 0.5,
+          listening: false,
+        }));
       }
     }
 

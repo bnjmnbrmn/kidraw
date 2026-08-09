@@ -18,6 +18,9 @@ export interface CardShadowConfig {
 
 export interface CursorConfig {
   gridSpacing: number;
+  fineMovementSize: number;
+  normalMovementSize: number;
+  coarseMovementSize: number;
   initialRepeatDelayMs: number;
   repeatIntervalMs: number;
   labelEditInitialDelayMs: number;
@@ -49,6 +52,9 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
   },
   cursor: {
     gridSpacing: 50,
+    fineMovementSize: 10,
+    normalMovementSize: 50,
+    coarseMovementSize: 1000,
     initialRepeatDelayMs: 250,
     repeatIntervalMs: 100,
     labelEditInitialDelayMs: 400,

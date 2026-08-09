@@ -1,6 +1,7 @@
 import {
   anchorPosition,
   cycleSide,
+  directionalLabelAnchorStep,
   LABEL_T_MAX,
   LABEL_T_MIN,
   nextTStop,
@@ -130,6 +131,38 @@ describe('edge-label-anchor', () => {
       expect(cycleSide('below', -1)).toBe('on');
       expect(cycleSide('on', -1)).toBe('above');
       expect(cycleSide('above', -1)).toBe('above');
+    });
+  });
+
+  describe('directionalLabelAnchorStep', () => {
+    it('moves left on screen even when the edge runs right-to-left', () => {
+      const rightToLeft = [{x: 100, y: 0}, {x: 0, y: 0}];
+      const step = directionalLabelAnchorStep(
+        rightToLeft, 0.5, 'on', 20, {x: -1, y: 0}, 20,
+      )!;
+      const before = anchorPosition(rightToLeft, 0.5, 'on', 20)!;
+      const after = anchorPosition(rightToLeft, step.t, step.side, 20)!;
+
+      expect(after.x).toBeLessThan(before.x);
+      expect(step.t).toBeGreaterThan(0.5);
+    });
+
+    it('moves to the left side instead of along a vertical edge', () => {
+      const vertical = [{x: 0, y: 0}, {x: 0, y: 100}];
+      const step = directionalLabelAnchorStep(
+        vertical, 0.5, 'on', 20, {x: -1, y: 0}, 20,
+      )!;
+      const after = anchorPosition(vertical, step.t, step.side, 20)!;
+
+      expect(step.t).toBe(0.5);
+      expect(step.side).toBe('below');
+      expect(after.x).toBeLessThan(0);
+    });
+
+    it('no-ops rather than moving opposite the requested direction', () => {
+      expect(directionalLabelAnchorStep(
+        horizontal, LABEL_T_MIN, 'on', 20, {x: -1, y: 0}, 20,
+      )).toBeNull();
     });
   });
 });

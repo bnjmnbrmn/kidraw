@@ -58,4 +58,21 @@ describe('held-Add ghost targets', () => {
     expect(new Set(targets.map(target => `${target.x}:${target.y}`)).size)
       .toBe(targets.length);
   });
+
+  it('builds midpoints only from the caller-provided visible nodes', () => {
+    const nodes = [
+      {id: 'anchor', x: 100, y: 100},
+      {id: 'visible', x: 500, y: 100},
+      {id: 'offscreen', x: 2000, y: 100},
+    ];
+
+    const targets = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 300,
+      nodes.slice(0, 2));
+    const midpoints = targets.filter(target => target.source === 'midpoint');
+
+    expect(midpoints.map(target => target.id)).toEqual([
+      'grow-ghost:midpoint:anchor:visible',
+    ]);
+    expect(targets.some(target => target.x === 2000 && target.y === 100)).toBeFalse();
+  });
 });

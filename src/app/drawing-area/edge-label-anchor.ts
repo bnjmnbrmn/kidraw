@@ -176,3 +176,62 @@ export function cycleSide(side: EdgeLabelSide, direction: 1 | -1): EdgeLabelSide
   const idx = order.indexOf(side) + direction;
   return order[Math.min(Math.max(idx, 0), order.length - 1)];
 }
+
+/** Choose one anchor change that travels in the requested screen direction.
+ * Path motion is considered in both source/destination directions, so edge
+ * direction cannot invert Drag Left/Right. On a nearly perpendicular edge,
+ * a side change can be the better cardinal movement. */
+export function directionalLabelAnchorStep(
+  points: readonly Point[],
+  t: number,
+  side: EdgeLabelSide,
+  clearance: number,
+  direction: Point,
+  distancePx: number,
+  coarse = false,
+): {t: number; side: EdgeLabelSide} | null {
+  const current = anchorPosition(points, t, side, clearance);
+  const directionLength = Math.hypot(direction.x, direction.y);
+  const total = pathLength(points);
+  if (!current || directionLength < 1e-9 || total < 1e-9) return null;
+  const desired = {x: direction.x / directionLength, y: direction.y / directionLength};
+  const candidates: Array<{t: number; side: EdgeLabelSide}> = [];
+  const add = (candidate: {t: number; side: EdgeLabelSide}) => {
+    if (Math.abs(candidate.t - t) < 1e-9 && candidate.side === side) return;
+    if (candidates.some(item =>
+      Math.abs(item.t - candidate.t) < 1e-9 && item.side === candidate.side)) return;
+    candidates.push(candidate);
+  };
+
+  for (const sign of [-1, 1] as const) {
+    add({
+      t: coarse
+        ? nextTStop(t, sign)
+        : Math.min(Math.max(
+          t + sign * Math.max(distancePx, 0) / total,
+          LABEL_T_MIN,
+        ), LABEL_T_MAX),
+      side,
+    });
+  }
+  for (const candidateSide of ['above', 'on', 'below'] as const) {
+    add({t, side: candidateSide});
+  }
+
+  let best: {anchor: {t: number; side: EdgeLabelSide}; score: number} | null = null;
+  const MIN_ALIGNMENT = 0.35;
+  for (const candidate of candidates) {
+    const position = anchorPosition(points, candidate.t, candidate.side, clearance);
+    if (!position) continue;
+    const dx = position.x - current.x;
+    const dy = position.y - current.y;
+    const displacement = Math.hypot(dx, dy);
+    if (displacement < 1e-9) continue;
+    const projection = dx * desired.x + dy * desired.y;
+    if (projection <= 1e-9 || projection / displacement < MIN_ALIGNMENT) continue;
+    if (!best || projection > best.score + 1e-9) {
+      best = {anchor: candidate, score: projection};
+    }
+  }
+  return best?.anchor ?? null;
+}

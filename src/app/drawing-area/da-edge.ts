@@ -6,7 +6,8 @@ import {nextId} from './id-generator';
 import {EdgeDirectedness, LineStyle} from './command.model';
 import {
   anchorPosition, cycleSide, EdgeLabelSide, LABEL_T_MAX, LABEL_T_MIN,
-  nextTStop, pathLength, projectPointToPath, sideFromSignedDist,
+  directionalLabelAnchorStep, nextTStop, pathLength, projectPointToPath,
+  sideFromSignedDist,
 } from './edge-label-anchor';
 import { sampleSmoothPath } from './routing-curve';
 
@@ -311,6 +312,29 @@ export class DAEdge {
    *  moves it downward, -1 upward. */
   cycleLabelSide(label: DALabel, direction: 1 | -1): void {
     label.side = cycleSide(label.side, direction);
+    this.positionLabel(label);
+  }
+
+  /** Move in a cardinal screen direction, choosing along-path motion or a
+   * side change according to the edge angle. Opposite-screen moves no-op. */
+  dragLabelToward(
+    label: DALabel,
+    direction: {x: number; y: number},
+    distancePx: number,
+    coarse = false,
+  ): void {
+    const anchor = directionalLabelAnchorStep(
+      this.getPathPoints(),
+      label.edgeT,
+      label.side,
+      this.labelSideClearance(label),
+      direction,
+      distancePx,
+      coarse,
+    );
+    if (!anchor) return;
+    label.edgeT = anchor.t;
+    label.side = anchor.side;
     this.positionLabel(label);
   }
 
