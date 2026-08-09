@@ -2556,7 +2556,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           this.normalMovementGoal = startNormalMovementGoal(axis, current);
         }
         const sign = (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1;
-        const stepDistance = this.movementDistanceForTier('normal');
+        const stepDistance = this.movementDistanceForTier(
+          'normal', minorSpacing, majorSpacing,
+        );
         const snapDistance = Math.max(24 / scale, minorSpacing * 2);
         const candidates = this.collectNormalMovementSnapCandidates(
           axis,
@@ -2589,7 +2591,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         targetY = step.target.y * scale + this.drawingLayer.y();
       } else {
         this.clearNormalMovementGoal();
-        const spacing = this.movementDistanceForTier(tier);
+        const spacing = this.movementDistanceForTier(tier, minorSpacing, majorSpacing);
         this.updateCrosshairsProbeShape(
           axis, tier, minorSpacing, majorSpacing, spacing, scale,
         );
@@ -3131,15 +3133,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.setHitRadii(radius, radius);
   }
 
-  private movementDistanceForTier(tier: GridTier): number {
+  private movementDistanceForTier(
+    tier: GridTier,
+    minorSpacing: number,
+    majorSpacing: number,
+  ): number {
     const cursor = this.visualConfigService?.config.cursor;
-    const configured = tier === 'fine' ? cursor?.fineMovementSize
-      : tier === 'coarse' ? cursor?.coarseMovementSize
-      : cursor?.normalMovementSize;
-    const fallback = tier === 'fine' ? 10 : tier === 'coarse' ? 1000 : 50;
-    return configured !== undefined && Number.isFinite(configured) && configured > 0
+    const configured = tier === 'fine' ? cursor?.fineMovementGridSteps
+      : tier === 'coarse' ? cursor?.coarseMovementGridSteps
+      : cursor?.normalMovementGridSteps;
+    const fallback = tier === 'fine' ? 1 : tier === 'coarse' ? 10 : 5;
+    const gridSteps = configured !== undefined && Number.isFinite(configured) && configured > 0
       ? configured
       : fallback;
+    return gridSteps * (tier === 'coarse' ? majorSpacing : minorSpacing);
   }
 
   private showMovementIndicators(): void {

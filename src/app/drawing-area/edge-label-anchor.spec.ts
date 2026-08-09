@@ -1,5 +1,6 @@
 import {
   anchorPosition,
+  centeredBoxClearsRects,
   cycleSide,
   directionalLabelAnchorStep,
   LABEL_T_MAX,
@@ -104,6 +105,22 @@ describe('edge-label-anchor', () => {
     });
   });
 
+  describe('centeredBoxClearsRects', () => {
+    const endpoint = {x: 0, y: -50, width: 100, height: 100};
+
+    it('accepts a label box that clears the padded endpoint', () => {
+      expect(centeredBoxClearsRects(
+        {x: 145, y: 0}, {width: 80, height: 30}, [endpoint], 4,
+      )).toBeTrue();
+    });
+
+    it('rejects a label box that would tuck behind the endpoint', () => {
+      expect(centeredBoxClearsRects(
+        {x: 140, y: 0}, {width: 80, height: 30}, [endpoint], 4,
+      )).toBeFalse();
+    });
+  });
+
   describe('nextTStop', () => {
     it('advances between start / middle / end stops', () => {
       expect(nextTStop(0.1, 1)).toBe(0.5);
@@ -163,6 +180,28 @@ describe('edge-label-anchor', () => {
       expect(directionalLabelAnchorStep(
         horizontal, LABEL_T_MIN, 'on', 20, {x: -1, y: 0}, 20,
       )).toBeNull();
+    });
+
+    it('no-ops before a drag can put the label behind an endpoint node', () => {
+      const betweenFaces = [{x: 100, y: 0}, {x: 500, y: 0}];
+      const step = directionalLabelAnchorStep(
+        betweenFaces,
+        0.25,
+        'on',
+        20,
+        {x: -1, y: 0},
+        60,
+        {
+          labelSize: {width: 80, height: 30},
+          keepOutRects: [
+            {x: 0, y: -50, width: 100, height: 100},
+            {x: 500, y: -50, width: 100, height: 100},
+          ],
+          keepOutPadding: 4,
+        },
+      );
+
+      expect(step).toBeNull();
     });
   });
 });

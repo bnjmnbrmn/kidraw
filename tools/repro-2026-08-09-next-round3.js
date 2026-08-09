@@ -43,14 +43,16 @@ async function main() {
   await settings.evaluate(el => { el.open = true; });
   const cursor = page.locator('details').filter({hasText: 'Cursor'}).last();
   await cursor.evaluate(el => { el.open = true; });
-  const setMovement = async (name, value) => {
-    const input = cursor.getByRole('spinbutton', {name: `${name} movement (px):`, exact: true});
+  const setMovement = async (name, grid, value) => {
+    const input = cursor.getByRole('spinbutton', {
+      name: `${name} movement (${grid}-grid squares):`, exact: true,
+    });
     await input.fill(String(value));
     await input.evaluate(element => element.blur());
   };
-  await setMovement('Fine', 20);
-  await setMovement('Normal', 80);
-  await setMovement('Coarse', 200);
+  await setMovement('Fine', 'minor', 2);
+  await setMovement('Normal', 'minor', 8);
+  await setMovement('Coarse', 'major', 2);
   const keys = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     return {
@@ -81,12 +83,12 @@ async function main() {
   const fineDistance = await moveAndMeasure(keys.fine);
   const normalDistance = await moveAndMeasure(null);
   const coarseDistance = await moveAndMeasure(keys.coarse);
-  check('Fine movement setting drives the physical-key step', Math.abs(fineDistance - 20) < 0.01,
-    `${fineDistance}px`);
-  check('Normal movement setting drives the physical-key step', Math.abs(normalDistance - 80) < 0.01,
-    `${normalDistance}px`);
-  check('Coarse movement setting drives the physical-key step', Math.abs(coarseDistance - 200) < 0.01,
-    `${coarseDistance}px`);
+  check('Fine movement setting counts minor-grid squares', Math.abs(fineDistance - 20) < 0.01,
+    `${fineDistance} drawing units`);
+  check('Normal movement setting counts minor-grid squares', Math.abs(normalDistance - 80) < 0.01,
+    `${normalDistance} drawing units`);
+  check('Coarse movement setting counts major-grid squares', Math.abs(coarseDistance - 200) < 0.01,
+    `${coarseDistance} drawing units`);
 
   // Midpoints use only visible nodes. Grid and midpoint candidates carry
   // distinct dash patterns and explicit + / ½ glyphs.

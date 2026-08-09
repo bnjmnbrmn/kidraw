@@ -1,6 +1,6 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-09 at 17:58:37 UTC. Keep the original IDs and geometry:
+ * session on 2026-08-09 at 19:46:46 UTC. Keep the original IDs and geometry:
  * browser repros and development notes refer to the Next edges by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
@@ -10,76 +10,76 @@ styles:
   - name: default
     nodes:
       da-4:
-        x: 2119.4680906414187
-        'y': -686.727599126647
+        x: -568.1189555021515
+        'y': -688.1340878187448
         shape: circle
       da-23:
-        x: 307.3216062664187
-        'y': -222.72759912664696
+        x: -121.6013773771515
+        'y': -214.13408781874477
         shape: circle
       da-24:
-        x: 1045.2705808757937
-        'y': -686.727599126647
+        x: 774.5507222322235
+        'y': -688.1340878187448
         shape: circle
       da-29:
-        x: 955.1726804851687
-        'y': -374.72759912664696
+        x: 526.2496968415985
+        'y': -366.1340878187448
         shape: circle
       da-34:
-        x: 503.7195554851687
-        'y': -374.72759912664696
+        x: 74.7965718415985
+        'y': -366.1340878187448
         shape: circle
       da-35:
-        x: 618.8040281414187
-        'y': -222.72759912664696
+        x: 189.8810444978485
+        'y': -214.13408781874477
       da-37:
-        x: 868.3001218914187
-        'y': -222.72759912664696
+        x: 439.3771382478485
+        'y': -214.13408781874477
       da-41:
-        x: 1250.3001218914187
-        'y': -374.72759912664696
+        x: 1137.7833882478485
+        'y': -366.1340878187448
       da-42:
-        x: 1328.2176023601687
-        'y': -530.727599126647
+        x: 1215.7008687165985
+        'y': -518.1340878187448
         shape: circle
       da-48:
-        x: 2835.9719968914187
-        'y': -686.727599126647
+        x: 2940.2169819978485
+        'y': -518.1340878187448
         w: 320
-        h: 110
+        h: 310
         shape: circle
       da-51:
-        x: 236.8040281414187
-        'y': -70.72759912664696
+        x: -192.1189555021515
+        'y': -62.134087818744774
       da-99:
-        x: 674.3997312664187
-        'y': -530.727599126647
+        x: 245.4767476228485
+        'y': -518.1340878187448
         shape: circle
       da-123:
-        x: 225
-        'y': -567.7586341751829
+        x: 821.3771382478485
+        'y': -518.1340878187448
         shape: circle
       da-126:
-        x: -210.716796875
-        'y': -542.7586341751829
+        x: 1719.7833882478485
+        'y': -688.1340878187448
       da-127:
-        x: -540
-        'y': -542.7586341751829
-      da-149:
-        x: 2825
-        'y': -861.727599126647
+        x: 2243.2169819978485
+        'y': -692.1340878187448
       da-151:
-        x: 2525
-        'y': -825
-      da-154:
-        x: 2880.6979828035655
-        'y': -550
+        x: 2825.2169819978485
+        'y': -706.1340878187448
+      da-157:
+        x: 3407.2169819978485
+        'y': -692.1340878187448
+      da-159:
+        x: 1396.4854576986756
+        'y': -593.1340878187448
     edges:
-      da-124:
+      da-160:
         waypoints:
-          - x: 787.9005249843403
-            'y': -626.9333456052141
-            id: da-125
+          - x: 904.3700887582092
+            'y': -684.9226317160906
+            id: da-161
 semantics:
   nodes:
     da-4:
@@ -109,15 +109,15 @@ semantics:
     da-123:
       label: Ex Mode (Command-line mode)
     da-126:
-      label: Side Pane Keymenu (Mini menu)
+      label: Side Pane Keymenu ("Compact" menu)
     da-127:
       label: Mostly hidden Keymenu (keymenu display with only a single line of text at the bottom of the screen)
-    da-149:
-      label: For adding a connected node to the node under the crosshairs, the ghost nodes seem to be too crowded.   Only have halfway point ghosts for the nodes that are currently visible and distinguish the "grid ghosts" from the halfway point ghosts visually.
     da-151:
-      label: Make the  fine/normal/coarse movement sizes editable in the settings
-    da-154:
-      label: Dragging an edge label should work in a more intuititive way (drag-left should never move the label to the right, though depending on the angle of the edge, it might take the label and put it on the left side of the edge, rather than move it along the edge).
+      label: Make the configured fine/normal/coarse movement sizes be editable in terms of grid squares rather than numbers of pixels (so the logical movement sizes will vary based on zoom)
+    da-157:
+      label: Edge labels should not be draggable so far that they disappear behind one of the end nodes
+    da-159:
+      label: Compact menu mode
   edges:
     da-36:
       from: da-34
@@ -149,13 +149,13 @@ semantics:
     da-124:
       from: da-24
       to: da-123
-    da-150:
-      from: da-149
-      to: da-48
     da-152:
       from: da-151
       to: da-48
-    da-155:
-      from: da-154
+    da-158:
+      from: da-157
       to: da-48
+    da-160:
+      from: da-24
+      to: da-159
 `;

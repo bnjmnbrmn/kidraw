@@ -320,7 +320,7 @@ export class DAEdge {
   dragLabelToward(
     label: DALabel,
     direction: {x: number; y: number},
-    distancePx: number,
+    distance: number,
     coarse = false,
   ): void {
     const anchor = directionalLabelAnchorStep(
@@ -329,8 +329,18 @@ export class DAEdge {
       label.side,
       this.labelSideClearance(label),
       direction,
-      distancePx,
-      coarse,
+      distance,
+      {
+        coarse,
+        labelSize: {width: label.width, height: label.height},
+        keepOutRects: [...new Set([this.srcNode, this.destNode])].map(node => ({
+          x: node.group.x(),
+          y: node.group.y(),
+          width: node.NODE_WIDTH,
+          height: node.NODE_HEIGHT,
+        })),
+        keepOutPadding: 4,
+      },
     );
     if (!anchor) return;
     label.edgeT = anchor.t;

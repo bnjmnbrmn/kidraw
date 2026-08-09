@@ -24,19 +24,18 @@ describe('DemoDataService', () => {
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
     const nextEdges = edges.filter(edge => edge.destNode.id === 'da-48');
-    expect(nextEdges.map(edge => edge.id)).toEqual(['da-150', 'da-152', 'da-155']);
-    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-149', 'da-151', 'da-154']);
-    expect(nodes.find(node => node.id === 'da-149')?.label.text())
-      .toContain('Only have halfway point ghosts for the nodes that are currently visible');
+    expect(nextEdges.map(edge => edge.id)).toEqual(['da-152', 'da-158']);
+    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-151', 'da-157']);
     expect(nodes.find(node => node.id === 'da-151')?.label.text())
-      .toContain('fine/normal/coarse movement sizes');
-    expect(nodes.find(node => node.id === 'da-154')?.label.text())
-      .toContain('drag-left should never move the label to the right');
-    expect(edges.find(edge => edge.id === 'da-124')?.controlPoints[0])
+      .toContain('grid squares rather than numbers of pixels');
+    expect(nodes.find(node => node.id === 'da-157')?.label.text())
+      .toContain('disappear behind one of the end nodes');
+    expect(edges.find(edge => edge.id === 'da-124')?.controlPoints).toEqual([]);
+    expect(edges.find(edge => edge.id === 'da-160')?.controlPoints[0])
       .toEqual(jasmine.objectContaining({
-        x: 787.9005249843403,
-        y: -626.9333456052141,
-        waypointId: 'da-125',
+        x: 904.3700887582092,
+        y: -684.9226317160906,
+        waypointId: 'da-161',
       }));
   });
 

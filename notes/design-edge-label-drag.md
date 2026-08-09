@@ -27,5 +27,11 @@ moving in the opposite direction. Coarse movement evaluates the canonical
 start/middle/end anchors; fine and normal movement retain their established
 distances.
 
+Every candidate must also keep the label's complete axis-aligned box outside
+both endpoint-node boxes, with a four-unit gap. The rule uses the rendered
+label dimensions, so a long label stops sooner than a short label. Repeated
+dragging therefore saturates at the last safe anchor instead of allowing the
+edge's lower z-order to carry any part of the label behind an endpoint node.
+
 Related: [path-anchored edge labels](../dev-status.md),
 [held-key interaction model](decision-interaction-model.md).

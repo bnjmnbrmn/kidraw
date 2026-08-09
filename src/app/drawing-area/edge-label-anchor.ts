@@ -27,6 +27,18 @@ export interface Point {
   y: number;
 }
 
+export interface AxisAlignedRect extends Point {
+  width: number;
+  height: number;
+}
+
+export interface DirectionalLabelStepOptions {
+  coarse?: boolean;
+  labelSize?: {width: number; height: number};
+  keepOutRects?: readonly AxisAlignedRect[];
+  keepOutPadding?: number;
+}
+
 /** Position on the path at arc-length fraction `t`, plus the screen-stable
  *  "above" unit normal at that point. */
 export interface PathAnchor extends Point {
@@ -153,6 +165,24 @@ export function anchorPosition(
   return { x: at.x + k * at.nx, y: at.y + k * at.ny };
 }
 
+/** Whether an axis-aligned box centered at `center` stays wholly outside all
+ * keep-out rectangles, including the requested padding. */
+export function centeredBoxClearsRects(
+  center: Point,
+  size: {width: number; height: number},
+  rects: readonly AxisAlignedRect[],
+  padding = 0,
+): boolean {
+  const left = center.x - size.width / 2;
+  const right = center.x + size.width / 2;
+  const top = center.y - size.height / 2;
+  const bottom = center.y + size.height / 2;
+  return rects.every(rect =>
+    right <= rect.x - padding || left >= rect.x + rect.width + padding ||
+    bottom <= rect.y - padding || top >= rect.y + rect.height + padding,
+  );
+}
+
 /** Next canonical stop strictly beyond `t` in the given direction, for
  *  coarse-tier sliding (start / middle / end). Clamps at the outer stops. */
 export function nextTStop(t: number, direction: 1 | -1): number {
@@ -187,9 +217,15 @@ export function directionalLabelAnchorStep(
   side: EdgeLabelSide,
   clearance: number,
   direction: Point,
-  distancePx: number,
-  coarse = false,
+  distance: number,
+  options: DirectionalLabelStepOptions = {},
 ): {t: number; side: EdgeLabelSide} | null {
+  const {
+    coarse = false,
+    labelSize,
+    keepOutRects = [],
+    keepOutPadding = 0,
+  } = options;
   const current = anchorPosition(points, t, side, clearance);
   const directionLength = Math.hypot(direction.x, direction.y);
   const total = pathLength(points);
@@ -208,7 +244,7 @@ export function directionalLabelAnchorStep(
       t: coarse
         ? nextTStop(t, sign)
         : Math.min(Math.max(
-          t + sign * Math.max(distancePx, 0) / total,
+          t + sign * Math.max(distance, 0) / total,
           LABEL_T_MIN,
         ), LABEL_T_MAX),
       side,
@@ -223,6 +259,9 @@ export function directionalLabelAnchorStep(
   for (const candidate of candidates) {
     const position = anchorPosition(points, candidate.t, candidate.side, clearance);
     if (!position) continue;
+    if (labelSize && !centeredBoxClearsRects(
+      position, labelSize, keepOutRects, keepOutPadding,
+    )) continue;
     const dx = position.x - current.x;
     const dy = position.y - current.y;
     const displacement = Math.hypot(dx, dy);

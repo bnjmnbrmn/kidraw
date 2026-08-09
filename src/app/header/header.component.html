@@ -109,22 +109,22 @@
                      (change)="onNumberChange('cursor', 'gridSpacing', $event)">
             </label>
             <label class="swap-label">
-              Fine movement (px):
-              <input type="number" tabindex="-1" min="1" max="1000" step="1"
-                     [value]="config.cursor.fineMovementSize"
-                     (input)="onNumberChange('cursor', 'fineMovementSize', $event)">
+              Fine movement (minor-grid squares):
+              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+                     [value]="config.cursor.fineMovementGridSteps"
+                     (input)="onNumberChange('cursor', 'fineMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
-              Normal movement (px):
-              <input type="number" tabindex="-1" min="1" max="2000" step="5"
-                     [value]="config.cursor.normalMovementSize"
-                     (input)="onNumberChange('cursor', 'normalMovementSize', $event)">
+              Normal movement (minor-grid squares):
+              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+                     [value]="config.cursor.normalMovementGridSteps"
+                     (input)="onNumberChange('cursor', 'normalMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
-              Coarse movement (px):
-              <input type="number" tabindex="-1" min="1" max="10000" step="50"
-                     [value]="config.cursor.coarseMovementSize"
-                     (input)="onNumberChange('cursor', 'coarseMovementSize', $event)">
+              Coarse movement (major-grid squares):
+              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+                     [value]="config.cursor.coarseMovementGridSteps"
+                     (input)="onNumberChange('cursor', 'coarseMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
               Repeat delay (ms):
