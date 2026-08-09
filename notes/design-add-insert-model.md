@@ -22,6 +22,11 @@ model Ben partly liked; its weakness was blind direction commitment).
   - over an **edge** → add label / waypoint (label treated as its edge);
   - over **nothing** → free node ghost at the crosshairs.
 
+A tap uses the same context directly: node → self-loop, bare edge → new
+label followed immediately by Insert mode, blank canvas (or a waypoint) →
+new default node followed by Insert mode. A label already under the
+crosshairs remains an edit target rather than receiving another label.
+
 ## New-node edit focus
 
 As of 2026-07-27, entering label edit after adding a labelable node also

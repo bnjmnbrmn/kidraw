@@ -18,18 +18,18 @@ describe('DemoDataService', () => {
 
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
-    expect(nodes.length).toBe(16);
-    expect(edges.length).toBe(11);
+    expect(nodes.length).toBe(17);
+    expect(edges.length).toBe(12);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
     const nextEdges = edges.filter(edge => edge.destNode.id === 'da-48');
-    expect(nextEdges.map(edge => edge.id)).toEqual(['da-139']);
-    expect(nextEdges[0].srcNode.id).toBe('da-138');
-    expect(nodes.find(node => node.id === 'da-138')?.label.text())
-      .toContain('there will also be ghost nodes you can connect to');
-    expect(nodes.find(node => node.id === 'da-138')?.label.text())
-      .toContain('halfway between each pair of existing nodes');
+    expect(nextEdges.map(edge => edge.id)).toEqual(['da-144', 'da-148']);
+    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-143', 'da-147']);
+    expect(nodes.find(node => node.id === 'da-143')?.label.text())
+      .toContain('a tapped "Add..." should add a label');
+    expect(nodes.find(node => node.id === 'da-147')?.label.text())
+      .toBe('Make the [Edit] Repeat delay/interval actually work');
     expect(edges.find(edge => edge.id === 'da-124')?.controlPoints[0])
       .toEqual(jasmine.objectContaining({
         x: 787.9005249843403,

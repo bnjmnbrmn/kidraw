@@ -274,10 +274,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildLabelEditSubmenuConfig(capsMode: boolean): SubmenuConfig {
     const insertChar = (ch: string) => new LabeledAction(ch, () =>
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
-    const cursor = this.visualConfig.config.cursor;
 
     const config: SubmenuConfig = {
-      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
 
     // Letter keys
@@ -334,11 +333,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.labelEditModeOut.emit('insert');
     };
     const emit = (kind: DACommandType) => () => this.keyMenuOut.emit({kind} as DACommand);
-    const cursor = this.visualConfig.config.cursor;
 
     const config: SubmenuConfig = {
       // Held motions repeat like held typing does in insert mode.
-      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
 
     // i → insert at the caret; a → insert after it (vim append).
@@ -380,7 +378,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // Shifted vim commands: $ (line end), A (append at line end), I (insert
     // at line start).
     const shift: SubmenuConfig = {
-      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
     (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
     (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
@@ -404,7 +402,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildLabelEditVimVisualSubmenuConfig(capsMode: boolean): SubmenuConfig {
     const emit = (kind: DACommandType) => () => this.keyMenuOut.emit({kind} as DACommand);
-    const cursor = this.visualConfig.config.cursor;
     const leaveVisual = () => {
       this.vimReplacePending = false;
       this.vimChangePending = false;
@@ -413,7 +410,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.labelEditModeOut.emit('vimNormal');
     };
     const config: SubmenuConfig = {
-      _repeatConfig: {initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs},
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
 
     (config as any)['h'] = new LabeledAction('← extend', emit(DACommandType.CURSOR_LEFT));
@@ -448,7 +445,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }, false);
 
     const shift: SubmenuConfig = {
-      _repeatConfig: {initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs},
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
     (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
     (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
@@ -460,10 +457,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildShiftSubmenuConfig(capsMode: boolean): SubmenuConfig {
     const insertChar = (ch: string) => new LabeledAction(ch, () =>
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ch}));
-    const cursor = this.visualConfig.config.cursor;
 
     const config: SubmenuConfig = {
-      _repeatConfig: { initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs },
+      _repeatConfig: this.editRepeatConfig(),
     } as SubmenuConfig;
 
     // Shifted letters (opposite of current caps mode)
@@ -507,14 +503,24 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.vimChangePending = false;
   }
 
+  /** The two timing pairs in Settings are the source of truth for every
+   * repeating key in their respective normal/edit mode families. */
+  private normalRepeatConfig() {
+    const cursor = this.visualConfig.config.cursor;
+    return {initialDelayMs: cursor.initialRepeatDelayMs, intervalMs: cursor.repeatIntervalMs};
+  }
+
+  private editRepeatConfig() {
+    const cursor = this.visualConfig.config.cursor;
+    return {initialDelayMs: cursor.labelEditInitialDelayMs, intervalMs: cursor.labelEditIntervalMs};
+  }
+
   private buildRootSubmenuConfig(): SubmenuConfig {
     const movement = this.keyAssignments.movement;
     const root = this.keyAssignments.root;
 
     return {
-      // Fire once on keydown, pause long enough to distinguish a tap, then
-      // repeat quickly enough for sustained movement across the canvas.
-      _repeatConfig: { initialDelayMs: 250, intervalMs: 100 },
+      _repeatConfig: this.normalRepeatConfig(),
       [movement.up]: new LabeledAction('Move Up', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP})),
       [movement.left]: new LabeledAction('Move Left', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})),
       [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
@@ -856,7 +862,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       () => this.keyMenuOut.emit({kind, distance: g});
 
     return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      _repeatConfig: this.normalRepeatConfig(),
       [movement.up]: new LabeledAction('Pan Up', panCmd(DACommandType.PAN_UP)),
       [movement.left]: new LabeledAction('Pan Left', panCmd(DACommandType.PAN_LEFT)),
       [movement.down]: new LabeledAction('Pan Down', panCmd(DACommandType.PAN_DOWN)),
@@ -905,7 +911,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // Default jumps step between nodes + labels; the coarse modifier narrows
     // to nodes only, the fine modifier widens to include waypoints too.
     return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      _repeatConfig: this.normalRepeatConfig(),
       ...this.moveByNodeJumpKeys('labels'),
       [mbn.strategy.adaptiveBandGrid]: new LabeledAction(
         'Use adaptive band grid',
@@ -955,7 +961,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildMoveByLinkSubmenuConfig(): SubmenuConfig {
     const movement = this.keyAssignments.movement;
     return {
-      _repeatConfig: {initialDelayMs: 300, intervalMs: 200},
+      _repeatConfig: this.normalRepeatConfig(),
       [movement.up]: new LabeledAction('North link', () =>
         this.keyMenuOut.emit({kind: DACommandType.MOVE_LINK_UP})),
       [movement.left]: new LabeledAction('West link', () =>
@@ -969,7 +975,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMoveByNodeTierSubmenu(targets: NavTargetKind): SubmenuConfig {
     return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      _repeatConfig: this.normalRepeatConfig(),
       ...this.moveByNodeJumpKeys(targets),
     } as SubmenuConfig;
   }
@@ -1015,7 +1021,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildCtrlSubmenuConfig(): SubmenuConfig {
     return {
-      _repeatConfig: { initialDelayMs: 300, intervalMs: 200 },
+      _repeatConfig: this.normalRepeatConfig(),
       'z': new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
       'r': new LabeledAction('Redo', () => this.keyMenuOut.emit({kind: DACommandType.REDO})),
       '[': new LabeledAction('Escape', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),

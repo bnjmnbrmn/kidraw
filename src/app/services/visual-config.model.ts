@@ -49,7 +49,7 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
   },
   cursor: {
     gridSpacing: 50,
-    initialRepeatDelayMs: 0,
+    initialRepeatDelayMs: 250,
     repeatIntervalMs: 100,
     labelEditInitialDelayMs: 400,
     labelEditIntervalMs: 50,

@@ -48,7 +48,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.singleItemSelect = jasmine.createSpy('singleItemSelect');
     component.showEditCarets = jasmine.createSpy('showEditCarets');
     component.crosshairsInLayerCoords = () => ({x: 10, y: 20});
-    component.addLabel = jasmine.createSpy('addLabel');
+    component.addLabel = jasmine.createSpy('addLabel').and.returnValue({});
     component.finishTweens = jasmine.createSpy('finishTweens');
     component.emitStatus = jasmine.createSpy('emitStatus');
     component.undoRedoService = {pushSnapshot: jasmine.createSpy('pushSnapshot')};
@@ -90,11 +90,15 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.createNewNode).not.toHaveBeenCalled();
     });
 
-    it('hints instead of adding over an edge', () => {
+    it('adds an editable label over an edge', () => {
       const component = buildComponent({edgesUnderCrosshairs: [{}]});
       component.handleQuickAdd();
+      expect(component.pushUndoSnapshot).toHaveBeenCalledWith({kind: DACommandType.ADD_LABEL});
+      expect(component.addLabel).toHaveBeenCalledOnceWith(false);
+      expect(component.showEditCarets).toHaveBeenCalled();
       expect(component.daOut.emit).toHaveBeenCalledWith(
-        jasmine.objectContaining({kind: 'status-message'}));
+        {kind: 'started-label-editing-mode', mode: 'insert'});
+      expect(component.scheduleVaultAutoSave).toHaveBeenCalled();
       expect(component.createNewNode).not.toHaveBeenCalled();
     });
 

@@ -93,16 +93,26 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('uses a 250 ms pause and 100 ms target cadence for normal movement', () => {
+  it('uses the configured repeat timing for normal movement', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
+    const visualConfig = TestBed.inject(VisualConfigService);
+    const previous = {...visualConfig.config.cursor};
+
+    visualConfig.updateConfig({cursor: {
+      ...visualConfig.config.cursor,
+      initialRepeatDelayMs: 620,
+      repeatIntervalMs: 170,
+    }});
 
     const rootConfig = buildRootConfig(component);
 
     expect(rootConfig['_repeatConfig']).toEqual({
-      initialDelayMs: 250,
-      intervalMs: 100,
+      initialDelayMs: 620,
+      intervalMs: 170,
     });
+
+    visualConfig.updateConfig({cursor: previous});
   });
 
   it('keeps edit mode and applies new repeat timing when Settings changes', () => {
@@ -128,6 +138,59 @@ describe('KeymenuComponent', () => {
     });
 
     visualConfig.updateConfig({cursor: previous});
+  });
+
+  it('uses the Settings delays and intervals in the live repeat timers', () => {
+    jasmine.clock().install();
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const visualConfig = TestBed.inject(VisualConfigService);
+    const previous = {...visualConfig.config.cursor};
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+    try {
+      fixture.detectChanges();
+      visualConfig.updateConfig({cursor: {
+        ...visualConfig.config.cursor,
+        initialRepeatDelayMs: 600,
+        repeatIntervalMs: 200,
+        labelEditInitialDelayMs: 700,
+        labelEditIntervalMs: 150,
+      }});
+
+      const movementKey = component.keyAssignments.movement.left;
+      component.handleKeyDown(new KeyboardEvent('keydown', {key: movementKey}));
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.MOVE_CROSSHAIRS_LEFT).length).toBe(1);
+      jasmine.clock().tick(599);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.MOVE_CROSSHAIRS_LEFT).length).toBe(1);
+      jasmine.clock().tick(1);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.MOVE_CROSSHAIRS_LEFT).length).toBe(2);
+      jasmine.clock().tick(200);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.MOVE_CROSSHAIRS_LEFT).length).toBe(3);
+      component.handleKeyUp(new KeyboardEvent('keyup', {key: movementKey}));
+
+      component.enterLabelEditMode('insert');
+      component.handleKeyDown(new KeyboardEvent('keydown', {key: 'q'}));
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.INSERT_CHAR && command.value === 'q').length).toBe(1);
+      jasmine.clock().tick(699);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.INSERT_CHAR && command.value === 'q').length).toBe(1);
+      jasmine.clock().tick(1);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.INSERT_CHAR && command.value === 'q').length).toBe(2);
+      jasmine.clock().tick(150);
+      expect(emitSpy.calls.allArgs().filter(([command]) =>
+        command?.kind === DACommandType.INSERT_CHAR && command.value === 'q').length).toBe(3);
+      component.handleKeyUp(new KeyboardEvent('keyup', {key: 'q'}));
+    } finally {
+      visualConfig.updateConfig({cursor: previous});
+      fixture.destroy();
+      jasmine.clock().uninstall();
+    }
   });
 
   it('binds vim-normal e to move to the word end', () => {

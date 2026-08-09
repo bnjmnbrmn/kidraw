@@ -32,9 +32,10 @@ the goal line remains a complete traversable backbone rather than being
 silently skipped by magnetic snapping. Equal-position ambiguity is resolved
 by the existing priority order, so a waypoint on an edge wins over the edge.
 
-Normal-mode held movement fires once immediately, pauses for 250 ms, and then
-repeats every 100 ms. This is local to the root movement keys; repeat settings
-used by other continuous controls are unchanged.
+Normal-mode held movement fires once immediately, then uses Cursor → Repeat
+delay and Repeat interval for its app-owned timer. The defaults remain 250 ms
+and 100 ms. Other repeating normal-mode cards use the same pair; Insert,
+Vim-normal, and Vim-visual text editing use the separate Edit repeat pair.
 
 The graph item under the crosshairs gets a non-semantic dashed hover trace in
 the crosshairs color. It never changes selection and follows selection's hit

@@ -6567,7 +6567,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  private addLabel(): void {
+  private addLabel(notifyHeldAdd = true): DALabel | null {
     const box = this.getCrosshairsBBoxInDrawingLayer();
 
     const edges: DAEdge[] = this.drawingLayer.getDAEdges();
@@ -6592,12 +6592,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           this.crosshairsLayer.hideCrosshairs();
           this.drawingLayer.batchDraw();
           this.checkAndEmitEditState();
-          this.daOut.emit({kind: 'label-added'});
-          return;
+          if (notifyHeldAdd) {
+            this.daOut.emit({kind: 'label-added'});
+          }
+          return label;
         }
       }
     }
     this.log.log('addLabel: no edge found under crosshairs');
+    return null;
   }
 
   /** Show carets on everything about to be edited. A crosshairs point places
@@ -6757,7 +6760,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):
    *  quick-add based on what the crosshairs are over. Empty (or waypoint) →
-   *  default node at the crosshairs; node → self-loop; edge/label → hint.
+   *  default node at the crosshairs; node → self-loop; edge → editable label;
+   *  label → hint.
    *  Selection is irrelevant to adding. */
   private handleQuickAdd(): void {
     if (this.getLabelUnderCrosshairs()) {
@@ -6771,7 +6775,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     if (!this.getWaypointUnderCrosshairs() && this.getDAEdgesContainingCrosshairs().length > 0) {
-      this.daOut.emit({kind: 'status-message', message: 'Edge under crosshairs — hold the add key for label/waypoint options.'});
+      this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
+      const label = this.addLabel(false);
+      if (!label) return;
+      this.showEditCarets();
+      this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
+      this.scheduleVaultAutoSave();
       return;
     }
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
@@ -7560,9 +7569,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         // No label yet: create an empty one at the crosshairs projection
         // (addLabel selects it), then type straight into it.
         this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
-        this.addLabel();
+        this.addLabel(false);
         if (edge.labels.length === 0) return; // addLabel failed; stay put
         mode = 'insert';
+        this.scheduleVaultAutoSave();
       }
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets();

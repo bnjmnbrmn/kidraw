@@ -1,7 +1,7 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-09 at 15:01:42 UTC. Keep the original IDs and geometry:
- * browser repros and development notes refer to the Next edge by ID.
+ * session on 2026-08-09 at 17:40:38 UTC. Keep the original IDs and geometry:
+ * browser repros and development notes refer to the Next edges by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
 kidraw: 1
@@ -45,6 +45,8 @@ styles:
       da-48:
         x: 2835.9719968914187
         'y': -686.727599126647
+        w: 320
+        h: 110
         shape: circle
       da-51:
         x: 236.8040281414187
@@ -63,9 +65,12 @@ styles:
       da-127:
         x: -540
         'y': -542.7586341751829
-      da-138:
-        x: 2437.3001218914187
-        'y': -520.1838207015262
+      da-143:
+        x: 3060
+        'y': -425
+      da-147:
+        x: 3125
+        'y': -675
     edges:
       da-124:
         waypoints:
@@ -104,8 +109,10 @@ semantics:
       label: Side Pane Keymenu (Mini menu)
     da-127:
       label: Mostly hidden Keymenu (keymenu display with only a single line of text at the bottom of the screen)
-    da-138:
-      label: I actually want it so that, if you are over an existing node and press and release a ("Add...") you'll get a self loop, and if you press and hold a (while over a node) you'll be able to move from node to node like you would in "Move by Node..." EXCEPT that there will also be ghost nodes you can connect to (which will add a node linked to your original node and place you in edit/insert text mode, to add the text of the new node).  The ghost nodes will be placed halfway between each pair of existing nodes (in large graphs, you may be able to optimize this by looking at just the visible nodes and the nodes just outside that range that would result in a visible ghost node).  The ghost nodes will also be placed along a grid determined by the source node and the larger overlay grid.
+    da-143:
+      label: With the crosshairs over an edge, a tapped "Add..." should add a label
+    da-147:
+      label: Make the [Edit] Repeat delay/interval actually work
   edges:
     da-36:
       from: da-34
@@ -137,7 +144,10 @@ semantics:
     da-124:
       from: da-24
       to: da-123
-    da-139:
-      from: da-138
+    da-144:
+      from: da-143
+      to: da-48
+    da-148:
+      from: da-147
       to: da-48
 `;
