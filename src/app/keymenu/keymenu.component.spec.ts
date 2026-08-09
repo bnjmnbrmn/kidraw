@@ -259,6 +259,10 @@ describe('KeymenuComponent', () => {
     component.setSuspended(true, 'grow-targeting');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowTargeting');
     expect(keyMenu.currentMode.stackTop.keys['s'].label).toBe('Edge...');
+    expect(keyMenu.currentMode.stackTop.keys['l'].label)
+      .toContain('nodes + ghosts');
+    expect(keyMenu.currentMode.stackTop.keys['a'].label)
+      .toContain('Self Loop');
 
     component.setSuspended(true, 'grow-edge');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowEdge');
@@ -335,7 +339,7 @@ describe('KeymenuComponent', () => {
     const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
     expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
-    // 'a' = add (held hub / tap quick-add); 'i' = insert text (tap) —
+    // 'a' = add (held hub / contextual tap); 'i' = insert text (tap) —
     // the a=add / i=insert model, 2026-07-19
     const editAction = rootConfig['a'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();

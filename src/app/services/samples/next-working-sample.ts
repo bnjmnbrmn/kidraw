@@ -1,7 +1,7 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-08 at 13:03:06 UTC. Keep the original IDs and geometry:
- * browser repros and development notes refer to the Bugs/Next edges by ID.
+ * session on 2026-08-09 at 15:01:42 UTC. Keep the original IDs and geometry:
+ * browser repros and development notes refer to the Next edge by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
 kidraw: 1
@@ -49,36 +49,29 @@ styles:
       da-51:
         x: 236.8040281414187
         'y': -70.72759912664696
-      da-93:
-        x: 2720.9719968914187
-        'y': -530.727599126647
       da-99:
         x: 674.3997312664187
         'y': -530.727599126647
         shape: circle
-      da-111:
-        x: 1832.3001218914187
-        'y': -534.727599126647
-      da-115:
-        x: 2214.3001218914187
-        'y': -530.727599126647
-      da-121:
-        x: 2423.389705224752
-        'y': -930.3300432456608
+      da-123:
+        x: 225
+        'y': -567.7586341751829
+        shape: circle
+      da-126:
+        x: -210.716796875
+        'y': -542.7586341751829
+      da-127:
+        x: -540
+        'y': -542.7586341751829
+      da-138:
+        x: 2437.3001218914187
+        'y': -520.1838207015262
     edges:
-      da-113:
+      da-124:
         waypoints:
-          - x: 2413.1780773661962
-            'y': -603.4263899604326
-            id: da-120
-      da-122:
-        waypoints:
-          - x: 2298.285196184542
-            'y': -633.7519001196608
-            id: da-123
-          - x: 2529.678249493632
-            'y': -558.754978822012
-            id: da-124
+          - x: 787.9005249843403
+            'y': -626.9333456052141
+            id: da-125
 semantics:
   nodes:
     da-4:
@@ -103,16 +96,16 @@ semantics:
       label: Next
     da-51:
       label: When using the todo plugin, instead of "circle and box, etc.have category and task
-    da-93:
-      label: Can't add waypoints to self-loop edges that will actually move the self loop
     da-99:
       label: Plugin/Diagram Type system
-    da-111:
-      label: When selecting the endpoint of an edge you are adding, make the navigtion work the same way as "Move by Node"
-    da-115:
-      label: Adding self loops doesn't work
-    da-121:
-      label: Ethan zxto
+    da-123:
+      label: Ex Mode (Command-line mode)
+    da-126:
+      label: Side Pane Keymenu (Mini menu)
+    da-127:
+      label: Mostly hidden Keymenu (keymenu display with only a single line of text at the bottom of the screen)
+    da-138:
+      label: I actually want it so that, if you are over an existing node and press and release a ("Add...") you'll get a self loop, and if you press and hold a (while over a node) you'll be able to move from node to node like you would in "Move by Node..." EXCEPT that there will also be ghost nodes you can connect to (which will add a node linked to your original node and place you in edit/insert text mode, to add the text of the new node).  The ghost nodes will be placed halfway between each pair of existing nodes (in large graphs, you may be able to optimize this by looking at just the visible nodes and the nodes just outside that range that would result in a visible ghost node).  The ghost nodes will also be placed along a grid determined by the source node and the larger overlay grid.
   edges:
     da-36:
       from: da-34
@@ -123,9 +116,6 @@ semantics:
     da-46:
       from: da-42
       to: da-41
-    da-97:
-      from: da-48
-      to: da-93
     da-101:
       from: da-23
       to: da-51
@@ -144,19 +134,10 @@ semantics:
     da-110:
       from: da-34
       to: da-23
-    da-112:
-      from: da-4
-      to: da-111
-    da-113:
-      from: da-48
-      to: da-111
-    da-116:
-      from: da-4
-      to: da-115
-    da-117:
-      from: da-48
-      to: da-115
-    da-122:
-      from: da-4
-      to: da-93
+    da-124:
+      from: da-24
+      to: da-123
+    da-139:
+      from: da-138
+      to: da-48
 `;

@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-08. Branch: `main`._
+_Updated 2026-08-09. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -119,8 +119,8 @@ _Updated 2026-08-08. Branch: `main`._
 > pure radial ordering is in `navigation-quadrant-rings.spec.ts`.
 > Removed as obsolete: `repro-nav-node-direction.js`,
 > `repro-nav-connected.js` (cone/cycling/connected models, all superseded).
-> Grow-mode target hop (`growHop`, held-`a` flow) still uses its own cone +
-> cycling and is unrelated to this — leave it.
+> Grow-mode target hop (`growHop`, held-`a` flow) delegates to this engine at
+> an augmented nodes-only tier containing real nodes plus insertion ghosts.
 >
 > **History of superseded approaches** (all in git; do not resurrect without
 > reason): 45° direction cone (da-88 fix, item 34), repeated-press cycling
@@ -243,6 +243,8 @@ _Updated 2026-08-08. Branch: `main`._
 57. **Three live Next interaction repairs (2026-08-08).** **(a)** Changing Cursor → Edit repeat delay/interval now applies on every input event without dropping an active Insert/Vim-normal/Vim-visual text-edit session back to Normal; rebuilding the rendered key cards preserves the logical mode, and the active submenu receives the new timer values immediately. **(b)** `a → s → l` Self Loop now tolerates a naturally rolled chord where the `l` leaf arrives just before the `s` Edge submenu key. Drawing-area grow mode tracks physical overlap, so that roll commits the loop instead of treating `l` as an ordinary rightward target hop. **(c)** normal movement records feature visits per direction rather than clearing all history on every reversal, preventing small `j/k` alternations at the same side of `Bugs` from rediscovering it indefinitely. Semantic landing traces are painted as soon as a target is chosen, so a thin edge remains visibly highlighted even when the held-key 100 ms repeat begins before the movement tween's delayed hover refresh. The 2026-08-08 live graph is preserved as the 17-node / 9-edge **Next Working Graph (recovered)** sample and in `meta-project/kdvault`. Verified by `tools/repro-2026-08-08-next.js` (7/7 checks against the recovered geometry), `tools/repro-normal-movement-goal.js` (16/16), focused specs, the full unit suite (392/392), and a clean production build (existing budget/CommonJS warnings only).
 
 58. **Self-loop editing + Move-by-Node add targeting (2026-08-08, second live Next batch).** The refreshed live graph's three items are fixed together. **(a)** A self-loop no longer ignores its control points: inserting the first waypoint materializes the default loop's two implicit bends, preserving the initial four-point route, and moving that waypoint now updates the logical path, Konva arrow, and serialized style. **(b)** Existing-node endpoint selection in held Add now delegates to the actual Move by Node engine at its nodes-only tier, sharing the active navigation strategy, overlay, crosshair landing, viewport panning, same-direction run, and turn re-origin behavior instead of approximating Move by Link. **(c)** Add → Edge is sticky after Add is released, so `hold a, tap s, release a, tap l` creates a self-loop; the surface is also available from blank canvas for a sole selected node. The exact 2026-08-08 13:03 UTC graph is refreshed in the built-in recovery sample and `meta-project/kdvault` (16 nodes / 15 edges, with the three `Next` edges and Bugs cross-links). Verified by `tools/repro-2026-08-08-next-round2.js` (7/7 exact-graph browser checks), focused specs, the full unit suite (396/396), and a clean production build (existing budget/CommonJS warnings only).
+
+59. **Direct self-loop tap + insertion ghosts in held Add (2026-08-09, via Next).** Tapping Add over a node now creates the self-loop directly. Holding Add augments the actual Move by Node nodes-only tier with visible insertion ghosts: every distinct pairwise node midpoint plus the source node's horizontal/vertical lanes on the current major drawing grid (whole major-cell spacing, at least the 300-unit add slot, viewport plus one step). Releasing on a real node connects it; releasing on a ghost creates a linked default node at that exact landing and enters labelEdit insert mode. A full 2-D grid was rejected in browser testing because quadrant-ring navigation spiraled through diagonal ghosts and panned away from real nodes; source-aligned lanes preserve repeated-direction reachability. The keymenu surface says “nodes + ghosts” and previews the pristine self-loop. The exact 2026-08-09 15:01:42 UTC graph is preserved in the built-in sample and `meta-project/kdvault` (16 nodes / 11 edges; `da-138 → da-48` is the current Next item). Verified by pure placement specs, focused drawing/keymenu specs, `tools/repro-grow-ghost-targets.js` (12/12 physical-key checks), the full unit suite (404/404), and a clean production build (existing budget/CommonJS warnings only).
 
 ## Routing-eval harness
 

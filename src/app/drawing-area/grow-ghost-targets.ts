@@ -1,0 +1,109 @@
+export interface GrowGhostNodeCenter {
+  id: string;
+  x: number;
+  y: number;
+}
+
+export interface GrowGhostBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+export interface GrowGhostTarget {
+  id: string;
+  x: number;
+  y: number;
+  source: 'midpoint' | 'grid';
+}
+
+const POSITION_PRECISION = 100;
+
+function positionKey(point: {x: number; y: number}): string {
+  return `${Math.round(point.x * POSITION_PRECISION)}:${Math.round(point.y * POSITION_PRECISION)}`;
+}
+
+/**
+ * Use the current major drawing grid without allowing add targets to become
+ * denser than the established node-placement slot. The result is always an
+ * integer number of major cells, so zoom-level grid changes cannot introduce
+ * a nearly-aligned second lattice.
+ */
+export function growGhostGridStep(majorGridSpacing: number, minimumSpacing = 300): number {
+  const major = Number.isFinite(majorGridSpacing) && majorGridSpacing > 0
+    ? majorGridSpacing
+    : minimumSpacing;
+  return Math.max(major, Math.ceil(minimumSpacing / major) * major);
+}
+
+/**
+ * Candidate positions for held-Add navigation.
+ *
+ * Pairwise midpoints come first and therefore win when a source-anchored grid
+ * intersection lands at the same position. Exact existing-node centers are
+ * omitted: Move by Node must keep the real node as the unambiguous target.
+ */
+export function buildGrowGhostTargets(
+  nodes: readonly GrowGhostNodeCenter[],
+  anchor: GrowGhostNodeCenter,
+  majorGridSpacing: number,
+  bounds: GrowGhostBounds,
+  minimumGridSpacing = 300,
+): GrowGhostTarget[] {
+  const occupied = new Set(nodes.map(positionKey));
+  const used = new Set<string>();
+  const targets: GrowGhostTarget[] = [];
+  const add = (target: GrowGhostTarget) => {
+    const key = positionKey(target);
+    if (occupied.has(key) || used.has(key)) return;
+    used.add(key);
+    targets.push(target);
+  };
+
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i];
+      const b = nodes[j];
+      const ids = [a.id, b.id].sort();
+      add({
+        id: `grow-ghost:midpoint:${ids[0]}:${ids[1]}`,
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        source: 'midpoint',
+      });
+    }
+  }
+
+  const step = growGhostGridStep(majorGridSpacing, minimumGridSpacing);
+  // One off-screen step lets the ordinary Move-by-Node edge-pan behavior
+  // reveal a new insertion target instead of stopping at the viewport edge.
+  const minIx = Math.floor((bounds.minX - anchor.x) / step) - 1;
+  const maxIx = Math.ceil((bounds.maxX - anchor.x) / step) + 1;
+  const minIy = Math.floor((bounds.minY - anchor.y) / step) - 1;
+  const maxIy = Math.ceil((bounds.maxY - anchor.y) / step) + 1;
+  // Add's directional navigation needs open cardinal lanes. Filling every
+  // 2-D intersection makes a repeated right press spiral through diagonal
+  // rings and can pan away before reaching a real node. The source's row and
+  // column are the useful source-determined portion of the larger grid.
+  for (let ix = minIx; ix <= maxIx; ix++) {
+    if (ix === 0) continue;
+    add({
+      id: `grow-ghost:grid:${ix}:0`,
+      x: anchor.x + ix * step,
+      y: anchor.y,
+      source: 'grid',
+    });
+  }
+  for (let iy = minIy; iy <= maxIy; iy++) {
+    if (iy === 0) continue;
+    add({
+      id: `grow-ghost:grid:0:${iy}`,
+      x: anchor.x,
+      y: anchor.y + iy * step,
+      source: 'grid',
+    });
+  }
+
+  return targets;
+}

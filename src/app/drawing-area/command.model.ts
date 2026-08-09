@@ -260,7 +260,7 @@ export type DACommand =
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
   | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
   // Tap of the add key: default node at the crosshairs on empty canvas, or a
-  // connected default node one slot right of the node under the crosshairs.
+  // self-loop on the node under the crosshairs.
   | {kind: DACommandType.QUICK_ADD}
   // Release of a held node-insert flow after its optional drag phase.
   | {kind: DACommandType.BEGIN_NEW_NODE_LABEL_EDIT}

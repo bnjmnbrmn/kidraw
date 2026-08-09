@@ -1,7 +1,7 @@
 ---
 title: a = add (structure), i = insert (text) — ghost-directed add flow
 type: proposal
-status: converging — Ben's round-1 answers folded in, 2026-07-19
+status: implemented — ghost-target revision folded in, 2026-08-09
 ---
 
 # a = add, i = insert: the ghost-directed add flow
@@ -27,7 +27,7 @@ model Ben partly liked; its weakness was blind direction commitment).
 As of 2026-07-27, entering label edit after adding a labelable node also
 centers that node in the viewport and raises the drawing to at least 100%
 zoom. A view already closer than 100% is not zoomed out. This applies to
-tap-add, connected quick-add, grow/type placement, and insert-hub additions.
+empty-canvas tap-add, grow ghost/type placement, and insert-hub additions.
 
 For held insert-hub additions, the focus is deliberately deferred until the
 add key is released: the optional `hjkl` drag establishes the node's final
@@ -35,21 +35,28 @@ position first, then that position is centered and label editing begins.
 Junction/invisible additions remain non-editable and unfocused. Editing an
 existing node does not recenter or change zoom.
 
-## The grow flow (hold `a` over a node) — targeting-first (round 2)
+## The grow flow (hold `a` over a node) — augmented Move by Node
 
-Ben's round-1 correction: connecting to an *existing* node should feel like
-**navigation by node**, not magnet-dragging (magnet idea discarded). And the
-build starts with the existing-target case even though new-node was the
-original motivation. hjkl therefore has two meanings, switched by whether a
-new node has entered the picture:
+Connecting to an *existing* node feels like **navigation by node**, not
+magnet-dragging. The same target tier now includes visible insertion ghosts:
 
-1. **On hold: targeting mode.** A target highlight starts at the anchor.
-   `hjkl` hops it node-to-node through the actual **Move by Node** engine at
-   its nodes-only tier (including the active spatial strategy, overlay,
-   crosshair landing, viewport pan, and turn re-origin behavior); a live ghost
-   edge from anchor to the highlighted target updates each hop.
-   Release `a` → edge anchor→target, stay in normal mode.
-2. **Entering new-node mode (round 4 — single path, a-n dropped):**
+1. **Press and release over a node:** add a self-loop using the current edge
+   defaults. The initial preview is the loop itself.
+2. **On hold: augmented targeting mode.** `hjkl` runs the actual **Move by
+   Node** engine (active spatial strategy, overlay, crosshair landing,
+   viewport pan, same-direction run, and turn re-origin behavior) over both
+   real nodes and insertion ghosts. Ghosts come from two deterministic
+   families:
+   - every distinct pairwise midpoint (unless it exactly coincides with a
+     real node center); and
+   - the source node's horizontal and vertical lanes on the current major
+     drawing grid. Lane spacing is a whole number of major cells and never
+     tighter than the established 300-unit add slot. Candidates cover the
+     viewport plus one step for edge-pan navigation.
+
+   Release on a real node → edge anchor→target, normal mode. Release on a
+   ghost → default node at that exact landing + edge + labelEdit insert mode.
+3. **Explicit typed-node mode remains available:**
    **hold `f` while `a` is held** → the **node-type popup** opens (reuse
    `NavPopupComponent`): `j`/`k` move the highlight, plain typing filters,
    and **releasing `f` selects the highlighted type** — the same
@@ -71,23 +78,24 @@ new node has entered the picture:
    movement tiers apply — `s`+hjkl coarse (slot-sized, the "re-rough"
    escape hatch), `d`+hjkl fine. Ben unsure yet; ship this and let the
    hands vote — it's tuning, not architecture.
-3. **`/` opens the fuzzy popup** (reuse `NavPopupComponent` filter mode) in
+4. **`/` opens the fuzzy popup** (reuse `NavPopupComponent` filter mode) in
    either sub-mode to pick a far-away existing target by label.
-4. **`o` cycles directionality — all four states** (anchor→target,
+5. **`o` cycles directionality — all four states** (anchor→target,
    target→anchor, undirected, bidirectional), tappable at any point in any
    sub-mode; ghost arrowheads show the current state. (Case 14 settled.)
-5. **No dedicated cancel key (round 6; `q` rejected).** The `a` hold is an
+6. **No dedicated cancel key (round 6; `q` rejected).** The `a` hold is an
    accelerator, not a requirement: once a popup opens, `a` has naturally
    been released (typing needs both hands) and the flow turns **sticky** —
    the popup carries it, **Enter commits, Esc/`ctrl-[` cancels** (the
    sticky-persistence idea from `discussion-interaction-surfaces.md`).
-   While still held: release before any keypress = no-op; release with the
-   target hopped back onto the anchor = no-op ("come home to cancel");
-   otherwise release commits and `u` undoes. Mode transitions stay
+   While still held: release with the target hopped back onto the anchor =
+   no-op ("come home to cancel"); otherwise release commits and `u` undoes.
+   Mode transitions stay
    confirmation-driven (the 07-18 `node-inserted` machinery) so a cancel
    never strands in labelEdit.
 
-Consequence: existing↔existing connection is the primary gesture here, so
+Consequence: existing↔existing and existing→new connections share one
+spatial gesture, so
 the old `s`+direction edge picker retired when this landed. A smaller
 `s` **Edge...** submenu returned on 2026-08-07 for edge kinds that grow
 targeting cannot express; its first action is `l` **Self Loop**. The
@@ -134,12 +142,12 @@ list Ben asked to keep track of.
 | 3 | tap `i` over edge | edits its label; creates an empty one if none (built as such) | ✅ built 2026-07-19 |
 | 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
 | 5 | tap `a` over nothing | quick-add node at crosshairs → center + zoom to ≥100% → labelEdit | ✅ built 2026-07-19; focus added 2026-07-27 |
-| 6 | tap `a` over node | **default quick-add**: node one slot right, current default edge direction/type, center + zoom to ≥100%, labelEdit; todo category creates directed task→category | ✅ built 2026-07-19; defaults revised 2026-07-28; focus added 2026-07-27 |
+| 6 | tap `a` over node | self-loop using current edge defaults | ✅ revised 2026-08-09 |
 | 6b | tap `a` over edge/label | no-op + hint | ✅ built 2026-07-19 |
-| 7 | hold `a` over node: existing target | hjkl node-jump targeting + ghost edge | ✅ built 2026-07-19 |
+| 7 | hold `a` over node: real or ghost target | hjkl Move-by-Node navigation; real release connects, ghost release inserts linked default node + labelEdit | ✅ revised 2026-08-09 |
 | 8 | hold `a` over node: `o` cycles 4 states | ghost arrowheads track | ✅ built 2026-07-19 |
 | 9 | hold `a` over node: `/` search target | fuzzy popup by label (big graphs) | ✅ built 2026-07-19 (sticky: Enter commits, Esc cancels) |
-| 10 | hold `a` + hold `f` → node-type popup; release f selects; hjkl places; release a (or sticky Enter) commits | single new-node path | ✅ built 2026-07-19 (v1 list = raw shapes; node-kinds slot pending) |
+| 10 | hold `a` + hold `f` → node-type popup; release f selects; hjkl places; release a (or sticky Enter) commits | explicit typed-node alternative to direct ghost insertion | ✅ built 2026-07-19 (v1 list = raw shapes; node-kinds slot pending) |
 | 11 | hold `a` over edge | add label / waypoint (current submenu) | keep for now; ghost-waypoint slide = later idea |
 | 12 | hold `a` over label | treat as its parent edge | ? tentative |
 | 13 | hold `a` over nothing | `f` type popup → free node ghost at crosshairs + hjkl placement; release `a` / sticky Enter commits | ✅ built 2026-07-19 |

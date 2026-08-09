@@ -2,7 +2,7 @@ import {DrawingAreaComponent} from './drawing-area.component';
 import {DACommandType} from './command.model';
 
 /** Tap semantics of the a=add / i=insert model
- *  (notes/design-add-insert-model.md): tap-a quick-adds by crosshairs
+ *  (notes/design-add-insert-model.md): tap-a adds by crosshairs
  *  context, tap-i edits text, v+o cycles selected-edge directedness. */
 describe('DrawingAreaComponent add/insert tap semantics', () => {
   function buildComponent(overrides: {
@@ -43,7 +43,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
           component.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
         }
       });
-    component.quickAddConnectedRight = jasmine.createSpy('quickAddConnectedRight');
+    component.quickAddSelfLoop = jasmine.createSpy('quickAddSelfLoop');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.singleItemSelect = jasmine.createSpy('singleItemSelect');
     component.showEditCarets = jasmine.createSpy('showEditCarets');
@@ -60,6 +60,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
     component.growMods = new Set<string>();
     component.growPressedKeys = new Set<string>();
+    component.growGhostTargets = [];
+    component.growInsertionTarget = null;
     return component;
   }
 
@@ -79,12 +81,12 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.createNewNode).toHaveBeenCalled();
     });
 
-    it('quick-adds a connected node right of the topmost node under the crosshairs', () => {
+    it('adds a self-loop to the topmost node under the crosshairs', () => {
       const top = {zIndex: () => 2};
       const bottom = {zIndex: () => 1};
       const component = buildComponent({nodesUnderCrosshairs: [bottom, top]});
       component.handleQuickAdd();
-      expect(component.quickAddConnectedRight).toHaveBeenCalledWith(top);
+      expect(component.quickAddSelfLoop).toHaveBeenCalledWith(top);
       expect(component.createNewNode).not.toHaveBeenCalled();
     });
 
@@ -101,7 +103,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.handleQuickAdd();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         jasmine.objectContaining({kind: 'status-message'}));
-      expect(component.quickAddConnectedRight).not.toHaveBeenCalled();
+      expect(component.quickAddSelfLoop).not.toHaveBeenCalled();
     });
 
     it('skips label edit when the default shape is junction', () => {
@@ -230,6 +232,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
       component.getNodeCenterInLayerCoordinates = () => ({x: 100, y: 200});
+      component.buildCurrentGrowGhostTargets = () => [];
       component.growGhost = null;
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
@@ -264,18 +267,31 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.commitGrowSelfLoop).toHaveBeenCalled();
     });
 
-    it('captures one undo snapshot when the grow Edge submenu commits', () => {
+    it('routes the grow Edge submenu through the same self-loop commit', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
       component.growAnchor = node;
+      component.growDirState = 0;
       component.exitGrowMode = jasmine.createSpy('exitGrowMode');
-      component.addSelfEdge = jasmine.createSpy('addSelfEdge');
 
       component.commitGrowSelfLoop();
 
       expect(component.exitGrowMode).toHaveBeenCalled();
-      expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(1);
-      expect(component.addSelfEdge).toHaveBeenCalledWith(node);
+      expect(component.quickAddSelfLoop).toHaveBeenCalledWith(node, 0);
+    });
+
+    it('captures one undo snapshot when a self-loop is committed', () => {
+      const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
+      const component = buildComponent();
+      component.addSelfEdge = jasmine.createSpy('addSelfEdge');
+      component.quickAddSelfLoop = (DrawingAreaComponent.prototype as any)
+        .quickAddSelfLoop.bind(component);
+
+      component.quickAddSelfLoop(node);
+
+      expect(component.pushUndoSnapshot).toHaveBeenCalledOnceWith(
+        {kind: DACommandType.QUICK_ADD});
+      expect(component.addSelfEdge).toHaveBeenCalledWith(node, undefined);
       expect(component.scheduleVaultAutoSave).toHaveBeenCalled();
     });
   });
@@ -302,6 +318,56 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
       expect(component.growTarget).toBe(target);
       expect(component.redrawGrowGhost).toHaveBeenCalled();
+    });
+
+    it('lands on insertion ghosts through the same Move by Node result', () => {
+      const anchor = {id: 'anchor'};
+      const ghost = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
+      const component = buildComponent({allNodes: [anchor]});
+      component.growAnchor = anchor;
+      component.growGhostTargets = [ghost];
+      component.graphItemNavigationStrategy = 'adaptive-band-grid';
+      component.navGridLast = null;
+      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
+        .and.callFake(() => {
+          component.navGridLast = {id: ghost.id, kind: 'node'};
+        });
+      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
+
+      component.growHop('right');
+
+      expect(component.growTarget).toBeNull();
+      expect(component.growInsertionTarget).toBe(ghost);
+      expect(component.redrawGrowGhost).toHaveBeenCalled();
+    });
+
+    it('turns a pristine release over a node into a self-loop', () => {
+      const anchor = {id: 'anchor'};
+      const component = buildComponent();
+      component.growAnchor = anchor;
+      component.growTarget = null;
+      component.growInsertionTarget = null;
+      component.growDirState = 0;
+      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+
+      component.commitGrowMode();
+
+      expect(component.quickAddSelfLoop).toHaveBeenCalledWith(anchor, 0);
+    });
+
+    it('creates and edits a node when an insertion ghost is released', () => {
+      const anchor = {id: 'anchor'};
+      const ghost = {id: 'grow-ghost:midpoint:a:b', x: 250, y: 300, source: 'midpoint'};
+      const component = buildComponent();
+      component.growAnchor = anchor;
+      component.growInsertionTarget = ghost;
+      component.growDirState = 3;
+      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+      component.commitGrowInsertion = jasmine.createSpy('commitGrowInsertion');
+
+      component.commitGrowMode();
+
+      expect(component.commitGrowInsertion).toHaveBeenCalledWith(anchor, ghost, 3);
     });
   });
 

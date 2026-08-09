@@ -19,20 +19,23 @@ describe('DemoDataService', () => {
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
     expect(nodes.length).toBe(16);
-    expect(edges.length).toBe(15);
+    expect(edges.length).toBe(11);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
-    const nextEdges = edges.filter(edge => edge.srcNode.id === 'da-48');
-    expect(nextEdges.map(edge => edge.id).sort()).toEqual([
-      'da-113', 'da-117', 'da-97',
-    ]);
-    expect(nodes.find(node => node.id === 'da-93')?.label.text())
-      .toContain('waypoints to self-loop');
-    expect(nodes.find(node => node.id === 'da-111')?.label.text())
-      .toContain('Move by Node');
-    expect(nodes.find(node => node.id === 'da-115')?.label.text())
-      .toContain('self loops');
+    const nextEdges = edges.filter(edge => edge.destNode.id === 'da-48');
+    expect(nextEdges.map(edge => edge.id)).toEqual(['da-139']);
+    expect(nextEdges[0].srcNode.id).toBe('da-138');
+    expect(nodes.find(node => node.id === 'da-138')?.label.text())
+      .toContain('there will also be ghost nodes you can connect to');
+    expect(nodes.find(node => node.id === 'da-138')?.label.text())
+      .toContain('halfway between each pair of existing nodes');
+    expect(edges.find(edge => edge.id === 'da-124')?.controlPoints[0])
+      .toEqual(jasmine.objectContaining({
+        x: 787.9005249843403,
+        y: -626.9333456052141,
+        waypointId: 'da-125',
+      }));
   });
 
   it('ships the current keymenu event/state graph in place of the stale shortcut tree', () => {

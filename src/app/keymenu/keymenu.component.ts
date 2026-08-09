@@ -1045,15 +1045,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildGrowTargetingSurfaceConfig(): SubmenuConfig {
     const m = this.keyAssignments.movement;
     return {
-      [m.up]: this.surfaceAction('Target Up'),
-      [m.left]: this.surfaceAction('Target Left'),
-      [m.down]: this.surfaceAction('Target Down'),
-      [m.right]: this.surfaceAction('Target Right'),
+      [m.up]: this.surfaceAction('Navigate Up (nodes + ghosts)'),
+      [m.left]: this.surfaceAction('Navigate Left (nodes + ghosts)'),
+      [m.down]: this.surfaceAction('Navigate Down (nodes + ghosts)'),
+      [m.right]: this.surfaceAction('Navigate Right (nodes + ghosts)'),
       [this.keyAssignments.insert.edge]: this.surfaceAction('Edge...'),
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
       [this.keyAssignments.select.cycleDirection]: this.surfaceAction('Cycle Direction'),
       [this.keyAssignments.search.open]: this.surfaceAction('Find Target'),
-      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Commit'),
+      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Self Loop / Commit'),
     } as SubmenuConfig;
   }
 
@@ -1635,7 +1635,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (editKeyPressedAtRoot) {
       // Over a node or empty canvas the drawing area takes the hold as grow mode
       // (suspending us synchronously via popup-state); otherwise we keep
-      // the classic held hub submenu + tap-to-quick-add.
+      // the classic held hub submenu + contextual tap action.
       const m = this.keyAssignments.movement;
       const insert = this.keyAssignments.insert;
       this.keyMenuOut.emit({kind: DACommandType.ENTER_ADD_MODE,

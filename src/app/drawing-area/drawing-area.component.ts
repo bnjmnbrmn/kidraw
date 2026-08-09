@@ -47,6 +47,7 @@ import {
   startNormalMovementGoal,
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
+import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -396,7 +397,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
     DACommandType.CREATE_NEW_NODE,
     DACommandType.ADD_SELF_EDGE,
-    DACommandType.QUICK_ADD,
     DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.INSERT_WAYPOINT,
     DACommandType.CONNECT_SELECTED_NODES,
@@ -4194,6 +4194,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const c = this.getNodeCenterInStageCoordinates(n);
       stops.push({id: n.id, kind: 'node', cx: c.x, cy: c.y});
     }
+    if (targets === 'nodes' && this.growActive && this.growAnchor &&
+        !this.growPlacing && !this.growEdgeMenuActive) {
+      for (const target of this.growGhostTargets) {
+        stops.push({
+          id: target.id,
+          kind: 'node',
+          cx: lx + target.x * scale,
+          cy: ly + target.y * scale,
+        });
+      }
+    }
     if (targets === 'labels' || targets === 'all') {
       for (const e of this.drawingLayer.getDAEdges()) for (const l of e.labels) {
         // DALabel's group origin is the center of its rendered box.
@@ -4213,6 +4224,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
     if (kind === 'node') {
+      const ghost = this.growGhostTargets.find(target => target.id === id);
+      if (ghost && this.growActive) {
+        return {x: lx + ghost.x * scale, y: ly + ghost.y * scale};
+      }
       const n = this.drawingLayer.getDANodes().find(n => n.id === id);
       return n ? this.getNodeCenterInStageCoordinates(n) : null;
     }
@@ -6742,8 +6757,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):
    *  quick-add based on what the crosshairs are over. Empty (or waypoint) →
-   *  default node at the crosshairs; node → connected default node one slot
-   *  to the right; edge/label → hint. Selection is irrelevant to adding. */
+   *  default node at the crosshairs; node → self-loop; edge/label → hint.
+   *  Selection is irrelevant to adding. */
   private handleQuickAdd(): void {
     if (this.getLabelUnderCrosshairs()) {
       this.daOut.emit({kind: 'status-message', message: 'Label under crosshairs — tap the edit-text key to edit it.'});
@@ -6752,7 +6767,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodes = this.getDANodesContainingCrosshairs();
     if (nodes.length > 0) {
       const anchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
-      this.quickAddConnectedRight(anchor);
+      this.quickAddSelfLoop(anchor);
       return;
     }
     if (!this.getWaypointUnderCrosshairs() && this.getDAEdgesContainingCrosshairs().length > 0) {
@@ -6762,6 +6777,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     const newNode = this.createNewNode(undefined, false);
     this.beginNewNodeLabelEdit(newNode);
+    this.scheduleVaultAutoSave();
   }
 
   // ---------------------------------------------------------------------
@@ -6776,9 +6792,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growAnchor: DANode | null = null;
   /** Start point for an empty-canvas add, in drawing-layer coordinates. */
   private growOrigin: {x: number; y: number} | null = null;
-  /** null = pristine (no target hopped yet) → release does the default
-   *  connected quick-add to the right. */
+  /** Existing-node landing selected through the Move-by-Node engine. */
   private growTarget: DANode | null = null;
+  /** Empty insertion landing selected through the same navigation engine. */
+  private growInsertionTarget: GrowGhostTarget | null = null;
+  /** All midpoint and source-grid insertion stops for this Add hold. */
+  private growGhostTargets: GrowGhostTarget[] = [];
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
@@ -6819,6 +6838,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ? this.getNodeCenterInLayerCoordinates(this.growAnchor)
       : this.crosshairsInLayerCoords();
     this.growTarget = null;
+    this.growInsertionTarget = null;
+    this.growGhostTargets = this.growAnchor
+      ? this.buildCurrentGrowGhostTargets(this.growAnchor)
+      : [];
     this.growDirState = this.defaultGrowDirection(this.growAnchor);
     this.growPlacing = false;
     this.growShape = undefined;
@@ -6837,6 +6860,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
     if (this.growAnchor) this.showNodeGrid('nodes');
     this.redrawGrowGhost();
+  }
+
+  private buildCurrentGrowGhostTargets(anchor: DANode): GrowGhostTarget[] {
+    const scale = this.drawingLayer.scaleX();
+    const lx = this.drawingLayer.x();
+    const ly = this.drawingLayer.y();
+    const nodes = this.drawingLayer.getDANodes().map(node => ({
+      id: node.id,
+      ...this.getNodeCenterInLayerCoordinates(node),
+    }));
+    const source = nodes.find(node => node.id === anchor.id)!;
+    return buildGrowGhostTargets(
+      nodes,
+      source,
+      this.drawingLayer.getGridSpacing(),
+      {
+        minX: -lx / scale,
+        minY: -ly / scale,
+        maxX: (this.stage.width() - lx) / scale,
+        maxY: (this.stage.height() - ly) / scale,
+      },
+      DrawingAreaComponent.QUICK_ADD_SLOT,
+    );
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -6958,6 +7004,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
       this.growAnchor = selected[0];
       this.growOrigin = this.getNodeCenterInLayerCoordinates(this.growAnchor);
+      this.growGhostTargets = this.buildCurrentGrowGhostTargets(this.growAnchor);
     }
     this.growEdgeMenuActive = true;
     // If the leaf key arrived just before its submenu key, remember that
@@ -6970,9 +7017,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
   }
 
-  /** Choose an edge target through the actual Move by Node engine. This shares
-   *  its selected strategy, nodes-only tier, overlay, crosshair landing,
-   *  viewport panning, same-direction run, and turn re-origin semantics. */
+  /** Choose a real-node or insertion-ghost target through the actual Move by
+   *  Node engine. The augmented node tier shares its selected strategy,
+   *  overlay, crosshair landing, viewport panning, same-direction run, and
+   *  turn re-origin semantics. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
     this.snapToNodeInDirection(direction, 'nodes');
@@ -6980,9 +7028,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       ? this.navGridLast
       : this.quadrantNavLast;
     if (!last || last.kind !== 'node') return;
-    const target = this.drawingLayer.getDANodes().find(node => node.id === last.id);
-    if (!target) return;
+    const target = this.drawingLayer.getDANodes().find(node => node.id === last.id) ?? null;
+    const insertion = this.growGhostTargets.find(item => item.id === last.id) ?? null;
+    if (!target && !insertion) return;
     this.growTarget = target;
+    this.growInsertionTarget = insertion;
     this.redrawGrowGhost();
   }
 
@@ -7068,6 +7118,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacing = true;
     this.growShape = shapeId as NodeShape;
     this.growTarget = null;
+    this.growInsertionTarget = null;
     this.growPlacedRough = false;
     const c = this.growOrigin!;
     this.growPlacePos = this.growAnchor
@@ -7151,6 +7202,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private commitGrowMode(): void {
     const anchor = this.growAnchor;
     const target = this.growTarget;
+    const insertion = this.growInsertionTarget;
     const dirState = this.growDirState;
     this.exitGrowMode();
 
@@ -7159,9 +7211,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.handleQuickAdd();
       return;
     }
+    if (insertion) {
+      this.commitGrowInsertion(anchor, insertion, dirState);
+      return;
+    }
     if (target === null) {
-      // Pristine release = the tap default: connected node one slot right.
-      this.quickAddConnectedRight(anchor, dirState);
+      // A press and release without navigation is the node-context tap:
+      // add an edge from the source back to itself.
+      this.quickAddSelfLoop(anchor, dirState);
       return;
     }
     if (target === anchor) return; // came home to cancel
@@ -7177,11 +7234,44 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private commitGrowSelfLoop(): void {
     const anchor = this.growAnchor;
+    const dirState = this.growDirState;
     this.exitGrowMode();
     if (!anchor) return;
+    this.quickAddSelfLoop(anchor, dirState);
+  }
+
+  private quickAddSelfLoop(anchor: DANode, dirState?: number): void {
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.addSelfEdge(anchor);
+    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
+    this.addSelfEdge(anchor, dirState);
+    this.scheduleVaultAutoSave();
+  }
+
+  private commitGrowInsertion(
+    anchor: DANode,
+    insertion: GrowGhostTarget,
+    dirState: number,
+  ): void {
+    this.finishTweens();
+    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    const scale = this.drawingLayer.scaleX();
+    const newNode = this.drawingLayer.createNewNode(
+      insertion.x * scale + this.drawingLayer.x(),
+      insertion.y * scale + this.drawingLayer.y(),
+      this._defaultNodeShape,
+    );
+    this.wireGrowEdge(anchor, newNode, dirState);
+
+    const labelable = newNode.nodeShape !== 'junction' &&
+      newNode.nodeShape !== 'invisible';
+    if (labelable) {
+      this.beginNewNodeLabelEdit(newNode);
+    } else {
+      this.drawingLayer.batchDraw();
+      this.checkAndEmitEditState();
+    }
     this.scheduleVaultAutoSave();
   }
 
@@ -7209,7 +7299,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Add a self-loop to an explicit grow anchor, or to the topmost node under
    *  the crosshairs (falling back to the sole selected node for command-palette
    *  and classic Add-menu use). */
-  private addSelfEdge(explicitAnchor?: DANode): DAEdge | null {
+  private addSelfEdge(explicitAnchor?: DANode, dirState?: number): DAEdge | null {
     const hovered = this.getDANodesContainingCrosshairs();
     const selected = this.drawingLayer.getSelectedDANodes();
     const anchor = explicitAnchor
@@ -7220,7 +7310,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('⚠ Self Loop needs one node under the crosshairs or selected');
       return null;
     }
-    const edge = this.addDefaultEdge(anchor, anchor);
+    const edge = dirState === undefined
+      ? this.addDefaultEdge(anchor, anchor)
+      : this.wireGrowEdge(anchor, anchor, dirState);
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
     this.emitStatus(`Self loop added to ${anchor.label.text() || anchor.nodeShape}`);
@@ -7279,15 +7371,50 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growGhost?.destroy();
     this.growGhost = null;
     this.growOrigin = null;
+    this.growTarget = null;
+    this.growInsertionTarget = null;
+    this.growGhostTargets = [];
     this.hideNodeGrid();
     this.daOut.emit({kind: 'popup-state', open: false});
     this.drawingLayer.batchDraw();
   }
 
-  /** Translucent dashed preview of what releasing the hold would create:
-   *  pristine → ghost node one slot right + ghost edge; targeting → ghost
-   *  edge to the highlighted target plus a ring around it. Arrowheads track
-   *  the directionality state. */
+  private addGrowSelfLoopPreview(
+    ghost: Konva.Group,
+    anchor: DANode,
+    stroke: string,
+    scale: number,
+  ): void {
+    const pos = anchor.group.position();
+    const width = anchor.NODE_WIDTH;
+    const height = anchor.NODE_HEIGHT;
+    const offsetX = Math.max(28, width * 0.32);
+    const offsetY = Math.max(18, height * 0.2);
+    const d = this.growDirState;
+    ghost.add(new Konva.Arrow({
+      name: 'grow-self-loop-preview',
+      points: [
+        pos.x + width, pos.y + height * 0.35,
+        pos.x + width + offsetX, pos.y + height * 0.22 - offsetY,
+        pos.x + width + offsetX, pos.y + height * 0.78 + offsetY,
+        pos.x + width, pos.y + height * 0.65,
+      ],
+      stroke,
+      fill: stroke,
+      dash: [8, 6],
+      strokeWidth: 3 / scale,
+      tension: 0.5,
+      pointerLength: 14,
+      pointerWidth: 14,
+      pointerAtEnding: d === 0 || d === 3,
+      pointerAtBeginning: d === 1 || d === 3,
+    }));
+  }
+
+  /** Translucent preview of the augmented held-Add navigation surface. Every
+   *  midpoint/source-grid insertion stop is shown as a faint node; the
+   *  current real or ghost landing gets a stronger outline and live edge.
+   *  Before the first hop the release result is the node's self-loop. */
   private redrawGrowGhost(): void {
     this.growGhost?.destroy();
     const ghost = new Konva.Group({listening: false, opacity: 0.55});
@@ -7298,6 +7425,50 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const stroke = palette.nodeStroke;
 
+    if (anchor && !this.growPlacing) {
+      for (const target of this.growGhostTargets) {
+        const active = target.id === this.growInsertionTarget?.id;
+        const marker = this.growGhostShape(
+          this._defaultNodeShape,
+          target,
+          140,
+          60,
+          stroke,
+          scale,
+        );
+        marker.name(active ? 'grow-insertion-target-active' : 'grow-insertion-target');
+        marker.opacity(active ? 1 : target.source === 'midpoint' ? 0.42 : 0.24);
+        ghost.add(marker);
+      }
+    }
+
+    if (anchor && !this.growPlacing && !this.growTarget && !this.growInsertionTarget) {
+      this.addGrowSelfLoopPreview(ghost, anchor, stroke, scale);
+      this.drawingLayer.add(ghost);
+      ghost.moveToTop();
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
+    if (anchor && this.growTarget === anchor) {
+      const pos = anchor.group.position();
+      ghost.add(new Konva.Rect({
+        name: 'grow-home-target',
+        x: pos.x - 6,
+        y: pos.y - 6,
+        width: anchor.NODE_WIDTH + 12,
+        height: anchor.NODE_HEIGHT + 12,
+        stroke,
+        dash: [6, 4],
+        strokeWidth: 3 / scale,
+        cornerRadius: 6,
+      }));
+      this.drawingLayer.add(ghost);
+      ghost.moveToTop();
+      this.drawingLayer.batchDraw();
+      return;
+    }
+
     let endCenter: {x: number; y: number};
     let endHalf: {w: number; h: number};
     if (this.growPlacing && this.growPlacePos) {
@@ -7305,6 +7476,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const w = 140, h = 60;
       endHalf = {w: w / 2, h: h / 2};
       ghost.add(this.growGhostShape(this.growShape ?? this._defaultNodeShape, endCenter, w, h, stroke, scale));
+    } else if (anchor && this.growInsertionTarget) {
+      endCenter = this.growInsertionTarget;
+      endHalf = {w: 70, h: 30};
     } else if (anchor && this.growTarget && this.growTarget !== anchor) {
       const t = this.growTarget;
       const tPos = t.group.position();
@@ -7317,9 +7491,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }));
     } else {
       const w = 140, h = 60;
-      endCenter = anchor
-        ? {x: aCenter.x + DrawingAreaComponent.QUICK_ADD_SLOT, y: aCenter.y}
-        : {...aCenter};
+      endCenter = {...aCenter};
       endHalf = {w: w / 2, h: h / 2};
       ghost.add(new Konva.Rect({
         x: endCenter.x - w / 2, y: endCenter.y - h / 2,
@@ -7357,33 +7529,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.add(ghost);
     ghost.moveToTop();
     this.drawingLayer.batchDraw();
-  }
-
-  /** Default quick-add for a node anchor: a new default-type node one slot
-   *  directly right of the anchor, wired with the current edge default,
-   *  straight into labelEdit. Todo categories override the default with a
-   *  directed new-task → category edge. Also used by pristine held-a release. */
-  private quickAddConnectedRight(
-    anchor: DANode,
-    dirState = this.defaultGrowDirection(anchor),
-  ): void {
-    this.finishTweens();
-    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-
-    const anchorCenter = this.getNodeCenterInStageCoordinates(anchor);
-    const slot = DrawingAreaComponent.QUICK_ADD_SLOT * this.drawingLayer.scaleX();
-    const newNode = this.drawingLayer.createNewNode(anchorCenter.x + slot, anchorCenter.y);
-    this.wireGrowEdge(anchor, newNode, dirState);
-
-    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
-    if (labelable) {
-      this.beginNewNodeLabelEdit(newNode);
-    } else {
-      this.drawingLayer.batchDraw();
-      this.checkAndEmitEditState();
-    }
   }
 
   /** Tap of the edit-text key: enter label edit on whatever text-bearing
