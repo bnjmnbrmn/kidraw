@@ -16,8 +16,12 @@ For each keypress, the label considers motion both ways along the rendered
 path and placement on each side. Candidates whose actual screen displacement
 opposes the requested direction, or is mostly perpendicular to it, are
 discarded. The remaining candidate with the greatest progress in the requested
-direction wins. Along-path candidates win exact ties, preserving the familiar
-slide behavior when the edge and key are aligned.
+direction wins. Side changes are adjacent (`above ↔ on ↔ below`), so a single
+step never skips across the edge. When an outer-side label is pushed toward
+the path, the `on` candidate takes precedence over a longer diagonal
+along-path move; this keeps the on-edge placement reachable at every angle.
+Along-path candidates otherwise win exact ties, preserving the familiar slide
+behavior when the edge and key are aligned.
 
 This means left/right on a horizontal edge normally changes `t`, independent
 of edge direction. On a vertical edge, left/right can instead move the label

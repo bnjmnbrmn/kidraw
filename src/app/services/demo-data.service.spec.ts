@@ -18,24 +18,32 @@ describe('DemoDataService', () => {
 
     const nodes = drawingLayer.getDANodes();
     const edges = drawingLayer.getDAEdges();
-    expect(nodes.length).toBe(18);
-    expect(edges.length).toBe(13);
+    expect(nodes.length).toBe(22);
+    expect(edges.length).toBe(16);
     expect(nodes.find(node => node.label.text() === 'Next')?.id).toBe('da-48');
     expect(nodes.find(node => node.label.text() === 'Bugs')?.id).toBe('da-4');
 
     const nextEdges = edges.filter(edge => edge.destNode.id === 'da-48');
-    expect(nextEdges.map(edge => edge.id)).toEqual(['da-152', 'da-158']);
-    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-151', 'da-157']);
-    expect(nodes.find(node => node.id === 'da-151')?.label.text())
-      .toContain('grid squares rather than numbers of pixels');
-    expect(nodes.find(node => node.id === 'da-157')?.label.text())
-      .toContain('disappear behind one of the end nodes');
+    expect(nextEdges.map(edge => edge.id)).toEqual(['da-162', 'da-192', 'da-195', 'da-197']);
+    expect(nextEdges.map(edge => edge.srcNode.id)).toEqual(['da-161', 'da-191', 'da-194', 'da-196']);
+    expect(nodes.find(node => node.id === 'da-161')?.label.text())
+      .toContain('get edge labels back onto the edge');
+    expect(nodes.find(node => node.id === 'da-191')?.label.text())
+      .toContain('should not result in vertical movement');
+    expect(nodes.find(node => node.id === 'da-194')?.label.text())
+      .toContain("only be between the crosshair's node and other nodes");
+    expect(nodes.find(node => node.id === 'da-196')?.label.text())
+      .toContain('should not cause movement');
+    expect(nodes.find(node => node.id === 'da-198')?.label.text())
+      .toBe('Remove snap-to item behavior during normal navigation');
+    expect(edges.find(edge => edge.id === 'da-200')?.destNode.id).toBe('da-199');
     expect(edges.find(edge => edge.id === 'da-124')?.controlPoints).toEqual([]);
-    expect(edges.find(edge => edge.id === 'da-160')?.controlPoints[0])
+    expect(edges.find(edge => edge.id === 'da-160')?.controlPoints).toEqual([]);
+    expect(edges.find(edge => edge.id === 'da-197')?.controlPoints[0])
       .toEqual(jasmine.objectContaining({
-        x: 904.3700887582092,
-        y: -684.9226317160906,
-        waypointId: 'da-161',
+        x: 3492.145550718036,
+        y: -436.14520355930534,
+        waypointId: 'da-206',
       }));
   });
 

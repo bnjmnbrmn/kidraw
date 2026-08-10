@@ -708,7 +708,7 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(nearest);
     });
 
-    it('traverses the focused link when the held mode is released', () => {
+    it('clears focus without traversing when the held mode is released', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const source = new DANode(0, 0, 'source');
       const dest = new DANode(300, 0, 'dest');
@@ -724,7 +724,7 @@ describe('DrawingArea Unit Tests', () => {
 
       component.releaseLinkNav();
 
-      expect(traverse).toHaveBeenCalledOnceWith(source, candidate);
+      expect(traverse).not.toHaveBeenCalled();
       expect(component.linkNavSource).toBeNull();
       expect(component.graphNavEdge).toBeNull();
     });

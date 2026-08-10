@@ -2597,10 +2597,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         );
         const snappedDlX = deltaX !== 0
           ? Math.round(currentDlX / spacing) * spacing + spacing * Math.sign(deltaX)
-          : Math.round(currentDlX / spacing) * spacing;
+          : currentDlX;
         const snappedDlY = deltaY !== 0
           ? Math.round(currentDlY / spacing) * spacing + spacing * Math.sign(deltaY)
-          : Math.round(currentDlY / spacing) * spacing;
+          : currentDlY;
         targetX = snappedDlX * scale + this.drawingLayer.x();
         targetY = snappedDlY * scale + this.drawingLayer.y();
       }
@@ -3507,16 +3507,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`${candidate.direction === 'out' ? '→' : '←'} ${label}`);
   }
 
-  /** Releasing the held root key commits a focused link, then leaves the
-   *  mode. With no focus it is simply a cancel/exit gesture. */
+  /** Releasing the held root key only exits. Traversal belongs to an explicit
+   * directional press, never to the mechanically unrelated key-up event. */
   private releaseLinkNav(): void {
-    const source = this.linkNavSource;
-    const focused = this.graphNavEdge;
-    if (source && focused) {
-      const candidate = this.navCandidatesFor(source)
-        .find(item => item.edge === focused);
-      if (candidate) this.traverseLinkNavCandidate(source, candidate);
-    }
     this.linkNavSource = null;
     this.linkNavDirectionalFocus = false;
     this.setGraphNavEdge(null);

@@ -8,16 +8,16 @@ date: 2026-08-04
 
 Root `f` is a held submenu labeled **Move by Link...**. While it is held, the
 active key profile's movement keys focus or traverse incident links directly
-on the canvas. Releasing `f` traverses the focused link and then exits; with no
-focus it simply exits. No popup, ghost copy, or row-list navigation
+on the canvas. Releasing `f` only exits; walking a link always requires an
+explicit directional press. No popup, ghost copy, or row-list navigation
 participates in this interaction.
 
 Entry always has a concrete node anchor. If the crosshairs are not already on
 a node, they jump to the nearest node before navigation starts. An incident
 edge is highlighted immediately: continued journeys prefer the edge best
 aligned with their incoming momentum, while cold starts choose the first edge
-clockwise from North. That entry highlight is both the release-to-walk preview
-and the active scan position: a perpendicular NSEW key can move directly to
+clockwise from North. That entry highlight is the active scan position: a
+perpendicular NSEW key can move directly to
 the next link without first confirming the highlighted quadrant.
 
 ## Direction model
@@ -59,8 +59,8 @@ enter/move/release commands for the held surface. Add-edge target selection reus
 the same quadrant cursor over candidate nodes, so its `hjkl` behavior matches
 Move by Link. `tools/repro-next-five.js` covers the canonical West scan,
 West→South corner transition, same-direction traversal, unique-quadrant
-one-press traversal, release traversal, and matching add-edge targeting in a
-real browser.
+one-press traversal, release-without-traversal, and matching add-edge targeting
+in a real browser.
 
 Related: [move-by-node reachability analysis](analysis-move-by-node-reachability.md),
 [original nav popup idea](idea-nav-popup.md).

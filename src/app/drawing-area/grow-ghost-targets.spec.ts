@@ -6,7 +6,7 @@ import {
 describe('held-Add ghost targets', () => {
   const bounds = {minX: 0, minY: 0, maxX: 800, maxY: 600};
 
-  it('places one distinct target halfway between each pair of nodes', () => {
+  it('places midpoints only between the anchor and each other node', () => {
     const nodes = [
       {id: 'a', x: 100, y: 100},
       {id: 'b', x: 500, y: 100},
@@ -19,8 +19,10 @@ describe('held-Add ghost targets', () => {
     expect(midpoints.map(target => [target.x, target.y])).toEqual([
       [300, 100],
       [100, 300],
-      [300, 300],
     ]);
+    expect(midpoints.map(target => target.id)).not.toContain(
+      'grow-ghost:midpoint:b:c',
+    );
   });
 
   it('anchors a viewport-spanning lattice on the source node', () => {

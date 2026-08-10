@@ -40,9 +40,10 @@ export function growGhostGridStep(majorGridSpacing: number, minimumSpacing = 300
 /**
  * Candidate positions for held-Add navigation.
  *
- * Pairwise midpoints come first and therefore win when a source-anchored grid
- * intersection lands at the same position. Exact existing-node centers are
- * omitted: Move by Node must keep the real node as the unambiguous target.
+ * Anchor-to-visible-node midpoints come first and therefore win when a
+ * source-anchored grid intersection lands at the same position. Exact
+ * existing-node centers are omitted: Move by Node must keep the real node as
+ * the unambiguous target.
  */
 export function buildGrowGhostTargets(
   nodes: readonly GrowGhostNodeCenter[],
@@ -64,18 +65,15 @@ export function buildGrowGhostTargets(
     targets.push(target);
   };
 
-  for (let i = 0; i < midpointNodes.length; i++) {
-    for (let j = i + 1; j < midpointNodes.length; j++) {
-      const a = midpointNodes[i];
-      const b = midpointNodes[j];
-      const ids = [a.id, b.id].sort();
-      add({
-        id: `grow-ghost:midpoint:${ids[0]}:${ids[1]}`,
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2,
-        source: 'midpoint',
-      });
-    }
+  for (const node of midpointNodes) {
+    if (node.id === anchor.id) continue;
+    const ids = [anchor.id, node.id].sort();
+    add({
+      id: `grow-ghost:midpoint:${ids[0]}:${ids[1]}`,
+      x: (anchor.x + node.x) / 2,
+      y: (anchor.y + node.y) / 2,
+      source: 'midpoint',
+    });
   }
 
   const step = growGhostGridStep(majorGridSpacing, minimumGridSpacing);

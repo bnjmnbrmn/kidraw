@@ -5,7 +5,7 @@
  * label, exact edge hover tracing, Vim visual mode, grow target quadrant
  * selection, sequential Vim `r` replacement, nearest-node snapping,
  * immediate link focus, quadrant overlay, low-zoom edit ghost,
- * crosshairs-positioned caret, visual iw, release-to-walk, and one-press
+ * crosshairs-positioned caret, visual iw, release-to-exit, and one-press
  * traversal when a quadrant has only one incident link, nearest-corner
  * transitions, active entry scanning, and post-landing edge/quadrant focus.
  */
@@ -94,8 +94,19 @@ async function main() {
     const edge = da.drawingLayer.getDAEdges()[0];
     return {from: edge?.srcNode.id, to: edge?.destNode.id, directedness: edge?.directedness};
   });
-  check('connected add defaults to an outgoing directed edge',
-    added.from === 'anchor' && added.to !== 'anchor' && added.directedness === 'directed', JSON.stringify(added));
+  check('tap Add over a node creates its current directed self-loop default',
+    added.from === 'anchor' && added.to === 'anchor' && added.directedness === 'directed',
+    JSON.stringify(added));
+
+  // Move to blank canvas and tap Add to enter the text-edit portion of this
+  // older suite on a newly inserted node.
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.crosshairsLayer.crosshairs.x = 800;
+    da.crosshairsLayer.crosshairs.y = 500;
+  });
+  await page.keyboard.press('a');
+  await page.waitForTimeout(250);
 
   await page.keyboard.type('foo bar');
   await page.keyboard.press('Escape');
@@ -256,10 +267,15 @@ async function main() {
   await page.keyboard.press('j');
   let growState = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {target: da.growTarget?.id ?? null, popup: da.navPopupOpen};
+    return {
+      target: da.growTarget?.id ?? null,
+      insertion: da.growInsertionTarget?.id ?? null,
+      popup: da.navPopupOpen,
+    };
   });
-  check('add-edge target selection scans links like Move by Link',
-    growState.target === 'west-below' && !growState.popup, JSON.stringify(growState));
+  check('held Add target selection stays on the canvas without a popup',
+    (growState.target !== null || growState.insertion !== null) && !growState.popup,
+    JSON.stringify(growState));
   await page.keyboard.press('Escape');
   await page.keyboard.up('a');
 
@@ -335,9 +351,9 @@ async function main() {
       diagonals: da.linkNavQuadrantLines?.find('.move-by-link-diagonal').length ?? 0,
     };
   });
-  check('releasing Move by Link traverses its focus, then clears the overlay',
+  check('releasing Move by Link leaves the crosshairs in place and clears the overlay',
     linkState.focus === null && linkState.source === null &&
-      linkState.landed === 'south-left' && linkState.diagonals === 0,
+      linkState.landed === 'source' && linkState.diagonals === 0,
     JSON.stringify(linkState));
 
   await page.waitForTimeout(150);

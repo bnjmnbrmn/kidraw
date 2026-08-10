@@ -52,10 +52,11 @@ magnet-dragging. The same target tier now includes visible insertion ghosts:
    viewport pan, same-direction run, and turn re-origin behavior) over both
    real nodes and insertion ghosts. Ghosts come from two deterministic
    families:
-   - every distinct pairwise midpoint between nodes whose boxes intersect the
-     current viewport (unless it exactly coincides with a real node center);
-     offscreen nodes still occupy their positions, but do not create a cloud
-     of midpoint targets; and
+   - the midpoint from the source node under the crosshairs to every other
+     node whose box intersects the current viewport (unless it exactly
+     coincides with a real node center); other-node pairs never create ghosts,
+     and offscreen nodes still occupy their positions without creating a
+     cloud of midpoint targets; and
    - the source node's horizontal and vertical lanes on the current major
      drawing grid. Lane spacing is a whole number of major cells and never
      tighter than the established 300-unit add slot. Candidates cover the

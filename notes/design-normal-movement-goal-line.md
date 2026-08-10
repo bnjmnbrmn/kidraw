@@ -80,7 +80,10 @@ movement axis or letting the indicators time out still starts a fresh goal.
 The dashed goal line renders above the ordinary grid but below graph content.
 It disappears on the same five-second timeout as the grid and crosshairs.
 The next crosshairs movement restores all movement UI. Fine and coarse
-movement remain direct grid movement and clear the normal goal.
+movement remain direct grid movement and clear the normal goal. Direct movement
+snaps only the requested axis to its tier grid; the perpendicular coordinate is
+preserved exactly, so a horizontal coarse step can never introduce a vertical
+step (or vice versa).
 
 Current tuning:
 

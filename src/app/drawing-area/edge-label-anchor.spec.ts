@@ -176,6 +176,25 @@ describe('edge-label-anchor', () => {
       expect(after.x).toBeLessThan(0);
     });
 
+    it('moves through on-edge instead of skipping between outer sides', () => {
+      const step = directionalLabelAnchorStep(
+        horizontal, 0.5, 'above', 20, {x: 0, y: 1}, 20,
+      )!;
+
+      expect(step.t).toBe(0.5);
+      expect(step.side).toBe('on');
+    });
+
+    it('can return to a diagonal edge even when along-path movement is longer', () => {
+      const diagonal = [{x: 0, y: 0}, {x: 100, y: 100}];
+      const step = directionalLabelAnchorStep(
+        diagonal, 0.5, 'above', 20, {x: 0, y: 1}, 100,
+      )!;
+
+      expect(step.t).toBe(0.5);
+      expect(step.side).toBe('on');
+    });
+
     it('no-ops rather than moving opposite the requested direction', () => {
       expect(directionalLabelAnchorStep(
         horizontal, LABEL_T_MIN, 'on', 20, {x: -1, y: 0}, 20,

@@ -250,10 +250,15 @@ export function directionalLabelAnchorStep(
       side,
     });
   }
-  for (const candidateSide of ['above', 'on', 'below'] as const) {
-    add({t, side: candidateSide});
-  }
+  // Side motion is one adjacent step at a time. Considering both outer sides
+  // from every state made above → below win on distance and skipped `on`, so
+  // a label could never be dragged back onto its edge.
+  const sideOrder: readonly EdgeLabelSide[] = ['above', 'on', 'below'];
+  const sideIndex = sideOrder.indexOf(side);
+  if (sideIndex > 0) add({t, side: sideOrder[sideIndex - 1]});
+  if (sideIndex < sideOrder.length - 1) add({t, side: sideOrder[sideIndex + 1]});
 
+  let returnToOn: {t: number; side: EdgeLabelSide} | null = null;
   let best: {anchor: {t: number; side: EdgeLabelSide}; score: number} | null = null;
   const MIN_ALIGNMENT = 0.35;
   for (const candidate of candidates) {
@@ -268,9 +273,13 @@ export function directionalLabelAnchorStep(
     if (displacement < 1e-9) continue;
     const projection = dx * desired.x + dy * desired.y;
     if (projection <= 1e-9 || projection / displacement < MIN_ALIGNMENT) continue;
+    // When an outer-side label is being pushed toward the path, make the
+    // adjacent `on` landing reachable even if a much longer along-path step
+    // happens to have a larger cardinal projection on a diagonal edge.
+    if (side !== 'on' && candidate.side === 'on') returnToOn = candidate;
     if (!best || projection > best.score + 1e-9) {
       best = {anchor: candidate, score: projection};
     }
   }
-  return best?.anchor ?? null;
+  return returnToOn ?? best?.anchor ?? null;
 }
