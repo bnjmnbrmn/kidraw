@@ -276,13 +276,27 @@ export class DrawingLayer extends Konva.Layer {
     }
   }
   addEdge(srcNode: DANode, destNode: DANode): DAEdge {
-    let daEdge = new DAEdge(srcNode, destNode, "", undefined, this.edgeColors());
+    const selfLoopLane = srcNode === destNode ? this.nextSelfLoopLane(srcNode) : 0;
+    const daEdge = new DAEdge(
+      srcNode, destNode, "", undefined, this.edgeColors(), selfLoopLane,
+    );
     daEdge.setDirectionColors({gradient: this._palette?.edgeGradient ?? null,
       undirected: this._palette?.edgeUndirected ?? null,
       bidirectional: this._palette?.edgeBidirectional ?? null});
     this.daEdgeGroup.add(daEdge.konvaGroup);
     this.daEdges.push(daEdge);
     return daEdge;
+  }
+
+  /** Smallest unused loop lane for this node. Deleted inner loops can be
+   *  reused without ever placing a new loop directly on an existing one. */
+  private nextSelfLoopLane(node: DANode): number {
+    const used = new Set(this.daEdges
+      .filter(edge => edge.srcNode === node && edge.destNode === node)
+      .map(edge => edge.selfLoopLane));
+    let lane = 0;
+    while (used.has(lane)) lane++;
+    return lane;
   }
 
   clearAll(): void {
@@ -423,9 +437,25 @@ export class DrawingLayer extends Konva.Layer {
     this._diagramType = snapshot.diagramType
       ?? (snapshot.plugins?.includes('todo-graph') ? 'todo-graph' : 'default');
 
+    // Reserve every persisted id before constructors allocate waypoint ids
+    // for self-loops. This prevents new default waypoints from colliding with
+    // nodes, labels, edges, or saved waypoints later in the same snapshot.
+    let maxNumericId = 0;
+    const observeId = (id: string | undefined) => {
+      if (!id) return;
+      const num = parseInt(id.replace('da-', ''), 10);
+      if (!isNaN(num) && num > maxNumericId) maxNumericId = num;
+    };
+    snapshot.nodes.forEach(node => observeId(node.id));
+    snapshot.edges.forEach(edge => {
+      observeId(edge.id);
+      edge.labels.forEach(label => observeId(label.id));
+      edge.controlPoints?.forEach(point => observeId(point.waypointId));
+    });
+    resetIdCounter(maxNumericId);
+
     // Rebuild nodes
     const nodeMap = new Map<string, DANode>();
-    let maxNumericId = 0;
 
     for (const ns of snapshot.nodes) {
       const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
@@ -437,8 +467,6 @@ export class DrawingLayer extends Konva.Layer {
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);
       nodeMap.set(ns.id, node);
-      const num = parseInt(ns.id.replace('da-', ''), 10);
-      if (!isNaN(num) && num > maxNumericId) maxNumericId = num;
     }
 
     // Rebuild edges
@@ -447,7 +475,8 @@ export class DrawingLayer extends Konva.Layer {
       const destNode = nodeMap.get(es.destNodeId);
       if (!srcNode || !destNode) continue;
 
-      const edge = new DAEdge(srcNode, destNode, '', es.id);
+      const selfLoopLane = srcNode === destNode ? this.nextSelfLoopLane(srcNode) : 0;
+      const edge = new DAEdge(srcNode, destNode, '', es.id, undefined, selfLoopLane);
       edge.isSelected = es.isSelected;
       if (es.controlPoints && es.controlPoints.length > 0) {
         edge.restoreControlPoints(es.controlPoints);
@@ -458,8 +487,7 @@ export class DrawingLayer extends Konva.Layer {
       this.daEdgeGroup.add(edge.konvaGroup);
       this.daEdges.push(edge);
 
-      const num = parseInt(es.id.replace('da-', ''), 10);
-      if (!isNaN(num) && num > maxNumericId) maxNumericId = num;
+      edge.controlPoints.forEach(point => observeId(point.waypointId));
 
       // Restore labels
       for (const ls of es.labels) {
@@ -477,8 +505,6 @@ export class DrawingLayer extends Konva.Layer {
           edge.adoptLabelPosition(lbl);
         }
         edge.addLabel(lbl);
-        const lblNum = parseInt(ls.id.replace('da-', ''), 10);
-        if (!isNaN(lblNum) && lblNum > maxNumericId) maxNumericId = lblNum;
       }
 
       // Update edge visual

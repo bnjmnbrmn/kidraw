@@ -229,6 +229,12 @@ describe('DrawingArea Unit Tests', () => {
 
       const points = edge.line.points();
       expect(points.length).toBe(8);
+      expect(edge.controlPoints.length).toBe(2);
+      expect(edge.waypoints.length).toBe(2);
+      expect(edge.controlPoints.every(point => !!point.waypointId)).toBeTrue();
+      expect(edge.waypoints.map(waypoint => waypoint.id)).toEqual(
+        edge.controlPoints.map(point => point.waypointId!),
+      );
       expect(points[0]).toBeCloseTo(node.konvaGroup.x() + node.NODE_WIDTH, 2);
       expect(points[6]).toBeCloseTo(node.konvaGroup.x() + node.NODE_WIDTH, 2);
       expect(points[1]).toBeLessThan(points[7]);
@@ -248,6 +254,9 @@ describe('DrawingArea Unit Tests', () => {
 
       const waypoint = edge.insertWaypointAt(middle, 1);
 
+      expect(edge.controlPoints.length).toBe(3);
+      expect(edge.waypoints.length).toBe(3);
+      expect(edge.controlPoints.every(point => !!point.waypointId)).toBeTrue();
       expect(edge.getPathPoints()).toEqual([
         original[0],
         original[1],
@@ -265,6 +274,21 @@ describe('DrawingArea Unit Tests', () => {
       expect(edge.line.points()).toEqual(
         edge.getPathPoints().flatMap(point => [point.x, point.y]),
       );
+    });
+
+    it('moves a self-loop and its waypoint handles with its node', () => {
+      const node = new DANode(120, 80, 'self');
+      const edge = new DAEdge(node, node, 'self-loop');
+      const before = edge.controlPoints.map(point => ({x: point.x, y: point.y}));
+
+      node.konvaGroup.position({x: 190, y: 45});
+      edge.refreshGeometry();
+
+      edge.controlPoints.forEach((point, index) => {
+        expect(point.x).toBe(before[index].x + 70);
+        expect(point.y).toBe(before[index].y - 35);
+        expect(edge.waypoints[index].position).toEqual({x: point.x, y: point.y});
+      });
     });
   });
 
@@ -738,6 +762,84 @@ describe('DrawingArea Unit Tests', () => {
       
       const edge = edges[0];
       expect(edge.line).toBeDefined();
+    });
+
+    it('should create distinct editable routes for multiple self-loops', () => {
+      const node = new DANode(100, 100, 'node');
+      drawingLayer.addRawNode(node);
+
+      const inner = drawingLayer.addEdge(node, node);
+      const outer = drawingLayer.addEdge(node, node);
+
+      expect(drawingLayer.getDAEdges()).toEqual([inner, outer]);
+      expect(inner.selfLoopLane).toBe(0);
+      expect(outer.selfLoopLane).toBe(1);
+      expect(inner.waypoints.length).toBe(2);
+      expect(outer.waypoints.length).toBe(2);
+      expect(outer.controlPoints[0].x).toBeGreaterThan(inner.controlPoints[0].x);
+      expect(outer.controlPoints[0].y).toBeLessThan(inner.controlPoints[0].y);
+      expect(outer.getPathPoints()).not.toEqual(inner.getPathPoints());
+
+      const snapshot = drawingLayer.serializeGraph();
+      expect(snapshot.edges.every(edge =>
+        edge.controlPoints?.length === 2
+        && edge.controlPoints.every(point => !!point.waypointId),
+      )).toBeTrue();
+
+      const restored = new DrawingLayer();
+      restored.restoreGraph(snapshot);
+      const restoredLoops = restored.getDAEdges();
+      const waypointIds = restoredLoops.flatMap(edge =>
+        edge.controlPoints.map(point => point.waypointId!),
+      );
+      expect(restoredLoops.length).toBe(2);
+      expect(restoredLoops.every(edge => edge.waypoints.length === 2)).toBeTrue();
+      expect(new Set(waypointIds).size).toBe(4);
+      expect(restoredLoops[1].getPathPoints()).not.toEqual(restoredLoops[0].getPathPoints());
+
+      const restoredNode = restored.getDANodes()[0];
+      const third = restored.addEdge(restoredNode, restoredNode);
+      expect(third.selfLoopLane).toBe(2);
+      expect(third.controlPoints[0].x).toBeGreaterThan(restoredLoops[1].controlPoints[0].x);
+      expect(third.controlPoints.every(point =>
+        !!point.waypointId && !waypointIds.includes(point.waypointId),
+      )).toBeTrue();
+
+      // Old files omitted the default loop bends entirely. Restoring one now
+      // upgrades each loop to the same explicit, independently editable form.
+      const legacySnapshot = {
+        ...snapshot,
+        edges: snapshot.edges.map(edge => ({...edge, controlPoints: undefined})),
+      };
+      const restoredLegacy = new DrawingLayer();
+      restoredLegacy.restoreGraph(legacySnapshot);
+      const legacyLoops = restoredLegacy.getDAEdges();
+      expect(legacyLoops.every(edge =>
+        edge.controlPoints.length === 2
+        && edge.controlPoints.every(point => !!point.waypointId)
+        && edge.waypoints.length === 2,
+      )).toBeTrue();
+      expect(legacyLoops[1].getPathPoints()).not.toEqual(legacyLoops[0].getPathPoints());
+
+      // Snapshots made by the previous first-insertion behavior can contain
+      // saved bends without IDs. They must become handles instead of staying
+      // as invisible controls around the one waypoint the user inserted.
+      const hiddenControlSnapshot = {
+        ...snapshot,
+        edges: snapshot.edges.map(edge => ({
+          ...edge,
+          controlPoints: edge.controlPoints?.map(point => ({
+            x: point.x,
+            y: point.y,
+          })),
+        })),
+      };
+      const restoredHidden = new DrawingLayer();
+      restoredHidden.restoreGraph(hiddenControlSnapshot);
+      expect(restoredHidden.getDAEdges().every(edge =>
+        edge.controlPoints.every(point => !!point.waypointId)
+        && edge.waypoints.length === edge.controlPoints.length,
+      )).toBeTrue();
     });
 
     it('should find nodes containing point', () => {

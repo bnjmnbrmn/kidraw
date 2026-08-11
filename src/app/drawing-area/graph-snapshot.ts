@@ -33,10 +33,10 @@ export interface DANodeSnapshot {
   tags?: string[];
 }
 
-/** A bend point on an edge's polyline. `waypointId` is set on user-placed
- *  bend points (which render as `DAWaypoint` glyphs); `pinned` indicates a
- *  user waypoint that routers should preserve in place. Plain bead points
- *  written by routers have neither field set. */
+/** A bend point on an edge's polyline. `waypointId` is set on editable bend
+ *  points (including a self-loop's two initial bends), which render as
+ *  `DAWaypoint` glyphs; `pinned` indicates a waypoint that routers should
+ *  preserve in place. Plain bead points written by routers have neither. */
 export interface DAControlPointSnapshot {
   x: number;
   y: number;

@@ -119,9 +119,13 @@ as cancel. From blank-canvas grow it is available for the sole selected node,
 so Self Loop does not require moving the crosshairs back over that node.
 
 Self-loop waypoints use the same editable control-point route as other edges.
-The default loop's two implicit bends materialize on first insertion, keeping
-the visible loop unchanged; moving the inserted waypoint then reshapes the
-painted loop and persists those control points in the file.
+The default loop's two bends are real waypoint-backed control points as soon
+as the edge is created—there is no separate implicit route to materialize on
+first insertion. Moving either handle reshapes the painted loop, and those
+points persist in the file. Repeated self-loop creation on one node assigns
+successively larger nested routes, each with its own independent handles.
+Loading older loops upgrades both omitted defaults and saved plain bends into
+explicit handles, so a self-loop never retains invisible control geometry.
 
 ## Cautions
 

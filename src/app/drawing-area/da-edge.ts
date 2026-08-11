@@ -12,9 +12,9 @@ import {
 import { sampleSmoothPath } from './routing-curve';
 
 /** An entry in `DAEdge._controlPoints`. Plain `{x,y}` bend points come from
- *  routers; user-placed waypoints additionally carry `waypointId` (linking
- *  to a `DAWaypoint` glyph) and `pinned` (whether routers should preserve
- *  the point's position when they re-route). */
+ *  routers; editable points (including a self-loop's initial bends) carry
+ *  `waypointId` (linking to a `DAWaypoint` glyph) and `pinned` (whether
+ *  routers should preserve the point's position when they re-route). */
 export interface EdgeControlPoint {
   x: number;
   y: number;
@@ -59,6 +59,10 @@ export class DAEdge {
   private _directedness: EdgeDirectedness = 'directed';
   private _lineStyle: LineStyle = 'solid';
   private _controlPoints: EdgeControlPoint[] = [];
+  /** Default-route lane used to keep multiple loops on one node distinct. */
+  public readonly selfLoopLane: number;
+  /** Last node position folded into this loop's absolute waypoint positions. */
+  private _selfLoopNodePosition: {x: number; y: number} | null = null;
   /** Konva.Arrow's tension: 0 renders the points as a polyline (charged-spring
    *  routing). > 0 renders them as a smooth Catmull-Rom-derived curve through
    *  the same points (Bezier routing). Konva tracks the curve tangent for the
@@ -67,13 +71,26 @@ export class DAEdge {
   private _renderTension: number = this.SMOOTH_TENSION;
 
   constructor(srcNode: DANode, destNode: DANode, label: string, id?: string,
-              colors?: { stroke?: string; fill?: string }) {
+              colors?: { stroke?: string; fill?: string }, selfLoopLane = 0) {
     this.id = id ?? nextId();
     this.group = new Konva.Group();
     this.srcNode = srcNode;
     this.destNode = destNode;
+    this.selfLoopLane = Math.max(0, Math.floor(selfLoopLane));
     if (colors?.stroke) this._strokeColor = colors.stroke;
     if (colors?.fill) this._fillColor = colors.fill;
+
+    if (srcNode === destNode) {
+      this._selfLoopNodePosition = {
+        x: srcNode.konvaGroup.x(),
+        y: srcNode.konvaGroup.y(),
+      };
+      // Self-loops are editable from birth: their two visible bends are real
+      // waypoint-backed control points, never implicit/hidden geometry.
+      this._controlPoints = this.buildSelfLoopPoints(srcNode)
+        .slice(1, -1)
+        .map(point => ({...point, waypointId: nextId(), pinned: false}));
+    }
 
     srcNode.addOutgoingEdge(this);
     destNode.addIncomingEdge(this);
@@ -88,6 +105,9 @@ export class DAEdge {
       tension: this._renderTension,
     });
     this.group.add(this._line);
+    if (this._controlPoints.length > 0) {
+      this.assignControlPoints(this._controlPoints);
+    }
     this.applyDirectedness();
     this.applyLineStyle();
   }
@@ -388,13 +408,11 @@ export class DAEdge {
    *  arrowhead base does not clip behind the node face on shallow angles. */
   getPathPoints(): { x: number; y: number }[] {
     if (this.srcNode === this.destNode) {
+      this.syncSelfLoopPosition();
       const defaults = this.buildSelfLoopPoints(this.srcNode);
-      if (this._controlPoints.length === 0) return defaults;
       // A self-loop has two deliberately distinct attachment points on the
-      // node.  Keep those endpoints, but let its stored control points own the
-      // route between them just like they do for an ordinary edge.  Previously
-      // this branch always returned `defaults`, so waypoint glyphs could be
-      // inserted and moved while the painted loop remained unchanged.
+      // node. Keep those endpoints, while its explicit control points own all
+      // geometry between them just like they do for an ordinary edge.
       return [
         defaults[0],
         ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
@@ -518,7 +536,7 @@ export class DAEdge {
    *  polyline that minimizes the total path-length increase. Returns the
    *  new `DAWaypoint` glyph. */
   insertWaypoint(point: {x: number; y: number}): DAWaypoint {
-    const cps = this.controlPointsForWaypointInsertion();
+    const cps = [...this._controlPoints];
     const path = this.getPathPoints();
     const idx = bestInsertionIndex(path[0], path[path.length - 1], cps, point);
     return this.spliceWaypoint(cps, point, idx);
@@ -531,21 +549,9 @@ export class DAEdge {
    *  `_controlPoints` array (0..length), which maps 1:1 to segments in
    *  `getPathPoints()`. */
   insertWaypointAt(point: {x: number; y: number}, index: number): DAWaypoint {
-    const cps = this.controlPointsForWaypointInsertion();
+    const cps = [...this._controlPoints];
     const clamped = Math.max(0, Math.min(index, cps.length));
     return this.spliceWaypoint(cps, point, clamped);
-  }
-
-  /** A default self-loop's two bends are implicit rather than serialized.
-   *  Materialize them when the first waypoint is inserted so splitting any
-   *  of the three visible segments preserves the existing loop shape. */
-  private controlPointsForWaypointInsertion(): EdgeControlPoint[] {
-    if (this.srcNode !== this.destNode || this._controlPoints.length > 0) {
-      return [...this._controlPoints];
-    }
-    return this.buildSelfLoopPoints(this.srcNode)
-      .slice(1, -1)
-      .map(point => ({x: point.x, y: point.y}));
   }
 
   private spliceWaypoint(cps: EdgeControlPoint[], point: {x: number; y: number}, idx: number): DAWaypoint {
@@ -613,6 +619,12 @@ export class DAEdge {
    *  glyphs; vanished IDs have their glyphs destroyed. The polyline is then
    *  redrawn. */
   private assignControlPoints(cps: EdgeControlPoint[]): void {
+    // A self-loop never has router-only/hidden bends. This also migrates
+    // snapshots produced by the old first-insertion behavior, where the two
+    // default bends were serialized as plain points around one real waypoint.
+    if (this.srcNode === this.destNode) {
+      cps = cps.map(cp => cp.waypointId ? cp : {...cp, waypointId: nextId()});
+    }
     this._controlPoints = cps;
     const presentIds = new Set<string>();
     for (const cp of cps) {
@@ -654,7 +666,8 @@ export class DAEdge {
   /** Place `count` control points evenly along the straight src→dest line.
    *  Used as starting positions for the physics sim. No-op for self-loops. */
   initializeStraightControlPoints(count: number): void {
-    if (this.srcNode === this.destNode || count <= 0) {
+    if (this.srcNode === this.destNode) return;
+    if (count <= 0) {
       this.clearControlPoints();
       return;
     }
@@ -700,13 +713,37 @@ export class DAEdge {
     };
   }
 
+  /** Keep absolute self-loop waypoints attached when their node is moved.
+   *  Non-loop edges are re-routed after node movement, but self-loops are
+   *  deliberately excluded from routers, so they translate with the node. */
+  private syncSelfLoopPosition(): void {
+    if (this.srcNode !== this.destNode || !this._selfLoopNodePosition) return;
+    const current = {
+      x: this.srcNode.konvaGroup.x(),
+      y: this.srcNode.konvaGroup.y(),
+    };
+    const dx = current.x - this._selfLoopNodePosition.x;
+    const dy = current.y - this._selfLoopNodePosition.y;
+    if (dx === 0 && dy === 0) return;
+    for (const cp of this._controlPoints) {
+      cp.x += dx;
+      cp.y += dy;
+      if (cp.waypointId) {
+        const glyph = this._waypointGlyphs.get(cp.waypointId);
+        if (glyph) glyph.position = {x: cp.x, y: cp.y};
+      }
+    }
+    this._selfLoopNodePosition = current;
+  }
+
   private buildSelfLoopPoints(node: DANode): {x: number; y: number}[] {
     const x = node.konvaGroup.x();
     const y = node.konvaGroup.y();
     const width = node.NODE_WIDTH;
     const height = node.NODE_HEIGHT;
-    const loopOffsetX = Math.max(28, width * 0.32);
-    const loopOffsetY = Math.max(18, height * 0.2);
+    const laneStep = Math.max(22, Math.min(width, height) * 0.25);
+    const loopOffsetX = Math.max(28, width * 0.32) + this.selfLoopLane * laneStep;
+    const loopOffsetY = Math.max(18, height * 0.2) + this.selfLoopLane * laneStep * 0.45;
 
     return [
       {x: x + width, y: y + height * 0.35},
