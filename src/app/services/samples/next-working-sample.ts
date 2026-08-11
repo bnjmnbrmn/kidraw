@@ -1,6 +1,6 @@
 /**
  * Recovery copy of the live working graph mirrored from the remote KiDraw
- * session on 2026-08-10 at 11:43:35 UTC. Keep the original IDs and geometry:
+ * session on 2026-08-11 at 11:36:07 UTC. Keep the original IDs and geometry:
  * browser repros and development notes refer to the Next edges by ID.
  */
 export const NEXT_WORKING_SAMPLE_YAML = `
@@ -10,89 +10,77 @@ styles:
   - name: default
     nodes:
       da-4:
-        x: 1975
-        'y': -25
+        x: -559.2051996078812
+        'y': -595.3819826573482
         shape: circle
       da-23:
-        x: -629.1779536259864
-        'y': -174.52489402527897
+        x: -112.68762148288124
+        'y': -135.3819826573482
         shape: circle
       da-24:
-        x: 392.89455613963855
-        'y': -634.524894025279
+        x: 909.3848882827438
+        'y': -595.3819826573482
         shape: circle
       da-29:
-        x: 18.673120592763553
-        'y': -326.52489402527897
+        x: 535.1634527358688
+        'y': -287.3819826573482
         shape: circle
       da-34:
-        x: -432.78000440723645
-        'y': -326.52489402527897
+        x: 83.71032773586876
+        'y': -287.3819826573482
         shape: circle
       da-35:
-        x: -317.69553175098645
-        'y': -174.52489402527897
+        x: 198.79480039211876
+        'y': -135.3819826573482
       da-37:
-        x: -68.19943800098645
-        'y': -174.52489402527897
+        x: 448.29089414211876
+        'y': -135.3819826573482
       da-41:
-        x: 882.0476323115136
-        'y': -326.52489402527897
+        x: 1398.5379644546188
+        'y': -287.3819826573482
       da-42:
-        x: 959.9651127802636
-        'y': -478.52489402527897
+        x: 1476.4554449233688
+        'y': -439.3819826573482
         shape: circle
       da-48:
-        x: 3306.7722416865136
-        'y': -478.52489402527897
+        x: 3241.2625738296188
+        'y': -439.3819826573482
         w: 320
         h: 310
         shape: circle
       da-51:
-        x: -699.6955317509864
-        'y': -22.524894025278968
+        x: -183.20519960788124
+        'y': 16.618017342651797
       da-99:
-        x: -262.09982862598645
-        'y': -478.52489402527897
+        x: 254.39050351711876
+        'y': -439.3819826573482
         shape: circle
       da-123:
-        x: 565.6413823115136
-        'y': -478.52489402527897
+        x: 1082.1317144546188
+        'y': -439.3819826573482
         shape: circle
       da-126:
-        x: 1464.0476323115136
-        'y': -634.524894025279
+        x: 1980.5379644546188
+        'y': -595.3819826573482
       da-127:
-        x: 2027.7722416865136
-        'y': -638.524894025279
+        x: 2544.2625738296188
+        'y': -599.3819826573482
       da-159:
-        x: 313.80056199901355
-        'y': -478.52489402527897
-      da-161:
-        x: 2609.7722416865136
-        'y': -638.524894025279
-      da-191:
-        x: 3191.7722416865136
-        'y': -634.524894025279
-      da-194:
-        x: 3773.7722416865136
-        'y': -638.524894025279
-      da-196:
-        x: 4355.772241686514
-        'y': -634.524894025279
+        x: 830.2908941421188
+        'y': -439.3819826573482
       da-198:
-        x: 4937.772241686514
-        'y': -634.524894025279
+        x: 3126.2625738296188
+        'y': -595.3819826573482
       da-199:
-        x: 5039.041284655264
-        'y': -478.52489402527897
+        x: 3718.5316167983688
+        'y': -595.3819826573482
         shape: circle
     edges:
-      da-197:
+      da-124:
         waypoints:
-          - x: 3492.145550718036
-            'y': -436.14520355930534
-            id: da-206
+          - x: 1081.1658454904348
+            'y': -415.9330468224084
+            id: da-203
 semantics:
   nodes:
     da-4:
@@ -127,14 +115,6 @@ semantics:
       label: Mostly hidden Keymenu (keymenu display with only a single line of text at the bottom of the screen)
     da-159:
       label: Compact menu mode
-    da-161:
-      label: Should still be able to get edge labels back onto the edge (as opposed to just being above or below/to the left or right)
-    da-191:
-      label: Coarse movement horizontally should not result in vertical movement (and vice versa).
-    da-194:
-      label: Halfway point ghost nodes should only be between the crosshair's node and other nodes, not between other nodes.
-    da-196:
-      label: Releasing the Move by Edge key should not cause movement
     da-198:
       label: Remove snap-to item behavior during normal navigation
     da-199:
@@ -173,19 +153,7 @@ semantics:
     da-160:
       from: da-24
       to: da-159
-    da-162:
-      from: da-161
-      to: da-48
-    da-192:
-      from: da-191
-      to: da-48
-    da-195:
-      from: da-194
-      to: da-48
-    da-197:
-      from: da-196
-      to: da-48
-    da-200:
+    da-201:
       from: da-198
-      to: da-199
+      to: da-48
 `;

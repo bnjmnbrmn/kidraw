@@ -345,60 +345,6 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
-  describe('normal movement snapping', () => {
-    it('collects the crossing span instead of center-magnetizing through a node', () => {
-      const component = Object.create(DrawingAreaComponent.prototype) as any;
-      const node = new DANode(20, -30, 'near');
-      component.drawingLayer = {
-        getDANodes: () => [node],
-        getDAEdges: () => [],
-      };
-
-      const candidates = component.collectNormalMovementSnapCandidates('x', 0, 24);
-
-      expect(candidates).toEqual([
-        jasmine.objectContaining({
-          id: `node:${node.id}`,
-          point: {
-            x: node.group.x() + node.NODE_WIDTH / 2,
-            y: node.group.y() + node.NODE_HEIGHT / 2,
-          },
-          crossingSpan: {
-            min: node.group.x(),
-            max: node.group.x() + node.NODE_WIDTH,
-          },
-        }),
-      ]);
-    });
-
-    it('collects nearby waypoints, labels, and exact edge crossings', () => {
-      const component = Object.create(DrawingAreaComponent.prototype) as any;
-      component.drawingLayer = {
-        getDANodes: () => [],
-        getDAEdges: () => [{
-          id: 'edge-1',
-          waypoints: [{id: 'wp-1', x: 20, y: 8}],
-          labels: [{
-            id: 'label-1',
-            x: 35,
-            y: 10,
-            width: 30,
-            height: 20,
-          }],
-          getPathPoints: () => [{x: 0, y: 20}, {x: 100, y: -20}],
-        }],
-      };
-
-      const candidates = component.collectNormalMovementSnapCandidates('x', 0, 24);
-      const byId = new Map(candidates.map((c: any) => [c.id, c]));
-
-      expect(byId.has('waypoint:wp-1')).toBeTrue();
-      expect(byId.has('label:label-1')).toBeTrue();
-      const edgeCandidate = byId.get('edge:edge-1:0') as any;
-      expect(edgeCandidate.point).toEqual({x: 50, y: 0});
-    });
-  });
-
   describe('crosshair hover trace', () => {
     it('keeps its dash, stroke, and padding stable in screen pixels across zoom', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
@@ -455,34 +401,6 @@ describe('DrawingArea Unit Tests', () => {
       const trace = component.crosshairHoverHighlight as Konva.Line;
       expect(trace.points()).toEqual(edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]));
       expect(trace.tension()).toBe(0);
-    });
-
-    it('honors an edge landing over an overlapping node', () => {
-      const component = Object.create(DrawingAreaComponent.prototype) as any;
-      const drawingLayer = new DrawingLayer();
-      const src = new DANode(0, 0, 'src');
-      const dest = new DANode(300, 0, 'dest');
-      const edge = new DAEdge(src, dest, 'edge');
-      drawingLayer.addRawNode(src);
-      drawingLayer.addRawNode(dest);
-      drawingLayer.addRawEdge(edge);
-      component.drawingLayer = drawingLayer;
-      component.crosshairHoverHighlight = null;
-      component.normalMovementHoverTarget = {kind: 'edge', id: edge.id};
-      component.crosshairsLayer = {
-        crosshairs: {konvaGroup: new Konva.Group({visible: true})},
-      };
-      component.visualConfigService = {
-        getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
-      };
-      component.themeService = {theme: 'dark'};
-      component.getDANodesContainingCrosshairs = () => [src];
-
-      component.refreshCrosshairHoverHighlight();
-
-      const trace = component.crosshairHoverHighlight as Konva.Shape;
-      expect(trace.getAttr('targetKind')).toBe('edge');
-      expect(trace.getAttr('targetId')).toBe(edge.id);
     });
 
     it('renders a natural-scale edit ghost when the graph is zoomed out', () => {

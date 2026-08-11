@@ -1,7 +1,7 @@
 /*
- * Verify the refined ordinary-movement behavior:
- *   1. a node crossed by the goal line stops at its boundary, not its center;
- *   2. a genuinely nearby off-line node still snaps + returns;
+ * Verify ordinary distance-based movement behavior:
+ *   1. graph items neither stop nor pull normal movement;
+ *   2. normal movement stays on its goal axis;
  *   3. normal held-key repeat pauses before repeating;
  *   4. node/waypoint/label/edge hover traces use selection hit priority;
  *   5. the dashed goal line, grid, and crosshairs time out together.
@@ -53,23 +53,22 @@ async function main() {
 
   await page.keyboard.press('l');
   await page.waitForTimeout(180);
-  const snapped = await state();
-  check('crossing node stops at its encountered boundary, not its center',
-    near(snapped.x, 320) && near(snapped.y, 300) &&
-      !near(snapped.x, snapped.nodeCenter.x),
-    JSON.stringify(snapped));
+  const firstStep = await state();
+  check('normal movement takes its full configured step through a node boundary',
+    near(firstStep.x, 350) && near(firstStep.y, 300) &&
+      !near(firstStep.x, firstStep.nodeCenter.x),
+    JSON.stringify(firstStep));
   check('goal line appears with the movement grid',
-    snapped.goalLine === 1 && snapped.grid);
+    firstStep.goalLine === 1 && firstStep.grid);
 
   await page.keyboard.press('l');
   await page.waitForTimeout(180);
-  const passedThrough = await state();
-  check('next l continues through the node on the goal line',
-    near(passedThrough.x, 370) && near(passedThrough.y, 300),
-    JSON.stringify(passedThrough));
+  const secondStep = await state();
+  check('the next normal step remains the same full distance',
+    near(secondStep.x, 400) && near(secondStep.y, 300),
+    JSON.stringify(secondStep));
 
-  // A line that narrowly misses the node still gets the magnetic center +
-  // perpendicular return behavior.
+  // A line that narrowly misses a node must not get pulled to its center.
   await page.evaluate(() => {
     const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
     c.finishTweens();
@@ -87,16 +86,17 @@ async function main() {
   });
   await page.keyboard.press('l');
   await page.waitForTimeout(180);
-  let nearby = await state();
-  check('nearby off-line node still snaps to its center',
-    near(nearby.x, nearby.nodeCenter.x) && near(nearby.y, nearby.nodeCenter.y),
+  const nearby = await state();
+  check('a nearby off-line node does not pull normal movement off-axis',
+    near(nearby.x, 350) && near(nearby.y, 200) &&
+      !near(nearby.x, nearby.nodeCenter.x),
     JSON.stringify(nearby));
   await page.keyboard.press('l');
   await page.waitForTimeout(180);
-  nearby = await state();
-  check('off-line snap still returns perpendicularly to the goal',
-    near(nearby.x, nearby.nodeCenter.x) && near(nearby.y, 200),
-    JSON.stringify(nearby));
+  const nearbySecond = await state();
+  check('there is no perpendicular return step after passing a nearby item',
+    near(nearbySecond.x, 400) && near(nearbySecond.y, 200),
+    JSON.stringify(nearbySecond));
 
   // The root movement menu fires immediately, then uses a configured 250 ms
   // pause and 100 ms target interval. At 200 ms there must still be exactly

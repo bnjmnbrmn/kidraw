@@ -1,5 +1,5 @@
 ---
-title: Normal crosshair movement — nearby-item snapping on a visible goal line
+title: Normal crosshair movement — distance-based travel on a visible goal line
 type: decision
 ---
 
@@ -10,27 +10,10 @@ horizontal or vertical line through the starting crosshairs is held until the
 movement axis changes, another command interrupts the gesture, or the movement
 grid times out.
 
-Each normal step considers graph features within a screen-stable snap corridor:
-
-- node centers, when the goal line crosses or comes near the node box;
-- user waypoints;
-- edge-label centers, using the label box for proximity;
-- exact crossings of rendered edge segments, or a nearby segment endpoint.
-
-The next feature ahead takes precedence over the ordinary half-grid step.
-There are now two deliberately different cases:
-
-- When the goal line crosses a node or label box, movement stops at the first
-  boundary it encounters and stays on the line. Starting inside stops at the
-  exit boundary. It does not pull to the item's center.
-- When the line only passes near an item, movement may still snap to its
-  center. The following same-axis keypress visits the feature's perpendicular
-  projection on the line before continuing.
-
-The latter return can move perpendicular to the pressed direction by design:
-the goal line remains a complete traversable backbone rather than being
-silently skipped by magnetic snapping. Equal-position ambiguity is resolved
-by the existing priority order, so a waypoint on an edge wins over the edge.
+Each normal step advances by its configured grid-relative distance. Nodes,
+edges, waypoints, and labels neither shorten nor lengthen a step and never pull
+the crosshairs off-axis. Item-aware movement remains available through the
+dedicated Move by Node (`g`) and Move by Link (`f`) modes.
 
 Normal-mode held movement fires once immediately, then uses Cursor → Repeat
 delay and Repeat interval for its app-owned timer. The defaults remain 250 ms
@@ -42,8 +25,7 @@ counts, not fixed drawing-unit or screen-pixel distances. Fine and Normal
 count minor-grid squares (defaults 1 and 5); Coarse counts major-grid squares
 (default 10). Because the drawing grid adapts to zoom, the same setting can
 cover a different logical distance at another zoom level while retaining the
-same visible grid relationship. Normal uses its computed distance as the
-fallback step; a nearby semantic snap may still land sooner or farther away.
+same visible grid relationship.
 
 The graph item under the crosshairs gets a non-semantic dashed hover trace in
 the crosshairs color. It never changes selection and follows selection's hit
@@ -60,23 +42,6 @@ when possible and clamps wholly inside the viewport otherwise. It is
 non-interactive, non-serialized, and is destroyed with the hover landing; a
 fully visible readable node is never duplicated.
 
-When normal movement deliberately snaps to an item, that semantic landing
-temporarily overrides geometric hit priority. This matters at a busy hub: an
-edge endpoint can overlap the hub's crosshair hit area, but the edge that was
-actually visited is the thing traced. The trace is drawn immediately when the
-landing is chosen, before the movement tween: a held key's 100 ms repeat must
-not clear a thin-edge trace before the delayed geometric hover refresh can
-paint it. The perpendicular return step after an
-off-line snap has no item trace, so it does not misleadingly repaint an
-already-visited node.
-
-Visits are direction-qualified for the lifetime of the goal. A feature may be
-visited once northbound and once southbound (or once eastbound and once
-westbound), but changing direction does not erase the visit in the earlier
-direction. This prevents a small alternating gesture at one node boundary from
-repeatedly reporting the same node without ever making progress. Changing the
-movement axis or letting the indicators time out still starts a fresh goal.
-
 The dashed goal line renders above the ordinary grid but below graph content.
 It disappears on the same five-second timeout as the grid and crosshairs.
 The next crosshairs movement restores all movement UI. Fine and coarse
@@ -87,7 +52,5 @@ step (or vice versa).
 
 Current tuning:
 
-- fine / normal / coarse fallback steps: 1 minor / 5 minor / 10 major grid
-  squares, independently editable in Cursor settings;
-- snap corridor: `max(24 screen px, 2 minor-grid cells)`;
-- same-progress precedence: node, waypoint, label, edge.
+- fine / normal / coarse steps: 1 minor / 5 minor / 10 major grid squares,
+  independently editable in Cursor settings.

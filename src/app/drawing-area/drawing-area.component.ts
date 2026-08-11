@@ -41,9 +41,7 @@ import {
 } from './navigation-quadrant-rings';
 import {
   nextNormalMovementStep,
-  NormalMovementAxis,
   NormalMovementGoal,
-  NormalMovementSnapCandidate,
   startNormalMovementGoal,
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
@@ -243,10 +241,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  selection state and is never serialized. */
   private crosshairHoverHighlight: Konva.Shape | null = null;
   private crosshairHoverRefreshTimer: number | null = null;
-  /** Normal movement's semantic landing target. `false` suppresses a
-   *  misleading geometric hover on line-return steps through a wide node. */
-  private normalMovementHoverTarget:
-    {kind: 'node' | 'waypoint' | 'label' | 'edge'; id: string} | false | null = null;
   /** Screen-space copy of one edited node at low graph zoom. The real node
    *  remains in place; this lens keeps its text and caret readable. */
   private labelEditGhost: Konva.Group | null = null;
@@ -2547,9 +2541,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const currentDlY = (currentY - this.drawingLayer.y()) / scale;
       const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
 
-      // Normal movement follows a visible goal line and interleaves nearby
-      // graph features with ordinary half-cell steps. Fine/coarse retain
-      // direct grid movement and start a fresh goal on the next normal key.
+      // Normal movement follows a visible goal line in fixed, configured
+      // steps. Item-aware travel belongs to Move by Node and Move by Link.
+      // Fine/coarse retain direct grid movement and start a fresh goal on the
+      // next normal key.
       if (tier === 'normal' && axis) {
         const current = {x: currentDlX, y: currentDlY};
         if (!this.normalMovementGoal || this.normalMovementGoal.axis !== axis) {
@@ -2559,31 +2554,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const stepDistance = this.movementDistanceForTier(
           'normal', minorSpacing, majorSpacing,
         );
-        const snapDistance = Math.max(24 / scale, minorSpacing * 2);
-        const candidates = this.collectNormalMovementSnapCandidates(
-          axis,
-          this.normalMovementGoal.line,
-          snapDistance,
-        );
         const step = nextNormalMovementStep(
           this.normalMovementGoal,
           sign,
           stepDistance,
-          candidates,
         );
         this.normalMovementGoal = step.state;
-        this.normalMovementHoverTarget = step.kind === 'snap' &&
-          step.snappedCandidate?.targetKind && step.snappedCandidate.targetId
-          ? {
-              kind: step.snappedCandidate.targetKind,
-              id: step.snappedCandidate.targetId,
-            }
-          : false;
         this.redrawNormalMovementGoalLine();
-        // Render the semantic target as soon as it is chosen. Waiting until
-        // after the 100 ms tween made a held 100 ms repeat clear the trace
-        // before it ever appeared, most noticeably for thin edges.
-        if (step.kind === 'snap') this.refreshCrosshairHoverHighlight();
         this.updateCrosshairsProbeShape(
           axis, tier, minorSpacing, majorSpacing, stepDistance, scale,
         );
@@ -2668,141 +2645,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (showMovementGrid) this.showMovementIndicators();
   }
 
-  /** Graph items close enough to the ordinary movement goal line to become
-   *  intermediate stops. When the line crosses a node or label, its span is
-   *  retained so movement stops at the encountered boundary instead of being
-   *  pulled to the center. Nearby-but-off-line items still use their center. */
-  private collectNormalMovementSnapCandidates(
-    axis: NormalMovementAxis,
-    line: number,
-    tolerance: number,
-  ): NormalMovementSnapCandidate[] {
-    const out: NormalMovementSnapCandidate[] = [];
-    const distanceToSpan = (min: number, max: number) =>
-      line < min ? min - line : line > max ? line - max : 0;
-    const add = (
-      id: string,
-      point: {x: number; y: number},
-      priority: number,
-      distance: number,
-      crossingSpan?: {min: number; max: number},
-      targetKind?: 'node' | 'waypoint' | 'label' | 'edge',
-      targetId?: string,
-    ) => {
-      if (Number.isFinite(point.x) && Number.isFinite(point.y) &&
-          distance <= tolerance) {
-        out.push({id, point, priority, distance, crossingSpan, targetKind, targetId});
-      }
-    };
-
-    for (const node of this.drawingLayer.getDANodes()) {
-      const minX = node.group.x();
-      const maxX = minX + node.NODE_WIDTH;
-      const minY = node.group.y();
-      const maxY = minY + node.NODE_HEIGHT;
-      const distance = axis === 'x'
-        ? distanceToSpan(minY, maxY)
-        : distanceToSpan(minX, maxX);
-      add(
-        `node:${node.id}`,
-        {x: (minX + maxX) / 2, y: (minY + maxY) / 2},
-        0,
-        distance,
-        distance === 0
-          ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
-          : undefined,
-        'node',
-        node.id,
-      );
-    }
-
-    for (const edge of this.drawingLayer.getDAEdges()) {
-      for (const waypoint of edge.waypoints) {
-        add(
-          `waypoint:${waypoint.id}`,
-          {x: waypoint.x, y: waypoint.y},
-          1,
-          Math.abs((axis === 'x' ? waypoint.y : waypoint.x) - line),
-          undefined,
-          'waypoint',
-          waypoint.id,
-        );
-      }
-      for (const label of edge.labels) {
-        const minX = label.x - label.width / 2;
-        const maxX = label.x + label.width / 2;
-        const minY = label.y - label.height / 2;
-        const maxY = label.y + label.height / 2;
-        const distance = axis === 'x'
-          ? distanceToSpan(minY, maxY)
-          : distanceToSpan(minX, maxX);
-        add(
-          `label:${label.id}`,
-          {x: label.x, y: label.y},
-          2,
-          distance,
-          distance === 0
-            ? (axis === 'x' ? {min: minX, max: maxX} : {min: minY, max: maxY})
-            : undefined,
-          'label',
-          label.id,
-        );
-      }
-
-      // Each rendered segment contributes its closest meaningful point:
-      // the exact goal-line crossing when one exists, otherwise the nearer
-      // endpoint when the whole segment runs beside the line.
-      const points = edge.getPathPoints();
-      for (let i = 0; i < points.length - 1; i++) {
-        const a = points[i];
-        const b = points[i + 1];
-        const perpA = axis === 'x' ? a.y : a.x;
-        const perpB = axis === 'x' ? b.y : b.x;
-        const dPerp = perpB - perpA;
-        if (Math.abs(dPerp) > 1e-9) {
-          const t = (line - perpA) / dPerp;
-          if (t >= 0 && t <= 1) {
-            add(
-              `edge:${edge.id}:${i}`,
-              {x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t},
-              3,
-              0,
-              undefined,
-              'edge',
-              edge.id,
-            );
-            continue;
-          }
-        } else if (Math.abs(perpA - line) < 1e-9) {
-          const primaryA = axis === 'x' ? a.x : a.y;
-          const primaryB = axis === 'x' ? b.x : b.y;
-          add(
-            `edge:${edge.id}:${i}`,
-            {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2},
-            3,
-            0,
-            {min: Math.min(primaryA, primaryB), max: Math.max(primaryA, primaryB)},
-            'edge',
-            edge.id,
-          );
-          continue;
-        }
-        const point = Math.abs(perpA - line) <= Math.abs(perpB - line) ? a : b;
-        add(
-          `edge:${edge.id}:${i}`,
-          {x: point.x, y: point.y},
-          3,
-          Math.min(Math.abs(perpA - line), Math.abs(perpB - line)),
-          undefined,
-          'edge',
-          edge.id,
-        );
-      }
-    }
-
-    return out;
-  }
-
   /** Draw the current goal in drawing-layer space, just above the ordinary
    *  grid and below graph content. It therefore stays registered with the
    *  diagram during any edge-of-viewport pan. */
@@ -2839,7 +2681,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private clearNormalMovementGoal(draw = true): void {
     this.normalMovementGoal = null;
-    this.normalMovementHoverTarget = null;
     if (this.normalMovementGoalLine) {
       this.normalMovementGoalLine.destroy();
       this.normalMovementGoalLine = null;
@@ -2872,12 +2713,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer?.batchDraw();
       return;
     }
-    const forcedTarget = this.normalMovementHoverTarget;
-    if (forcedTarget === false) {
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
     const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
     const palette = this.visualConfigService
       .getEffectivePalette(this.themeService.theme);
@@ -2905,13 +2740,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let targetId = '';
     let targetNode: DANode | null = null;
 
-    const label = forcedTarget?.kind === 'label'
-      ? this.drawingLayer.getDAEdges()
-          .flatMap(edge => edge.labels)
-          .find(candidate => candidate.id === forcedTarget.id) ?? null
-      : forcedTarget
-        ? null
-        : this.getLabelUnderCrosshairs();
+    const label = this.getLabelUnderCrosshairs();
     if (label) {
       targetKind = 'label';
       targetId = label.id;
@@ -2924,12 +2753,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         cornerRadius: 5 / scale,
       });
     } else {
-      const waypoint = forcedTarget?.kind === 'waypoint'
-        ? this.drawingLayer.getDAWaypoints()
-            .find(candidate => candidate.id === forcedTarget.id)
-        : forcedTarget
-          ? undefined
-          : this.getWaypointUnderCrosshairs();
+      const waypoint = this.getWaypointUnderCrosshairs();
       if (waypoint) {
         targetKind = 'waypoint';
         targetId = waypoint.id;
@@ -2940,12 +2764,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           radius: waypoint.RADIUS + pad,
         });
       } else {
-        const nodes = forcedTarget?.kind === 'node'
-          ? this.drawingLayer.getDANodes()
-              .filter(candidate => candidate.id === forcedTarget.id)
-          : forcedTarget
-            ? []
-            : this.getDANodesContainingCrosshairs();
+        const nodes = this.getDANodesContainingCrosshairs();
         if (nodes.length > 0) {
           const node = nodes.reduce((a, b) =>
             a.zIndex() > b.zIndex() ? a : b);
@@ -2963,12 +2782,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
               : 7 / scale,
           });
         } else {
-          const edges = forcedTarget?.kind === 'edge'
-            ? this.drawingLayer.getDAEdges()
-                .filter(candidate => candidate.id === forcedTarget.id)
-            : forcedTarget
-              ? []
-              : this.getDAEdgesContainingCrosshairs();
+          const edges = this.getDAEdgesContainingCrosshairs();
           if (edges.length > 0) {
             const edge = edges.reduce((a, b) =>
               a.zIndex() > b.zIndex() ? a : b);

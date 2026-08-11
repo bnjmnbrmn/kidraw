@@ -169,16 +169,15 @@ async function main() {
     caret.layerY < caret.startY && caret.bottom <= caret.limit + 0.01, JSON.stringify(caret));
   await page.keyboard.press('Escape');
 
-  // A semantic landing at low zoom receives an actual natural-scale clone.
+  // A navigation landing at low zoom receives an actual natural-scale clone.
   const tinyGhost = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const dl = da.drawingLayer;
     const node = dl.getDANodes()[0];
     dl.scale({x: 0.25, y: 0.25});
     dl.position({x: 500, y: 250});
-    da.normalMovementHoverTarget = {kind: 'node', id: node.id};
     da.crosshairsLayer.showCrosshairs();
-    da.refreshCrosshairHoverHighlight();
+    da.refreshNavigationLandingGhost(node);
     const ghost = da.crosshairsLayer.findOne('.navigation-node-ghost');
     return {
       target: ghost?.getAttr('targetId'),
@@ -203,9 +202,8 @@ async function main() {
     const cover = new NodeCtor(515, 215, 'covering', 'cover');
     dl.addRawNode(target);
     dl.addRawNode(cover);
-    da.normalMovementHoverTarget = {kind: 'node', id: target.id};
     da.crosshairsLayer.showCrosshairs();
-    da.refreshCrosshairHoverHighlight();
+    da.refreshNavigationLandingGhost(target);
     const ghost = da.crosshairsLayer.findOne('.navigation-node-ghost');
     return {
       target: ghost?.getAttr('targetId'),
@@ -226,13 +224,12 @@ async function main() {
     dl.position({x: 0, y: 0});
     const target = new NodeCtor(-80, 180, 'offscreen target', 'offscreen');
     dl.addRawNode(target);
-    da.normalMovementHoverTarget = {kind: 'node', id: target.id};
     da.crosshairsLayer.showCrosshairs();
-    da.refreshCrosshairHoverHighlight();
+    da.refreshNavigationLandingGhost(target);
     let ghost = da.crosshairsLayer.findOne('.navigation-node-ghost');
     const partial = {reasons: ghost?.getAttr('reasons') ?? [], x: ghost?.x()};
     target.group.x(-500);
-    da.refreshCrosshairHoverHighlight();
+    da.refreshNavigationLandingGhost(target);
     ghost = da.crosshairsLayer.findOne('.navigation-node-ghost');
     return {
       partial,
