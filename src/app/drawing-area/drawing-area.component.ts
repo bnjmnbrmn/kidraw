@@ -244,6 +244,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Screen-space copy of one edited node at low graph zoom. The real node
    *  remains in place; this lens keeps its text and caret readable. */
   private labelEditGhost: Konva.Group | null = null;
+  /** Destination scale of an in-flight focus zoom (da-198): the edit lens
+   *  evaluates legibility against this rather than the animating scale. */
+  private focusZoomTargetScale: number | null = null;
   /** Natural-scale copy of the node currently reached by crosshair
    *  navigation, shown only when the real node is not fully readable. */
   private navigationLandingGhost: Konva.Group | null = null;
@@ -3957,6 +3960,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private centerViewOnLayerPoint(
     p: {x: number; y: number},
     targetScale = this.drawingLayer.scaleX(),
+    onFinish?: () => void,
   ): void {
     const centerX = this.stage.width() / 2;
     const centerY = this.stage.height() / 2;
@@ -3968,7 +3972,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: centerX - p.x * targetScale,
       y: centerY - p.y * targetScale,
       easing: Konva.Easings.EaseInOut,
-      onFinish: () => this.emitZoomLevel(),
+      onFinish: () => {
+        this.emitZoomLevel();
+        onFinish?.();
+      },
     }).play());
     this.tweens.push(new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
@@ -5967,9 +5974,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         DrawingAreaComponent.NODE_EDIT_MIN_ZOOM,
       ),
     );
+    // While the focus zoom is in flight, the edit lens must judge legibility
+    // by where the zoom is going, not the mid-tween scale — otherwise a lens
+    // built during the tween survives at full zoom as a phantom second copy
+    // of the freshly added node (da-198).
+    this.focusZoomTargetScale = targetScale;
     this.centerViewOnLayerPoint(
       this.getNodeCenterInLayerCoordinates(node),
       targetScale,
+      () => {
+        this.focusZoomTargetScale = null;
+        this.refreshLabelEditGhost();
+      },
     );
   }
 
@@ -6460,8 +6476,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private refreshLabelEditGhost(): void {
     this.keepEditCaretVisible();
     this.clearLabelEditGhost(false);
+    const effectiveScale = this.focusZoomTargetScale ?? this.drawingLayer?.scaleX() ?? 1;
     if (!this.crosshairsLayer || !this.drawingLayer ||
-        this.drawingLayer.scaleX() >= DrawingAreaComponent.NODE_EDIT_MIN_ZOOM) {
+        effectiveScale >= DrawingAreaComponent.NODE_EDIT_MIN_ZOOM) {
       return;
     }
     const selected = this.drawingLayer.getSelectedDANodes();
