@@ -3023,15 +3023,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let closestNode: DANode | null = null;
     let closestDist = Infinity;
 
-    for (const node of this.drawingLayer.getDANodes()) {
-      if (node.nodeShape === 'junction') continue;
-      const br = node.getBottomRightAbsolute();
-      const dx = crosshairsX - br.x;
-      const dy = crosshairsY - br.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < PROXIMITY_THRESHOLD && dist < closestDist) {
-        closestDist = dist;
-        closestNode = node;
+    // The handle is only offered when the drag gesture would have nothing
+    // else to act on — same stand-down rule as enterDragMode, so a visible
+    // handle always means "v will resize" (da-193).
+    if (!this.hasItemUnderCrosshairs() && !this.hasDragSelection()) {
+      for (const node of this.drawingLayer.getDANodes()) {
+        if (node.nodeShape === 'junction') continue;
+        const br = node.getBottomRightAbsolute();
+        const dx = crosshairsX - br.x;
+        const dy = crosshairsY - br.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < PROXIMITY_THRESHOLD && dist < closestDist) {
+          closestDist = dist;
+          closestNode = node;
+        }
       }
     }
 
@@ -7642,11 +7647,39 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Crosshairs stay visible during drag
     this.hasDragged = false;
     this.dragSnapshotCaptured = false;
+    // The resize handle only captures the gesture when there is nothing to
+    // drag: no item under the crosshairs and no current selection. Without
+    // this guard a node corner inside the proximity band silently turned
+    // every select+drag into a barely visible resize — three coarse drags
+    // that "did nothing" in Ben's 2026-08-14 session (da-193).
+    if (this.resizeTargetNode &&
+        (this.hasItemUnderCrosshairs() || this.hasDragSelection())) {
+      this.resizeTargetNode.hideResizeHandle();
+      this.resizeTargetNode = null;
+      this.drawingLayer.batchDraw();
+      return;
+    }
     // If resize handle is active, select that node and enter resize drag
     if (this.resizeTargetNode) {
       this.drawingLayer.unselectAll();
       this.resizeTargetNode.isSelected = true;
     }
+  }
+
+  /** Anything the select+drag gesture could act on, same hit priority as
+   *  ensureTopItemSelected: label → waypoint → node → edge. */
+  private hasItemUnderCrosshairs(): boolean {
+    return !!this.getLabelUnderCrosshairs() ||
+      !!this.getWaypointUnderCrosshairs() ||
+      this.getDANodesContainingCrosshairs().length > 0 ||
+      this.getDAEdgesContainingCrosshairs().length > 0;
+  }
+
+  private hasDragSelection(): boolean {
+    return this.drawingLayer.getSelectedDANodes().length > 0 ||
+      this.drawingLayer.getSelectedDAWaypoints().length > 0 ||
+      this.drawingLayer.getSelectedDAEdges().length > 0 ||
+      this.getSelectedLabels().length > 0;
   }
 
   private exitDragMode() {
