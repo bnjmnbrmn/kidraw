@@ -582,6 +582,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.clearLabelEditGhost(false);
     this.clearNavigationLandingGhost(false);
     this.crosshairHoverHighlight?.destroy();
+    this.areaSelectMarquee?.destroy();
   }
 
   private canEdit = false;
@@ -615,6 +616,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         kind === DACommandType.DRAG_SELECTED_RIGHT ||
         kind === DACommandType.DRAG_SELECTED_UP ||
         kind === DACommandType.DRAG_SELECTED_DOWN) {
+      // Area-select steps only change selection state, never geometry —
+      // they don't belong in the undo history.
+      if (this.areaSelectActive) return;
       if (this.dragSnapshotCaptured) return;
       this.dragSnapshotCaptured = true;
     }
@@ -6222,18 +6226,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private dragSelectedLeft(tier?: GridTier)  {
+    if (this.areaSelectActive) { this.areaSelectStep('x', -1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
     this.dragSelected('x', -1, tier);
   }
   private dragSelectedRight(tier?: GridTier) {
+    if (this.areaSelectActive) { this.areaSelectStep('x', +1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(1); return; }
     this.dragSelected('x', +1, tier);
   }
   private dragSelectedUp(tier?: GridTier)    {
+    if (this.areaSelectActive) { this.areaSelectStep('y', -1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
     this.dragSelected('y', -1, tier);
   }
   private dragSelectedDown(tier?: GridTier)  {
+    if (this.areaSelectActive) { this.areaSelectStep('y', +1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(1); return; }
     this.dragSelected('y', +1, tier);
   }
@@ -7680,6 +7688,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.resizeTargetNode) {
       this.drawingLayer.unselectAll();
       this.resizeTargetNode.isSelected = true;
+      return;
+    }
+    // Held v over genuinely empty canvas starts an area select (da-195):
+    // the crosshairs anchor one corner of a marquee, the drag keys move the
+    // opposite corner, and everything the box touches joins the selection —
+    // the keyboard version of a mouse rubber band. Dragging an existing
+    // multi-selection now requires the crosshairs to be over a selected
+    // item, matching the mouse convention.
+    if (!this.hasItemUnderCrosshairs()) {
+      this.beginAreaSelect();
     }
   }
 
@@ -7692,6 +7710,153 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.getDAEdgesContainingCrosshairs().length > 0;
   }
 
+  // ---------------------------------------------------------------------
+  // Area select (da-195): keyboard rubber band from a held v over empty
+  // canvas. Anchor in drawing-layer coordinates; marquee drawn in stage
+  // coordinates on the crosshairs layer so pan/zoom mid-gesture stays true.
+  // ---------------------------------------------------------------------
+
+  private areaSelectActive = false;
+  private areaSelectAnchor: {x: number; y: number} | null = null;
+  private areaSelectMarquee: Konva.Rect | null = null;
+  /** Items this marquee selected — shrinking the box releases exactly these,
+   *  never a selection the user had before the gesture. */
+  private areaSelectCaptured = new Set<DANode | DAEdge | DAWaypoint | DALabel>();
+
+  private beginAreaSelect(): void {
+    this.finishTweens();
+    this.areaSelectActive = true;
+    this.areaSelectAnchor = this.crosshairsInLayerCoords();
+    this.areaSelectCaptured.clear();
+    this.refreshAreaSelectMarquee();
+  }
+
+  private areaSelectStep(axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier): void {
+    if (!this.areaSelectActive || !this.areaSelectAnchor) return;
+    const effectiveTier = tier ?? 'normal';
+    const distance = this.movementDistanceForTier(
+      effectiveTier,
+      this.drawingLayer.getSubGridSpacing(),
+      this.drawingLayer.getGridSpacing(),
+    ) * this.drawingLayer.scaleX();
+    const edgeMargin = 60;
+    const stageExtent = axis === 'x' ? this.stage.width() : this.stage.height();
+    const current = axis === 'x'
+      ? this.crosshairsLayer.crosshairs.x
+      : this.crosshairsLayer.crosshairs.y;
+    const target = current + sign * distance;
+    const clamped = Math.min(Math.max(target, edgeMargin), stageExtent - edgeMargin);
+    const overflow = target - clamped;
+    if (axis === 'x') {
+      this.crosshairsLayer.crosshairs.x = clamped;
+      if (overflow !== 0) this.drawingLayer.x(this.drawingLayer.x() - overflow);
+    } else {
+      this.crosshairsLayer.crosshairs.y = clamped;
+      if (overflow !== 0) this.drawingLayer.y(this.drawingLayer.y() - overflow);
+    }
+    this.updateAreaSelection();
+    this.refreshAreaSelectMarquee();
+  }
+
+  /** Marquee corners in drawing-layer coordinates. */
+  private areaSelectRect(): {minX: number; minY: number; maxX: number; maxY: number} | null {
+    if (!this.areaSelectAnchor) return null;
+    const c = this.crosshairsInLayerCoords();
+    return {
+      minX: Math.min(this.areaSelectAnchor.x, c.x),
+      minY: Math.min(this.areaSelectAnchor.y, c.y),
+      maxX: Math.max(this.areaSelectAnchor.x, c.x),
+      maxY: Math.max(this.areaSelectAnchor.y, c.y),
+    };
+  }
+
+  private updateAreaSelection(): void {
+    const rect = this.areaSelectRect();
+    if (!rect) return;
+    const boxHits = (x: number, y: number, w: number, h: number) =>
+      x < rect.maxX && x + w > rect.minX && y < rect.maxY && y + h > rect.minY;
+    const inside = new Set<DANode | DAEdge | DAWaypoint | DALabel>();
+
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node.nodeShape === 'invisible') continue;
+      if (boxHits(node.group.x(), node.group.y(), node.NODE_WIDTH, node.NODE_HEIGHT)) {
+        inside.add(node);
+      }
+    }
+    for (const edge of this.drawingLayer.getDAEdges()) {
+      for (const label of edge.labels) {
+        if (boxHits(label.x, label.y, label.width, label.height)) inside.add(label);
+      }
+      for (const wp of edge.waypoints) {
+        if (wp.x >= rect.minX && wp.x <= rect.maxX &&
+            wp.y >= rect.minY && wp.y <= rect.maxY) {
+          inside.add(wp);
+        }
+      }
+      const path = edge.getRenderedPathPoints();
+      for (let i = 0; i < path.length - 1; i++) {
+        if (lineSegmentIntersectsRect(
+          path[i].x, path[i].y, path[i + 1].x, path[i + 1].y,
+          rect.minX, rect.minY, rect.maxX, rect.maxY,
+        )) {
+          inside.add(edge);
+          break;
+        }
+      }
+    }
+
+    for (const item of inside) {
+      if (!item.isSelected) {
+        item.isSelected = true;
+        this.areaSelectCaptured.add(item);
+      }
+    }
+    for (const item of [...this.areaSelectCaptured]) {
+      if (!inside.has(item)) {
+        item.isSelected = false;
+        this.areaSelectCaptured.delete(item);
+      }
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  private refreshAreaSelectMarquee(): void {
+    const rect = this.areaSelectRect();
+    if (!rect) return;
+    const scale = this.drawingLayer.scaleX();
+    const stage = {
+      x: this.drawingLayer.x() + rect.minX * scale,
+      y: this.drawingLayer.y() + rect.minY * scale,
+      width: (rect.maxX - rect.minX) * scale,
+      height: (rect.maxY - rect.minY) * scale,
+    };
+    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    if (!this.areaSelectMarquee) {
+      this.areaSelectMarquee = new Konva.Rect({
+        name: 'area-select-marquee',
+        stroke: palette.crosshairsStroke,
+        strokeWidth: 1.5,
+        dash: [6, 4],
+        fill: palette.crosshairsStroke + '22',
+        listening: false,
+      });
+      this.crosshairsLayer.add(this.areaSelectMarquee);
+    }
+    this.areaSelectMarquee.setAttrs(stage);
+    this.areaSelectMarquee.moveToTop();
+    this.crosshairsLayer.batchDraw();
+  }
+
+  private finalizeAreaSelect(): void {
+    this.areaSelectActive = false;
+    this.areaSelectAnchor = null;
+    this.areaSelectCaptured.clear();
+    this.areaSelectMarquee?.destroy();
+    this.areaSelectMarquee = null;
+    this.crosshairsLayer?.batchDraw();
+    this.checkAndEmitEditState();
+  }
+
   private hasDragSelection(): boolean {
     return this.drawingLayer.getSelectedDANodes().length > 0 ||
       this.drawingLayer.getSelectedDAWaypoints().length > 0 ||
@@ -7700,6 +7865,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private exitDragMode() {
+    if (this.areaSelectActive) {
+      // Release keeps whatever the marquee gathered; the quick-tap toggle
+      // below must not fire for an area-select gesture.
+      this.finalizeAreaSelect();
+      return;
+    }
     if (this.resizeTargetNode) {
       this.resizeTargetNode.hideResizeHandle();
       this.resizeTargetNode = null;
