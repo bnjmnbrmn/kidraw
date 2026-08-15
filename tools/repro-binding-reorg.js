@@ -65,8 +65,10 @@ async function main() {
   // 2026-07-16: f became the one-shot Go action (nav popup rework).
   check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
   // 2026-07-18: Move by node → g, Hide Keyboard → z.
+  // 2026-08-15: z cycles keyboard → compact tree → hidden (da-200), so the
+  // label broadened from 'Hide Keyboard' to 'Cycle Menu View'.
   check('root g is Move by node', menu.g?.label === 'Move by node...', JSON.stringify(menu.g));
-  check('root z toggles keyboard visibility', menu.z?.label === 'Hide Keyboard', JSON.stringify(menu.z));
+  check('root z cycles the menu view', menu.z?.label === 'Cycle Menu View', JSON.stringify(menu.z));
   check('root m is File...', menu.m?.label === 'File...', JSON.stringify(menu.m));
   check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
   check('m→o Open… (vault)', menu.miscLabels['o'] === 'Open…');

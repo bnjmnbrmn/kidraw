@@ -16,4 +16,12 @@
   [keyAssignments]="keyAssignments"
   (keyMenuOut)="relayKeymenuCommand($event)"
   (labelEditModeOut)="handleLabelEditModeChange($event)"
-  (visibilityToggle)="toggleKeymenuVisibility()"/>
+  (visibilityToggle)="toggleKeymenuVisibility()"
+  (compactModelOut)="onCompactModel($event)"/>
+
+@if (keymenuDisplay === 'compact') {
+  <app-compact-keymenu
+    [rows]="compactRows"
+    [dark]="darkTheme"
+    [modeName]="compactModeName"/>
+}

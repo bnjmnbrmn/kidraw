@@ -1,0 +1,14 @@
+<div class="compact-keymenu" [class.dark]="dark" [class.left]="side === 'left'">
+  <div class="mode-line" *ngIf="modeName">{{ modeName }}</div>
+  <div class="rows" #rowsEl>
+    <div *ngFor="let row of rows; trackBy: trackRow"
+         class="row"
+         [class.held]="row.held"
+         [class.submenu]="row.isSubmenu"
+         [style.padding-left.px]="8 + row.depth * 16">
+      <span class="key">{{ row.key }}</span>
+      <span class="label">{{ row.label }}</span>
+      <span class="chevron" *ngIf="row.isSubmenu">{{ row.held ? '▾' : '▸' }}</span>
+    </div>
+  </div>
+</div>

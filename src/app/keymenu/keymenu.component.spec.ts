@@ -86,7 +86,7 @@ describe('KeymenuComponent', () => {
     const toggleVisibility = buildRootConfig(component)['z'] as LabeledAction;
 
     expect(toggleVisibility instanceof LabeledAction).toBeTrue();
-    expect(toggleVisibility.actionLabel).toBe('Hide Keyboard');
+    expect(toggleVisibility.actionLabel).toBe('Cycle Menu View');
     expect(toggleVisibility.repeat).toBeFalse();
 
     toggleVisibility.action();
@@ -419,6 +419,7 @@ describe('KeymenuComponent', () => {
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
 
     // 2026-07-18 rebinds: Move by node → g, Hide Keyboard → z, r unbound.
+    // 2026-08-15: z now cycles keyboard → compact tree → hidden (da-200).
     // 2026-07-21: default jump steps between nodes + labels ("Stop Left"),
     // with coarse (nodes only) / fine (+waypoints) tier sub-submenus. The
     // submenu is hold-aware (shows the grid overlay) — LabeledActionSubmenuConfig.
@@ -467,7 +468,7 @@ describe('KeymenuComponent', () => {
     coarse.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_NODE_GRID, targets: 'nodes'});
     expect((coarse.submenuConfig['h'] as LabeledAction).actionLabel).toBe('Node Left');
-    expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
+    expect((rootConfig['z'] as LabeledAction).actionLabel).toBe('Cycle Menu View');
 
     // Move by Link at 'f': held NSEW edge navigator, with no popup.
     const go = rootConfig['f'] as LabeledActionSubmenuConfig;
@@ -511,7 +512,7 @@ describe('KeymenuComponent', () => {
     expect(rootConfig['i']).toBeUndefined();
     expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit/insert hub (tap fires on keyup)
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
-    expect((rootConfig['q'] as LabeledAction).actionLabel).toBe('Hide Keyboard');
+    expect((rootConfig['q'] as LabeledAction).actionLabel).toBe('Cycle Menu View');
 
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');

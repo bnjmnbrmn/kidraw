@@ -2,6 +2,7 @@ import {TestBed} from '@angular/core/testing';
 import {By} from '@angular/platform-browser';
 import {AppComponent} from './app.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
+import {CompactKeymenuComponent} from './keymenu/compact/compact-keymenu.component';
 import {DACommandType} from './drawing-area/command.model';
 
 describe('AppComponent', () => {
@@ -45,27 +46,62 @@ describe('AppComponent', () => {
     expect(keymenu.movementSpeed).toBe(fixture.componentInstance.movementSpeed);
   });
 
-  it('should hide and restore the keyboard menu without destroying it', () => {
+  // 2026-08-15 (da-200): the toggle cycles three presentations —
+  // keyboard → compact tree → hidden → keyboard. The keyboard overlay is
+  // still only hidden, never destroyed, in the two non-keyboard states.
+  it('should cycle keyboard → compact → hidden without destroying the keymenu', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const app = fixture.componentInstance;
     const keymenuDebug = fixture.debugElement.query(By.directive(KeymenuComponent));
 
+    expect(app.keymenuDisplay).toBe('keyboard');
     expect(keymenuDebug.componentInstance.visible).toBeTrue();
 
     app.toggleKeymenuVisibility();
     fixture.detectChanges();
 
+    expect(app.keymenuDisplay).toBe('compact');
     expect(fixture.debugElement.query(By.directive(KeymenuComponent))).toBe(keymenuDebug);
     expect(keymenuDebug.nativeElement.classList).toContain('keymenu-hidden');
     expect(keymenuDebug.componentInstance.visible).toBeFalse();
     expect(keymenuDebug.nativeElement.getAttribute('aria-hidden')).toBe('true');
+    expect(fixture.debugElement.query(By.directive(CompactKeymenuComponent))).not.toBeNull();
 
     app.toggleKeymenuVisibility();
     fixture.detectChanges();
 
+    expect(app.keymenuDisplay).toBe('hidden');
+    expect(fixture.debugElement.query(By.directive(KeymenuComponent))).toBe(keymenuDebug);
+    expect(keymenuDebug.componentInstance.visible).toBeFalse();
+    expect(fixture.debugElement.query(By.directive(CompactKeymenuComponent))).toBeNull();
+
+    app.toggleKeymenuVisibility();
+    fixture.detectChanges();
+
+    expect(app.keymenuDisplay).toBe('keyboard');
     expect(keymenuDebug.nativeElement.classList).not.toContain('keymenu-hidden');
     expect(keymenuDebug.componentInstance.visible).toBeTrue();
+  });
+
+  it('mirrors the keymenu compact model into the panel inputs', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+
+    app.onCompactModel({
+      rows: [{key: 'g', label: 'Move by node...', depth: 0, isSubmenu: true, held: true},
+             {key: 'h', label: 'Stop Left', depth: 1, isSubmenu: false, held: false}],
+      modeName: 'normal',
+    });
+    app.keymenuDisplay = 'compact';
+    fixture.detectChanges();
+
+    const panel = fixture.debugElement.query(By.directive(CompactKeymenuComponent));
+    expect(panel).not.toBeNull();
+    expect(panel.componentInstance.rows.length).toBe(2);
+    expect(panel.componentInstance.rows[1].depth).toBe(1);
+    expect(panel.componentInstance.modeName).toBe('normal');
   });
 
   it('relays label edit submodes to the drawing cursor', () => {

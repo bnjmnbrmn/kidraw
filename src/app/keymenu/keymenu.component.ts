@@ -20,9 +20,11 @@ import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
 import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 import {
   LabeledActionSubmenuConfig,
+  LabeledActionWithRelease,
   SubmenuConfig,
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
-import {KeyString, KEY_HEIGHT, getKeyWidth} from '../lib/keymenu/layouts/us-qwerty';
+import {KeyString, KEY_HEIGHT, getKeyWidth, getKeyDisplayLabel} from '../lib/keymenu/layouts/us-qwerty';
+import {CompactMenuRow} from './compact/compact-keymenu.component';
 import {
   DirectionalKeyAssignments,
   KeymenuKeyAssignments,
@@ -56,6 +58,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Output() keyMenuOut = new EventEmitter<DACommand>();
   @Output() labelEditModeOut = new EventEmitter<TextCursorMode>();
   @Output() visibilityToggle = new EventEmitter<void>();
+  /** Live rows for the compact tree panel (da-200): re-emitted on every
+   *  submenu push/pop/replace/reset and on mode switches. */
+  @Output() compactModelOut = new EventEmitter<{rows: CompactMenuRow[]; modeName: string}>();
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -257,7 +262,54 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (this.suspended && this.activeSurface) {
       this.keyMenu.switchMode(KeymenuComponent.SURFACE_MODES[this.activeSurface]);
     }
+    // Every mode mirrors its submenu stack into the compact panel.
+    Object.values(this.keyMenu.modesForNames).forEach(mode => {
+      if (mode instanceof USQwertyMode) {
+        mode.onStackChanged = () => this.emitCompactModel();
+      }
+    });
     this.refreshActiveKeyPath();
+    this.emitCompactModel();
+  }
+
+  /** Flatten the live menu into `[key|Action]` rows: the current mode's root
+   *  bindings in declaration order, with each held submenu's children
+   *  indented beneath the row that opened them (da-200). */
+  private emitCompactModel(): void {
+    const mode = this.keyMenu?.currentMode;
+    if (!(mode instanceof USQwertyMode)) return;
+    const qMode = mode as USQwertyMode<DACommand>;
+    const heldChain = qMode.submenuKeyStringStack;
+    const rows: CompactMenuRow[] = [];
+    const addRows = (config: SubmenuConfig, depth: number) => {
+      for (const [key, value] of Object.entries(config)) {
+        if (key === '_repeatConfig' || !value) continue;
+        const isSubmenu = value instanceof LabeledSubmenuConfig ||
+          value instanceof LabeledActionSubmenuConfig;
+        const label = isSubmenu
+          ? (value as LabeledSubmenuConfig | LabeledActionSubmenuConfig).submenuLabel
+          : (value as LabeledAction | LabeledActionWithRelease).actionLabel;
+        const held = heldChain[depth + 1] === key && qMode.stack.length > depth + 1;
+        rows.push({
+          key: getKeyDisplayLabel(
+            key as KeyString,
+            this.keyboardConfig.keyboardLayout,
+            this.keyboardConfig.capsLockCtrlSwap,
+          ),
+          label,
+          depth,
+          isSubmenu,
+          held,
+        });
+        if (held) {
+          // The live stack entry, not the static child config: strategy
+          // switches replace the top submenu's config in place.
+          addRows(qMode.stack[depth + 1].config, depth + 1);
+        }
+      }
+    };
+    if (qMode.stack.length > 0) addRows(qMode.stack[0].config, 0);
+    this.compactModelOut.emit({rows, modeName: qMode.name});
   }
 
 
@@ -531,7 +583,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
-      [root.toggleVisibility]: new LabeledAction('Hide Keyboard', () => this.visibilityToggle.emit(), false),
+      [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
   }

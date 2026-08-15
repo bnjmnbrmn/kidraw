@@ -2,30 +2,48 @@ import {Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
+import {CompactKeymenuComponent, CompactMenuRow} from './keymenu/compact/compact-keymenu.component';
 import {Subject, Subscription} from 'rxjs';
 import {DACommand, DACommandType, TextCursorMode} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
 import {DebugLogService} from './services/debug-log.service';
 import {KeyboardConfigService} from './services/keyboard-config.service';
+import {ThemeService} from './services/theme.service';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
+
+/** How the keymenu presents itself: the classic keyboard overlay, the
+ *  compact file-picker-style tree (da-200), or nothing. The toggle key
+ *  cycles through all three; key handling runs identically in each. */
+export type KeymenuDisplay = 'keyboard' | 'compact' | 'hidden';
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent],
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit, OnDestroy {
   private log = inject(DebugLogService);
   private keyboardConfig = inject(KeyboardConfigService);
+  private themeService = inject(ThemeService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
   movementSpeed = 50;
   canEdit = false;
-  keymenuVisible = true;
+  keymenuDisplay: KeymenuDisplay = 'keyboard';
+  compactRows: CompactMenuRow[] = [];
+  compactModeName = '';
   keyAssignments: KeymenuKeyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
+
+  get keymenuVisible(): boolean {
+    return this.keymenuDisplay === 'keyboard';
+  }
+
+  get darkTheme(): boolean {
+    return this.themeService.theme === 'dark';
+  }
 
   private configSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
@@ -54,7 +72,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   toggleKeymenuVisibility() {
-    this.keymenuVisible = !this.keymenuVisible;
+    this.keymenuDisplay = this.keymenuDisplay === 'keyboard' ? 'compact'
+      : this.keymenuDisplay === 'compact' ? 'hidden'
+      : 'keyboard';
+  }
+
+  onCompactModel(model: {rows: CompactMenuRow[]; modeName: string}) {
+    this.compactRows = model.rows;
+    this.compactModeName = model.modeName;
   }
 
   handleLabelEditModeChange(subMode: TextCursorMode) {

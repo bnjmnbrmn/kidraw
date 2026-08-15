@@ -31,6 +31,10 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
 
     public readonly stack: KMSubmenu<T>[] = [];
     public konvaGroup: Group;
+    /** Notified whenever the submenu stack changes shape (push, pop,
+     *  replace, reset) — lets alternative renderings such as the compact
+     *  tree panel mirror the live menu state without polling. */
+    public onStackChanged?: () => void;
     actionSchedulingEnabled: boolean = true;
     private _helpModeActive: boolean = false;
     private palette?: ThemePalette;
@@ -85,6 +89,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
     beforeSwitchIn(): void {
       this.actionSchedulingEnabled = true;
       this.stackTop.showAllKeys();
+      this.onStackChanged?.();
     }
 
     cancelInputState(): void {
@@ -100,6 +105,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.submenuKeyStringStack.splice(1);
         this.slideOrigins.clear();
         this.stackTop.showAllKeys();
+        this.onStackChanged?.();
     }
 
 
@@ -173,6 +179,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.submenuKeyStringStack.push(submenuKey.keyString);
 
         this.slideIn(submenu, 'bottom');
+        this.onStackChanged?.();
     }
 
     replaceTopSubmenu(newConfig: SubmenuConfig) {
@@ -190,6 +197,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         const newSubmenu = new KMSubmenu<T>(this, newConfig, depth, this.palette, heldKeys, this.hideFingerBlocked, this.keyboardLayout, this.capsLockSwap, this.visualConfig);
         this.stack.push(newSubmenu);
         this.slideIn(newSubmenu, 'top');
+        this.onStackChanged?.();
     }
 
     private slideIn(submenu: KMSubmenu<T>, origin: SlideOrigin) {
@@ -237,6 +245,7 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         // Update the stack first so stackTop points to the new parent
         this.stack.splice(index);
         this.submenuKeyStringStack.splice(index);
+        this.onStackChanged?.();
 
         // Show parent card without moveToTop — it's already behind the departing cards
         this.stackTop.konvaGroup.show();
