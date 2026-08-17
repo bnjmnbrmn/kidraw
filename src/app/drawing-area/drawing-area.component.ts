@@ -161,6 +161,13 @@ function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
 export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input({required: true}) commands!: Observable<DACommand>;
+  /** Screen-space strip on each edge that a DOM overlay (currently the
+   *  compact keymenu) covers. The stage still spans the full area — the
+   *  canvas shows through the translucent panel — but every viewport
+   *  decision uses the *usable* rectangle instead, so content is never
+   *  centered, fitted, or parked underneath the panel. */
+  @Input() viewportInset: {left: number; right: number; top: number; bottom: number} =
+    {left: 0, right: 0, top: 0, bottom: 0};
   @Output() daOut = new EventEmitter<DANotification>()
   @Output() zoomLevel = new EventEmitter<number>()
   @Output() movementSpeedChange = new EventEmitter<number>()
@@ -1216,8 +1223,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!view || !isFinite(view.x) || !isFinite(view.y) || !(view.scale > 0)) return false;
     this.drawingLayer.scale({x: view.scale, y: view.scale});
     this.drawingLayer.position({x: view.x, y: view.y});
-    this.crosshairsLayer.crosshairs.x = this.stage.width() / 2;
-    this.crosshairsLayer.crosshairs.y = this.stage.height() / 2;
+    this.crosshairsLayer.crosshairs.x = this.viewCenterX();
+    this.crosshairsLayer.crosshairs.y = this.viewCenterY();
     this.drawingLayer.batchDraw();
     this.emitZoomLevel();
     return true;
@@ -2507,6 +2514,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  wide card near the edge and half its text sits outside the viewport —
    *  so the band grows to half the landed-on node's rendered box plus
    *  padding. Capped at 40% of the viewport so it can never swallow it. */
+  /** Left edge of the usable viewport, in stage coordinates. An unbound or
+   *  partially bound inset degrades to the full stage. */
+  private inset(edge: 'left' | 'right' | 'top' | 'bottom'): number {
+    return this.viewportInset?.[edge] ?? 0;
+  }
+  private viewMinX(): number { return this.inset('left'); }
+  private viewMaxX(): number { return this.stage.width() - this.inset('right'); }
+  private viewMinY(): number { return this.inset('top'); }
+  private viewMaxY(): number { return this.stage.height() - this.inset('bottom'); }
+  private viewWidth(): number { return Math.max(this.viewMaxX() - this.viewMinX(), 1); }
+  private viewHeight(): number { return Math.max(this.viewMaxY() - this.viewMinY(), 1); }
+  private viewCenterX(): number { return this.viewMinX() + this.viewWidth() / 2; }
+  private viewCenterY(): number { return this.viewMinY() + this.viewHeight() / 2; }
+
   private crosshairsEdgeMargin(target: {x: number; y: number}): {x: number; y: number} {
     const BASE = 60;
     const PAD = 24;
@@ -2518,8 +2539,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       my = Math.max(my, (node.NODE_HEIGHT * scale) / 2 + PAD);
     }
     return {
-      x: Math.min(mx, this.stage.width() * 0.4),
-      y: Math.min(my, this.stage.height() * 0.4),
+      x: Math.min(mx, this.viewWidth() * 0.4),
+      y: Math.min(my, this.viewHeight() * 0.4),
     };
   }
 
@@ -2596,10 +2617,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     const margin = this.crosshairsEdgeMargin({x: targetX, y: targetY});
-    const minX = margin.x;
-    const maxX = this.stage.width() - margin.x;
-    const minY = margin.y;
-    const maxY = this.stage.height() - margin.y;
+    const minX = this.viewMinX() + margin.x;
+    const maxX = this.viewMaxX() - margin.x;
+    const minY = this.viewMinY() + margin.y;
+    const maxY = this.viewMaxY() - margin.y;
 
     const clampedX = Math.min(Math.max(targetX, minX), maxX);
     const clampedY = Math.min(Math.max(targetY, minY), maxY);
@@ -2856,9 +2877,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const rect = this.nodeStageRect(node);
     const pad = 8;
     const reasons: string[] = [];
-    if (rect.x < pad || rect.y < pad ||
-        rect.x + rect.width > this.stage.width() - pad ||
-        rect.y + rect.height > this.stage.height() - pad) {
+    if (rect.x < this.viewMinX() + pad || rect.y < this.viewMinY() + pad ||
+        rect.x + rect.width > this.viewMaxX() - pad ||
+        rect.y + rect.height > this.viewMaxY() - pad) {
       reasons.push('offscreen');
     }
     if (node.FONT_SIZE * node.group.scaleY() * this.drawingLayer.scaleY() < 12) {
@@ -2886,12 +2907,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const rect = this.nodeStageRect(node);
     const center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
     const pad = 12;
-    const clampedStart = (start: number, size: number, extent: number) =>
-      size + pad * 2 > extent
-        ? (extent - size) / 2
-        : Math.max(pad, Math.min(start, extent - size - pad));
-    const x = clampedStart(center.x - node.NODE_WIDTH / 2, node.NODE_WIDTH, this.stage.width());
-    const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT, this.stage.height());
+    const clampedStart = (start: number, size: number, lo: number, hi: number) =>
+      size + pad * 2 > hi - lo
+        ? lo + (hi - lo - size) / 2
+        : Math.max(lo + pad, Math.min(start, hi - size - pad));
+    const x = clampedStart(center.x - node.NODE_WIDTH / 2, node.NODE_WIDTH,
+      this.viewMinX(), this.viewMaxX());
+    const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT,
+      this.viewMinY(), this.viewMaxY());
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     const group = new Konva.Group({
       name: 'navigation-node-ghost',
@@ -3675,11 +3698,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Walk mode: land, then keep browsing from the new node.
     const scale = this.drawingLayer.scaleX();
     this.drawingLayer.position({
-      x: this.stage.width() / 2 - dC.x * scale,
-      y: this.stage.height() / 2 - dC.y * scale,
+      x: this.viewCenterX() - dC.x * scale,
+      y: this.viewCenterY() - dC.y * scale,
     });
-    this.crosshairsLayer.crosshairs.x = this.stage.width() / 2;
-    this.crosshairsLayer.crosshairs.y = this.stage.height() / 2;
+    this.crosshairsLayer.crosshairs.x = this.viewCenterX();
+    this.crosshairsLayer.crosshairs.y = this.viewCenterY();
     const candidates = this.navCandidatesFor(dest);
     if (candidates.length === 0) {
       this.emitStatus(`${destLabel}: dead end.`);
@@ -3907,8 +3930,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       destEast = dC.x >= sC.x;
     }
     const left = destEast ? rect.x - GAP - POPUP_W : rect.x + rect.w + GAP;
-    this.navPopupLeft = Math.max(8, Math.min(left, this.stage.width() - POPUP_W - 8));
-    this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
+    this.navPopupLeft = Math.max(this.viewMinX() + 8,
+      Math.min(left, this.viewMaxX() - POPUP_W - 8));
+    this.navPopupTop = Math.max(this.viewMinY() + 8,
+      Math.min(rect.y, this.viewMaxY() - POPUP_H - 8));
   }
 
   /** The popup's source node grows a little so it reads as "you are here";
@@ -3966,8 +3991,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     targetScale = this.drawingLayer.scaleX(),
     onFinish?: () => void,
   ): void {
-    const centerX = this.stage.width() / 2;
-    const centerY = this.stage.height() / 2;
+    const centerX = this.viewCenterX();
+    const centerY = this.viewCenterY();
     this.tweens.push(new Konva.Tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
@@ -6110,8 +6135,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const centerX = (box.minX + box.maxX) / 2;
     const centerY = (box.minY + box.maxY) / 2;
 
-    const stageWidth = this.stage.width();
-    const stageHeight = this.stage.height();
+    const stageWidth = this.viewWidth();
+    const stageHeight = this.viewHeight();
 
     // With a selection: center on it without changing scale. Without one:
     // this is the "rescue" command — also zoom out (never in past 100%)
@@ -6187,14 +6212,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const margin = 0.9;
     const w = Math.max(box.maxX - box.minX, 1);
     const h = Math.max(box.maxY - box.minY, 1);
-    const fit = Math.min((this.stage.width() * margin) / w, (this.stage.height() * margin) / h);
+    const fit = Math.min((this.viewWidth() * margin) / w, (this.viewHeight() * margin) / h);
     // Fitting may go below the interactive MIN_ZOOM — a rescue that stops
     // short of showing the whole graph isn't a rescue. Floor well below it.
     const scale = Math.min(Math.max(fit, 0.02), 1.0);
     this.drawingLayer.scale({ x: scale, y: scale });
     this.drawingLayer.position({
-      x: this.stage.width() / 2 - ((box.minX + box.maxX) / 2) * scale,
-      y: this.stage.height() / 2 - ((box.minY + box.maxY) / 2) * scale,
+      x: this.viewCenterX() - ((box.minX + box.maxX) / 2) * scale,
+      y: this.viewCenterY() - ((box.minY + box.maxY) / 2) * scale,
     });
     this.drawingLayer.batchDraw();
   }
@@ -6203,14 +6228,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.clearCrosshairHoverHighlight(false);
 
-    const stageWidth = this.stage.width();
-    const stageHeight = this.stage.height();
-
     const tween = new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
-      x: stageWidth / 2,
-      y: stageHeight / 2,
+      x: this.viewCenterX(),
+      y: this.viewCenterY(),
       easing: Konva.Easings.EaseInOut,
       onFinish: () => {
         const index = this.tweens.indexOf(tween);
@@ -6329,7 +6351,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.batchDraw();
       return;
     }
-    const edgeMargin = 60;
+    const dragEdgeMargin = 60;
     const effectiveTier = tier ?? 'normal';
 
     // Collect all connected edges to move
@@ -6346,7 +6368,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const getNodePos = (node: DANode) => axis === 'x' ? node.group.x() : node.group.y();
     const setNodePos = (node: DANode, v: number) => axis === 'x' ? node.group.x(v) : node.group.y(v);
     const initialCrosshairs = axis === 'x' ? initialCrosshairsX : initialCrosshairsY;
-    const stageExtent = axis === 'x' ? this.stage.width() : this.stage.height();
+    const dragViewLo = axis === 'x' ? this.viewMinX() : this.viewMinY();
+    const dragViewHi = axis === 'x' ? this.viewMaxX() : this.viewMaxY();
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
 
@@ -6389,7 +6412,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
       const scale = this.drawingLayer.scaleX();
       const targetCrosshairs = initialCrosshairs + sign * snappedDistance * scale * progress;
-      const clamped = Math.min(Math.max(targetCrosshairs, edgeMargin), stageExtent - edgeMargin);
+      const clamped = Math.min(
+        Math.max(targetCrosshairs, dragViewLo + dragEdgeMargin),
+        dragViewHi - dragEdgeMargin,
+      );
       const overflow = targetCrosshairs - clamped;
       this.crosshairsLayer.crosshairs.x = axis === 'x' ? clamped : initialCrosshairsX;
       this.crosshairsLayer.crosshairs.y = axis === 'y' ? clamped : initialCrosshairsY;
@@ -6494,13 +6520,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const node = selected[0];
     const center = this.getNodeCenterInStageCoordinates(node);
     const padding = 12;
-    const x = Math.max(padding, Math.min(
+    const x = Math.max(this.viewMinX() + padding, Math.min(
       center.x - node.NODE_WIDTH / 2,
-      this.stage.width() - node.NODE_WIDTH - padding,
+      this.viewMaxX() - node.NODE_WIDTH - padding,
     ));
-    const y = Math.max(padding, Math.min(
+    const y = Math.max(this.viewMinY() + padding, Math.min(
       center.y - node.NODE_HEIGHT / 2,
-      this.stage.height() - node.NODE_HEIGHT - padding,
+      this.viewMaxY() - node.NODE_HEIGHT - padding,
     ));
     const ghost = node.konvaGroup.clone({
       name: 'label-edit-ghost',
@@ -6547,7 +6573,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
     const delta = caretVisibilityPanDelta(
       caret,
-      {width: this.stage.width(), height: this.stage.height()},
+      {width: this.viewWidth(), height: this.viewHeight()},
       local.lineHeight * targetGroup.scaleY() * layerScaleY,
     );
     if (delta.x === 0 && delta.y === 0) return;
@@ -6950,8 +6976,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.drawingLayer.y() + origin.y * scale,
       w: 0,
     };
-    this.navPopupLeft = Math.max(8, Math.min(rect.x + rect.w + GAP, this.stage.width() - POPUP_W - 8));
-    this.navPopupTop = Math.max(8, Math.min(rect.y, this.stage.height() - POPUP_H - 8));
+    this.navPopupLeft = Math.max(this.viewMinX() + 8,
+      Math.min(rect.x + rect.w + GAP, this.viewMaxX() - POPUP_W - 8));
+    this.navPopupTop = Math.max(this.viewMinY() + 8,
+      Math.min(rect.y, this.viewMaxY() - POPUP_H - 8));
   }
 
   /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the
@@ -7740,12 +7768,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.getGridSpacing(),
     ) * this.drawingLayer.scaleX();
     const edgeMargin = 60;
-    const stageExtent = axis === 'x' ? this.stage.width() : this.stage.height();
+    const lo = (axis === 'x' ? this.viewMinX() : this.viewMinY()) + edgeMargin;
+    const hi = (axis === 'x' ? this.viewMaxX() : this.viewMaxY()) - edgeMargin;
     const current = axis === 'x'
       ? this.crosshairsLayer.crosshairs.x
       : this.crosshairsLayer.crosshairs.y;
     const target = current + sign * distance;
-    const clamped = Math.min(Math.max(target, edgeMargin), stageExtent - edgeMargin);
+    const clamped = Math.min(Math.max(target, lo), hi);
     const overflow = target - clamped;
     if (axis === 'x') {
       this.crosshairsLayer.crosshairs.x = clamped;

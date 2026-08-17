@@ -174,6 +174,12 @@ export class HeaderComponent {
     this.vc.updateConfig({ [section]: { [field]: value } });
   }
 
+  onCompactMenuSideChange(event: Event) {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value !== 'left' && value !== 'right') return;
+    this.vc.updateConfig({ compactMenu: { ...this.config.compactMenu, side: value } });
+  }
+
   onColorChange(field: keyof ThemePalette, event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.vc.updatePalette(this.themeService.theme, { [field]: value } as Partial<ThemePalette>);

@@ -27,11 +27,23 @@ export interface CursorConfig {
   labelEditIntervalMs: number;
 }
 
+export type CompactMenuSide = 'left' | 'right';
+
+export interface CompactMenuConfig {
+  /** Which edge of the drawing area the compact keymenu docks against. */
+  side: CompactMenuSide;
+  /** Panel width in px. The drawing area insets its usable viewport by this
+   *  much on the docked side, so the panel never hides content the crosshairs
+   *  are moving toward. */
+  widthPx: number;
+}
+
 export interface VisualConfig {
   slideAnimation: SlideAnimationConfig;
   cardDepth: CardDepthConfig;
   cardShadow: CardShadowConfig;
   cursor: CursorConfig;
+  compactMenu: CompactMenuConfig;
 }
 
 export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
@@ -59,5 +71,9 @@ export const DEFAULT_VISUAL_CONFIG: VisualConfig = {
     repeatIntervalMs: 100,
     labelEditInitialDelayMs: 400,
     labelEditIntervalMs: 50,
+  },
+  compactMenu: {
+    side: 'right',
+    widthPx: 268,
   },
 };

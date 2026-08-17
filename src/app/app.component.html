@@ -1,6 +1,12 @@
 <app-header (loadSampleGraph)="onLoadSampleGraph($event)"/>
 
 <app-drawing-area [commands]="commandsSubject.asObservable()"
+                  [viewportInset]="{
+                    left: compactMenuSide === 'left' ? compactMenuInset : 0,
+                    right: compactMenuSide === 'right' ? compactMenuInset : 0,
+                    top: 0,
+                    bottom: 0
+                  }"
                   (daOut)="handleDANotification($event)"
                   (zoomLevel)="onZoomLevelChange($event)"
                   (movementSpeedChange)="onMovementSpeedChange($event)"
@@ -23,5 +29,7 @@
   <app-compact-keymenu
     [rows]="compactRows"
     [dark]="darkTheme"
+    [side]="compactMenuSide"
+    [widthPx]="compactMenuWidth"
     [modeName]="compactModeName"/>
 }

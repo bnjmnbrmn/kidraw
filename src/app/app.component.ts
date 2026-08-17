@@ -9,12 +9,18 @@ import {DANotification} from './drawing-area/da-notification.model';
 import {DebugLogService} from './services/debug-log.service';
 import {KeyboardConfigService} from './services/keyboard-config.service';
 import {ThemeService} from './services/theme.service';
+import {VisualConfigService} from './services/visual-config.service';
+import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
 
 /** How the keymenu presents itself: the classic keyboard overlay, the
  *  compact file-picker-style tree (da-200), or nothing. The toggle key
  *  cycles through all three; key handling runs identically in each. */
 export type KeymenuDisplay = 'keyboard' | 'compact' | 'hidden';
+
+/** Gap between the compact panel and the drawing-area edge (matches the CSS
+ *  inset), counted into the viewport inset so nothing hides behind it. */
+const COMPACT_MENU_GUTTER = 10;
 
 @Component({
   selector: 'app-root',
@@ -26,6 +32,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private log = inject(DebugLogService);
   private keyboardConfig = inject(KeyboardConfigService);
   private themeService = inject(ThemeService);
+  private visualConfig = inject(VisualConfigService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
@@ -45,17 +52,37 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.themeService.theme === 'dark';
   }
 
+  compactMenuSide: CompactMenuSide = this.visualConfig.config.compactMenu.side;
+  compactMenuWidth = this.visualConfig.config.compactMenu.widthPx;
+
+  /** Width the compact panel occludes, or 0 when it isn't showing. The
+   *  drawing area insets its usable viewport by this on the docked side. */
+  get compactMenuInset(): number {
+    return this.keymenuDisplay === 'compact'
+      ? this.compactMenuWidth + COMPACT_MENU_GUTTER
+      : 0;
+  }
+
   private configSub?: Subscription;
+  private visualSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
   ngOnInit() {
     this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
       this.keyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
     });
+    // Mirror the compact-menu settings into fields: the drawing area's
+    // viewport inset is derived from them, so a Settings change has to
+    // reach both the panel and the canvas.
+    this.visualSub = this.visualConfig.configChanged$.subscribe(() => {
+      this.compactMenuSide = this.visualConfig.config.compactMenu.side;
+      this.compactMenuWidth = this.visualConfig.config.compactMenu.widthPx;
+    });
   }
 
   ngOnDestroy() {
     this.configSub?.unsubscribe();
+    this.visualSub?.unsubscribe();
   }
 
   private profileToAssignments(profile: string): KeymenuKeyAssignments {

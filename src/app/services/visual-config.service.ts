@@ -31,6 +31,7 @@ export class VisualConfigService {
       cardDepth: { ...this._config.cardDepth, ...partial.cardDepth },
       cardShadow: { ...this._config.cardShadow, ...partial.cardShadow },
       cursor: { ...this._config.cursor, ...partial.cursor },
+      compactMenu: { ...this._config.compactMenu, ...partial.compactMenu },
     };
     this.saveConfig();
     this._configChanged.next();
@@ -77,6 +78,7 @@ export class VisualConfigService {
         cardDepth: { ...DEFAULT_VISUAL_CONFIG.cardDepth, ...parsed.cardDepth },
         cardShadow: { ...DEFAULT_VISUAL_CONFIG.cardShadow, ...parsed.cardShadow },
         cursor: { ...DEFAULT_VISUAL_CONFIG.cursor, ...parsed.cursor },
+        compactMenu: { ...DEFAULT_VISUAL_CONFIG.compactMenu, ...parsed.compactMenu },
       };
     } catch {
       return structuredClone(DEFAULT_VISUAL_CONFIG);

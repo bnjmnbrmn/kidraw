@@ -281,7 +281,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const qMode = mode as USQwertyMode<DACommand>;
     const heldChain = qMode.submenuKeyStringStack;
     const rows: CompactMenuRow[] = [];
+    // Right-hand modifiers are bound alongside their left twin so both
+    // physical keys work, but listing each twice is noise. Skip the
+    // right-hand key when the same entry is already listed — matching on
+    // label rather than a fixed twin key, since the Ctrl/CapsLock swap moves
+    // the left-hand binding between key names.
+    const RIGHT_HAND_MODIFIERS = new Set(['RShift', 'RControl', 'RAlt']);
     const addRows = (config: SubmenuConfig, depth: number) => {
+      const labelsAtDepth = new Set<string>();
       for (const [key, value] of Object.entries(config)) {
         if (key === '_repeatConfig' || !value) continue;
         const isSubmenu = value instanceof LabeledSubmenuConfig ||
@@ -289,7 +296,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         const label = isSubmenu
           ? (value as LabeledSubmenuConfig | LabeledActionSubmenuConfig).submenuLabel
           : (value as LabeledAction | LabeledActionWithRelease).actionLabel;
-        const held = heldChain[depth + 1] === key && qMode.stack.length > depth + 1;
+        if (RIGHT_HAND_MODIFIERS.has(key) && labelsAtDepth.has(label)) continue;
+        labelsAtDepth.add(label);
+        // The surviving row answers for its hidden right-hand twin too, so
+        // holding either physical key highlights it and opens its children.
+        const heldKey = heldChain[depth + 1];
+        const heldEntry = heldKey ? config[heldKey as KeyString] : undefined;
+        const heldViaTwin = !!heldKey && RIGHT_HAND_MODIFIERS.has(heldKey) &&
+          !!heldEntry && (heldEntry instanceof LabeledSubmenuConfig ||
+            heldEntry instanceof LabeledActionSubmenuConfig) &&
+          heldEntry.submenuLabel === label;
+        const held = (heldKey === key || heldViaTwin) && qMode.stack.length > depth + 1;
         rows.push({
           key: getKeyDisplayLabel(
             key as KeyString,
@@ -358,8 +375,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ' '}));
 
     // Shift submenu for shifted characters
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', this.buildShiftSubmenuConfig(capsMode));
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', this.buildShiftSubmenuConfig(capsMode));
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', this.buildShiftSubmenuConfig(capsMode));
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', this.buildShiftSubmenuConfig(capsMode));
 
     // CapsLock toggles uppercase/lowercase mode
     // With capsLockCtrlSwap: physical CapsLock sends 'Control', physical Ctrl sends 'CapsLock'
@@ -371,9 +388,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     (config as any)[capsKey] = new LabeledAction(capsLabel, () => {
       this.switchMode(capsTarget);
     });
-    (config as any)[ctrlKey] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+    (config as any)[ctrlKey] = new LabeledSubmenuConfig('Misc 1', this.buildCtrlSubmenuConfig());
     // Right Control always opens Ctrl submenu regardless of swap setting
-    (config as any)['RControl'] = new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig());
+    (config as any)['RControl'] = new LabeledSubmenuConfig('Misc 1', this.buildCtrlSubmenuConfig());
 
     return config;
   }
@@ -446,8 +463,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion: 'line-end'});
       goInsert();
     }, false);
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', shift);
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', shift);
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', shift);
 
     return config;
   }
@@ -501,8 +518,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
     (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
     (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift...', shift);
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift...', shift);
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', shift);
     return config;
   }
 
@@ -884,8 +901,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
-      [this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control']: new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
-      'RControl': new LabeledSubmenuConfig('More Ctrl', this.buildCtrlSubmenuConfig()),
+      [this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control']: new LabeledSubmenuConfig('Misc 1', this.buildCtrlSubmenuConfig()),
+      'RControl': new LabeledSubmenuConfig('Misc 1', this.buildCtrlSubmenuConfig()),
       // CapsLock (physical CapsLock position) → NORMAL mode
       [this.keyboardConfig.capsLockCtrlSwap ? 'Control' : 'CapsLock']: new LabeledAction('NORMAL', () => {
         this.switchMode('normalCaps');

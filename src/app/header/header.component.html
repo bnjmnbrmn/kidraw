@@ -73,6 +73,15 @@
                  (change)="onHideFingerBlockedChange($event)">
           Hide same-finger keys
         </label>
+        <label class="swap-label">
+          Compact menu side:
+          <select tabindex="-1"
+                  [value]="config.compactMenu.side"
+                  (change)="onCompactMenuSideChange($event)">
+            <option value="right">Right</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
 
         <hr>
         <details class="settings-section">

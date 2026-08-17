@@ -4,9 +4,11 @@
   position: absolute;
   top: 60px;
   right: 10px;
-  bottom: 10px;
   z-index: 30;
   width: 268px;
+  /* Height follows the rows; the cap only engages for menus long enough to
+   * need scrolling, so a short submenu is a short panel. */
+  max-height: calc(100% - 70px);
   display: flex;
   flex-direction: column;
   border-radius: 6px;
@@ -51,7 +53,9 @@
 .rows {
   overflow-y: auto;
   padding: 4px 0;
-  flex: 1;
+  /* Shrink to content, scroll only once the max-height cap is hit. */
+  flex: 0 1 auto;
+  min-height: 0;
 }
 
 .row {

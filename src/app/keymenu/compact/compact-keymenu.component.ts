@@ -31,6 +31,8 @@ export class CompactKeymenuComponent implements OnChanges {
   @Input() rows: CompactMenuRow[] = [];
   @Input() dark = false;
   @Input() side: 'left' | 'right' = 'right';
+  /** Kept in sync with the viewport inset the drawing area reserves. */
+  @Input() widthPx = 268;
   @Input() modeName = '';
 
   @ViewChild('rowsEl') rowsEl?: ElementRef<HTMLElement>;
