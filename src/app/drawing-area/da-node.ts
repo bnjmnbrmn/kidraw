@@ -309,6 +309,11 @@ export class DANode {
       (this._shape as Konva.Circle).y(this.JUNCTION_SIZE / 2);
     } else {
       this._shape.strokeWidth(this._isSelected ? this.STROKE_WIDTH_SELECTED : this.STROKE_WIDTH_NORMAL);
+      // The selected outline is UI chrome, not diagram geometry, so it is
+      // drawn at a constant screen width. Scaling it with the diagram made
+      // selection all but invisible zoomed out — a 4px outline is one pixel
+      // at 25% (da-243). The unselected stroke keeps scaling normally.
+      this._shape.strokeScaleEnabled(!this._isSelected);
     }
     if (this.nodeShape === 'invisible') {
       this.applyInvisibleVisibility();

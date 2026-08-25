@@ -30,6 +30,7 @@ export class DAEdge {
   private _isSelected: boolean = false;
   private _navFocused: boolean = false;
   private _navUnderlay: Konva.Line | null = null;
+  private _selectionUnderlay: Konva.Line | null = null;
   private _directionGradient: {from: string; to: string} | null = null;
   private _undirectedColor: string | null = null;
   private _bidirectionalColor: string | null = null;
@@ -45,6 +46,12 @@ export class DAEdge {
   public readonly STROKE_WIDTH_NORMAL = 2;
   public readonly NAV_FOCUS_UNDERLAY_WIDTH = 18;
   public readonly NAV_FOCUS_UNDERLAY_OPACITY = 0.4;
+  /** Selection band (da-243). Narrower than the nav band and in the shared
+   *  selection accent rather than the edge's own colour, so "selected" and
+   *  "being navigated" stay tellable apart when both are on one edge. */
+  public readonly SELECTION_UNDERLAY_WIDTH = 11;
+  public readonly SELECTION_UNDERLAY_OPACITY = 0.55;
+  public readonly SELECTION_COLOR = '#33aaff';
   public readonly POINTER_LENGTH = 10;
   public readonly POINTER_WIDTH = 10;
   /** Pull the rendered endpoint out from the node perimeter by this many
@@ -119,6 +126,7 @@ export class DAEdge {
   set isSelected(value: boolean) {
     this._isSelected = value;
     this._line.strokeWidth(this.strokeWidth());
+    this.applySelectionBand();
   }
 
   get navFocused(): boolean {
@@ -188,6 +196,38 @@ export class DAEdge {
     this._line.strokeLinearGradientColorStops(
       [0, this._directionGradient.from, 1, this._directionGradient.to]);
     this._line.fill(this._directionGradient.to);
+  }
+
+  /** A selected edge gets an accent band under its stroke. The stroke also
+   *  thickens 2 → 4, but that alone is invisible when zoomed out — it scales
+   *  with the diagram, so at 25% a "thick" selected edge is one pixel. The
+   *  band is drawn at a constant screen width instead, because it is UI
+   *  chrome rather than diagram geometry (da-243). */
+  private applySelectionBand(): void {
+    if (this._isSelected) {
+      if (!this._selectionUnderlay) {
+        this._selectionUnderlay = new Konva.Line({
+          points: this._line.points(),
+          stroke: this.SELECTION_COLOR,
+          strokeWidth: this.SELECTION_UNDERLAY_WIDTH,
+          opacity: this.SELECTION_UNDERLAY_OPACITY,
+          lineCap: 'round',
+          lineJoin: 'round',
+          listening: false,
+          strokeScaleEnabled: false,
+        });
+        this.group.add(this._selectionUnderlay);
+      }
+      this._selectionUnderlay.points(this._line.points());
+      this._selectionUnderlay.tension(this._renderTension);
+      this._selectionUnderlay.visible(true);
+      // Above the nav band (so a navigated selection still reads as
+      // selected) but below the edge's own stroke.
+      this._selectionUnderlay.moveToBottom();
+      this._navUnderlay?.moveToBottom();
+    } else {
+      this._selectionUnderlay?.visible(false);
+    }
   }
 
   private applyNavFocus(): void {
@@ -689,6 +729,7 @@ export class DAEdge {
   refreshGeometry(): void {
     this._line.points(this.renderPoints().flatMap(p => [p.x, p.y]));
     if (this._navFocused) this.applyNavFocus(); // underlay tracks the path
+    if (this._isSelected) this.applySelectionBand();
     this.applyEdgeStroke(); // endpoints moved → gradient coords refresh
     this.positionLabels();
   }
@@ -700,6 +741,7 @@ export class DAEdge {
     this._renderTension = smooth ? this.SMOOTH_TENSION : 0;
     this._line.tension(this._renderTension);
     if (this._navFocused) this.applyNavFocus();
+    if (this._isSelected) this.applySelectionBand();
   }
 
   get smoothRendering(): boolean {
