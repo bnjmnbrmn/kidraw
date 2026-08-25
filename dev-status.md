@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-15. Branch: `main`._
+_Updated 2026-08-25. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -273,6 +273,13 @@ _Updated 2026-08-15. Branch: `main`._
     - **Panel height follows its rows**, with the max-height cap only engaging for menus long enough to scroll.
 
     Verified: `tools/repro-compact-viewport.js` (13 checks, incl. driving the real Settings `<select>` so the change runs inside Angular's zone — a direct handler call does not trigger change detection and silently "fails"), the three other da-200-era suites, `repro-nav-margin`, `repro-normal-movement-goal`, 409/409 unit tests, clean build.
+
+68. **Three live Next items: the stuck-key bug, copy/paste, and the ex line (2026-08-25, via Next).** Worked off Ben's live todo graph (`tools/draft-mirror.json`); the fourth item (compact menu on the left) was already built and only needed finding in Settings.
+    - **`da-163` — held-key tracking used `event.key`, so shifted punctuation stuck.** Reported as "typing in double quotes, the second one needs two presses; maybe a timing issue." It is not timing. `KeyMenu.keysDown` de-dupes browser auto-repeat under a tracking key derived from `event.key`, but `event.key` depends on modifier state: Shift+Quote arrives as `"` on keydown and as `'` on keyup when Shift comes up first — the natural motion when you are already reaching for the next letter. The release deleted `'` while `"` stayed in `keysDown` forever, so the *next* Shift+Quote keydown was swallowed before it reached the mode. Now tracked by `event.code`, which is invariant across modifier state and already distinguishes the left/right modifiers the old switch special-cased; `event.key` remains the fallback for synthetic events with no code. This affected **every** shifted-punctuation key, not just the quote. Repros: `tools/repro-da-163-quote.js` (release orders × speeds, recording emitted commands *and* drawn text so a dropped keystroke is distinguishable from one inserted but not drawn) and `repro-da-163-quote2.js` (minimal case, patching `KMSubmenu.handleKeyDown` to log dispatch decisions) — 12/12 dropped before, 72/72 clean after.
+    - **`da-161` — copy/cut/paste on `y`, task Status moved to `t`.** `y` is vim's yank key, so it now holds a **Copy/Paste…** submenu: `c` copies the selected nodes plus the edges wholly inside the selection, `x` cuts, `p` pastes a fresh copy centred on the crosshairs, left selected so it can be dragged straight away. Copy is on `c`, not `y`: a child sharing its hub's own key can never be chorded, because holding `y` already has that physical key down and its tap is swallowed (a unit test now pins that invariant). The clipboard is a graph-local `GraphSnapshot` subgraph — not the system clipboard — and deliberately not persisted with the draft; pasted nodes, edges, waypoints and labels all get fresh ids. Cut and paste are undoable and take the routing lock. Repro: `tools/repro-da-161-clipboard.js` (11 checks).
+    - **`da-165` — the ex line.** `:` in normal mode opens a vim-style command line docked at the bottom (`src/app/ex-line/`). Enter runs, Escape or Backspace-off-empty cancels, Up/Down walk history (owned by `AppComponent`, since the line is destroyed between uses). First vocabulary: `:w [name]` writes to the open vault file or saves as `name` and makes it current, `:e <name|number>` switches files, `:ls` lists the vault marking the open file, `:enew` starts empty. Unknown commands report themselves rather than failing silently. The line is a native `<input>`, so **`KeymenuComponent` now ignores key events aimed at a text field** — without that guard, typing `:w hjkl a` styles, moves the crosshairs and inserts a node behind the command line. `:` is intercepted in the component rather than bound in the keymenu because it is Shift+`;` — a chord, not a key the menu can hold. Repro: `tools/repro-da-165-ex-line.js` (13 checks, including that typing leaks nothing into the graph).
+
+    Verified: the three new repros all green, the pre-existing suites re-run after the keymenu input guard, 419/419 unit tests, clean build.
 
 ## Routing-eval harness
 
