@@ -72,20 +72,19 @@ export class KeyMenu<T> {
   }
 
   /**
-   * Resolve a unique tracking key for keysDown: right-side modifiers get
-   * distinct names so that e.g. holding both Shift keys works correctly.
+   * Resolve a unique tracking key for keysDown: the PHYSICAL key, which also
+   * gives the left/right modifiers distinct names so holding both Shifts
+   * works. It must be physical because `event.key` changes with the modifier
+   * state — Shift+Quote arrives as `"` on keydown but as `'` on keyup if
+   * Shift comes up first, which would leave `"` in keysDown forever and
+   * swallow the next press of that key.
+   * Falls back to `event.key` for synthetic events that carry no code.
    */
   private static resolveTrackingKey(event: KeyboardEvent): string {
-    switch (event.code) {
-      case 'ShiftRight': return 'RShift';
-      case 'ControlRight': return 'RControl';
-      case 'AltRight': return 'RAlt';
-      default: {
-        const k = event.key;
-        if (k.length === 1 && k >= 'A' && k <= 'Z') return k.toLowerCase();
-        return k;
-      }
-    }
+    if (event.code) return event.code;
+    const k = event.key;
+    if (k.length === 1 && k >= 'A' && k <= 'Z') return k.toLowerCase();
+    return k;
   }
 
   handleKeyDown(event: KeyboardEvent) {

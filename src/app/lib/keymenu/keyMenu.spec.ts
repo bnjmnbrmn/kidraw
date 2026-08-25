@@ -68,6 +68,45 @@ describe('KeyMenu', () => {
     expect(keyMenu.currentMode.name).toBe('primary');
   });
 
+  it('should match a press to its release by physical key, not event.key', () => {
+    // Shift+Quote reports key '"' on keydown, but '\'' on keyup if Shift is
+    // released first. Tracking by event.key left '"' stuck in keysDown and
+    // swallowed the next press — the "second double quote needs two presses"
+    // bug (da-163).
+    const keyMenu = buildKeyMenu({modes: {primary: new TestModeConfig()}});
+    const downSpy = spyOn(keyMenu.currentMode, 'handleKeyDown');
+
+    const quote = (type: string, key: string, shiftKey: boolean) =>
+      new KeyboardEvent(type, {key, code: 'Quote', shiftKey});
+
+    keyMenu.handleKeyDown(quote('keydown', '"', true));
+    keyMenu.handleKeyUp(quote('keyup', "'", false));
+    keyMenu.handleKeyDown(quote('keydown', '"', true));
+
+    expect(downSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should still swallow auto-repeat while a key is held', () => {
+    const keyMenu = buildKeyMenu({modes: {primary: new TestModeConfig()}});
+    const downSpy = spyOn(keyMenu.currentMode, 'handleKeyDown');
+
+    const down = () => new KeyboardEvent('keydown', {key: 'a', code: 'KeyA'});
+    keyMenu.handleKeyDown(down());
+    keyMenu.handleKeyDown(down());
+
+    expect(downSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should track the two Shift keys separately', () => {
+    const keyMenu = buildKeyMenu({modes: {primary: new TestModeConfig()}});
+    const downSpy = spyOn(keyMenu.currentMode, 'handleKeyDown');
+
+    keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 'Shift', code: 'ShiftLeft'}));
+    keyMenu.handleKeyDown(new KeyboardEvent('keydown', {key: 'Shift', code: 'ShiftRight'}));
+
+    expect(downSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('should throw when created without any modes', () => {
     expect(() => buildKeyMenu({modes: {} as KeyMenuModeConfigs<void>})).toThrowError(
       'KeyMenu requires at least one mode configuration.',
