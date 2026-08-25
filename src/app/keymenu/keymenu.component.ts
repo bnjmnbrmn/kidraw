@@ -590,10 +590,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return {
       _repeatConfig: this.normalRepeatConfig(),
-      [movement.up]: new LabeledAction('Move Up', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_UP})),
-      [movement.left]: new LabeledAction('Move Left', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_LEFT})),
-      [movement.down]: new LabeledAction('Move Down', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_DOWN})),
-      [movement.right]: new LabeledAction('Move Right', () => this.keyMenuOut.emit({kind: DACommandType.MOVE_CROSSHAIRS_RIGHT})),
+      [movement.up]: new LabeledAction('Move Up', this.rootMove(DACommandType.MOVE_CROSSHAIRS_UP)),
+      [movement.left]: new LabeledAction('Move Left', this.rootMove(DACommandType.MOVE_CROSSHAIRS_LEFT)),
+      [movement.down]: new LabeledAction('Move Down', this.rootMove(DACommandType.MOVE_CROSSHAIRS_DOWN)),
+      [movement.right]: new LabeledAction('Move Right', this.rootMove(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
@@ -864,10 +864,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const select = this.keyAssignments.select;
 
     return {
-      [drag.up]: new LabeledAction('Drag Up', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_UP})),
-      [drag.left]: new LabeledAction('Drag Left', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_LEFT})),
-      [drag.down]: new LabeledAction('Drag Down', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_DOWN})),
-      [drag.right]: new LabeledAction('Drag Right', () => this.keyMenuOut.emit({kind: DACommandType.DRAG_SELECTED_RIGHT})),
+      [drag.up]: new LabeledAction('Drag Up', this.rootDrag(DACommandType.DRAG_SELECTED_UP)),
+      [drag.left]: new LabeledAction('Drag Left', this.rootDrag(DACommandType.DRAG_SELECTED_LEFT)),
+      [drag.down]: new LabeledAction('Drag Down', this.rootDrag(DACommandType.DRAG_SELECTED_DOWN)),
+      [drag.right]: new LabeledAction('Drag Right', this.rootDrag(DACommandType.DRAG_SELECTED_RIGHT)),
       [select.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
       [select.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [select.cycleDirection]: new LabeledAction('Cycle Direction', () =>
@@ -924,6 +924,49 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
+  /** A root movement action. The tier is read when the action *fires*, not
+   *  when it is bound, so tapping a speed key while a movement key is
+   *  already held re-tiers the running repeat (da-182). Holding the speed
+   *  key first still works: its own submenu emits that tier directly. */
+  private rootMove(kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN
+                       | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT): () => void {
+    return () => this.keyMenuOut.emit({kind, gridTier: this.heldGridTier()});
+  }
+
+  /** The movement tier the held keys currently ask for. The submenu key
+   *  stack is the authority on what is physically down. */
+  private heldGridTier(): GridTier {
+    const moveSpeed = this.keyAssignments.moveSpeed;
+    return this.heldTierFor(moveSpeed.bigger, moveSpeed.smaller);
+  }
+
+  /** Which of a bigger/smaller speed pair is currently held, if either. */
+  private heldTierFor(bigger: string, smaller: string): GridTier {
+    const mode = this.keyMenu?.currentMode;
+    if (!(mode instanceof USQwertyMode)) return 'normal';
+    const held = mode.submenuKeyStringStack;
+    if (held.includes(bigger)) return 'coarse';
+    if (held.includes(smaller)) return 'fine';
+    return 'normal';
+  }
+
+  /** A drag action from the held select submenu, tiered when it fires so a
+   *  drag-speed key tapped mid-drag takes effect (da-182, same shape). */
+  private rootDrag(kind: DACommandType.DRAG_SELECTED_UP | DACommandType.DRAG_SELECTED_DOWN
+                       | DACommandType.DRAG_SELECTED_LEFT | DACommandType.DRAG_SELECTED_RIGHT): () => void {
+    return () => {
+      const ds = this.keyAssignments.dragSpeed;
+      this.keyMenuOut.emit({kind, gridTier: this.heldTierFor(ds.bigger, ds.smaller)});
+    };
+  }
+
+  /** Pan distance for the tier currently held (da-182, same shape). */
+  private heldPanDistance(base: number): number {
+    const speed = this.keyAssignments.panZoom.speed;
+    const tier = this.heldTierFor(speed.bigger, speed.smaller);
+    return tier === 'coarse' ? base * 10 : tier === 'fine' ? base / 10 : base;
+  }
+
   private buildMoveSpeedSubmenu(tier: GridTier): SubmenuConfig {
     const movement = this.keyAssignments.movement;
     const move = (kind: DACommandType.MOVE_CROSSHAIRS_UP | DACommandType.MOVE_CROSSHAIRS_DOWN | DACommandType.MOVE_CROSSHAIRS_LEFT | DACommandType.MOVE_CROSSHAIRS_RIGHT) =>
@@ -942,7 +985,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const pz = this.keyAssignments.panZoom;
     const g = this.visualConfig.config.cursor.gridSpacing;
     const panCmd = (kind: DACommandType.PAN_UP | DACommandType.PAN_DOWN | DACommandType.PAN_LEFT | DACommandType.PAN_RIGHT) =>
-      () => this.keyMenuOut.emit({kind, distance: g});
+      () => this.keyMenuOut.emit({kind, distance: this.heldPanDistance(g)});
 
     return {
       _repeatConfig: this.normalRepeatConfig(),

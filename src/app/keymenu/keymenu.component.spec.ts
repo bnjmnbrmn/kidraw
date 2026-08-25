@@ -371,6 +371,26 @@ describe('KeymenuComponent', () => {
     expect(keyMenu.currentMode.name).toBe('labelEditVimNormalCaps');
   });
 
+  it('should tier root movement when the action fires, not when it is bound', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.keyMenuOut, 'emit');
+
+    const moveLeft = buildRootConfig(component)['h'] as LabeledAction;
+    moveLeft.action();
+    expect(emitSpy).toHaveBeenCalledWith(
+      jasmine.objectContaining({gridTier: 'normal'}) as any);
+
+    // With the coarse speed key on the held stack, the SAME bound action
+    // must now emit coarse — that is what lets a speed key tapped mid-move
+    // re-tier the running repeat (da-182).
+    spyOn(component as any, 'heldTierFor').and.returnValue('coarse');
+    emitSpy.calls.reset();
+    moveLeft.action();
+    expect(emitSpy).toHaveBeenCalledWith(
+      jasmine.objectContaining({gridTier: 'coarse'}) as any);
+  });
+
   it('should put copy/cut/paste under the held y key on distinct keys', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
