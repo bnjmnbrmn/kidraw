@@ -24,8 +24,9 @@ async function main() {
 
   await page.evaluate(() => {
     window.__cmds = [];
+    const kmc = () => window.ng.getComponent(document.querySelector('app-keymenu'));
     document.addEventListener('keydown', e => window.__cmds.push(
-      `keydown ${JSON.stringify(e.key)} code=${e.code} repeat=${e.repeat}`), true);
+      `keydown ${JSON.stringify(e.key)} code=${e.code} repeat=${e.repeat} suspended=${kmc().suspended} surface=${kmc().activeSurface}`), true);
     document.addEventListener('keyup', e => window.__cmds.push(
       `keyup   ${JSON.stringify(e.key)} code=${e.code}`), true);
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
@@ -66,6 +67,8 @@ async function main() {
       stackDepth: m.stack.length,
       stackKeys: JSON.stringify(m.submenuKeyStringStack),
       actionSchedulingEnabled: m.actionSchedulingEnabled,
+      suspended: km.suspended,
+      activeSurface: km.activeSurface,
       topHighlighted: highlighted,
       topScheduled: top.scheduledActions ? [...top.scheduledActions.keys()] : null,
     };
