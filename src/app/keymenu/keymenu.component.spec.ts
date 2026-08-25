@@ -425,8 +425,12 @@ describe('KeymenuComponent', () => {
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
     // 2026-07-18 rebinds (final): Pan/Zoom back on r, Move by node → g.
-    const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
-    expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
+    // Since da-257 it is an action-submenu: holding it also un-fades the
+    // crosshairs, so the hold has a side effect as well as children.
+    const panZoomSubmenu = rootConfig['r'] as LabeledActionSubmenuConfig;
+    expect(panZoomSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
+    panZoomSubmenu.action();
+    expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_CROSSHAIRS});
     expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
     // Zoom should be inside the pan/zoom submenu, recenters on p/y/u
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;

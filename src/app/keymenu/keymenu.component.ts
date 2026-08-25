@@ -98,6 +98,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private editContextActionFired = false;
   private selectDragHoldActive = false;
   private moveByNodeHoldActive = false;
+  private panZoomHoldActive = false;
   private moveByLinkHoldActive = false;
   /** Set by Vim `r`; the next printable key supplies the replacement. */
   private vimReplacePending = false;
@@ -566,6 +567,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.editContextActionFired = false;
     this.selectDragHoldActive = false;
     this.moveByNodeHoldActive = false;
+    this.panZoomHoldActive = false;
     this.moveByLinkHoldActive = false;
     this.vimReplacePending = false;
     this.vimTextObjectPending = false;
@@ -896,7 +898,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [search.prev]: new LabeledAction('Prev Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH})),
       [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
-      [panZoom.submenu]: new LabeledSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig()),
+      // Holding Pan/Zoom brings the crosshairs back even if they have faded:
+      // you cannot aim a pan at something you cannot see (da-257).
+      [panZoom.submenu]: new LabeledActionSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig(), () => {
+        this.panZoomHoldActive = true;
+        this.keyMenuOut.emit({kind: DACommandType.SHOW_CROSSHAIRS});
+      }),
       [mbn.submenu]: new LabeledActionSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig(), () => {
         this.moveByNodeHoldActive = true;
         this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
@@ -1876,6 +1883,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // Releasing a tier modifier returns to the default nodes+labels grid
       // while the move-by-node root key remains held.
       this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
+    }
+
+    if (this.panZoomHoldActive && eventKey === this.keyAssignments.panZoom.submenu) {
+      this.panZoomHoldActive = false;
+      this.keyMenuOut.emit({kind: DACommandType.RELEASE_CROSSHAIRS});
     }
 
     if (this.moveByLinkHoldActive && eventKey === this.keyAssignments.root.go) {

@@ -569,6 +569,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Graph-local clipboard: the last copied/cut subgraph. Not the system
    *  clipboard, and deliberately not persisted with the draft. */
   private clipboard: GraphSnapshot | null = null;
+  /** True while a key that owns the view is held (Pan/Zoom). The idle fade
+   *  is suspended for the duration — you cannot aim a pan at something you
+   *  cannot see (da-257). */
+  private crosshairsHeldVisible = false;
   private routingWorker: Worker | null = null;
   private routingCountdown: ReturnType<typeof setInterval> | null = null;
   private routingDeadline: ReturnType<typeof setTimeout> | null = null;
@@ -814,6 +818,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
+        break;
+      case DACommandType.SHOW_CROSSHAIRS:
+        this.holdCrosshairsVisible();
+        break;
+      case DACommandType.RELEASE_CROSSHAIRS:
+        this.releaseCrosshairsVisible();
         break;
       case DACommandType.OPEN_EX_LINE:
         // AppComponent owns the ex line and intercepts this before the
@@ -1598,6 +1608,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Run one ex-line command (da-165). An initial vocabulary: `:w` saves,
    *  `:e` switches files, `:ls` lists the vault. Unknown commands report
    *  themselves rather than failing silently, the way vim does. */
+  /** Pin the crosshairs and movement indicators up for the duration of a
+   *  held view key (da-257). */
+  private holdCrosshairsVisible(): void {
+    this.crosshairsHeldVisible = true;
+    this.showMovementIndicators();
+    this.crosshairsLayer.showCrosshairs();
+    this.crosshairsLayer.batchDraw();
+  }
+
+  /** Release the pin and restart the ordinary idle fade. */
+  private releaseCrosshairsVisible(): void {
+    this.crosshairsHeldVisible = false;
+    this.showMovementIndicators();
+  }
+
   private async runExCommand(text: string): Promise<void> {
     const [name, ...rest] = text.trim().split(/\s+/);
     const arg = rest.join(' ').trim();
@@ -3189,6 +3214,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       clearTimeout(this.gridFadeTimeout);
     }
     this.gridFadeTimeout = window.setTimeout(() => {
+      // A held view key keeps everything up; releasing it re-arms this timer.
+      if (this.crosshairsHeldVisible) return;
       this.drawingLayer.hideGrid();
       this.setGridIndicatorsVisible(false);
       this.refreshWaypointVisibility(false);
