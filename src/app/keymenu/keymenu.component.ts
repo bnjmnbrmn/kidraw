@@ -170,6 +170,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: this.keyAssignments.panZoom.submenu, action: 'Pan/Zoom'},
       {key: this.keyAssignments.moveByNode.submenu, action: 'Move by node'},
       {key: this.keyAssignments.root.go, action: 'Move by link'},
+      {key: `${root.clipboardSubmenu}/${this.keyAssignments.clipboard.paste}`, action: 'Copy / paste'},
+      {key: `${this.keyAssignments.search.open} n/N`, action: 'Search / next / prev'},
       {key: shared.select, action: 'Clear selection'},
       {key: shared.delete, action: 'Delete'},
     ];
@@ -602,7 +604,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
-      [root.clipboardSubmenu]: new LabeledSubmenuConfig('Copy/Paste...', this.buildClipboardSubmenuConfig()),
+      // Vim's yank key: tap copies, hold opens the rest of the clipboard
+      // (cut, paste) for discoverability (da-265).
+      [root.clipboardSubmenu]: new LabeledActionSubmenuConfig('Copy/Paste...',
+        this.buildClipboardSubmenuConfig(),
+        () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION})),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
@@ -895,7 +901,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
       [search.open]: new LabeledAction('Search…', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_GRAPH}), false),
       [search.next]: new LabeledAction('Next Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_NEXT_MATCH})),
-      [search.prev]: new LabeledAction('Prev Match', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH})),
+      // Prev Match is vim's N (Shift+n), intercepted in handleKeyDown — a
+      // chord cannot be a keymenu binding. This frees p for Paste (da-265).
+      [this.keyAssignments.clipboard.paste]: new LabeledAction('Paste',
+        () => this.keyMenuOut.emit({kind: DACommandType.PASTE_CLIPBOARD}), false),
       [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
       [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
       // Holding Pan/Zoom brings the crosshairs back even if they have faded:
@@ -1652,6 +1661,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         && !event.metaKey && this.keyMenu.currentMode.name === 'normal') {
       event.preventDefault();
       this.keyMenuOut.emit({kind: DACommandType.OPEN_EX_LINE});
+      return;
+    }
+
+    // Vim search cycling: n next, N previous. N is Shift+n, a chord rather
+    // than a key the menu can hold, so it is intercepted here (da-265).
+    if (event.key === this.keyAssignments.search.prev && !event.repeat && !event.ctrlKey
+        && !event.altKey && !event.metaKey && this.keyMenu.currentMode.name === 'normal') {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH});
       return;
     }
 

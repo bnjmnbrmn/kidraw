@@ -91,7 +91,10 @@ export interface KeymenuKeyAssignments {
   readonly search: {
     readonly open: KeyString;
     readonly next: KeyString;
-    readonly prev: KeyString;
+    /** Vim's `N`. A shifted chord, not a bindable key, so it is matched
+     *  against `event.key` in the component rather than bound in the
+     *  keymenu — hence `string` and not `KeyString` (da-265). */
+    readonly prev: string;
   };
   readonly select: {
     readonly editItem: KeyString;
@@ -261,7 +264,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   search: {
     open: '/',
     next: 'n',
-    prev: 'p',
+    prev: 'N',
   },
   select: {
     editItem: ';',
@@ -390,7 +393,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   search: {
     open: '/',
     next: 'n',
-    prev: 'p',
+    prev: 'N',
   },
   select: {
     editItem: ';',

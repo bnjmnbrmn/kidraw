@@ -419,7 +419,9 @@ describe('KeymenuComponent', () => {
     // Zoom keys should NOT be at root level ('p' belongs to search Prev
     // Match, not Zoom Out; 'y' is Copy/Paste — vim's yank key — since
     // da-161 moved Status off it onto t.)
-    expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Prev Match');
+    // Since da-265, p is Paste (vim) and Prev Match is Shift+n, intercepted
+    // in handleKeyDown rather than bound here.
+    expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Paste');
     expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Copy/Paste...');
     expect((rootConfig['t'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
