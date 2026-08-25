@@ -459,12 +459,10 @@ export class DAEdge {
         defaults[defaults.length - 1],
       ];
     }
-    const srcAimTarget = this._controlPoints.length > 0
-      ? this._controlPoints[0]
-      : this.getNodeCenter(this.destNode);
-    const destAimTarget = this._controlPoints.length > 0
-      ? this._controlPoints[this._controlPoints.length - 1]
-      : this.getNodeCenter(this.srcNode);
+    const srcAimTarget = this.aimTarget(
+      this.srcNode, this._controlPoints, this.getNodeCenter(this.destNode));
+    const destAimTarget = this.aimTarget(
+      this.destNode, [...this._controlPoints].reverse(), this.getNodeCenter(this.srcNode));
     const srcEdge = this.srcNode.getEdgePoint(srcAimTarget.x, srcAimTarget.y);
     const destEdge = this.destNode.getEdgePoint(destAimTarget.x, destAimTarget.y);
     return [
@@ -472,6 +470,34 @@ export class DAEdge {
       ...this._controlPoints.map(p => ({x: p.x, y: p.y})),
       this.applyArrowStandoff(destEdge, destAimTarget),
     ];
+  }
+
+  /** Which point an endpoint should aim at when choosing its attachment on
+   *  the node perimeter.
+   *
+   *  The nearest control point is the natural choice, but one that has been
+   *  dragged inside the node gives no usable direction: aiming from inside
+   *  puts the attachment on an arbitrary side, and the stroke then has to
+   *  double back across the node to reach it — the arrowhead ends up
+   *  somewhere the line never arrives from. A control point exactly on the
+   *  centre is worse still and flips the arrowhead 180° (da-259).
+   *
+   *  So walk outwards to the first control point that is genuinely outside
+   *  the node, and fall back to the far node's centre if none is.
+   *
+   *  `candidates` must run from the endpoint outwards. */
+  private aimTarget(node: DANode, candidates: readonly {x: number; y: number}[],
+                    fallback: {x: number; y: number}): {x: number; y: number} {
+    for (const cp of candidates) {
+      if (!this.pointInsideNode(node, cp)) return cp;
+    }
+    return fallback;
+  }
+
+  private pointInsideNode(node: DANode, p: {x: number; y: number}): boolean {
+    const pos = node.konvaGroup.position();
+    return p.x >= pos.x && p.x <= pos.x + node.NODE_WIDTH
+        && p.y >= pos.y && p.y <= pos.y + node.NODE_HEIGHT;
   }
 
   /** Sample the path Konva actually paints, including the collinear endpoint
