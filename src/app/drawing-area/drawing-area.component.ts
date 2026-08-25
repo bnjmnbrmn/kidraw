@@ -424,6 +424,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_NODE_SHAPE,
     DACommandType.SET_DIAGRAM_TYPE,
     DACommandType.SET_TASK_STATUS,
+    DACommandType.CUT_SELECTION,
+    DACommandType.PASTE_CLIPBOARD,
   ]);
 
   private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
@@ -438,6 +440,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.INSERT_CHAR,
     DACommandType.DELETE_LAST_CHAR,
     DACommandType.DELETE,
+    DACommandType.CUT_SELECTION,
+    DACommandType.PASTE_CLIPBOARD,
     DACommandType.UNDO,
     DACommandType.REDO,
     DACommandType.INCREASE_SELECTED_NODE_SIZE,
@@ -562,6 +566,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
    *  can't freeze the UI. These track the in-flight run so we can drive the
    *  countdown, enforce the timeout, and cancel a superseding run. */
+  /** Graph-local clipboard: the last copied/cut subgraph. Not the system
+   *  clipboard, and deliberately not persisted with the draft. */
+  private clipboard: GraphSnapshot | null = null;
   private routingWorker: Worker | null = null;
   private routingCountdown: ReturnType<typeof setInterval> | null = null;
   private routingDeadline: ReturnType<typeof setTimeout> | null = null;
@@ -807,6 +814,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
+        break;
+      case DACommandType.COPY_SELECTION:
+        this.copySelection();
+        break;
+      case DACommandType.CUT_SELECTION:
+        this.cutSelection();
+        this.checkAndEmitEditState();
+        break;
+      case DACommandType.PASTE_CLIPBOARD:
+        this.pasteClipboard();
         break;
       case DACommandType.SINGLE_ITEM_TOGGLE_SELECT:
         this.singleItemSelect();
@@ -2281,6 +2298,55 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
     // Escape also ends the traversal: drop the navigation focus glow.
     this.setGraphNavEdge(null);
+  }
+
+  /** Yank the selected nodes (and the edges wholly inside the selection).
+   *  Graph-local, not the system clipboard: the payload is a subgraph, and
+   *  nothing about it survives a page reload. */
+  private copySelection(): void {
+    const sub = this.drawingLayer.copySelectionSubgraph();
+    if (!sub) {
+      this.emitStatus('Nothing selected to copy.');
+      return;
+    }
+    this.clipboard = sub;
+    const n = sub.nodes.length;
+    const e = sub.edges.length;
+    this.emitStatus(`Copied ${n} node${n === 1 ? '' : 's'}` +
+      (e > 0 ? ` and ${e} edge${e === 1 ? '' : 's'}.` : '.'));
+  }
+
+  private cutSelection(): void {
+    const sub = this.drawingLayer.copySelectionSubgraph();
+    if (!sub) {
+      this.emitStatus('Nothing selected to cut.');
+      return;
+    }
+    this.clipboard = sub;
+    const n = sub.nodes.length;
+    this.deleteSelected();
+    this.emitStatus(`Cut ${n} node${n === 1 ? '' : 's'}.`);
+  }
+
+  /** Drop the clipboard subgraph centred on the crosshairs, selected so it
+   *  can be dragged straight away. */
+  private pasteClipboard(): void {
+    if (!this.clipboard) {
+      this.emitStatus('Clipboard is empty.');
+      return;
+    }
+    this.finishTweens();
+    const scale = this.drawingLayer.scaleX();
+    const pasted = this.drawingLayer.pasteSubgraph(
+      this.clipboard,
+      (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
+      (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
+    );
+    this.updateEdgesForResizedNodes(pasted);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    const n = pasted.length;
+    this.emitStatus(`Pasted ${n} node${n === 1 ? '' : 's'}.`);
   }
 
   private insertChar(key: string) {

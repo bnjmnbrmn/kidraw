@@ -128,6 +128,9 @@ export enum DACommandType {
   CYCLE_DISPLAY = 'CYCLE_DISPLAY',
   SET_DIAGRAM_TYPE = 'SET_DIAGRAM_TYPE',
   SET_TASK_STATUS = 'SET_TASK_STATUS',
+  COPY_SELECTION = 'COPY_SELECTION',
+  CUT_SELECTION = 'CUT_SELECTION',
+  PASTE_CLIPBOARD = 'PASTE_CLIPBOARD',
   CONNECT_VAULT = 'CONNECT_VAULT',
   VAULT_OPEN = 'VAULT_OPEN',
   VAULT_SAVE_AS = 'VAULT_SAVE_AS',
@@ -250,6 +253,9 @@ export type DACommand =
   | {kind: DACommandType.CYCLE_DISPLAY}
   | {kind: DACommandType.SET_DIAGRAM_TYPE; typeId: string}
   | {kind: DACommandType.SET_TASK_STATUS; status: TaskStatus}
+  | {kind: DACommandType.COPY_SELECTION}
+  | {kind: DACommandType.CUT_SELECTION}
+  | {kind: DACommandType.PASTE_CLIPBOARD}
   | {kind: DACommandType.CONNECT_VAULT}
   | {kind: DACommandType.VAULT_OPEN}
   | {kind: DACommandType.VAULT_SAVE_AS}

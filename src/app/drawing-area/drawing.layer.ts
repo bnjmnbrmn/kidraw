@@ -5,7 +5,7 @@ import {DALabel} from './da-label';
 import {DAWaypoint} from './da-waypoint';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
 import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
-import {resetIdCounter} from './id-generator';
+import {nextId, resetIdCounter} from './id-generator';
 import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
 import {KidrawExtension} from '../extensions/extension.model';
@@ -420,6 +420,93 @@ export class DrawingLayer extends Konva.Layer {
       d.textOverflow ?? node.textOverflowMode,
     );
     node.applyTextOverflow();
+  }
+
+  /** The selected nodes plus the edges whose endpoints are BOTH selected, as
+   *  a standalone subgraph. Edges reaching an unselected node are dropped —
+   *  a pasted copy has nothing to attach them to. Null when nothing is
+   *  selected. */
+  copySelectionSubgraph(): GraphSnapshot | null {
+    const selectedIds = new Set(this.getSelectedDANodes().map(node => node.id));
+    if (selectedIds.size === 0) return null;
+
+    const full = this.serializeGraph();
+    return {
+      nodes: full.nodes.filter(n => selectedIds.has(n.id)),
+      edges: full.edges.filter(
+        e => selectedIds.has(e.srcNodeId) && selectedIds.has(e.destNodeId)),
+      ...(full.diagramType ? {diagramType: full.diagramType} : {}),
+    };
+  }
+
+  /** Paste a subgraph under fresh ids, its bounding box centred on
+   *  (centerX, centerY) in layer coordinates. The pasted nodes become the
+   *  only selection, so a paste can be dragged straight away. Returns them. */
+  pasteSubgraph(sub: GraphSnapshot, centerX: number, centerY: number): DANode[] {
+    if (sub.nodes.length === 0) return [];
+
+    const xs = sub.nodes.map(n => n.x);
+    const ys = sub.nodes.map(n => n.y);
+    const dx = centerX - (Math.min(...xs) + Math.max(...xs)) / 2;
+    const dy = centerY - (Math.min(...ys) + Math.max(...ys)) / 2;
+
+    this.unselectAll();
+
+    const nodeMap = new Map<string, DANode>();
+    const pasted: DANode[] = [];
+    for (const ns of sub.nodes) {
+      const node = new DANode(ns.x + dx, ns.y + dy, ns.text, undefined, undefined, ns.nodeShape);
+      node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode,
+        ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+      node.applyTextOverflow();
+      node.isSelected = true;
+      node.pinned = ns.pinned ?? false;
+      node.tags = [...(ns.tags ?? [])];
+      this.daNodeGroup.add(node.konvaGroup);
+      this.daNodes.push(node);
+      nodeMap.set(ns.id, node);
+      pasted.push(node);
+    }
+
+    for (const es of sub.edges) {
+      const srcNode = nodeMap.get(es.srcNodeId);
+      const destNode = nodeMap.get(es.destNodeId);
+      if (!srcNode || !destNode) continue;
+
+      const edge = this.addEdge(srcNode, destNode);
+      if (es.controlPoints && es.controlPoints.length > 0) {
+        // Translate the bends with the copy; editable waypoints need ids of
+        // their own so they never collide with the originals'.
+        edge.restoreControlPoints(es.controlPoints.map(p => ({
+          x: p.x + dx,
+          y: p.y + dy,
+          ...(p.waypointId ? {waypointId: nextId()} : {}),
+          ...(p.pinned ? {pinned: true} : {}),
+        })));
+      }
+      if (es.directedness) edge.directedness = es.directedness;
+      if (es.lineStyle) edge.lineStyle = es.lineStyle;
+      edge.tags = [...(es.tags ?? [])];
+
+      for (const ls of es.labels) {
+        const lbl = new DALabel(ls.x + dx, ls.y + dy, ls.text);
+        if (ls.fontSize !== lbl.DEFAULT_FONT_SIZE) {
+          lbl.adjustFontSizeBy(ls.fontSize - lbl.DEFAULT_FONT_SIZE);
+        }
+        if (ls.edgeT !== undefined) {
+          lbl.edgeT = ls.edgeT;
+          lbl.side = ls.side ?? 'on';
+        } else {
+          edge.adoptLabelPosition(lbl);
+        }
+        edge.addLabel(lbl);
+      }
+      edge.refreshGeometry();
+    }
+
+    if (this._palette) this.applyThemeColors(this._palette);
+    this.refreshTagBadges();
+    return pasted;
   }
 
   restoreGraph(snapshot: GraphSnapshot): void {

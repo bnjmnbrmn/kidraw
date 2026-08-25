@@ -371,6 +371,23 @@ describe('KeymenuComponent', () => {
     expect(keyMenu.currentMode.name).toBe('labelEditVimNormalCaps');
   });
 
+  it('should put copy/cut/paste under the held y key on distinct keys', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+
+    const clipboard = buildRootConfig(component)['y'] as LabeledSubmenuConfig;
+    expect(clipboard.submenuLabel).toBe('Copy/Paste...');
+
+    const labels = ['Copy', 'Cut', 'Paste'].map(label =>
+      Object.entries(clipboard.submenuConfig).find(
+        ([, v]) => v instanceof LabeledAction && v.actionLabel === label)?.[0]);
+    expect(labels.every(key => key !== undefined)).toBeTrue();
+    // A child sharing the hub's own key could never be chorded: holding y
+    // already has that physical key down, so its tap is swallowed.
+    expect(labels).not.toContain('y');
+    expect(new Set(labels).size).toBe(3);
+  });
+
   it('should have pan/zoom submenu on t with zoom inside, not at root level', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
@@ -380,16 +397,17 @@ describe('KeymenuComponent', () => {
     const clearSelection = rootConfig['c'] as LabeledAction;
 
     // Zoom keys should NOT be at root level ('p' belongs to search Prev
-    // Match, not Zoom Out; 'y' is the Status submenu)
+    // Match, not Zoom Out; 'y' is Copy/Paste — vim's yank key — since
+    // da-161 moved Status off it onto t.)
     expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Prev Match');
-    expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
+    expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Copy/Paste...');
+    expect((rootConfig['t'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
-    // 2026-07-18 rebinds (final): Pan/Zoom back on r, Move by node → g, t unbound.
+    // 2026-07-18 rebinds (final): Pan/Zoom back on r, Move by node → g.
     const panZoomSubmenu = rootConfig['r'] as LabeledSubmenuConfig;
     expect(panZoomSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
     expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
-    expect(rootConfig['t']).toBeUndefined();
     // Zoom should be inside the pan/zoom submenu, recenters on p/y/u
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
     expect(zoomIn instanceof LabeledAction).toBeTrue();

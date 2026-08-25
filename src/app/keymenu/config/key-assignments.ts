@@ -29,6 +29,7 @@ export interface KeymenuKeyAssignments {
     /** Held: task-status submenu (todo graphs) — right-hand hold, the
      *  status choice keys all sit in the left hand. */
     readonly statusSubmenu: KeyString;
+    readonly clipboardSubmenu: KeyString;
   };
   /** Children of the held add hub. The hub key is left-hand in both
    *  profiles, so the kind keys sit in the left hand next to it and the
@@ -155,6 +156,11 @@ export interface KeymenuKeyAssignments {
     readonly done: KeyString;
     readonly clear: KeyString;
   };
+  readonly clipboard: {
+    readonly copy: KeyString;
+    readonly cut: KeyString;
+    readonly paste: KeyString;
+  };
   readonly overflow: {
     readonly clip: KeyString;
     readonly shrinkFont: KeyString;
@@ -196,7 +202,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleVisibility: 'z',
     go: 'f',
     editText: ';',
-    statusSubmenu: 'y',
+    statusSubmenu: 't',
+    clipboardSubmenu: 'y',
   },
   // diamond avoids the held hub key ('e' here); vim uses 'e'.
   insert: {
@@ -307,6 +314,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
+  clipboard: {copy: 'c', cut: 'x', paste: 'p'},
   overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
@@ -324,7 +332,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleVisibility: 'z',
     go: 'f',
     editText: 'i',
-    statusSubmenu: 'y',
+    statusSubmenu: 't',
+    clipboardSubmenu: 'y',
   },
   insert: {
     box: 'd',
@@ -432,6 +441,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     todoGraphType: 't',
   },
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
+  clipboard: {copy: 'c', cut: 'x', paste: 'p'},
   overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDown: 'j', treeDownClear: 'h', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

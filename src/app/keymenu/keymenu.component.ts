@@ -600,6 +600,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
+      [root.clipboardSubmenu]: new LabeledSubmenuConfig('Copy/Paste...', this.buildClipboardSubmenuConfig()),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
@@ -699,6 +700,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [status.blocked]:    new LabeledAction('Blocked',     emit('blocked'), false),
       [status.done]:       new LabeledAction('Done',        emit('done'), false),
       [status.clear]:      new LabeledAction('No Status',   emit('none'), false),
+    } as SubmenuConfig;
+  }
+
+  /** Copy/paste, held on vim's yank key. The clipboard holds a subgraph, so
+   *  paste drops a fresh copy centred on the crosshairs. `false` = no
+   *  auto-repeat: one hold should copy or paste at most once. */
+  private buildClipboardSubmenuConfig(): SubmenuConfig {
+    const clipboard = this.keyAssignments.clipboard;
+    const emit = (kind: DACommandType) => () => this.keyMenuOut.emit({kind} as DACommand);
+    return {
+      [clipboard.copy]:  new LabeledAction('Copy',  emit(DACommandType.COPY_SELECTION), false),
+      [clipboard.cut]:   new LabeledAction('Cut',   emit(DACommandType.CUT_SELECTION), false),
+      [clipboard.paste]: new LabeledAction('Paste', emit(DACommandType.PASTE_CLIPBOARD), false),
     } as SubmenuConfig;
   }
 
