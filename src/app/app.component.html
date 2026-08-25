@@ -33,3 +33,12 @@
     [widthPx]="compactMenuWidth"
     [modeName]="compactModeName"/>
 }
+
+@if (exLineOpen) {
+  <app-ex-line
+    [dark]="darkTheme"
+    [message]="exLineMessage"
+    [history]="exHistory"
+    (submitCommand)="onExCommand($event)"
+    (cancel)="onExCancel()"/>
+}

@@ -1540,9 +1540,20 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return event;
   }
 
+  /** True while the event is aimed at a native text field — the ex line, or
+   *  any future input. Those keystrokes belong to the field, not to the
+   *  keymenu, and must not fire graph actions behind it. */
+  private static isTypingInField(event: KeyboardEvent): boolean {
+    const target = event.target as HTMLElement | null;
+    if (!target) return false;
+    return target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || target.isContentEditable === true;
+  }
+
   @HostListener('document:keydown', ['$event'])
   handleKeyDown(event: KeyboardEvent) {
-    if (!this.keyMenu || this.suspended) {
+    if (!this.keyMenu || this.suspended || KeymenuComponent.isTypingInField(event)) {
       return;
     }
     event = this.remapEvent(event);
@@ -1582,6 +1593,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       event.preventDefault();
       this.keyMenuOut.emit({kind: event.key.toLowerCase() === 'o'
         ? DACommandType.NAV_HISTORY_BACK : DACommandType.NAV_HISTORY_FORWARD});
+      return;
+    }
+
+    // ':' opens the ex line (da-165). Intercepted rather than bound in the
+    // keymenu because it is Shift+';' — a chord, not a key the menu holds.
+    if (event.key === ':' && !event.repeat && !event.ctrlKey && !event.altKey
+        && !event.metaKey && this.keyMenu.currentMode.name === 'normal') {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: DACommandType.OPEN_EX_LINE});
       return;
     }
 
@@ -1752,7 +1772,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @HostListener('document:keyup', ['$event'])
   handleKeyUp(event: KeyboardEvent) {
-    if (!this.keyMenu || this.suspended) {
+    if (!this.keyMenu || this.suspended || KeymenuComponent.isTypingInField(event)) {
       return;
     }
     event = this.remapEvent(event);

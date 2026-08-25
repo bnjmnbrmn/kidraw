@@ -1,0 +1,16 @@
+<div class="ex-line" [class.dark]="dark">
+  @if (message) {
+    <div class="ex-message">{{ message }}</div>
+  }
+  <div class="ex-input-row">
+    <span class="ex-prompt">:</span>
+    <input #field
+           class="ex-field"
+           type="text"
+           spellcheck="false"
+           autocomplete="off"
+           [value]="text"
+           (input)="text = $any($event.target).value"
+           (keydown)="onKeyDown($event)"/>
+  </div>
+</div>

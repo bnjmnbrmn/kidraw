@@ -815,6 +815,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.EXIT_LABEL_EDIT_MODE:
         this.exitLabelEditMode();
         break;
+      case DACommandType.OPEN_EX_LINE:
+        // AppComponent owns the ex line and intercepts this before the
+        // drawing area sees it; the case is here for exhaustiveness.
+        break;
+      case DACommandType.EX_COMMAND:
+        void this.runExCommand(command.text);
+        break;
       case DACommandType.COPY_SELECTION:
         this.copySelection();
         break;
@@ -1586,6 +1593,113 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       () => void this.pollVaultFile(),
       DrawingAreaComponent.VAULT_POLL_INTERVAL_MS,
     );
+  }
+
+  /** Run one ex-line command (da-165). An initial vocabulary: `:w` saves,
+   *  `:e` switches files, `:ls` lists the vault. Unknown commands report
+   *  themselves rather than failing silently, the way vim does. */
+  private async runExCommand(text: string): Promise<void> {
+    const [name, ...rest] = text.trim().split(/\s+/);
+    const arg = rest.join(' ').trim();
+
+    switch (name) {
+      case 'w':
+      case 'write':
+        await this.exWrite(arg);
+        return;
+      case 'e':
+      case 'edit':
+      case 'o':
+      case 'open':
+        await this.exEdit(arg);
+        return;
+      case 'ls':
+      case 'files':
+        await this.exList();
+        return;
+      case 'enew':
+      case 'new':
+        this.newGraph();
+        this.emitStatus('New graph.');
+        return;
+      default:
+        this.emitStatus(`Not an editor command: ${name}`);
+    }
+  }
+
+  /** `:w` saves to the open vault file; `:w <name>` saves as that name and
+   *  makes it the open file, so the next bare `:w` goes there. */
+  private async exWrite(arg: string): Promise<void> {
+    if (!this.vaultService.isConnected) {
+      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
+      return;
+    }
+    let path = arg === '' ? this.vaultService.currentFilePath : null;
+    if (arg !== '') {
+      try {
+        path = ensureKidrawFilename(arg);
+      } catch (e) {
+        this.emitStatus((e as Error).message);
+        return;
+      }
+    }
+    if (!path) {
+      this.emitStatus('No file name — use :w <name>.');
+      return;
+    }
+    this.cancelVaultAutoSave();
+    if (await this.writeGraphToVault(path)) {
+      this.emitStatus(`Wrote ${path}`);
+    }
+  }
+
+  /** `:e <name-or-number>` opens another vault file — the file switching
+   *  this command line was asked for. */
+  private async exEdit(arg: string): Promise<void> {
+    if (!this.vaultService.isConnected) {
+      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
+      return;
+    }
+    if (arg === '') {
+      this.emitStatus('Which file? Use :e <name> (:ls lists them).');
+      return;
+    }
+    const files = await this.exVaultFiles();
+    const path = /^\d+$/.test(arg)
+      ? files[parseInt(arg, 10) - 1]
+      : files.find(f => f === normalizeVaultPath(arg)) ?? normalizeVaultPath(arg);
+    if (!path) {
+      this.emitStatus(`No such file: ${arg}`);
+      return;
+    }
+    this.cancelVaultAutoSave();
+    if (await this.loadVaultFile(path, {recenter: true})) {
+      this.emitStatus(`Opened ${path}`);
+    } else {
+      this.emitStatus(`Could not open ${path}`);
+    }
+  }
+
+  private async exList(): Promise<void> {
+    if (!this.vaultService.isConnected) {
+      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
+      return;
+    }
+    const files = await this.exVaultFiles();
+    if (files.length === 0) {
+      this.emitStatus('No graph files in the vault yet.');
+      return;
+    }
+    const open = this.vaultService.currentFilePath;
+    this.emitStatus(files
+      .map((f, i) => `${i + 1}. ${f}${f === open ? '  (open)' : ''}`)
+      .join('   '));
+  }
+
+  private async exVaultFiles(): Promise<string[]> {
+    const vault = this.vaultService.vault;
+    if (!vault) return [];
+    return (await vault.list()).filter(f => /\.kidraw\./i.test(f));
   }
 
   private async connectVault(): Promise<void> {

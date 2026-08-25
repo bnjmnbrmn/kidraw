@@ -3,6 +3,7 @@ import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {CompactKeymenuComponent, CompactMenuRow} from './keymenu/compact/compact-keymenu.component';
+import {ExLineComponent} from './ex-line/ex-line.component';
 import {Subject, Subscription} from 'rxjs';
 import {DACommand, DACommandType, TextCursorMode} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
@@ -24,7 +25,8 @@ const COMPACT_MENU_GUTTER = 10;
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent],
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent,
+            ExLineComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -35,9 +37,15 @@ export class AppComponent implements OnInit, OnDestroy {
   private visualConfig = inject(VisualConfigService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
+  @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
 
   movementSpeed = 50;
+  exLineOpen = false;
+  exLineMessage = '';
+  /** Ex-line command history. Lives here because the line is created and
+   *  destroyed each time it opens. */
+  exHistory: string[] = [];
   canEdit = false;
   keymenuDisplay: KeymenuDisplay = 'keyboard';
   compactRows: CompactMenuRow[] = [];
@@ -95,7 +103,29 @@ export class AppComponent implements OnInit, OnDestroy {
 
   relayKeymenuCommand(kmCommand: DACommand) {
     this.log.log("app component kmCommand: " + JSON.stringify(kmCommand))
+    if (kmCommand.kind === DACommandType.OPEN_EX_LINE) {
+      this.openExLine();
+      return;
+    }
     this.commandsSubject.next(kmCommand);
+  }
+
+  /** Show the ex line and hand it the keyboard. The keymenu keeps its own
+   *  listeners but ignores events aimed at the field. */
+  openExLine(): void {
+    this.exLineOpen = true;
+    this.exLineMessage = '';
+    setTimeout(() => this.exLineComponent?.open(), 0);
+  }
+
+  onExCommand(text: string): void {
+    this.exLineOpen = false;
+    this.exHistory.push(text);
+    this.commandsSubject.next({kind: DACommandType.EX_COMMAND, text});
+  }
+
+  onExCancel(): void {
+    this.exLineOpen = false;
   }
 
   toggleKeymenuVisibility() {
