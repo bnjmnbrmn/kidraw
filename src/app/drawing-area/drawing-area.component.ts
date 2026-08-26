@@ -2442,10 +2442,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Yank the selected nodes (and the edges wholly inside the selection).
    *  Graph-local, not the system clipboard: the payload is a subgraph, and
    *  nothing about it survives a page reload. */
+  /** The nodes the clipboard acts on. The selection when there is one;
+   *  otherwise whatever the crosshairs are over, so `y` yanks the node you
+   *  are looking at the way vim yanks the line you are on (da-272).
+   *
+   *  The guards mirror deleteSelected's priority order, so a cut copies
+   *  exactly what it is about to remove: with a waypoint, edge or label
+   *  selected, delete acts on that and the clipboard takes nothing. */
+  private clipboardTargetNodes(): DANode[] {
+    if (this.drawingLayer.getSelectedDAWaypoints().length > 0) return [];
+    const selected = this.drawingLayer.getSelectedDANodes();
+    if (selected.length > 0) return selected;
+    if (this.drawingLayer.getSelectedDAEdges().length > 0) return [];
+    if (this.getSelectedLabels().length > 0) return [];
+    if (this.getWaypointUnderCrosshairs()) return [];
+    const hovered = this.getDANodesContainingCrosshairs()[0];
+    return hovered ? [hovered] : [];
+  }
+
   private copySelection(): void {
-    const sub = this.drawingLayer.copySelectionSubgraph();
+    const sub = this.drawingLayer.copySubgraphOf(this.clipboardTargetNodes());
     if (!sub) {
-      this.emitStatus('Nothing selected to copy.');
+      this.emitStatus('Nothing to copy.');
       return;
     }
     this.clipboard = sub;
@@ -2455,16 +2473,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       (e > 0 ? ` and ${e} edge${e === 1 ? '' : 's'}.` : '.'));
   }
 
+  /** `x`: cut. Copies the nodes the delete is about to remove, then deletes
+   *  exactly what Delete would have — so cut stays a strict superset of the
+   *  Delete it replaced and still removes waypoints, edges and labels, which
+   *  the clipboard has no representation for (da-272). */
   private cutSelection(): void {
-    const sub = this.drawingLayer.copySelectionSubgraph();
-    if (!sub) {
-      this.emitStatus('Nothing selected to cut.');
-      return;
-    }
-    this.clipboard = sub;
-    const n = sub.nodes.length;
+    const sub = this.drawingLayer.copySubgraphOf(this.clipboardTargetNodes());
+    if (sub) this.clipboard = sub;
     this.deleteSelected();
-    this.emitStatus(`Cut ${n} node${n === 1 ? '' : 's'}.`);
+    this.emitStatus(sub
+      ? `Cut ${sub.nodes.length} node${sub.nodes.length === 1 ? '' : 's'}.`
+      : 'Deleted.');
   }
 
   /** Drop the clipboard subgraph centred on the crosshairs, selected so it

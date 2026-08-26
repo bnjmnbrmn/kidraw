@@ -427,7 +427,13 @@ export class DrawingLayer extends Konva.Layer {
    *  a pasted copy has nothing to attach them to. Null when nothing is
    *  selected. */
   copySelectionSubgraph(): GraphSnapshot | null {
-    const selectedIds = new Set(this.getSelectedDANodes().map(node => node.id));
+    return this.copySubgraphOf(this.getSelectedDANodes());
+  }
+
+  /** The same thing for an explicit set of nodes, so a copy can act on what
+   *  the crosshairs are over rather than only on the selection. */
+  copySubgraphOf(nodes: readonly DANode[]): GraphSnapshot | null {
+    const selectedIds = new Set(nodes.map(node => node.id));
     if (selectedIds.size === 0) return null;
 
     const full = this.serializeGraph();

@@ -173,7 +173,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       {key: `${root.clipboardSubmenu}/${this.keyAssignments.clipboard.paste}`, action: 'Copy / paste'},
       {key: `${this.keyAssignments.search.open} n/N`, action: 'Search / next / prev'},
       {key: shared.select, action: 'Clear selection'},
-      {key: shared.delete, action: 'Delete'},
+      {key: shared.delete, action: 'Cut / delete'},
     ];
   }
 
@@ -896,7 +896,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const search = this.keyAssignments.search;
 
     return {
-      [shared.delete]: new LabeledAction('Delete', () => this.keyMenuOut.emit({kind: DACommandType.DELETE})),
+      // x cuts rather than plain-deletes (da-272): a strict superset — it
+      // still removes waypoints, edges and labels, and additionally puts any
+      // nodes it removes on the clipboard.
+      [shared.delete]: new LabeledAction('Cut', () => this.keyMenuOut.emit({kind: DACommandType.CUT_SELECTION})),
       [shared.select]: new LabeledAction('Clear Selection', () => this.keyMenuOut.emit({kind: DACommandType.UNSELECT_ALL})),
       [shared.undo]: new LabeledAction('Undo', () => this.keyMenuOut.emit({kind: DACommandType.UNDO})),
       [search.open]: new LabeledAction('Search…', () => this.keyMenuOut.emit({kind: DACommandType.SEARCH_GRAPH}), false),
