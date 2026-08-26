@@ -117,6 +117,24 @@ describe('text-cursor', () => {
       expect(vimChangeRange(text, 8, 'line-end')).toEqual({start: 8, end: 10});
       expect(vimChangeRange(text, 13, 'line')).toEqual({start: 11, end: 16});
     });
+
+    it('gives dw the trailing gap that cw deliberately leaves (da-343)', () => {
+      // 'alpha beta\ngamma' — from the 'a' of alpha, cw stops at the word
+      // end while dw runs on to where the next word starts.
+      expect(vimChangeRange(text, 0, 'word-forward')).toEqual({start: 0, end: 5});
+      expect(vimChangeRange(text, 0, 'word-forward-gap')).toEqual({start: 0, end: 6});
+    });
+
+    it('takes the word under the caret for inner-word (da-343)', () => {
+      // Anywhere inside 'beta' gives the same range, gaps excluded.
+      expect(vimChangeRange(text, 6, 'inner-word')).toEqual({start: 6, end: 10});
+      expect(vimChangeRange(text, 8, 'inner-word')).toEqual({start: 6, end: 10});
+      expect(vimChangeRange(text, 9, 'inner-word')).toEqual({start: 6, end: 10});
+      // On the gap, vim reaches for the next word rather than doing nothing.
+      expect(vimChangeRange(text, 5, 'inner-word')).toEqual({start: 6, end: 10});
+      // Empty text has no word to take.
+      expect(vimChangeRange('', 0, 'inner-word')).toEqual({start: 0, end: 0});
+    });
   });
 
   describe('clampIndex', () => {

@@ -23,7 +23,10 @@ export type TextCursorMode = 'insert' | 'vimNormal' | 'vimVisual';
 export type VimChangeMotion =
   | 'word-forward' | 'word-end' | 'word-back'
   | 'line-start' | 'line-end' | 'line'
-  | 'char-left' | 'char-right' | 'selection';
+  | 'char-left' | 'char-right' | 'selection' | 'inner-word'
+  /** `dw`: through to the start of the next word. Vim's `cw` deliberately
+   *  stops at the word's end instead — that asymmetry is real vim. */
+  | 'word-forward-gap';
 
 /** Which kinds of stop move-by-node steps between (tiered by modifier). */
 export type NavTargetKind = 'nodes' | 'labels' | 'all';

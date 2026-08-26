@@ -130,6 +130,13 @@ export function vimChangeRange(
       return {start: Math.max(cursor - 1, 0), end: cursor};
     case 'char-right':
       return {start: cursor, end: Math.min(cursor + 1, text.length)};
+    case 'word-forward-gap':
+      // `dw` takes the trailing gap too, so the next word closes up. `cw`
+      // (above) stops at the word end — vim's own asymmetry.
+      return {start: cursor, end: wordForward(text, cursor)};
+    case 'inner-word':
+      // `ciw` / `diw`: the word under the caret, without its surrounding gap.
+      return innerWordRange(text, cursor) ?? {start: cursor, end: cursor};
     case 'selection':
       return {start: cursor, end: cursor};
   }

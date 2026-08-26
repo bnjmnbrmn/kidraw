@@ -104,6 +104,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private vimReplacePending = false;
   /** Set by Vim `c`; the next motion chooses the range to replace. */
   private vimChangePending = false;
+  /** Which operator is waiting for its motion while `vimChangePending` is
+   *  set. Both delete the range they cover — the operator only decides what
+   *  happens afterwards: `c` drops into insert, `d` stays in normal. */
+  private vimPendingOperator: 'change' | 'delete' = 'change';
+  /** Set once a pending operator has seen `i`/`a` and is waiting for the
+   *  text-object key — the `w` of `ciw` / `diw`. */
+  private vimPendingTextObject = false;
   /** Set by visual `i`; `w` completes the Vim `iw` text object. */
   private vimTextObjectPending = false;
   private lastShiftPressedAt = 0;
@@ -440,7 +447,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }, false);
     (config as any)['c'] = new LabeledAction('change…', () => {
       this.vimReplacePending = false;
-      this.vimChangePending = true;
+      this.beginVimOperator('change');
+    }, false);
+    // d is c's twin: same ranges, but it stays in normal mode (dd, dw, diw).
+    (config as any)['d'] = new LabeledAction('delete…', () => {
+      this.vimReplacePending = false;
+      this.beginVimOperator('delete');
     }, false);
     (config as any)['v'] = new LabeledAction('visual', () => {
       this.switchMode(capsMode ? 'labelEditVimVisualCaps' : 'labelEditVimVisual');
@@ -466,10 +478,39 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion: 'line-end'});
       goInsert();
     }, false);
+    (shift as any)['d'] = new LabeledAction('Delete to end', () => {
+      this.clearVimOperator();
+      this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion: 'line-end'});
+    }, false);
     (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', shift);
     (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', shift);
 
     return config;
+  }
+
+  private beginVimOperator(operator: 'change' | 'delete'): void {
+    this.vimPendingOperator = operator;
+    this.vimPendingTextObject = false;
+    this.vimChangePending = true;
+  }
+
+  private clearVimOperator(): void {
+    this.vimChangePending = false;
+    this.vimPendingTextObject = false;
+  }
+
+  /** The range an operator's motion key covers. Doubling the operator key
+   *  means the whole line, as vim's `cc` and `dd` do. */
+  private vimOperatorMotion(key: string, operator: 'change' | 'delete'): VimChangeMotion | undefined {
+    if (key === (operator === 'change' ? 'c' : 'd')) return 'line';
+    // `dw` closes the gap to the next word; `cw` stops at this word's end.
+    if (key === 'w') return operator === 'delete' ? 'word-forward-gap' : 'word-forward';
+    const motions: Record<string, VimChangeMotion> = {
+      e: 'word-end', b: 'word-back',
+      h: 'char-left', l: 'char-right',
+      '0': 'line-start', '^': 'line-start', '$': 'line-end',
+    };
+    return motions[key];
   }
 
   private buildLabelEditVimVisualSubmenuConfig(capsMode: boolean): SubmenuConfig {
@@ -1707,10 +1748,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
+    // An operator (`c` or `d`) is waiting for the rest of its command:
+    // a motion (cw, dw, d$), the doubled operator key for the whole line
+    // (cc, dd), or `i`/`a` then a text object (ciw, diw).
     if (this.vimChangePending && inLabelEditVimNormal) {
       if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
         event.preventDefault();
-        this.vimChangePending = false;
+        this.clearVimOperator();
         return;
       }
       // Modifier keydown must not cancel `c$` / `c^` before the printable
@@ -1720,23 +1764,27 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         event.preventDefault();
         return;
       }
-      const changeMotions: Record<string, VimChangeMotion> = {
-        c: 'line',
-        w: 'word-forward',
-        e: 'word-end',
-        b: 'word-back',
-        h: 'char-left',
-        l: 'char-right',
-        '0': 'line-start',
-        '^': 'line-start',
-        '$': 'line-end',
-      };
-      const motion = changeMotions[event.key.toLowerCase()];
       event.preventDefault();
-      this.vimChangePending = false;
-      if (motion) {
+      const key = event.key.toLowerCase();
+
+      // `i` (and `a`, which kidraw treats the same for a word) opens a text
+      // object; the next key names it.
+      if (!this.vimPendingTextObject && (key === 'i' || key === 'a')) {
+        this.vimPendingTextObject = true;
+        return;
+      }
+
+      const operator = this.vimPendingOperator;
+      const motion = this.vimPendingTextObject
+        ? (key === 'w' ? 'inner-word' as VimChangeMotion : undefined)
+        : this.vimOperatorMotion(key, operator);
+      this.clearVimOperator();
+      if (!motion) return;
+
+      this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion});
+      // Both operators delete the range; only `c` continues into insert.
+      if (operator === 'change') {
         const capsMode = currentModeName === 'labelEditVimNormalCaps';
-        this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion});
         this.switchMode(capsMode ? 'labelEditCaps' : 'labelEdit');
         this.labelEditModeOut.emit('insert');
       }
