@@ -577,6 +577,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private routingCountdown: ReturnType<typeof setInterval> | null = null;
   private routingDeadline: ReturnType<typeof setTimeout> | null = null;
   private static readonly ROUTING_TIMEOUT_MS = 15000;
+  /** Where along a freshly connected link the crosshairs land: near the
+   *  destination, but not so close that the arrowhead sits under them. */
+  private static readonly NEW_EDGE_FOCUS_T = 0.8;
 
   ngOnInit(): void {
   }
@@ -2641,16 +2644,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if(daNodesContainingCrosshairs.length == 1) {
         const destNode = daNodesContainingCrosshairs[0];
         const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
-        this.addDefaultEdge(srcNode, destNode);
+        const edge = this.addDefaultEdge(srcNode, destNode);
         this.unselectAll();
+        this.parkCrosshairsOnNewEdge(edge);
       } else {
         return;
       }
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
-      this.addDefaultEdge(srcNode, destNode);
+      const edge = this.addDefaultEdge(srcNode, destNode);
       this.unselectAll();
+      this.parkCrosshairsOnNewEdge(edge);
       return;
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
       //todo: create new connected node
@@ -7412,6 +7417,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Add an edge using the user's current defaults. Labels are absent by
    *  default because DAEdge starts with an empty label list. */
+  /** After connecting two nodes, leave the crosshairs sitting on the new
+   *  link near its destination end, so holding the select key picks the edge
+   *  up straight away and its direction can be cycled without navigating
+   *  back to it (da-345). The destination end is the meaningful one: that is
+   *  where the arrowhead is, so which way the link points is what you are
+   *  looking at while you change it.
+   *
+   *  A connect can land off-screen (the crosshairs were over a node at the
+   *  viewport edge); in that case leave them where they are rather than
+   *  parking them somewhere invisible. */
+  private parkCrosshairsOnNewEdge(edge: DAEdge): void {
+    const anchor = pointAtT(edge.getRenderedPathPoints(), DrawingAreaComponent.NEW_EDGE_FOCUS_T);
+    if (!anchor) return;
+    const scale = this.drawingLayer.scaleX();
+    const sx = this.drawingLayer.x() + anchor.x * scale;
+    const sy = this.drawingLayer.y() + anchor.y * scale;
+    if (sx < 0 || sx > this.stage.width() || sy < 0 || sy > this.stage.height()) return;
+    this.crosshairsLayer.crosshairs.x = sx;
+    this.crosshairsLayer.crosshairs.y = sy;
+    this.crosshairsLayer.batchDraw();
+    this.scheduleCrosshairHoverRefresh(20);
+  }
+
   private addDefaultEdge(src: DANode, dest: DANode): DAEdge {
     const edge = this.drawingLayer.addEdge(src, dest);
     edge.directedness = this._defaultEdgeDirectedness;
