@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-25. Branch: `main`._
+_Updated 2026-08-26. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -293,6 +293,8 @@ _Updated 2026-08-25. Branch: `main`._
     **Two caveats, both pre-existing and both confirmed unchanged at `60146f9` (before this batch):**
     - `tools/repro-edge-label-anchors.js` has 3 stale expectations — coarse-right no longer snaps to a canonical stop, and the up key steps `below → on` rather than jumping to `above`. The side one is explained by the deliberate adjacent-side change in item 63 (2026-08-10); the July repro was never updated. Not investigated further.
     - **This box has become unreliable for long browser runs.** Karma disconnects mid-suite (needing 1–3 retries for a clean 420/420), and `repro-da-161-clipboard.js` now crashes the renderer part-way at varying points. It crashes identically at `60146f9`, so it is the machine, not the code — `ng serve` alone holds ~16% of 3.8 GB. Re-run individually with retries; do not read a single failure as a regression without checking an older commit the same way.
+
+70. **`da-272` — x cuts, and the clipboard follows the crosshairs (2026-08-26, via Next).** Two halves of one complaint. `y` already copied on a single tap (item 69), but it only ever acted on the *selection*, so hovering a node and pressing `y` answered "Nothing selected to copy" — selecting first was the second key press the note was about. Copy and cut now fall back to the node under the crosshairs when nothing is selected, the way vim yanks the line you are on; their guards mirror `deleteSelected`'s priority order so a cut copies exactly what it is about to remove. `x` becomes **Cut**: the clipboard has no representation for waypoints, edges or labels, so cut deletes exactly what Delete did and additionally puts any nodes it removes on the clipboard — a strict superset, never a narrowing (deleting a non-node reports "Deleted." rather than claiming a cut). Repro: `tools/repro-da-272-cut-copy.js`, most of whose checks guard that `x` can still remove edges and waypoints. 420/420 unit tests, clean build.
 
 ## Routing-eval harness
 
