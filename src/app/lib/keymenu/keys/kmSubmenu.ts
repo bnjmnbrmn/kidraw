@@ -172,9 +172,19 @@ export class KMSubmenu<T> {
       window.clearTimeout(existing);
     }
 
+    // The configured interval is the PERIOD between repeats, not the pause
+    // after each one finishes. Firing costs real time — a crosshair move is
+    // tens of milliseconds of tweening and redrawing — and adding that to
+    // the wait made the observed cadence always slower than the setting, and
+    // barely responsive to it once the interval approached the work time
+    // (da-347: 100ms configured measured 177ms; 10ms measured 112ms).
+    // Subtracting the work keeps the period honest; it can still only
+    // saturate at however long one repeat actually takes.
     const timerAction = () => {
+      const started = performance.now();
       action();
-      const timerRef = window.setTimeout(timerAction, this.subsequentDelayMS);
+      const wait = Math.max(0, this.subsequentDelayMS - (performance.now() - started));
+      const timerRef = window.setTimeout(timerAction, wait);
       this.scheduledActions.set(key, timerRef)
     };
     const initialTimerRef = window.setTimeout(timerAction, this.initialDelayMS);
