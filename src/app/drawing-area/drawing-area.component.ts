@@ -8313,18 +8313,41 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const colors = COLOR_MAP[color];
     if (!colors) return;
 
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    // Selection first, then whatever the crosshairs are over — the same
+    // priority copy/cut (da-272) and the shape commands use. Without the
+    // fallback the natural gesture (hover a node, pick a colour) either did
+    // nothing or, worse, recoloured a stale selection somewhere off-screen;
+    // a thin edge restyled at 50% zoom reads as "nothing happened".
+    let nodes = this.drawingLayer.getSelectedDANodes();
+    let edges = this.drawingLayer.getSelectedDAEdges();
 
-    if (selectedNodes.length === 0 && selectedEdges.length === 0) {
-      this.daOut.emit({kind: 'status-message', message: 'Select a node or edge to change color'});
+    if (nodes.length === 0 && edges.length === 0) {
+      const hoveredNodes = this.getDANodesContainingCrosshairs();
+      if (hoveredNodes.length > 0) {
+        nodes = [hoveredNodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)];
+      } else {
+        edges = this.getDAEdgesContainingCrosshairs();
+      }
+    }
+
+    if (nodes.length === 0 && edges.length === 0) {
+      this.daOut.emit({kind: 'status-message',
+        message: 'Select or point at a node or edge to change color'});
       return;
     }
 
-    selectedNodes.forEach(n => n.applyColors(colors.node));
-    selectedEdges.forEach(e => e.applyColors(colors.edge));
+    nodes.forEach(n => n.applyColors(colors.node));
+    edges.forEach(e => e.applyColors(colors.edge));
 
     this.drawingLayer.batchDraw();
+
+    // Always say what was recoloured. The command is otherwise silent, and
+    // its effect can be genuinely hard to see.
+    const parts: string[] = [];
+    if (nodes.length) parts.push(`${nodes.length} node${nodes.length === 1 ? '' : 's'}`);
+    if (edges.length) parts.push(`${edges.length} link${edges.length === 1 ? '' : 's'}`);
+    const name = color.charAt(0).toUpperCase() + color.slice(1);
+    this.daOut.emit({kind: 'status-message', message: `${name}: ${parts.join(' + ')}`});
   }
 
   private lineSegmentIntersectsBox(p1: {x: number; y: number}, p2: {x: number; y: number}, box: {minX: number; minY: number; maxX: number; maxY: number}): boolean {
