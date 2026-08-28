@@ -53,11 +53,6 @@ export interface KeymenuKeyAssignments {
     readonly toggleShape: KeyString;
     readonly togglePin: KeyString;
   };
-  readonly directedness: {
-    readonly directed: KeyString;
-    readonly undirected: KeyString;
-    readonly bidirectional: KeyString;
-  };
   readonly shared: {
     readonly delete: KeyString;
     readonly select: KeyString;
@@ -191,11 +186,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleShape: 't',
     togglePin: 'p',
   },
-  directedness: {
-    directed: 'r',
-    undirected: '-',
-    bidirectional: 'b',
-  },
   shared: {
     delete: 'x',
     select: 'c',
@@ -293,11 +283,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   style: {
     toggleShape: 't',
     togglePin: 'p',
-  },
-  directedness: {
-    directed: 'r',
-    undirected: '-',
-    bidirectional: 'b',
   },
   shared: {
     delete: 'x',

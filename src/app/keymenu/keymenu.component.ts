@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion} from '../drawing-area/command.model';
+import {DACommand, DACommandType, GridTier, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, VimChangeMotion} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -642,7 +642,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      [root.styleSubmenu]: new LabeledSubmenuConfig('Semantics...', this.buildStyleSubmenuConfig()),
+      [root.styleSubmenu]: new LabeledSubmenuConfig('Item...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       // Vim's yank key: tap copies, hold opens the rest of the clipboard
@@ -790,23 +790,20 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   /** `w` is no longer a style tree. Direct styling — shape, line style,
    *  colour, overflow, per-type defaults — is on its way out in favour of
    *  tags/classes applied to nodes and edges, so those entries are gone
-   *  (2026-08-28). What remains is what tags would not replace: edge
-   *  directedness, which is semantics rather than appearance, and Toggle
-   *  Pin, which is behaviour. Circle/Box is a temporary stand-in for shape
-   *  until the tag mapping exists.
+   *  (2026-08-28). Edge directedness is not here either: `v` already offers
+   *  Cycle Direction, which is the binding the connect-then-turn flow
+   *  (da-345) was built around, and three explicit setters beside a
+   *  three-state cycle were redundant.
    *
-   *  The commands themselves (SET_NODE_SHAPE, SET_LINE_STYLE,
+   *  What is left is per-item behaviour: Toggle Pin, and Circle/Box as a
+   *  temporary stand-in for shape until the tag mapping exists.
+   *
+   *  The style commands themselves (SET_NODE_SHAPE, SET_LINE_STYLE,
    *  SET_ITEM_COLOR, overflow) are untouched — only the menu route to them
    *  is withdrawn, since serialization and the tag work still need them. */
   private buildStyleSubmenuConfig(): SubmenuConfig {
     const style = this.keyAssignments.style;
-    const dir = this.keyAssignments.directedness;
-    const emitDir = (directedness: EdgeDirectedness) => () =>
-      this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DIRECTEDNESS, directedness});
     return {
-      [dir.directed]: new LabeledAction('Directed →', emitDir('directed')),
-      [dir.undirected]: new LabeledAction('Undirected —', emitDir('undirected')),
-      [dir.bidirectional]: new LabeledAction('Bidirectional ↔', emitDir('bidirectional')),
       [style.toggleShape]: new LabeledAction('Circle/Box', () =>
         this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
       [style.togglePin]: new LabeledAction('Toggle Pin', () =>
