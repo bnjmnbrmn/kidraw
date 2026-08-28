@@ -6,17 +6,25 @@ import {
   snapshotToFiles,
 } from '../lib/file-format/snapshot-mapping';
 import { KidrawGraphDoc, KidrawStyleSet } from '../lib/file-format/types';
+import { DEBUG_CHANNEL } from '../../environments/environment';
 
 // Dev-only draft mirror: every draft save is also POSTed to the local log
 // collector (tools/log-server.js), which writes tools/draft-mirror.json so
 // an agent on the dev box can see the graph currently being edited.
-// Remote hosts only (kidraw.dev.bnjmnbrmn.com, phones), same-origin via
-// nginx: localhost loads are almost always Playwright repro/QA runs, and
-// their throwaway test drafts were clobbering the mirror of the real
-// session (2026-07-18).
-const DRAFT_MIRROR_URL = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  ? null
-  : '/debug-log/draft';
+// Remote hosts only (kidraw.dev.bnjmnbrmn.com), same-origin via nginx:
+// localhost loads are almost always Playwright repro/QA runs, and their
+// throwaway test drafts were clobbering the mirror of the real session
+// (2026-07-18).
+//
+// Gated on DEBUG_CHANNEL, a compile-time false in a production build —
+// this folds to `null` and the mirror URL leaves the bundle entirely. The mirror uploads the *whole draft graph* on every
+// save, and the collector keeps a single shared draft-mirror.json — so on
+// a hosted build it would ship each visitor's drawing to the box and let
+// visitors clobber each other. It is strictly a dev-box affordance.
+const DRAFT_MIRROR_URL =
+  DEBUG_CHANNEL && !['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? '/debug-log/draft'
+    : null;
 
 /**
  * Manages the localStorage draft — kidraw's crash-recovery layer.
