@@ -49,20 +49,7 @@ export interface KeymenuKeyAssignments {
   readonly edgeKinds: {
     readonly selfLoop: KeyString;
   };
-  readonly nodeTypes: {
-    readonly box: KeyString;
-    readonly circle: KeyString;
-    readonly diamond: KeyString;
-    readonly junction: KeyString;
-    readonly invisible: KeyString;
-  };
   readonly style: {
-    readonly shapeSubmenu: KeyString;
-    readonly directednessSubmenu: KeyString;
-    readonly lineStyleSubmenu: KeyString;
-    readonly colorSubmenu: KeyString;
-    readonly defaultsSubmenu: KeyString;
-    readonly overflowSubmenu: KeyString;
     readonly toggleShape: KeyString;
     readonly togglePin: KeyString;
   };
@@ -70,19 +57,6 @@ export interface KeymenuKeyAssignments {
     readonly directed: KeyString;
     readonly undirected: KeyString;
     readonly bidirectional: KeyString;
-  };
-  readonly lineStyles: {
-    readonly solid: KeyString;
-    readonly dashed: KeyString;
-    readonly dotted: KeyString;
-  };
-  readonly colors: {
-    readonly default: KeyString;
-    readonly red: KeyString;
-    readonly blue: KeyString;
-    readonly green: KeyString;
-    readonly orange: KeyString;
-    readonly purple: KeyString;
   };
   readonly shared: {
     readonly delete: KeyString;
@@ -165,15 +139,6 @@ export interface KeymenuKeyAssignments {
     readonly cut: KeyString;
     readonly paste: KeyString;
   };
-  readonly overflow: {
-    readonly clip: KeyString;
-    readonly shrinkFont: KeyString;
-    readonly ellipsis: KeyString;
-    readonly widenH: KeyString;
-    readonly widenV: KeyString;
-    readonly widenBoth: KeyString;
-    readonly fit: KeyString;
-  };
   readonly layout: {
     readonly forceDirected: KeyString;
     readonly forceClear: KeyString;
@@ -222,20 +187,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   edgeKinds: {
     selfLoop: 'l',
   },
-  nodeTypes: {
-    box: 'b',
-    circle: 'i',
-    diamond: 'o',
-    junction: 'p',
-    invisible: 'k',
-  },
   style: {
-    shapeSubmenu: 'n',
-    directednessSubmenu: 'k',
-    lineStyleSubmenu: 'l',
-    colorSubmenu: 'h',
-    defaultsSubmenu: 'y',
-    overflowSubmenu: 'u',
     toggleShape: 't',
     togglePin: 'p',
   },
@@ -243,19 +195,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     directed: 'r',
     undirected: '-',
     bidirectional: 'b',
-  },
-  lineStyles: {
-    solid: 'f',
-    dashed: 'r',
-    dotted: 'g',
-  },
-  colors: {
-    default: 'f',
-    red: 'r',
-    blue: 'b',
-    green: 'g',
-    orange: 'o',
-    purple: 'p',
   },
   shared: {
     delete: 'x',
@@ -319,7 +258,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   clipboard: {copy: 'c', cut: 'x', paste: 'p'},
-  overflow: {clip: 'r', shrinkFont: 't', ellipsis: 'y', widenH: 'f', widenV: 'g', widenBoth: 'h', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
 
@@ -352,20 +290,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   edgeKinds: {
     selfLoop: 'l',
   },
-  nodeTypes: {
-    box: 'b',
-    circle: 'k',
-    diamond: 'l',
-    junction: ';',
-    invisible: 'i',
-  },
   style: {
-    shapeSubmenu: 'n',
-    directednessSubmenu: 'k',
-    lineStyleSubmenu: 'l',
-    colorSubmenu: 'h',
-    defaultsSubmenu: 'y',
-    overflowSubmenu: 'u',
     toggleShape: 't',
     togglePin: 'p',
   },
@@ -373,19 +298,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     directed: 'r',
     undirected: '-',
     bidirectional: 'b',
-  },
-  lineStyles: {
-    solid: 'f',
-    dashed: 'r',
-    dotted: 'g',
-  },
-  colors: {
-    default: 'f',
-    red: 'r',
-    blue: 'b',
-    green: 'g',
-    orange: 'o',
-    purple: 'p',
   },
   shared: {
     delete: 'x',
@@ -447,6 +359,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   clipboard: {copy: 'c', cut: 'x', paste: 'p'},
-  overflow: {clip: 'a', shrinkFont: 's', ellipsis: 'd', widenH: 'f', widenV: 'w', widenBoth: 'e', fit: 'v'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

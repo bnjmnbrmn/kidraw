@@ -642,7 +642,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
+      [root.styleSubmenu]: new LabeledSubmenuConfig('Semantics...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       // Vim's yank key: tap copies, hold opens the rest of the clipboard
@@ -765,20 +765,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildOverflowModeSubmenuConfig(): SubmenuConfig {
-    const overflow = this.keyAssignments.overflow;
-    const emit = (mode: TextOverflowMode) => () => this.keyMenuOut.emit({kind: DACommandType.SET_TEXT_OVERFLOW_MODE, mode});
-    return {
-      [overflow.clip]:       new LabeledAction('No Overflow',  emit('clip')),
-      [overflow.shrinkFont]: new LabeledAction('Shrink Font',  emit('shrink-font')),
-      [overflow.ellipsis]:   new LabeledAction('Ellipsis',     emit('ellipsis')),
-      [overflow.widenH]:     new LabeledAction('Widen →',      emit('widen-h')),
-      [overflow.widenV]:     new LabeledAction('Widen ↓',      emit('widen-v')),
-      [overflow.widenBoth]:  new LabeledAction('Auto Size',    emit('widen-both')),
-      [overflow.fit]:        new LabeledAction('Fit Text',     emit('fit')),
-    } as SubmenuConfig;
-  }
-
   private buildLayoutSubmenuConfig(): SubmenuConfig {
     const layout = this.keyAssignments.layout;
     const emit = (l: LayoutType) => () => this.keyMenuOut.emit({kind: DACommandType.APPLY_LAYOUT, layout: l});
@@ -801,100 +787,32 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  private buildNodeTypeShapeSubmenuConfig(): SubmenuConfig {
-    const types = this.keyAssignments.nodeTypes;
-    const emit = (shape: NodeShape) => () => this.keyMenuOut.emit({kind: DACommandType.SET_NODE_SHAPE, shape});
-    return {
-      [types.box]:      new LabeledAction('Box',      emit('box')),
-      [types.circle]:   new LabeledAction('Circle',   emit('circle')),
-      [types.diamond]:  new LabeledAction('Diamond',  emit('diamond')),
-      [types.junction]: new LabeledAction('Junction', emit('junction')),
-    } as SubmenuConfig;
-  }
-
+  /** `w` is no longer a style tree. Direct styling — shape, line style,
+   *  colour, overflow, per-type defaults — is on its way out in favour of
+   *  tags/classes applied to nodes and edges, so those entries are gone
+   *  (2026-08-28). What remains is what tags would not replace: edge
+   *  directedness, which is semantics rather than appearance, and Toggle
+   *  Pin, which is behaviour. Circle/Box is a temporary stand-in for shape
+   *  until the tag mapping exists.
+   *
+   *  The commands themselves (SET_NODE_SHAPE, SET_LINE_STYLE,
+   *  SET_ITEM_COLOR, overflow) are untouched — only the menu route to them
+   *  is withdrawn, since serialization and the tag work still need them. */
   private buildStyleSubmenuConfig(): SubmenuConfig {
     const style = this.keyAssignments.style;
-    return {
-      [style.shapeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
-      [style.directednessSubmenu]: new LabeledSubmenuConfig('Directedness...', this.buildDirectednessSubmenuConfig()),
-      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style...', this.buildLineStyleSubmenuConfig()),
-      [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
-      [style.defaultsSubmenu]: new LabeledSubmenuConfig('Defaults...', this.buildDefaultsSubmenuConfig()),
-      [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
-      [style.toggleShape]: new LabeledAction('Circle/Box', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
-      [style.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
-    } as SubmenuConfig;
-  }
-
-  private buildDirectednessSubmenuConfig(): SubmenuConfig {
     const dir = this.keyAssignments.directedness;
-    const emit = (directedness: EdgeDirectedness) => () =>
+    const emitDir = (directedness: EdgeDirectedness) => () =>
       this.keyMenuOut.emit({kind: DACommandType.SET_EDGE_DIRECTEDNESS, directedness});
     return {
-      [dir.directed]: new LabeledAction('Directed →', emit('directed')),
-      [dir.undirected]: new LabeledAction('Undirected —', emit('undirected')),
-      [dir.bidirectional]: new LabeledAction('Bidirectional ↔', emit('bidirectional')),
+      [dir.directed]: new LabeledAction('Directed →', emitDir('directed')),
+      [dir.undirected]: new LabeledAction('Undirected —', emitDir('undirected')),
+      [dir.bidirectional]: new LabeledAction('Bidirectional ↔', emitDir('bidirectional')),
+      [style.toggleShape]: new LabeledAction('Circle/Box', () =>
+        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
+      [style.togglePin]: new LabeledAction('Toggle Pin', () =>
+        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
     } as SubmenuConfig;
   }
-
-  private buildLineStyleSubmenuConfig(): SubmenuConfig {
-    const ls = this.keyAssignments.lineStyles;
-    const emit = (lineStyle: LineStyle) => () =>
-      this.keyMenuOut.emit({kind: DACommandType.SET_LINE_STYLE, lineStyle});
-    return {
-      [ls.solid]: new LabeledAction('Solid ———', emit('solid')),
-      [ls.dashed]: new LabeledAction('Dashed - - -', emit('dashed')),
-      [ls.dotted]: new LabeledAction('Dotted · · ·', emit('dotted')),
-    } as SubmenuConfig;
-  }
-
-  private buildColorSubmenuConfig(): SubmenuConfig {
-    const c = this.keyAssignments.colors;
-    const emit = (color: ItemColor) => () =>
-      this.keyMenuOut.emit({kind: DACommandType.SET_ITEM_COLOR, color});
-    return {
-      [c.default]: new LabeledAction('Default', emit('default')),
-      [c.red]: new LabeledAction('Red', emit('red')),
-      [c.blue]: new LabeledAction('Blue', emit('blue')),
-      [c.green]: new LabeledAction('Green', emit('green')),
-      [c.orange]: new LabeledAction('Orange', emit('orange')),
-      [c.purple]: new LabeledAction('Purple', emit('purple')),
-    } as SubmenuConfig;
-  }
-
-  private buildDefaultsSubmenuConfig(): SubmenuConfig {
-    const style = this.keyAssignments.style;
-    return {
-      [style.directednessSubmenu]: new LabeledSubmenuConfig('Default Dir...', this.buildDefaultDirectednessSubmenuConfig()),
-      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Default Line...', this.buildDefaultLineStyleSubmenuConfig()),
-    } as SubmenuConfig;
-  }
-
-  private buildDefaultDirectednessSubmenuConfig(): SubmenuConfig {
-    const dir = this.keyAssignments.directedness;
-    return {
-      [dir.directed]: new LabeledAction('Directed →', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'directed'})),
-      [dir.undirected]: new LabeledAction('Undirected —', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'undirected'})),
-      [dir.bidirectional]: new LabeledAction('Bidir ↔', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS, directedness: 'bidirectional'})),
-    } as SubmenuConfig;
-  }
-
-  private buildDefaultLineStyleSubmenuConfig(): SubmenuConfig {
-    const ls = this.keyAssignments.lineStyles;
-    return {
-      [ls.solid]: new LabeledAction('Solid ———', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'solid'})),
-      [ls.dashed]: new LabeledAction('Dashed - - -', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dashed'})),
-      [ls.dotted]: new LabeledAction('Dotted · · ·', () =>
-        this.keyMenuOut.emit({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dotted'})),
-    } as SubmenuConfig;
-  }
-
-
   private buildSelectDragSubmenuRootAction(): LabeledActionSubmenuConfig {
     return new LabeledActionSubmenuConfig(
       'Select+Drag...',
