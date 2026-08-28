@@ -110,6 +110,7 @@ export enum DACommandType {
   REDO = 'REDO',
   SET_TEXT_OVERFLOW_MODE = 'SET_TEXT_OVERFLOW_MODE',
   SET_NODE_SHAPE = 'SET_NODE_SHAPE',
+  TOGGLE_NODE_SHAPE = 'TOGGLE_NODE_SHAPE',
   PAN_LEFT = 'PAN_LEFT',
   PAN_RIGHT = 'PAN_RIGHT',
   PAN_UP = 'PAN_UP',
@@ -239,6 +240,7 @@ export type DACommand =
   | {kind: DACommandType.REDO}
   | {kind: DACommandType.SET_TEXT_OVERFLOW_MODE; mode: TextOverflowMode}
   | {kind: DACommandType.SET_NODE_SHAPE; shape: NodeShape}
+  | {kind: DACommandType.TOGGLE_NODE_SHAPE}
   | {kind: DACommandType.PAN_LEFT; distance?: number}
   | {kind: DACommandType.PAN_RIGHT; distance?: number}
   | {kind: DACommandType.PAN_UP; distance?: number}

@@ -63,6 +63,7 @@ export interface KeymenuKeyAssignments {
     readonly colorSubmenu: KeyString;
     readonly defaultsSubmenu: KeyString;
     readonly overflowSubmenu: KeyString;
+    readonly toggleShape: KeyString;
     readonly togglePin: KeyString;
   };
   readonly directedness: {
@@ -235,6 +236,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     colorSubmenu: 'h',
     defaultsSubmenu: 'y',
     overflowSubmenu: 'u',
+    toggleShape: 't',
     togglePin: 'p',
   },
   directedness: {
@@ -364,6 +366,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     colorSubmenu: 'h',
     defaultsSubmenu: 'y',
     overflowSubmenu: 'u',
+    toggleShape: 't',
     togglePin: 'p',
   },
   directedness: {

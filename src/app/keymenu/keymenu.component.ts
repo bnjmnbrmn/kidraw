@@ -821,6 +821,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
       [style.defaultsSubmenu]: new LabeledSubmenuConfig('Defaults...', this.buildDefaultsSubmenuConfig()),
       [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
+      [style.toggleShape]: new LabeledAction('Circle/Box', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
       [style.togglePin]: new LabeledAction('Toggle Pin', () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
     } as SubmenuConfig;
   }

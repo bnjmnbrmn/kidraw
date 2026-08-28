@@ -266,6 +266,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly RECENTER_DURATION = 0.3;
   /** Layer-space offset of a quick-added node from its anchor (one "slot"). */
   private static readonly QUICK_ADD_SLOT = 300;
+  /** Vertical throws are half a slot. A node is as wide as it is tall in its
+   *  bounding box, but reads much wider — the label runs horizontally — so a
+   *  300px vertical gap looks like a chasm where the same horizontal gap looks
+   *  right. Stacks are also the common shape in a todo tree, and they get tall
+   *  fast at a full slot. */
+  private static readonly QUICK_ADD_SLOT_V = 150;
+
+  /** The slot distance for a throw along `dy`-vs-`dx`. */
+  private static quickAddSlot(vertical: boolean): number {
+    return vertical
+      ? DrawingAreaComponent.QUICK_ADD_SLOT_V
+      : DrawingAreaComponent.QUICK_ADD_SLOT;
+  }
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
   public readonly STEERING_SPEED_STEP = 10;
@@ -377,6 +390,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS,
     DACommandType.SET_DEFAULT_LINE_STYLE,
     DACommandType.SET_NODE_SHAPE,
+    DACommandType.TOGGLE_NODE_SHAPE,
     DACommandType.QUICK_ADD,
     DACommandType.CYCLE_EDGE_DIRECTEDNESS,
     DACommandType.SEARCH_GRAPH,
@@ -422,6 +436,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.UNSELECT_ALL,
     DACommandType.SET_TEXT_OVERFLOW_MODE,
     DACommandType.SET_NODE_SHAPE,
+    DACommandType.TOGGLE_NODE_SHAPE,
     DACommandType.SET_DIAGRAM_TYPE,
     DACommandType.SET_TASK_STATUS,
     DACommandType.CUT_SELECTION,
@@ -454,6 +469,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     DACommandType.DRAG_SELECTED_DOWN,
     DACommandType.SET_TEXT_OVERFLOW_MODE,
     DACommandType.SET_NODE_SHAPE,
+    DACommandType.TOGGLE_NODE_SHAPE,
     DACommandType.SET_EDGE_DIRECTEDNESS,
     DACommandType.SET_LINE_STYLE,
     DACommandType.SET_ITEM_COLOR,
@@ -983,6 +999,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         break;
       case DACommandType.SET_NODE_SHAPE:
         this.setNodeShape(command.shape);
+        break;
+      case DACommandType.TOGGLE_NODE_SHAPE:
+        this.toggleNodeShape();
         break;
       case DACommandType.PAN_LEFT:
         this.panViewport(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
@@ -2605,12 +2624,35 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  private setNodeShape(shape: NodeShape) {
+  /** Selection if there is one, else the topmost node under the crosshairs.
+   *  Empty means "no node addressed" — the shape commands read that as a
+   *  change to the default for new nodes. */
+  private nodeShapeTargets(): DANode[] {
     const selected = this.drawingLayer.getSelectedDANodes();
-    const targets = selected.length > 0 ? selected : (() => {
-      const hovered = this.getDANodesContainingCrosshairs();
-      return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
-    })();
+    if (selected.length > 0) return selected;
+    const hovered = this.getDANodesContainingCrosshairs();
+    return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+  }
+
+  /** Flip between the two shapes that carry a label, leaving diamond and the
+   *  two markers alone. Temporary: the intent is that shape follows a tag or
+   *  class rather than being set per node, and this goes when that lands.
+   *  Anything that is not a circle becomes a circle, so a mixed selection
+   *  converges instead of splitting further. */
+  private toggleNodeShape() {
+    const targets = this.nodeShapeTargets();
+    if (targets.length === 0) {
+      this._defaultNodeShape = this._defaultNodeShape === 'circle' ? 'box' : 'circle';
+      this.daOut.emit({kind: 'status-message',
+        message: `Default node shape: ${this._defaultNodeShape}`});
+      return;
+    }
+    const toCircle = targets.some(n => n.nodeShape !== 'circle');
+    this.setNodeShape(toCircle ? 'circle' : 'box');
+  }
+
+  private setNodeShape(shape: NodeShape) {
+    const targets = this.nodeShapeTargets();
 
     if (targets.length > 0) {
       targets.forEach(node => this.drawingLayer.changeNodeShape(node, shape));
@@ -7267,10 +7309,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     if (!this.growPlacedRough) {
       this.growPlacedRough = true;
-      const slot = DrawingAreaComponent.QUICK_ADD_SLOT;
+      const slot = DrawingAreaComponent.quickAddSlot(dy !== 0);
       this.growPlacePos = {x: c.x + dx * slot, y: c.y + dy * slot};
     } else {
-      const step = this.growMods.has(k.coarse) ? DrawingAreaComponent.QUICK_ADD_SLOT
+      // A coarse step is "one more slot in this direction", so it follows the
+      // same axis split as the rough throw above.
+      const step = this.growMods.has(k.coarse)
+          ? DrawingAreaComponent.quickAddSlot(dy !== 0)
         : this.growMods.has(k.fine) ? 10 : 50;
       this.growPlacePos = {
         x: this.growPlacePos!.x + dx * step,
