@@ -642,7 +642,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      [root.styleSubmenu]: new LabeledSubmenuConfig('Item...', this.buildStyleSubmenuConfig()),
+      // Direct action, not a submenu: `w` used to open the style tree, which
+      // is gone in favour of tags/classes. Circle/Box is the one temporary
+      // stand-in left, so it takes the key outright rather than sitting alone
+      // behind a keystroke — and `w` frees cleanly once the tag mapping lands.
+      [root.toggleShape]: new LabeledAction('Circle/Box', () =>
+        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       // Vim's yank key: tap copies, hold opens the rest of the clipboard
@@ -787,29 +792,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  /** `w` is no longer a style tree. Direct styling — shape, line style,
-   *  colour, overflow, per-type defaults — is on its way out in favour of
-   *  tags/classes applied to nodes and edges, so those entries are gone
-   *  (2026-08-28). Edge directedness is not here either: `v` already offers
-   *  Cycle Direction, which is the binding the connect-then-turn flow
-   *  (da-345) was built around, and three explicit setters beside a
-   *  three-state cycle were redundant.
-   *
-   *  What is left is per-item behaviour: Toggle Pin, and Circle/Box as a
-   *  temporary stand-in for shape until the tag mapping exists.
-   *
-   *  The style commands themselves (SET_NODE_SHAPE, SET_LINE_STYLE,
-   *  SET_ITEM_COLOR, overflow) are untouched — only the menu route to them
-   *  is withdrawn, since serialization and the tag work still need them. */
-  private buildStyleSubmenuConfig(): SubmenuConfig {
-    const style = this.keyAssignments.style;
-    return {
-      [style.toggleShape]: new LabeledAction('Circle/Box', () =>
-        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
-      [style.togglePin]: new LabeledAction('Toggle Pin', () =>
-        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
-    } as SubmenuConfig;
-  }
   private buildSelectDragSubmenuRootAction(): LabeledActionSubmenuConfig {
     return new LabeledActionSubmenuConfig(
       'Select+Drag...',
@@ -836,6 +818,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [select.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [select.cycleDirection]: new LabeledAction('Cycle Direction', () =>
         this.keyMenuOut.emit({kind: DACommandType.CYCLE_EDGE_DIRECTEDNESS}), false),
+      // Pinning is "don't move this" — a waypoint or node that survives layout
+      // and re-routing — so it belongs beside the movement and selection verbs
+      // rather than in a style menu.
+      [select.togglePin]: new LabeledAction('Toggle Pin', () =>
+        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
       [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag...', this.buildDragSpeedSubmenu('coarse')),
       [ds.smaller]: new LabeledSubmenuConfig('Fine Drag...', this.buildDragSpeedSubmenu('fine')),
       [select.editItem]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),

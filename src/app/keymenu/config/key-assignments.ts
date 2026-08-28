@@ -19,7 +19,7 @@ export interface KeymenuKeyAssignments {
     /** Held: the unified insert/connect hub (tap: context edit-or-insert). */
     readonly editSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
-    readonly styleSubmenu: KeyString;
+    readonly toggleShape: KeyString;
     readonly layoutSubmenu: KeyString;
     readonly toggleVisibility: KeyString;
     /** Tap: smart traverse — auto-advance or the nav popup. */
@@ -49,10 +49,6 @@ export interface KeymenuKeyAssignments {
   readonly edgeKinds: {
     readonly selfLoop: KeyString;
   };
-  readonly style: {
-    readonly toggleShape: KeyString;
-    readonly togglePin: KeyString;
-  };
   readonly shared: {
     readonly delete: KeyString;
     readonly select: KeyString;
@@ -71,6 +67,7 @@ export interface KeymenuKeyAssignments {
     /** Cycle directedness of the selected edge(s) inside the held select
      *  submenu (directed → undirected → bidirectional). */
     readonly cycleDirection: KeyString;
+    readonly togglePin: KeyString;
     /** Zoom keys inside the held select submenu (kept off the
      *  cycleDirection key). */
     readonly zoomIn: KeyString;
@@ -160,7 +157,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   root: {
     editSubmenu: 'e',
     selectDragSubmenu: 'v',
-    styleSubmenu: 'w',
+    toggleShape: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
@@ -182,10 +179,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   edgeKinds: {
     selfLoop: 'l',
   },
-  style: {
-    toggleShape: 't',
-    togglePin: 'p',
-  },
   shared: {
     delete: 'x',
     select: 'c',
@@ -199,6 +192,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   select: {
     editItem: ';',
     cycleDirection: 'o',
+    togglePin: 'p',
     zoomIn: 'y',
     zoomOut: 'u',
   },
@@ -259,7 +253,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   root: {
     editSubmenu: 'a',
     selectDragSubmenu: 'v',
-    styleSubmenu: 'w',
+    toggleShape: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
@@ -280,10 +274,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   edgeKinds: {
     selfLoop: 'l',
   },
-  style: {
-    toggleShape: 't',
-    togglePin: 'p',
-  },
   shared: {
     delete: 'x',
     select: 'c',
@@ -297,6 +287,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   select: {
     editItem: ';',
     cycleDirection: 'o',
+    togglePin: 'p',
     zoomIn: 'i',
     zoomOut: 'u',
   },
