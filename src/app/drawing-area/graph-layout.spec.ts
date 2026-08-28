@@ -42,10 +42,10 @@ describe('graph-layout treeLayout', () => {
     expect(crossLinks).toEqual([dependency, parallel, reverse]);
   });
 
-  it('centers a parent horizontally over its children in tree-down', () => {
+  it('centers a parent horizontally over its children in tree-down-clear', () => {
     const nodes = makeNodes('root', 'a', 'b', 'c');
     const edges = makeEdges(nodes, [['root', 'a'], ['root', 'b'], ['root', 'c']]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     const childXs = ['a', 'b', 'c'].map(n => x(nodes, n));
     const mid = (Math.min(...childXs) + Math.max(...childXs)) / 2;
@@ -79,7 +79,7 @@ describe('graph-layout treeLayout', () => {
       ['A', 'a1'], ['A', 'a2'], ['A', 'a3'],
       ['B', 'b1'],
     ]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     const aSide = ['A', 'a1', 'a2', 'a3'].map(n => x(nodes, n));
     const bSide = ['B', 'b1'].map(n => x(nodes, n));
@@ -94,7 +94,7 @@ describe('graph-layout treeLayout', () => {
   it('separates multiple roots without overlap', () => {
     const nodes = makeNodes('r1', 'r2', 'c1', 'c2');
     const edges = makeEdges(nodes, [['r1', 'c1'], ['r2', 'c2']]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     const t1 = ['r1', 'c1'].map(n => x(nodes, n));
     const t2 = ['r2', 'c2'].map(n => x(nodes, n));
@@ -107,7 +107,7 @@ describe('graph-layout treeLayout', () => {
     nodes.get('a')!.konvaGroup.x(1234);
     nodes.get('a')!.konvaGroup.y(-777);
     const edges = makeEdges(nodes, [['root', 'a'], ['root', 'b']]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     expect(x(nodes, 'a')).toBe(1234);
     expect(y(nodes, 'a')).toBe(-777);
@@ -119,7 +119,7 @@ describe('graph-layout treeLayout', () => {
     const edges = makeEdges(nodes, [
       ['root', 'a'], ['a', 'b'], ['b', 'c'], ['c', 'a'],
     ]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     // Cycle members hang off the tree at increasing depth, not stacked on root
     expect(y(nodes, 'a')).toBeGreaterThan(y(nodes, 'root'));
@@ -138,7 +138,7 @@ describe('graph-layout treeLayout', () => {
       ['R', 'A'], ['R', 'B'], ['R', 'C'],
       ['S', 'A'],
     ]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     const distToS = (n: string) => Math.abs(x(nodes, n) - x(nodes, 'S'));
     expect(distToS('A')).toBeLessThan(distToS('B'));
@@ -152,7 +152,7 @@ describe('graph-layout treeLayout', () => {
       ['r1', 'c1'], ['r2', 'c2'], ['r3', 'c3'],
       ['c1', 'c3'],
     ]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     // r1's and r3's trees share a link, so r2's tree must not sit between them
     const t1 = x(nodes, 'r1'), t2 = x(nodes, 'r2'), t3 = x(nodes, 'r3');
@@ -164,7 +164,7 @@ describe('graph-layout treeLayout', () => {
   it('lays out a rootless pure cycle without losing nodes', () => {
     const nodes = makeNodes('a', 'b', 'c');
     const edges = makeEdges(nodes, [['a', 'b'], ['b', 'c'], ['c', 'a']]);
-    applyLayout('tree-down', [...nodes.values()], edges);
+    applyLayout('tree-down-clear', [...nodes.values()], edges);
 
     const positions = [...nodes.values()].map(n => `${n.konvaGroup.x()},${n.konvaGroup.y()}`);
     expect(new Set(positions).size).toBe(3);

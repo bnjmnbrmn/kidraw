@@ -787,8 +787,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
       [layout.forceClear]:    new LabeledAction('Force+',   emit('force-clear')),
-      [layout.treeDown]:      new LabeledAction('Tree ↓',   emit('tree-down')),
-      [layout.treeDownClear]: new LabeledAction('Tree ↓+',  emit('tree-down-clear')),
+      [layout.treeDownClear]: new LabeledAction('Tree ↓',   emit('tree-down-clear')),
       [layout.treeRight]:     new LabeledAction('Tree →',   emit('tree-right')),
       [layout.treeRightClear]: new LabeledAction('Tree →+', emit('tree-right-clear')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),

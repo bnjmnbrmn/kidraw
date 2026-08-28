@@ -50,13 +50,16 @@ export function applyLayout(
     // The "-clear" variants are the same algorithms plus straight-edge
     // guarantees (notes/idea-layout-node-edge-avoidance.md): force adds a
     // node↔edge repulsion term, and all of them finish with the
-    // edge-node overlap pass below. Kept separate from the originals for
-    // comparison.
+    // edge-node overlap pass below. They were kept alongside the originals
+    // for comparison; the down-tree comparison is settled (2026-08-28) and
+    // the plain 'tree-down' is gone. Force and tree-right still have both.
+    //
+    // Why the clear variant won: the non-clear path routes *every* touched
+    // edge, so a tree edge could come back from the router with waypoints
+    // describing a detour it never needed — in one case a waypoint below
+    // its own target node, which made the edge overshoot and hook back up.
     case 'force-clear':
       positions = forceDirectedLayout(nodes, edges, movable, spacing, true);
-      break;
-    case 'tree-down':
-      positions = treeLayout(nodes, edges, movable, spacing, 'down').positions;
       break;
     case 'tree-down-clear': {
       const t = treeLayout(nodes, edges, movable, spacing, 'down', true);

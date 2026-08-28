@@ -8,7 +8,7 @@ export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' |
 // guarantees (no chord through a non-endpoint node); kept alongside the
 // originals for comparison. 'grid' is currently unbound in the keymenu but
 // still a valid layout.
-export type LayoutType = 'force-directed' | 'force-clear' | 'tree-down' | 'tree-down-clear'
+export type LayoutType = 'force-directed' | 'force-clear' | 'tree-down-clear'
   | 'tree-right' | 'tree-right-clear' | 'grid' | 'circular' | 'radial';
 
 /** Edge-routing algorithms selectable from the Layout submenu. */
