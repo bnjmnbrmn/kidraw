@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, GridTier, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, VimChangeMotion} from '../drawing-area/command.model';
+import {DACommand, DACommandType, GridTier, ItemColor, LineStyle, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -642,12 +642,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
       [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      // Direct action, not a submenu: `w` used to open the style tree, which
-      // is gone in favour of tags/classes. Circle/Box is the one temporary
-      // stand-in left, so it takes the key outright rather than sitting alone
-      // behind a keystroke — and `w` frees cleanly once the tag mapping lands.
-      [root.toggleShape]: new LabeledAction('Circle/Box', () =>
-        this.keyMenuOut.emit({kind: DACommandType.TOGGLE_NODE_SHAPE})),
+      [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
       [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       // Vim's yank key: tap copies, hold opens the rest of the clipboard
@@ -802,6 +797,77 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.keyMenuOut.emit({kind: DACommandType.ENTER_DRAG_MODE});
       },
     );
+  }
+
+  /** Style is a strict three-level shape, by design (2026-08-28): `w` on the
+   *  left hand, then a CATEGORY on the left hand, then the VALUE on the
+   *  right. Two hands alternate, so nothing needs one hand to travel twice.
+   *
+   *  Categories are a 2x2 block under the middle and ring fingers —
+   *  e Shape / r Colour over d Line Style / f Overflow. Values run along the
+   *  right-hand home row (h j k l ;) in rough frequency order, spilling up to
+   *  u/i/o only where a category has more values than the row holds.
+   *
+   *  This replaces direct per-item styling only in the sense of arrangement:
+   *  tags/classes are still the plan for plugin-driven diagrams, but generic
+   *  diagrams want the shapes, colours and line styles reachable directly. */
+  private buildStyleSubmenuConfig(): SubmenuConfig {
+    const style = this.keyAssignments.style;
+    return {
+      [style.shapeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
+      [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
+      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style...', this.buildLineStyleSubmenuConfig()),
+      [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
+    } as SubmenuConfig;
+  }
+
+  private buildNodeTypeShapeSubmenuConfig(): SubmenuConfig {
+    const types = this.keyAssignments.nodeTypes;
+    const emit = (shape: NodeShape) => () => this.keyMenuOut.emit({kind: DACommandType.SET_NODE_SHAPE, shape});
+    return {
+      [types.box]:       new LabeledAction('Box',       emit('box')),
+      [types.circle]:    new LabeledAction('Circle',    emit('circle')),
+      [types.diamond]:   new LabeledAction('Diamond',   emit('diamond')),
+      [types.junction]:  new LabeledAction('Junction',  emit('junction')),
+      [types.invisible]: new LabeledAction('Invisible', emit('invisible')),
+    } as SubmenuConfig;
+  }
+
+  private buildColorSubmenuConfig(): SubmenuConfig {
+    const c = this.keyAssignments.colors;
+    const emit = (color: ItemColor) => () => this.keyMenuOut.emit({kind: DACommandType.SET_ITEM_COLOR, color});
+    return {
+      [c.default]: new LabeledAction('Default', emit('default')),
+      [c.red]:     new LabeledAction('Red',     emit('red')),
+      [c.blue]:    new LabeledAction('Blue',    emit('blue')),
+      [c.green]:   new LabeledAction('Green',   emit('green')),
+      [c.orange]:  new LabeledAction('Orange',  emit('orange')),
+      [c.purple]:  new LabeledAction('Purple',  emit('purple')),
+    } as SubmenuConfig;
+  }
+
+  private buildLineStyleSubmenuConfig(): SubmenuConfig {
+    const ls = this.keyAssignments.lineStyles;
+    const emit = (lineStyle: LineStyle) => () => this.keyMenuOut.emit({kind: DACommandType.SET_LINE_STYLE, lineStyle});
+    return {
+      [ls.solid]:  new LabeledAction('Solid ———',    emit('solid')),
+      [ls.dashed]: new LabeledAction('Dashed - - -', emit('dashed')),
+      [ls.dotted]: new LabeledAction('Dotted · · ·', emit('dotted')),
+    } as SubmenuConfig;
+  }
+
+  private buildOverflowModeSubmenuConfig(): SubmenuConfig {
+    const overflow = this.keyAssignments.overflow;
+    const emit = (mode: TextOverflowMode) => () => this.keyMenuOut.emit({kind: DACommandType.SET_TEXT_OVERFLOW_MODE, mode});
+    return {
+      [overflow.fit]:        new LabeledAction('Fit Text',    emit('fit')),
+      [overflow.widenBoth]:  new LabeledAction('Auto Size',   emit('widen-both')),
+      [overflow.widenH]:     new LabeledAction('Widen →',     emit('widen-h')),
+      [overflow.widenV]:     new LabeledAction('Widen ↓',     emit('widen-v')),
+      [overflow.shrinkFont]: new LabeledAction('Shrink Font', emit('shrink-font')),
+      [overflow.ellipsis]:   new LabeledAction('Ellipsis',    emit('ellipsis')),
+      [overflow.clip]:       new LabeledAction('No Overflow', emit('clip')),
+    } as SubmenuConfig;
   }
 
   private buildSelectSubmenuConfig(): SubmenuConfig {

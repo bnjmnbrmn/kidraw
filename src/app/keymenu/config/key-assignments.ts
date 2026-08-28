@@ -19,7 +19,7 @@ export interface KeymenuKeyAssignments {
     /** Held: the unified insert/connect hub (tap: context edit-or-insert). */
     readonly editSubmenu: KeyString;
     readonly selectDragSubmenu: KeyString;
-    readonly toggleShape: KeyString;
+    readonly styleSubmenu: KeyString;
     readonly layoutSubmenu: KeyString;
     readonly toggleVisibility: KeyString;
     /** Tap: smart traverse — auto-advance or the nav popup. */
@@ -61,6 +61,46 @@ export interface KeymenuKeyAssignments {
      *  against `event.key` in the component rather than bound in the
      *  keymenu — hence `string` and not `KeyString` (da-265). */
     readonly prev: string;
+  };
+  /** Style is a strict three-level shape: `w` (left hand) → a category on
+   *  the left hand → the value on the RIGHT hand. Categories sit in a 2x2
+   *  block under the middle and ring fingers (e/r over d/f); values run
+   *  along the right-hand home row, spilling up to u/i/o when a category has
+   *  more than the row holds. */
+  readonly style: {
+    readonly shapeSubmenu: KeyString;
+    readonly colorSubmenu: KeyString;
+    readonly lineStyleSubmenu: KeyString;
+    readonly overflowSubmenu: KeyString;
+  };
+  readonly nodeTypes: {
+    readonly box: KeyString;
+    readonly circle: KeyString;
+    readonly diamond: KeyString;
+    readonly junction: KeyString;
+    readonly invisible: KeyString;
+  };
+  readonly colors: {
+    readonly default: KeyString;
+    readonly red: KeyString;
+    readonly blue: KeyString;
+    readonly green: KeyString;
+    readonly orange: KeyString;
+    readonly purple: KeyString;
+  };
+  readonly lineStyles: {
+    readonly solid: KeyString;
+    readonly dashed: KeyString;
+    readonly dotted: KeyString;
+  };
+  readonly overflow: {
+    readonly fit: KeyString;
+    readonly widenBoth: KeyString;
+    readonly widenH: KeyString;
+    readonly widenV: KeyString;
+    readonly shrinkFont: KeyString;
+    readonly ellipsis: KeyString;
+    readonly clip: KeyString;
   };
   readonly select: {
     readonly editItem: KeyString;
@@ -157,7 +197,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   root: {
     editSubmenu: 'e',
     selectDragSubmenu: 'v',
-    toggleShape: 'w',
+    styleSubmenu: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
@@ -189,6 +229,13 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     next: 'n',
     prev: 'N',
   },
+  // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
+  // the value. See the KeymenuKeyAssignments.style comment.
+  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'd', overflowSubmenu: 'f'},
+  nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
+  colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
+  lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
+  overflow: {fit: 'h', widenBoth: 'j', widenH: 'k', widenV: 'l', shrinkFont: 'u', ellipsis: 'i', clip: 'o'},
   select: {
     editItem: ';',
     cycleDirection: 'o',
@@ -253,7 +300,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   root: {
     editSubmenu: 'a',
     selectDragSubmenu: 'v',
-    toggleShape: 'w',
+    styleSubmenu: 'w',
     layoutSubmenu: 'b',
     toggleVisibility: 'z',
     go: 'f',
@@ -284,6 +331,13 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     next: 'n',
     prev: 'N',
   },
+  // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
+  // the value. See the KeymenuKeyAssignments.style comment.
+  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'd', overflowSubmenu: 'f'},
+  nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
+  colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
+  lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
+  overflow: {fit: 'h', widenBoth: 'j', widenH: 'k', widenV: 'l', shrinkFont: 'u', ellipsis: 'i', clip: 'o'},
   select: {
     editItem: ';',
     cycleDirection: 'o',
