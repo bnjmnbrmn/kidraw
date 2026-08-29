@@ -2682,6 +2682,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.updateEdgePoints(edge);
       }
     }
+    // The hover trace and the landing ghost are snapshots of where a node was
+    // when the crosshairs last moved. Anything that resizes or shifts a node
+    // — a resize and its reflow, a layout, a paste, a drag — leaves them
+    // describing the old geometry, which is how a dashed outline ends up
+    // sitting next to its node instead of around it (2026-08-29). This is the
+    // common exit for every one of those paths.
+    if (this.crosshairsLayer?.crosshairs) this.refreshCrosshairHoverHighlight();
   }
 
   private connectSelectedNodes() {
@@ -3095,16 +3102,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           // ghost instead. Ringing the real node as well put two dashed
           // outlines of the same node on screen at once (da-434).
           ghostReasons = this.navigationGhostReasons(node);
-          highlight = ghostReasons.length > 0 ? null : new Konva.Rect({
-            ...common,
-            x: node.group.x() - pad,
-            y: node.group.y() - pad,
-            width: node.NODE_WIDTH + pad * 2,
-            height: node.NODE_HEIGHT + pad * 2,
-            cornerRadius: node.nodeShape === 'circle'
-              ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2 + pad
-              : 7 / scale,
-          });
+          highlight = ghostReasons.length > 0 ? null
+            // A circle node is an ellipse once its label stretches it, and a
+            // rounded rectangle around one reads as a different shape than
+            // the thing it is tracing (da-442).
+            : node.nodeShape === 'circle' ? new Konva.Ellipse({
+              ...common,
+              x: node.group.x() + node.NODE_WIDTH / 2,
+              y: node.group.y() + node.NODE_HEIGHT / 2,
+              radiusX: node.NODE_WIDTH / 2 + pad,
+              radiusY: node.NODE_HEIGHT / 2 + pad,
+            })
+            : new Konva.Rect({
+              ...common,
+              x: node.group.x() - pad,
+              y: node.group.y() - pad,
+              width: node.NODE_WIDTH + pad * 2,
+              height: node.NODE_HEIGHT + pad * 2,
+              cornerRadius: 7 / scale,
+            });
         } else {
           const edges = this.getDAEdgesContainingCrosshairs();
           if (edges.length > 0) {
@@ -3224,14 +3240,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     group.setAttr('reasons', reasons);
     // Ground the clone on the canvas colour so anything behind the ghost is
     // occluded even where the node's own fill is translucent.
-    group.add(new Konva.Rect({
-      width: node.NODE_WIDTH,
-      height: node.NODE_HEIGHT,
+    group.add(this.ghostOutlineShape(node, {
       fill: palette.drawingStageBackground,
-      cornerRadius: node.nodeShape === 'circle'
-        ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2
-        : 7,
-      listening: false,
     }));
     const clone = node.konvaGroup.clone({
       x: 0,
@@ -3241,21 +3251,39 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       listening: false,
     });
     group.add(clone);
-    group.add(new Konva.Rect({
-      width: node.NODE_WIDTH,
-      height: node.NODE_HEIGHT,
+    group.add(this.ghostOutlineShape(node, {
       stroke: palette.crosshairsStroke,
       strokeWidth: 2,
       dash: [7, 5],
-      cornerRadius: node.nodeShape === 'circle'
-        ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2
-        : 7,
-      listening: false,
     }));
     this.crosshairsLayer.add(group);
     group.moveToTop();
     this.navigationLandingGhost = group;
     this.crosshairsLayer.batchDraw();
+  }
+
+  /** The ghost's backing and its dashed outline, in the node's own shape:
+   *  an ellipse for a circle node — which a long label stretches into a real
+   *  ellipse — and a rounded box otherwise (da-442). Local to the ghost
+   *  group, whose origin is the node's top-left. */
+  private ghostOutlineShape(node: DANode, style: Record<string, unknown>): Konva.Shape {
+    if (node.nodeShape === 'circle') {
+      return new Konva.Ellipse({
+        x: node.NODE_WIDTH / 2,
+        y: node.NODE_HEIGHT / 2,
+        radiusX: node.NODE_WIDTH / 2,
+        radiusY: node.NODE_HEIGHT / 2,
+        listening: false,
+        ...style,
+      });
+    }
+    return new Konva.Rect({
+      width: node.NODE_WIDTH,
+      height: node.NODE_HEIGHT,
+      cornerRadius: 7,
+      listening: false,
+      ...style,
+    });
   }
 
   private clearNavigationLandingGhost(draw = true): void {

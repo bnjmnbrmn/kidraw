@@ -574,6 +574,46 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.navigationLandingGhost).toBeNull();
     });
 
+    it('traces a stretched circle node with an ellipse, not a rounded box', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(200, 100, 'wide circle', undefined, undefined, 'circle');
+      node.resizeBy(0);
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: {visible: () => true}},
+        add: () => undefined,
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.crosshairHoverHighlight = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getLabelUnderCrosshairs = () => null;
+      component.getWaypointUnderCrosshairs = () => null;
+      component.getDANodesContainingCrosshairs = () => [node];
+
+      component.refreshCrosshairHoverHighlight();
+
+      expect(component.crosshairHoverHighlight.getClassName()).toBe('Ellipse');
+    });
+
+    it('re-traces the node after geometry changes move it', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      component.crosshairsLayer = {crosshairs: {konvaGroup: {visible: () => true}}};
+      const refresh = spyOn<any>(component, 'refreshCrosshairHoverHighlight');
+
+      component.updateEdgesForResizedNodes([]);
+
+      // Otherwise a resize, reflow, layout or paste leaves the dashed trace
+      // describing where the node used to be.
+      expect(refresh).toHaveBeenCalled();
+    });
+
     it('grounds the ghost so the real node cannot show through it', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();
