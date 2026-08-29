@@ -89,11 +89,19 @@ export class KeyMenu<T> {
   switchMode(modeName: string) {
     const modeForName = this.modesForNames[modeName];
     if (modeForName) {
-      this.currentMode.konvaGroup.hide();
-      this.currentMode.beforeSwitchOut()
+      const previous = this.currentMode;
+      // A mode that stacks draws over the card you were looking at, so that
+      // card stays up: holding Add should put a card on top of the root, not
+      // replace it (da-535). Every other switch hides what it leaves.
+      const stacks = (modeForName as {stacksOverPrevious?: boolean}).stacksOverPrevious === true
+        && !(previous as {stacksOverPrevious?: boolean}).stacksOverPrevious;
+      if (!stacks) previous.konvaGroup.hide();
+      previous.beforeSwitchOut()
+      if (stacks) previous.konvaGroup.show();
       this.currentMode = modeForName;
       this.currentMode.beforeSwitchIn()
       this.currentMode.konvaGroup.show();
+      this.currentMode.konvaGroup.moveToTop();
       this.onModeSwitch?.(modeName);
     }
   }

@@ -19,7 +19,14 @@ export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<
                 public hideFingerBlocked: boolean = false,
                 public keyboardLayout?: KeyboardLayout,
                 public capsLockSwap: boolean = false,
-                public visualConfig: VisualConfig = DEFAULT_VISUAL_CONFIG) {}
+                public visualConfig: VisualConfig = DEFAULT_VISUAL_CONFIG,
+                /** Card depth for this mode's own card. A mode that opens
+                 *  *over* the menu you were in — the drawing area's grow and
+                 *  popup surfaces — draws at depth 1 and leaves the card
+                 *  underneath showing, so it reads as a card placed on top
+                 *  rather than the root card being swapped out (da-535). */
+                public cardDepth: number = 0,
+                public stacksOverPrevious: boolean = false) {}
 
     createMode(name: string, keyMenu: KeyMenu<T>): USQwertyMode<T> {
         return new USQwertyMode<T>(name, keyMenu, this);
@@ -29,6 +36,10 @@ export class USQwertyModeConfig<T> implements KeyMenuModeConfig<T, USQwertyMode<
 
 export class USQwertyMode<T> implements KeyMenuMode<T> {
 
+    /** Depth this mode's own card is drawn at, and whether the card it
+     *  replaced should stay visible beneath it. */
+    public cardDepth = 0;
+    public stacksOverPrevious = false;
     public readonly stack: KMSubmenu<T>[] = [];
     public konvaGroup: Group;
     /** Notified whenever the submenu stack changes shape (push, pop,
@@ -55,7 +66,9 @@ export class USQwertyMode<T> implements KeyMenuMode<T> {
         this.keyboardLayout = config.keyboardLayout;
         this.capsLockSwap = config.capsLockSwap;
         this.visualConfig = config.visualConfig;
-        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, 0, this.palette, [], this.hideFingerBlocked, this.keyboardLayout, this.capsLockSwap, this.visualConfig));
+        this.cardDepth = config.cardDepth;
+        this.stacksOverPrevious = config.stacksOverPrevious;
+        this.stack.push(new KMSubmenu(this, config.rootSubmenuConfig, config.cardDepth, this.palette, [], this.hideFingerBlocked, this.keyboardLayout, this.capsLockSwap, this.visualConfig));
         this.stackTop.konvaGroup.show();
         const cardDims = getCardDimensions();
         this.konvaGroup.x((this.keyMenu.containingHTMLElement.offsetWidth - cardDims.width) / 2 + CARD_PADDING)
