@@ -574,6 +574,25 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.navigationLandingGhost).toBeNull();
     });
 
+    it('keeps a circle label inside the ellipse, not just inside its box', () => {
+      const circle = new DANode(0, 0, 'Layout menu: this needs to be cleaned up',
+        undefined, undefined, 'circle');
+      circle.textOverflowMode = 'fit';
+
+      const a = circle.NODE_WIDTH / 2;
+      const b = circle.NODE_HEIGHT / 2;
+      const label = circle.label;
+      // Worst corner of the text block, in ellipse coordinates.
+      const cx = Math.abs(label.x() + label.width() / 2 - a) + label.width() / 2;
+      const cy = Math.abs(label.y() + label.height() / 2 - b) + label.height() / 2;
+
+      expect((cx / a) ** 2 + (cy / b) ** 2).toBeLessThanOrEqual(1.001);
+      // A box of the same text lays out edge to edge, as before (da-458).
+      const box = new DANode(0, 0, 'Layout menu: this needs to be cleaned up');
+      box.textOverflowMode = 'fit';
+      expect(box.label.width()).toBe(box.NODE_WIDTH);
+    });
+
     it('traces a stretched circle node with an ellipse, not a rounded box', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();

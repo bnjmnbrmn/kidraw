@@ -569,9 +569,50 @@ export class DANode {
     this.applyTextOverflow();
   }
 
+  /** The text area inside a circle is the rectangle inscribed in its ellipse,
+   *  which is 1/sqrt(2) of the bounding box on each axis. Laying text out to
+   *  the full box is why words ran outside the ellipse (da-458). */
+  private static readonly CIRCLE_TEXT_INSET = Math.SQRT1_2;
+
+  private get textAreaInset(): number {
+    return this.nodeShape === 'circle' ? DANode.CIRCLE_TEXT_INSET : 1;
+  }
+
   /** Apply overflow logic. Returns true if node dimensions changed (caller must update edges). */
   applyTextOverflow(): boolean {
     if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
+
+    // Every mode below sizes a rectangle around the text. For a circle that
+    // rectangle is the inscribed one, so the sizing runs against a base
+    // shrunk to the text area and its answer is grown back to the ellipse
+    // that contains it. A circle therefore never exceeds the base width it
+    // is given; it gets taller instead, the same way a box does.
+    const inset = this.textAreaInset;
+    if (inset !== 1) {
+      const baseW = this._baseWidth;
+      const baseH = this._baseHeight;
+      this._baseWidth = baseW * inset;
+      this._baseHeight = baseH * inset;
+      let changed: boolean;
+      try {
+        changed = this.applyTextOverflowForRect();
+      } finally {
+        this._baseWidth = baseW;
+        this._baseHeight = baseH;
+      }
+      const prevW = this._nodeWidth;
+      const prevH = this._nodeHeight;
+      this._nodeWidth = this._nodeWidth / inset;
+      this._nodeHeight = this._nodeHeight / inset;
+      this.applySize(this._nodeWidth, this._nodeHeight);
+      return changed || prevW !== this._nodeWidth || prevH !== this._nodeHeight;
+    }
+    return this.applyTextOverflowForRect();
+  }
+
+  /** The rectangular sizing modes. `_baseWidth`/`_baseHeight` are the text
+   *  area, which is the whole box for every shape but the circle. */
+  private applyTextOverflowForRect(): boolean {
 
     const text = this._label.text();
     const padding = 8;
@@ -828,8 +869,13 @@ export class DANode {
         (this._shape as Konva.Circle).y(h / 2);
         break;
     }
-    this._label.width(w);
-    this._label.height(h);
+    const inset = this.textAreaInset;
+    const lw = w * inset;
+    const lh = h * inset;
+    this._label.width(lw);
+    this._label.height(lh);
+    this._label.x((w - lw) / 2);
+    this._label.y((h - lh) / 2);
     this.updatePinIndicatorPosition();
     this.updateResizeHandlePosition();
   }
