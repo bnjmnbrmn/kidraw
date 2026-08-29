@@ -42,8 +42,11 @@
 .km-typing-hint {
   position: absolute;
   left: 50%;
-  bottom: 12px;
-  transform: translateX(-50%);
+  /* Where the card would be, not above the mode chip: the two used to sit in
+   * the same strip and overlapped once the menu moved down (da-533). This is
+   * also the honest place for it — it stands in for the keyboard. */
+  top: 50%;
+  transform: translate(-50%, -50%);
   white-space: nowrap;
   padding: 10px 18px;
   border-radius: 6px;

@@ -574,28 +574,6 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.navigationLandingGhost).toBeNull();
     });
 
-    it('holds the crosshairs on the grow anchor and remembers the nav cursor', () => {
-      const component = Object.create(DrawingAreaComponent.prototype) as any;
-      const drawingLayer = new DrawingLayer();
-      const anchorNode = new DANode(400, 300, 'anchor');
-      drawingLayer.addRawNode(anchorNode);
-      drawingLayer.x(50);
-      drawingLayer.y(20);
-      component.drawingLayer = drawingLayer;
-      component.growAnchor = anchorNode;
-      component.stage = {width: () => 800, height: () => 600};
-      const crosshairs = {x: 0, y: 0};
-      component.crosshairsLayer = {crosshairs, batchDraw: () => undefined};
-
-      component.parkGrowCrosshairsOnAnchor({x: 600, y: 500});
-
-      // Anchor centre in stage space: layer offset + centre.
-      expect(crosshairs.x).toBe(50 + 400 + anchorNode.NODE_WIDTH / 2);
-      expect(crosshairs.y).toBe(20 + 300 + anchorNode.NODE_HEIGHT / 2);
-      // The engine's cursor is kept in layer space, so a pan cannot stale it.
-      expect(component.growNavCursor).toEqual({x: 550, y: 480});
-    });
-
     it('grows an edited node about its centre and off its neighbours', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();

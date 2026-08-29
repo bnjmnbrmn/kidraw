@@ -32,28 +32,6 @@ function positionKey(point: {x: number; y: number}): string {
 }
 
 /**
- * Use the current major drawing grid without allowing add targets to become
- * denser than the established node-placement slot. The result is an integer
- * number of major cells, so zoom-level grid changes cannot introduce a
- * nearly-aligned second lattice.
- *
- * Except when the grid is coarser than the slot. The major grid is a power of
- * ten chosen to keep ~15 squares across the viewport, so it climbs a decade
- * every time you zoom out — and snapping up to it made a quick-add land a
- * whole 1000-unit cell away just because the view was wide. How far a new
- * node lands from its anchor is a property of the graph, not of how you
- * happen to be looking at it, so the slot wins there and the targets simply
- * are not grid-aligned (2026-08-29).
- */
-export function growGhostGridStep(majorGridSpacing: number, minimumSpacing = 300): number {
-  const major = Number.isFinite(majorGridSpacing) && majorGridSpacing > 0
-    ? majorGridSpacing
-    : minimumSpacing;
-  if (major > minimumSpacing) return minimumSpacing;
-  return Math.max(major, Math.ceil(minimumSpacing / major) * major);
-}
-
-/**
  * Candidate positions for held-Add navigation.
  *
  * Anchor-to-visible-node midpoints come first and therefore win when a
@@ -64,9 +42,11 @@ export function growGhostGridStep(majorGridSpacing: number, minimumSpacing = 300
 export function buildGrowGhostTargets(
   nodes: readonly GrowGhostNodeCenter[],
   anchor: GrowGhostNodeCenter,
-  majorGridSpacing: number,
   bounds: GrowGhostBounds,
-  minimumGridSpacing = 300,
+  // One number keeps the lattice square; a pair gives the row and the column
+  // their own step, which is what lets a node placed *above* sit closer than
+  // one placed beside — the vertical slot is smaller (da-559).
+  minimumGridSpacing: number | {x: number; y: number} = 300,
   // The caller may limit midpoint generation to visible nodes while still
   // passing every node above so offscreen centers remain occupied.
   midpointNodes: readonly GrowGhostNodeCenter[] = nodes,
@@ -106,17 +86,25 @@ export function buildGrowGhostTargets(
     });
   }
 
-  const step = growGhostGridStep(majorGridSpacing, minimumGridSpacing);
+  // The step is the placement slot itself. It used to be rounded up to a
+  // whole cell of the major drawing grid, which never aligned anything — the
+  // lanes hang off the anchor, not off the grid's origin — while inflating
+  // every distance by up to a full cell (da-559).
+  const minSpacing = typeof minimumGridSpacing === 'number'
+    ? {x: minimumGridSpacing, y: minimumGridSpacing}
+    : minimumGridSpacing;
+  const stepX = Math.max(1, minSpacing.x);
+  const stepY = Math.max(1, minSpacing.y);
   // One off-screen step lets the ordinary Move-by-Node edge-pan behavior
   // reveal a new insertion target instead of stopping at the viewport edge —
   // bounded by GRID_REACH, because every stop is also a ring in the
   // quadrant overlay, and a lane that runs to the edge of the viewport draws
   // a dozen of them around the node you are trying to look at (da-499).
   // Somewhere further out is still reachable: place, then move.
-  const minIx = Math.max(-GRID_REACH, Math.floor((bounds.minX - anchor.x) / step) - 1);
-  const maxIx = Math.min(GRID_REACH, Math.ceil((bounds.maxX - anchor.x) / step) + 1);
-  const minIy = Math.max(-GRID_REACH, Math.floor((bounds.minY - anchor.y) / step) - 1);
-  const maxIy = Math.min(GRID_REACH, Math.ceil((bounds.maxY - anchor.y) / step) + 1);
+  const minIx = Math.max(-GRID_REACH, Math.floor((bounds.minX - anchor.x) / stepX) - 1);
+  const maxIx = Math.min(GRID_REACH, Math.ceil((bounds.maxX - anchor.x) / stepX) + 1);
+  const minIy = Math.max(-GRID_REACH, Math.floor((bounds.minY - anchor.y) / stepY) - 1);
+  const maxIy = Math.min(GRID_REACH, Math.ceil((bounds.maxY - anchor.y) / stepY) + 1);
   // Add's directional navigation needs open cardinal lanes. Filling every
   // 2-D intersection makes a repeated right press spiral through diagonal
   // rings and can pan away before reaching a real node. The source's row and
@@ -125,7 +113,7 @@ export function buildGrowGhostTargets(
     if (ix === 0) continue;
     add({
       id: `grow-ghost:grid:${ix}:0`,
-      x: anchor.x + ix * step,
+      x: anchor.x + ix * stepX,
       y: anchor.y,
       source: 'grid',
     });
@@ -135,7 +123,7 @@ export function buildGrowGhostTargets(
     add({
       id: `grow-ghost:grid:0:${iy}`,
       x: anchor.x,
-      y: anchor.y + iy * step,
+      y: anchor.y + iy * stepY,
       source: 'grid',
     });
   }

@@ -273,8 +273,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  Bounds keep tiny boxes from touching and huge ones from throwing the
    *  new node off screen. */
   private static readonly QUICK_ADD_GAP_H_RATIO = 0.5;
-  private static readonly QUICK_ADD_GAP_V_RATIO = 0.35;
+  /** Vertical gaps are much tighter than horizontal ones (da-559): a stack
+   *  reads as a stack when the boxes nearly touch, while the same gap
+   *  sideways reads as two things that missed each other. Cut ~60% from the
+   *  first pass at this. */
+  private static readonly QUICK_ADD_GAP_V_RATIO = 0.14;
   private static readonly QUICK_ADD_GAP_MIN = 24;
+  private static readonly QUICK_ADD_GAP_MIN_V = 10;
   private static readonly QUICK_ADD_GAP_MAX_H = 120;
   private static readonly QUICK_ADD_GAP_MAX_V = 90;
   /** Fallback box when there is no anchor to measure — DANode's default. */
@@ -284,12 +289,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  has to clear, plus a gap proportional to that box. */
   private quickAddSlot(vertical: boolean, anchor: DANode | null = this.growAnchor): number {
     const D = DrawingAreaComponent;
-    const box = vertical
+    const fresh = this.drawingLayer?.newNodeDefaultSize?.()
+      ?? {w: D.QUICK_ADD_FALLBACK_BOX, h: D.QUICK_ADD_FALLBACK_BOX};
+    const anchorBox = vertical
       ? (anchor?.NODE_HEIGHT ?? D.QUICK_ADD_FALLBACK_BOX)
       : (anchor?.NODE_WIDTH ?? D.QUICK_ADD_FALLBACK_BOX);
+    // Half of each box, not one box twice: growing a small node next to the
+    // default-sized one that is about to land there used to overlap them.
+    const box = (anchorBox + (vertical ? fresh.h : fresh.w)) / 2;
     const ratio = vertical ? D.QUICK_ADD_GAP_V_RATIO : D.QUICK_ADD_GAP_H_RATIO;
     const maxGap = vertical ? D.QUICK_ADD_GAP_MAX_V : D.QUICK_ADD_GAP_MAX_H;
-    const gap = Math.min(maxGap, Math.max(D.QUICK_ADD_GAP_MIN, box * ratio));
+    const minGap = vertical ? D.QUICK_ADD_GAP_MIN_V : D.QUICK_ADD_GAP_MIN;
+    const gap = Math.min(maxGap, Math.max(minGap, box * ratio));
     return Math.round(box + gap);
   }
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
@@ -7083,14 +7094,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growInsertionTarget: GrowGhostTarget | null = null;
   /** All midpoint and source-grid insertion stops for this Add hold. */
   private growGhostTargets: GrowGhostTarget[] = [];
-  /** Where Move-by-Node's cursor sits while grow mode holds the crosshairs
-   *  on the anchor (da-448). Null outside a grow gesture. */
-  private growNavCursor: {x: number; y: number} | null = null;
   /** The edge a quick-add just drew, held while its new node is being
    *  labelled so the crosshairs can land on it when the label is done
    *  (da-509) — the same landing connecting two existing nodes gets. */
   private newNodeEdgeFocus: DAEdge | null = null;
-  private growParkTimer: number | null = null;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
@@ -7183,11 +7190,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return buildGrowGhostTargets(
       nodes,
       source,
-      this.drawingLayer.getGridSpacing(),
       bounds,
-      // The ghost lattice is square, so it takes the wider of the two needs:
-      // a vertical-sized step would drop targets inside a wide anchor box.
-      this.quickAddSlot(false, anchor),
+      // The lattice's row and column get their own step, so placing above is
+      // as close as the vertical slot says while placing beside still clears
+      // a wide anchor box (da-559).
+      {x: this.quickAddSlot(false, anchor), y: this.quickAddSlot(true, anchor)},
       nodes.filter(node => visibleIds.has(node.id)),
       // The anchor's own box stands in for the node a target would create —
       // it is also what the placement ghost is drawn at, so what is refused
@@ -7334,19 +7341,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  turn re-origin semantics. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
-    // Move-by-Node walks from wherever the crosshairs are, so the walk needs
-    // them at the last candidate — but during a grow gesture the thing you
-    // are aiming is the ghost, and watching the crosshairs wander off the
-    // node you are growing from reads as the node itself moving (da-448).
-    // The engine's cursor is kept here instead, and the crosshairs are put
-    // back on the anchor after each hop.
-    if (this.growNavCursor && this.crosshairsLayer?.crosshairs) {
-      const scale = this.drawingLayer.scaleX();
-      this.crosshairsLayer.crosshairs.x =
-        this.drawingLayer.x() + this.growNavCursor.x * scale;
-      this.crosshairsLayer.crosshairs.y =
-        this.drawingLayer.y() + this.growNavCursor.y * scale;
-    }
+    // The crosshairs ride the candidate: Move-by-Node moves them to whatever
+    // the hop landed on, and that is the thing being aimed. Pinning them to
+    // the anchor instead (da-448) made the pin itself the problem — "it seems
+    // to bounce back to the originating node" — so da-551 puts them back on
+    // the selection.
     this.snapToNodeInDirection(direction, 'nodes');
     const last = this.graphItemNavigationStrategy === 'adaptive-band-grid'
       ? this.navGridLast
@@ -7357,41 +7356,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!target && !insertion) return;
     this.growTarget = target;
     this.growInsertionTarget = insertion;
-    // The engine's cursor is the stop it just landed on, not the crosshairs:
-    // those are still animating towards it, and a mid-flight position would
-    // not match any stop on the next hop, stalling the walk.
-    this.parkGrowCrosshairsOnAnchor(this.navStopCenter?.(last.id, last.kind) ?? null);
-    // A hop that reaches the edge of the viewport pans, and the pan is a
-    // tween — so the anchor's screen position a moment later is not the one
-    // just read. Re-place once it has settled.
-    window.clearTimeout(this.growParkTimer ?? undefined);
-    this.growParkTimer = window.setTimeout(() => {
-      this.growParkTimer = null;
-      if (this.growActive) this.parkGrowCrosshairsOnAnchor();
-    }, Math.ceil(this.TWEEN_DURATION * 1000) + 60);
     this.redrawGrowGhost();
-  }
-
-  /** Hold the crosshairs on the node being grown from, remembering where the
-   *  navigation engine actually is (in layer space, so a pan cannot make it
-   *  stale). Skipped when the anchor has been panned off screen — crosshairs
-   *  you cannot see are worse than crosshairs that moved. */
-  private parkGrowCrosshairsOnAnchor(navCursor?: {x: number; y: number} | null): void {
-    if (!this.growAnchor || !this.stage || !this.crosshairsLayer?.crosshairs) return;
-    const crosshairs = this.crosshairsLayer.crosshairs;
-    const scale = this.drawingLayer.scaleX();
-    if (navCursor !== undefined) {
-      const cursor = navCursor ?? {x: crosshairs.x, y: crosshairs.y};
-      this.growNavCursor = {
-        x: (cursor.x - this.drawingLayer.x()) / scale,
-        y: (cursor.y - this.drawingLayer.y()) / scale,
-      };
-    }
-    const c = this.getNodeCenterInStageCoordinates(this.growAnchor);
-    if (c.x < 0 || c.x > this.stage.width() || c.y < 0 || c.y > this.stage.height()) return;
-    crosshairs.x = c.x;
-    crosshairs.y = c.y;
-    this.crosshairsLayer.batchDraw();
   }
 
 
@@ -7757,9 +7722,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private exitGrowMode(): void {
     this.growActive = false;
-    this.growNavCursor = null;
-    window.clearTimeout(this.growParkTimer ?? undefined);
-    this.growParkTimer = null;
     this.growEdgeMenuActive = false;
     this.growSelfLoopPending = false;
     this.growHoldReleased = false;

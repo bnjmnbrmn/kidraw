@@ -129,6 +129,16 @@ export class DrawingLayer extends Konva.Layer {
     return this.gridGroup.visible();
   }
 
+  /** The box a brand-new node starts at under the current identity — the
+   *  todo graph makes them 280x70, the default identity 120x120. Placement
+   *  needs it: a slot has to clear the anchor AND the node about to land in
+   *  it, and those are not the same size (da-559). */
+  newNodeDefaultSize(): {w: number; h: number} {
+    const d = resolveIdentity(this._diagramType).nodeDefaults;
+    // DANode's own DEFAULT_NODE_WIDTH / DEFAULT_NODE_HEIGHT.
+    return {w: d.width ?? 120, h: d.height ?? 120};
+  }
+
   getGridSpacing(): number {
     return this._currentMajorSpacing;
   }

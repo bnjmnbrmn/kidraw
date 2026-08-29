@@ -79,7 +79,7 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
     }
 
     // No anchor on the stub, so the slots come from the fallback 120 box:
-    // 120 + min(120, max(24, 60)) across, 120 + min(90, max(24, 42)) down.
+    // 120 + min(120, max(24, 60)) across, 120 + min(90, max(10, 17)) down.
     it('clears the box plus a horizontal gap', () => {
       const c = growComponent();
       c.growPlaceMove('right');
@@ -89,24 +89,26 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
     it('throws a shorter distance vertically', () => {
       const c = growComponent();
       c.growPlaceMove('down');
-      expect(c.growPlacePos).toEqual({x: 0, y: 162});
+      expect(c.growPlacePos).toEqual({x: 0, y: 137});
     });
 
     it('shortens the upward throw too', () => {
       const c = growComponent();
       c.growPlaceMove('up');
-      expect(c.growPlacePos).toEqual({x: 0, y: -162});
+      expect(c.growPlacePos).toEqual({x: 0, y: -137});
     });
 
     it('scales the throw to the anchor it grows from', () => {
       const c = growComponent();
-      // A 60px box: 60 + max(24, 21) down, 60 + max(24, 30) across.
+      // A 60px anchor, and the fallback 120 box for the node about to land:
+      // half of each is 90, then max(10, 0.14*90) down and max(24, 0.5*90)
+      // across.
       c.growAnchor = {NODE_WIDTH: 60, NODE_HEIGHT: 60};
       c.growPlaceMove('down');
-      expect(c.growPlacePos).toEqual({x: 0, y: 84});
+      expect(c.growPlacePos).toEqual({x: 0, y: 103});
       c.growPlacedRough = false;
       c.growPlaceMove('right');
-      expect(c.growPlacePos).toEqual({x: 90, y: 0});
+      expect(c.growPlacePos).toEqual({x: 135, y: 0});
     });
 
     it('uses the same axis split for a held coarse step', () => {
@@ -114,7 +116,7 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
       c.growPlacedRough = true;
       c.growMods = new Set(['s']);
       c.growPlaceMove('down');
-      expect(c.growPlacePos).toEqual({x: 0, y: 162});
+      expect(c.growPlacePos).toEqual({x: 0, y: 137});
     });
 
     it('leaves the fine step axis-independent', () => {

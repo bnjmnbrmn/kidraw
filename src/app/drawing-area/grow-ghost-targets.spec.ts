@@ -1,6 +1,5 @@
 import {
   buildGrowGhostTargets,
-  growGhostGridStep,
   GrowGhostTarget,
 } from './grow-ghost-targets';
 
@@ -14,7 +13,7 @@ describe('held-Add ghost targets', () => {
       {id: 'c', x: 100, y: 500},
     ];
 
-    const targets = buildGrowGhostTargets(nodes, nodes[0], 100, bounds);
+    const targets = buildGrowGhostTargets(nodes, nodes[0], bounds);
     const midpoints = targets.filter(target => target.source === 'midpoint');
 
     expect(midpoints.map(target => [target.x, target.y])).toEqual([
@@ -26,10 +25,10 @@ describe('held-Add ghost targets', () => {
     );
   });
 
-  it('anchors a viewport-spanning lattice on the source node', () => {
+  it('anchors the lattice on the source node, at the placement slot', () => {
     const anchor = {id: 'a', x: 125, y: 175};
 
-    const grid = buildGrowGhostTargets([anchor], anchor, 100, bounds)
+    const grid = buildGrowGhostTargets([anchor], anchor, bounds)
       .filter(target => target.source === 'grid');
 
     expect(grid.some(target => target.x === 425 && target.y === 175)).toBeTrue();
@@ -41,17 +40,6 @@ describe('held-Add ghost targets', () => {
       .toBeTrue();
   });
 
-  it('uses whole major-grid cells, but never a grid coarser than the slot', () => {
-    expect(growGhostGridStep(50)).toBe(300);
-    expect(growGhostGridStep(100)).toBe(300);
-    expect(growGhostGridStep(200)).toBe(400);
-    expect(growGhostGridStep(10, 180)).toBe(180);
-    // Zoomed out the major grid climbs a decade at a time. Placement must not
-    // follow it out there: the slot wins and the targets go unaligned.
-    expect(growGhostGridStep(1000, 180)).toBe(180);
-    expect(growGhostGridStep(1000)).toBe(300);
-  });
-
   it('does not offer a target whose node would land on an existing one', () => {
     const nodes = [
       {id: 'anchor', x: 360, y: 360, halfW: 60, halfH: 60},
@@ -61,9 +49,9 @@ describe('held-Add ghost targets', () => {
     ];
     const bounds = {minX: 0, minY: 0, maxX: 1400, maxY: 900};
 
-    const offered = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 200, nodes,
+    const offered = buildGrowGhostTargets(nodes, nodes[0], bounds, 200, nodes,
       {w: 60, h: 60});
-    const blind = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 200, nodes);
+    const blind = buildGrowGhostTargets(nodes, nodes[0], bounds, 200, nodes);
 
     const at = (list: GrowGhostTarget[], x: number, y: number) =>
       list.filter(t => Math.abs(t.x - x) < 1 && Math.abs(t.y - y) < 1).length;
@@ -81,7 +69,7 @@ describe('held-Add ghost targets', () => {
       {id: 'middle', x: 400, y: 100},
     ];
 
-    const targets = buildGrowGhostTargets(nodes, nodes[0], 100, bounds);
+    const targets = buildGrowGhostTargets(nodes, nodes[0], bounds);
 
     expect(targets.filter(target => target.x === 400 && target.y === 100).length).toBe(0);
     expect(new Set(targets.map(target => `${target.x}:${target.y}`)).size)
@@ -95,7 +83,7 @@ describe('held-Add ghost targets', () => {
       {id: 'offscreen', x: 2000, y: 100},
     ];
 
-    const targets = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 300,
+    const targets = buildGrowGhostTargets(nodes, nodes[0], bounds, 300,
       nodes.slice(0, 2));
     const midpoints = targets.filter(target => target.source === 'midpoint');
 

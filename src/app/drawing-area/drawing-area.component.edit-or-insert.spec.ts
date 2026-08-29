@@ -316,16 +316,11 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
           component.quadrantNavLast = {id: 'target', kind: 'node'};
         });
       component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
-      component.navStopCenter = () => null;
-      component.parkGrowCrosshairsOnAnchor = jasmine.createSpy('park');
-
       component.growHop('right');
 
       expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
       expect(component.growTarget).toBe(target);
       expect(component.redrawGrowGhost).toHaveBeenCalled();
-      // The crosshairs stay on the node being grown from (da-448).
-      expect(component.parkGrowCrosshairsOnAnchor).toHaveBeenCalled();
     });
 
     it('lands on insertion ghosts through the same Move by Node result', () => {
@@ -341,9 +336,6 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
           component.navGridLast = {id: ghost.id, kind: 'node'};
         });
       component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
-      component.navStopCenter = () => null;
-      component.parkGrowCrosshairsOnAnchor = jasmine.createSpy('park');
-
       component.growHop('right');
 
       expect(component.growTarget).toBeNull();
