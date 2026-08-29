@@ -21,7 +21,7 @@ const DATASETS = {
   'next(tree)': '/home/bot/projects/meta-project/kdvault/next.kidraw.yaml',
   'kidraw-dev(non-tree)': `${__dirname}/../src/app/services/samples/kidraw-dev-sample.ts`,
 };
-const LAYOUTS = ['tree-right', 'tree-right-clear', 'force-clear'];
+const LAYOUTS = ['tree-right-clear', 'force-clear'];
 
 const MEASURE = `
   const dl = da.drawingLayer;

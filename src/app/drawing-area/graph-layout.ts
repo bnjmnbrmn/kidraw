@@ -83,9 +83,6 @@ export function applyLayout(
       routeAfter = t.nonTreeEdges;
       break;
     }
-    case 'tree-right':
-      positions = treeLayout(nodes, edges, movable, spacing, 'right').positions;
-      break;
     case 'tree-right-clear': {
       const t = treeLayout(nodes, edges, movable, spacing, 'right', true);
       positions = t.positions;
@@ -725,11 +722,8 @@ function treeLayout(
   // nodes and manufactures crossings). Deterministic; only adjacent-level
   // (tree-shaped) edges are considered — long cross-links are the router's
   // problem.
+  const piercingTreeEdges = new Set<DAEdge>();
   if (repairPierces) {
-    // Floored, not a pure fraction of spacing: tightening the layout must not
-    // dissolve the "no straight edge through a node" guarantee. The repair
-    // widens only the gaps that actually need it, so a floor here costs
-    // nothing where the geometry is already clear (2026-08-29).
     const clearance = Math.max(spacing / 8, 10);
     const breadthExtentOf = (n: DANode): number => {
       const rect = layerRect(n);
@@ -741,10 +735,15 @@ function treeLayout(
       const ext = direction === 'down' ? rect.height : rect.width;
       return Number.isFinite(ext) ? ext : 0;
     };
-    const widenStep = Math.max(spacing / 2, 40);
-    for (let iter = 0; iter < 20; iter++) {
-      // gap index g = the gap between level g-1 and level g
-      const gapsToWiden = new Set<number>();
+    // A fan from a wide parent to children spread down the breadth axis
+    // clips the siblings between them, and the only geometry that clears it
+    // is a bigger level gap — which is exactly the horizontal packing Ben
+    // wants to keep in a right-tree (da-531): widening pushed the tree 75%
+    // wider than the routed variant. So the tidy geometry stays, and the
+    // handful of chords that genuinely clip are handed to the router
+    // instead. Everything else is still a straight line.
+    {
+      const offenders = new Set<DAEdge>();
       for (const [child, parent] of treeParent) {
         const la = depthLevel.get(parent)!;
         const lb = depthLevel.get(child)!;
@@ -763,16 +762,15 @@ function treeLayout(
           const py = depthOf.get(ln)!;
           if (lineSegmentIntersectsRect(
                 x1, y1, x2, y2, px - bw, py - bd, px + bw, py + bd)) {
-            gapsToWiden.add(Math.max(la, lb));
+            const edge = edges.find(e =>
+              (e.srcNode === parent && e.destNode === child) ||
+              (e.srcNode === child && e.destNode === parent));
+            if (edge) offenders.add(edge);
+            break;
           }
         }
       }
-      if (gapsToWiden.size === 0) break;
-      let extra = 0;
-      for (let l = 1; l <= maxLvl; l++) {
-        if (gapsToWiden.has(l)) extra += widenStep;
-        depthOf.set(l, depthOf.get(l)! + extra);
-      }
+      for (const e of offenders) piercingTreeEdges.add(e);
     }
   }
 
@@ -823,7 +821,8 @@ function treeLayout(
         !treeEdges.has(e) && e.srcNode === child && e.destNode === parent);
     if (edge) treeEdges.add(edge);
   }
-  const nonTreeEdges = edges.filter(e => !treeEdges.has(e));
+  const nonTreeEdges = edges.filter(e => !treeEdges.has(e))
+    .concat([...piercingTreeEdges]);
 
   return {positions, nonTreeEdges};
 }

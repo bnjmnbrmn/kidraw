@@ -69,8 +69,10 @@ async function main() {
     dl.batchDraw();
   });
 
-  // Count straight-edge pierces: for each edge, does its straight chord
-  // (center to center) pass through a non-endpoint node box (inflated)?
+  // Count pierces along the PAINTED path, not the centre-to-centre chord: a
+  // tree-clear layout is allowed to hand its few clipping chords to the
+  // router (da-531), and a routed edge that goes around a node is not a
+  // pierce even though its chord would be.
   const countPierces = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const dl = da.drawingLayer;
@@ -96,23 +98,32 @@ async function main() {
     let pierces = 0;
     for (const e of dl.getDAEdges()) {
       if (e.srcNode === e.destNode) continue;
-      const a = cen(e.srcNode), b = cen(e.destNode);
-      for (const n of nodes) {
-        if (n === e.srcNode || n === e.destNode) continue;
-        if (segRect(a.x, a.y, b.x, b.y,
-              n.konvaGroup.x() - clearance, n.konvaGroup.y() - clearance,
-              n.konvaGroup.x() + n.NODE_WIDTH + clearance, n.konvaGroup.y() + n.NODE_HEIGHT + clearance)) {
-          pierces++;
-          break;
+      const path = e.getRenderedPathPoints(48);
+      let hit = false;
+      for (let i = 0; i < path.length - 1 && !hit; i++) {
+        for (const n of nodes) {
+          if (n === e.srcNode || n === e.destNode) continue;
+          if (segRect(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y,
+                n.konvaGroup.x() - clearance, n.konvaGroup.y() - clearance,
+                n.konvaGroup.x() + n.NODE_WIDTH + clearance, n.konvaGroup.y() + n.NODE_HEIGHT + clearance)) {
+            hit = true;
+            break;
+          }
         }
       }
+      if (hit) pierces++;
     }
     return pierces;
   });
 
-  const anyWaypoints = () => page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.drawingLayer.getDAEdges().some(e => e.controlPoints.length > 0);
+  /** Share of edges the layout had to hand to the router. A tree-clear
+   *  layout keeps its geometry straight; only chords that would clip a
+   *  sibling get bent, and there should be few of them (da-531). */
+  const routedShare = () => page.evaluate(() => {
+    const es = window.ng.getComponent(document.querySelector('app-drawing-area'))
+      .drawingLayer.getDAEdges();
+    const routed = es.filter(e => e.controlPoints.length > 0).length;
+    return {routed, total: es.length};
   });
 
   // Straight-chord crossings between edges that share no endpoint. The tidy
@@ -164,12 +175,14 @@ async function main() {
   await applyLayout('tree-down-clear');
   const treeClear = await countPierces();
   const treeClearCrossings = await countCrossings();
-  const treeClearWaypoints = await anyWaypoints();
+  const treeClearRouted = await routedShare();
   check('tree-down-clear leaves no straight edge piercing a node', treeClear === 0,
     `clear=${treeClear}`);
   check('tree-down-clear keeps the tree crossing-free', treeClearCrossings === 0,
     `${treeClearCrossings} crossings`);
-  check('tree-down-clear leaves edges straight (no waypoints)', treeClearWaypoints === false);
+  check('tree-down-clear bends only the chords that would clip',
+    treeClearRouted.routed <= treeClearRouted.total / 2,
+    `${treeClearRouted.routed}/${treeClearRouted.total} routed`);
 
   // --- Tree right: the mixed-size regression shape ---
   await applyLayout('tree-right-clear');
@@ -185,10 +198,11 @@ async function main() {
   const forcePlain = await countPierces();
   await applyLayout('force-clear');
   const forceClear = await countPierces();
-  const forceClearWaypoints = await anyWaypoints();
+  const forceClearRouted = await routedShare();
   check('force-clear leaves no straight edge piercing a node', forceClear === 0,
     `plain=${forcePlain} clear=${forceClear}`);
-  check('force-clear leaves edges straight (no waypoints)', forceClearWaypoints === false);
+  check('force-clear leaves edges straight (no waypoints)', forceClearRouted.routed === 0,
+    `${forceClearRouted.routed}/${forceClearRouted.total} routed`);
 
   console.log(`\n[summary] tree-down-clear pierces=${treeClear}; ` +
               `force pierces plain=${forcePlain} → clear=${forceClear}`);

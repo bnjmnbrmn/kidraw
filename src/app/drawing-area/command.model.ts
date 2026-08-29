@@ -9,7 +9,7 @@ export type TextOverflowMode = 'clip' | 'shrink-font' | 'ellipsis' | 'widen-h' |
 // originals for comparison. 'grid' is currently unbound in the keymenu but
 // still a valid layout.
 export type LayoutType = 'force-directed' | 'force-clear' | 'tree-down-clear'
-  | 'tree-right' | 'tree-right-clear' | 'grid' | 'circular' | 'radial';
+  | 'tree-right-clear' | 'grid' | 'circular' | 'radial';
 
 /** Edge-routing algorithms selectable from the Layout submenu. */
 export type RoutingAlgorithm = 'bezier-fit-weighted-chain' | 'desiderata' | 'incremental-desiderata-v2' | 'incremental-desiderata-v3';

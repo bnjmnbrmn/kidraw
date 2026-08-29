@@ -31,7 +31,7 @@ const NEXT_YAML = '/home/bot/projects/meta-project/kdvault/next.kidraw.yaml';
 const LAYOUTS = [
   'force-directed', 'force-clear',
   'tree-down', 'tree-down-clear',
-  'tree-right', 'tree-right-clear',
+  'tree-right-clear',
   'circular', 'radial',
 ];
 

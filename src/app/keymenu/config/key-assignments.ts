@@ -167,7 +167,6 @@ export interface KeymenuKeyAssignments {
     readonly forceDirected: KeyString;
     readonly forceClear: KeyString;
     readonly treeDownClear: KeyString;
-    readonly treeRight: KeyString;
     readonly treeRightClear: KeyString;
     readonly circular: KeyString;
     readonly radial: KeyString;
@@ -175,8 +174,6 @@ export interface KeymenuKeyAssignments {
     readonly routeDesiderata: KeyString;
     readonly routeIncremental: KeyString;
     readonly routeIncrementalV3: KeyString;
-    readonly gather: KeyString;
-    readonly ungather: KeyString;
   };
 }
 
@@ -282,7 +279,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
   clipboard: {paste: 'p'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
+  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRightClear: 'l', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
 };
 
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
@@ -383,5 +380,5 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     todoGraphType: 't',
   },
   clipboard: {paste: 'p'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
+  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRightClear: 'l', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
 };

@@ -60,7 +60,7 @@ describe('graph-layout treeLayout', () => {
   it('centers a parent vertically left of its children in tree-right', () => {
     const nodes = makeNodes('root', 'a', 'b');
     const edges = makeEdges(nodes, [['root', 'a'], ['root', 'b']]);
-    applyLayout('tree-right', [...nodes.values()], edges);
+    applyLayout('tree-right-clear', [...nodes.values()], edges);
 
     const childYs = ['a', 'b'].map(n => y(nodes, n));
     expect(y(nodes, 'root')).toBeCloseTo((childYs[0] + childYs[1]) / 2, 6);

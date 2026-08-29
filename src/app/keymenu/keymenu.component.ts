@@ -782,17 +782,22 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
       [layout.forceClear]:    new LabeledAction('Force+',   emit('force-clear')),
-      [layout.treeDownClear]: new LabeledAction('Tree ↓',   emit('tree-down-clear')),
-      [layout.treeRight]:     new LabeledAction('Tree →',   emit('tree-right')),
-      [layout.treeRightClear]: new LabeledAction('Tree →+', emit('tree-right-clear')),
+      [layout.treeDownClear]: new LabeledAction('Tree ↓', emit('tree-down-clear')),
+      // One horizontal tree (da-531): the tidy geometry of the plain variant,
+      // and its straight lines, with only the chords that would clip a
+      // sibling handed to the router.
+      [layout.treeRightClear]: new LabeledAction('Tree →', emit('tree-right-clear')),
       [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
       [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
       [layout.routeBezierFitWeightedChain]: new LabeledAction('Route: BF-WC', route('bezier-fit-weighted-chain')),
       [layout.routeDesiderata]:             new LabeledAction('Route: Desiderata', route('desiderata')),
       [layout.routeIncremental]:            new LabeledAction('Route: Incr v2', route('incremental-desiderata-v2')),
       [layout.routeIncrementalV3]:          new LabeledAction('Route: Incr v3', route('incremental-desiderata-v3')),
-      [layout.gather]:   new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER_CONNECTED_NODES})),
-      [layout.ungather]: new LabeledAction('Ungather', () => this.keyMenuOut.emit({kind: DACommandType.UNGATHER})),
+      // Gather / Ungather left the menu with da-529: what they do is not
+      // legible on screen — "it sort of looks buggy" — so the route is
+      // withdrawn while the fisheye idea is reconsidered. The commands and
+      // gather-fisheye.ts are untouched, so nothing is lost by re-binding
+      // them; see notes/idea-gather-recursive.md.
     } as SubmenuConfig;
   }
 
