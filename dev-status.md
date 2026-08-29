@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-29. Branch: `main`._
+_Updated 2026-08-29 (second batch). Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -342,6 +342,18 @@ _Updated 2026-08-29. Branch: `main`._
     - `tools/repro-layout-clear.js` drove this and is fixed here too — it had been crashing since `tree-down` was removed (`c11ecba`), because it still applied that layout and `applyLayout` left `positions` undefined.
 
     Verified: 449 unit tests, clean build, before/after measured on the same graph.
+
+75. **Next batch, second round (2026-08-29).** `a1526e2`, `226999f`, `42f7958`, `91ee7be`, `76f5ff6`, `af862eb`.
+    - **The dashed trace was stale, and the wrong shape** (`a1526e2`). The hover trace and the landing ghost are snapshots taken when the crosshairs last moved, so a resize and its reflow, a layout, a paste or a drag left the outline sitting where the node used to be — that is the outline Ben screenshotted beside, rather than around, its node. Reproduced: grow a neighbour, the reflow pushes the hovered node 96px, the outline stays. Both now refresh from `updateEdgesForResizedNodes`, the common exit those paths already share. **da-442**: a circle node is a real ellipse once a label stretches it, so its trace is an ellipse now, from one shape helper shared by the ghost's backing, the ghost's outline and the hover ring.
+    - **`da-345` was wired to the wrong path** (`226999f`). Landing the crosshairs on a freshly connected link was implemented in `249e6e0` for select-then-connect, and the repro drove exactly that path — so it passed while the feature looked missing, because held-Add (walk the ghosts to an existing node, release) wires its edge through `commitGrowMode`, which never called it. Both grow paths now share `commitGrowEdgeTo`. The repro grew a second scenario driving held-Add with real keys; its distance metric was also wrong (nearest sampled *vertex*, and a straight edge is two points, so a crosshair exactly on the line read as 76px off it).
+    - **`da-438` / `da-453`** (`42f7958`). The Status submenu is gone: task status is a todo-graph concept, so its menu belongs to the plugin that will own that identity. `SET_TASK_STATUS` and the drawing area's handling are untouched, `t` is free, and `repro-task-status.js` drives the command directly now. Line Style moved from `w-d` to `w-q` — `d` is Fine Move at root, which is what made the chord feel wrong.
+    - **`da-458`: circle labels stay in the circle** (`91ee7be`). Text was laid out to the bounding box whatever the shape, so in a circle the ends of a line sat on and past the ellipse. A circle's text area is now the rectangle inscribed in it; the sizing modes run against that rectangle and grow the ellipse around their answer, so a circle still never exceeds its base width — it gets taller, like a box.
+    - **`da-446`: a node being typed into gets out of its anchor's way** (`76f5ff6`). Typing grew the box from its top-left, so it walked down and right over the node it had just been connected to. It now grows about its own centre, and if it still lands on a neighbour it is the edited node that moves — the rest of the graph holds still while you type.
+    - **`da-448`: the crosshairs stay on the anchor** (`af862eb`). Held-Add walks its candidates through Move-by-Node, whose cursor *is* the crosshairs, so aiming with hjkl dragged them off the node you were growing from. The engine's cursor now lives in `growNavCursor` — the stop it landed on rather than the crosshairs mid-animation (a mid-flight position matches no stop and the walk stalls), in layer space so a pan cannot stale it, with a deferred re-place after a hop that pans.
+
+    Verified: 454 unit tests, clean build, each item reproduced before and after in the running app.
+
+    **Still open — `da-451`, the Layout menu.** Ben's note says it needs thought, so this is a proposal, not a change. The submenu holds 13 entries: 7 layouts, 4 edge routers, Gather and Ungather. (1) The four routers are development experiments and new edges are auto-routed anyway — one "Re-route edges" on the default router would do, with the comparison staying in the routing-eval harness. (2) The `+`/clear variants: tree-down settled to clear-only on 2026-08-28; doing the same for force and tree-right drops two more (this is the open "decide whether force / tree-right keep both variants" item). (3) Gather/Ungather are a view mode, not a layout, and want their own home. That leaves Force, Tree ↓, Tree →, Circle, Radial, Re-route — six entries, one hand.
 
 ## Routing-eval harness
 
