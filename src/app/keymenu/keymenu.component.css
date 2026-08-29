@@ -1,14 +1,73 @@
+/* The keymenu floats over the drawing area rather than occupying a band
+ * below it (2026-08-28). Same idea as the compact panel: a lens over the
+ * graph, translucent enough that the diagram stays readable behind it.
+ *
+ * Sized to the card — three letter rows, 814x236 — plus room for the
+ * per-depth diagonal offset (6px x 5 levels) and the drop shadows. The
+ * stage background is transparent, so only the cards themselves paint. */
 :host {
   display: block;
-  position: relative;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+  z-index: 25;
+  width: 880px;
+  height: 300px;
+  max-width: calc(100vw - 20px);
   overflow: hidden;
-  background: var(--kd-keymenu-bg);
-  width: 100vw;
-  flex-grow: 0;
-  height: 27em;
+  background: transparent;
+  /* Composited once over the whole canvas, so overlapping cards don't show
+   * through each other the way a per-shape opacity would. */
+  opacity: 0.94;
+  /* Keyboard-driven: never intercept pointer events meant for the graph. */
+  pointer-events: none;
 }
 
 #keyMenu {
   width: 100%;
   height: 100%;
+}
+
+/* Free-typing modes show a hint instead of a keyboard: every key is just a
+ * character there, so a full card of "type a letter" tells you nothing. */
+#keyMenu.km-suppressed {
+  visibility: hidden;
+}
+
+.km-typing-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(2px);
+  color: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.km-typing-hint kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+}
+
+:host-context([data-theme='dark']) .km-typing-hint {
+  background: rgba(31, 41, 55, 0.85);
+  color: #e5e7eb;
+  border-color: rgba(75, 85, 99, 0.9);
+}
+
+:host-context([data-theme='dark']) .km-typing-hint kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(148, 163, 184, 0.5);
 }

@@ -9,8 +9,7 @@ import {
   OnChanges,
   OnDestroy,
   Output,
-  SimpleChanges,
-} from '@angular/core';
+  SimpleChanges, ChangeDetectorRef} from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
 import {DACommand, DACommandType, GridTier, ItemColor, LineStyle, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion} from '../drawing-area/command.model';
@@ -64,6 +63,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private cdr = inject(ChangeDetectorRef);
   private log = inject(DebugLogService);
   private themeService = inject(ThemeService);
   private keyboardConfig = inject(KeyboardConfigService);
@@ -249,7 +249,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       containerId: 'keyMenu',
       containingHTMLElement: this.componentNE,
       initialModeName,
-      stageBackground: this.visualConfig.getEffectivePalette(this.themeService.theme).keymenuStageBackground,
+      // Transparent: the menu floats over the graph, so only the cards paint.
+      stageBackground: 'transparent',
       modes: {
         normal: new USQwertyModeConfig(this.buildRootSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         normalCaps: new USQwertyModeConfig(this.buildNormalCapsSubmenuConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -267,7 +268,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         surfaceGrowTypePopup: new USQwertyModeConfig(this.buildGrowTypePopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowPlacement: new USQwertyModeConfig(this.buildGrowPlacementSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
       },
-      onModeSwitch: () => this.refreshActiveKeyPath(),
+      onModeSwitch: () => { this.refreshActiveKeyPath(); this.refreshTextEntryMode(); },
     });
     if (this.suspended && this.activeSurface) {
       this.keyMenu.switchMode(KeymenuComponent.SURFACE_MODES[this.activeSurface]);
@@ -1309,6 +1310,26 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
     this.keyMenu.switchMode(modeName);
+  }
+
+  /** The free-typing label-edit modes. There is nothing to choose in them —
+   *  every key is just a character — so rendering a full keyboard of
+   *  identical "type a letter" cards is noise. The template swaps in a
+   *  one-line hint instead. The vim normal/visual label modes are NOT
+   *  included: those genuinely have bindings worth showing. */
+  inTextEntryMode = false;
+
+  /** Recomputed on every mode switch rather than read as a getter: mode can
+   *  change from a Konva callback outside Angular's zone, where an unforced
+   *  template read would silently go stale. */
+  private refreshTextEntryMode(): void {
+    const name = this.suspended && this.modeBeforeSuspend
+      ? this.modeBeforeSuspend
+      : this.keyMenu?.currentMode?.name;
+    const next = name === 'labelEdit' || name === 'labelEditCaps';
+    if (next === this.inTextEntryMode) return;
+    this.inTextEntryMode = next;
+    this.cdr.detectChanges();
   }
 
   /** Whether the keymenu is currently in a CapsLock mode. */

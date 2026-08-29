@@ -1,5 +1,5 @@
 import {USQwertyMode} from "../modes/us-qwerty";
-import {KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, KeyboardLayout, getKeyDisplayLabel, getKeyWidth} from '../layouts/us-qwerty';
+import {KeyString, SubmenuConfig, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, KeyboardLayout, getKeyDisplayLabel, getKeyWidth, isVisibleKey} from '../layouts/us-qwerty';
 import {
   LabeledAction,
   LabeledActionSubmenuConfig,
@@ -300,9 +300,11 @@ export class KMSubmenu<T> {
       }
     }
 
-    // Add bound keys on top
-    for (const v of Object.values(keys)) {
-      if (v) {
+    // Add bound keys on top — but only the ones the card draws. A binding on
+    // a hidden key (Ctrl's submenu, CapsLock's mode switch, Space's hold)
+    // stays fully live; it just has no card. See VISIBLE_KEYS.
+    for (const [keyString, v] of Object.entries(keys) as [KeyString, typeof keys[KeyString]][]) {
+      if (v && isVisibleKey(keyString)) {
         group.add(v.konvaGroup);
       }
     }

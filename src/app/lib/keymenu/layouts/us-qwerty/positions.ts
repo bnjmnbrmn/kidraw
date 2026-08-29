@@ -26,28 +26,51 @@ export function getKeyWidth(keyString: KeyString): number {
 // Row definitions: each row has keys in order, positions computed from widths
 type RowDef = { keys: KeyString[]; rowOffset: number };
 
-const ROW_DEFS: RowDef[] = [
-  { keys: ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'], rowOffset: 0 },
-  { keys: ['Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\'], rowOffset: 0 },
-  { keys: ['CapsLock','a','s','d','f','g','h','j','k','l',';',"'",'Enter'], rowOffset: 0 },
-  { keys: ['Shift','z','x','c','v','b','n','m',',','.','/', 'RShift'], rowOffset: 0 },
+/**
+ * Only the three letter rows are drawn (2026-08-28). The menu used to render
+ * a whole keyboard — number row, Tab/Enter/brackets, both Shifts, the
+ * modifier row — which made it large enough to need a third of the window
+ * while almost none of those keys carried a binding.
+ *
+ * The hidden keys still WORK. Ctrl still opens its submenu, CapsLock still
+ * switches mode, Space still holds; they simply aren't rendered. That is the
+ * whole change: `VISIBLE_KEYS` gates drawing, never binding.
+ *
+ * Row offsets reproduce the usual keyboard stagger, which the Tab/CapsLock/
+ * Shift widths used to provide for free.
+ */
+const VISIBLE_ROW_DEFS: RowDef[] = [
+  { keys: ['q','w','e','r','t','y','u','i','o','p'], rowOffset: 0 },
+  { keys: ['a','s','d','f','g','h','j','k','l',';'], rowOffset: 18 },
+  { keys: ['z','x','c','v','b','n','m',',','.','/'], rowOffset: 53 },
 ];
 
-// Row 4 (bottom modifier row) uses explicit positions (aligned to keys above)
-const BOTTOM_ROW_EXPLICIT: { key: KeyString; x: number }[] = [
-  { key: 'Control', x: 0 },
-  { key: 'Alt', x: 215 },
-  { key: ' ', x: 290 },
-  { key: 'RAlt', x: 665 },
-  { key: 'RControl', x: 740 },
+/** Bound but never drawn. They still need a position, because key
+ *  construction reads one unconditionally — parked far off-card so a stray
+ *  render would be obvious rather than subtly overlapping. */
+const HIDDEN_KEYS: KeyString[] = [
+  '`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace',
+  'Tab','[',']','\\','CapsLock',"'",'Enter','Shift','RShift',
+  'Control','Alt',' ','RAlt','RControl',
 ];
+
+const OFF_CARD = { x: -10000, y: -10000 };
+
+/** The keys the card actually draws, in row order. */
+export const VISIBLE_KEYS: KeyString[] =
+  VISIBLE_ROW_DEFS.flatMap(r => r.keys);
+
+const VISIBLE_KEY_SET = new Set<KeyString>(VISIBLE_KEYS);
+
+export function isVisibleKey(keyString: KeyString): boolean {
+  return VISIBLE_KEY_SET.has(keyString);
+}
 
 function computePositions(): Record<KeyString, { x: number; y: number }> {
   const result: Partial<Record<KeyString, { x: number; y: number }>> = {};
 
-  // Rows 0-3: sequential layout based on key widths
-  for (let row = 0; row < ROW_DEFS.length; row++) {
-    const { keys: rowKeys, rowOffset } = ROW_DEFS[row];
+  for (let row = 0; row < VISIBLE_ROW_DEFS.length; row++) {
+    const { keys: rowKeys, rowOffset } = VISIBLE_ROW_DEFS[row];
     let x = rowOffset;
     const y = row * (KEY_HEIGHT + KEY_MARGIN);
     for (const key of rowKeys) {
@@ -56,10 +79,8 @@ function computePositions(): Record<KeyString, { x: number; y: number }> {
     }
   }
 
-  // Bottom modifier row: explicit positions
-  const bottomY = ROW_DEFS.length * (KEY_HEIGHT + KEY_MARGIN);
-  for (const { key, x } of BOTTOM_ROW_EXPLICIT) {
-    result[key] = { x, y: bottomY };
+  for (const key of HIDDEN_KEYS) {
+    result[key] = { ...OFF_CARD };
   }
 
   return result as Record<KeyString, { x: number; y: number }>;

@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* The keymenu positions itself against this. */
+  position: relative;
 }
 
 app-drawing-area {
@@ -9,9 +11,8 @@ app-drawing-area {
   flex: 1 1 0;
 }
 
-app-keymenu {
-  flex: 0 0 27em;
-}
+/* Out of the flow entirely — it floats over the drawing area, which now
+ * gets the full height. Positioning lives in keymenu.component.css. */
 
 app-keymenu.keymenu-hidden {
   position: absolute;

@@ -1,15 +1,12 @@
 import Konva from 'konva';
-import { KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, getKeyWidth, KeyboardLayout, getKeyDisplayLabel } from '../layouts/us-qwerty';
+import { KeyString, xAndYForKeys, KEY_WIDTH, KEY_HEIGHT, KEY_MARGIN, getKeyWidth, KeyboardLayout, getKeyDisplayLabel, VISIBLE_KEYS } from '../layouts/us-qwerty';
 import { ThemePalette } from '../../../services/theme.service';
 import { CardDepthConfig, CardShadowConfig, DEFAULT_VISUAL_CONFIG } from '../../../services/visual-config.model';
 
-const ALL_KEYS: KeyString[] = [
-  '`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace',
-  'Tab','q','w','e','r','t','y','u','i','o','p','[',']','\\',
-  'CapsLock','a','s','d','f','g','h','j','k','l',';',"'",'Enter',
-  'Shift','z','x','c','v','b','n','m',',','.','/', 'RShift',
-  'Control','Alt',' ','RAlt','RControl',
-];
+// Blank-key positions and the card's own size both follow what is actually
+// drawn, which since 2026-08-28 is the three letter rows only. Hidden keys
+// keep their bindings; see VISIBLE_KEYS in layouts/us-qwerty/positions.ts.
+const ALL_KEYS: KeyString[] = VISIBLE_KEYS;
 
 // Card padding around the key grid
 const CARD_PADDING = 8;
@@ -29,7 +26,8 @@ export function getCardBackgroundColor(depth: number, palette: ThemePalette): st
 export function getCardDimensions(): { width: number; height: number } {
   let maxX = 0;
   let maxY = 0;
-  for (const [key, pos] of Object.entries(xAndYForKeys) as [KeyString, { x: number; y: number }][]) {
+  for (const key of VISIBLE_KEYS) {
+    const pos = xAndYForKeys[key];
     const w = getKeyWidth(key);
     if (pos.x + w > maxX) maxX = pos.x + w;
     if (pos.y + KEY_HEIGHT > maxY) maxY = pos.y + KEY_HEIGHT;

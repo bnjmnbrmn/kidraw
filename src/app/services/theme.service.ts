@@ -40,10 +40,15 @@ export interface ThemePalette {
 }
 
 export const DEFAULT_DARK_PALETTE: ThemePalette = {
-  cardBackgrounds: ['#2a2a2a','#3c3c3c','#4e4e4e','#606060','#727272','#848484'],
-  keyFills: ['#1a1a1a','#2c2c2c','#3e3e3e','#505050','#626262','#747474'],
-  keyStrokes: ['#707070','#808080','#909090','#a0a0a0','#b0b0b0','#c0c0c0'],
-  keyLabelFills: ['#505050','#626262','#747474','#868686','#989898','#aaaaaa'],
+  // Each submenu depth gets its own hue, so "how deep am I" is readable at a
+  // glance rather than needing the breadcrumb. Mirrors the light palette's
+  // slate -> blue -> indigo -> violet -> purple -> magenta progression; the
+  // dark set used to be pure greys, which made every level look identical.
+  // Lightness still climbs with depth, so the old depth cue survives.
+  cardBackgrounds: ['#2b2f36','#28374a','#303356','#3b2f5c','#492d55','#522d45'],
+  keyFills: ['#1a1d22','#182534','#1e2040','#271c44','#331b3f','#3a1b32'],
+  keyStrokes: ['#78808c','#6f8aa8','#7c7db8','#8f74bb','#a271b2','#b0719a'],
+  keyLabelFills: ['#525963','#4d6478','#585a88','#68538c','#7a5186','#875173'],
   keyLabelText: '#f0f0f0',
   actionText: '#e8e8e8',
   blankKeyFill: '#1e1e1e',

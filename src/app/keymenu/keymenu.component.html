@@ -1,1 +1,7 @@
-<div id="keyMenu"></div>
+<div id="keyMenu" [class.km-suppressed]="inTextEntryMode"></div>
+
+@if (inTextEntryMode) {
+  <div class="km-typing-hint">
+    Go ahead and type. Press <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
+  </div>
+}
