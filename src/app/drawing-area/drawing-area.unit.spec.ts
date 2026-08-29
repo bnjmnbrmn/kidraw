@@ -58,8 +58,9 @@ describe('DrawingArea Unit Tests', () => {
       expect(node.NODE_HEIGHT).toBe(node.DEFAULT_NODE_HEIGHT + 40);
       expect(node.rect.width()).toBe(node.NODE_WIDTH);
       expect(node.rect.height()).toBe(node.NODE_HEIGHT);
-      expect(node.label.width()).toBe(node.NODE_WIDTH);
-      expect(node.label.height()).toBe(node.NODE_HEIGHT);
+      // The label is inset from the border on every side (da-553).
+      expect(node.label.width()).toBe(node.NODE_WIDTH - 16);
+      expect(node.label.height()).toBe(node.NODE_HEIGHT - 16);
     });
 
     it('should clamp node resizing at min/max bounds', () => {
@@ -618,10 +619,11 @@ describe('DrawingArea Unit Tests', () => {
       const cy = Math.abs(label.y() + label.height() / 2 - b) + label.height() / 2;
 
       expect((cx / a) ** 2 + (cy / b) ** 2).toBeLessThanOrEqual(1.001);
-      // A box of the same text lays out edge to edge, as before (da-458).
+      // A box of the same text uses its whole width, less the padding every
+      // shape keeps between text and border (da-458, da-553).
       const box = new DANode(0, 0, 'Layout menu: this needs to be cleaned up');
       box.textOverflowMode = 'fit';
-      expect(box.label.width()).toBe(box.NODE_WIDTH);
+      expect(box.label.width()).toBe(box.NODE_WIDTH - 16);
     });
 
     it('traces a stretched circle node with an ellipse, not a rounded box', () => {

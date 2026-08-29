@@ -573,6 +573,15 @@ export class DANode {
    *  which is 1/sqrt(2) of the bounding box on each axis. Laying text out to
    *  the full box is why words ran outside the ellipse (da-458). */
   private static readonly CIRCLE_TEXT_INSET = Math.SQRT1_2;
+  /** Breathing room between the text and the border, on every side. Wrapped
+   *  lines used to run to the box edge because the label was laid out to the
+   *  full width while only the *box* was padded (da-553). */
+  private static readonly TEXT_PADDING = 8;
+
+  /** Width available to a line of text inside a box of `boxWidth`. */
+  private wrapWidth(boxWidth: number): number {
+    return Math.max(1, boxWidth - DANode.TEXT_PADDING * 2);
+  }
 
   private get textAreaInset(): number {
     return this.nodeShape === 'circle' ? DANode.CIRCLE_TEXT_INSET : 1;
@@ -645,7 +654,7 @@ export class DANode {
         let best = lo;
         for (let i = 0; i < 20; i++) {
           const mid = Math.floor((lo + hi) / 2);
-          const h = this.measureTextHeight(text, this._baseWidth, mid);
+          const h = this.measureTextHeight(text, this.wrapWidth(this._baseWidth), mid);
           if (h <= this._baseHeight) {
             best = mid;
             lo = mid + 1;
@@ -691,7 +700,7 @@ export class DANode {
         this._fontSize = this._baseFontSize;
         this._label.fontSize(this._fontSize);
         this._nodeWidth = this._baseWidth;
-        const measuredH = this.measureTextHeight(text, this._baseWidth, this._baseFontSize);
+        const measuredH = this.measureTextHeight(text, this.wrapWidth(this._baseWidth), this._baseFontSize);
         this._nodeHeight = Math.max(this._baseHeight, measuredH + padding * 2);
         this.applySize(this._nodeWidth, this._nodeHeight);
         return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
@@ -710,7 +719,7 @@ export class DANode {
           this._baseWidth,
           Math.max(this.MIN_NODE_SIZE, naturalWidth + padding * 2),
         );
-        const measuredH = this.measureTextHeight(text, this._nodeWidth, this._baseFontSize);
+        const measuredH = this.measureTextHeight(text, this.wrapWidth(this._nodeWidth), this._baseFontSize);
         this._nodeHeight = Math.max(this.MIN_NODE_SIZE, measuredH + padding * 2);
         this.applySize(this._nodeWidth, this._nodeHeight);
         return prevWidth !== this._nodeWidth || prevHeight !== this._nodeHeight;
@@ -725,7 +734,7 @@ export class DANode {
         const MAX_AUTO_WIDTH = 80 * this._baseFontSize * 0.55;
 
         // Check if text fits in base dimensions
-        const baseH = this.measureTextHeight(text, this._baseWidth, this._baseFontSize);
+        const baseH = this.measureTextHeight(text, this.wrapWidth(this._baseWidth), this._baseFontSize);
         if (baseH <= this._baseHeight) {
           this._nodeWidth = this._baseWidth;
           this._nodeHeight = this._baseHeight;
@@ -739,7 +748,7 @@ export class DANode {
         let bestW = hi;
         for (let i = 0; i < 20; i++) {
           const mid = (lo + hi) / 2;
-          const h = this.measureTextHeight(text, mid, this._baseFontSize);
+          const h = this.measureTextHeight(text, this.wrapWidth(mid), this._baseFontSize);
           const ratio = h > 0 ? mid / h : Infinity;
           if (ratio < phi) {
             lo = mid;
@@ -749,7 +758,7 @@ export class DANode {
           }
         }
 
-        const finalH = this.measureTextHeight(text, bestW, this._baseFontSize);
+        const finalH = this.measureTextHeight(text, this.wrapWidth(bestW), this._baseFontSize);
         this._nodeWidth = Math.max(this._baseWidth, bestW);
         this._nodeHeight = Math.max(this._baseHeight, finalH + padding * 2);
         this.applySize(this._nodeWidth, this._nodeHeight);
@@ -870,8 +879,9 @@ export class DANode {
         break;
     }
     const inset = this.textAreaInset;
-    const lw = w * inset;
-    const lh = h * inset;
+    const pad = DANode.TEXT_PADDING;
+    const lw = Math.max(1, w * inset - pad * 2);
+    const lh = Math.max(1, h * inset - pad * 2);
     this._label.width(lw);
     this._label.height(lh);
     this._label.x((w - lw) / 2);
