@@ -188,9 +188,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     const indicatorText = new Konva.Text({
       text: indicatorChar,
       fontSize: 9,
-      // Bottom LEFT: the chamfer owns the other corner, and a key can carry
-      // both marks (an action-submenu fires on release and has children).
-      x: 5,
+      x: w - 14,
       y: KEY_HEIGHT - 14,
       fill: style.actionTextColor,
       opacity: 0.45,
@@ -322,10 +320,13 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     capsLockSwap?: boolean,
     visualConfig?: VisualConfig,
   ) {
-    // Tap fires the action, hold opens the children — the same "acts when you
-    // let go" contract the ↑ badge already names elsewhere, so it wears it
-    // too. That distinction used to be carried by the corner radius alone.
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth, indicator: 'release' });
+    // No badge. An action-submenu's action runs on key DOWN (it is passed as
+    // _onKeyDown), and what it does varies: `v` acts at once, `a` arms a
+    // gesture the drawing area resolves on release, and `r` only keeps the
+    // crosshairs visible while held — pressing it does nothing you would
+    // notice. One badge cannot say all three, and ↑ ("fires when you let go")
+    // is false for every one of them. See notes/design-keymenu-card-marks.md.
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
     this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout, capsLockSwap ?? false, visualConfig);
