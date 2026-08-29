@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-29 (third batch). Branch: `main`._
+_Updated 2026-08-29 (fourth batch). Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -374,6 +374,18 @@ _Updated 2026-08-29 (third batch). Branch: `main`._
     - **`da-477`** was done in the previous round and its badge follow-up reverted; see item 76.
 
     Verified: 455 unit tests, clean build, before/after measured in the running app for each. `repro-compact-keymenu`, `repro-binding-reorg`, `repro-next-five` and `repro-task-status` asserted the old ellipsis labels and were updated.
+
+78. **Next batch, fourth round (2026-08-29 evening).** `97d3c88`, `b7dda4b`, `687bb1f`, `a84dc7c`, `fa4e4a1`.
+    - **`da-551` reverts `da-448`.** Pinning the crosshairs to the anchor during a grow walk is what "seems to bounce back to the originating node" describes. They ride the candidate again.
+    - **`da-533`** the typing hint and the mode chip were both in the bottom strip and started overlapping once the menu moved down (da-479). The hint sits where the card would be now — which is where it belongs, since it stands in for the keyboard.
+    - **`da-559`, three compounding causes.** The gap ratio dropped from 0.35 of the box to 0.14 (floor 24 → 10); the ghost lattice got a **separate step per axis**, so placing above stopped inheriting the width-derived step meant for placing beside; and the step stopped being rounded up to a whole major-grid cell — which never aligned anything (the lanes hang off the anchor, not the grid origin) while adding up to a full cell to every distance. A slot also clears half of *each* box now, the anchor's and the one about to land, which are not the same size. Anchor → node above, centre-to-centre / gap: 70px anchor 200/105 → 108/13; 50px 150/75 → 97/12; 120px 200/80 → 137/17.
+    - **`da-553`** only the box was padded — the label was laid out to the node's full width, so wrapped lines ran border to border and the sizing modes measured their wrap at the full width. 8px inset on every side now, measurement included; circles keep the inscribed-rectangle inset on top.
+    - **`da-537`: circle was unreachable because of the chord.** `SET_NODE_SHAPE` works when sent directly. The style tree is three levels — hold `w`, hold a category, tap a value — and Shape sat on `e`, so it meant holding ring and middle together. Shape moved to `g`; every style category is now pinky or index under the ring-finger hub. Recorded in [`notes/design-chord-ergonomics.md`](notes/design-chord-ergonomics.md) with the general point: the deeper the tree, the more fingers are already committed.
+    - **`da-535`** holding Add does not push a submenu — the drawing area suspends the keymenu and switches modes, and the surface's card was drawn at depth 0 in the same place, so the root card vanished and a different one appeared. A mode config can now declare a card depth and that it stacks; the seven grow/popup surfaces take depth 1 and leave the card underneath showing.
+    - **`da-531`: one horizontal tree.** The clear variant cleared piercing chords by widening level gaps, which in a fan from a wide parent is the only geometry that works — 1214 wide against the routed variant's 694 on the same graph. It stops widening: the packed geometry stays and the few clipping chords go to the router with the cross-links (694 wide, 7 of 16 edges bent). With both variants doing the same job, plain `tree-right` is gone and the survivor takes its key and its name. Same repair change applies to tree-down-clear, and is strictly better than the plain down-tree it replaced (which routed *every* touched edge).
+    - **`da-529`** Gather/Ungather leave the Layout menu; the commands and `gather-fisheye.ts` are untouched, so re-binding is a one-line change. Ben's call whether the ~700 lines actually go.
+
+    Verified: 453 unit tests, clean build, each item measured in the running app. `repro-layout-clear.js` now counts pierces along the *painted* path rather than the centre-to-centre chord — a routed edge that goes around a node is not a pierce — and asserts only a minority of edges get bent.
 
 ## Routing-eval harness
 
