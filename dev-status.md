@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-28. Branch: `main`._
+_Updated 2026-08-29. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -319,6 +319,20 @@ _Updated 2026-08-28. Branch: `main`._
     **`da-347` is not a regression — but the setting still reads as broken, for a reason worth recording.** The repro passes and the timer is correct. Measured cadence across the whole input range on this box (headless, dev build): setting 10 → 125ms, 30 → 120, 50 → 123, 80 → 126, 100 → 127, 120 → 142, 160 → 172, 200 → 198, 300 → 304. So it tracks the setting above ~120ms and is completely flat below it, because one crosshair move costs ~120ms of real work. The input's `min` is 10, which means **the entire lower half of its range is inert — exactly the half you reach for when you want it faster.** The fix is not in the timer; it is making a move cheaper, or bounding the input at the real floor. Ben's laptop on a production build will have a lower floor than this box.
 
     **Test runner papercut:** `CHROME_BIN` is not set anywhere, so `npx ng test` fails out of the box with "No binary for ChromeHeadless". Workaround in use: `CHROME_BIN=~/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome`. Worth putting in `package.json` or AGENTS.md.
+
+73. **Keymenu chrome pass (2026-08-29, via Next).** Six commits: `8144fe5`, `d39becb`, `f63cd9e`, `9709d68`, `0ea2931`, `99633e8`.
+    - **Exit hints in the vim label modes** (`8144fe5`). The free-typing modes hide the card and show a centred pill; the vim label modes keep their keyboard, so their reminder is a chip in the clear strip above the card. Escape means two different things there — `edit: normal` exits label edit, `edit: visual` drops back to normal — so the chip says which.
+    - **The floating keymenu now insets the viewport** (`d39becb`). The card floated over the graph with nothing telling the drawing area it was there, so the crosshairs could walk under it. `viewportInset.bottom` is derived from the card height and the host geometry (`KeymenuComponent.occludedHeightPx()`), not a magic number, so it follows the card. Any inset is clamped to 45% of the stage so an overlay taller than the window cannot leave a zero-sized viewport.
+    - **A hidden menu says how to come back** (`f63cd9e`), and the toggle key stopped being stolen from labels. The `!visible` intercept ran ahead of every binding, which meant a label could never contain that letter while the menu was hidden or compact. It now falls through in the free-typing modes; the chip says to Escape out first, and the vim label modes still take it directly, since a letter is a command there. This deliberately replaces the older "restore from any keymenu mode" guarantee — the spec was rewritten to match.
+    - **`da-434`: the landing ghost occludes what it stands in for** (`9709d68`). Hovering a partly off-screen node drew its dashed trace twice (hover ring + ghost outline) and the ghost's 0.94 opacity let the real node show through. A node that earns a ghost now loses the hover ring, and the ghost is opaque over a rect filled with the canvas colour. The real node is untouched.
+    - **`da-436`: the compact panel sizes to its rows** (`0ea2931`). The configured width became a cap; the panel takes its widest row and reports what it measured, so the viewport inset follows the real width. Root menu 161px instead of 270 (inset 171 vs 278).
+    - **`da-432`: the mode label is DOM chrome** (`99633e8`). It was a Konva text inside the keymenu stage, so it read poorly over the diagram and vanished in the label-edit modes — when the mode matters most. Now an opaque chip in the band below the card, always up while the keyboard display is on, with a dot in the mode's colour; the card moved up 26px and the inset followed (306 vs 280). The compact panel's header uses the same words, dot and treatment, and the panel stopped listing what the card does not draw: no Ctrl/CapsLock rows, and the typing hint instead of 26 "type this character" rows. This supersedes the 2026-08-17 expectation that Ctrl and Shift each show one row (`repro-compact-viewport.js` updated).
+
+    Verified: 448 unit tests, clean build, each item read back from the running app.
+
+    **Already shipped, still sitting under Next:** `da-345` (crosshairs park on a freshly connected link, `249e6e0`, repro passes) and `da-369` (vertical grow throws halved, `796ac81`, unit-tested at ±150). The ghost-target grid is still symmetric at 300, so a node placed through grow targeting is still a full slot above or below — that is the one part of `da-369` not done.
+
+    **Pre-existing repro failures, confirmed at `8144fe5` (before this session's changes):** `tools/repro-grow-mode.js` fails 17 checks and `tools/repro-nav-popup.js` errors out at line 397. Untouched here; both want a look.
 
 ## Routing-eval harness
 
