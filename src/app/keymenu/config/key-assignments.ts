@@ -222,7 +222,10 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
   // the value. See the KeymenuKeyAssignments.style comment.
-  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
+  // Every category here is reached while `w` (ring finger) is held, so none of
+  // them may sit under the middle finger — see notes/design-chord-ergonomics.md.
+  // Shape moved off `e` for exactly that reason (da-537).
+  style: {shapeSubmenu: 'g', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
   nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
   colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
@@ -322,7 +325,10 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
   // the value. See the KeymenuKeyAssignments.style comment.
-  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
+  // Every category here is reached while `w` (ring finger) is held, so none of
+  // them may sit under the middle finger — see notes/design-chord-ergonomics.md.
+  // Shape moved off `e` for exactly that reason (da-537).
+  style: {shapeSubmenu: 'g', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
   nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
   colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},

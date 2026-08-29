@@ -46,3 +46,12 @@ columns, and keep them off `e d c` (middle).
 - The insert hub's shape/edge children (`d`/`s` under a held `a`) are pinky-hub
   with middle and ring children: acceptable, since the *hub* is the pinky.
   Flagged for dogfooding in [architecture-key-profiles](architecture-key-profiles.md).
+- **Shape moved from `w-e` to `w-g`** (da-537, `2026-08-29`). "Don't seem to be
+  able to apply the circle style at the moment" — and the command works fine
+  when sent directly, so it was the chord. The style tree is three levels
+  (`w` → category → value) and the first two are *both held*, so a category on
+  `e` meant holding ring and middle together and tapping a third key. Every
+  category is now pinky or index under the ring-finger hub: Shape `g`, Colour
+  `r`, Overflow `f` (index), Line Style `q` (pinky). Worth re-checking any
+  future three-level menu against this: the deeper the tree, the more fingers
+  are already committed.
