@@ -334,6 +334,15 @@ _Updated 2026-08-29. Branch: `main`._
 
     **Pre-existing repro failures, confirmed at `8144fe5` (before this session's changes):** `tools/repro-grow-mode.js` fails 17 checks and `tools/repro-nav-popup.js` errors out at line 397. Untouched here; both want a look.
 
+74. **Spacing follows the boxes (2026-08-29, `9f90601`).** Ben: a node added above another sits too far away, and "in general, things are feeling a bit too spaced apart — the tree layouts might need to be tightened up significantly. Actually, the force layouts too."
+    - **The numbers were absolute.** Quick-add threw a fixed 300 across / 150 down; layouts used a flat 200. His todo graph has **50px nodes** (median height in the recovered `next-working` sample), so 300 is six node-heights of empty canvas. Placement now clears the anchor's own box plus a gap proportional to it — half its width across, a third of its height down, bounded 24..120 / 24..90 — so a 120px node goes 300 → 180 and a 60px node 300 → 90.
+    - **The ghost lattice was following the viewport.** `growGhostGridStep` snapped up to a whole major grid cell, and the major grid is a power of ten picked to keep ~15 squares across the window — so it climbs a decade every zoom-out step and a quick-add could land 1000 units away because the view was wide. Where the grid is coarser than the slot, the slot now wins and the targets are simply not grid-aligned. How far a new node lands is a property of the graph, not of the view.
+    - **Layout spacing is derived from the median box height** (0.8x, bounded 50–200) rather than flat 200 — it is the clearance term, and the layouts already add each node's own breadth to its slot, so long labels still claim their room. On the recovered Next graph: tree-down **2821x406** (was 4355x666), force **4418x713** (was 4813x3740), and the graph fits at **0.51** zoom instead of 0.33.
+    - **The tree-clear pierce repair needed floors.** Its clearance (`spacing/8`) and gap-widening step (`spacing/2`) were pure fractions, so tightening spacing shrank the repair budget too and two chords came back through nodes. Floored at 10 and 40, iterations 10 → 20; the repair still widens only the gaps that need it.
+    - `tools/repro-layout-clear.js` drove this and is fixed here too — it had been crashing since `tree-down` was removed (`c11ecba`), because it still applied that layout and `applyLayout` left `positions` undefined.
+
+    Verified: 449 unit tests, clean build, before/after measured on the same graph.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
