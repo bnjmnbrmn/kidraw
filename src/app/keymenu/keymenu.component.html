@@ -4,4 +4,8 @@
   <div class="km-typing-hint">
     Go ahead and type. Press <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> to exit.
   </div>
+} @else if (vimLabelExitHint) {
+  <div class="km-typing-hint km-corner-hint">
+    <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd> {{ vimLabelExitHint }}
+  </div>
 }

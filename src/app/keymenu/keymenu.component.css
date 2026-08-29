@@ -71,3 +71,22 @@
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(148, 163, 184, 0.5);
 }
+
+/* The vim label modes keep their keyboard — the card is centred in this
+ * host, leaving a clear ~32px strip above it — so their exit hint is a chip
+ * tucked into that strip's right end, clear of the centred mode label,
+ * rather than the centred pill that stands in for a hidden keyboard. */
+.km-typing-hint.km-corner-hint {
+  left: auto;
+  right: 10px;
+  bottom: auto;
+  top: 5px;
+  transform: none;
+  padding: 3px 9px;
+  font-size: 11px;
+}
+
+.km-typing-hint.km-corner-hint kbd {
+  font-size: 10px;
+  padding: 0 4px;
+}

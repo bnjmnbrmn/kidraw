@@ -268,7 +268,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         surfaceGrowTypePopup: new USQwertyModeConfig(this.buildGrowTypePopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowPlacement: new USQwertyModeConfig(this.buildGrowPlacementSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
       },
-      onModeSwitch: () => { this.refreshActiveKeyPath(); this.refreshTextEntryMode(); },
+      onModeSwitch: () => { this.refreshActiveKeyPath(); this.refreshModeHints(); },
     });
     if (this.suspended && this.activeSurface) {
       this.keyMenu.switchMode(KeymenuComponent.SURFACE_MODES[this.activeSurface]);
@@ -1319,16 +1319,30 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
    *  included: those genuinely have bindings worth showing. */
   inTextEntryMode = false;
 
+  /** What Escape does in the current vim label mode, or null outside them.
+   *  The keyboard stays up in those modes, so this renders as a small chip
+   *  in the strip above the card rather than the centered pill that
+   *  replaces the keyboard in free-typing modes. Escape means two different
+   *  things depending on the mode, so the text says which. */
+  vimLabelExitHint: string | null = null;
+
   /** Recomputed on every mode switch rather than read as a getter: mode can
    *  change from a Konva callback outside Angular's zone, where an unforced
    *  template read would silently go stale. */
-  private refreshTextEntryMode(): void {
+  private refreshModeHints(): void {
     const name = this.suspended && this.modeBeforeSuspend
       ? this.modeBeforeSuspend
       : this.keyMenu?.currentMode?.name;
-    const next = name === 'labelEdit' || name === 'labelEditCaps';
-    if (next === this.inTextEntryMode) return;
-    this.inTextEntryMode = next;
+    const nextTextEntry = name === 'labelEdit' || name === 'labelEditCaps';
+    const nextVimHint =
+      name === 'labelEditVimNormal' || name === 'labelEditVimNormalCaps'
+        ? 'to exit'
+        : name === 'labelEditVimVisual' || name === 'labelEditVimVisualCaps'
+          ? 'to return to normal'
+          : null;
+    if (nextTextEntry === this.inTextEntryMode && nextVimHint === this.vimLabelExitHint) return;
+    this.inTextEntryMode = nextTextEntry;
+    this.vimLabelExitHint = nextVimHint;
     this.cdr.detectChanges();
   }
 
