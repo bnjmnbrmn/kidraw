@@ -395,6 +395,14 @@ _Updated 2026-08-29 (fourth batch). Branch: `main`._
 
     Verified: 453 unit tests, `repro-layout-clear.js` all-pass, Ben's graph reconstructed from the draft mirror and measured before and after.
 
+80. **Menu cull (2026-08-29, `85b8dc5`).** Ben's list, straight through.
+    - **Layout** is four entries, all right-hand under its left-index hub: Force (the clear variant — plain Force is gone, it did the same job), Tree ↓, Tree →, Radial. Circle and all four `Route:` entries withdrawn; routers are compared in the routing-eval harness, new edges auto-route, and layouts route their own cross-links. A single "Re-route edges" can come back if it is missed.
+    - **File** moved `m` → `q` (left pinky) with every child on the right hand: New Graph `n`, Open… `o`, Save As… `k`, Vault: Connect… `l`, Reload Page `u`. Withdrawn: Import/Export File, Export Zip, Cycle Display, the Vim/IJKL profile switch, Todo Graph. The commands behind all of them are untouched — each is a one-line re-binding.
+    - **Select+Drag** loses Edit Item, Zoom In, Zoom Out (zoom has its own hub; Edit Text is a root key).
+    - **Shift+U is Redo**, and holding Shift shows a card for the shifted layer: Redo on `u`, Prev Match on `n` — the latter already worked but was folklore. Ctrl-R and Ctrl-Shift-Z still redo. **The chord is intercepted rather than left to the card**: a submenu opens on a ~350ms hold, so a quickly typed Shift+U fell through to the root's plain Undo — measured, and the exact opposite of the request.
+
+    Verified: 453 unit tests, clean build, every menu read back from the running app. `repro-binding-reorg.js` updated for the File hub's new key and children, and it now asserts that every File child is a right-hand key.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
