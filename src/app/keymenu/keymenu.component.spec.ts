@@ -406,21 +406,19 @@ describe('KeymenuComponent', () => {
       jasmine.objectContaining({gridTier: 'coarse'}) as any);
   });
 
-  it('should put copy/cut/paste under the held y key on distinct keys', () => {
+  it('keeps copy, cut and paste as three root keys, no submenu', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
 
-    const clipboard = buildRootConfig(component)['y'] as LabeledSubmenuConfig;
-    expect(clipboard.submenuLabel).toBe('Copy/Paste...');
-
-    const labels = ['Copy', 'Cut', 'Paste'].map(label =>
-      Object.entries(clipboard.submenuConfig).find(
-        ([, v]) => v instanceof LabeledAction && v.actionLabel === label)?.[0]);
-    expect(labels.every(key => key !== undefined)).toBeTrue();
-    // A child sharing the hub's own key could never be chorded: holding y
-    // already has that physical key down, so its tap is swallowed.
-    expect(labels).not.toContain('y');
-    expect(new Set(labels).size).toBe(3);
+    // da-473: y held a Copy/Paste submenu whose every entry already had a
+    // root key of its own. The hub is gone; the three actions are not.
+    const root = buildRootConfig(component);
+    const labelOn = (key: string) => (root[key] as LabeledAction)?.actionLabel;
+    expect(labelOn('y')).toBe('Copy');
+    expect(labelOn('x')).toBe('Cut');
+    expect(labelOn('p')).toBe('Paste');
+    expect(root['y'] instanceof LabeledSubmenuConfig).toBeFalse();
+    expect(root['y'] instanceof LabeledActionSubmenuConfig).toBeFalse();
   });
 
   it('should have pan/zoom submenu on t with zoom inside, not at root level', () => {
@@ -436,7 +434,9 @@ describe('KeymenuComponent', () => {
     // Since da-265, p is Paste (vim) and Prev Match is Shift+n, intercepted
     // in handleKeyDown rather than bound here.
     expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Paste');
-    expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Copy/Paste...');
+    // y is a plain Copy since da-473: Cut and Paste have their own root keys,
+    // so the submenu was a second route to keys you can just press.
+    expect((rootConfig['y'] as LabeledAction).actionLabel).toBe('Copy');
     // Status left the menu with da-438: it is a todo-graph concept, so it
     // comes back when that identity is a plugin. `t` is free again.
     expect(rootConfig['t']).toBeUndefined();

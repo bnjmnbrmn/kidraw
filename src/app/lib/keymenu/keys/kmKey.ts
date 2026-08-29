@@ -111,9 +111,13 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     shadowEnabled: false,
     shadowOffset: { x: 1, y: 1 },
     shadowColor: style.highlightShadowColor,
-    cornerRadius: keyType === 'action' ? CORNER_RADIUS
-                : keyType === 'actionSubmenu' ? CORNER_RADIUS
-                : 0,
+    // One corner radius for every key (da-477). Square corners used to mean
+    // "opens a submenu and nothing else", but a 4px difference in radius is
+    // not a legible way to say that — it read as two kinds of card with no
+    // stated reason. The marks that carry meaning are the ones you can name:
+    // a chamfered bottom-right corner means the key has children, and the
+    // badge means the key repeats (↺) or fires when you let go (↑).
+    cornerRadius: CORNER_RADIUS,
   });
   konvaGroup.add(keyRect);
 
@@ -161,9 +165,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     height: keyLabelText.height() + 10,
     fill: style.labelFillColor,
     stroke: style.strokeColor,
-    cornerRadius: keyType === 'action' || keyType === 'actionSubmenu'
-      ? [CORNER_RADIUS, CORNER_RADIUS, 0, 0]
-      : 0,
+    cornerRadius: [CORNER_RADIUS, CORNER_RADIUS, 0, 0],
   });
   konvaGroup.add(keyLabelRect);
   konvaGroup.add(keyLabelText);
@@ -186,7 +188,9 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     const indicatorText = new Konva.Text({
       text: indicatorChar,
       fontSize: 9,
-      x: w - 14,
+      // Bottom LEFT: the chamfer owns the other corner, and a key can carry
+      // both marks (an action-submenu fires on release and has children).
+      x: 5,
       y: KEY_HEIGHT - 14,
       fill: style.actionTextColor,
       opacity: 0.45,
@@ -318,7 +322,10 @@ export class DefaultKMActionSubmenuKey<T> implements KMActionSubmenuKey {
     capsLockSwap?: boolean,
     visualConfig?: VisualConfig,
   ) {
-    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth });
+    // Tap fires the action, hold opens the children — the same "acts when you
+    // let go" contract the ↑ badge already names elsewhere, so it wears it
+    // too. That distinction used to be carried by the corner radius alone.
+    const { konvaGroup, keyRect } = createKeyKonvaGroup({ keyString, label, style, keyType: 'actionSubmenu', keyDisplayLabel, keyWidth, indicator: 'release' });
     this.konvaGroup = konvaGroup;
     this.keyRect = keyRect;
     this.submenu = new KMSubmenu<T>(this.mode, submenuConfig, childDepth ?? 0, palette, heldKeyStrings ?? [keyString], hideFingerBlocked ?? false, keyboardLayout, capsLockSwap ?? false, visualConfig);

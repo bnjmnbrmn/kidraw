@@ -157,9 +157,10 @@ export interface KeymenuKeyAssignments {
     readonly toggleKeyProfile: KeyString;
     readonly todoGraphType: KeyString;
   };
+  /** Paste's root key. Copy is the yank key itself and Cut is the delete
+   *  key, both bound at root; the submenu that held all three went with
+   *  da-473. */
   readonly clipboard: {
-    readonly copy: KeyString;
-    readonly cut: KeyString;
     readonly paste: KeyString;
   };
   readonly layout: {
@@ -277,7 +278,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
-  clipboard: {copy: 'c', cut: 'x', paste: 'p'},
+  clipboard: {paste: 'p'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
 
@@ -375,6 +376,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  clipboard: {copy: 'c', cut: 'x', paste: 'p'},
+  clipboard: {paste: 'p'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };

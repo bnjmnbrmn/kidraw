@@ -30,6 +30,10 @@ The shipping profiles use one key per cardinal direction (hjkl / ijkl). That's c
 
 A future left-hand-dominant profile is sketched in [idea-left-hand-profile](idea-left-hand-profile.md).
 
+Same-hand chords are constrained by finger independence, not by key distance:
+middle+ring is the pair to design away from. See
+[design-chord-ergonomics](design-chord-ergonomics.md).
+
 ## Open questions
 
 - Zoom key assignments are still being tuned per profile.
