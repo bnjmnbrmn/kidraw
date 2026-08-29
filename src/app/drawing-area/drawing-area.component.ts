@@ -161,11 +161,12 @@ function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
 export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input({required: true}) commands!: Observable<DACommand>;
-  /** Screen-space strip on each edge that a DOM overlay (currently the
-   *  compact keymenu) covers. The stage still spans the full area — the
-   *  canvas shows through the translucent panel — but every viewport
-   *  decision uses the *usable* rectangle instead, so content is never
-   *  centered, fitted, or parked underneath the panel. */
+  /** Screen-space strip on each edge that a DOM overlay covers: the compact
+   *  keymenu on its docked side, the floating keyboard card along the
+   *  bottom. The stage still spans the full area — the canvas shows through
+   *  the translucent panel — but every viewport decision uses the *usable*
+   *  rectangle instead, so content is never centered, fitted, or parked
+   *  underneath the panel. */
   @Input() viewportInset: {left: number; right: number; top: number; bottom: number} =
     {left: 0, right: 0, top: 0, bottom: 0};
   @Output() daOut = new EventEmitter<DANotification>()
@@ -2788,7 +2789,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Left edge of the usable viewport, in stage coordinates. An unbound or
    *  partially bound inset degrades to the full stage. */
   private inset(edge: 'left' | 'right' | 'top' | 'bottom'): number {
-    return this.viewportInset?.[edge] ?? 0;
+    const raw = this.viewportInset?.[edge] ?? 0;
+    // An overlay taller/wider than the window would otherwise leave a
+    // zero-sized viewport and freeze navigation; give the graph the room
+    // back and let it show through instead.
+    const extent = edge === 'left' || edge === 'right'
+      ? this.stage.width()
+      : this.stage.height();
+    return Math.min(raw, extent * 0.45);
   }
   private viewMinX(): number { return this.inset('left'); }
   private viewMaxX(): number { return this.stage.width() - this.inset('right'); }

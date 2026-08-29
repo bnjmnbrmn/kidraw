@@ -71,6 +71,16 @@ export class AppComponent implements OnInit, OnDestroy {
       : 0;
   }
 
+  /** Height the floating keyboard card occludes at the bottom, or 0 when it
+   *  isn't showing. Same contract as the compact panel: the canvas still
+   *  spans the full area, but the crosshairs stop at the card's top edge
+   *  and the view pans instead of sliding them underneath. Applied across
+   *  the full width even though the card is centred — a viewport with a
+   *  notch in it is not worth the complexity. */
+  get keymenuInset(): number {
+    return this.keymenuDisplay === 'keyboard' ? KeymenuComponent.occludedHeightPx() : 0;
+  }
+
   private configSub?: Subscription;
   private visualSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();

@@ -23,6 +23,7 @@ import {
   SubmenuConfig,
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
 import {KeyString, KEY_HEIGHT, getKeyWidth, getKeyDisplayLabel} from '../lib/keymenu/layouts/us-qwerty';
+import {getCardDimensions} from '../lib/keymenu/rendering/cardRenderer';
 import {CompactMenuRow} from './compact/compact-keymenu.component';
 import {
   DirectionalKeyAssignments,
@@ -1310,6 +1311,24 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
     this.keyMenu.switchMode(modeName);
+  }
+
+  /** Geometry of the floating host, mirrored in keymenu.component.css. The
+   *  card is centred in a host taller than itself, so the card's top edge —
+   *  the only part the drawing area cares about — has to be derived rather
+   *  than read off the host. */
+  private static readonly HOST_HEIGHT_PX = 300;
+  private static readonly HOST_BOTTOM_GAP_PX = 12;
+
+  /** Height of the strip the keyboard card covers, measured up from the
+   *  bottom of the drawing area. The drawing area insets its usable
+   *  viewport by this, so crossing the card's top edge pans the view
+   *  instead of parking the crosshairs underneath it. */
+  static occludedHeightPx(): number {
+    const cardHeight = getCardDimensions().height;
+    return KeymenuComponent.HOST_BOTTOM_GAP_PX
+      + (KeymenuComponent.HOST_HEIGHT_PX - cardHeight) / 2
+      + cardHeight;
   }
 
   /** The free-typing label-edit modes. There is nothing to choose in them —
