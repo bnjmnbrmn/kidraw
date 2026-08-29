@@ -2463,6 +2463,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
     this.drawingLayer.batchDraw();
+    // The link this node arrived on is the thing you are most likely to want
+    // next — its direction, usually. Same landing as connecting two existing
+    // nodes, just deferred until the label is written (da-509).
+    const edge = this.newNodeEdgeFocus;
+    this.newNodeEdgeFocus = null;
+    if (edge && this.drawingLayer.getDAEdges().includes(edge)) {
+      this.parkCrosshairsOnNewEdge(edge);
+    }
   }
 
   private unselectAll() {
@@ -6440,10 +6448,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
 
-    // Create edges from each previously selected node to the new node
-    for (const srcNode of selectedNodes) {
-      this.addDefaultEdge(srcNode, newNode);
-    }
+    // Create edges from each previously selected node to the new node. When
+    // exactly one link was drawn, that is the one the crosshairs land on once
+    // the label is written (da-509).
+    const drawn = selectedNodes.map(srcNode => this.addDefaultEdge(srcNode, newNode));
+    this.newNodeEdgeFocus = drawn.length === 1 ? drawn[0] : null;
 
     const labelable = newNode.nodeShape !== 'junction' &&
       newNode.nodeShape !== 'invisible';
@@ -7070,6 +7079,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Where Move-by-Node's cursor sits while grow mode holds the crosshairs
    *  on the anchor (da-448). Null outside a grow gesture. */
   private growNavCursor: {x: number; y: number} | null = null;
+  /** The edge a quick-add just drew, held while its new node is being
+   *  labelled so the crosshairs can land on it when the label is done
+   *  (da-509) — the same landing connecting two existing nodes gets. */
+  private newNodeEdgeFocus: DAEdge | null = null;
   private growParkTimer: number | null = null;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
@@ -7506,7 +7519,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       pos.x * scale + this.drawingLayer.x(),
       pos.y * scale + this.drawingLayer.y(),
       shape);
-    if (anchor) this.wireGrowEdge(anchor, newNode, dirState);
+    this.newNodeEdgeFocus = anchor ? this.wireGrowEdge(anchor, newNode, dirState) : null;
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {
@@ -7606,7 +7619,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       insertion.y * scale + this.drawingLayer.y(),
       this._defaultNodeShape,
     );
-    this.wireGrowEdge(anchor, newNode, dirState);
+    this.newNodeEdgeFocus = this.wireGrowEdge(anchor, newNode, dirState);
 
     const labelable = newNode.nodeShape !== 'junction' &&
       newNode.nodeShape !== 'invisible';

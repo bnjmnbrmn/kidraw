@@ -198,6 +198,40 @@ async function main() {
     `dest ${g.distToDest}px vs src ${g.distToSrc}px`);
   check('the link is pickable there too', g.onEdge === true, String(g.onEdge));
 
+  /* ---------------------------------------------------------------------
+   * da-509: the same landing for a *new* node's link, deferred until its
+   * label is written — held-Add, a direction, type, Escape out.
+   * ------------------------------------------------------------------- */
+  await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    c.drawingLayer.restoreGraph({nodes: [], edges: []});
+    c.drawingLayer.scale({x: 1, y: 1}); c.drawingLayer.x(0); c.drawingLayer.y(0);
+    c.drawingLayer.batchDraw();
+  });
+  await page.waitForTimeout(250);
+  await page.keyboard.press(addKey); await page.waitForTimeout(600);
+  await page.keyboard.type('anchor', {delay: 15});
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.down(addKey); await page.waitForTimeout(350);
+  await page.keyboard.press('k'); await page.waitForTimeout(350);
+  await page.keyboard.up(addKey); await page.waitForTimeout(700);
+  await page.keyboard.type('child', {delay: 15});
+  await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+
+  const newIds = await page.evaluate(() => {
+    const dl = window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer;
+    const e = dl.getDAEdges()[0];
+    return e ? {srcId: e.srcNode.id, destId: e.destNode.id} : {srcId: '', destId: ''};
+  });
+  const n = await crosshairReport(newIds);
+  console.log('  new connected node: crosshairs vs its link:', JSON.stringify(n));
+  check('a new node\'s link gets the same landing, after the label', n.found && n.distToPath <= 12,
+    `${n.distToPath}px from the painted path`);
+  check('and at the destination end', n.found && n.distToDest < n.distToSrc,
+    `dest ${n.distToDest}px vs src ${n.distToSrc}px`);
+
   console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');
   await browser.close();
   process.exit(failures ? 1 : 0);
