@@ -497,7 +497,13 @@ function treeLayout(
     return count > 0 ? sum / count : breadthPos.get(subtreeRoot)!;
   };
 
-  // Objective: crossings first, total breadth span of edges as tiebreaker.
+  // Objective: crossings first, then pierces, then total breadth span as the
+  // tiebreaker. Crossings outrank pierces rather than being summed as equals
+  // (2026-08-29): a chord that clips a node is repairable — the "-clear"
+  // variants hand it to the router — while a crossing is what you are left
+  // looking at, so trading one away for the other was the wrong way round.
+  //
+  // Original note: crossings first, total breadth span of edges as tiebreaker.
   // Crossings are counted on straight segments in layout space; span keeps
   // pulling cross-linked subtrees together even when no single swap removes
   // a whole crossing. The 1e9 weight makes one crossing outrank any span.
@@ -548,7 +554,7 @@ function treeLayout(
         if (ddx * ddx + ddy * ddy < clearance * clearance) pierces++;
       }
     }
-    return (crossings + pierces) * 1e9 + span;
+    return crossings * 1e9 + pierces * 1e6 + span;
   };
   const snapshotOrder = () => ({
     roots: [...roots],
