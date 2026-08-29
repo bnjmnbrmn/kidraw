@@ -85,10 +85,16 @@ async function main() {
       const l = Math.hypot(path[i+1].x - path[i].x, path[i+1].y - path[i].y);
       segLen.push(l); total += l;
     }
-    for (let i = 0; i < path.length; i++) {
-      const d = Math.hypot(path[i].x - lx, path[i].y - ly);
-      if (d < best) { best = d; bestT = total > 0 ? acc / total : 0; }
-      if (i < segLen.length) acc += segLen[i];
+    // Distance to the nearest SEGMENT, not the nearest sampled vertex: a
+    // straight edge is only two points, and its midpoint is far from both.
+    for (let i = 0; i < path.length - 1; i++) {
+      const p0 = path[i], p1 = path[i + 1];
+      const vx = p1.x - p0.x, vy = p1.y - p0.y;
+      const len2 = vx * vx + vy * vy;
+      const t = len2 > 0 ? Math.max(0, Math.min(1, ((lx - p0.x) * vx + (ly - p0.y) * vy) / len2)) : 0;
+      const d = Math.hypot(p0.x + t * vx - lx, p0.y + t * vy - ly);
+      if (d < best) { best = d; bestT = total > 0 ? (acc + t * segLen[i]) / total : 0; }
+      acc += segLen[i];
     }
     const destC = {x: edge.destNode.group.x() + edge.destNode.NODE_WIDTH / 2,
                    y: edge.destNode.group.y() + edge.destNode.NODE_HEIGHT / 2};
@@ -140,6 +146,57 @@ async function main() {
   check('hold-select then cycle changes the link direction without moving first',
     !!flipped && (flipped.directedness !== dirBefore || flipped.reversed),
     `${dirBefore} -> ${JSON.stringify(flipped)}`);
+
+  /* ---------------------------------------------------------------------
+   * The same promise, through the flow the link actually gets drawn with:
+   * hold Add over a node, cycle to an existing one, release. That path
+   * wired the edge but left the crosshairs behind until 2026-08-29.
+   * ------------------------------------------------------------------- */
+  const addKey = await page.evaluate(() => {
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    return km.keyAssignments.root.editSubmenu;
+  });
+  const growIds = await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = c.drawingLayer;
+    dl.restoreGraph({nodes: [
+      {id: 'da-901', x: 400, y: 300, text: 'A', width: 120, height: 60, fontSize: 14, isSelected: false},
+      {id: 'da-902', x: 900, y: 300, text: 'B', width: 120, height: 60, fontSize: 14, isSelected: false},
+    ], edges: []});
+    dl.scale({x: 1, y: 1}); dl.x(0); dl.y(0);
+    const a = dl.getDANodes()[0];
+    c.crosshairsLayer.showCrosshairs();
+    c.crosshairsLayer.crosshairs.x = a.group.x() + a.NODE_WIDTH / 2;
+    c.crosshairsLayer.crosshairs.y = a.group.y() + a.NODE_HEIGHT / 2;
+    dl.batchDraw();
+    return {srcId: 'da-901', destId: 'da-902'};
+  });
+  await page.waitForTimeout(200);
+  await page.keyboard.down(addKey);
+  await page.waitForTimeout(400);
+  // Walk the ghost targets rightwards until the real node B is the target.
+  let steps = 0;
+  for (; steps < 12; steps++) {
+    const onB = await page.evaluate(() => {
+      const t = window.ng.getComponent(document.querySelector('app-drawing-area'))['growTarget'];
+      return !!t && t.id === 'da-902';
+    });
+    if (onB) break;
+    await page.keyboard.press('l');
+    await page.waitForTimeout(250);
+  }
+  console.log(`  held-Add: ${steps} right-presses to reach node B`);
+  await page.keyboard.up(addKey);
+  await page.waitForTimeout(500);
+
+  const g = await crosshairReport(growIds);
+  console.log('  held-Add: crosshairs vs new edge:', JSON.stringify(g));
+  check('held-Add makes the edge', g.found === true, JSON.stringify(g));
+  check('held-Add lands the crosshairs on the new link', g.found && g.distToPath <= 12,
+    `${g.distToPath}px from the painted path`);
+  check('held-Add lands them at the destination end', g.found && g.distToDest < g.distToSrc,
+    `dest ${g.distToDest}px vs src ${g.distToSrc}px`);
+  check('the link is pickable there too', g.onEdge === true, String(g.onEdge));
 
   console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');
   await browser.close();

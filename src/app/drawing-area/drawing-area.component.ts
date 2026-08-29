@@ -7431,10 +7431,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupPurpose = 'nav';
     this.exitGrowMode();
     if (!target || target === anchor) return;
+    this.commitGrowEdgeTo(anchor, target, dirState);
+  }
+
+  /** Wire the grow edge and leave the crosshairs on it, near the destination,
+   *  so cycling its direction is one keypress away (da-345). Shared by every
+   *  way of choosing an existing node as the target: walking the ghosts with
+   *  hjkl, and the `/` search popup. Only the old select-then-connect path
+   *  did this before (`249e6e0`) — held-Add, which is how a link actually
+   *  gets drawn, was left out (2026-08-29). */
+  private commitGrowEdgeTo(anchor: DANode, target: DANode, dirState: number): void {
     this.finishTweens();
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.wireGrowEdge(anchor, target, dirState);
+    const edge = this.wireGrowEdge(anchor, target, dirState);
     this.drawingLayer.batchDraw();
+    this.parkCrosshairsOnNewEdge(edge);
     this.checkAndEmitEditState();
     this.scheduleVaultAutoSave();
     this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
@@ -7464,13 +7475,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     if (target === anchor) return; // came home to cancel
 
-    this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.wireGrowEdge(anchor, target, dirState);
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    this.scheduleVaultAutoSave();
-    this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
+    this.commitGrowEdgeTo(anchor, target, dirState);
   }
 
   private commitGrowSelfLoop(): void {
