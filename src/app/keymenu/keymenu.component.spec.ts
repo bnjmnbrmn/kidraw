@@ -294,18 +294,33 @@ describe('KeymenuComponent', () => {
     expect(modeSpy).toHaveBeenCalledWith('insert');
   });
 
-  it('should restore a hidden keyboard from any keymenu mode', () => {
+  it('should restore a hidden keyboard from any command mode', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     fixture.detectChanges();
     const component = fixture.componentInstance;
     const emitSpy = spyOn(component.visibilityToggle, 'emit');
     component.visible = false;
-    component.enterLabelEditMode();
+    component.enterLabelEditMode('vimNormal');
 
     component.handleKeyDown(new KeyboardEvent('keydown', {key: 'z', code: 'KeyZ'}));
     component.handleKeyDown(new KeyboardEvent('keydown', {key: 'z', code: 'KeyZ', repeat: true}));
 
     expect(emitSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the toggle key to the label while free-typing', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const emitSpy = spyOn(component.visibilityToggle, 'emit');
+    component.visible = false;
+    component.enterLabelEditMode('insert');
+
+    component.handleKeyDown(new KeyboardEvent('keydown', {key: 'z', code: 'KeyZ'}));
+
+    // Otherwise a label could never contain the letter; Escape first, then
+    // the toggle key works again from the vim label mode.
+    expect(emitSpy).not.toHaveBeenCalled();
   });
 
   it('shows the active popup/grow controls while command handling is suspended', () => {

@@ -23,6 +23,7 @@
   (keyMenuOut)="relayKeymenuCommand($event)"
   (labelEditModeOut)="handleLabelEditModeChange($event)"
   (visibilityToggle)="toggleKeymenuVisibility()"
+  (textEntryChange)="onKeymenuTextEntry($event)"
   (compactModelOut)="onCompactModel($event)"/>
 
 @if (keymenuDisplay === 'compact') {
@@ -32,6 +33,16 @@
     [side]="compactMenuSide"
     [widthPx]="compactMenuWidth"
     [modeName]="compactModeName"/>
+}
+
+@if (keymenuDisplay === 'hidden') {
+  <div class="menu-hidden-hint">
+    @if (keymenuTyping) {
+      <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd>, then <kbd>{{ keyAssignments.root.toggleVisibility }}</kbd> shows the menu
+    } @else {
+      <kbd>{{ keyAssignments.root.toggleVisibility }}</kbd> shows the menu
+    }
+  </div>
 }
 
 @if (exLineOpen) {

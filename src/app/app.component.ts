@@ -144,6 +144,14 @@ export class AppComponent implements OnInit, OnDestroy {
       : 'keyboard';
   }
 
+  /** Mirrors the keymenu's free-typing state: the toggle key is a plain
+   *  letter there, so the hint has to send you through Escape first. */
+  keymenuTyping = false;
+
+  onKeymenuTextEntry(typing: boolean) {
+    this.keymenuTyping = typing;
+  }
+
   onCompactModel(model: {rows: CompactMenuRow[]; modeName: string}) {
     this.compactRows = model.rows;
     this.compactModeName = model.modeName;

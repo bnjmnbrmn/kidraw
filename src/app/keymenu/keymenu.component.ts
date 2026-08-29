@@ -58,6 +58,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Output() keyMenuOut = new EventEmitter<DACommand>();
   @Output() labelEditModeOut = new EventEmitter<TextCursorMode>();
   @Output() visibilityToggle = new EventEmitter<void>();
+  /** Whether a free-typing label mode owns the keyboard. The shell needs it
+   *  to word the "how do I get the menu back" hint correctly. */
+  @Output() textEntryChange = new EventEmitter<boolean>();
   /** Live rows for the compact tree panel (da-200): re-emitted on every
    *  submenu push/pop/replace/reset and on mode switches. */
   @Output() compactModelOut = new EventEmitter<{rows: CompactMenuRow[]; modeName: string}>();
@@ -1360,8 +1363,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
           ? 'to return to normal'
           : null;
     if (nextTextEntry === this.inTextEntryMode && nextVimHint === this.vimLabelExitHint) return;
+    const textEntryChanged = nextTextEntry !== this.inTextEntryMode;
     this.inTextEntryMode = nextTextEntry;
     this.vimLabelExitHint = nextVimHint;
+    if (textEntryChanged) this.textEntryChange.emit(nextTextEntry);
     this.cdr.detectChanges();
   }
 
@@ -1684,7 +1689,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     event = this.remapEvent(event);
 
     const eventKey = KeymenuComponent.normalizeEventKey(event);
-    if (!this.visible && eventKey === this.keyAssignments.root.toggleVisibility) {
+    // The toggle key is the only way back to a hidden menu, so it is read
+    // ahead of every binding — except while free-typing a label, where it
+    // is just a letter and stealing it would make that letter untypeable.
+    // Escape out of typing first; the vim label modes still take it.
+    if (!this.visible && !this.inTextEntryMode
+        && eventKey === this.keyAssignments.root.toggleVisibility) {
       event.preventDefault();
       if (!event.repeat) {
         this.visibilityToggle.emit();
