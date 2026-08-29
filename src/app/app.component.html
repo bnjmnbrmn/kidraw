@@ -24,6 +24,7 @@
   (labelEditModeOut)="handleLabelEditModeChange($event)"
   (visibilityToggle)="toggleKeymenuVisibility()"
   (textEntryChange)="onKeymenuTextEntry($event)"
+  (modeLabelOut)="onModeLabel($event)"
   (compactModelOut)="onCompactModel($event)"/>
 
 @if (keymenuDisplay === 'compact') {
@@ -32,8 +33,16 @@
     [dark]="darkTheme"
     [side]="compactMenuSide"
     [maxWidthPx]="compactMenuWidth"
-    [modeName]="compactModeName"
+    [modeName]="modeLabelText"
+    [modeColor]="modeLabelColor"
+    [hint]="compactHint"
     (renderedWidth)="onCompactWidth($event)"/>
+}
+
+@if (keymenuDisplay === 'keyboard' && modeLabelText) {
+  <div class="mode-chip">
+    <span class="mode-dot" [style.background]="modeLabelColor"></span>{{ modeLabelText }}
+  </div>
 }
 
 @if (keymenuDisplay === 'hidden') {

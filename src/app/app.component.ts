@@ -49,7 +49,11 @@ export class AppComponent implements OnInit, OnDestroy {
   canEdit = false;
   keymenuDisplay: KeymenuDisplay = 'keyboard';
   compactRows: CompactMenuRow[] = [];
-  compactModeName = '';
+  compactHint = '';
+  /** The keymenu's current mode and its colour, shown as a chip below the
+   *  full menu and as the compact panel's header (da-432). */
+  modeLabelText = '';
+  modeLabelColor = '#888888';
   keyAssignments: KeymenuKeyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
 
   get keymenuVisible(): boolean {
@@ -160,9 +164,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.keymenuTyping = typing;
   }
 
-  onCompactModel(model: {rows: CompactMenuRow[]; modeName: string}) {
+  onCompactModel(model: {rows: CompactMenuRow[]; hint: string}) {
     this.compactRows = model.rows;
-    this.compactModeName = model.modeName;
+    this.compactHint = model.hint;
+  }
+
+  onModeLabel(label: {text: string; color: string}) {
+    this.modeLabelText = label.text;
+    this.modeLabelColor = label.color;
   }
 
   handleLabelEditModeChange(subMode: TextCursorMode) {

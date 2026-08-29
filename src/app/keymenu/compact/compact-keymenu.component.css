@@ -38,20 +38,44 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
+/* Same treatment as the mode chip under the full menu (da-432): opaque, so
+ * it stays readable over the diagram, and named by the same colour dot. */
 .mode-line {
-  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
   font-weight: 600;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.4);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #1e293b;
+  background: #f1f5f9;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.6);
   flex: none;
 }
 
+.mode-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
 .compact-keymenu.dark .mode-line {
-  color: #9ca3af;
-  border-bottom-color: rgba(75, 85, 99, 0.5);
+  color: #e5e7eb;
+  background: #1f2937;
+  border-bottom-color: rgba(75, 85, 99, 0.8);
+}
+
+.hint {
+  padding: 7px 9px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #1e293b;
+}
+
+.compact-keymenu.dark .hint {
+  color: #e5e7eb;
 }
 
 .rows {

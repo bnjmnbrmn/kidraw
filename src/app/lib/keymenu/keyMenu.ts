@@ -11,7 +11,6 @@ export class KeyMenu<T> {
 
   stage: Stage;
   layer: Layer;
-  private modeLabel: Konva.Text;
   private onModeSwitch?: (newModeName: string) => void;
 
   modesForNames: { [p: string]: KeyMenuMode<T> };
@@ -53,20 +52,6 @@ export class KeyMenu<T> {
       mode.konvaGroup.hide();
     })
 
-    // Mode label: sits above all mode groups, shows current mode/submenu name
-    this.modeLabel = new Konva.Text({
-      x: 0,
-      y: 8,
-      width: this.containingHTMLElement.clientWidth,
-      align: 'center',
-      text: '',
-      fontSize: 16,
-      fontFamily: 'monospace',
-      fontStyle: 'bold',
-      fill: '#888888',
-      listening: false,
-    });
-    this.layer.add(this.modeLabel);
 
     this.currentMode.konvaGroup.show();
   }
@@ -111,11 +96,6 @@ export class KeyMenu<T> {
       this.currentMode.konvaGroup.show();
       this.onModeSwitch?.(modeName);
     }
-  }
-
-  updateModeLabel(text: string, color: string) {
-    this.modeLabel.text(text);
-    this.modeLabel.fill(color);
   }
 
   cancelAllInputState() {

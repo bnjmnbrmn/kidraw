@@ -10,7 +10,9 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 12px;
+  /* The mode chip owns the strip below (da-432); keep this in step with
+   * KeymenuComponent.HOST_BOTTOM_GAP_PX, which the viewport inset reads. */
+  bottom: 38px;
   z-index: 25;
   width: 880px;
   height: 300px;
@@ -74,8 +76,8 @@
 
 /* The vim label modes keep their keyboard — the card is centred in this
  * host, leaving a clear ~32px strip above it — so their exit hint is a chip
- * tucked into that strip's right end, clear of the centred mode label,
- * rather than the centred pill that stands in for a hidden keyboard. */
+ * tucked into that strip's right end, rather than the centred pill that
+ * stands in for a hidden keyboard. */
 .km-typing-hint.km-corner-hint {
   left: auto;
   right: 10px;

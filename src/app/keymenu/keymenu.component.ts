@@ -22,7 +22,7 @@ import {
   LabeledActionWithRelease,
   SubmenuConfig,
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
-import {KeyString, KEY_HEIGHT, getKeyWidth, getKeyDisplayLabel} from '../lib/keymenu/layouts/us-qwerty';
+import {KeyString, KEY_HEIGHT, getKeyWidth, getKeyDisplayLabel, isVisibleKey} from '../lib/keymenu/layouts/us-qwerty';
 import {getCardDimensions} from '../lib/keymenu/rendering/cardRenderer';
 import {CompactMenuRow} from './compact/compact-keymenu.component';
 import {
@@ -61,9 +61,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   /** Whether a free-typing label mode owns the keyboard. The shell needs it
    *  to word the "how do I get the menu back" hint correctly. */
   @Output() textEntryChange = new EventEmitter<boolean>();
+  /** Current mode (with its submenu breadcrumb) and the colour that names it.
+   *  Rendered as DOM chrome by the shell rather than inside the keymenu
+   *  stage, so it survives the modes that hide the keyboard (da-432). */
+  @Output() modeLabelOut = new EventEmitter<{text: string; color: string}>();
   /** Live rows for the compact tree panel (da-200): re-emitted on every
    *  submenu push/pop/replace/reset and on mode switches. */
-  @Output() compactModelOut = new EventEmitter<{rows: CompactMenuRow[]; modeName: string}>();
+  @Output() compactModelOut =
+    new EventEmitter<{rows: CompactMenuRow[]; hint: string}>();
 
   private keyMenu!: KeyMenu<DACommand>;
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -283,8 +288,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         mode.onStackChanged = () => this.emitCompactModel();
       }
     });
-    this.refreshActiveKeyPath();
-    this.emitCompactModel();
+    // Both of these emit state the shell renders. Emitting them straight
+    // out of ngAfterViewInit would change the shell's bindings inside the
+    // change-detection pass that is already checking them, so the first
+    // publish waits for the pass to finish.
+    queueMicrotask(() => {
+      this.refreshActiveKeyPath();
+      this.emitCompactModel();
+    });
   }
 
   /** Flatten the live menu into `[key|Action]` rows: the current mode's root
@@ -302,10 +313,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // label rather than a fixed twin key, since the Ctrl/CapsLock swap moves
     // the left-hand binding between key names.
     const RIGHT_HAND_MODIFIERS = new Set(['RShift', 'RControl', 'RAlt']);
+    // The card draws the three letter rows only; Ctrl, CapsLock, Space and
+    // friends still work but are not shown. The panel is a view of the same
+    // menu, so it shows the same keys (da-432).
+    const listed = (key: string) => isVisibleKey(key as KeyString);
     const addRows = (config: SubmenuConfig, depth: number) => {
       const labelsAtDepth = new Set<string>();
       for (const [key, value] of Object.entries(config)) {
-        if (key === '_repeatConfig' || !value) continue;
+        if (key === '_repeatConfig' || !value || !listed(key)) continue;
         const isSubmenu = value instanceof LabeledSubmenuConfig ||
           value instanceof LabeledActionSubmenuConfig;
         const label = isSubmenu
@@ -340,8 +355,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         }
       }
     };
+    // Free typing has nothing to list — the card is replaced by a hint
+    // there, so the panel shows the same hint instead of 26 letter rows.
+    if (this.inTextEntryMode) {
+      this.compactModelOut.emit({rows: [], hint: KeymenuComponent.TYPING_HINT});
+      return;
+    }
     if (qMode.stack.length > 0) addRows(qMode.stack[0].config, 0);
-    this.compactModelOut.emit({rows, modeName: qMode.name});
+    this.compactModelOut.emit({rows, hint: ''});
   }
 
 
@@ -1321,7 +1342,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
    *  the only part the drawing area cares about — has to be derived rather
    *  than read off the host. */
   private static readonly HOST_HEIGHT_PX = 300;
-  private static readonly HOST_BOTTOM_GAP_PX = 12;
+  private static readonly HOST_BOTTOM_GAP_PX = 38;
 
   /** Height of the strip the keyboard card covers, measured up from the
    *  bottom of the drawing area. The drawing area insets its usable
@@ -1333,6 +1354,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       + (KeymenuComponent.HOST_HEIGHT_PX - cardHeight) / 2
       + cardHeight;
   }
+
+  /** Plain-text twin of the typing hint in keymenu.component.html, for the
+   *  compact panel. Keep the two in step. */
+  static readonly TYPING_HINT = 'Go ahead and type. Press Ctrl-[ or Esc to exit.';
 
   /** The free-typing label-edit modes. There is nothing to choose in them —
    *  every key is just a character — so rendering a full keyboard of
@@ -1366,7 +1391,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const textEntryChanged = nextTextEntry !== this.inTextEntryMode;
     this.inTextEntryMode = nextTextEntry;
     this.vimLabelExitHint = nextVimHint;
-    if (textEntryChanged) this.textEntryChange.emit(nextTextEntry);
+    if (textEntryChanged) {
+      this.textEntryChange.emit(nextTextEntry);
+      this.emitCompactModel();
+    }
     this.cdr.detectChanges();
   }
 
@@ -1480,7 +1508,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       }
     }
 
-    this.keyMenu.updateModeLabel(displayName, color);
+    this.modeLabelOut.emit({text: displayName, color});
   }
 
   private handleDoubleShiftReturnToNormal(event: KeyboardEvent): boolean {

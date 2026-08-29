@@ -1,6 +1,7 @@
 /* Ben's 2026-08-17 feedback on the compact keymenu (da-200):
  *   - side is a Settings option, and the panel moves with it
- *   - Shift / Ctrl each show one row, labelled Misc 2 / Misc 1
+ *   - modifier rows (Ctrl / Shift / CapsLock) are not listed at all: the
+ *     panel shows the keys the full card draws, and no others (da-432)
  *   - the panel's width is excluded from the usable viewport, both for
  *     fit/recenter and for the pan-on-move margin
  *   - the panel is only as tall as its rows                              */
@@ -53,16 +54,16 @@ async function main() {
   await page.keyboard.press(keys.toggle);
   await page.waitForTimeout(250);
 
-  // 1. One row each for Shift and Ctrl, with the new labels.
+  // 1. The panel lists what the card draws — the three letter rows — and
+  // nothing else. Ctrl, Shift and CapsLock still work; they are just not
+  // shown in either view (da-432).
   const rowList = await rows();
-  const misc1 = rowList.filter(r => r.label === 'Misc 1');
-  const misc2 = rowList.filter(r => r.label === 'Misc 2');
-  check('exactly one Misc 1 (Ctrl) row', misc1.length === 1, JSON.stringify(misc1));
+  const CARD_KEYS = new Set([...'qwertyuiop', ...'asdfghjkl', ';', ...'zxcvbnm', ',', '.', '/']);
+  const offCard = rowList.filter(r => !CARD_KEYS.has(r.key));
+  check('no modifier rows', offCard.length === 0, JSON.stringify(offCard));
   check('no leftover "More Ctrl" rows',
     !rowList.some(r => r.label === 'More Ctrl'));
-  check('Misc 1 sits on the Ctrl key', misc1[0]?.key === 'Ctrl', JSON.stringify(misc1[0]));
-  // Shift lives in the label-edit modes; check it there.
-  check('at most one Misc 2 row in normal mode', misc2.length <= 1, JSON.stringify(misc2));
+  check('the letter rows are still listed', rowList.length > 20, `rows=${rowList.length}`);
 
   // 2. Panel height tracks its rows, not the whole viewport.
   const box = await panelBox();

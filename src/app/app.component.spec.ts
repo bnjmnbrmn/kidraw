@@ -92,8 +92,9 @@ describe('AppComponent', () => {
     app.onCompactModel({
       rows: [{key: 'g', label: 'Move by node...', depth: 0, isSubmenu: true, held: true},
              {key: 'h', label: 'Stop Left', depth: 1, isSubmenu: false, held: false}],
-      modeName: 'normal',
+      hint: '',
     });
+    app.onModeLabel({text: 'normal', color: '#5b9bd5'});
     app.keymenuDisplay = 'compact';
     fixture.detectChanges();
 
@@ -102,6 +103,22 @@ describe('AppComponent', () => {
     expect(panel.componentInstance.rows.length).toBe(2);
     expect(panel.componentInstance.rows[1].depth).toBe(1);
     expect(panel.componentInstance.modeName).toBe('normal');
+    expect(panel.componentInstance.modeColor).toBe('#5b9bd5');
+  });
+
+  it('shows the typing hint instead of rows while free-typing', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+
+    app.onCompactModel({rows: [], hint: 'Go ahead and type.'});
+    app.onModeLabel({text: 'edit', color: '#70ad47'});
+    app.keymenuDisplay = 'compact';
+    fixture.detectChanges();
+
+    const panel = fixture.debugElement.query(By.directive(CompactKeymenuComponent));
+    expect(panel.componentInstance.hint).toBe('Go ahead and type.');
+    expect(panel.componentInstance.rows.length).toBe(0);
   });
 
   it('relays label edit submodes to the drawing cursor', () => {
