@@ -40,11 +40,15 @@ describe('held-Add ghost targets', () => {
       .toBeTrue();
   });
 
-  it('uses whole major-grid cells and never becomes tighter than one add slot', () => {
+  it('uses whole major-grid cells, but never a grid coarser than the slot', () => {
     expect(growGhostGridStep(50)).toBe(300);
     expect(growGhostGridStep(100)).toBe(300);
     expect(growGhostGridStep(200)).toBe(400);
-    expect(growGhostGridStep(1000)).toBe(1000);
+    expect(growGhostGridStep(10, 180)).toBe(180);
+    // Zoomed out the major grid climbs a decade at a time. Placement must not
+    // follow it out there: the slot wins and the targets go unaligned.
+    expect(growGhostGridStep(1000, 180)).toBe(180);
+    expect(growGhostGridStep(1000)).toBe(300);
   });
 
   it('deduplicates midpoint/grid collisions and leaves real node centers to real nodes', () => {

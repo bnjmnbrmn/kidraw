@@ -26,6 +26,22 @@ function slotExtent(n: DANode, spacing: number): number {
   return Math.max(spacing, Math.max(n.NODE_WIDTH, n.NODE_HEIGHT) + spacing / 2);
 }
 
+/** Layout spacing used to be a flat 200 regardless of the graph, which put
+ *  a 100px corridor between 60px boxes (they read as scattered) and the same
+ *  corridor between 300px ones (they read as cramped). It now follows the
+ *  boxes being arranged. Height, not the larger dimension: widths swing with
+ *  label length, and the layouts already add a node's own breadth to its
+ *  slot, so a long label still claims the room it needs. */
+export function layoutSpacingFor(nodes: DANode[]): number {
+  const heights = nodes
+    .map(n => layerRect(n).height)
+    .filter(h => Number.isFinite(h) && h > 0)
+    .sort((a, b) => a - b);
+  if (heights.length === 0) return 200;
+  const median = heights[heights.length >> 1];
+  return Math.min(200, Math.max(50, Math.round(median * 0.8)));
+}
+
 /** Applies the layout. Returns the edges the caller should still route:
  *  for the tree-clear variants these are the NON-TREE edges (cross-links
  *  the spanning forest doesn't cover) — their straight chords legitimately
@@ -710,7 +726,11 @@ function treeLayout(
   // (tree-shaped) edges are considered — long cross-links are the router's
   // problem.
   if (repairPierces) {
-    const clearance = spacing / 8;
+    // Floored, not a pure fraction of spacing: tightening the layout must not
+    // dissolve the "no straight edge through a node" guarantee. The repair
+    // widens only the gaps that actually need it, so a floor here costs
+    // nothing where the geometry is already clear (2026-08-29).
+    const clearance = Math.max(spacing / 8, 10);
     const breadthExtentOf = (n: DANode): number => {
       const rect = layerRect(n);
       const ext = direction === 'down' ? rect.width : rect.height;
@@ -721,7 +741,8 @@ function treeLayout(
       const ext = direction === 'down' ? rect.height : rect.width;
       return Number.isFinite(ext) ? ext : 0;
     };
-    for (let iter = 0; iter < 10; iter++) {
+    const widenStep = Math.max(spacing / 2, 40);
+    for (let iter = 0; iter < 20; iter++) {
       // gap index g = the gap between level g-1 and level g
       const gapsToWiden = new Set<number>();
       for (const [child, parent] of treeParent) {
@@ -749,7 +770,7 @@ function treeLayout(
       if (gapsToWiden.size === 0) break;
       let extra = 0;
       for (let l = 1; l <= maxLvl; l++) {
-        if (gapsToWiden.has(l)) extra += spacing / 2;
+        if (gapsToWiden.has(l)) extra += widenStep;
         depthOf.set(l, depthOf.get(l)! + extra);
       }
     }

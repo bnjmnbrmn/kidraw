@@ -26,14 +26,23 @@ function positionKey(point: {x: number; y: number}): string {
 
 /**
  * Use the current major drawing grid without allowing add targets to become
- * denser than the established node-placement slot. The result is always an
- * integer number of major cells, so zoom-level grid changes cannot introduce
- * a nearly-aligned second lattice.
+ * denser than the established node-placement slot. The result is an integer
+ * number of major cells, so zoom-level grid changes cannot introduce a
+ * nearly-aligned second lattice.
+ *
+ * Except when the grid is coarser than the slot. The major grid is a power of
+ * ten chosen to keep ~15 squares across the viewport, so it climbs a decade
+ * every time you zoom out — and snapping up to it made a quick-add land a
+ * whole 1000-unit cell away just because the view was wide. How far a new
+ * node lands from its anchor is a property of the graph, not of how you
+ * happen to be looking at it, so the slot wins there and the targets simply
+ * are not grid-aligned (2026-08-29).
  */
 export function growGhostGridStep(majorGridSpacing: number, minimumSpacing = 300): number {
   const major = Number.isFinite(majorGridSpacing) && majorGridSpacing > 0
     ? majorGridSpacing
     : minimumSpacing;
+  if (major > minimumSpacing) return minimumSpacing;
   return Math.max(major, Math.ceil(minimumSpacing / major) * major);
 }
 

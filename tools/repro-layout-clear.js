@@ -158,15 +158,15 @@ async function main() {
     await waitRoutingIdle();
   };
 
-  // --- Tree down: plain vs clear ---
-  await applyLayout('tree-down');
-  const treePlain = await countPierces();
+  // --- Tree down (the plain variant was removed 2026-08-28, `c11ecba`; the
+  // clear one is the only down-tree now, so there is nothing to compare it
+  // against here) ---
   await applyLayout('tree-down-clear');
   const treeClear = await countPierces();
   const treeClearCrossings = await countCrossings();
   const treeClearWaypoints = await anyWaypoints();
   check('tree-down-clear leaves no straight edge piercing a node', treeClear === 0,
-    `plain=${treePlain} clear=${treeClear}`);
+    `clear=${treeClear}`);
   check('tree-down-clear keeps the tree crossing-free', treeClearCrossings === 0,
     `${treeClearCrossings} crossings`);
   check('tree-down-clear leaves edges straight (no waypoints)', treeClearWaypoints === false);
@@ -190,7 +190,7 @@ async function main() {
     `plain=${forcePlain} clear=${forceClear}`);
   check('force-clear leaves edges straight (no waypoints)', forceClearWaypoints === false);
 
-  console.log(`\n[summary] tree pierces plain=${treePlain} → clear=${treeClear}; ` +
+  console.log(`\n[summary] tree-down-clear pierces=${treeClear}; ` +
               `force pierces plain=${forcePlain} → clear=${forceClear}`);
 
   await browser.close();

@@ -74,7 +74,7 @@ import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
-import { applyLayout, isClearLayout } from './graph-layout';
+import { applyLayout, isClearLayout, layoutSpacingFor } from './graph-layout';
 import { resolveBoxOverlaps } from './overlap-resolution';
 import {
   applyDesiderataRouteEdges,
@@ -265,20 +265,32 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public CROSSHAIRS_MOVEMENT_DISTANCE = 50; // one grid cell
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
-  /** Layer-space offset of a quick-added node from its anchor (one "slot"). */
-  private static readonly QUICK_ADD_SLOT = 300;
-  /** Vertical throws are half a slot. A node is as wide as it is tall in its
-   *  bounding box, but reads much wider — the label runs horizontally — so a
-   *  300px vertical gap looks like a chasm where the same horizontal gap looks
-   *  right. Stacks are also the common shape in a todo tree, and they get tall
-   *  fast at a full slot. */
-  private static readonly QUICK_ADD_SLOT_V = 150;
+  /** Placement used fixed slots — 300 across, 150 down — which read as a
+   *  chasm next to a small box and as a squeeze next to a wide one. The gap
+   *  is now a fraction of the box you are growing from, so a graph of 60px
+   *  nodes places them 60px apart and a graph of big ones spreads out
+   *  (2026-08-29). Horizontal gaps run wider because labels run across.
+   *  Bounds keep tiny boxes from touching and huge ones from throwing the
+   *  new node off screen. */
+  private static readonly QUICK_ADD_GAP_H_RATIO = 0.5;
+  private static readonly QUICK_ADD_GAP_V_RATIO = 0.35;
+  private static readonly QUICK_ADD_GAP_MIN = 24;
+  private static readonly QUICK_ADD_GAP_MAX_H = 120;
+  private static readonly QUICK_ADD_GAP_MAX_V = 90;
+  /** Fallback box when there is no anchor to measure — DANode's default. */
+  private static readonly QUICK_ADD_FALLBACK_BOX = 120;
 
-  /** The slot distance for a throw along `dy`-vs-`dx`. */
-  private static quickAddSlot(vertical: boolean): number {
-    return vertical
-      ? DrawingAreaComponent.QUICK_ADD_SLOT_V
-      : DrawingAreaComponent.QUICK_ADD_SLOT;
+  /** Centre-to-centre distance for a node placed beside `anchor`: the box it
+   *  has to clear, plus a gap proportional to that box. */
+  private quickAddSlot(vertical: boolean, anchor: DANode | null = this.growAnchor): number {
+    const D = DrawingAreaComponent;
+    const box = vertical
+      ? (anchor?.NODE_HEIGHT ?? D.QUICK_ADD_FALLBACK_BOX)
+      : (anchor?.NODE_WIDTH ?? D.QUICK_ADD_FALLBACK_BOX);
+    const ratio = vertical ? D.QUICK_ADD_GAP_V_RATIO : D.QUICK_ADD_GAP_H_RATIO;
+    const maxGap = vertical ? D.QUICK_ADD_GAP_MAX_V : D.QUICK_ADD_GAP_MAX_H;
+    const gap = Math.min(maxGap, Math.max(D.QUICK_ADD_GAP_MIN, box * ratio));
+    return Math.round(box + gap);
   }
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
@@ -2189,7 +2201,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodeSet = new Set(nodes);
     const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
 
-    const crossLinks = applyLayout(layout, nodes, edges);
+    const crossLinks = applyLayout(layout, nodes, edges, layoutSpacingFor(nodes));
     this.updateEdgesForResizedNodes(allNodes);
 
     // The layout moved nodes wholesale, so pre-existing unpinned waypoints on
@@ -7074,7 +7086,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       source,
       this.drawingLayer.getGridSpacing(),
       bounds,
-      DrawingAreaComponent.QUICK_ADD_SLOT,
+      // The ghost lattice is square, so it takes the wider of the two needs:
+      // a vertical-sized step would drop targets inside a wide anchor box.
+      this.quickAddSlot(false, anchor),
       nodes.filter(node => visibleIds.has(node.id)),
     );
   }
@@ -7318,7 +7332,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacedRough = false;
     const c = this.growOrigin!;
     this.growPlacePos = this.growAnchor
-      ? {x: c.x + DrawingAreaComponent.QUICK_ADD_SLOT, y: c.y}
+      ? {x: c.x + this.quickAddSlot(false), y: c.y}
       : {...c};
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
     this.redrawGrowGhost();
@@ -7334,13 +7348,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     if (!this.growPlacedRough) {
       this.growPlacedRough = true;
-      const slot = DrawingAreaComponent.quickAddSlot(dy !== 0);
+      const slot = this.quickAddSlot(dy !== 0);
       this.growPlacePos = {x: c.x + dx * slot, y: c.y + dy * slot};
     } else {
       // A coarse step is "one more slot in this direction", so it follows the
       // same axis split as the rough throw above.
       const step = this.growMods.has(k.coarse)
-          ? DrawingAreaComponent.quickAddSlot(dy !== 0)
+          ? this.quickAddSlot(dy !== 0)
         : this.growMods.has(k.fine) ? 10 : 50;
       this.growPlacePos = {
         x: this.growPlacePos!.x + dx * step,
