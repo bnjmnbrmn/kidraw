@@ -574,6 +574,37 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.navigationLandingGhost).toBeNull();
     });
 
+    it('grows an edited node about its centre and off its neighbours', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const anchorNode = new DANode(400, 400, 'anchor');
+      const editing = new DANode(400, 200, 'x');
+      drawingLayer.addRawNode(anchorNode);
+      drawingLayer.addRawNode(editing);
+      component.drawingLayer = drawingLayer;
+      component.RESIZE_REFLOW_GAP = 16;
+
+      const centre = {
+        x: editing.konvaGroup.x() + editing.NODE_WIDTH / 2,
+        y: editing.konvaGroup.y() + editing.NODE_HEIGHT / 2,
+      };
+      // Stand in for what typing does: the box grows from its top-left, far
+      // enough to swallow the node below it.
+      editing.resizeBy(300);
+
+      component.settleGrowingNodes([editing], new Map([[editing, centre]]));
+
+      const box = (n: DANode) => ({
+        x: n.konvaGroup.x(), y: n.konvaGroup.y(), w: n.NODE_WIDTH, h: n.NODE_HEIGHT,
+      });
+      const a = box(anchorNode), e = box(editing);
+      expect(a.x < e.x + e.w && a.x + a.w > e.x && a.y < e.y + e.h && a.y + a.h > e.y)
+        .toBeFalse();
+      // The anchor is the one that did not move.
+      expect(anchorNode.konvaGroup.x()).toBe(400);
+      expect(anchorNode.konvaGroup.y()).toBe(400);
+    });
+
     it('keeps a circle label inside the ellipse, not just inside its box', () => {
       const circle = new DANode(0, 0, 'Layout menu: this needs to be cleaned up',
         undefined, undefined, 'circle');

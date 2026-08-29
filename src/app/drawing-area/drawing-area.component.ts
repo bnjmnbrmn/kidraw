@@ -2545,7 +2545,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private insertChar(key: string) {
     this.finishTweens()
     this.crosshairsLayer.hideCrosshairs();
+    const centres = this.selectedNodeCentres();
     const resized = this.drawingLayer.appendTextToSelected(key);
+    this.settleGrowingNodes(resized, centres);
     this.updateEdgesForResizedNodes(resized);
     // Also insert into selected labels; re-place from the anchor so a growing
     // box keeps its above/below clearance from the line.
@@ -2555,6 +2557,49 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
     this.drawingLayer.batchDraw();
     this.refreshLabelEditGhost();
+  }
+
+  /** Box centres of the nodes being edited, read before their text changes. */
+  private selectedNodeCentres(): Map<DANode, {x: number; y: number}> {
+    const centres = new Map<DANode, {x: number; y: number}>();
+    for (const node of this.drawingLayer.getSelectedDANodes()) {
+      centres.set(node, {
+        x: node.group.x() + node.NODE_WIDTH / 2,
+        y: node.group.y() + node.NODE_HEIGHT / 2,
+      });
+    }
+    return centres;
+  }
+
+  /** Typing grows a box from its top-left corner, so a node walks down and
+   *  right over whatever is there — usually the node it was just connected
+   *  to (da-446). Two rules keep it out of the way: it grows about its own
+   *  centre, and if it still lands on a neighbour it is the one that moves,
+   *  not the neighbour. The rest of the graph holds still while you type. */
+  private settleGrowingNodes(
+    grown: DANode[],
+    centres: Map<DANode, {x: number; y: number}>,
+  ): void {
+    if (grown.length === 0) return;
+    for (const node of grown) {
+      const centre = centres.get(node);
+      if (!centre || node.pinned) continue;
+      node.group.x(centre.x - node.NODE_WIDTH / 2);
+      node.group.y(centre.y - node.NODE_HEIGHT / 2);
+    }
+    const all = this.drawingLayer.getDANodes();
+    const growing = new Set(grown);
+    const boxes = all.map(node => ({
+      x: node.group.x(),
+      y: node.group.y(),
+      w: node.NODE_WIDTH,
+      h: node.NODE_HEIGHT,
+      movable: growing.has(node) && !node.pinned,
+    }));
+    for (const i of resolveBoxOverlaps(boxes, this.RESIZE_REFLOW_GAP)) {
+      all[i].group.x(boxes[i].x);
+      all[i].group.y(boxes[i].y);
+    }
   }
 
   private deleteLastChar() {
