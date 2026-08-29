@@ -58,7 +58,7 @@ async function main() {
     for (const [k, v] of Object.entries(misc)) {
       if (k !== '_repeatConfig') miscLabels[k] = v.actionLabel;
     }
-    return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), z: summarize(root['z']), m: summarize(root['m']), miscLabels };
+    return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), z: summarize(root['z']), q: summarize(root['q']), miscLabels };
   });
   // Renamed 'Edit/Insert...' → 'Add' when a=add / i=insert landed; the
   // trailing ellipsis went with da-527 (the chamfer already says "has children").
@@ -70,14 +70,20 @@ async function main() {
   // label broadened from 'Hide Keyboard' to 'Cycle Menu View'.
   check('root g is Move by node', menu.g?.label === 'Move by node', JSON.stringify(menu.g));
   check('root z cycles the menu view', menu.z?.label === 'Cycle Menu View', JSON.stringify(menu.z));
-  check('root m is the File hub', menu.m?.label === 'File', JSON.stringify(menu.m));
-  check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
-  check('m→o Open… (vault)', menu.miscLabels['o'] === 'Open…');
-  check('m→s Save As… (vault)', menu.miscLabels['s'] === 'Save As…');
-  check('m→i Import File…', menu.miscLabels['i'] === 'Import File…');
-  check('m→e Export File…', menu.miscLabels['e'] === 'Export File…');
+  // 2026-08-29: the File hub moved m → q (left pinky), its children are all
+  // right-hand keys, and the import/export, Cycle Display, profile-switch and
+  // Todo Graph entries were withdrawn.
+  check('root q is the File hub', menu.q?.label === 'File', JSON.stringify(menu.q));
+  check('q→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
+  check('q→o Open… (vault)', menu.miscLabels['o'] === 'Open…');
+  check('q→k Save As… (vault)', menu.miscLabels['k'] === 'Save As…');
   const labels = Object.values(menu.miscLabels);
-  check('no Save Graph / Load Graph entries', !labels.includes('Save Graph') && !labels.includes('Load Graph'), JSON.stringify(labels));
+  check('no import/export entries left', !labels.some(l => /Import|Export/.test(l)),
+    JSON.stringify(labels));
+  const RIGHT = new Set([...'yuiop', ...'hjkl;', ...'nm,./']);
+  check('every File child is a right-hand key',
+    Object.keys(menu.miscLabels).every(k => RIGHT.has(k)),
+    JSON.stringify(Object.keys(menu.miscLabels)));
 
   // --- 1. Hold a → tap d inserts a node; release i → label edit ---
   // Park the crosshairs on empty canvas first.

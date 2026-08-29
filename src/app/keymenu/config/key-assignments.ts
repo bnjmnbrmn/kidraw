@@ -102,15 +102,10 @@ export interface KeymenuKeyAssignments {
     readonly clip: KeyString;
   };
   readonly select: {
-    readonly editItem: KeyString;
     /** Cycle directedness of the selected edge(s) inside the held select
      *  submenu (directed → undirected → bidirectional). */
     readonly cycleDirection: KeyString;
     readonly togglePin: KeyString;
-    /** Zoom keys inside the held select submenu (kept off the
-     *  cycleDirection key). */
-    readonly zoomIn: KeyString;
-    readonly zoomOut: KeyString;
   };
   readonly moveSpeed: SpeedModifierKeys;
   readonly panZoom: {
@@ -147,15 +142,9 @@ export interface KeymenuKeyAssignments {
     readonly submenu: KeyString;
     readonly reload: KeyString;
     readonly newGraph: KeyString;
-    readonly openFile: KeyString;
-    readonly saveFileAs: KeyString;
-    readonly exportZip: KeyString;
-    readonly cycleDisplay: KeyString;
     readonly connectVault: KeyString;
     readonly vaultOpen: KeyString;
     readonly vaultSaveAs: KeyString;
-    readonly toggleKeyProfile: KeyString;
-    readonly todoGraphType: KeyString;
   };
   /** Paste's root key. Copy is the yank key itself and Cut is the delete
    *  key, both bound at root; the submenu that held all three went with
@@ -164,16 +153,10 @@ export interface KeymenuKeyAssignments {
     readonly paste: KeyString;
   };
   readonly layout: {
-    readonly forceDirected: KeyString;
     readonly forceClear: KeyString;
     readonly treeDownClear: KeyString;
     readonly treeRightClear: KeyString;
-    readonly circular: KeyString;
     readonly radial: KeyString;
-    readonly routeBezierFitWeightedChain: KeyString;
-    readonly routeDesiderata: KeyString;
-    readonly routeIncremental: KeyString;
-    readonly routeIncrementalV3: KeyString;
   };
 }
 
@@ -228,11 +211,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
   overflow: {fit: 'h', widenBoth: 'j', widenH: 'k', widenV: 'l', shrinkFont: 'u', ellipsis: 'i', clip: 'o'},
   select: {
-    editItem: ';',
     cycleDirection: 'o',
     togglePin: 'p',
-    zoomIn: 'y',
-    zoomOut: 'u',
   },
   moveSpeed: {
     bigger: 'd',
@@ -262,24 +242,21 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },
   ctrl: {submenu: 'Control'},
+  // File lives on the left pinky, so everything under it is a right-hand key.
   misc: {
-    submenu: 'm',
-    reload: 'r',
+    submenu: 'q',
+    reload: 'u',
     newGraph: 'n',
-    openFile: 'i',
-    saveFileAs: 'e',
-    exportZip: 'z',
-    cycleDisplay: 'd',
-    connectVault: 'v',
+    connectVault: 'l',
     vaultOpen: 'o',
-    vaultSaveAs: 's',
-    toggleKeyProfile: 'p',
-    todoGraphType: 't',
+    vaultSaveAs: 'k',
   },
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
   clipboard: {paste: 'p'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRightClear: 'l', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
+  // The Layout hub is `b` (left index), so its children are right-hand keys:
+  // see notes/design-chord-ergonomics.md.
+  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
 };
 
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
@@ -331,11 +308,8 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
   overflow: {fit: 'h', widenBoth: 'j', widenH: 'k', widenV: 'l', shrinkFont: 'u', ellipsis: 'i', clip: 'o'},
   select: {
-    editItem: ';',
     cycleDirection: 'o',
     togglePin: 'p',
-    zoomIn: 'i',
-    zoomOut: 'u',
   },
   moveSpeed: {
     bigger: 's',
@@ -365,20 +339,17 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },
   ctrl: {submenu: 'Control'},
+  // File lives on the left pinky, so everything under it is a right-hand key.
   misc: {
-    submenu: 'm',
-    reload: 'r',
+    submenu: 'q',
+    reload: 'u',
     newGraph: 'n',
-    openFile: 'i',
-    saveFileAs: 'e',
-    exportZip: 'z',
-    cycleDisplay: 'd',
-    connectVault: 'v',
+    connectVault: 'l',
     vaultOpen: 'o',
-    vaultSaveAs: 's',
-    toggleKeyProfile: 'p',
-    todoGraphType: 't',
+    vaultSaveAs: 'k',
   },
   clipboard: {paste: 'p'},
-  layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRightClear: 'l', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v'},
+  // The Layout hub is `b` (left index), so its children are right-hand keys:
+  // see notes/design-chord-ergonomics.md.
+  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
 };

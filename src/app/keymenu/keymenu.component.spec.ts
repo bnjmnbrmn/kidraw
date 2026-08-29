@@ -458,8 +458,9 @@ describe('KeymenuComponent', () => {
     expect((panZoomSubmenu.submenuConfig['y'] as LabeledAction).actionLabel).toBe('Recenter Xhairs');
     expect((panZoomSubmenu.submenuConfig['u'] as LabeledAction).actionLabel).toBe('Center on Xhairs');
 
-    // Misc submenu at 'm'
-    const miscSubmenu = rootConfig['m'] as LabeledSubmenuConfig;
+    // File submenu moved to 'q' on 2026-08-29 (left pinky hub, right-hand
+    // children).
+    const miscSubmenu = rootConfig['q'] as LabeledSubmenuConfig;
     expect(miscSubmenu instanceof LabeledSubmenuConfig).toBeTrue();
 
     // 'a' = add (held hub / contextual tap); 'i' = insert text (tap) —
@@ -554,7 +555,8 @@ describe('KeymenuComponent', () => {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.root,
         editSubmenu: 'j',
         selectDragSubmenu: 'l',
-        toggleVisibility: 'q',
+        // 'm' is free since File moved to 'q'.
+        toggleVisibility: 'm',
       },
       shared: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,
@@ -570,7 +572,7 @@ describe('KeymenuComponent', () => {
     expect(rootConfig['i']).toBeUndefined();
     expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit/insert hub (tap fires on keyup)
     expect(rootConfig['l'] instanceof LabeledActionSubmenuConfig).toBeTrue();
-    expect((rootConfig['q'] as LabeledAction).actionLabel).toBe('Cycle Menu View');
+    expect((rootConfig['m'] as LabeledAction).actionLabel).toBe('Cycle Menu View');
 
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');

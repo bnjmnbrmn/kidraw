@@ -679,7 +679,27 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.clipboardSubmenu]: new LabeledAction('Copy',
         () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION}), false),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
+      // Holding Shift shows what the shifted keys do, the same way every
+      // other hub does. Redo lives here as U; Ctrl-R still works.
+      ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
+      ['RShift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
       ...this.buildSharedUtilityBindings(),
+    } as SubmenuConfig;
+  }
+
+  /** The shifted layer of normal mode. Small on purpose: it names the two
+   *  shifted keys that already do something, so neither is folklore. */
+  private buildNormalShiftSubmenuConfig(): SubmenuConfig {
+    const shared = this.keyAssignments.shared;
+    const search = this.keyAssignments.search;
+    return {
+      _repeatConfig: { enabled: false },
+      [shared.undo]: new LabeledAction('Redo', () =>
+        this.keyMenuOut.emit({kind: DACommandType.REDO}), false),
+      // Shift+n is intercepted in handleKeyDown (a chord cannot be a binding),
+      // so this entry is the card telling you it exists.
+      [search.next]: new LabeledAction('Prev Match', () =>
+        this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH}), false),
     } as SubmenuConfig;
   }
 
@@ -777,27 +797,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildLayoutSubmenuConfig(): SubmenuConfig {
     const layout = this.keyAssignments.layout;
     const emit = (l: LayoutType) => () => this.keyMenuOut.emit({kind: DACommandType.APPLY_LAYOUT, layout: l});
-    const route = (algorithm: RoutingAlgorithm) => () =>
-      this.keyMenuOut.emit({kind: DACommandType.APPLY_EDGE_ROUTING, algorithm});
     return {
-      [layout.forceDirected]: new LabeledAction('Force',    emit('force-directed')),
-      [layout.forceClear]:    new LabeledAction('Force+',   emit('force-clear')),
-      [layout.treeDownClear]: new LabeledAction('Tree ↓', emit('tree-down-clear')),
-      // One horizontal tree (da-531): the tidy geometry of the plain variant,
-      // and its straight lines, with only the chords that would clip a
-      // sibling handed to the router.
+      // Four layouts, all on the right hand under a left-index hub.
+      // Gone 2026-08-29: plain Force (the clear variant does the same job),
+      // Circle, and the four "Route:" entries — those were development
+      // experiments, new edges auto-route, and layouts route their own
+      // cross-links. The routing-eval harness is where routers get compared.
+      // Gather / Ungather went with da-529.
+      [layout.forceClear]:     new LabeledAction('Force',  emit('force-clear')),
+      [layout.treeDownClear]:  new LabeledAction('Tree ↓', emit('tree-down-clear')),
       [layout.treeRightClear]: new LabeledAction('Tree →', emit('tree-right-clear')),
-      [layout.circular]:      new LabeledAction('Circle',   emit('circular')),
-      [layout.radial]:        new LabeledAction('Radial',   emit('radial')),
-      [layout.routeBezierFitWeightedChain]: new LabeledAction('Route: BF-WC', route('bezier-fit-weighted-chain')),
-      [layout.routeDesiderata]:             new LabeledAction('Route: Desiderata', route('desiderata')),
-      [layout.routeIncremental]:            new LabeledAction('Route: Incr v2', route('incremental-desiderata-v2')),
-      [layout.routeIncrementalV3]:          new LabeledAction('Route: Incr v3', route('incremental-desiderata-v3')),
-      // Gather / Ungather left the menu with da-529: what they do is not
-      // legible on screen — "it sort of looks buggy" — so the route is
-      // withdrawn while the fisheye idea is reconsidered. The commands and
-      // gather-fisheye.ts are untouched, so nothing is lost by re-binding
-      // them; see notes/idea-gather-recursive.md.
+      [layout.radial]:         new LabeledAction('Radial', emit('radial')),
     } as SubmenuConfig;
   }
 
@@ -894,8 +904,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [drag.left]: new LabeledAction('Drag Left', this.rootDrag(DACommandType.DRAG_SELECTED_LEFT)),
       [drag.down]: new LabeledAction('Drag Down', this.rootDrag(DACommandType.DRAG_SELECTED_DOWN)),
       [drag.right]: new LabeledAction('Drag Right', this.rootDrag(DACommandType.DRAG_SELECTED_RIGHT)),
-      [select.zoomIn]: new LabeledAction('Zoom In', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_IN})),
-      [select.zoomOut]: new LabeledAction('Zoom Out', () => this.keyMenuOut.emit({kind: DACommandType.ZOOM_OUT})),
       [select.cycleDirection]: new LabeledAction('Cycle Direction', () =>
         this.keyMenuOut.emit({kind: DACommandType.CYCLE_EDGE_DIRECTEDNESS}), false),
       // Pinning is "don't move this" — a waypoint or node that survives layout
@@ -905,7 +913,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
       [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag', this.buildDragSpeedSubmenu('coarse')),
       [ds.smaller]: new LabeledSubmenuConfig('Fine Drag', this.buildDragSpeedSubmenu('fine')),
-      [select.editItem]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
+      // Zoom In / Zoom Out and Edit Item left this submenu on 2026-08-29:
+      // zoom has its own hub on Pan/Zoom, and Edit Text is a root key.
     } as SubmenuConfig;
   }
 
@@ -1161,29 +1170,24 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildMiscSubmenuConfig(): SubmenuConfig {
     const misc = this.keyAssignments.misc;
-    const otherProfileLabel = this.keyboardConfig.keyProfile === 'vim' ? 'IJKL keys' : 'Vim keys';
 
     return {
       // File / one-shot actions: never auto-repeat. Blocking dialogs
       // (prompt, native pickers) swallow the keyup, so a repeat timer
       // would keep firing and stack dialogs.
+      //
+      // The hub moved to `q` and every child is a right-hand key, so the
+      // chord is left-pinky-hold + right-hand tap. Gone 2026-08-29: the
+      // Import/Export file and zip flows, Cycle Display, the Vim/IJKL
+      // profile switch, and Todo Graph — the last of those because diagram
+      // types are a plugin concept and we are pretending plugins have not
+      // started. Every command behind them is untouched.
       _repeatConfig: { enabled: false },
-      [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
       [misc.newGraph]: new LabeledAction('New Graph', () => this.keyMenuOut.emit({kind: DACommandType.NEW_GRAPH})),
-      // Vault flows are the primary Open/Save; the picker/blob flows are
-      // explicit interop with files outside the vault (and the non-Chromium
-      // fallback), hence Import/Export.
-      [misc.openFile]: new LabeledAction('Import File…', () => this.keyMenuOut.emit({kind: DACommandType.OPEN_FILE})),
-      [misc.saveFileAs]: new LabeledAction('Export File…', () => this.keyMenuOut.emit({kind: DACommandType.SAVE_FILE_AS})),
-      [misc.exportZip]: new LabeledAction('Export Zip…', () => this.keyMenuOut.emit({kind: DACommandType.EXPORT_ZIP})),
-      [misc.cycleDisplay]: new LabeledAction('Cycle Display', () => this.keyMenuOut.emit({kind: DACommandType.CYCLE_DISPLAY})),
-      [misc.todoGraphType]: new LabeledAction('Todo Graph', () => this.keyMenuOut.emit({kind: DACommandType.SET_DIAGRAM_TYPE, typeId: 'todo-graph'})),
-      [misc.connectVault]: new LabeledAction('Vault: Connect…', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_VAULT})),
       [misc.vaultOpen]: new LabeledAction('Open…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_OPEN})),
       [misc.vaultSaveAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_SAVE_AS})),
-      [misc.toggleKeyProfile]: new LabeledAction(`→ ${otherProfileLabel}`, () => {
-        this.keyboardConfig.keyProfile = this.keyboardConfig.keyProfile === 'vim' ? 'ijkl' : 'vim';
-      }),
+      [misc.connectVault]: new LabeledAction('Vault: Connect…', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_VAULT})),
+      [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
     } as SubmenuConfig;
   }
 
@@ -1753,6 +1757,20 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         && !event.metaKey && this.keyMenu.currentMode.name === 'normal') {
       event.preventDefault();
       this.keyMenuOut.emit({kind: DACommandType.OPEN_EX_LINE});
+      return;
+    }
+
+    // Shift+U is Redo. Intercepted rather than left to the Shift card: a
+    // submenu opens on a ~350ms hold, so a quick Shift+U would fall through
+    // to the root's plain Undo — the exact opposite of what was asked for.
+    // Ctrl-R and Ctrl-Shift-Z still redo as well.
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+        && !event.repeat
+        && event.key.toLowerCase() === this.keyAssignments.shared.undo
+        && (this.keyMenu.currentMode.name === 'normal'
+            || this.keyMenu.currentMode.name === 'normalCaps')) {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: DACommandType.REDO});
       return;
     }
 
