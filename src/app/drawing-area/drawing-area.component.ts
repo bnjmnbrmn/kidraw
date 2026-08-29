@@ -3046,6 +3046,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let targetKind = '';
     let targetId = '';
     let targetNode: DANode | null = null;
+    let ghostReasons: string[] = [];
 
     const label = this.getLabelUnderCrosshairs();
     if (label) {
@@ -3078,7 +3079,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           targetNode = node;
           targetKind = 'node';
           targetId = node.id;
-          highlight = new Konva.Rect({
+          // A node that earns a landing ghost gets its dashed trace on the
+          // ghost instead. Ringing the real node as well put two dashed
+          // outlines of the same node on screen at once (da-434).
+          ghostReasons = this.navigationGhostReasons(node);
+          highlight = ghostReasons.length > 0 ? null : new Konva.Rect({
             ...common,
             x: node.group.x() - pad,
             y: node.group.y() - pad,
@@ -3118,7 +3123,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       highlight.moveToTop();
       this.crosshairHoverHighlight = highlight;
     }
-    if (targetNode) this.refreshNavigationLandingGhost(targetNode);
+    if (targetNode) this.refreshNavigationLandingGhost(targetNode, ghostReasons);
     this.drawingLayer.batchDraw();
   }
 
@@ -3178,10 +3183,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Overlay the actual node (shape, text, status, selection) at natural
    *  scale on the chrome layer. Its position follows the real node when
    *  possible and clamps wholly inside the viewport otherwise. */
-  private refreshNavigationLandingGhost(node: DANode): void {
+  private refreshNavigationLandingGhost(node: DANode, knownReasons?: string[]): void {
     this.clearNavigationLandingGhost(false);
     if (!this.stage || !this.crosshairsLayer) return;
-    const reasons = this.navigationGhostReasons(node);
+    const reasons = knownReasons ?? this.navigationGhostReasons(node);
     if (reasons.length === 0) return;
     const rect = this.nodeStageRect(node);
     const center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
@@ -3195,15 +3200,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT,
       this.viewMinY(), this.viewMaxY());
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
+    // Fully opaque: this is a stand-in for a node you cannot read, and at
+    // 0.94 the real node showed through it wherever the two overlapped.
     const group = new Konva.Group({
       name: 'navigation-node-ghost',
       x,
       y,
-      opacity: 0.94,
       listening: false,
     });
     group.setAttr('targetId', node.id);
     group.setAttr('reasons', reasons);
+    // Ground the clone on the canvas colour so anything behind the ghost is
+    // occluded even where the node's own fill is translucent.
+    group.add(new Konva.Rect({
+      width: node.NODE_WIDTH,
+      height: node.NODE_HEIGHT,
+      fill: palette.drawingStageBackground,
+      cornerRadius: node.nodeShape === 'circle'
+        ? Math.min(node.NODE_WIDTH, node.NODE_HEIGHT) / 2
+        : 7,
+      listening: false,
+    }));
     const clone = node.konvaGroup.clone({
       x: 0,
       y: 0,

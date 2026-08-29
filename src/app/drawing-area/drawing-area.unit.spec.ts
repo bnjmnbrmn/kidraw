@@ -574,6 +574,90 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.navigationLandingGhost).toBeNull();
     });
 
+    it('grounds the ghost so the real node cannot show through it', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(-40, 100, 'partial');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      const overlay = new Konva.Group();
+      component.crosshairsLayer = {
+        add: (child: Konva.Group) => overlay.add(child),
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
+      };
+      component.themeService = {theme: 'dark'};
+
+      component.refreshNavigationLandingGhost(node);
+
+      const ghost = component.navigationLandingGhost as Konva.Group;
+      expect(ghost.opacity()).toBe(1);
+      const backing = ghost.getChildren()[0] as Konva.Rect;
+      expect(backing.fill()).toBe('#050505');
+      expect(backing.width()).toBe(node.NODE_WIDTH);
+    });
+
+    it('leaves the dashed trace to the ghost when the landing has one', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(-40, 100, 'partial');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      const overlay = new Konva.Group();
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: {visible: () => true}},
+        add: (child: Konva.Group) => overlay.add(child),
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.crosshairHoverHighlight = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getLabelUnderCrosshairs = () => null;
+      component.getWaypointUnderCrosshairs = () => null;
+      component.getDANodesContainingCrosshairs = () => [node];
+
+      component.refreshCrosshairHoverHighlight();
+
+      expect(component.navigationLandingGhost).not.toBeNull();
+      expect(component.crosshairHoverHighlight).toBeNull();
+    });
+
+    it('still rings a node that reads fine where it is', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(200, 100, 'readable');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.crosshairsLayer = {
+        crosshairs: {konvaGroup: {visible: () => true}},
+        add: () => undefined,
+        batchDraw: () => undefined,
+      };
+      component.stage = {width: () => 800, height: () => 400};
+      component.navigationLandingGhost = null;
+      component.crosshairHoverHighlight = null;
+      component.visualConfigService = {
+        getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
+      };
+      component.themeService = {theme: 'dark'};
+      component.getLabelUnderCrosshairs = () => null;
+      component.getWaypointUnderCrosshairs = () => null;
+      component.getDANodesContainingCrosshairs = () => [node];
+
+      component.refreshCrosshairHoverHighlight();
+
+      expect(component.crosshairHoverHighlight).not.toBeNull();
+      expect(component.navigationLandingGhost).toBeNull();
+    });
+
     it('classifies a partially off-screen navigation landing for ghosting', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();
