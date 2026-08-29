@@ -7156,6 +7156,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodes = layerNodes.map(node => ({
       id: node.id,
       ...this.getNodeCenterInLayerCoordinates(node),
+      halfW: node.NODE_WIDTH / 2,
+      halfH: node.NODE_HEIGHT / 2,
     }));
     const source = nodes.find(node => node.id === anchor.id)!;
     const bounds = {
@@ -7180,6 +7182,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       // a vertical-sized step would drop targets inside a wide anchor box.
       this.quickAddSlot(false, anchor),
       nodes.filter(node => visibleIds.has(node.id)),
+      // The anchor's own box stands in for the node a target would create —
+      // it is also what the placement ghost is drawn at, so what is refused
+      // is exactly what you would have seen land on something (da-510).
+      {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2},
     );
   }
 

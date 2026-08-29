@@ -1,6 +1,7 @@
 import {
   buildGrowGhostTargets,
   growGhostGridStep,
+  GrowGhostTarget,
 } from './grow-ghost-targets';
 
 describe('held-Add ghost targets', () => {
@@ -49,6 +50,28 @@ describe('held-Add ghost targets', () => {
     // follow it out there: the slot wins and the targets go unaligned.
     expect(growGhostGridStep(1000, 180)).toBe(180);
     expect(growGhostGridStep(1000)).toBe(300);
+  });
+
+  it('does not offer a target whose node would land on an existing one', () => {
+    const nodes = [
+      {id: 'anchor', x: 360, y: 360, halfW: 60, halfH: 60},
+      // Off-lattice, so its *box* covers the grid point at (760, 360) while
+      // its centre does not (da-510).
+      {id: 'occupier', x: 800, y: 380, halfW: 60, halfH: 60},
+    ];
+    const bounds = {minX: 0, minY: 0, maxX: 1400, maxY: 900};
+
+    const offered = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 200, nodes,
+      {w: 60, h: 60});
+    const blind = buildGrowGhostTargets(nodes, nodes[0], 100, bounds, 200, nodes);
+
+    const at = (list: GrowGhostTarget[], x: number, y: number) =>
+      list.filter(t => Math.abs(t.x - x) < 1 && Math.abs(t.y - y) < 1).length;
+    expect(at(blind, 760, 360)).toBe(1);
+    expect(at(offered, 760, 360)).toBe(0);
+    // Only that one goes: the rest of the lane is still offered.
+    expect(at(offered, 560, 360)).toBe(1);
+    expect(at(offered, 960, 360)).toBe(1);
   });
 
   it('deduplicates midpoint/grid collisions and leaves real node centers to real nodes', () => {

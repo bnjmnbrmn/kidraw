@@ -2,6 +2,10 @@ export interface GrowGhostNodeCenter {
   id: string;
   x: number;
   y: number;
+  /** Box half-extents. Optional for callers that only care about centres;
+   *  without them a node can only block a target it sits exactly on. */
+  halfW?: number;
+  halfH?: number;
 }
 
 export interface GrowGhostBounds {
@@ -63,13 +67,27 @@ export function buildGrowGhostTargets(
   // The caller may limit midpoint generation to visible nodes while still
   // passing every node above so offscreen centers remain occupied.
   midpointNodes: readonly GrowGhostNodeCenter[] = nodes,
+  // Half-extents of the node a target would create, and the clear space to
+  // keep around it. A target whose box would land on an existing node is not
+  // offered: releasing there would drop a node on top of another (da-510).
+  newNodeHalf?: {w: number; h: number},
+  clearance = 12,
 ): GrowGhostTarget[] {
   const occupied = new Set(nodes.map(positionKey));
   const used = new Set<string>();
   const targets: GrowGhostTarget[] = [];
+  const lands = newNodeHalf
+    ? (x: number, y: number) => nodes.some(n => {
+        if (n.id === anchor.id) return false;
+        const hw = (n.halfW ?? 0) + newNodeHalf.w + clearance;
+        const hh = (n.halfH ?? 0) + newNodeHalf.h + clearance;
+        return Math.abs(n.x - x) < hw && Math.abs(n.y - y) < hh;
+      })
+    : () => false;
   const add = (target: GrowGhostTarget) => {
     const key = positionKey(target);
     if (occupied.has(key) || used.has(key)) return;
+    if (lands(target.x, target.y)) return;
     used.add(key);
     targets.push(target);
   };
