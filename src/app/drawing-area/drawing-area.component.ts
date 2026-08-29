@@ -7067,6 +7067,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growInsertionTarget: GrowGhostTarget | null = null;
   /** All midpoint and source-grid insertion stops for this Add hold. */
   private growGhostTargets: GrowGhostTarget[] = [];
+  /** Where Move-by-Node's cursor sits while grow mode holds the crosshairs
+   *  on the anchor (da-448). Null outside a grow gesture. */
+  private growNavCursor: {x: number; y: number} | null = null;
+  private growParkTimer: number | null = null;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
@@ -7304,6 +7308,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  turn re-origin semantics. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
+    // Move-by-Node walks from wherever the crosshairs are, so the walk needs
+    // them at the last candidate — but during a grow gesture the thing you
+    // are aiming is the ghost, and watching the crosshairs wander off the
+    // node you are growing from reads as the node itself moving (da-448).
+    // The engine's cursor is kept here instead, and the crosshairs are put
+    // back on the anchor after each hop.
+    if (this.growNavCursor && this.crosshairsLayer?.crosshairs) {
+      const scale = this.drawingLayer.scaleX();
+      this.crosshairsLayer.crosshairs.x =
+        this.drawingLayer.x() + this.growNavCursor.x * scale;
+      this.crosshairsLayer.crosshairs.y =
+        this.drawingLayer.y() + this.growNavCursor.y * scale;
+    }
     this.snapToNodeInDirection(direction, 'nodes');
     const last = this.graphItemNavigationStrategy === 'adaptive-band-grid'
       ? this.navGridLast
@@ -7314,8 +7331,44 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!target && !insertion) return;
     this.growTarget = target;
     this.growInsertionTarget = insertion;
+    // The engine's cursor is the stop it just landed on, not the crosshairs:
+    // those are still animating towards it, and a mid-flight position would
+    // not match any stop on the next hop, stalling the walk.
+    this.parkGrowCrosshairsOnAnchor(this.navStopCenter?.(last.id, last.kind) ?? null);
+    // A hop that reaches the edge of the viewport pans, and the pan is a
+    // tween — so the anchor's screen position a moment later is not the one
+    // just read. Re-place once it has settled.
+    window.clearTimeout(this.growParkTimer ?? undefined);
+    this.growParkTimer = window.setTimeout(() => {
+      this.growParkTimer = null;
+      if (this.growActive) this.parkGrowCrosshairsOnAnchor();
+    }, Math.ceil(this.TWEEN_DURATION * 1000) + 60);
     this.redrawGrowGhost();
   }
+
+  /** Hold the crosshairs on the node being grown from, remembering where the
+   *  navigation engine actually is (in layer space, so a pan cannot make it
+   *  stale). Skipped when the anchor has been panned off screen — crosshairs
+   *  you cannot see are worse than crosshairs that moved. */
+  private parkGrowCrosshairsOnAnchor(navCursor?: {x: number; y: number} | null): void {
+    if (!this.growAnchor || !this.stage || !this.crosshairsLayer?.crosshairs) return;
+    const crosshairs = this.crosshairsLayer.crosshairs;
+    const scale = this.drawingLayer.scaleX();
+    if (navCursor !== undefined) {
+      const cursor = navCursor ?? {x: crosshairs.x, y: crosshairs.y};
+      this.growNavCursor = {
+        x: (cursor.x - this.drawingLayer.x()) / scale,
+        y: (cursor.y - this.drawingLayer.y()) / scale,
+      };
+    }
+    const c = this.getNodeCenterInStageCoordinates(this.growAnchor);
+    if (c.x < 0 || c.x > this.stage.width() || c.y < 0 || c.y > this.stage.height()) return;
+    crosshairs.x = c.x;
+    crosshairs.y = c.y;
+    this.crosshairsLayer.batchDraw();
+  }
+
+
 
   /** `/` in grow mode: fuzzy-search the target by label (sticky phase —
    *  the hold key is naturally released to type; Enter commits the edge,
@@ -7678,6 +7731,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private exitGrowMode(): void {
     this.growActive = false;
+    this.growNavCursor = null;
+    window.clearTimeout(this.growParkTimer ?? undefined);
+    this.growParkTimer = null;
     this.growEdgeMenuActive = false;
     this.growSelfLoopPending = false;
     this.growHoldReleased = false;
