@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-29 (second batch). Branch: `main`._
+_Updated 2026-08-29 (third batch). Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -362,6 +362,18 @@ _Updated 2026-08-29 (second batch). Branch: `main`._
     **Correction to item 75.** The `w-d` → `w-q` move (da-453) was recorded there as "`d` is Fine Move at root, which is what made the chord feel wrong". That is wrong — root bindings are irrelevant inside a held submenu. Ben's reason: *"the middle and ring fingers are more tightly bound to each other, and moving them independently is difficult than, say, the ring finger and index finger, or even the index finger and middle finger."* Same-hand chords are limited by finger independence, not key distance. `w` is the ring finger, `d` the middle — the worst pair. Now a note: [`notes/design-chord-ergonomics.md`](notes/design-chord-ergonomics.md), with the ranking to design future hubs against.
 
     **Draft-mirror lag, again.** The mirror read for this batch was saved 16:28 and Ben's message came at 16:56 saying he had renamed which node is "Next" — a rename the file does not show. Anything added after a tab reload is invisible; see the standing "make the draft mirror live" item.
+
+77. **The eight-item Next batch (2026-08-29 evening).** `92fefe5`, `ba17e12`, `cc5976b`, `bac2683`, plus `ebc4a95` and `c2f43a5` for da-477.
+    - **`da-484`** the four movement keys show ←↓↑→ instead of "Move Left/Down/Up/Right". The vim label modes have used arrows on those keys all along.
+    - **`da-527`** the trailing `...` is gone from every hub label — the chamfered corner already says "has children", in a place the eye is not reading a sentence. The single-character `…` **stays** on `Search…`, `Open…`, `Save As…`, `Import/Export File…` and the vim operator labels (`change…`, `delete…`): there it is the only thing saying "more input follows", and no other mark carries that. Say the word and those go too.
+    - **`da-481`** cards get an 8px radius and a soft outline in their own depth's key-stroke colour, so a card and the mode chip read as the same kind of object.
+    - **`da-479`** card → chip and chip → screen-bottom are both 9px now, which moved the menu down 29px. The viewport inset followed automatically (277, was 306).
+    - **`da-509`** the edge a quick-add draws is held until its new node's label is written, and the exit from label editing lands the crosshairs on it — the same landing connecting two existing nodes gets (da-345). All three quick-add routes covered; a node added with no link is unaffected.
+    - **`da-510`** the ghost lattice skipped positions matching an existing node's *centre*, which misses every node whose centre sits off-lattice while its box covers a slot. Targets now carry the box they would create (the anchor's, which is what the placement ghost is drawn at) and any target whose box would overlap a node plus clearance is not offered. Measured: the slot inside a neighbour's box disappears, the rest of its lane stays.
+    - **`da-499`** two sources of clutter. The ghost lanes ran to the viewport edge, and every stop is also a ring in the quadrant overlay — they now reach three slots each way (`GRID_REACH`). And during a grow gesture the ring overlay drew a boundary arc for *every stop radius in the graph*: dozens of concentric circles around the anchor. While placing, only the quadrant wash and the active band are drawn; `g` navigation, where the rings are the point, is untouched. The other half of that item — "where the X center is" — is most likely the crosshairs wandering off the anchor, fixed as da-448 in `af862eb`, which Ben has not dogfooded yet.
+    - **`da-477`** was done in the previous round and its badge follow-up reverted; see item 76.
+
+    Verified: 455 unit tests, clean build, before/after measured in the running app for each. `repro-compact-keymenu`, `repro-binding-reorg`, `repro-next-five` and `repro-task-status` asserted the old ellipsis labels and were updated.
 
 ## Routing-eval harness
 
