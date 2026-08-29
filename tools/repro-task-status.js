@@ -61,11 +61,13 @@ async function main() {
     };
   });
 
-  // --- 1. Menu structure (static config probe) ---
+  // --- 1. Menu structure: status has no menu route any more (da-438). Task
+  // status is a todo-graph concept, so the menu comes back with the plugin
+  // that owns that identity; the COMMAND still works, which is what the rest
+  // of this file exercises. ---
   const menu = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     const root = km.buildRootSubmenuConfig();
-    const status = km.buildStatusSubmenuConfig();
     const labelsOf = (cfg) => {
       const out = {};
       for (const [k, v] of Object.entries(cfg)) {
@@ -73,13 +75,11 @@ async function main() {
       }
       return out;
     };
-    return { rootY: labelsOf(root)['y'], status: labelsOf(status) };
+    const labels = labelsOf(root);
+    return { labels, statusEntries: Object.values(labels).filter(l => l === 'Status...') };
   });
-  check('root y is the Status... submenu', menu.rootY === 'Status...', JSON.stringify(menu.rootY));
-  check('status submenu r/t/w/b/d/c', menu.status['r'] === 'Draft' && menu.status['t'] === 'To Do'
-    && menu.status['w'] === 'In Progress' && menu.status['b'] === 'Blocked'
-    && menu.status['d'] === 'Done' && menu.status['c'] === 'No Status',
-    JSON.stringify(menu.status));
+  check('no Status submenu at root', menu.statusEntries.length === 0, JSON.stringify(menu.statusEntries));
+  check('the key it used to sit on is free', menu.labels['t'] === undefined, JSON.stringify(menu.labels['t']));
 
   // --- 2. Plain graph: setting a status warns ---
   await page.evaluate(() => {
@@ -119,19 +119,19 @@ async function main() {
   check('todo graph node created', s.diagramType === 'todo-graph' && s.nodes.length === 1
     && s.nodes[0].text === 'fix parser', JSON.stringify(s.nodes));
 
-  // The status flow acts on the selection; re-select in case Escape cleared it.
+  // The status flow acts on the selection; re-select in case Escape cleared
+  // it. The command is emitted directly now that no menu route reaches it.
+  const STATUS_FOR_KEY = {r: 'draft', t: 'todo', w: 'in-progress',
+                          b: 'blocked', d: 'done', c: 'none'};
   const holdStatusChord = async (key, { select = true } = {}) => {
-    await page.evaluate((sel) => {
+    await page.evaluate(({sel, status}) => {
       const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
       da.drawingLayer.getDANodes()[0].isSelected = sel;
       da.drawingLayer.batchDraw();
-    }, select);
-    await page.keyboard.down('y');
-    await page.waitForTimeout(250);
-    await page.keyboard.press(key);
-    await page.waitForTimeout(150);
-    await page.keyboard.up('y');
-    await page.waitForTimeout(150);
+      window.ng.getComponent(document.querySelector('app-keymenu'))
+        .keyMenuOut.emit({kind: 'SET_TASK_STATUS', status});
+    }, {sel: select, status: STATUS_FOR_KEY[key]});
+    await page.waitForTimeout(200);
   };
 
   await holdStatusChord('b');

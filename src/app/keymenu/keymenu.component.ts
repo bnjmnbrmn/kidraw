@@ -670,7 +670,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
       [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
       [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
-      [root.statusSubmenu]: new LabeledSubmenuConfig('Status...', this.buildStatusSubmenuConfig()),
       // Vim's yank key: tap copies, hold opens the rest of the clipboard
       // (cut, paste) for discoverability (da-265).
       [root.clipboardSubmenu]: new LabeledActionSubmenuConfig('Copy/Paste...',
@@ -765,18 +764,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
 
-  private buildStatusSubmenuConfig(): SubmenuConfig {
-    const status = this.keyAssignments.status;
-    const emit = (s: TaskStatus) => () => this.keyMenuOut.emit({kind: DACommandType.SET_TASK_STATUS, status: s});
-    return {
-      [status.draft]:      new LabeledAction('Draft',       emit('draft'), false),
-      [status.todo]:       new LabeledAction('To Do',       emit('todo'), false),
-      [status.inProgress]: new LabeledAction('In Progress', emit('in-progress'), false),
-      [status.blocked]:    new LabeledAction('Blocked',     emit('blocked'), false),
-      [status.done]:       new LabeledAction('Done',        emit('done'), false),
-      [status.clear]:      new LabeledAction('No Status',   emit('none'), false),
-    } as SubmenuConfig;
-  }
+  // The task-status menu lived here until 2026-08-29 (da-438). Task status
+  // is a todo-graph concept, so its menu belongs to the plugin that will own
+  // that identity — and plugins are not built yet. SET_TASK_STATUS and the
+  // drawing area's handling of it are untouched; only the menu route is
+  // withdrawn, the same way `w`'s styling entries were.
 
   /** Copy/paste, held on vim's yank key. The clipboard holds a subgraph, so
    *  paste drops a fresh copy centred on the crosshairs. `false` = no

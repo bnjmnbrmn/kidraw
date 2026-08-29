@@ -432,13 +432,14 @@ describe('KeymenuComponent', () => {
     const clearSelection = rootConfig['c'] as LabeledAction;
 
     // Zoom keys should NOT be at root level ('p' belongs to search Prev
-    // Match, not Zoom Out; 'y' is Copy/Paste — vim's yank key — since
-    // da-161 moved Status off it onto t.)
+    // Match, not Zoom Out; 'y' is Copy/Paste — vim's yank key.)
     // Since da-265, p is Paste (vim) and Prev Match is Shift+n, intercepted
     // in handleKeyDown rather than bound here.
     expect((rootConfig['p'] as LabeledAction).actionLabel).toBe('Paste');
     expect((rootConfig['y'] as LabeledSubmenuConfig).submenuLabel).toBe('Copy/Paste...');
-    expect((rootConfig['t'] as LabeledSubmenuConfig).submenuLabel).toBe('Status...');
+    // Status left the menu with da-438: it is a todo-graph concept, so it
+    // comes back when that identity is a plugin. `t` is free again.
+    expect(rootConfig['t']).toBeUndefined();
 
     expect(clearSelection.actionLabel).toBe('Clear Selection');
     // 2026-07-18 rebinds (final): Pan/Zoom back on r, Move by node → g.
@@ -554,8 +555,6 @@ describe('KeymenuComponent', () => {
         editSubmenu: 'j',
         selectDragSubmenu: 'l',
         toggleVisibility: 'q',
-        // keep clear of the custom movement keys (y is Move Left here)
-        statusSubmenu: 'z',
       },
       shared: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,

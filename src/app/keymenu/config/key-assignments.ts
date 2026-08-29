@@ -28,7 +28,6 @@ export interface KeymenuKeyAssignments {
     readonly editText: KeyString;
     /** Held: task-status submenu (todo graphs) — right-hand hold, the
      *  status choice keys all sit in the left hand. */
-    readonly statusSubmenu: KeyString;
     readonly clipboardSubmenu: KeyString;
   };
   /** Children of the held add hub. The hub key is left-hand in both
@@ -158,14 +157,6 @@ export interface KeymenuKeyAssignments {
     readonly toggleKeyProfile: KeyString;
     readonly todoGraphType: KeyString;
   };
-  readonly status: {
-    readonly draft: KeyString;
-    readonly todo: KeyString;
-    readonly inProgress: KeyString;
-    readonly blocked: KeyString;
-    readonly done: KeyString;
-    readonly clear: KeyString;
-  };
   readonly clipboard: {
     readonly copy: KeyString;
     readonly cut: KeyString;
@@ -202,7 +193,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleVisibility: 'z',
     go: 'f',
     editText: ';',
-    statusSubmenu: 't',
     clipboardSubmenu: 'y',
   },
   // diamond avoids the held hub key ('e' here); vim uses 'e'.
@@ -231,7 +221,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
   // the value. See the KeymenuKeyAssignments.style comment.
-  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'd', overflowSubmenu: 'f'},
+  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
   nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
   colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
@@ -287,7 +277,6 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Status submenu is held on right-hand y; every choice is a left-hand key
   // so the chord is hold-right + tap-left. w = In Progress ("WIP").
-  status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   clipboard: {copy: 'c', cut: 'x', paste: 'p'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
@@ -305,7 +294,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleVisibility: 'z',
     go: 'f',
     editText: 'i',
-    statusSubmenu: 't',
     clipboardSubmenu: 'y',
   },
   insert: {
@@ -333,7 +321,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   },
   // Left hand picks the category (2x2 block: e/r over d/f), right hand picks
   // the value. See the KeymenuKeyAssignments.style comment.
-  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'd', overflowSubmenu: 'f'},
+  style: {shapeSubmenu: 'e', colorSubmenu: 'r', lineStyleSubmenu: 'q', overflowSubmenu: 'f'},
   nodeTypes: {box: 'h', circle: 'j', diamond: 'k', junction: 'l', invisible: ';'},
   colors: {default: 'h', red: 'j', blue: 'k', green: 'l', orange: 'u', purple: 'i'},
   lineStyles: {solid: 'h', dashed: 'j', dotted: 'k'},
@@ -387,7 +375,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     toggleKeyProfile: 'p',
     todoGraphType: 't',
   },
-  status: {draft: 'r', todo: 't', inProgress: 'w', blocked: 'b', done: 'd', clear: 'c'},
   clipboard: {copy: 'c', cut: 'x', paste: 'p'},
   layout: {forceDirected: 'n', forceClear: 'f', treeDownClear: 'j', treeRight: 'l', treeRightClear: 'k', circular: 'o', radial: 'u', routeBezierFitWeightedChain: 'p', routeDesiderata: 'd', routeIncremental: 'i', routeIncrementalV3: 'v', gather: 'g', ungather: 'w'},
 };
