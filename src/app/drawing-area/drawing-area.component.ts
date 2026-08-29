@@ -5231,6 +5231,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }));
     }
 
+    // While a node is being placed, the rings are not the thing to look at:
+    // the ghost slots are, and every stop in the graph contributes a ring, so
+    // the anchor ends up inside a dozen concentric arcs (da-499). Keep the
+    // quadrant wash and the band you are actually on; drop the rest of the
+    // lattice until the gesture is over.
+    const placing = this.growActive;
     for (const quadrant of quadrants) {
       const angles = quadrantArcAngles(quadrant);
       const rings = grid.rings[quadrant];
@@ -5238,7 +5244,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         const innerRadius = Math.min(ring.innerRadius, maxReach);
         const outerRadius = Math.min(ring.outerRadius, maxReach);
         const active = ring.stop === activeStop;
-        if (outerRadius > innerRadius && (index % 2 === 1 || active)) {
+        if (outerRadius > innerRadius && ((index % 2 === 1 && !placing) || active)) {
           group.add(new Konva.Arc({
             name: active
               ? 'quadrant-ring-active-band'
@@ -5255,7 +5261,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           }));
         }
 
-        if (Number.isFinite(ring.outerRadius) &&
+        if (!placing &&
+            Number.isFinite(ring.outerRadius) &&
             ring.outerRadius > 0 &&
             ring.outerRadius <= maxReach) {
           group.add(new Konva.Line({

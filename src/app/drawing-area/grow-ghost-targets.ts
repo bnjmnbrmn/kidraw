@@ -24,6 +24,9 @@ export interface GrowGhostTarget {
 
 const POSITION_PRECISION = 100;
 
+/** How many slots out the source-anchored lanes run, each way. */
+const GRID_REACH = 3;
+
 function positionKey(point: {x: number; y: number}): string {
   return `${Math.round(point.x * POSITION_PRECISION)}:${Math.round(point.y * POSITION_PRECISION)}`;
 }
@@ -105,11 +108,15 @@ export function buildGrowGhostTargets(
 
   const step = growGhostGridStep(majorGridSpacing, minimumGridSpacing);
   // One off-screen step lets the ordinary Move-by-Node edge-pan behavior
-  // reveal a new insertion target instead of stopping at the viewport edge.
-  const minIx = Math.floor((bounds.minX - anchor.x) / step) - 1;
-  const maxIx = Math.ceil((bounds.maxX - anchor.x) / step) + 1;
-  const minIy = Math.floor((bounds.minY - anchor.y) / step) - 1;
-  const maxIy = Math.ceil((bounds.maxY - anchor.y) / step) + 1;
+  // reveal a new insertion target instead of stopping at the viewport edge —
+  // bounded by GRID_REACH, because every stop is also a ring in the
+  // quadrant overlay, and a lane that runs to the edge of the viewport draws
+  // a dozen of them around the node you are trying to look at (da-499).
+  // Somewhere further out is still reachable: place, then move.
+  const minIx = Math.max(-GRID_REACH, Math.floor((bounds.minX - anchor.x) / step) - 1);
+  const maxIx = Math.min(GRID_REACH, Math.ceil((bounds.maxX - anchor.x) / step) + 1);
+  const minIy = Math.max(-GRID_REACH, Math.floor((bounds.minY - anchor.y) / step) - 1);
+  const maxIy = Math.min(GRID_REACH, Math.ceil((bounds.maxY - anchor.y) / step) + 1);
   // Add's directional navigation needs open cardinal lanes. Filling every
   // 2-D intersection makes a repeated right press spiral through diagonal
   // rings and can pan away before reaching a real node. The source's row and
