@@ -10,6 +10,18 @@ const ALL_KEYS: KeyString[] = VISIBLE_KEYS;
 
 // Card padding around the key grid
 const CARD_PADDING = 8;
+/** Matches the mode chip's corner, so the two read as the same family. */
+const CARD_CORNER_RADIUS = 8;
+
+/** The card's outline: its own depth's key stroke, softened so it frames the
+ *  card without competing with the keys drawn on it. */
+function cardOutlineColor(depth: number, palette: ThemePalette): string {
+  const hex = palette.keyStrokes[depth % palette.keyStrokes.length] ?? '#94a3b8';
+  const match = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return hex;
+  const n = parseInt(match[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 0.55)`;
+}
 
 export interface CardRenderConfig {
   depth: number;
@@ -68,13 +80,20 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
   return new Konva.Shape({
     sceneFunc: (ctx, shape) => {
       ctx.beginPath();
-      // Outer rect — clockwise
+      // Outer rect — clockwise, with rounded corners and an outline so a card
+      // is the same kind of object as the mode chip below it (da-481).
       const x0 = -CARD_PADDING;
       const y0 = -CARD_PADDING;
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x0 + cardWidth, y0);
-      ctx.lineTo(x0 + cardWidth, y0 + cardHeight);
-      ctx.lineTo(x0, y0 + cardHeight);
+      const r = CARD_CORNER_RADIUS;
+      ctx.moveTo(x0 + r, y0);
+      ctx.lineTo(x0 + cardWidth - r, y0);
+      ctx.quadraticCurveTo(x0 + cardWidth, y0, x0 + cardWidth, y0 + r);
+      ctx.lineTo(x0 + cardWidth, y0 + cardHeight - r);
+      ctx.quadraticCurveTo(x0 + cardWidth, y0 + cardHeight, x0 + cardWidth - r, y0 + cardHeight);
+      ctx.lineTo(x0 + r, y0 + cardHeight);
+      ctx.quadraticCurveTo(x0, y0 + cardHeight, x0, y0 + cardHeight - r);
+      ctx.lineTo(x0, y0 + r);
+      ctx.quadraticCurveTo(x0, y0, x0 + r, y0);
       ctx.closePath();
       // Hole rects — counterclockwise (opposite winding = hole with nonzero rule)
       for (const key of heldKeyStrings) {
@@ -91,6 +110,8 @@ export function createCardBackground(config: CardRenderConfig): Konva.Shape {
       ctx.fillStrokeShape(shape);
     },
     fill: fillColor,
+    stroke: cardOutlineColor(config.depth, config.palette),
+    strokeWidth: 1,
     width: cardWidth,
     height: cardHeight,
     ...shadowProps,

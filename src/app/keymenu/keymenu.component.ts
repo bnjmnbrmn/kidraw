@@ -661,15 +661,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     return {
       _repeatConfig: this.normalRepeatConfig(),
-      [movement.up]: new LabeledAction('Move Up', this.rootMove(DACommandType.MOVE_CROSSHAIRS_UP)),
-      [movement.left]: new LabeledAction('Move Left', this.rootMove(DACommandType.MOVE_CROSSHAIRS_LEFT)),
-      [movement.down]: new LabeledAction('Move Down', this.rootMove(DACommandType.MOVE_CROSSHAIRS_DOWN)),
-      [movement.right]: new LabeledAction('Move Right', this.rootMove(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
+      // Arrows, not words: four cards reading "Move Up/Left/Down/Right" is a
+      // paragraph where a glyph does the job, and the vim label modes have
+      // used arrows on the same four keys all along (da-484).
+      [movement.up]: new LabeledAction('↑', this.rootMove(DACommandType.MOVE_CROSSHAIRS_UP)),
+      [movement.left]: new LabeledAction('←', this.rootMove(DACommandType.MOVE_CROSSHAIRS_LEFT)),
+      [movement.down]: new LabeledAction('↓', this.rootMove(DACommandType.MOVE_CROSSHAIRS_DOWN)),
+      [movement.right]: new LabeledAction('→', this.rootMove(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
 
-      [root.editSubmenu]: new LabeledSubmenuConfig('Add...', this.buildEditSubmenuConfig()),
+      [root.editSubmenu]: new LabeledSubmenuConfig('Add', this.buildEditSubmenuConfig()),
       [root.selectDragSubmenu]: this.buildSelectDragSubmenuRootAction(),
-      [root.styleSubmenu]: new LabeledSubmenuConfig('Style...', this.buildStyleSubmenuConfig()),
-      [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout...', this.buildLayoutSubmenuConfig()),
+      [root.styleSubmenu]: new LabeledSubmenuConfig('Style', this.buildStyleSubmenuConfig()),
+      [root.layoutSubmenu]: new LabeledSubmenuConfig('Layout', this.buildLayoutSubmenuConfig()),
       // Vim's yank key. It held a clipboard submenu until da-473: every entry
       // in it — Cut, Paste — already has its own root key, so the submenu was
       // a second route to keys you can just press.
@@ -747,7 +750,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [insert.diamond]:   insertNode('diamond',   'Diamond'),
       [insert.junction]:  insertNode('junction',  'Junction'),
       [insert.invisible]: insertNode('invisible', 'Invisible'),
-      [insert.edge]: new LabeledSubmenuConfig('Edge...', this.buildEdgeSubmenuConfig()),
+      [insert.edge]: new LabeledSubmenuConfig('Edge', this.buildEdgeSubmenuConfig()),
       [insert.label]: new LabeledAction('Add Label', this.hubOnce(() =>
         this.keyMenuOut.emit({kind: DACommandType.ADD_LABEL})), false),
       [insert.waypoint]: new LabeledAction('Add Waypoint', this.hubOnce(() =>
@@ -795,7 +798,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private buildSelectDragSubmenuRootAction(): LabeledActionSubmenuConfig {
     return new LabeledActionSubmenuConfig(
-      'Select+Drag...',
+      'Select+Drag',
       this.buildSelectSubmenuConfig(),
       () => {
         this.selectDragHoldActive = true;
@@ -820,10 +823,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private buildStyleSubmenuConfig(): SubmenuConfig {
     const style = this.keyAssignments.style;
     return {
-      [style.shapeSubmenu]: new LabeledSubmenuConfig('Shape...', this.buildNodeTypeShapeSubmenuConfig()),
-      [style.colorSubmenu]: new LabeledSubmenuConfig('Color...', this.buildColorSubmenuConfig()),
-      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style...', this.buildLineStyleSubmenuConfig()),
-      [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow...', this.buildOverflowModeSubmenuConfig()),
+      [style.shapeSubmenu]: new LabeledSubmenuConfig('Shape', this.buildNodeTypeShapeSubmenuConfig()),
+      [style.colorSubmenu]: new LabeledSubmenuConfig('Color', this.buildColorSubmenuConfig()),
+      [style.lineStyleSubmenu]: new LabeledSubmenuConfig('Line Style', this.buildLineStyleSubmenuConfig()),
+      [style.overflowSubmenu]: new LabeledSubmenuConfig('Overflow', this.buildOverflowModeSubmenuConfig()),
     } as SubmenuConfig;
   }
 
@@ -895,8 +898,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // rather than in a style menu.
       [select.togglePin]: new LabeledAction('Toggle Pin', () =>
         this.keyMenuOut.emit({kind: DACommandType.TOGGLE_PIN_SELECTED})),
-      [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag...', this.buildDragSpeedSubmenu('coarse')),
-      [ds.smaller]: new LabeledSubmenuConfig('Fine Drag...', this.buildDragSpeedSubmenu('fine')),
+      [ds.bigger]: new LabeledSubmenuConfig('Coarse Drag', this.buildDragSpeedSubmenu('coarse')),
+      [ds.smaller]: new LabeledSubmenuConfig('Fine Drag', this.buildDragSpeedSubmenu('fine')),
       [select.editItem]: new LabeledAction('Edit Item', () => this.keyMenuOut.emit({kind: DACommandType.EDIT_SELECTED})),
     } as SubmenuConfig;
   }
@@ -923,20 +926,20 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // chord cannot be a keymenu binding. This frees p for Paste (da-265).
       [this.keyAssignments.clipboard.paste]: new LabeledAction('Paste',
         () => this.keyMenuOut.emit({kind: DACommandType.PASTE_CLIPBOARD}), false),
-      [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move...', this.buildMoveSpeedSubmenu('coarse')),
-      [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move...', this.buildMoveSpeedSubmenu('fine')),
+      [moveSpeed.bigger]: new LabeledSubmenuConfig('Coarse Move', this.buildMoveSpeedSubmenu('coarse')),
+      [moveSpeed.smaller]: new LabeledSubmenuConfig('Fine Move', this.buildMoveSpeedSubmenu('fine')),
       // Holding Pan/Zoom brings the crosshairs back even if they have faded:
       // you cannot aim a pan at something you cannot see (da-257).
-      [panZoom.submenu]: new LabeledActionSubmenuConfig('Pan/Zoom...', this.buildPanZoomSubmenuConfig(), () => {
+      [panZoom.submenu]: new LabeledActionSubmenuConfig('Pan/Zoom', this.buildPanZoomSubmenuConfig(), () => {
         this.panZoomHoldActive = true;
         this.keyMenuOut.emit({kind: DACommandType.SHOW_CROSSHAIRS});
       }),
-      [mbn.submenu]: new LabeledActionSubmenuConfig('Move by node...', this.buildMoveByNodeSubmenuConfig(), () => {
+      [mbn.submenu]: new LabeledActionSubmenuConfig('Move by node', this.buildMoveByNodeSubmenuConfig(), () => {
         this.moveByNodeHoldActive = true;
         this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'labels'});
       }),
       [this.keyAssignments.root.go]: new LabeledActionSubmenuConfig(
-        'Move by Link...',
+        'Move by Link',
         this.buildMoveByLinkSubmenuConfig(),
         () => {
           this.moveByLinkHoldActive = true;
@@ -946,7 +949,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // Tap: enter text editing on whatever the crosshairs are over.
       [this.keyAssignments.root.editText]: new LabeledAction('Edit Text',
         () => this.keyMenuOut.emit({kind: DACommandType.EDIT_TEXT_AT_CROSSHAIRS}), false),
-      [misc.submenu]: new LabeledSubmenuConfig('File...', this.buildMiscSubmenuConfig()),
+      [misc.submenu]: new LabeledSubmenuConfig('File', this.buildMiscSubmenuConfig()),
       // With capsLockCtrlSwap: physical Ctrl sends 'CapsLock', physical CapsLock sends 'Control'
       // Bind "More Ctrl" to the physical Ctrl position
       [this.keyboardConfig.capsLockCtrlSwap ? 'CapsLock' : 'Control']: new LabeledSubmenuConfig('Misc 1', this.buildCtrlSubmenuConfig()),
@@ -1007,10 +1010,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       () => this.keyMenuOut.emit({kind, gridTier: tier});
 
     return {
-      [movement.up]: new LabeledAction('Move Up', move(DACommandType.MOVE_CROSSHAIRS_UP)),
-      [movement.left]: new LabeledAction('Move Left', move(DACommandType.MOVE_CROSSHAIRS_LEFT)),
-      [movement.down]: new LabeledAction('Move Down', move(DACommandType.MOVE_CROSSHAIRS_DOWN)),
-      [movement.right]: new LabeledAction('Move Right', move(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
+      [movement.up]: new LabeledAction('↑', move(DACommandType.MOVE_CROSSHAIRS_UP)),
+      [movement.left]: new LabeledAction('←', move(DACommandType.MOVE_CROSSHAIRS_LEFT)),
+      [movement.down]: new LabeledAction('↓', move(DACommandType.MOVE_CROSSHAIRS_DOWN)),
+      [movement.right]: new LabeledAction('→', move(DACommandType.MOVE_CROSSHAIRS_RIGHT)),
     } as SubmenuConfig;
   }
 
@@ -1032,8 +1035,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [pz.recenterView]: new LabeledAction('Recenter View', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW})),
       [pz.recenterCrosshairs]: new LabeledAction('Recenter Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_CROSSHAIRS})),
       [pz.centerOnCrosshairs]: new LabeledAction('Center on Xhairs', () => this.keyMenuOut.emit({kind: DACommandType.RECENTER_VIEW_ON_CROSSHAIRS}), false),
-      [pz.speed.bigger]: new LabeledSubmenuConfig('Coarse Pan...', this.buildPanSpeedSubmenu('coarse')),
-      [pz.speed.smaller]: new LabeledSubmenuConfig('Fine Pan...', this.buildPanSpeedSubmenu('fine')),
+      [pz.speed.bigger]: new LabeledSubmenuConfig('Coarse Pan', this.buildPanSpeedSubmenu('coarse')),
+      [pz.speed.smaller]: new LabeledSubmenuConfig('Fine Pan', this.buildPanSpeedSubmenu('fine')),
     } as SubmenuConfig;
   }
 
@@ -1106,12 +1109,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         () => this.keyMenuOut.emit({kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH, targets: 'labels'}),
       ),
       [ms.bigger]: new LabeledActionSubmenuConfig(
-        'Coarse: nodes only...',
+        'Coarse: nodes only',
         this.buildMoveByNodeTierSubmenu('nodes'),
         () => this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'nodes'}),
       ),
       [ms.smaller]: new LabeledActionSubmenuConfig(
-        'Fine: +waypoints...',
+        'Fine: +waypoints',
         this.buildMoveByNodeTierSubmenu('all'),
         () => this.keyMenuOut.emit({kind: DACommandType.SHOW_NODE_GRID, targets: 'all'}),
       ),
@@ -1215,7 +1218,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [m.left]: this.surfaceAction('Navigate Left (nodes + ghosts)'),
       [m.down]: this.surfaceAction('Navigate Down (nodes + ghosts)'),
       [m.right]: this.surfaceAction('Navigate Right (nodes + ghosts)'),
-      [this.keyAssignments.insert.edge]: this.surfaceAction('Edge...'),
+      [this.keyAssignments.insert.edge]: this.surfaceAction('Edge'),
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
       [this.keyAssignments.select.cycleDirection]: this.surfaceAction('Cycle Direction'),
       [this.keyAssignments.search.open]: this.surfaceAction('Find Target'),
@@ -1322,7 +1325,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
    *  the only part the drawing area cares about — has to be derived rather
    *  than read off the host. */
   private static readonly HOST_HEIGHT_PX = 300;
-  private static readonly HOST_BOTTOM_GAP_PX = 38;
+  private static readonly HOST_BOTTOM_GAP_PX = 9;
 
   /** Height of the strip the keyboard card covers, measured up from the
    *  bottom of the drawing area. The drawing area insets its usable

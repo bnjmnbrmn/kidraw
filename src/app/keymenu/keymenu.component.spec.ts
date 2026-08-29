@@ -60,7 +60,7 @@ describe('KeymenuComponent', () => {
     const biggerDrag = selectConfig['x'] as LabeledSubmenuConfig;
 
     expect(biggerDrag instanceof LabeledSubmenuConfig).toBeTrue();
-    expect(biggerDrag.submenuLabel).toBe('Coarse Drag...');
+    expect(biggerDrag.submenuLabel).toBe('Coarse Drag');
   });
 
   it('should use hold-select root action to enter drag selection without second select key', () => {
@@ -336,7 +336,7 @@ describe('KeymenuComponent', () => {
 
     component.setSuspended(true, 'grow-targeting');
     expect(keyMenu.currentMode.name).toBe('surfaceGrowTargeting');
-    expect(keyMenu.currentMode.stackTop.keys['s'].label).toBe('Edge...');
+    expect(keyMenu.currentMode.stackTop.keys['s'].label).toBe('Edge');
     expect(keyMenu.currentMode.stackTop.keys['l'].label)
       .toContain('nodes + ghosts');
     expect(keyMenu.currentMode.stackTop.keys['a'].label)
@@ -449,7 +449,7 @@ describe('KeymenuComponent', () => {
     expect(panZoomSubmenu instanceof LabeledActionSubmenuConfig).toBeTrue();
     panZoomSubmenu.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.SHOW_CROSSHAIRS});
-    expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node...');
+    expect((rootConfig['g'] as LabeledSubmenuConfig).submenuLabel).toBe('Move by node');
     // Zoom should be inside the pan/zoom submenu, recenters on p/y/u
     const zoomIn = panZoomSubmenu.submenuConfig['i'] as LabeledAction;
     expect(zoomIn instanceof LabeledAction).toBeTrue();
@@ -467,13 +467,13 @@ describe('KeymenuComponent', () => {
     const editAction = rootConfig['a'] as LabeledSubmenuConfig;
     expect(editAction).toBeDefined();
     expect(editAction instanceof LabeledSubmenuConfig).toBeTrue();
-    expect(editAction.submenuLabel).toBe('Add...');
+    expect(editAction.submenuLabel).toBe('Add');
     expect((rootConfig['i'] as LabeledAction).actionLabel).toBe('Edit Text');
 
     // 'h' is Move Left in vim profile
     const moveLeft = rootConfig['h'] as LabeledAction;
     expect(moveLeft).toBeDefined();
-    expect(moveLeft.actionLabel).toBe('Move Left');
+    expect(moveLeft.actionLabel).toBe('←');
 
     clearSelection.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.UNSELECT_ALL});
@@ -533,7 +533,7 @@ describe('KeymenuComponent', () => {
     // Move by Link at 'f': held NSEW edge navigator, with no popup.
     const go = rootConfig['f'] as LabeledActionSubmenuConfig;
     expect(go instanceof LabeledActionSubmenuConfig).toBeTrue();
-    expect(go.submenuLabel).toBe('Move by Link...');
+    expect(go.submenuLabel).toBe('Move by Link');
     go.action();
     expect(emitSpy).toHaveBeenCalledWith({kind: DACommandType.ENTER_LINK_NAV});
     (go.submenuConfig['h'] as LabeledAction).action();
@@ -565,7 +565,7 @@ describe('KeymenuComponent', () => {
     component.keyAssignments = customAssignments;
 
     const rootConfig = buildRootConfig(component);
-    expect((rootConfig['u'] as LabeledAction).actionLabel).toBe('Move Up');
+    expect((rootConfig['u'] as LabeledAction).actionLabel).toBe('↑');
     // Zoom keys no longer at root level
     expect(rootConfig['i']).toBeUndefined();
     expect(rootConfig['j'] instanceof LabeledSubmenuConfig).toBeTrue(); // Edit/insert hub (tap fires on keyup)
@@ -594,7 +594,7 @@ describe('KeymenuComponent', () => {
       expect((hub['f'] as LabeledAction).actionLabel).toBe('Add Label');
       expect((hub['w'] as LabeledAction).actionLabel).toBe('Add Waypoint');
       const edge = hub['s'] as LabeledSubmenuConfig;
-      expect(edge.submenuLabel).toBe('Edge...');
+      expect(edge.submenuLabel).toBe('Edge');
       const selfLoop = edge.submenuConfig['l'] as LabeledAction;
       expect(selfLoop.actionLabel).toBe('Self Loop');
       selfLoop.action();

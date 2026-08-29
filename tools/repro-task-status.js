@@ -76,7 +76,7 @@ async function main() {
       return out;
     };
     const labels = labelsOf(root);
-    return { labels, statusEntries: Object.values(labels).filter(l => l === 'Status...') };
+    return { labels, statusEntries: Object.values(labels).filter(l => l === 'Status') };
   });
   check('no Status submenu at root', menu.statusEntries.length === 0, JSON.stringify(menu.statusEntries));
   check('the key it used to sit on is free', menu.labels['t'] === undefined, JSON.stringify(menu.labels['t']));

@@ -60,16 +60,17 @@ async function main() {
     }
     return { a: summarize(root['a']), f: summarize(root['f']), g: summarize(root['g']), z: summarize(root['z']), m: summarize(root['m']), miscLabels };
   });
-  // Renamed 'Edit/Insert...' → 'Add...' when a=add / i=insert landed.
-  check('root a is the Add hub', menu.a?.label === 'Add...', JSON.stringify(menu.a));
+  // Renamed 'Edit/Insert...' → 'Add' when a=add / i=insert landed; the
+  // trailing ellipsis went with da-527 (the chamfer already says "has children").
+  check('root a is the Add hub', menu.a?.label === 'Add', JSON.stringify(menu.a));
   // 2026-07-16: f became the one-shot Go action (nav popup rework).
   check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
   // 2026-07-18: Move by node → g, Hide Keyboard → z.
   // 2026-08-15: z cycles keyboard → compact tree → hidden (da-200), so the
   // label broadened from 'Hide Keyboard' to 'Cycle Menu View'.
-  check('root g is Move by node', menu.g?.label === 'Move by node...', JSON.stringify(menu.g));
+  check('root g is Move by node', menu.g?.label === 'Move by node', JSON.stringify(menu.g));
   check('root z cycles the menu view', menu.z?.label === 'Cycle Menu View', JSON.stringify(menu.z));
-  check('root m is File...', menu.m?.label === 'File...', JSON.stringify(menu.m));
+  check('root m is the File hub', menu.m?.label === 'File', JSON.stringify(menu.m));
   check('m→n New Graph', menu.miscLabels['n'] === 'New Graph', JSON.stringify(menu.miscLabels));
   check('m→o Open… (vault)', menu.miscLabels['o'] === 'Open…');
   check('m→s Save As… (vault)', menu.miscLabels['s'] === 'Save As…');

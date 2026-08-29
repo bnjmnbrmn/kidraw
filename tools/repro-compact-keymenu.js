@@ -52,7 +52,7 @@ async function main() {
   const compact = await panel();
   check('compact panel renders', !!compact && compact.rows.length > 0,
     `rows=${compact?.rows.length}`);
-  const rootRow = compact.rows.find(r => r.label === 'Move by node...');
+  const rootRow = compact.rows.find(r => r.label === 'Move by node');
   check('root rows include Move by node with its key', !!rootRow && rootRow.key === keys.moveByNode,
     JSON.stringify(rootRow));
   const addRow = compact.rows.find(r => r.key === keys.insert);
@@ -63,14 +63,14 @@ async function main() {
   await page.keyboard.down(keys.moveByNode);
   await page.waitForTimeout(250);
   const held = await panel();
-  const heldRow = held.rows.find(r => r.label === 'Move by node...');
+  const heldRow = held.rows.find(r => r.label === 'Move by node');
   check('held submenu row is highlighted', !!heldRow && heldRow.held, JSON.stringify(heldRow));
   const children = held.rows.filter(r => r.depth === 1);
   check('held g reveals indented children', children.length > 0, `children=${children.length}`);
   const childLabels = children.map(r => r.label);
   check('children include directional jumps',
     childLabels.some(l => /jump|left|right|up|down/i.test(l)), JSON.stringify(childLabels.slice(0, 8)));
-  const heldIdx = held.rows.findIndex(r => r.label === 'Move by node...');
+  const heldIdx = held.rows.findIndex(r => r.label === 'Move by node');
   const firstChildIdx = held.rows.findIndex(r => r.depth === 1);
   check('children sit directly beneath their parent row', firstChildIdx === heldIdx + 1,
     `parent@${heldIdx} firstChild@${firstChildIdx}`);

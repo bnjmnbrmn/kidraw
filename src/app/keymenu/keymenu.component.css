@@ -10,9 +10,11 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  /* The mode chip owns the strip below (da-432); keep this in step with
-   * KeymenuComponent.HOST_BOTTOM_GAP_PX, which the viewport inset reads. */
-  bottom: 38px;
+  /* The mode chip owns the strip below (da-432), and the three gaps down the
+   * bottom of the screen are equal: card → chip, chip → edge (da-479). Keep
+   * in step with KeymenuComponent.HOST_BOTTOM_GAP_PX, which the viewport
+   * inset reads, and with .mode-chip's own bottom in app.component.css. */
+  bottom: 9px;
   z-index: 25;
   width: 880px;
   height: 300px;

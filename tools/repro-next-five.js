@@ -259,7 +259,9 @@ async function main() {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     return km.buildRootSubmenuConfig().f.submenuLabel;
   });
-  check('Move by Link submenu is labeled with an ellipsis', label === 'Move by Link...', label);
+  // The ellipsis went with da-527; the chamfered corner is what says "has
+  // children" now.
+  check('Move by Link is a labelled hub', label === 'Move by Link', label);
 
   // Add-edge target selection uses the same W scan and corner flow.
   await page.keyboard.down('a');
