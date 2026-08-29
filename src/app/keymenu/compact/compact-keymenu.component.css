@@ -5,7 +5,11 @@
   top: 60px;
   right: 10px;
   z-index: 30;
-  width: 268px;
+  /* Sized to the longest row rather than to a fixed column, capped by the
+   * configured width (da-436). A submenu of short labels gets a narrow panel
+   * and hands the rest of the canvas back to the graph. */
+  width: max-content;
+  min-width: 110px;
   /* Height follows the rows; the cap only engages for menus long enough to
    * need scrolling, so a short submenu is a short panel. */
   max-height: calc(100% - 70px);

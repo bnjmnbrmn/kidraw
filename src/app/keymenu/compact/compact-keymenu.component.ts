@@ -1,4 +1,5 @@
-import {Component, ElementRef, Input, OnChanges, SimpleChanges, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, OnChanges, OnDestroy,
+        Output, SimpleChanges, ViewChild, inject} from '@angular/core';
 import {CommonModule} from '@angular/common';
 
 /** One `[key|Action]` line of the compact keymenu tree (da-200). Rows come
@@ -27,15 +28,40 @@ export interface CompactMenuRow {
   templateUrl: './compact-keymenu.component.html',
   styleUrl: './compact-keymenu.component.css',
 })
-export class CompactKeymenuComponent implements OnChanges {
+export class CompactKeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() rows: CompactMenuRow[] = [];
   @Input() dark = false;
   @Input() side: 'left' | 'right' = 'right';
-  /** Kept in sync with the viewport inset the drawing area reserves. */
-  @Input() widthPx = 268;
+  /** Widest the panel may grow. It sizes itself to its rows below that, so
+   *  this is a cap rather than a column width (da-436). */
+  @Input() maxWidthPx = 268;
   @Input() modeName = '';
+  /** The width the panel actually took, so the drawing area can inset its
+   *  viewport by what is really covered instead of by the cap. */
+  @Output() renderedWidth = new EventEmitter<number>();
 
   @ViewChild('rowsEl') rowsEl?: ElementRef<HTMLElement>;
+  @ViewChild('panelEl') panelEl?: ElementRef<HTMLElement>;
+
+  private zone = inject(NgZone);
+  private resizeObserver?: ResizeObserver;
+
+  ngAfterViewInit(): void {
+    const panel = this.panelEl?.nativeElement;
+    if (!panel) return;
+    // The width changes with every submenu push and pop, so it is watched
+    // rather than measured once.
+    this.resizeObserver = new ResizeObserver(() => {
+      // offsetWidth, not the observed content box: the border is part of
+      // what the panel covers.
+      this.zone.run(() => this.renderedWidth.emit(panel.offsetWidth));
+    });
+    this.resizeObserver.observe(panel);
+  }
+
+  ngOnDestroy(): void {
+    this.resizeObserver?.disconnect();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     // A submenu held from near the bottom of a long root menu would open its

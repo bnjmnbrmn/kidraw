@@ -31,8 +31,9 @@
     [rows]="compactRows"
     [dark]="darkTheme"
     [side]="compactMenuSide"
-    [widthPx]="compactMenuWidth"
-    [modeName]="compactModeName"/>
+    [maxWidthPx]="compactMenuWidth"
+    [modeName]="compactModeName"
+    (renderedWidth)="onCompactWidth($event)"/>
 }
 
 @if (keymenuDisplay === 'hidden') {

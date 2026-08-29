@@ -1,7 +1,7 @@
-<div class="compact-keymenu"
+<div class="compact-keymenu" #panelEl
      [class.dark]="dark"
      [class.left]="side === 'left'"
-     [style.width.px]="widthPx">
+     [style.max-width.px]="maxWidthPx">
   <div class="mode-line" *ngIf="modeName">{{ modeName }}</div>
   <div class="rows" #rowsEl>
     <div *ngFor="let row of rows; trackBy: trackRow"

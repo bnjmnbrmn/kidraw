@@ -63,12 +63,20 @@ export class AppComponent implements OnInit, OnDestroy {
   compactMenuSide: CompactMenuSide = this.visualConfig.config.compactMenu.side;
   compactMenuWidth = this.visualConfig.config.compactMenu.widthPx;
 
+  /** What the compact panel measured on screen. It sizes itself to its rows,
+   *  so the inset follows the real width rather than the configured cap. */
+  compactMenuRenderedWidth = 0;
+
+  onCompactWidth(width: number) {
+    this.compactMenuRenderedWidth = width;
+  }
+
   /** Width the compact panel occludes, or 0 when it isn't showing. The
    *  drawing area insets its usable viewport by this on the docked side. */
   get compactMenuInset(): number {
-    return this.keymenuDisplay === 'compact'
-      ? this.compactMenuWidth + COMPACT_MENU_GUTTER
-      : 0;
+    if (this.keymenuDisplay !== 'compact') return 0;
+    const width = this.compactMenuRenderedWidth || this.compactMenuWidth;
+    return Math.min(width, this.compactMenuWidth) + COMPACT_MENU_GUTTER;
   }
 
   /** Height the floating keyboard card occludes at the bottom, or 0 when it

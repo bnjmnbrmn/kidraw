@@ -32,9 +32,10 @@ export type CompactMenuSide = 'left' | 'right';
 export interface CompactMenuConfig {
   /** Which edge of the drawing area the compact keymenu docks against. */
   side: CompactMenuSide;
-  /** Panel width in px. The drawing area insets its usable viewport by this
-   *  much on the docked side, so the panel never hides content the crosshairs
-   *  are moving toward. */
+  /** Widest the panel may grow, in px. It sizes itself to its rows below
+   *  that (da-436); the drawing area insets its usable viewport by whatever
+   *  width it actually takes, so the panel never hides content the
+   *  crosshairs are moving toward. */
   widthPx: number;
 }
 
