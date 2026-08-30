@@ -606,6 +606,26 @@ describe('DrawingArea Unit Tests', () => {
       expect(anchorNode.konvaGroup.y()).toBe(400);
     });
 
+    it('puts the caret where the text actually ends, not where the box does', () => {
+      const node = new DANode(0, 0,
+        'In edit mode, the hint and the mode indicator are overlapping. Keep them apart.');
+      node.textOverflowMode = 'fit';
+      node.setCursorToEnd();
+      node.showCursor();
+
+      const label = node.label;
+      const lines: {text: string; width: number}[] = (label as any).textArr ?? [];
+      expect(lines.length).toBeGreaterThan(1);
+      const last = lines[lines.length - 1];
+      // Centre-aligned inside the LABEL box, which is inset in the node: the
+      // caret rides the label's geometry, not the node's (2026-08-30). Before
+      // that fix the caret was measured against the node width and landed
+      // mid-word, tens of pixels short of the end of the text.
+      const expectedX = label.x() + (label.width() - last.width) / 2 + last.width;
+
+      expect(node.caretViewportBox().x).toBeCloseTo(expectedX, 0);
+    });
+
     it('keeps a circle label inside the ellipse, not just inside its box', () => {
       const circle = new DANode(0, 0, 'Layout menu: this needs to be cleaned up',
         undefined, undefined, 'circle');

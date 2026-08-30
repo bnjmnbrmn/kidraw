@@ -1097,14 +1097,19 @@ export class DANode {
     this.updateCursorPosition();
   }
 
-  /** Measurement text mirroring the label's wrap configuration. */
+  /** Measurement text mirroring the label's wrap configuration. It has to
+   *  wrap at the LABEL's width, not the node's: the label sits inside a
+   *  padding inset (and, for a circle, the inscribed rectangle), so measuring
+   *  against the box wraps at a width nothing is drawn at. Every caret
+   *  position is derived from these line breaks, which is how the caret ends
+   *  up drawn mid-word and unable to walk past a point (2026-08-30). */
   private configuredMeasureText(): Konva.Text {
     if (!DANode._measureText) {
       DANode._measureText = new Konva.Text({ visible: false });
     }
     DANode._measureText.text(this._label.text());
     DANode._measureText.fontSize(this._fontSize);
-    DANode._measureText.width(this._nodeWidth);
+    DANode._measureText.width(this._label.width());
     DANode._measureText.wrap('word');
     return DANode._measureText;
   }
@@ -1130,12 +1135,13 @@ export class DANode {
     const prefix = text.substr(line.start, i - line.start);
     const prefixWidth = prefix.length === 0 ? 0 : measure.measureSize(prefix).width;
 
-    // Center-aligned lines: the line box starts at (nodeWidth - lineWidth)/2.
-    const cursorX = (this._nodeWidth - lineWidth) / 2 + prefixWidth;
-    // verticalAlign: 'middle' → the text block starts at (nodeHeight - H)/2.
+    // Centre-aligned lines inside the LABEL box, which is itself inset in the
+    // node — so both offsets are the label's, not the node's.
+    const cursorX = this._label.x() + (this._label.width() - lineWidth) / 2 + prefixWidth;
+    // verticalAlign: 'middle' → the text block starts at (labelHeight - H)/2.
     const lineHeight = this._fontSize * (this._label.lineHeight() ?? 1);
     const totalHeight = measure.height();
-    const textStartY = (this._nodeHeight - totalHeight) / 2;
+    const textStartY = this._label.y() + (this._label.height() - totalHeight) / 2;
     const cursorY = textStartY + li * lineHeight;
 
     if (this._cursorMode !== 'insert') {
@@ -1143,7 +1149,7 @@ export class DANode {
       const ch = line.length > 0 ? text[visualIndex] : ' ';
       const charWidth = Math.max(measure.measureSize(ch || ' ').width, 2);
       const visualPrefix = text.substr(line.start, visualIndex - line.start);
-      const visualX = (this._nodeWidth - lineWidth) / 2
+      const visualX = this._label.x() + (this._label.width() - lineWidth) / 2
         + (visualPrefix.length === 0 ? 0 : measure.measureSize(visualPrefix).width);
       this._cursor.points([
         visualX, cursorY,
@@ -1213,7 +1219,7 @@ export class DANode {
       const to = Math.min(selection.end, line.start + line.length);
       if (from >= to) return;
       const lineWidth = textArr[lineIndex]?.width ?? 0;
-      const lineX = (this._nodeWidth - lineWidth) / 2;
+      const lineX = this._label.x() + (this._label.width() - lineWidth) / 2;
       const prefix = text.slice(line.start, from);
       const selected = text.slice(from, to);
       this._visualSelection.add(new Konva.Rect({
