@@ -1,6 +1,6 @@
 # dev-status
 
-_Updated 2026-08-29 (fourth batch). Branch: `main`._
+_Updated 2026-08-30. Branch: `main`._
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
@@ -402,6 +402,13 @@ _Updated 2026-08-29 (fourth batch). Branch: `main`._
     - **Shift+U is Redo**, and holding Shift shows a card for the shifted layer: Redo on `u`, Prev Match on `n` — the latter already worked but was folklore. Ctrl-R and Ctrl-Shift-Z still redo. **The chord is intercepted rather than left to the card**: a submenu opens on a ~350ms hold, so a quickly typed Shift+U fell through to the root's plain Undo — measured, and the exact opposite of the request.
 
     Verified: 453 unit tests, clean build, every menu read back from the running app. `repro-binding-reorg.js` updated for the File hub's new key and children, and it now asserts that every File child is a right-hand key.
+
+81. **Caret geometry (2026-08-30, `e173ac7`).** Ben: "Something seems to be messed up about where the cursor is displayed and where it is logically (I can't move it beyond the point in the screenshot)."
+    - **My own regression, from da-553 + da-458.** Those moved the label inside the box — an 8px padding inset, and the inscribed rectangle for circles — without moving the caret model with it. `configuredMeasureText()` still wrapped at `_nodeWidth`, and the centring maths still used `(_nodeWidth - lineWidth) / 2`, so every caret position was computed for a width nothing is painted at. The caret landed mid-word and walking right stopped at the end of a line only the measurement believed in.
+    - Measured on the node from his screenshot, caret at end of text: **x=208 before, x=248 after**, with the painted text ending at 248. The wrap measurement, the centring offset, the vim block caret and the visual-selection highlight all take the label's box now.
+    - Unit test locks it to the rendered geometry: the end-of-text caret must sit at `label.x() + (label.width() - lastLineWidth) / 2 + lastLineWidth`.
+
+    Verified: 454 unit tests, `repro-da-343-vim-operators.js` all-pass. `repro-label-edit-flow.js` keeps its two pre-existing failures — one of them, "long text fully stored", is the *edge-label* caret landing at a stale index, which is DALabel's own path and untouched here.
 
 ## Routing-eval harness
 
