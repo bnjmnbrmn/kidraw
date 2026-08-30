@@ -237,7 +237,10 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     strategy: {
       adaptiveBandGrid: 'e',
       adaptiveQuadrantGrid: 'o',
-      adaptiveQuadrantRings: 'r',
+      // `r` is the same finger as the `g` hub it is chorded with — you cannot
+      // hold one and press the other (found by the keymap invariant test,
+      // 2026-08-30). See notes/design-chord-ergonomics.md.
+      adaptiveQuadrantRings: 'u',
     },
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },
@@ -334,7 +337,10 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     strategy: {
       adaptiveBandGrid: 'e',
       adaptiveQuadrantGrid: 'o',
-      adaptiveQuadrantRings: 'r',
+      // `r` is the same finger as the `g` hub it is chorded with — you cannot
+      // hold one and press the other (found by the keymap invariant test,
+      // 2026-08-30). See notes/design-chord-ergonomics.md.
+      adaptiveQuadrantRings: 'u',
     },
     goalAngle: {towardSouth: 'n', towardNorth: 'p'},
   },

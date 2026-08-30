@@ -1,0 +1,30 @@
+{
+  "repro-compact-keymenu.js": {
+    "fails": 0,
+    "crashed": false
+  },
+  "repro-compact-viewport.js": {
+    "fails": 0,
+    "crashed": false
+  },
+  "repro-da-345-connect-focus.js": {
+    "fails": 0,
+    "crashed": false
+  },
+  "repro-grow-mode.js": {
+    "fails": 17,
+    "crashed": false
+  },
+  "repro-label-edit-flow.js": {
+    "fails": 2,
+    "crashed": false
+  },
+  "repro-layout-clear.js": {
+    "fails": 0,
+    "crashed": false
+  },
+  "repro-tree-crossings.js": {
+    "fails": 1,
+    "crashed": false
+  }
+}
