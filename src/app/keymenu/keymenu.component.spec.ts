@@ -507,7 +507,9 @@ describe('KeymenuComponent', () => {
       kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
       strategy: 'adaptive-quadrant-grid',
     });
-    const quadrantRings = moveByNodeSubmenu.submenuConfig['r'] as LabeledAction;
+    // Moved off 'r' on 2026-08-30: 'r' and the 'g' hub it is chorded with are
+    // the same finger (claude-proposed-tests/keymap-invariants.spec.ts).
+    const quadrantRings = moveByNodeSubmenu.submenuConfig['u'] as LabeledAction;
     expect(quadrantRings.actionLabel).toBe('Use adaptive quadrant rings');
     expect(quadrantRings.repeat).toBeFalse();
     quadrantRings.action();

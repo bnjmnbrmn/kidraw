@@ -98,7 +98,9 @@ async function main() {
 
   await page.keyboard.down('g');
   await page.waitForTimeout(120);
-  await press('r');
+  // The rings strategy moved g-r → g-u on 2026-08-30: 'r' is the same finger
+  // as the 'g' it is held with.
+  await press('u');
 
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
