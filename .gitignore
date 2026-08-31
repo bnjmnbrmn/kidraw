@@ -56,3 +56,4 @@ tools/debug.log
 /Screenshot*.png
 /Screenshot*.PNG
 tools/draft-mirror.json
+site/dist/
