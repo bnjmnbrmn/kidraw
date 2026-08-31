@@ -1,19 +1,27 @@
 <header class="header-content">
   <div class="document-identity">
     <h1>KiDraw</h1>
-    <span class="file-label file-chip" title="Working file — vault files auto-save">
-      {{ workingFileLabel }}
-    </span>
+    <div class="document-location"
+         [title]="fileIdentity.vaultName ? 'Vault and path — auto-save is on' : 'Working file'">
+      @if (fileIdentity.vaultName; as vaultName) {
+        <span class="vault-label" title="Vault">{{ vaultName }}</span>
+      }
+      <span class="file-label file-chip" title="Working file path">
+        {{ fileIdentity.path }}
+      </span>
+    </div>
   </div>
 
-  <div class="live-state" aria-live="polite">
-    @if (statusMessage) {
-      <span class="status-message">{{ statusMessage }}</span>
-    }
-    @if (selectionSummary) {
-      <span class="selection-summary">{{ selectionSummary }}</span>
-    }
-  </div>
+  @if (statusMessage || selectionSummary) {
+    <div class="live-state" aria-live="polite">
+      @if (statusMessage) {
+        <span class="status-message">{{ statusMessage }}</span>
+      }
+      @if (selectionSummary) {
+        <span class="selection-summary">{{ selectionSummary }}</span>
+      }
+    </div>
+  }
 
   <div class="header-controls">
     <span class="zoom-indicator" title="Canvas zoom">{{ zoomLevel }}%</span>

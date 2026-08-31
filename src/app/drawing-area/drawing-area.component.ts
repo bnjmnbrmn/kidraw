@@ -69,7 +69,7 @@ interface NavigationViewport {
   width: number;
   height: number;
 }
-import { DANotification } from './da-notification.model';
+import { DAFileState, DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
 import { DebugLogService } from '../services/debug-log.service';
@@ -1389,7 +1389,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
     this.emitZoomLevel();
     this.checkAndEmitEditState();
-    this.emitFileState(manifestName);
+    this.emitFileState({storage: 'external', path: manifestName});
 
     this.emitDisplayStatus(parsed.value);
   }
@@ -1622,15 +1622,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({ kind: 'status-message', message });
   }
 
-  private lastFileLabel: string | null | undefined = undefined;
+  private lastFileStateKey: string | undefined;
 
-  /** Tell the header which file is open (deduplicated — auto-save calls
-   *  this on every write). */
-  private emitFileState(fileLabel: string | null): void {
-    if (fileLabel === this.lastFileLabel) return;
-    this.lastFileLabel = fileLabel;
-    this.log.log('[file]', fileLabel ?? '(none)');
-    this.daOut.emit({ kind: 'file-state-update', fileLabel });
+  /** Tell the header which file is open (deduplicated — auto-save calls this
+   *  on every write). Storage and path remain separate across this boundary. */
+  private emitFileState(fileState: DAFileState): void {
+    const stateKey = JSON.stringify(fileState);
+    if (stateKey === this.lastFileStateKey) return;
+    this.lastFileStateKey = stateKey;
+    const displayLabel = fileState === null
+      ? '(none)'
+      : fileState.storage === 'vault'
+        ? `${fileState.vaultName}/${fileState.path}`
+        : fileState.path;
+    this.log.log('[file]', displayLabel);
+    this.daOut.emit({ kind: 'file-state-update', fileState });
   }
 
   private async initVault(): Promise<void> {
@@ -1911,8 +1917,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.vaultService.currentFilePath = path;
     this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
-    const dir = this.vaultService.directoryName;
-    this.emitFileState(dir ? `${dir}/${path}` : path);
+    this.emitFileState({storage: 'vault', vaultName: vault.name, path});
     return true;
   }
 
@@ -1990,8 +1995,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       await vault.write(path, content);
       this.vaultService.currentFilePath = path;
       this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
-      const dir = this.vaultService.directoryName;
-      this.emitFileState(dir ? `${dir}/${path}` : path);
+      this.emitFileState({storage: 'vault', vaultName: vault.name, path});
       return true;
     } catch (e) {
       this.emitStatus(`Vault save failed: ${(e as Error).message}`);

@@ -227,7 +227,7 @@ export class AppComponent implements OnInit, OnDestroy {
         break;
       case "file-state-update":
         if (this.headerComponent) {
-          this.headerComponent.openFileLabel = daNotification.fileLabel;
+          this.headerComponent.fileState = daNotification.fileState;
         }
         break;
       case "popup-state":

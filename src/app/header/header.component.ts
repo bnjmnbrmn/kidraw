@@ -8,6 +8,7 @@ import { DemoDataService } from '../services/demo-data.service';
 import { EdgeDirectedness, LineStyle, NodeShape } from '../drawing-area/command.model';
 import { GraphStorageService, SavedGraph } from '../services/graph-storage.service';
 import { GraphSnapshot } from '../drawing-area/graph-snapshot';
+import { DAFileState } from '../drawing-area/da-notification.model';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -49,11 +50,25 @@ export function sampleGraphsEnabled(search: string): boolean {
   return value !== '0' && value !== 'false' && value !== 'off';
 }
 
+export interface HeaderFileIdentity {
+  vaultName: string | null;
+  path: string;
+}
+
+/** Convert storage state to the two independently-rendered header widgets. */
+export function headerFileIdentity(fileState: DAFileState): HeaderFileIdentity {
+  if (fileState === null) return {vaultName: null, path: 'Untitled'};
+  return {
+    vaultName: fileState.storage === 'vault' ? fileState.vaultName : null,
+    path: fileState.path,
+  };
+}
+
 @Component({
   selector: 'app-header',
   imports: [],
   templateUrl: './header.component.html',
-  styleUrl: './header.component.css'
+  styleUrls: ['./header.component.css', './header-settings.component.css']
 })
 export class HeaderComponent {
   readonly showSampleGraphs = sampleGraphsEnabled(window.location.search);
@@ -69,14 +84,11 @@ export class HeaderComponent {
   defaultLineStyle: LineStyle = 'solid';
   canUndo: boolean = false;
   canRedo: boolean = false;
-  /** "vaultDir/path" for vault-backed graphs (auto-saving), a filename for
-   *  picker-opened files, or null when the graph has no file backing. */
-  openFileLabel: string | null = null;
+  /** Structured backing location for the graph, or null for a new document. */
+  fileState: DAFileState = null;
 
-  /** The header always names the graph being edited, even before it has a
-   *  backing file. */
-  get workingFileLabel(): string {
-    return this.openFileLabel ?? 'Untitled';
+  get fileIdentity(): HeaderFileIdentity {
+    return headerFileIdentity(this.fileState);
   }
 
   get graphStats(): string {

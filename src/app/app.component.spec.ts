@@ -4,6 +4,7 @@ import {AppComponent} from './app.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {CompactKeymenuComponent} from './keymenu/compact/compact-keymenu.component';
 import {DACommandType} from './drawing-area/command.model';
+import {HeaderComponent} from './header/header.component';
 
 describe('AppComponent', () => {
   beforeEach(async () => {
@@ -150,5 +151,27 @@ describe('AppComponent', () => {
       [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'vimNormal'}],
       [{kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'}],
     ]);
+  });
+
+  it('preserves separate vault and path fields when file state reaches the header', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const app = fixture.componentInstance;
+    const header = fixture.debugElement.query(By.directive(HeaderComponent))
+      .componentInstance as HeaderComponent;
+
+    app.handleDANotification({
+      kind: 'file-state-update',
+      fileState: {
+        storage: 'vault',
+        vaultName: 'work',
+        path: 'work/nested/graph.kidraw.yaml',
+      },
+    });
+
+    expect(header.fileIdentity).toEqual({
+      vaultName: 'work',
+      path: 'work/nested/graph.kidraw.yaml',
+    });
   });
 });
