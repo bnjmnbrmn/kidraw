@@ -181,12 +181,12 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
   });
   konvaGroup.add(actionLabelText);
 
-  // Indicator badge (repeat ↺ or release ↑)
+  // Indicator badge: repeat keeps its circular glyph; release is a drawn
+  // lift arrow so it reads as a gesture rather than another piece of copy.
   const indicator = config.indicator ?? 'none';
-  if (indicator !== 'none') {
-    const indicatorChar = indicator === 'repeat' ? '↺' : '↑';
+  if (indicator === 'repeat') {
     const indicatorText = new Konva.Text({
-      text: indicatorChar,
+      text: '↺',
       fontSize: 9,
       x: w - 14,
       y: KEY_HEIGHT - 14,
@@ -195,12 +195,85 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
       listening: false,
     });
     konvaGroup.add(indicatorText);
+  } else if (indicator === 'release') {
+    konvaGroup.add(new Konva.Arrow({
+      name: 'key-release-indicator',
+      points: [w - 11, KEY_HEIGHT - 6, w - 11, KEY_HEIGHT - 18],
+      stroke: style.actionTextColor,
+      fill: style.actionTextColor,
+      strokeWidth: 1.5,
+      pointerLength: 4,
+      pointerWidth: 4,
+      opacity: 0.55,
+      listening: false,
+    }));
   }
 
   return { konvaGroup, keyRect };
 }
 
 // ========== Default Implementations ==========
+
+/**
+ * Visual-only slot for a key held on the card underneath. It deliberately
+ * paints no key cap: the upper card's matching hole leaves the original key
+ * visible, while this outline and lift arrow explain what releasing it does.
+ */
+export class DefaultKMHeldKeyRelease<T> implements KMKey {
+  readonly konvaGroup: Konva.Group;
+  private readonly cueRect: Konva.Rect;
+  private _highlight = true;
+
+  constructor(
+    public readonly keyString: KeyString,
+    public readonly label: string,
+    public readonly mode: USQwertyMode<T>,
+    style?: KeyRenderStyle,
+    keyWidth?: number,
+  ) {
+    const resolvedStyle = style ?? defaultKeyRenderStyle();
+    const w = keyWidth ?? getKeyWidth(keyString);
+    this.konvaGroup = new Konva.Group({
+      x: xAndYForKeys[keyString]!.x,
+      y: xAndYForKeys[keyString]!.y,
+    });
+    this.cueRect = new Konva.Rect({
+      name: 'held-key-release-slot',
+      x: -2,
+      y: -2,
+      width: w + 4,
+      height: KEY_HEIGHT + 4,
+      stroke: resolvedStyle.highlightShadowColor,
+      strokeWidth: 2,
+      dash: [5, 4],
+      cornerRadius: CORNER_RADIUS + 2,
+      shadowColor: resolvedStyle.highlightShadowColor,
+      shadowBlur: 6,
+      shadowOpacity: 0.6,
+      listening: false,
+    });
+    this.konvaGroup.add(this.cueRect);
+    this.konvaGroup.add(new Konva.Arrow({
+      name: 'held-key-release-indicator',
+      points: [w - 11, KEY_HEIGHT - 18, w - 11, KEY_HEIGHT - 32],
+      stroke: resolvedStyle.highlightShadowColor,
+      fill: resolvedStyle.highlightShadowColor,
+      strokeWidth: 2,
+      pointerLength: 5,
+      pointerWidth: 5,
+      listening: false,
+    }));
+  }
+
+  get highlight(): boolean {
+    return this._highlight;
+  }
+
+  set highlight(value: boolean) {
+    this._highlight = value;
+    this.cueRect.opacity(value ? 1 : 0.72);
+  }
+}
 
 export class DefaultKMActionKey<T> implements KMActionKey {
   readonly konvaGroup: Konva.Group;

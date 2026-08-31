@@ -22,6 +22,8 @@ export type KeymenuDisplay = 'keyboard' | 'compact' | 'hidden';
 /** Gap between the compact panel and the drawing-area edge (matches the CSS
  *  inset), counted into the viewport inset so nothing hides behind it. */
 const COMPACT_MENU_GUTTER = 10;
+/** The floating header's top offset, height, and breathing room. */
+const HEADER_VIEWPORT_INSET = 72;
 
 @Component({
   selector: 'app-root',
@@ -31,6 +33,7 @@ const COMPACT_MENU_GUTTER = 10;
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit, OnDestroy {
+  readonly headerInset = HEADER_VIEWPORT_INSET;
   private log = inject(DebugLogService);
   private keyboardConfig = inject(KeyboardConfigService);
   private themeService = inject(ThemeService);

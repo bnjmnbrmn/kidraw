@@ -4,6 +4,7 @@ import {
   LabeledAction,
   LabeledActionSubmenuConfig,
   LabeledActionWithRelease,
+  LabeledHeldKeyRelease,
   LabeledSubmenuConfig,
 } from '../layouts/us-qwerty/submenuConfig';
 import type {SubmenuConfigValue} from '../layouts/us-qwerty/submenuConfig';
@@ -16,6 +17,7 @@ import {
   isSubmenuKey,
   DefaultKMActionKey,
   DefaultKMActionSubmenuKey,
+  DefaultKMHeldKeyRelease,
   DefaultKMSubmenuKey,
   KeyRenderStyle,
   keyRenderStyleFromPalette,
@@ -32,6 +34,8 @@ export class KMSubmenu<T> {
   keys: { [K in KeyString]?: KMKey };
   /** Keys whose LabeledAction opted out of held-key auto-repeat. */
   private noRepeatKeys = new Set<KeyString>();
+  /** Visual-only release slots cut through this card to the held card below. */
+  private releaseHoleKeys = new Set<KeyString>();
   actionSchedulingEnabled: boolean = true;
   helpModeActive: boolean = false;
   /** The x/y positions this card rests at (accounts for depth offset). */
@@ -67,6 +71,17 @@ export class KMSubmenu<T> {
 
   private generateActionKey(keyString: KeyString, actionLabel: string, action: () => void, onKeyUp: () => void = () => {}, style?: KeyRenderStyle, indicator?: KMKeyIndicator): KMKey {
     return new DefaultKMActionKey(keyString, actionLabel, this.mode, action, onKeyUp, () => {}, () => {}, style, indicator, this.getDisplayLabel(keyString), getKeyWidth(keyString));
+  }
+
+  private generateHeldKeyRelease(keyString: KeyString, actionLabel: string, style?: KeyRenderStyle): KMKey {
+    this.releaseHoleKeys.add(keyString);
+    return new DefaultKMHeldKeyRelease(
+      keyString,
+      actionLabel,
+      this.mode,
+      style,
+      getKeyWidth(keyString),
+    );
   }
 
   private generateSubmenuKey(keyString: KeyString, submenuLabel: string, submenuConfig: SubmenuConfig, style?: KeyRenderStyle): KMKey {
@@ -254,7 +269,9 @@ export class KMSubmenu<T> {
       [KeyString, SubmenuConfigValue][])
       .filter(([key]) => !key.startsWith('_'))
       .forEach(([key, config]) => {
-        if (config instanceof LabeledSubmenuConfig) {
+        if (config instanceof LabeledHeldKeyRelease) {
+          keys.push([key, this.generateHeldKeyRelease(key, config.actionLabel, style)]);
+        } else if (config instanceof LabeledSubmenuConfig) {
           keys.push([key, this.generateSubmenuKey(key, config.submenuLabel, config.submenuConfig, style)]);
         } else if (config instanceof LabeledActionSubmenuConfig) {
           keys.push([
@@ -284,17 +301,21 @@ export class KMSubmenu<T> {
       group.x(offset.x);
       group.y(offset.y);
 
+      const heldKeyStrings = [...new Set([
+        ...this.heldKeyStrings,
+        ...this.releaseHoleKeys,
+      ])];
       const cardConfig: CardRenderConfig = {
         depth: this.depth,
         palette: this.palette,
-        heldKeyStrings: this.heldKeyStrings,
+        heldKeyStrings,
         shadowConfig: this.visualConfig.cardShadow,
       };
       group.add(createCardBackground(cardConfig));
 
       // Add blank keys for unbound positions
       const boundKeys = new Set(Object.keys(keys) as KeyString[]);
-      const blankPositions = getBlankKeyPositions(boundKeys, this.heldKeyStrings, this.hideFingerBlocked);
+      const blankPositions = getBlankKeyPositions(boundKeys, heldKeyStrings, this.hideFingerBlocked);
       for (const keyString of blankPositions) {
         group.add(createBlankKey({ keyString, palette: this.palette, keyboardLayout: this.keyboardLayout, capsLockSwap: this.capsLockSwap }));
       }

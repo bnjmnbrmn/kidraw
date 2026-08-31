@@ -20,6 +20,7 @@ import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 import {
   LabeledActionSubmenuConfig,
   LabeledActionWithRelease,
+  LabeledHeldKeyRelease,
   SubmenuConfig,
 } from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
 import {KeyString, KEY_HEIGHT, getKeyWidth, getKeyDisplayLabel, isVisibleKey} from '../lib/keymenu/layouts/us-qwerty';
@@ -323,9 +324,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         if (key === '_repeatConfig' || !value || !listed(key)) continue;
         const isSubmenu = value instanceof LabeledSubmenuConfig ||
           value instanceof LabeledActionSubmenuConfig;
+        const isHeldRelease = value instanceof LabeledHeldKeyRelease;
         const label = isSubmenu
           ? (value as LabeledSubmenuConfig | LabeledActionSubmenuConfig).submenuLabel
-          : (value as LabeledAction | LabeledActionWithRelease).actionLabel;
+          : (value as LabeledAction | LabeledActionWithRelease | LabeledHeldKeyRelease).actionLabel;
         if (RIGHT_HAND_MODIFIERS.has(key) && labelsAtDepth.has(label)) continue;
         labelsAtDepth.add(label);
         // The surviving row answers for its hidden right-hand twin too, so
@@ -346,7 +348,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
           label,
           depth,
           isSubmenu,
-          held,
+          held: held || isHeldRelease,
+          indicator: value instanceof LabeledActionWithRelease || isHeldRelease
+            ? 'release'
+            : undefined,
         });
         if (held) {
           // The live stack entry, not the static child config: strategy
@@ -1207,6 +1212,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return new LabeledAction(label, () => undefined, false);
   }
 
+  /** Display-only action whose owner resolves the gesture on key release. */
+  private surfaceReleaseAction(label: string): LabeledActionWithRelease {
+    return new LabeledActionWithRelease(label, () => undefined, () => undefined);
+  }
+
   private buildNavPopupSurfaceConfig(): SubmenuConfig {
     const m = this.keyAssignments.movement;
     return {
@@ -1231,7 +1241,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
       [this.keyAssignments.select.cycleDirection]: this.surfaceAction('Cycle Direction'),
       [this.keyAssignments.search.open]: this.surfaceAction('Find Target'),
-      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Self Loop / Commit'),
+      [this.keyAssignments.root.editSubmenu]: new LabeledHeldKeyRelease('Self Loop / Commit'),
     } as SubmenuConfig;
   }
 
@@ -1246,7 +1256,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       [this.keyAssignments.insert.edge]: this.surfaceAction('Edge (selected node)'),
       [this.keyAssignments.insert.label]: this.surfaceAction('Choose Node Type'),
-      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Quick Add'),
+      [this.keyAssignments.root.editSubmenu]: new LabeledHeldKeyRelease('Quick Add'),
     } as SubmenuConfig;
   }
 
@@ -1263,7 +1273,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return {
       'j': this.surfaceAction('Next Type'),
       'k': this.surfaceAction('Previous Type'),
-      [this.keyAssignments.insert.label]: this.surfaceAction('Release: Select'),
+      [this.keyAssignments.insert.label]: this.surfaceReleaseAction('Select'),
       'Enter': this.surfaceAction('Select Type'),
       '[': this.surfaceAction('Esc: Cancel Add'),
     } as SubmenuConfig;
@@ -1278,7 +1288,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [m.right]: this.surfaceAction('Place Right'),
       [this.keyAssignments.moveSpeed.bigger]: this.surfaceAction('Coarse'),
       [this.keyAssignments.moveSpeed.smaller]: this.surfaceAction('Fine'),
-      [this.keyAssignments.root.editSubmenu]: this.surfaceAction('Release: Commit'),
+      [this.keyAssignments.root.editSubmenu]: new LabeledHeldKeyRelease('Commit'),
       'Enter': this.surfaceAction('Commit'),
       '[': this.surfaceAction('Esc: Cancel Add'),
     } as SubmenuConfig;
@@ -1690,15 +1700,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return event;
   }
 
-  /** True while the event is aimed at a native text field — the ex line, or
-   *  any future input. Those keystrokes belong to the field, not to the
-   *  keymenu, and must not fire graph actions behind it. */
+  /** True while a native/ARIA control owns the event. Its keystrokes belong
+   *  to that control, not to the keymenu, and must not fire graph actions
+   *  behind settings, dialogs, links, or text fields. */
   private static isTypingInField(event: KeyboardEvent): boolean {
     const target = event.target as HTMLElement | null;
-    if (!target) return false;
-    return target instanceof HTMLInputElement
-      || target instanceof HTMLTextAreaElement
-      || target.isContentEditable === true;
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    return target.closest(
+      'input, textarea, select, button, summary, a[href], [contenteditable="true"], ' +
+      '[role="button"], [role="dialog"], [role="menu"], [role="listbox"]',
+    ) !== null;
   }
 
   @HostListener('document:keydown', ['$event'])

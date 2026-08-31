@@ -8,7 +8,11 @@ import {
 } from './config/key-assignments';
 import {LabeledAction} from '../lib/keymenu/keys/labeledAction';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
-import {LabeledActionSubmenuConfig} from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
+import {
+  LabeledActionSubmenuConfig,
+  LabeledActionWithRelease,
+  LabeledHeldKeyRelease,
+} from '../lib/keymenu/layouts/us-qwerty/submenuConfig';
 import {DACommandType} from '../drawing-area/command.model';
 import {VisualConfigService} from '../services/visual-config.service';
 
@@ -584,6 +588,31 @@ describe('KeymenuComponent', () => {
     function buildHub(component: KeymenuComponent): Record<string, any> {
       return (component as any).buildEditSubmenuConfig();
     }
+
+    it('shows the held Add key through a release slot instead of duplicate release text', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      const empty = (component as any).buildGrowEmptySurfaceConfig();
+      const targeting = (component as any).buildGrowTargetingSurfaceConfig();
+      const placement = (component as any).buildGrowPlacementSurfaceConfig();
+      const add = component.keyAssignments.root.editSubmenu;
+
+      expect(empty[add] instanceof LabeledHeldKeyRelease).toBeTrue();
+      expect(empty[add].actionLabel).toBe('Quick Add');
+      expect(targeting[add] instanceof LabeledHeldKeyRelease).toBeTrue();
+      expect(placement[add] instanceof LabeledHeldKeyRelease).toBeTrue();
+      expect(empty[add].actionLabel).not.toContain('Release');
+    });
+
+    it('marks type selection as a release gesture without putting it in the label', () => {
+      const fixture = TestBed.createComponent(KeymenuComponent);
+      const component = fixture.componentInstance;
+      const typePopup = (component as any).buildGrowTypePopupSurfaceConfig();
+      const chooseType = typePopup[component.keyAssignments.insert.label];
+
+      expect(chooseType instanceof LabeledActionWithRelease).toBeTrue();
+      expect(chooseType.actionLabel).toBe('Select');
+    });
 
     it('carries node kinds, an Edge submenu, and label/waypoint (vim)', () => {
       const fixture = TestBed.createComponent(KeymenuComponent);

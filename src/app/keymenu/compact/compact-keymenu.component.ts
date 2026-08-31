@@ -15,6 +15,8 @@ export interface CompactMenuRow {
   isSubmenu: boolean;
   /** Part of the currently held submenu chain. */
   held: boolean;
+  /** Gesture mark shown independently from the action label. */
+  indicator?: 'release';
 }
 
 /** File-picker-style sidebar listing the live keymenu tree: the root menu as

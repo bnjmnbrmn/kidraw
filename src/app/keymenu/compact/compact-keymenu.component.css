@@ -2,7 +2,7 @@
  * the nav popup — translucent so the diagram stays readable behind it. */
 .compact-keymenu {
   position: absolute;
-  top: 60px;
+  top: 74px;
   right: 10px;
   z-index: 30;
   /* Sized to the longest row rather than to a fixed column, capped by the
@@ -12,7 +12,7 @@
   min-width: 110px;
   /* Height follows the rows; the cap only engages for menus long enough to
    * need scrolling, so a short submenu is a short panel. */
-  max-height: calc(100% - 70px);
+  max-height: calc(100% - 84px);
   display: flex;
   flex-direction: column;
   border-radius: 6px;
@@ -140,6 +140,41 @@
   flex: none;
   font-size: 10px;
   color: #64748b;
+}
+
+.release-indicator {
+  position: relative;
+  width: 12px;
+  height: 16px;
+  margin-left: auto;
+  flex: none;
+  color: #2563eb;
+}
+
+.release-arrow {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  width: 2px;
+  height: 9px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.release-arrow::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -3px;
+  width: 0;
+  height: 0;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid currentColor;
+  border-left: 4px solid transparent;
+}
+
+.compact-keymenu.dark .release-indicator {
+  color: #60a5fa;
 }
 
 .compact-keymenu.dark .chevron {

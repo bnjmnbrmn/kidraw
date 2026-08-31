@@ -6,11 +6,13 @@ every one of them names something you can say out loud:
 | Mark | Where | Means |
 | :--- | :--- | :--- |
 | Chamfer — a cut bottom-right corner | bottom right | The key **has children**: hold it and a submenu card slides in. |
-| `↑` badge | bottom left | The key **fires when you let go**. Tap it and it acts; hold it for the children, if it has any. |
+| Lift arrow | lower right | The key **fires when you let go**. On a held-surface card, the arrow sits on an outlined hole so the original held key remains visible below. |
 | `↺` badge | bottom left | The action **repeats** while the key is held. |
 
-Only action keys carry a badge. A chamfered key is a hub, and hubs are not
-badged — see the open question below for why.
+Ordinary release actions carry the arrow on their key. A drawing-area-owned
+held surface does not draw a second copy of the hub: it cuts a hole in the
+upper card, shows the held key from the card below, and draws the release cue
+around that hole.
 
 ## Corners say nothing (2026-08-29, da-477)
 
@@ -41,13 +43,19 @@ themselves are three different animals:
 | `r` Pan/Zoom | Keeps the crosshairs visible while the key is held (da-257). Press and release it and nothing happens. |
 | `g` Move by node | Same shape as `r`: shows the node grid while held. |
 
-## Open question: how to mark a hub that also acts
+## Held hubs: preserve the physical gesture
 
-`v` and `a` do something a plain hub does not, and nothing on the card says so.
-That is a real gap, not a resolved design — but it wants a mark that says which
-of the three behaviours a key has, and it is entangled with the Layout-menu
-cleanup Ben is thinking through (da-451). Left unmarked deliberately rather
-than marked wrongly.
+The root card still does not pretend that every action-submenu has the same
+release behavior: `v`, `a`, `r`, and `g` remain different animals. Once `a`
+has actually opened a drawing-area-owned grow surface, however, the UI knows
+the concrete gesture. The upper card therefore uses a release slot at `a`
+instead of the old duplicate key labelled “Release: …”.
+
+This makes both facts visible at once:
+
+- the readable `a / Add` cap below says which physical key is still down;
+- the cutout, dashed outline, and lift arrow say that letting it go resolves
+  the current grow action.
 
 If a fourth thing ever needs saying on a card, give it a mark with a name — not
 a shade, a radius, or a weight.

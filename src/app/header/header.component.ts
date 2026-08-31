@@ -41,6 +41,14 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
   { key: 'keyLabelFills', label: 'Key label fills' },
 ];
 
+/** Sample graphs are development/demo affordances, not normal document UI. */
+export function sampleGraphsEnabled(search: string): boolean {
+  const params = new URLSearchParams(search);
+  if (!params.has('samples')) return false;
+  const value = params.get('samples')?.toLowerCase();
+  return value !== '0' && value !== 'false' && value !== 'off';
+}
+
 @Component({
   selector: 'app-header',
   imports: [],
@@ -48,6 +56,7 @@ const ARRAY_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
   styleUrl: './header.component.css'
 })
 export class HeaderComponent {
+  readonly showSampleGraphs = sampleGraphsEnabled(window.location.search);
   zoomLevel: number = 100;
   mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' | 'labelEditVimVisual' = 'normal';
   statusMessage: string = '';

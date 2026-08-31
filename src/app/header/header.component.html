@@ -1,81 +1,76 @@
-<div class="header-content">
-  <h1>KiDraw</h1>
-  <div class="header-controls">
-    <div class="zoom-indicator">
-      Zoom: {{ zoomLevel }}%
-    </div>
-    @if (mode === 'labelEdit') {
-      <div class="mode-badge" title="Esc → vim normal · ⇧⇧ → exit">Label Edit</div>
-    }
-    @if (mode === 'labelEditVimNormal') {
-      <div class="mode-badge vim-normal-badge" title="i/a → insert · v → visual · r → replace · Esc → exit label edit">Label Edit (N)</div>
-    }
-    @if (mode === 'labelEditVimVisual') {
-      <div class="mode-badge vim-normal-badge" title="motions extend · x deletes · r replaces · Esc → normal">Label Edit (V)</div>
-    }
+<header class="header-content">
+  <div class="document-identity">
+    <h1>KiDraw</h1>
+    <span class="file-label file-chip" title="Working file — vault files auto-save">
+      {{ workingFileLabel }}
+    </span>
+  </div>
+
+  <div class="live-state" aria-live="polite">
     @if (statusMessage) {
-      <div class="status-message">{{ statusMessage }}</div>
+      <span class="status-message">{{ statusMessage }}</span>
     }
-    <div class="context-strip">
-      <span class="file-chip" title="Working file — vault files auto-save">{{ workingFileLabel }}</span>
-      @if (selectionSummary) {
-        <span class="selection-chip">{{ selectionSummary }}</span>
-      } @else {
-        <span class="graph-stats-chip" title="Total nodes · edges in graph">{{ graphStats }}</span>
-      }
-      <span class="defaults-chip" title="Default node shape">{{ nodeShapeLabel }}</span>
-      <span class="defaults-chip" title="Default edge direction">{{ directednessSymbol }}</span>
-      <span class="defaults-chip" title="Default line style">{{ lineStyleSymbol }}</span>
-      <span class="undo-chip" [class.available]="canUndo" title="Undo available (u / Ctrl+Z)">↩</span>
-      <span class="undo-chip" [class.available]="canRedo" title="Redo available (Ctrl+Shift+Z / Ctrl+R)">↪</span>
-    </div>
-    <select class="sample-graph-select" tabindex="-1" (change)="onSampleGraphChange($event)">
-      <option value="">Load Sample...</option>
-      @for (graph of demoData.sampleGraphs; track graph.id) {
-        <option [value]="graph.id">{{ graph.label }}</option>
-      }
-    </select>
+    @if (selectionSummary) {
+      <span class="selection-summary">{{ selectionSummary }}</span>
+    }
+  </div>
+
+  <div class="header-controls">
+    <span class="zoom-indicator" title="Canvas zoom">{{ zoomLevel }}%</span>
+
+    <label class="sample-graph-tools" [hidden]="!showSampleGraphs">
+      <select class="sample-graph-select"
+              aria-label="Development sample graph"
+              (change)="onSampleGraphChange($event)">
+        <option value="">Samples…</option>
+        @for (graph of demoData.sampleGraphs; track graph.id) {
+          <option [value]="graph.id">{{ graph.label }}</option>
+        }
+      </select>
+    </label>
+
     <details class="settings-dropdown">
-      <summary tabindex="-1">Settings</summary>
+      <summary aria-label="Open settings">
+        <span aria-hidden="true">⚙</span>
+        <span class="settings-label">Settings</span>
+      </summary>
       <div class="settings-panel">
         <label class="swap-label">
           Theme:
-          <select tabindex="-1" [value]="themeService.theme" (change)="onThemeChange($event)">
+          <select [value]="themeService.theme" (change)="onThemeChange($event)">
             <option value="dark">Dark</option>
             <option value="light">Light</option>
           </select>
         </label>
         <label class="swap-label">
           Keyboard:
-          <select tabindex="-1" [value]="keyboardConfig.keyboardLayout" (change)="onLayoutChange($event)">
+          <select [value]="keyboardConfig.keyboardLayout" (change)="onLayoutChange($event)">
             <option value="us-windows">US Windows</option>
             <option value="us-mac">US Mac</option>
           </select>
         </label>
         <label class="swap-label">
           Key Profile:
-          <select tabindex="-1" [value]="keyboardConfig.keyProfile" (change)="onKeyProfileChange($event)">
+          <select [value]="keyboardConfig.keyProfile" (change)="onKeyProfileChange($event)">
             <option value="vim">Vim (hjkl)</option>
             <option value="ijkl">IJKL</option>
           </select>
         </label>
         <label class="swap-label">
           <input type="checkbox"
-                 tabindex="-1"
                  [checked]="keyboardConfig.capsLockCtrlSwap"
                  (change)="onCapsLockSwapChange($event)">
           Ctrl/CapsLock swapped
         </label>
         <label class="swap-label">
           <input type="checkbox"
-                 tabindex="-1"
                  [checked]="keyboardConfig.hideFingerBlockedKeys"
                  (change)="onHideFingerBlockedChange($event)">
           Hide same-finger keys
         </label>
         <label class="swap-label">
           Compact menu side:
-          <select tabindex="-1"
+          <select
                   [value]="config.compactMenu.side"
                   (change)="onCompactMenuSideChange($event)">
             <option value="right">Right</option>
@@ -89,19 +84,19 @@
           <div class="settings-group">
             <label class="swap-label">
               Delay (ms):
-              <input type="number" tabindex="-1" min="0" max="2000" step="50"
+              <input type="number" min="0" max="2000" step="50"
                      [value]="config.slideAnimation.delayMs"
                      (change)="onNumberChange('slideAnimation', 'delayMs', $event)">
             </label>
             <label class="swap-label">
               In (s):
-              <input type="number" tabindex="-1" min="0.01" max="3" step="0.05"
+              <input type="number" min="0.01" max="3" step="0.05"
                      [value]="config.slideAnimation.inDurationS"
                      (change)="onNumberChange('slideAnimation', 'inDurationS', $event)">
             </label>
             <label class="swap-label">
               Out (s):
-              <input type="number" tabindex="-1" min="0.01" max="3" step="0.05"
+              <input type="number" min="0.01" max="3" step="0.05"
                      [value]="config.slideAnimation.outDurationS"
                      (change)="onNumberChange('slideAnimation', 'outDurationS', $event)">
             </label>
@@ -113,49 +108,49 @@
           <div class="settings-group">
             <label class="swap-label">
               Grid spacing (px):
-              <input type="number" tabindex="-1" min="10" max="200" step="10"
+              <input type="number" min="10" max="200" step="10"
                      [value]="config.cursor.gridSpacing"
                      (change)="onNumberChange('cursor', 'gridSpacing', $event)">
             </label>
             <label class="swap-label">
               Fine movement (minor-grid squares):
-              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+              <input type="number" min="0.5" max="100" step="0.5"
                      [value]="config.cursor.fineMovementGridSteps"
                      (input)="onNumberChange('cursor', 'fineMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
               Normal movement (minor-grid squares):
-              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+              <input type="number" min="0.5" max="100" step="0.5"
                      [value]="config.cursor.normalMovementGridSteps"
                      (input)="onNumberChange('cursor', 'normalMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
               Coarse movement (major-grid squares):
-              <input type="number" tabindex="-1" min="0.5" max="100" step="0.5"
+              <input type="number" min="0.5" max="100" step="0.5"
                      [value]="config.cursor.coarseMovementGridSteps"
                      (input)="onNumberChange('cursor', 'coarseMovementGridSteps', $event)">
             </label>
             <label class="swap-label">
               Repeat delay (ms):
-              <input type="number" tabindex="-1" min="0" max="1000" step="10"
+              <input type="number" min="0" max="1000" step="10"
                      [value]="config.cursor.initialRepeatDelayMs"
                      (input)="onNumberChange('cursor', 'initialRepeatDelayMs', $event)">
             </label>
             <label class="swap-label">
               Repeat interval (ms):
-              <input type="number" tabindex="-1" min="10" max="500" step="10"
+              <input type="number" min="10" max="500" step="10"
                      [value]="config.cursor.repeatIntervalMs"
                      (input)="onNumberChange('cursor', 'repeatIntervalMs', $event)">
             </label>
             <label class="swap-label">
               Edit repeat delay (ms):
-              <input type="number" tabindex="-1" min="0" max="1000" step="50"
+              <input type="number" min="0" max="1000" step="50"
                      [value]="config.cursor.labelEditInitialDelayMs"
                      (input)="onNumberChange('cursor', 'labelEditInitialDelayMs', $event)">
             </label>
             <label class="swap-label">
               Edit repeat interval (ms):
-              <input type="number" tabindex="-1" min="10" max="500" step="10"
+              <input type="number" min="10" max="500" step="10"
                      [value]="config.cursor.labelEditIntervalMs"
                      (input)="onNumberChange('cursor', 'labelEditIntervalMs', $event)">
             </label>
@@ -167,13 +162,13 @@
           <div class="settings-group">
             <label class="swap-label">
               X (px):
-              <input type="number" tabindex="-1" min="0" max="30" step="1"
+              <input type="number" min="0" max="30" step="1"
                      [value]="config.cardDepth.depthOffsetX"
                      (change)="onNumberChange('cardDepth', 'depthOffsetX', $event)">
             </label>
             <label class="swap-label">
               Y (px):
-              <input type="number" tabindex="-1" min="0" max="30" step="1"
+              <input type="number" min="0" max="30" step="1"
                      [value]="config.cardDepth.depthOffsetY"
                      (change)="onNumberChange('cardDepth', 'depthOffsetY', $event)">
             </label>
@@ -185,25 +180,25 @@
           <div class="settings-group">
             <label class="swap-label">
               Base blur:
-              <input type="number" tabindex="-1" min="0" max="50" step="1"
+              <input type="number" min="0" max="50" step="1"
                      [value]="config.cardShadow.baseBlur"
                      (change)="onNumberChange('cardShadow', 'baseBlur', $event)">
             </label>
             <label class="swap-label">
               Base offset:
-              <input type="number" tabindex="-1" min="0" max="30" step="1"
+              <input type="number" min="0" max="30" step="1"
                      [value]="config.cardShadow.baseOffset"
                      (change)="onNumberChange('cardShadow', 'baseOffset', $event)">
             </label>
             <label class="swap-label">
               Depth blur step:
-              <input type="number" tabindex="-1" min="0" max="20" step="1"
+              <input type="number" min="0" max="20" step="1"
                      [value]="config.cardShadow.perDepthBlurIncrement"
                      (change)="onNumberChange('cardShadow', 'perDepthBlurIncrement', $event)">
             </label>
             <label class="swap-label">
               Depth offset step:
-              <input type="number" tabindex="-1" min="0" max="20" step="1"
+              <input type="number" min="0" max="20" step="1"
                      [value]="config.cardShadow.perDepthOffsetIncrement"
                      (change)="onNumberChange('cardShadow', 'perDepthOffsetIncrement', $event)">
             </label>
@@ -218,7 +213,7 @@
                 <span class="color-array-label">{{ field.label }}</span>
                 <div class="color-swatch-row">
                   @for (i of depthIndices; track i) {
-                    <input type="color" tabindex="-1"
+                    <input type="color"
                            [value]="$any(palette[field.key])[i]"
                            (change)="onArrayColorChange(field.key, i, $event)"
                            [title]="field.label + ' depth ' + i">
@@ -229,14 +224,14 @@
             <hr>
             <label class="swap-label">
               Card shadow:
-              <input type="text" tabindex="-1" class="text-color-input"
+              <input type="text" class="text-color-input"
                      [value]="palette.cardShadowColor"
                      (change)="onShadowColorChange($event)">
             </label>
             @for (field of simpleColorFields; track field.key) {
               <label class="swap-label">
                 {{ field.label }}:
-                <input type="color" tabindex="-1"
+                <input type="color"
                        [value]="$any(palette[field.key])"
                        (change)="onColorChange(field.key, $event)">
               </label>
@@ -245,10 +240,10 @@
         </details>
 
         <hr>
-        <button class="restore-defaults-btn" tabindex="-1" (click)="restoreDefaults()">
+        <button class="restore-defaults-btn" (click)="restoreDefaults()">
           Restore Defaults
         </button>
       </div>
     </details>
   </div>
-</div>
+</header>

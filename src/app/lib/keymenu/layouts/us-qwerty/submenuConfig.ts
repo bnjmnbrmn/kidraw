@@ -17,6 +17,17 @@ export class LabeledActionWithRelease {
   }
 }
 
+/**
+ * A key physically held on a card underneath this one. The upper card cuts a
+ * hole at this position and draws only a release cue, leaving the original
+ * key visible below. Event handling belongs to the interaction surface that
+ * opened the card.
+ */
+export class LabeledHeldKeyRelease {
+  constructor(public actionLabel: string) {
+  }
+}
+
 export class LabeledSubmenuConfig {
   constructor(public submenuLabel: string,
               public submenuConfig: SubmenuConfig) {
@@ -33,6 +44,7 @@ export class LabeledActionSubmenuConfig {
 export type SubmenuConfigValue =
   | LabeledAction
   | LabeledActionWithRelease
+  | LabeledHeldKeyRelease
   | LabeledSubmenuConfig
   | LabeledActionSubmenuConfig;
 
