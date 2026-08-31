@@ -93,6 +93,69 @@ export interface KMKeyRenderConfig {
 const CORNER_RADIUS = 8;
 const CHAMFER_SIZE = 12;
 
+/** The "fires when you let go" mark: a chevron lifting off a baseline. It is
+ *  drawn rather than typed so it reads as a gesture at 10px, where a "↑"
+ *  glyph just reads as more copy. It lives in the bottom-LEFT corner so the
+ *  two corner marks stay separable: bottom-right chamfer means "has
+ *  children", bottom-left lift means "fires when you let go". */
+function releaseLiftGlyph(
+  cx: number,
+  cy: number,
+  color: string,
+  opacity: number,
+  scale: number = 1,
+): Konva.Group {
+  const group = new Konva.Group({name: 'release-lift-glyph', x: cx, y: cy, opacity, listening: false});
+  const common = {
+    stroke: color,
+    strokeWidth: 1.4 * scale,
+    lineCap: 'round' as const,
+    lineJoin: 'round' as const,
+    listening: false,
+  };
+  group.add(new Konva.Line({
+    ...common,
+    points: [-4.5 * scale, -1 * scale, 0, -6 * scale, 4.5 * scale, -1 * scale],
+  }));
+  // The baseline is shorter than the chevron's span and set off by a clear
+  // gap: the mark should read as something leaving a surface, not as an
+  // arrow pointing at one.
+  group.add(new Konva.Line({
+    ...common,
+    points: [-3 * scale, 4 * scale, 3 * scale, 4 * scale],
+    opacity: 0.65,
+  }));
+  return group;
+}
+
+const ACTION_LABEL_FONT_SIZE = 12;
+const MIN_ACTION_LABEL_FONT_SIZE = 9;
+
+/** Konva's word wrap falls back to breaking mid-word once a single token is
+ *  wider than the box, which turned "Select+Drag" into "Select+Dra / g".
+ *  Shrink the type instead until the widest token fits, so a label may wrap
+ *  between words but never inside one. */
+let _labelMeasure: Konva.Text | undefined;
+export function fontSizeThatKeepsWordsWhole(
+  label: string,
+  availableWidth: number,
+  baseFontSize: number = ACTION_LABEL_FONT_SIZE,
+  minFontSize: number = MIN_ACTION_LABEL_FONT_SIZE,
+): number {
+  const tokens = label.split(/\s+/).filter(token => token.length > 0);
+  if (tokens.length === 0) return baseFontSize;
+  const measure = _labelMeasure ??= new Konva.Text({});
+  for (let size = baseFontSize; size > minFontSize; size--) {
+    measure.fontSize(size);
+    const widest = Math.max(...tokens.map(token => {
+      measure.text(token);
+      return measure.width();
+    }));
+    if (widest <= availableWidth) return size;
+  }
+  return minFontSize;
+}
+
 export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Konva.Group; keyRect: Konva.Rect } {
   const style = config.style ?? defaultKeyRenderStyle();
   const keyType = config.keyType ?? 'action';
@@ -177,6 +240,7 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     align: 'center',
     verticalAlign: 'middle',
     x: 5,
+    fontSize: fontSizeThatKeepsWordsWhole(config.label, w - 10),
     fill: style.actionTextColor,
   });
   konvaGroup.add(actionLabelText);
@@ -196,17 +260,9 @@ export function createKeyKonvaGroup(config: KMKeyRenderConfig): { konvaGroup: Ko
     });
     konvaGroup.add(indicatorText);
   } else if (indicator === 'release') {
-    konvaGroup.add(new Konva.Arrow({
-      name: 'key-release-indicator',
-      points: [w - 11, KEY_HEIGHT - 6, w - 11, KEY_HEIGHT - 18],
-      stroke: style.actionTextColor,
-      fill: style.actionTextColor,
-      strokeWidth: 1.5,
-      pointerLength: 4,
-      pointerWidth: 4,
-      opacity: 0.55,
-      listening: false,
-    }));
+    const lift = releaseLiftGlyph(14, KEY_HEIGHT - 15, style.actionTextColor, 0.6);
+    lift.name('key-release-indicator');
+    konvaGroup.add(lift);
   }
 
   return { konvaGroup, keyRect };
@@ -253,16 +309,10 @@ export class DefaultKMHeldKeyRelease<T> implements KMKey {
       listening: false,
     });
     this.konvaGroup.add(this.cueRect);
-    this.konvaGroup.add(new Konva.Arrow({
-      name: 'held-key-release-indicator',
-      points: [w - 11, KEY_HEIGHT - 18, w - 11, KEY_HEIGHT - 32],
-      stroke: resolvedStyle.highlightShadowColor,
-      fill: resolvedStyle.highlightShadowColor,
-      strokeWidth: 2,
-      pointerLength: 5,
-      pointerWidth: 5,
-      listening: false,
-    }));
+    const lift = releaseLiftGlyph(
+      14, KEY_HEIGHT - 16, resolvedStyle.highlightShadowColor, 1, 1.25);
+    lift.name('held-key-release-indicator');
+    this.konvaGroup.add(lift);
   }
 
   get highlight(): boolean {
