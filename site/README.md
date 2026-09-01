@@ -5,13 +5,15 @@ is written as page content only (no `<!doctype>`, `<html>` or `<head>`) so the
 same file can be previewed as a Claude artifact and shipped as the site.
 
 ```bash
-node site/build.mjs      # → site/dist/index.html, with the head a real site needs
+npm run site:build       # → site/dist/index.html, with the head a real site needs
+npm run site:test        # build + document, desktop-keyboard, and mobile-tap smoke tests
 ```
 
 Serve `site/dist/` as the document root for **kidraw.net**. The app itself
 lives at **alpha.kidraw.net**, which every call to action here points at.
 
-The screenshot in the page is inlined as a data URI, so `dist/index.html` is
+The source's `site-head` block is kept usable in a Claude artifact, then moved
+into the real document head by the build. The screenshot is inlined as a data URI, so `dist/index.html` is
 the only file that needs to be served — nothing else to copy, nothing to break
 if a path changes. To refresh it, take a new screenshot of the running app,
 base64 it, and replace the `src="data:image/png;base64,…"` value.

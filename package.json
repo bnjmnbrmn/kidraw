@@ -8,6 +8,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "site:build": "node site/build.mjs",
+    "site:test": "node site/smoke.mjs",
     "screenshot": "node tools/playwright-screenshot.js",
     "routing-eval": "node tools/routing-eval/run.mjs",
     "routing-eval:screens": "node tools/routing-eval/render-screens.mjs",
