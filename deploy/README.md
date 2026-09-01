@@ -22,3 +22,20 @@ curl --fail https://kidraw.dev.bnjmnbrmn.com/
 The unit invokes the Node binary directly. Launching it through the
 Snap-provided `npm` wrapper moves the process tree to a user cgroup, which
 prevents the system service from reliably stopping all of its children.
+
+## Homepage preview
+
+The static introduction page is available without replacing the development
+app at:
+
+<https://kidraw.dev.bnjmnbrmn.com/homepage/>
+
+Build it, copy it into `/var/www`, install the versioned nginx virtual host,
+validate nginx, and reload it with:
+
+```bash
+deploy/install-homepage.sh
+```
+
+The exact `/homepage` URL redirects to `/homepage/`. The trailing slash is
+important because nginx serves the generated `index.html` from that directory.
