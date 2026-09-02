@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KiDraw homepage capture review</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e8e6e1;
+      --dim: #9a978f;
+      --ground: #141416;
+      --panel: #1c1c1f;
+      --line: #2e2e33;
+      --accent: #6fd3c7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: var(--ground);
+      color: var(--ink);
+      font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 40px 24px 80px;
+    }
+    main { max-width: 1080px; margin: 0 auto; }
+    h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.01em; }
+    .lede, .note, li { color: var(--dim); }
+    .lede { margin: 0 0 40px; max-width: 68ch; }
+    section { margin: 0 0 48px; border-top: 1px solid var(--line); padding-top: 24px; }
+    h2 { font-size: 18px; margin: 0 0 4px; }
+    .tag {
+      color: var(--accent);
+      display: block;
+      font: 600 11px/1 ui-monospace, monospace;
+      letter-spacing: .08em;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .note { margin: 0 0 20px; max-width: 68ch; }
+    figure {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      margin: 0 0 18px;
+      overflow: hidden;
+    }
+    img { display: block; width: 100%; }
+    figcaption { border-top: 1px solid var(--line); color: var(--dim); font-size: 13px; padding: 10px 14px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    ul { max-width: 72ch; }
+    li { margin-bottom: 8px; }
+    strong { color: var(--ink); font-weight: 600; }
+    code { font-family: ui-monospace, monospace; }
+    a { color: var(--accent); }
+    @media (max-width: 760px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>KiDraw homepage capture review</h1>
+  <p class="lede">Raw captures from the running app on a clean synthetic graph: seven nodes, with “Copy” connected to two parents so the graph expresses something an outline cannot. This page preserves the August 31 review set and its known flaws; it is not the homepage itself.</p>
+
+  <section>
+    <h2><span class="tag">Edges staying legible</span>Dragging a node, links rerouting</h2>
+    <p class="note">Select+Drag is held while “Docs” moves down. Its two links find new routes instead of becoming a fixed bundle.</p>
+    <div class="row">
+      <figure><img src="../assets/captures/reroute-0.png" alt="Docs selected before it moves"><figcaption>Before: the crosshair is parked on “Docs.”</figcaption></figure>
+      <figure><img src="../assets/captures/reroute-1.png" alt="Docs after one movement step"><figcaption>After one step down.</figcaption></figure>
+      <figure><img src="../assets/captures/reroute-2.png" alt="Docs after two movement steps"><figcaption>After two steps.</figcaption></figure>
+      <figure><img src="../assets/captures/reroute-final.png" alt="Docs after movement is released"><figcaption>Released: the two links have found new angles.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">Layout kicker</span>Full-graph automatic layout</h2>
+    <p class="note">One command returns the graph to a clean three-column tree with no crossings.</p>
+    <figure><img src="../assets/captures/reroute-relaid.png" alt="Graph after tree-right layout is applied"><figcaption>Tree-right layout reapplied.</figcaption></figure>
+  </section>
+
+  <section>
+    <h2><span class="tag">Navigation</span>Readable nodes at a distant zoom</h2>
+    <p class="note">At 22% the cards are unreadable specks. Move onto one and a full-size reading lens appears in place, while the rest of the graph remains where it is.</p>
+    <div class="row">
+      <figure><img src="../assets/captures/ghost-before.png" alt="A graph zoomed out to 22 percent"><figcaption>Zoomed out to 22%.</figcaption></figure>
+      <figure><img src="../assets/captures/ghost-after.png" alt="A node shown at readable size under the crosshair"><figcaption>The node under the crosshair is readable at full size.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="tag">The menu is the documentation</span>At rest, then with a key held</h2>
+    <p class="note">At rest, only available commands are lit. Hold Add and the same keyboard becomes Add's choices while dashed locations appear on the canvas. The breadcrumb reads <em>add &gt; choose target</em>.</p>
+    <div class="row">
+      <figure><img src="../assets/captures/menu-root.png" alt="The full KiDraw keymenu in normal mode"><figcaption>At rest: normal mode.</figcaption></figure>
+      <figure><img src="../assets/captures/menu-held.png" alt="The keymenu and canvas while Add is held"><figcaption>Holding Add: the menu and canvas both answer.</figcaption></figure>
+    </div>
+    <figure><img src="../assets/captures/menu-held-drag.png" alt="The full keymenu while Select and Drag is held"><figcaption>Holding Select+Drag: the same keyboard answers a different question.</figcaption></figure>
+  </section>
+
+  <section>
+    <h2><span class="tag">Opening</span>A graph appearing</h2>
+    <p class="note">Each frame relays the graph as nodes arrive, so arrangement is not a separate task.</p>
+    <figure><img src="../assets/captures/grow-0.png" alt="A two-node graph"><figcaption>Two nodes.</figcaption></figure>
+    <figure><img src="../assets/captures/grow-1.png" alt="A four-node graph"><figcaption>Four nodes.</figcaption></figure>
+    <figure><img src="../assets/captures/grow-2.png" alt="A seven-node graph where Copy has two parents"><figcaption>Seven nodes; “Copy” now has two parents.</figcaption></figure>
+  </section>
+
+  <section>
+    <h2><span class="tag">Keymenu polish</span>Card labels and the release mark</h2>
+    <p class="note">Long actions now shrink until their widest word fits, so labels wrap between words but never inside one. The bottom-left lift means “fires when you release the key”; the bottom-right chamfer independently means “has more choices.”</p>
+    <figure><img src="../assets/captures/fix-release-zoom.png" alt="Close view of the release mark on the Add key card"><figcaption>The release lift sits alone in the bottom-left, clear of the submenu chamfer.</figcaption></figure>
+  </section>
+
+  <section>
+    <h2>Known capture problems</h2>
+    <ul>
+      <li>The crosshair sits over the “Docs” label in the drag and growth frames.</li>
+      <li>The top row is clipped in the drag frames; that is a capture problem, not an app problem.</li>
+      <li>The drag sequence uses the compact menu while the menu section uses the full keyboard view.</li>
+      <li>By-node and by-link navigation are not captured. Their interaction design is still being judged by feel.</li>
+      <li>“Move by node” and “Move by Link” use inconsistent capitalization.</li>
+      <li>These frames predate the per-axis tree-spacing correction, so their wide nodes sit too close horizontally. The app now derives horizontal-tree corridors from node width.</li>
+      <li>The crosshair overlaps a link in the growth frames and makes an arrow look interrupted.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

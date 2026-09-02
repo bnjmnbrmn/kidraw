@@ -2216,7 +2216,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const nodeSet = new Set(nodes);
     const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
 
-    const crossLinks = applyLayout(layout, nodes, edges, layoutSpacingFor(nodes));
+    const crossLinks = applyLayout(layout, nodes, edges, layoutSpacingFor(nodes, layout));
     this.updateEdgesForResizedNodes(allNodes);
 
     // The layout moved nodes wholesale, so pre-existing unpinned waypoints on

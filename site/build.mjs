@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /**
- * Wrap the page source into a full HTML document for hosting.
+ * Build the homepage, its capture review, and its static screenshots.
  *
  * site/index.html is written the way a Claude artifact wants it — page
  * content only, no <!doctype>, <html> or <head> — so the same file can be
  * previewed as an artifact and served as the real site. This adds the head a
- * real site needs (charset, viewport, description, social cards) and writes
- * site/dist/index.html.
+ * real site needs (charset, viewport, description, social cards), writes
+ * site/dist/index.html, and copies review/ and assets/ into the same output
+ * tree.
  *
  *   node site/build.mjs
  */
-import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
+import {cpSync, mkdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -27,10 +28,10 @@ if (headStart === -1 || headEnd === -1 || headEnd <= headStart) {
 const pageHead = source.slice(headStart + HEAD_START.length, headEnd).trim();
 const pageBody = `${source.slice(0, headStart)}${source.slice(headEnd + HEAD_END.length)}`.trim();
 
-const TITLE = 'KiDraw — keyboard-first diagramming';
+const TITLE = 'KiDraw — Connect your thoughts, at the speed you have them';
 const DESCRIPTION =
-  'KiDraw is a diagramming tool you drive from the keyboard: a crosshair on the canvas, ' +
-  'an on-screen keyboard showing every key you can press, and modes like a text editor.';
+  'KiDraw is a keyboard-first graph editor for connecting ideas as quickly as they arrive, ' +
+  'with an on-screen keymenu, automatic layout, and precise manual control.';
 
 const document = `<!doctype html>
 <html lang="en">
@@ -62,6 +63,9 @@ ${pageBody}
 </html>
 `;
 
+rmSync(join(here, 'dist'), {recursive: true, force: true});
 mkdirSync(join(here, 'dist'), {recursive: true});
 writeFileSync(join(here, 'dist', 'index.html'), document);
-console.log(`site/dist/index.html — ${(document.length / 1024).toFixed(0)} KB`);
+cpSync(join(here, 'assets'), join(here, 'dist', 'assets'), {recursive: true});
+cpSync(join(here, 'review'), join(here, 'dist', 'review'), {recursive: true});
+console.log(`site/dist/ — homepage, capture review, and static captures (${(document.length / 1024).toFixed(0)} KB HTML)`);

@@ -26,20 +26,39 @@ function slotExtent(n: DANode, spacing: number): number {
   return Math.max(spacing, Math.max(n.NODE_WIDTH, n.NODE_HEIGHT) + spacing / 2);
 }
 
+export interface LayoutSpacing {
+  /** Clearance along the axis siblings spread across. */
+  breadth: number;
+  /** Clearance along the axis parent→child links travel down. */
+  depth: number;
+}
+
+function spacingForDimension(nodes: DANode[], dimension: 'width' | 'height'): number {
+  const extents = nodes
+    .map(n => layerRect(n)[dimension])
+    .filter(extent => Number.isFinite(extent) && extent > 0)
+    .sort((a, b) => a - b);
+  if (extents.length === 0) return 200;
+  const median = extents[extents.length >> 1];
+  return Math.min(200, Math.max(50, Math.round(median * 0.8)));
+}
+
 /** Layout spacing used to be a flat 200 regardless of the graph, which put
  *  a 100px corridor between 60px boxes (they read as scattered) and the same
  *  corridor between 300px ones (they read as cramped). It now follows the
- *  boxes being arranged. Height, not the larger dimension: widths swing with
- *  label length, and the layouts already add a node's own breadth to its
- *  slot, so a long label still claims the room it needs. */
-export function layoutSpacingFor(nodes: DANode[]): number {
-  const heights = nodes
-    .map(n => layerRect(n).height)
-    .filter(h => Number.isFinite(h) && h > 0)
-    .sort((a, b) => a - b);
-  if (heights.length === 0) return 200;
-  const median = heights[heights.length >> 1];
-  return Math.min(200, Math.max(50, Math.round(median * 0.8)));
+ *  boxes along the layout's depth axis: height for a downward tree (and the
+ *  non-directional layouts), width for a rightward tree. The latter matters
+ *  for wide, short cards, whose horizontal links otherwise get a corridor
+ *  sized from their much smaller height. Breadth remains height-derived so
+ *  fixing the link corridor does not loosen the tree's compact packing. */
+export function layoutSpacingFor(nodes: DANode[], layout?: LayoutType): LayoutSpacing {
+  const compact = spacingForDimension(nodes, 'height');
+  return {
+    breadth: compact,
+    depth: layout === 'tree-right-clear'
+      ? spacingForDimension(nodes, 'width')
+      : compact,
+  };
 }
 
 /** Applies the layout. Returns the edges the caller should still route:
@@ -52,16 +71,23 @@ export function applyLayout(
   layout: LayoutType,
   nodes: DANode[],
   edges: DAEdge[],
-  spacing = 200,
+  spacing: number | LayoutSpacing = 200,
 ): DAEdge[] {
   const movable = nodes.filter(n => !n.pinned);
   if (movable.length === 0) return [];
+
+  // Numeric spacing is retained for callers/tests that want one explicit
+  // value on both axes. The app supplies per-axis adaptive spacing.
+  const layoutSpacing: LayoutSpacing = typeof spacing === 'number'
+    ? {breadth: spacing, depth: spacing}
+    : spacing;
+  const scalarSpacing = layoutSpacing.breadth;
 
   let positions: NodePos[];
   let routeAfter: DAEdge[] = [];
   switch (layout) {
     case 'force-directed':
-      positions = forceDirectedLayout(nodes, edges, movable, spacing);
+      positions = forceDirectedLayout(nodes, edges, movable, scalarSpacing);
       break;
     // The "-clear" variants are the same algorithms plus straight-edge
     // guarantees (notes/idea-layout-node-edge-avoidance.md): force adds a
@@ -75,28 +101,28 @@ export function applyLayout(
     // describing a detour it never needed — in one case a waypoint below
     // its own target node, which made the edge overshoot and hook back up.
     case 'force-clear':
-      positions = forceDirectedLayout(nodes, edges, movable, spacing, true);
+      positions = forceDirectedLayout(nodes, edges, movable, scalarSpacing, true);
       break;
     case 'tree-down-clear': {
-      const t = treeLayout(nodes, edges, movable, spacing, 'down', true);
+      const t = treeLayout(nodes, edges, movable, layoutSpacing, 'down', true);
       positions = t.positions;
       routeAfter = t.nonTreeEdges;
       break;
     }
     case 'tree-right-clear': {
-      const t = treeLayout(nodes, edges, movable, spacing, 'right', true);
+      const t = treeLayout(nodes, edges, movable, layoutSpacing, 'right', true);
       positions = t.positions;
       routeAfter = t.nonTreeEdges;
       break;
     }
     case 'grid':
-      positions = gridLayout(movable, spacing);
+      positions = gridLayout(movable, scalarSpacing);
       break;
     case 'circular':
-      positions = circularLayout(nodes, edges, movable, spacing);
+      positions = circularLayout(nodes, edges, movable, scalarSpacing);
       break;
     case 'radial':
-      positions = radialLayout(nodes, edges, movable, spacing);
+      positions = radialLayout(nodes, edges, movable, scalarSpacing);
       break;
   }
 
@@ -117,7 +143,7 @@ export function applyLayout(
       movable: p !== undefined,
     };
   });
-  for (const i of resolveBoxOverlaps(boxes, spacing / 4)) {
+  for (const i of resolveBoxOverlaps(boxes, scalarSpacing / 4)) {
     const p = posOf.get(nodes[i])!;
     p.x = boxes[i].x;
     p.y = boxes[i].y;
@@ -133,7 +159,9 @@ export function applyLayout(
     const edgePairs = edges
       .map(e => ({a: indexOf.get(e.srcNode), b: indexOf.get(e.destNode)}))
       .filter((p): p is {a: number; b: number} => p.a !== undefined && p.b !== undefined);
-    for (const i of resolveEdgeNodeOverlaps(boxes, edgePairs, spacing / 8, spacing / 4)) {
+    for (const i of resolveEdgeNodeOverlaps(
+      boxes, edgePairs, scalarSpacing / 8, scalarSpacing / 4,
+    )) {
       const p = posOf.get(nodes[i]);
       if (p) {
         p.x = boxes[i].x;
@@ -310,7 +338,7 @@ function treeLayout(
   allNodes: DANode[],
   edges: DAEdge[],
   movable: DANode[],
-  spacing: number,
+  spacing: LayoutSpacing,
   direction: 'down' | 'right',
   repairPierces = false,
 ): {positions: NodePos[]; nonTreeEdges: DAEdge[]} {
@@ -405,12 +433,15 @@ function treeLayout(
   }
 
   // Breadth = the axis siblings spread along (x for tree-down, y for tree-right).
-  // Each node claims a slot at least `spacing` wide, more if its box is wider,
-  // so long labels don't overlap.
+  // Each node claims a slot at least `spacing.breadth` wide, more if its box
+  // is wider, so long labels don't overlap.
   const slotOf = (n: DANode): number => {
     const rect = layerRect(n);
     const breadth = direction === 'down' ? rect.width : rect.height;
-    return Math.max(spacing, (Number.isFinite(breadth) ? breadth : 0) + spacing / 2);
+    return Math.max(
+      spacing.breadth,
+      (Number.isFinite(breadth) ? breadth : 0) + spacing.breadth / 2,
+    );
   };
 
   // Post-order pass: a subtree's extent is the larger of its own slot and the
@@ -452,7 +483,7 @@ function treeLayout(
     let treeCursor = 0;
     for (const r of roots) {
       place(r, treeCursor, 0);
-      treeCursor += extent.get(r)! + spacing;
+      treeCursor += extent.get(r)! + spacing.breadth;
     }
   };
 
@@ -540,14 +571,15 @@ function treeLayout(
     // Depth is in level units, breadth in pixels; scale depth up to compare
     // distances in a roughly isotropic space.
     let pierces = 0;
-    const clearance = spacing / 4;
+    const clearance = spacing.breadth / 4;
     for (const s of segs) {
-      const x1 = s.x1, y1 = s.y1 * spacing, x2 = s.x2, y2 = s.y2 * spacing;
+      const x1 = s.x1, y1 = s.y1 * spacing.depth;
+      const x2 = s.x2, y2 = s.y2 * spacing.depth;
       const len2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
       if (len2 === 0) continue;
       for (const n of allNodes) {
         if (n === s.a || n === s.b) continue;
-        const px = breadthPos.get(n)!, py = depthLevel.get(n)! * spacing;
+        const px = breadthPos.get(n)!, py = depthLevel.get(n)! * spacing.depth;
         const t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / len2;
         if (t <= 0 || t >= 1) continue;
         const ddx = px - (x1 + t * (x2 - x1)), ddy = py - (y1 + t * (y2 - y1));
@@ -713,7 +745,7 @@ function treeLayout(
     depthOf.set(0, 0);
     for (let l = 1; l <= maxLvl; l++) {
       off += (levelDepthExtent.get(l - 1) ?? 0) / 2
-        + spacing / 2
+        + spacing.depth / 2
         + (levelDepthExtent.get(l) ?? 0) / 2;
       depthOf.set(l, off);
     }
@@ -730,7 +762,7 @@ function treeLayout(
   // problem.
   const piercingTreeEdges = new Set<DAEdge>();
   if (repairPierces) {
-    const clearance = Math.max(spacing / 8, 10);
+    const clearance = Math.max(Math.min(spacing.breadth, spacing.depth) / 8, 10);
     const breadthExtentOf = (n: DANode): number => {
       const rect = layerRect(n);
       const ext = direction === 'down' ? rect.width : rect.height;

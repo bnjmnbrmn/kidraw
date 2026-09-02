@@ -1,4 +1,4 @@
-import { applyLayout } from './graph-layout';
+import { applyLayout, layoutSpacingFor } from './graph-layout';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 
@@ -24,6 +24,40 @@ function y(nodes: Map<string, DANode>, name: string): number {
 }
 
 describe('graph-layout treeLayout', () => {
+  it('sizes a right-tree link corridor from wide cards along its horizontal axis', () => {
+    const rightNodes = makeNodes('root', 'child', 'sibling');
+    for (const node of rightNodes.values()) {
+      node.restoreState(220, 60, node.DEFAULT_FONT_SIZE);
+    }
+    const rightEdges = makeEdges(rightNodes, [['root', 'child'], ['root', 'sibling']]);
+    const rightSpacing = layoutSpacingFor([...rightNodes.values()], 'tree-right-clear');
+    applyLayout('tree-right-clear', [...rightNodes.values()], rightEdges, rightSpacing);
+
+    const horizontalCorridor = x(rightNodes, 'child')
+      - x(rightNodes, 'root') - rightNodes.get('root')!.NODE_WIDTH;
+    expect(horizontalCorridor).toBeGreaterThan(70);
+    expect(rightSpacing.depth).toBeGreaterThan(rightSpacing.breadth);
+    const siblingYs = ['child', 'sibling']
+      .map(name => y(rightNodes, name))
+      .sort((a, b) => a - b);
+    const verticalSiblingCorridor = siblingYs[1] - siblingYs[0]
+      - rightNodes.get('child')!.NODE_HEIGHT;
+    expect(verticalSiblingCorridor).toBeLessThan(40);
+
+    const downNodes = makeNodes('root', 'child');
+    for (const node of downNodes.values()) {
+      node.restoreState(220, 60, node.DEFAULT_FONT_SIZE);
+    }
+    const downEdges = makeEdges(downNodes, [['root', 'child']]);
+    const downSpacing = layoutSpacingFor([...downNodes.values()], 'tree-down-clear');
+    applyLayout('tree-down-clear', [...downNodes.values()], downEdges, downSpacing);
+
+    const verticalCorridor = y(downNodes, 'child')
+      - y(downNodes, 'root') - downNodes.get('root')!.NODE_HEIGHT;
+    expect(verticalCorridor).toBeLessThan(40);
+    expect(downSpacing.depth).toBe(downSpacing.breadth);
+  });
+
   it('returns typed non-hierarchy and parallel edges as cross-links', () => {
     const nodes = makeNodes('root', 'a', 'b');
     const [rootA, rootB, dependency, parallel, reverse] = makeEdges(nodes, [
