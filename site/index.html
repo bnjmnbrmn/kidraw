@@ -119,6 +119,7 @@
     line-height: 1.08; margin: .5rem 0 0; text-wrap: balance;
   }
   .act-head .act-lede { color: var(--ink-muted); margin-top: .8rem; max-width: var(--measure); }
+  .step h3 code { font-size: .8em; }
 
   .act-stage {
     background: var(--ground); border-bottom: 1px solid var(--line-soft);
@@ -128,7 +129,7 @@
   }
   .stage { margin: 0; }
   .stage-frame {
-    aspect-ratio: 1200 / 760; background: #05070a;
+    aspect-ratio: 820 / 700; background: #05070a;
     border: 1px solid var(--line); border-radius: var(--radius);
     overflow: hidden; position: relative; width: 100%;
   }
@@ -170,14 +171,15 @@
   .js .step.is-active { border-left-color: var(--cyan); opacity: 1; }
 
   @media (min-width: 62rem) {
-    .act-inner { grid-template-columns: minmax(0, 27rem) minmax(0, 1fr); }
+    /* The frames are the argument, so they get two thirds of the width. */
+    .act-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
     .act-stage {
       align-self: start; background: none; border-bottom: 0;
       grid-column: 2; grid-row: 2; margin-inline: 0; padding: 0;
-      top: max(2rem, calc(50vh - 24vw));
+      top: max(1.5rem, calc(50vh - 28vw));
     }
     .act-steps { grid-column: 1; grid-row: 2; padding-top: 0; }
-    .step { min-height: 62vh; }
+    .step { min-height: 58vh; }
   }
   @media (prefers-reduced-motion: reduce) { .js .step { opacity: 1; } }
 
@@ -216,10 +218,10 @@
   .drag { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(3rem, 7vw, 5rem); position: relative; }
   .drag-stage {
     margin-top: 2rem; position: sticky;
-    top: max(1.5rem, calc(50vh - 26vw)); z-index: 2;
+    top: max(1.5rem, calc(50vh - 20rem)); z-index: 2;
   }
-  .drag-stage .stage-frame { margin-inline: auto; max-width: 60rem; }
-  .drag-stage .stage-caption { margin-inline: auto; max-width: 60rem; }
+  .drag-stage .stage-frame { margin-inline: auto; max-width: 46rem; }
+  .drag-stage .stage-caption { margin-inline: auto; max-width: 46rem; }
   .drag-steps { margin-top: -60vh; pointer-events: none; }
   .drag-step { height: 46vh; }
 
@@ -300,9 +302,17 @@
       <div class="act-stage">
         <figure class="stage" data-stage="start">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/001-kidraw.webp" alt="The KiDraw canvas just after the box &quot;KiDraw&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/002-tagline.webp" alt="The KiDraw canvas just after the box &quot;Connect your thoughts, at the speed you have them&quot; was typed" width="1200" height="760">
-
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/000-kidraw-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/001-kidraw-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/002-kidraw-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/003-kidraw-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="4" src="assets/map/004-kidraw-rest.webp" alt="The KiDraw canvas after the box &quot;KiDraw&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/005-tagline-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/006-tagline-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/007-tagline-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/008-tagline-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/009-tagline-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="5" src="assets/map/010-tagline-rest.webp" alt="The KiDraw canvas after the box &quot;Connect your thoughts, at the speed you have them&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -329,25 +339,107 @@
       <div class="act-stage">
         <figure class="stage" data-stage="what">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/003-what.webp" alt="The KiDraw canvas just after the box &quot;What is it?&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/004-diagram-editor.webp" alt="The KiDraw canvas just after the box &quot;Diagram editor&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="2" src="assets/map/005-graph-editor.webp" alt="The KiDraw canvas just after the box &quot;Technically, a Graph Editor&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="3" src="assets/map/006-graph-def.webp" alt="The KiDraw canvas just after the box &quot;A &quot;Graph&quot; is basically just a bunch of nodes (boxes, circles, etc) and edges (lines, possibly with arrowheads)&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="4" src="assets/map/007-comparable.webp" alt="The KiDraw canvas just after the box &quot;Comparable to&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="5" src="assets/map/008-miro.webp" alt="The KiDraw canvas just after the box &quot;Miro&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="6" src="assets/map/009-visio.webp" alt="The KiDraw canvas just after the box &quot;Microsoft Visio&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="7" src="assets/map/010-drawio.webp" alt="The KiDraw canvas just after the box &quot;Draw.io&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="8" src="assets/map/011-excalidraw.webp" alt="The KiDraw canvas just after the box &quot;Excalidraw&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="9" src="assets/map/012-graphviz.webp" alt="The KiDraw canvas just after the box &quot;Graphviz (dot)&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="10" src="assets/map/013-keyboard-first.webp" alt="The KiDraw canvas just after the box &quot;Keyboard-first&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="11" src="assets/map/014-vi-inspired.webp" alt="The KiDraw canvas just after the box &quot;Initial key bindings inspired by the vi coding editor&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="12" src="assets/map/015-not-coders.webp" alt="The KiDraw canvas just after the box &quot;Not just for coders&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="13" src="assets/map/016-other-options.webp" alt="The KiDraw canvas just after the box &quot;Support other options in the future&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="14" src="assets/map/017-discoverable.webp" alt="The KiDraw canvas just after the box &quot;Discover-able shortcuts&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="15" src="assets/map/018-experiment.webp" alt="The KiDraw canvas just after the box &quot;An experiment&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="16" src="assets/map/019-wip.webp" alt="The KiDraw canvas just after the box &quot;Work in progress&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-
-            <img class="frame" data-frame="17" src="assets/map/020-overview-wip.webp" alt="The whole graph so far, zoomed out" width="1200" height="760" loading="lazy" decoding="async">
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/011-what-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/012-what-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/013-what-typing.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/014-what-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="4" src="assets/map/015-what-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="5" src="assets/map/016-what-rest.webp" alt="The KiDraw canvas after the box &quot;What is it?&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/017-diagram-editor-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/018-diagram-editor-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/019-diagram-editor-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/020-diagram-editor-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/021-diagram-editor-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="5" src="assets/map/022-diagram-editor-rest.webp" alt="The KiDraw canvas after the box &quot;Diagram editor&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="0" src="assets/map/023-graph-editor-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="1" src="assets/map/024-graph-editor-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="2" src="assets/map/025-graph-editor-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="3" src="assets/map/026-graph-editor-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="4" src="assets/map/027-graph-editor-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="5" src="assets/map/028-graph-editor-rest.webp" alt="The KiDraw canvas after the box &quot;Technically, a Graph Editor&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="0" src="assets/map/029-graph-def-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="1" src="assets/map/030-graph-def-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="2" src="assets/map/031-graph-def-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="3" src="assets/map/032-graph-def-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="4" src="assets/map/033-graph-def-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="5" src="assets/map/034-graph-def-rest.webp" alt="The KiDraw canvas after the box &quot;A &quot;Graph&quot; is basically just a bunch of nodes (boxes, circles, etc) and edges (lines, possibly with arrowheads)&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="0" src="assets/map/035-comparable-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="1" src="assets/map/036-comparable-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="2" src="assets/map/037-comparable-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="3" src="assets/map/038-comparable-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="4" src="assets/map/039-comparable-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="5" src="assets/map/040-comparable-rest.webp" alt="The KiDraw canvas after the box &quot;Comparable to&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="0" src="assets/map/041-miro-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="1" src="assets/map/042-miro-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="2" src="assets/map/043-miro-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="3" src="assets/map/044-miro-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="4" src="assets/map/045-miro-rest.webp" alt="The KiDraw canvas after the box &quot;Miro&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="0" src="assets/map/046-visio-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="1" src="assets/map/047-visio-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="2" src="assets/map/048-visio-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="3" src="assets/map/049-visio-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="4" src="assets/map/050-visio-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="5" src="assets/map/051-visio-rest.webp" alt="The KiDraw canvas after the box &quot;Microsoft Visio&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="0" src="assets/map/052-drawio-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="1" src="assets/map/053-drawio-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="2" src="assets/map/054-drawio-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="3" src="assets/map/055-drawio-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="4" src="assets/map/056-drawio-rest.webp" alt="The KiDraw canvas after the box &quot;Draw.io&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="0" src="assets/map/057-excalidraw-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="1" src="assets/map/058-excalidraw-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="2" src="assets/map/059-excalidraw-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="3" src="assets/map/060-excalidraw-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="4" src="assets/map/061-excalidraw-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="5" src="assets/map/062-excalidraw-rest.webp" alt="The KiDraw canvas after the box &quot;Excalidraw&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="0" src="assets/map/063-graphviz-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="1" src="assets/map/064-graphviz-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="2" src="assets/map/065-graphviz-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="3" src="assets/map/066-graphviz-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="4" src="assets/map/067-graphviz-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="5" src="assets/map/068-graphviz-rest.webp" alt="The KiDraw canvas after the box &quot;Graphviz (dot)&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="0" src="assets/map/069-keyboard-first-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="1" src="assets/map/070-keyboard-first-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="2" src="assets/map/071-keyboard-first-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="3" src="assets/map/072-keyboard-first-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="4" src="assets/map/073-keyboard-first-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="5" src="assets/map/074-keyboard-first-rest.webp" alt="The KiDraw canvas after the box &quot;Keyboard-first&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="0" src="assets/map/075-vi-inspired-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="1" src="assets/map/076-vi-inspired-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="2" src="assets/map/077-vi-inspired-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="3" src="assets/map/078-vi-inspired-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="4" src="assets/map/079-vi-inspired-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="5" src="assets/map/080-vi-inspired-rest.webp" alt="The KiDraw canvas after the box &quot;Initial key bindings inspired by the vi coding editor&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="0" src="assets/map/081-not-coders-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="1" src="assets/map/082-not-coders-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="2" src="assets/map/083-not-coders-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="3" src="assets/map/084-not-coders-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="4" src="assets/map/085-not-coders-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="5" src="assets/map/086-not-coders-rest.webp" alt="The KiDraw canvas after the box &quot;Not just for coders&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="0" src="assets/map/087-other-options-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="1" src="assets/map/088-other-options-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="2" src="assets/map/089-other-options-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="3" src="assets/map/090-other-options-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="4" src="assets/map/091-other-options-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="5" src="assets/map/092-other-options-rest.webp" alt="The KiDraw canvas after the box &quot;Support other options in the future&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="0" src="assets/map/093-discoverable-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="1" src="assets/map/094-discoverable-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="2" src="assets/map/095-discoverable-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="3" src="assets/map/096-discoverable-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="4" src="assets/map/097-discoverable-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="5" src="assets/map/098-discoverable-rest.webp" alt="The KiDraw canvas after the box &quot;Discover-able shortcuts&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="0" src="assets/map/099-experiment-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="1" src="assets/map/100-experiment-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="2" src="assets/map/101-experiment-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="3" src="assets/map/102-experiment-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="4" src="assets/map/103-experiment-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="5" src="assets/map/104-experiment-rest.webp" alt="The KiDraw canvas after the box &quot;An experiment&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="0" src="assets/map/105-wip-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="1" src="assets/map/106-wip-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="2" src="assets/map/107-wip-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="3" src="assets/map/108-wip-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="4" src="assets/map/109-wip-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="5" src="assets/map/110-wip-rest.webp" alt="The KiDraw canvas after the box &quot;Work in progress&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="0" src="assets/map/560-overview-wip-rest.webp" alt="The branch so far, zoomed out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -421,9 +513,9 @@
           <h3>Work in progress</h3>
           <p>The alpha works, and parts of it will change. The list at the end of this page is what is still missing.</p>
         </article>
-        <article class="step is-overview" data-frame="17" data-label="the graph so far, zoomed out">
+        <article class="step is-overview" data-frame="17" data-label="the branch, zoomed out">
           <h3>The same graph, from further away</h3>
-          <p>One press of Recenter fits everything on screen. The words go, the shape stays, and the box under the crosshairs is still drawn at readable size.</p>
+          <p>One press of Recenter fits the branch on screen. The words go, the shape stays.</p>
         </article>
       </div>
     </div>
@@ -432,20 +524,20 @@
     <div class="brk-head">
       <p class="eyebrow">A break from the map</p>
       <h2 id="menu-title">The keyboard on screen is the manual</h2>
-      <p>A smaller graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.</p>
+      <p>A four-box graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.</p>
     </div>
     <div class="shots three">
       <figure class="shot">
-        <img src="assets/demo/menu-rest.webp" alt="Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now." width="1200" height="760" loading="lazy" decoding="async">
+        <img src="assets/demo/menu-rest.webp" alt="Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now." width="820" height="700" loading="lazy" decoding="async">
         <figcaption><span class="shot-label">At rest</span>Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.</figcaption>
       </figure>
       <figure class="shot">
-        <img src="assets/demo/menu-add-held.webp" alt="The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label." width="1200" height="760" loading="lazy" decoding="async">
+        <img src="assets/demo/menu-add-held.webp" alt="The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label." width="820" height="700" loading="lazy" decoding="async">
         <figcaption><span class="shot-label">Add held</span>The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.</figcaption>
       </figure>
       <figure class="shot">
-        <img src="assets/demo/menu-add-target.webp" alt="Dashed outlines mark where the new box could go. Pick one with h j k l and let go." width="1200" height="760" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">Add, then Box</span>Dashed outlines mark where the new box could go. Pick one with h j k l and let go.</figcaption>
+        <img src="assets/demo/menu-add-target.webp" alt="Dashed outlines mark where the new box could go, and h j k l move between them." width="820" height="700" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Add, then Box</span>Dashed outlines mark where the new box could go, and h j k l move between them.</figcaption>
       </figure>
     </div>
     <p class="aside">Every frame on this page was taken the same way: a script pressed the keys and screenshotted the result.</p>
@@ -460,19 +552,71 @@
       <div class="act-stage">
         <figure class="stage" data-stage="point">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/021-point.webp" alt="The KiDraw canvas just after the box &quot;What's the point?&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/022-graphs-everywhere.webp" alt="The KiDraw canvas just after the box &quot;Graphs are everywhere&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="2" src="assets/map/023-road-maps.webp" alt="The KiDraw canvas just after the box &quot;Road maps&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="3" src="assets/map/024-mind-maps.webp" alt="The KiDraw canvas just after the box &quot;Mind maps&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="4" src="assets/map/025-logical-arguments.webp" alt="The KiDraw canvas just after the box &quot;Logical arguments&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="5" src="assets/map/026-outlines-graph.webp" alt="The KiDraw canvas just after the box &quot;Outlines are a special type of graph&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="6" src="assets/map/027-internet.webp" alt="The KiDraw canvas just after the box &quot;The Internet&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="7" src="assets/map/028-thoughts-slip.webp" alt="The KiDraw canvas just after the box &quot;Get our thoughts down before they slip away&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="8" src="assets/map/029-bottleneck.webp" alt="The KiDraw canvas just after the box &quot;Avoid the mouse-keyboard switching bottleneck&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="9" src="assets/map/030-learnable.webp" alt="The KiDraw canvas just after the box &quot;Make it easier to learn keyboard-based tools&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="10" src="assets/map/031-vim-curve.webp" alt="The KiDraw canvas just after the box &quot;Vi and Vim have a learning curve&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-
-            <img class="frame" data-frame="11" src="assets/map/032-overview-vim-curve.webp" alt="The whole graph so far, zoomed out" width="1200" height="760" loading="lazy" decoding="async">
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/111-point-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/112-point-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/113-point-typing.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/114-point-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="4" src="assets/map/115-point-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="5" src="assets/map/116-point-rest.webp" alt="The KiDraw canvas after the box &quot;What's the point?&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/117-graphs-everywhere-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/118-graphs-everywhere-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/119-graphs-everywhere-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/120-graphs-everywhere-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/121-graphs-everywhere-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="5" src="assets/map/122-graphs-everywhere-rest.webp" alt="The KiDraw canvas after the box &quot;Graphs are everywhere&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="0" src="assets/map/123-road-maps-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="1" src="assets/map/124-road-maps-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="2" src="assets/map/125-road-maps-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="3" src="assets/map/126-road-maps-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="4" src="assets/map/127-road-maps-rest.webp" alt="The KiDraw canvas after the box &quot;Road maps&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="0" src="assets/map/128-mind-maps-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="1" src="assets/map/129-mind-maps-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="2" src="assets/map/130-mind-maps-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="3" src="assets/map/131-mind-maps-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="4" src="assets/map/132-mind-maps-rest.webp" alt="The KiDraw canvas after the box &quot;Mind maps&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="0" src="assets/map/133-logical-arguments-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="1" src="assets/map/134-logical-arguments-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="2" src="assets/map/135-logical-arguments-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="3" src="assets/map/136-logical-arguments-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="4" src="assets/map/137-logical-arguments-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="5" src="assets/map/138-logical-arguments-rest.webp" alt="The KiDraw canvas after the box &quot;Logical arguments&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="0" src="assets/map/139-outlines-graph-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="1" src="assets/map/140-outlines-graph-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="2" src="assets/map/141-outlines-graph-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="3" src="assets/map/142-outlines-graph-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="4" src="assets/map/143-outlines-graph-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="5" src="assets/map/144-outlines-graph-rest.webp" alt="The KiDraw canvas after the box &quot;Outlines are a special type of graph&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="0" src="assets/map/145-internet-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="1" src="assets/map/146-internet-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="2" src="assets/map/147-internet-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="3" src="assets/map/148-internet-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="4" src="assets/map/149-internet-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="5" src="assets/map/150-internet-rest.webp" alt="The KiDraw canvas after the box &quot;The Internet&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="0" src="assets/map/151-thoughts-slip-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="1" src="assets/map/152-thoughts-slip-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="2" src="assets/map/153-thoughts-slip-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="3" src="assets/map/154-thoughts-slip-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="4" src="assets/map/155-thoughts-slip-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="5" src="assets/map/156-thoughts-slip-rest.webp" alt="The KiDraw canvas after the box &quot;Get our thoughts down before they slip away&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="0" src="assets/map/157-bottleneck-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="1" src="assets/map/158-bottleneck-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="2" src="assets/map/159-bottleneck-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="3" src="assets/map/160-bottleneck-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="4" src="assets/map/161-bottleneck-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="5" src="assets/map/162-bottleneck-rest.webp" alt="The KiDraw canvas after the box &quot;Avoid the mouse-keyboard switching bottleneck&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="0" src="assets/map/163-learnable-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="1" src="assets/map/164-learnable-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="2" src="assets/map/165-learnable-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="3" src="assets/map/166-learnable-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="4" src="assets/map/167-learnable-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="5" src="assets/map/168-learnable-rest.webp" alt="The KiDraw canvas after the box &quot;Make it easier to learn keyboard-based tools&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="0" src="assets/map/169-vim-curve-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="1" src="assets/map/170-vim-curve-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="2" src="assets/map/171-vim-curve-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="3" src="assets/map/172-vim-curve-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="4" src="assets/map/173-vim-curve-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="5" src="assets/map/174-vim-curve-rest.webp" alt="The KiDraw canvas after the box &quot;Vi and Vim have a learning curve&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="0" src="assets/map/561-overview-vim-curve-rest.webp" alt="The branch so far, zoomed out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -522,9 +666,9 @@
           <h3>Vi and Vim have a learning curve</h3>
           <p>Mostly because you cannot see what is available. KiDraw shows it.</p>
         </article>
-        <article class="step is-overview" data-frame="11" data-label="the graph so far, zoomed out">
+        <article class="step is-overview" data-frame="11" data-label="the branch, zoomed out">
           <h3>The same graph, from further away</h3>
-          <p>One press of Recenter fits everything on screen. The words go, the shape stays, and the box under the crosshairs is still drawn at readable size.</p>
+          <p>One press of Recenter fits the branch on screen. The words go, the shape stays.</p>
         </article>
       </div>
     </div>
@@ -539,25 +683,111 @@
       <div class="act-stage">
         <figure class="stage" data-stage="basics">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/033-how.webp" alt="The KiDraw canvas just after the box &quot;How does it work?&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/034-basics.webp" alt="The KiDraw canvas just after the box &quot;Basics&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="2" src="assets/map/035-move-crosshairs.webp" alt="The KiDraw canvas just after the box &quot;Move the crosshairs&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="3" src="assets/map/036-key-h.webp" alt="The KiDraw canvas just after the box &quot;h for left&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="4" src="assets/map/037-key-j.webp" alt="The KiDraw canvas just after the box &quot;j for down&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="5" src="assets/map/038-key-k.webp" alt="The KiDraw canvas just after the box &quot;k for up&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="6" src="assets/map/039-key-l.webp" alt="The KiDraw canvas just after the box &quot;l for right&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="7" src="assets/map/040-hjkl.webp" alt="The KiDraw canvas just after the box &quot;using hjkl&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="8" src="assets/map/041-add-node.webp" alt="The KiDraw canvas just after the box &quot;Add a node&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="9" src="assets/map/042-press-a.webp" alt="The KiDraw canvas just after the box &quot;Press and release a&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="10" src="assets/map/043-edit-text.webp" alt="The KiDraw canvas just after the box &quot;Edit the node's text&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="11" src="assets/map/044-vi-style.webp" alt="The KiDraw canvas just after the box &quot;Vi style&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="12" src="assets/map/045-exit-edit.webp" alt="The KiDraw canvas just after the box &quot;Exit node edit mode&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="13" src="assets/map/046-press-esc.webp" alt="The KiDraw canvas just after the box &quot;Press ESC or Ctrl-[&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="14" src="assets/map/047-connect.webp" alt="The KiDraw canvas just after the box &quot;Connect two nodes&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="15" src="assets/map/048-crosshairs-over.webp" alt="The KiDraw canvas just after the box &quot;Have crosshairs over node&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="16" src="assets/map/049-hold-a.webp" alt="The KiDraw canvas just after the box &quot;Press and hold a&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="17" src="assets/map/050-pick-dir.webp" alt="The KiDraw canvas just after the box &quot;Use h for left, j for down, k for up, l for right&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/175-how-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/176-how-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/177-how-typing.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/178-how-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="4" src="assets/map/179-how-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="5" src="assets/map/180-how-rest.webp" alt="The KiDraw canvas after the box &quot;How does it work?&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/181-basics-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/182-basics-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/183-basics-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/184-basics-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/185-basics-rest.webp" alt="The KiDraw canvas after the box &quot;Basics&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="0" src="assets/map/186-move-crosshairs-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="1" src="assets/map/187-move-crosshairs-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="2" src="assets/map/188-move-crosshairs-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="3" src="assets/map/189-move-crosshairs-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="4" src="assets/map/190-move-crosshairs-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="5" src="assets/map/191-move-crosshairs-rest.webp" alt="The KiDraw canvas after the box &quot;Move the crosshairs&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="0" src="assets/map/192-key-h-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="1" src="assets/map/193-key-h-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="2" src="assets/map/194-key-h-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="3" src="assets/map/195-key-h-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="4" src="assets/map/196-key-h-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="5" src="assets/map/197-key-h-rest.webp" alt="The KiDraw canvas after the box &quot;h for left&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="0" src="assets/map/198-key-j-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="1" src="assets/map/199-key-j-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="2" src="assets/map/200-key-j-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="3" src="assets/map/201-key-j-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="4" src="assets/map/202-key-j-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="5" src="assets/map/203-key-j-rest.webp" alt="The KiDraw canvas after the box &quot;j for down&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="0" src="assets/map/204-key-k-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="1" src="assets/map/205-key-k-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="2" src="assets/map/206-key-k-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="3" src="assets/map/207-key-k-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="4" src="assets/map/208-key-k-rest.webp" alt="The KiDraw canvas after the box &quot;k for up&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="0" src="assets/map/209-key-l-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="1" src="assets/map/210-key-l-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="2" src="assets/map/211-key-l-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="3" src="assets/map/212-key-l-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="4" src="assets/map/213-key-l-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="5" src="assets/map/214-key-l-rest.webp" alt="The KiDraw canvas after the box &quot;l for right&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="0" src="assets/map/215-hjkl-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="1" src="assets/map/216-hjkl-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="2" src="assets/map/217-hjkl-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="3" src="assets/map/218-hjkl-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="4" src="assets/map/219-hjkl-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="5" src="assets/map/220-hjkl-rest.webp" alt="The KiDraw canvas after the box &quot;using hjkl&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="0" src="assets/map/221-add-node-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="1" src="assets/map/222-add-node-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="2" src="assets/map/223-add-node-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="3" src="assets/map/224-add-node-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="4" src="assets/map/225-add-node-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="5" src="assets/map/226-add-node-rest.webp" alt="The KiDraw canvas after the box &quot;Add a node&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="0" src="assets/map/227-press-a-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="1" src="assets/map/228-press-a-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="2" src="assets/map/229-press-a-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="3" src="assets/map/230-press-a-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="4" src="assets/map/231-press-a-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="5" src="assets/map/232-press-a-rest.webp" alt="The KiDraw canvas after the box &quot;Press and release a&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="0" src="assets/map/233-edit-text-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="1" src="assets/map/234-edit-text-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="2" src="assets/map/235-edit-text-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="3" src="assets/map/236-edit-text-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="4" src="assets/map/237-edit-text-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="5" src="assets/map/238-edit-text-rest.webp" alt="The KiDraw canvas after the box &quot;Edit the node's text&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="0" src="assets/map/239-vi-style-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="1" src="assets/map/240-vi-style-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="2" src="assets/map/241-vi-style-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="3" src="assets/map/242-vi-style-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="4" src="assets/map/243-vi-style-rest.webp" alt="The KiDraw canvas after the box &quot;Vi style&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="0" src="assets/map/244-exit-edit-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="1" src="assets/map/245-exit-edit-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="2" src="assets/map/246-exit-edit-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="3" src="assets/map/247-exit-edit-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="4" src="assets/map/248-exit-edit-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="5" src="assets/map/249-exit-edit-rest.webp" alt="The KiDraw canvas after the box &quot;Exit node edit mode&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="0" src="assets/map/250-press-esc-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="1" src="assets/map/251-press-esc-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="2" src="assets/map/252-press-esc-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="3" src="assets/map/253-press-esc-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="4" src="assets/map/254-press-esc-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="5" src="assets/map/255-press-esc-rest.webp" alt="The KiDraw canvas after the box &quot;Press ESC or Ctrl-[&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="0" src="assets/map/256-connect-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="1" src="assets/map/257-connect-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="2" src="assets/map/258-connect-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="3" src="assets/map/259-connect-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="4" src="assets/map/260-connect-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="5" src="assets/map/261-connect-rest.webp" alt="The KiDraw canvas after the box &quot;Connect two nodes&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="0" src="assets/map/262-crosshairs-over-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="1" src="assets/map/263-crosshairs-over-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="2" src="assets/map/264-crosshairs-over-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="3" src="assets/map/265-crosshairs-over-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="4" src="assets/map/266-crosshairs-over-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="5" src="assets/map/267-crosshairs-over-rest.webp" alt="The KiDraw canvas after the box &quot;Have crosshairs over node&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="0" src="assets/map/268-hold-a-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="1" src="assets/map/269-hold-a-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="2" src="assets/map/270-hold-a-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="3" src="assets/map/271-hold-a-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="4" src="assets/map/272-hold-a-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="5" src="assets/map/273-hold-a-rest.webp" alt="The KiDraw canvas after the box &quot;Press and hold a&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="0" src="assets/map/274-pick-dir-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="1" src="assets/map/275-pick-dir-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="2" src="assets/map/276-pick-dir-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="3" src="assets/map/277-pick-dir-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="4" src="assets/map/278-pick-dir-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="5" src="assets/map/279-pick-dir-rest.webp" alt="The KiDraw canvas after the box &quot;Use h for left, j for down, k for up, l for right&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -638,31 +868,6 @@
       </div>
     </div>
   </section>
-  <section class="wrap brk" aria-labelledby="basics-hold-title">
-    <div class="brk-head">
-      <p class="eyebrow">A break from the map</p>
-      <h2 id="basics-hold-title">What the keyboard is doing while a box appears</h2>
-      <p>Four frames from the middle of this run, on the same graph. Every box on this page arrived this way.</p>
-    </div>
-    <div class="shots four">
-      <figure class="shot">
-        <img src="assets/map/102-basics-rest.webp" alt="Normal mode. The keyboard shows what is available: Add, Style, Layout, Undo, Search." width="1200" height="760" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">Standing on a box</span>Normal mode. The keyboard shows what is available: Add, Style, Layout, Undo, Search.</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="assets/map/103-basics-hold.webp" alt="The keyboard becomes what Add can make — a box, a circle, a diamond, an edge, a label." width="1200" height="760" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">Add held</span>The keyboard becomes what Add can make — a box, a circle, a diamond, an edge, a label.</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="assets/map/104-basics-target.webp" alt="Dashed outlines appear wherever a new box could go, and h j k l move between them." width="1200" height="760" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">Then Box</span>Dashed outlines appear wherever a new box could go, and h j k l move between them.</figcaption>
-      </figure>
-      <figure class="shot">
-        <img src="assets/map/105-basics-placed.webp" alt="The one under the crosshairs is where it will land. Let go of Add and it is there, connected, ready to type into." width="1200" height="760" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">Target chosen</span>The one under the crosshairs is where it will land. Let go of Add and it is there, connected, ready to type into.</figcaption>
-      </figure>
-    </div>
-  </section>
   <section class="act" id="advanced" aria-labelledby="advanced-title">
     <div class="wrap act-inner">
       <div class="act-head">
@@ -673,28 +878,128 @@
       <div class="act-stage">
         <figure class="stage" data-stage="advanced">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/051-advanced.webp" alt="The KiDraw canvas just after the box &quot;Advanced&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/052-coarse-fine.webp" alt="The KiDraw canvas just after the box &quot;Coarse and fine movement&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="2" src="assets/map/053-nav-by-node.webp" alt="The KiDraw canvas just after the box &quot;Navigate by hopping from node to node&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="3" src="assets/map/054-nav-by-link.webp" alt="The KiDraw canvas just after the box &quot;Navigate by following edges&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="4" src="assets/map/055-zoom-pan.webp" alt="The KiDraw canvas just after the box &quot;Zoom, Pan, and Recenter&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="5" src="assets/map/056-styling.webp" alt="The KiDraw canvas just after the box &quot;Node and Edge Styling&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="6" src="assets/map/057-shape.webp" alt="The KiDraw canvas just after the box &quot;Shape&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="7" src="assets/map/058-color.webp" alt="The KiDraw canvas just after the box &quot;Color&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="8" src="assets/map/059-line-style.webp" alt="The KiDraw canvas just after the box &quot;Solid vs Dotted vs Dashed&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="9" src="assets/map/060-routing.webp" alt="The KiDraw canvas just after the box &quot;Automatic edge routing&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="10" src="assets/map/061-avoid-under.webp" alt="The KiDraw canvas just after the box &quot;Avoid edges crossing under nodes&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="11" src="assets/map/062-minimize-crossings.webp" alt="The KiDraw canvas just after the box &quot;Minimize edges crossing each other&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="12" src="assets/map/063-small-angle.webp" alt="The KiDraw canvas just after the box &quot;Avoid small-angle crossings&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="13" src="assets/map/064-short-edges.webp" alt="The KiDraw canvas just after the box &quot;Minimize edge length&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="14" src="assets/map/065-waypoints.webp" alt="The KiDraw canvas just after the box &quot;&quot;Waypoints&quot; for fine tuning edge routing&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="15" src="assets/map/066-auto-layout.webp" alt="The KiDraw canvas just after the box &quot;Automatic node layout&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="16" src="assets/map/067-save.webp" alt="The KiDraw canvas just after the box &quot;Save locally&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="17" src="assets/map/068-two-files.webp" alt="The KiDraw canvas just after the box &quot;Separate semantic and style files&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="18" src="assets/map/069-like-css.webp" alt="The KiDraw canvas just after the box &quot;Like HTML and CSS&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="19" src="assets/map/070-chrome-only.webp" alt="The KiDraw canvas just after the box &quot;Chrome only&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="20" src="assets/map/071-for-now.webp" alt="The KiDraw canvas just after the box &quot;for now&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/280-advanced-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/281-advanced-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/282-advanced-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/283-advanced-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="4" src="assets/map/284-advanced-rest.webp" alt="The KiDraw canvas after the box &quot;Advanced&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/285-coarse-fine-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/286-coarse-fine-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/287-coarse-fine-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/288-coarse-fine-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/289-coarse-fine-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="5" src="assets/map/290-coarse-fine-rest.webp" alt="The KiDraw canvas after the box &quot;Coarse and fine movement&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="0" src="assets/map/291-nav-by-node-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="1" src="assets/map/292-nav-by-node-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="2" src="assets/map/293-nav-by-node-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="3" src="assets/map/294-nav-by-node-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="4" src="assets/map/295-nav-by-node-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="5" src="assets/map/296-nav-by-node-rest.webp" alt="The KiDraw canvas after the box &quot;Navigate by hopping from node to node&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="0" src="assets/map/297-nav-by-link-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="1" src="assets/map/298-nav-by-link-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="2" src="assets/map/299-nav-by-link-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="3" src="assets/map/300-nav-by-link-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="4" src="assets/map/301-nav-by-link-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="5" src="assets/map/302-nav-by-link-rest.webp" alt="The KiDraw canvas after the box &quot;Navigate by following edges&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="0" src="assets/map/303-zoom-pan-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="1" src="assets/map/304-zoom-pan-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="2" src="assets/map/305-zoom-pan-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="3" src="assets/map/306-zoom-pan-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="4" src="assets/map/307-zoom-pan-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="5" src="assets/map/308-zoom-pan-rest.webp" alt="The KiDraw canvas after the box &quot;Zoom, Pan, and Recenter&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="0" src="assets/map/309-styling-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="1" src="assets/map/310-styling-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="2" src="assets/map/311-styling-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="3" src="assets/map/312-styling-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="4" src="assets/map/313-styling-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="5" src="assets/map/314-styling-rest.webp" alt="The KiDraw canvas after the box &quot;Node and Edge Styling&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="0" src="assets/map/315-shape-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="1" src="assets/map/316-shape-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="2" src="assets/map/317-shape-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="3" src="assets/map/318-shape-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="4" src="assets/map/319-shape-rest.webp" alt="The KiDraw canvas after the box &quot;Shape&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="0" src="assets/map/320-color-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="1" src="assets/map/321-color-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="2" src="assets/map/322-color-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="3" src="assets/map/323-color-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="4" src="assets/map/324-color-rest.webp" alt="The KiDraw canvas after the box &quot;Color&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="0" src="assets/map/325-line-style-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="1" src="assets/map/326-line-style-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="2" src="assets/map/327-line-style-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="3" src="assets/map/328-line-style-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="4" src="assets/map/329-line-style-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="5" src="assets/map/330-line-style-rest.webp" alt="The KiDraw canvas after the box &quot;Solid vs Dotted vs Dashed&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="0" src="assets/map/331-routing-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="1" src="assets/map/332-routing-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="2" src="assets/map/333-routing-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="3" src="assets/map/334-routing-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="4" src="assets/map/335-routing-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="5" src="assets/map/336-routing-rest.webp" alt="The KiDraw canvas after the box &quot;Automatic edge routing&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="0" src="assets/map/337-avoid-under-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="1" src="assets/map/338-avoid-under-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="2" src="assets/map/339-avoid-under-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="3" src="assets/map/340-avoid-under-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="4" src="assets/map/341-avoid-under-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="5" src="assets/map/342-avoid-under-rest.webp" alt="The KiDraw canvas after the box &quot;Avoid edges crossing under nodes&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="0" src="assets/map/343-minimize-crossings-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="1" src="assets/map/344-minimize-crossings-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="2" src="assets/map/345-minimize-crossings-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="3" src="assets/map/346-minimize-crossings-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="4" src="assets/map/347-minimize-crossings-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="5" src="assets/map/348-minimize-crossings-rest.webp" alt="The KiDraw canvas after the box &quot;Minimize edges crossing each other&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="0" src="assets/map/349-small-angle-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="1" src="assets/map/350-small-angle-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="2" src="assets/map/351-small-angle-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="3" src="assets/map/352-small-angle-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="4" src="assets/map/353-small-angle-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="5" src="assets/map/354-small-angle-rest.webp" alt="The KiDraw canvas after the box &quot;Avoid small-angle crossings&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="0" src="assets/map/355-short-edges-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="1" src="assets/map/356-short-edges-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="2" src="assets/map/357-short-edges-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="3" src="assets/map/358-short-edges-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="4" src="assets/map/359-short-edges-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="5" src="assets/map/360-short-edges-rest.webp" alt="The KiDraw canvas after the box &quot;Minimize edge length&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="0" src="assets/map/361-waypoints-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="1" src="assets/map/362-waypoints-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="2" src="assets/map/363-waypoints-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="3" src="assets/map/364-waypoints-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="4" src="assets/map/365-waypoints-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="5" src="assets/map/366-waypoints-rest.webp" alt="The KiDraw canvas after the box &quot;&quot;Waypoints&quot; for fine tuning edge routing&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="0" src="assets/map/367-auto-layout-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="1" src="assets/map/368-auto-layout-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="2" src="assets/map/369-auto-layout-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="3" src="assets/map/370-auto-layout-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="4" src="assets/map/371-auto-layout-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="5" src="assets/map/372-auto-layout-rest.webp" alt="The KiDraw canvas after the box &quot;Automatic node layout&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="0" src="assets/map/373-save-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="1" src="assets/map/374-save-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="2" src="assets/map/375-save-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="3" src="assets/map/376-save-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="4" src="assets/map/377-save-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="5" src="assets/map/378-save-rest.webp" alt="The KiDraw canvas after the box &quot;Save locally&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="0" src="assets/map/379-two-files-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="1" src="assets/map/380-two-files-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="2" src="assets/map/381-two-files-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="3" src="assets/map/382-two-files-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="4" src="assets/map/383-two-files-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="5" src="assets/map/384-two-files-rest.webp" alt="The KiDraw canvas after the box &quot;Separate semantic and style files&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="0" src="assets/map/385-like-css-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="1" src="assets/map/386-like-css-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="2" src="assets/map/387-like-css-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="3" src="assets/map/388-like-css-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="4" src="assets/map/389-like-css-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="5" src="assets/map/390-like-css-rest.webp" alt="The KiDraw canvas after the box &quot;Like HTML and CSS&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="0" src="assets/map/391-chrome-only-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="1" src="assets/map/392-chrome-only-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="2" src="assets/map/393-chrome-only-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="3" src="assets/map/394-chrome-only-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="4" src="assets/map/395-chrome-only-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="5" src="assets/map/396-chrome-only-rest.webp" alt="The KiDraw canvas after the box &quot;Chrome only&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="0" src="assets/map/397-for-now-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="1" src="assets/map/398-for-now-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="2" src="assets/map/399-for-now-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="3" src="assets/map/400-for-now-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="4" src="assets/map/401-for-now-rest.webp" alt="The KiDraw canvas after the box &quot;for now&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -790,39 +1095,66 @@
   <section class="wrap drag" id="reroute" aria-labelledby="reroute-title">
     <div class="brk-head">
       <p class="eyebrow">A break from the map</p>
-      <h2 id="reroute-title">Move one box and watch the arrows re-route</h2>
+      <h2 id="reroute-title">Move one box; its arrows find new routes</h2>
       <p>Select+Drag is held while one box steps down. The arrows are not dragged along with it — they are computed again at every step, so the picture stays readable while you are still deciding where the box belongs. Scroll to step through the drag.</p>
     </div>
-    <div class="drag-stage">
+    <div class="drag-stage" data-scrub="reroute">
       <div class="stage-frame">
-        <img class="frame is-on" data-drag="0" src="assets/demo/drag-00.webp" alt="Step 1 of the drag" width="1200" height="760">
-        <img class="frame" data-drag="1" src="assets/demo/drag-01.webp" alt="Step 2 of the drag" width="1200" height="760">
-        <img class="frame" data-drag="2" src="assets/demo/drag-02.webp" alt="Step 3 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="3" src="assets/demo/drag-03.webp" alt="Step 4 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="4" src="assets/demo/drag-04.webp" alt="Step 5 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="5" src="assets/demo/drag-05.webp" alt="Step 6 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="6" src="assets/demo/drag-06.webp" alt="Step 7 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="7" src="assets/demo/drag-07.webp" alt="Step 8 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="8" src="assets/demo/drag-08.webp" alt="Step 9 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="9" src="assets/demo/drag-09.webp" alt="Step 10 of the drag" width="1200" height="760" loading="lazy" decoding="async">
-        <img class="frame" data-drag="10" src="assets/demo/drag-10.webp" alt="Step 11 of the drag" width="1200" height="760" loading="lazy" decoding="async">
+        <img class="frame is-on" data-scrub-frame="0" src="assets/demo/follow-00.webp" alt="Select+Drag held, before the first step." width="820" height="700">
+        <img class="frame" data-scrub-frame="1" src="assets/demo/follow-01.webp" alt="Step 1. Both arrows were recomputed, not dragged along." width="820" height="700">
+        <img class="frame" data-scrub-frame="2" src="assets/demo/follow-02.webp" alt="Step 2. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="3" src="assets/demo/follow-03.webp" alt="Step 3. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="4" src="assets/demo/follow-04.webp" alt="Step 4. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="5" src="assets/demo/follow-05.webp" alt="Step 5. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="6" src="assets/demo/follow-06.webp" alt="Step 6. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="7" src="assets/demo/follow-07.webp" alt="Step 7. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="8" src="assets/demo/follow-08.webp" alt="Step 8. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="9" src="assets/demo/follow-09.webp" alt="Released. The arrows keep the routes they found." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="10" src="assets/demo/follow-10.webp" alt="One press of Layout, and the graph is tidy again." width="820" height="700" loading="lazy" decoding="async">
       </div>
-      <p class="stage-caption"><span data-drag-caption>Holding Select+Drag, before the first step.</span><span class="mono" data-drag-count>1 / 11</span></p>
+      <p class="stage-caption"><span data-scrub-caption>Select+Drag held, before the first step.</span><span class="mono" data-scrub-count>1 / 11</span></p>
     </div>
     <div class="drag-steps">
-      <div class="drag-step" data-drag-step="0"></div>
-      <div class="drag-step" data-drag-step="1"></div>
-      <div class="drag-step" data-drag-step="2"></div>
-      <div class="drag-step" data-drag-step="3"></div>
-      <div class="drag-step" data-drag-step="4"></div>
-      <div class="drag-step" data-drag-step="5"></div>
-      <div class="drag-step" data-drag-step="6"></div>
-      <div class="drag-step" data-drag-step="7"></div>
-      <div class="drag-step" data-drag-step="8"></div>
-      <div class="drag-step" data-drag-step="9"></div>
-      <div class="drag-step" data-drag-step="10"></div>
+      <div class="drag-step" data-scrub-step="0"></div>
+      <div class="drag-step" data-scrub-step="1"></div>
+      <div class="drag-step" data-scrub-step="2"></div>
+      <div class="drag-step" data-scrub-step="3"></div>
+      <div class="drag-step" data-scrub-step="4"></div>
+      <div class="drag-step" data-scrub-step="5"></div>
+      <div class="drag-step" data-scrub-step="6"></div>
+      <div class="drag-step" data-scrub-step="7"></div>
+      <div class="drag-step" data-scrub-step="8"></div>
+      <div class="drag-step" data-scrub-step="9"></div>
+      <div class="drag-step" data-scrub-step="10"></div>
     </div>
     <p class="aside">The last two frames are the release, and then one press of Layout putting the whole graph back into a tidy tree.</p>
+  </section>
+  <section class="wrap drag" id="avoid" aria-labelledby="avoid-title">
+    <div class="brk-head">
+      <p class="eyebrow">A break from the map</p>
+      <h2 id="avoid-title">Push a box into an arrow, and the arrow goes around it</h2>
+      <p>This is the routing goal that matters most: an arrow should not disappear behind a box. Plan points at Ship it, with Review sitting below them. As Ship it is dragged down, the straight line between Plan and Ship it would run through Review — so the router bends it over the top instead, on every keypress.</p>
+    </div>
+    <div class="drag-stage" data-scrub="avoid">
+      <div class="stage-frame">
+        <img class="frame is-on" data-scrub-frame="0" src="assets/demo/avoid-00.webp" alt="Three boxes. Plan points at Ship it; Review sits below, out of the way." width="820" height="700">
+        <img class="frame" data-scrub-frame="1" src="assets/demo/avoid-01.webp" alt="Select+Drag held on Ship it." width="820" height="700">
+        <img class="frame" data-scrub-frame="2" src="assets/demo/avoid-02.webp" alt="Step 1. Ship it moves down. The arrow into it is recomputed on the press." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="3" src="assets/demo/avoid-03.webp" alt="Step 2. The straight line would now run through Review, so it stops being straight." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="4" src="assets/demo/avoid-04.webp" alt="Step 3. The arrow is routed over the top of Review rather than under it." width="820" height="700" loading="lazy" decoding="async">
+        <img class="frame" data-scrub-frame="5" src="assets/demo/avoid-05.webp" alt="Released. The route holds, and nothing was drawn by hand." width="820" height="700" loading="lazy" decoding="async">
+      </div>
+      <p class="stage-caption"><span data-scrub-caption>Three boxes. Plan points at Ship it; Review sits below, out of the way.</span><span class="mono" data-scrub-count>1 / 6</span></p>
+    </div>
+    <div class="drag-steps">
+      <div class="drag-step" data-scrub-step="0"></div>
+      <div class="drag-step" data-scrub-step="1"></div>
+      <div class="drag-step" data-scrub-step="2"></div>
+      <div class="drag-step" data-scrub-step="3"></div>
+      <div class="drag-step" data-scrub-step="4"></div>
+      <div class="drag-step" data-scrub-step="5"></div>
+    </div>
+    <p class="aside">The small circle on the line is the point the route is being pulled through. Drop one of those by hand and it becomes a waypoint you control.</p>
   </section>
   <section class="act" id="going" aria-labelledby="going-title">
     <div class="wrap act-inner">
@@ -834,34 +1166,164 @@
       <div class="act-stage">
         <figure class="stage" data-stage="going">
           <div class="stage-frame">
-            <img class="frame is-on" data-frame="0" src="assets/map/073-going.webp" alt="The KiDraw canvas just after the box &quot;Where is this going?&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="1" src="assets/map/074-other-bindings.webp" alt="The KiDraw canvas just after the box &quot;Other styles of keybindings&quot; was typed" width="1200" height="760">
-            <img class="frame" data-frame="2" src="assets/map/075-bind-ijkl.webp" alt="The KiDraw canvas just after the box &quot;i, j, k, and l&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="3" src="assets/map/076-bind-wasd.webp" alt="The KiDraw canvas just after the box &quot;w, a, s, and d&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="4" src="assets/map/077-bind-arrows.webp" alt="The KiDraw canvas just after the box &quot;arrow keys&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="5" src="assets/map/078-bind-emacs.webp" alt="The KiDraw canvas just after the box &quot;Emacs style&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="6" src="assets/map/079-bind-etc.webp" alt="The KiDraw canvas just after the box &quot;etc.&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="7" src="assets/map/080-collab.webp" alt="The KiDraw canvas just after the box &quot;Collaborate on graphs&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="8" src="assets/map/081-with-people.webp" alt="The KiDraw canvas just after the box &quot;with other people&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="9" src="assets/map/082-with-agents.webp" alt="The KiDraw canvas just after the box &quot;with AI agents&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="10" src="assets/map/083-better-layout.webp" alt="The KiDraw canvas just after the box &quot;Improvements to graph layout/edge routing&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="11" src="assets/map/084-alt-algorithms.webp" alt="The KiDraw canvas just after the box &quot;Including alternative algorithms&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="12" src="assets/map/085-alt-nav.webp" alt="The KiDraw canvas just after the box &quot;Alternative navigation&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="13" src="assets/map/086-temp-views.webp" alt="The KiDraw canvas just after the box &quot;Temporary views&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="14" src="assets/map/087-pull-neighbors.webp" alt="The KiDraw canvas just after the box &quot;Pull in neighboring nodes&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="15" src="assets/map/088-collapse-expand.webp" alt="The KiDraw canvas just after the box &quot;Collapse/expand subgraphs&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="16" src="assets/map/089-plugins.webp" alt="The KiDraw canvas just after the box &quot;Plugins&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="17" src="assets/map/090-presentations.webp" alt="The KiDraw canvas just after the box &quot;Presentations&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="18" src="assets/map/091-saved-views.webp" alt="The KiDraw canvas just after the box &quot;Saved series of views&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="19" src="assets/map/092-diff-viz.webp" alt="The KiDraw canvas just after the box &quot;Diff visualization&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="20" src="assets/map/093-git.webp" alt="The KiDraw canvas just after the box &quot;Git integration&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="21" src="assets/map/094-diagram-types.webp" alt="The KiDraw canvas just after the box &quot;Diagram types&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="22" src="assets/map/095-todo-graphs.webp" alt="The KiDraw canvas just after the box &quot;Todo graphs&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="23" src="assets/map/096-architecture.webp" alt="The KiDraw canvas just after the box &quot;Software architecture&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="24" src="assets/map/097-genealogy.webp" alt="The KiDraw canvas just after the box &quot;Genealogy&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="25" src="assets/map/098-types-etc.webp" alt="The KiDraw canvas just after the box &quot;etc.&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-            <img class="frame" data-frame="26" src="assets/map/099-polish.webp" alt="The KiDraw canvas just after the box &quot;Visual polish&quot; was typed" width="1200" height="760" loading="lazy" decoding="async">
-
+            <img class="frame" data-step="0" data-seq="0" src="assets/map/402-going-target.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="1" src="assets/map/403-going-blank.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="2" src="assets/map/404-going-typing.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="3" src="assets/map/405-going-typed.webp" alt="" width="820" height="700">
+            <img class="frame" data-step="0" data-seq="4" src="assets/map/406-going-tween.webp" alt="" width="820" height="700">
+            <img class="frame is-on" data-step="0" data-seq="5" src="assets/map/407-going-rest.webp" alt="The KiDraw canvas after the box &quot;Where is this going?&quot; was typed and the graph re-laid out" width="820" height="700">
+            <img class="frame" data-step="1" data-seq="0" src="assets/map/408-other-bindings-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="1" src="assets/map/409-other-bindings-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="2" src="assets/map/410-other-bindings-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="3" src="assets/map/411-other-bindings-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="4" src="assets/map/412-other-bindings-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="1" data-seq="5" src="assets/map/413-other-bindings-rest.webp" alt="The KiDraw canvas after the box &quot;Other styles of keybindings&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="0" src="assets/map/414-bind-ijkl-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="1" src="assets/map/415-bind-ijkl-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="2" src="assets/map/416-bind-ijkl-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="3" src="assets/map/417-bind-ijkl-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="4" src="assets/map/418-bind-ijkl-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="2" data-seq="5" src="assets/map/419-bind-ijkl-rest.webp" alt="The KiDraw canvas after the box &quot;i, j, k, and l&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="0" src="assets/map/420-bind-wasd-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="1" src="assets/map/421-bind-wasd-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="2" src="assets/map/422-bind-wasd-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="3" src="assets/map/423-bind-wasd-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="4" src="assets/map/424-bind-wasd-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="3" data-seq="5" src="assets/map/425-bind-wasd-rest.webp" alt="The KiDraw canvas after the box &quot;w, a, s, and d&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="0" src="assets/map/426-bind-arrows-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="1" src="assets/map/427-bind-arrows-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="2" src="assets/map/428-bind-arrows-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="3" src="assets/map/429-bind-arrows-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="4" src="assets/map/430-bind-arrows-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="4" data-seq="5" src="assets/map/431-bind-arrows-rest.webp" alt="The KiDraw canvas after the box &quot;arrow keys&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="0" src="assets/map/432-bind-emacs-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="1" src="assets/map/433-bind-emacs-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="2" src="assets/map/434-bind-emacs-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="3" src="assets/map/435-bind-emacs-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="4" src="assets/map/436-bind-emacs-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="5" data-seq="5" src="assets/map/437-bind-emacs-rest.webp" alt="The KiDraw canvas after the box &quot;Emacs style&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="0" src="assets/map/438-bind-etc-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="1" src="assets/map/439-bind-etc-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="2" src="assets/map/440-bind-etc-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="3" src="assets/map/441-bind-etc-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="6" data-seq="4" src="assets/map/442-bind-etc-rest.webp" alt="The KiDraw canvas after the box &quot;etc.&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="0" src="assets/map/443-collab-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="1" src="assets/map/444-collab-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="2" src="assets/map/445-collab-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="3" src="assets/map/446-collab-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="4" src="assets/map/447-collab-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="7" data-seq="5" src="assets/map/448-collab-rest.webp" alt="The KiDraw canvas after the box &quot;Collaborate on graphs&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="0" src="assets/map/449-with-people-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="1" src="assets/map/450-with-people-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="2" src="assets/map/451-with-people-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="3" src="assets/map/452-with-people-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="4" src="assets/map/453-with-people-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="8" data-seq="5" src="assets/map/454-with-people-rest.webp" alt="The KiDraw canvas after the box &quot;with other people&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="0" src="assets/map/455-with-agents-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="1" src="assets/map/456-with-agents-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="2" src="assets/map/457-with-agents-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="3" src="assets/map/458-with-agents-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="4" src="assets/map/459-with-agents-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="9" data-seq="5" src="assets/map/460-with-agents-rest.webp" alt="The KiDraw canvas after the box &quot;with AI agents&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="0" src="assets/map/461-better-layout-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="1" src="assets/map/462-better-layout-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="2" src="assets/map/463-better-layout-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="3" src="assets/map/464-better-layout-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="4" src="assets/map/465-better-layout-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="10" data-seq="5" src="assets/map/466-better-layout-rest.webp" alt="The KiDraw canvas after the box &quot;Improvements to graph layout/edge routing&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="0" src="assets/map/467-alt-algorithms-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="1" src="assets/map/468-alt-algorithms-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="2" src="assets/map/469-alt-algorithms-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="3" src="assets/map/470-alt-algorithms-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="4" src="assets/map/471-alt-algorithms-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="11" data-seq="5" src="assets/map/472-alt-algorithms-rest.webp" alt="The KiDraw canvas after the box &quot;Including alternative algorithms&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="0" src="assets/map/473-alt-nav-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="1" src="assets/map/474-alt-nav-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="2" src="assets/map/475-alt-nav-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="3" src="assets/map/476-alt-nav-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="4" src="assets/map/477-alt-nav-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="12" data-seq="5" src="assets/map/478-alt-nav-rest.webp" alt="The KiDraw canvas after the box &quot;Alternative navigation&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="0" src="assets/map/479-temp-views-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="1" src="assets/map/480-temp-views-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="2" src="assets/map/481-temp-views-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="3" src="assets/map/482-temp-views-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="4" src="assets/map/483-temp-views-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="13" data-seq="5" src="assets/map/484-temp-views-rest.webp" alt="The KiDraw canvas after the box &quot;Temporary views&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="0" src="assets/map/485-pull-neighbors-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="1" src="assets/map/486-pull-neighbors-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="2" src="assets/map/487-pull-neighbors-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="3" src="assets/map/488-pull-neighbors-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="4" src="assets/map/489-pull-neighbors-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="14" data-seq="5" src="assets/map/490-pull-neighbors-rest.webp" alt="The KiDraw canvas after the box &quot;Pull in neighboring nodes&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="0" src="assets/map/491-collapse-expand-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="1" src="assets/map/492-collapse-expand-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="2" src="assets/map/493-collapse-expand-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="3" src="assets/map/494-collapse-expand-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="4" src="assets/map/495-collapse-expand-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="15" data-seq="5" src="assets/map/496-collapse-expand-rest.webp" alt="The KiDraw canvas after the box &quot;Collapse/expand subgraphs&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="0" src="assets/map/497-plugins-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="1" src="assets/map/498-plugins-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="2" src="assets/map/499-plugins-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="3" src="assets/map/500-plugins-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="16" data-seq="4" src="assets/map/501-plugins-rest.webp" alt="The KiDraw canvas after the box &quot;Plugins&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="0" src="assets/map/502-presentations-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="1" src="assets/map/503-presentations-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="2" src="assets/map/504-presentations-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="3" src="assets/map/505-presentations-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="4" src="assets/map/506-presentations-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="17" data-seq="5" src="assets/map/507-presentations-rest.webp" alt="The KiDraw canvas after the box &quot;Presentations&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="0" src="assets/map/508-saved-views-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="1" src="assets/map/509-saved-views-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="2" src="assets/map/510-saved-views-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="3" src="assets/map/511-saved-views-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="4" src="assets/map/512-saved-views-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="18" data-seq="5" src="assets/map/513-saved-views-rest.webp" alt="The KiDraw canvas after the box &quot;Saved series of views&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="0" src="assets/map/514-diff-viz-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="1" src="assets/map/515-diff-viz-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="2" src="assets/map/516-diff-viz-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="3" src="assets/map/517-diff-viz-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="4" src="assets/map/518-diff-viz-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="19" data-seq="5" src="assets/map/519-diff-viz-rest.webp" alt="The KiDraw canvas after the box &quot;Diff visualization&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="0" src="assets/map/520-git-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="1" src="assets/map/521-git-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="2" src="assets/map/522-git-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="3" src="assets/map/523-git-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="4" src="assets/map/524-git-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="20" data-seq="5" src="assets/map/525-git-rest.webp" alt="The KiDraw canvas after the box &quot;Git integration&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="0" src="assets/map/526-diagram-types-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="1" src="assets/map/527-diagram-types-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="2" src="assets/map/528-diagram-types-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="3" src="assets/map/529-diagram-types-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="4" src="assets/map/530-diagram-types-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="21" data-seq="5" src="assets/map/531-diagram-types-rest.webp" alt="The KiDraw canvas after the box &quot;Diagram types&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="0" src="assets/map/532-todo-graphs-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="1" src="assets/map/533-todo-graphs-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="2" src="assets/map/534-todo-graphs-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="3" src="assets/map/535-todo-graphs-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="4" src="assets/map/536-todo-graphs-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="22" data-seq="5" src="assets/map/537-todo-graphs-rest.webp" alt="The KiDraw canvas after the box &quot;Todo graphs&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="0" src="assets/map/538-architecture-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="1" src="assets/map/539-architecture-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="2" src="assets/map/540-architecture-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="3" src="assets/map/541-architecture-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="4" src="assets/map/542-architecture-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="23" data-seq="5" src="assets/map/543-architecture-rest.webp" alt="The KiDraw canvas after the box &quot;Software architecture&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="24" data-seq="0" src="assets/map/544-genealogy-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="24" data-seq="1" src="assets/map/545-genealogy-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="24" data-seq="2" src="assets/map/546-genealogy-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="24" data-seq="3" src="assets/map/547-genealogy-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="24" data-seq="4" src="assets/map/548-genealogy-rest.webp" alt="The KiDraw canvas after the box &quot;Genealogy&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="25" data-seq="0" src="assets/map/549-types-etc-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="25" data-seq="1" src="assets/map/550-types-etc-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="25" data-seq="2" src="assets/map/551-types-etc-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="25" data-seq="3" src="assets/map/552-types-etc-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="25" data-seq="4" src="assets/map/553-types-etc-rest.webp" alt="The KiDraw canvas after the box &quot;etc.&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="0" src="assets/map/554-polish-target.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="1" src="assets/map/555-polish-blank.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="2" src="assets/map/556-polish-typing.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="3" src="assets/map/557-polish-typed.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="4" src="assets/map/558-polish-tween.webp" alt="" width="820" height="700" loading="lazy" decoding="async">
+            <img class="frame" data-step="26" data-seq="5" src="assets/map/559-polish-rest.webp" alt="The KiDraw canvas after the box &quot;Visual polish&quot; was typed and the graph re-laid out" width="820" height="700" loading="lazy" decoding="async">
           </div>
           <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
@@ -984,7 +1446,7 @@
       <p class="eyebrow">Before you open it</p>
       <h2>It is an alpha. Bring a keyboard.</h2>
       <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some arrows still route worse than you would draw them, and the navigation model will change. Anything on this page that is not in a frame is a plan, not a feature.</p>
-      <p>The 96 boxes above were typed into KiDraw by a script driving the real app — 114 frames, one per box, with Layout pressed after each. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
+      <p>The 96 boxes above were typed into KiDraw by a script driving the real app — 562 frames in all, five or six per box: the keys held down, the empty box, the label going in, the layout tween, and the graph at rest. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
       <div class="close-actions">
         <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
         <a class="button button-ghost" href="review/">Older captures</a>
@@ -1207,55 +1669,89 @@
   'use strict';
 
   var acts = Array.prototype.slice.call(document.querySelectorAll('.act'));
-  var drag = document.querySelector('.drag');
+  var scrubbers = Array.prototype.slice.call(document.querySelectorAll('[data-scrub]'));
   if (!acts.length || !window.requestAnimationFrame) return;
 
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var FRAME_MS = 130;
+
+  /** One act: its steps, and the run of frames belonging to each step. */
   function collect(act) {
+    var frames = Array.prototype.slice.call(act.querySelectorAll('.frame'));
+    var runs = [];
+    frames.forEach(function (frame) {
+      var index = Number(frame.getAttribute('data-step'));
+      (runs[index] = runs[index] || []).push(frame);
+    });
     return {
       steps: Array.prototype.slice.call(act.querySelectorAll('.step')),
-      frames: Array.prototype.slice.call(act.querySelectorAll('.frame')),
+      frames: frames,
+      runs: runs,
       caption: act.querySelector('[data-stage-caption]'),
       count: act.querySelector('[data-stage-count]'),
-      active: -1
+      active: -1,
+      timer: null
     };
   }
 
   var stages = acts.map(collect);
 
+  function paint(stage, frame) {
+    stage.frames.forEach(function (candidate) {
+      candidate.classList.toggle('is-on', candidate === frame);
+    });
+  }
+
+  /** Play a step's frames once, then hold the last one. */
+  function play(stage, index) {
+    var run = stage.runs[index];
+    if (!run || !run.length) return;
+    window.clearInterval(stage.timer);
+    if (still.matches || run.length === 1) {
+      paint(stage, run[run.length - 1]);
+      return;
+    }
+    var at = 0;
+    paint(stage, run[0]);
+    stage.timer = window.setInterval(function () {
+      at += 1;
+      if (at >= run.length) {
+        window.clearInterval(stage.timer);
+        stage.timer = null;
+        return;
+      }
+      paint(stage, run[at]);
+    }, FRAME_MS);
+  }
+
   function show(stage, index) {
     if (stage.active === index) return;
     stage.active = index;
-    stage.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
     stage.steps.forEach(function (step, i) { step.classList.toggle('is-active', i === index); });
     var step = stage.steps[index];
     if (stage.caption && step) stage.caption.textContent = step.getAttribute('data-label') || '';
     if (stage.count) stage.count.textContent = (index + 1) + ' / ' + stage.steps.length;
+    play(stage, index);
   }
 
-  var dragState = null;
-  if (drag) {
-    dragState = {
-      steps: Array.prototype.slice.call(drag.querySelectorAll('.drag-step')),
-      frames: Array.prototype.slice.call(drag.querySelectorAll('[data-drag]')),
-      caption: drag.querySelector('[data-drag-caption]'),
-      count: drag.querySelector('[data-drag-count]'),
+  var scrubs = scrubbers.map(function (stage) {
+    var section = stage.closest('section');
+    return {
+      frames: Array.prototype.slice.call(stage.querySelectorAll('[data-scrub-frame]')),
+      steps: Array.prototype.slice.call(section.querySelectorAll('[data-scrub-step]')),
+      caption: stage.querySelector('[data-scrub-caption]'),
+      count: stage.querySelector('[data-scrub-count]'),
       active: -1
     };
-  }
+  });
 
-  function dragCaption(index, total) {
-    if (index === 0) return 'Select+Drag held, before the first step.';
-    if (index === total - 1) return 'One press of Layout, and the whole graph is tidy again.';
-    if (index === total - 2) return 'Released. The arrows keep the routes they found.';
-    return 'Step ' + index + '. Both arrows were recomputed, not dragged along.';
-  }
-
-  function showDrag(index) {
-    if (!dragState || dragState.active === index) return;
-    dragState.active = index;
-    dragState.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
-    if (dragState.caption) dragState.caption.textContent = dragCaption(index, dragState.frames.length);
-    if (dragState.count) dragState.count.textContent = (index + 1) + ' / ' + dragState.frames.length;
+  function showScrub(scrub, index) {
+    if (scrub.active === index) return;
+    scrub.active = index;
+    scrub.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
+    var frame = scrub.frames[index];
+    if (scrub.caption && frame) scrub.caption.textContent = frame.getAttribute('alt') || '';
+    if (scrub.count) scrub.count.textContent = (index + 1) + ' / ' + scrub.frames.length;
   }
 
   var wide = window.matchMedia('(min-width: 62rem)');
@@ -1268,11 +1764,12 @@
   }
 
   function update() {
-    var line = window.innerHeight * (wide.matches ? 0.55 : 0.78);
+    var line = window.innerHeight * (wide.matches ? 0.55 : 0.8);
     stages.forEach(function (stage) { show(stage, activeIndex(stage.steps, line)); });
-    if (dragState && dragState.steps.length) {
-      showDrag(Math.min(activeIndex(dragState.steps, line), dragState.frames.length - 1));
-    }
+    scrubs.forEach(function (scrub) {
+      if (!scrub.steps.length) return;
+      showScrub(scrub, Math.min(activeIndex(scrub.steps, line), scrub.frames.length - 1));
+    });
   }
 
   var queued = false;

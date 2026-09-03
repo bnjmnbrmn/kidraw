@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const siteDir = process.env.GEN_SITE_DIR ?? join(here, '..', '..', 'site');
 const map = JSON.parse(readFileSync(join(siteDir, 'assets', 'map', 'map.json'), 'utf8'));
 const demoPath = join(siteDir, 'assets', 'demo', 'demo.json');
-const demo = existsSync(demoPath) ? JSON.parse(readFileSync(demoPath, 'utf8')) : {frames: [], drag: []};
+const demo = existsSync(demoPath) ? JSON.parse(readFileSync(demoPath, 'utf8')) : {menu: [], follow: [], avoid: []};
 
 const esc = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const attr = text => esc(text).replace(/"/g, '&quot;');
@@ -28,14 +28,11 @@ const rich = text => esc(text)
 const plain = text => text.replace(/[=_]([^=_]+)[=_]/g, '$1');
 
 const entries = flatten(OUTLINE);
-const frameFor = id => map.frames.find(frame => frame.id === id);
+const stepFor = id => map.steps.find(step => step.id === id);
 // The finished graph is ninety-six boxes tall, so "fit the whole thing" lands
 // at 3% for the later branches — a dark thread, no shape to read. Only the two
 // early overviews are worth showing.
-const READABLE_OVERVIEWS = new Set(['overview-wip', 'overview-vim-curve']);
-const overviewAfter = id => READABLE_OVERVIEWS.has(`overview-${id}`)
-  ? map.frames.find(frame => frame.id === `overview-${id}`)
-  : undefined;
+const overviewAfter = id => map.extras.find(extra => extra.id === `overview-${id}`);
 
 // Acts: one per top-level branch, with "How does it work?" split at Advanced
 // because its two halves are a beginner's manual and a reference.
@@ -64,15 +61,25 @@ for (const entry of entries) {
   byAct.get(actId).push(entry);
 }
 
-function stageFigure(act, steps) {
-  const images = steps.map(({node}, index) => {
-    const frame = frameFor(node.id);
-    if (!frame) throw new Error(`no frame for ${node.id}`);
-    const eager = index < 2 ? '' : ' loading="lazy" decoding="async"';
-    return `            <img class="frame${index === 0 ? ' is-on' : ''}" data-frame="${index}" src="assets/map/${frame.file}"` +
-      ` alt="The KiDraw canvas just after the box &quot;${attr(plain(node.t))}&quot; was typed"` +
-      ` width="${map.viewport.width}" height="${map.viewport.height}"${eager}>`;
+function stageFigure(act, steps, closing) {
+  const images = [];
+  steps.forEach(({node}, index) => {
+    const step = stepFor(node.id);
+    if (!step) throw new Error(`no frames for ${node.id}`);
+    step.frames.forEach((file, seq) => {
+      const last = seq === step.frames.length - 1;
+      const eager = index < 1 ? '' : ' loading="lazy" decoding="async"';
+      const alt = last
+        ? ` alt="The KiDraw canvas after the box &quot;${attr(plain(node.t))}&quot; was typed and the graph re-laid out"`
+        : ' alt=""';
+      images.push(`            <img class="frame${index === 0 && last ? ' is-on' : ''}" data-step="${index}" data-seq="${seq}"` +
+        ` src="assets/map/${file}"${alt} width="${map.viewport.width}" height="${map.viewport.height}"${eager}>`);
+    });
   });
+  if (closing) {
+    images.push(`            <img class="frame" data-step="${steps.length}" data-seq="0" src="assets/map/${closing.file}"` +
+      ` alt="The branch so far, zoomed out" width="${map.viewport.width}" height="${map.viewport.height}" loading="lazy" decoding="async">`);
+  }
   return `        <figure class="stage" data-stage="${act.id}">
           <div class="stage-frame">
 ${images.join('\n')}
@@ -83,7 +90,7 @@ ${images.join('\n')}
 
 function actSection(act) {
   const steps = byAct.get(act.id);
-  const articles = steps.map(({node, depth}, index) => {
+  const articles = steps.map(({node}, index) => {
     const numbered = node.num ? `<span class="step-num">${node.num}</span>` : '';
     return `        <article class="step" data-frame="${index}" data-label="${attr(plain(node.t))}">
           <h3>${numbered}${rich(node.t)}</h3>
@@ -92,13 +99,10 @@ function actSection(act) {
   });
   const closing = overviewAfter(steps[steps.length - 1].node.id);
   const overview = closing ? `
-        <article class="step is-overview" data-frame="${steps.length}" data-label="the graph so far, zoomed out">
+        <article class="step is-overview" data-frame="${steps.length}" data-label="the branch, zoomed out">
           <h3>The same graph, from further away</h3>
-          <p>One press of Recenter fits everything on screen. The words go, the shape stays, and the box under the crosshairs is still drawn at readable size.</p>
+          <p>One press of Recenter fits the branch on screen. The words go, the shape stays.</p>
         </article>` : '';
-  const overviewImage = closing
-    ? `\n            <img class="frame" data-frame="${steps.length}" src="assets/map/${closing.file}" alt="The whole graph so far, zoomed out" width="${map.viewport.width}" height="${map.viewport.height}" loading="lazy" decoding="async">`
-    : '';
 
   return `  <section class="act" id="${act.id}" aria-labelledby="${act.id}-title">
     <div class="wrap act-inner">
@@ -108,7 +112,7 @@ function actSection(act) {
         <p class="act-lede">${esc(act.lede)}</p>
       </div>
       <div class="act-stage">
-${stageFigure(act, steps).replace('          </div>', `${overviewImage}\n          </div>`)}
+${stageFigure(act, steps, closing)}
       </div>
       <div class="act-steps">
 ${articles.join('\n')}${overview}
@@ -117,68 +121,80 @@ ${articles.join('\n')}${overview}
   </section>`;
 }
 
-const demoFrame = name => demo.frames.find(frame => frame.name === name);
-function shot(name, label, caption) {
-  const frame = demoFrame(name);
-  if (!frame) return '';
+const demoImage = (file, alt, extra = ' loading="lazy" decoding="async"') =>
+  `<img src="assets/demo/${file}" alt="${attr(alt)}" width="${demo.viewport.width}" height="${demo.viewport.height}"${extra}>`;
+
+function shot(file, label, caption) {
+  if (!file) return '';
   return `      <figure class="shot">
-        <img src="assets/demo/${frame.file}" alt="${attr(caption)}" width="1200" height="760" loading="lazy" decoding="async">
+        ${demoImage(file, caption)}
         <figcaption><span class="shot-label">${esc(label)}</span>${esc(caption)}</figcaption>
       </figure>`;
 }
 
-const menuBreak = `  <section class="wrap brk" aria-labelledby="menu-title">
+const menuBreak = demo.menu.length === 3 ? `  <section class="wrap brk" aria-labelledby="menu-title">
     <div class="brk-head">
       <p class="eyebrow">A break from the map</p>
       <h2 id="menu-title">The keyboard on screen is the manual</h2>
-      <p>A smaller graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.</p>
+      <p>A four-box graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.</p>
     </div>
     <div class="shots three">
 ${[
-  shot('menu-rest', 'At rest', 'Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.'),
-  shot('menu-add-held', 'Add held', 'The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.'),
-  shot('menu-add-target', 'Add, then Box', 'Dashed outlines mark where the new box could go. Pick one with h j k l and let go.'),
+  shot(demo.menu[0], 'At rest', 'Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.'),
+  shot(demo.menu[1], 'Add held', 'The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.'),
+  shot(demo.menu[2], 'Add, then Box', 'Dashed outlines mark where the new box could go, and h j k l move between them.'),
 ].filter(Boolean).join('\n')}
     </div>
     <p class="aside">Every frame on this page was taken the same way: a script pressed the keys and screenshotted the result.</p>
-  </section>`;
+  </section>` : '';
 
-function holdBreak(prefix, title, intro, labels) {
-  const wanted = ['rest', 'hold', 'target', 'placed'].map(kind => map.frames.find(frame => frame.id === `${prefix}-${kind}`));
-  if (wanted.some(frame => !frame)) return '';
-  const cards = wanted.map((frame, index) => `      <figure class="shot">
-        <img src="assets/map/${frame.file}" alt="${attr(labels[index][1])}" width="${map.viewport.width}" height="${map.viewport.height}" loading="lazy" decoding="async">
-        <figcaption><span class="shot-label">${esc(labels[index][0])}</span>${esc(labels[index][1])}</figcaption>
-      </figure>`);
-  return `  <section class="wrap brk" aria-labelledby="${prefix}-hold-title">
+/** A scroll-scrubbed sequence: sticky frames, and a column of spacers to
+ *  step through them. */
+function scrubber(id, title, intro, frames, captions, aside) {
+  if (!frames.length) return '';
+  return `  <section class="wrap drag" id="${id}" aria-labelledby="${id}-title">
     <div class="brk-head">
       <p class="eyebrow">A break from the map</p>
-      <h2 id="${prefix}-hold-title">${esc(title)}</h2>
+      <h2 id="${id}-title">${esc(title)}</h2>
       <p>${esc(intro)}</p>
     </div>
-    <div class="shots four">
-${cards.join('\n')}
+    <div class="drag-stage" data-scrub="${id}">
+      <div class="stage-frame">
+${frames.map((file, index) => `        ${demoImage(file, captions[index] ?? `Step ${index + 1}`, index < 2 ? '' : ' loading="lazy" decoding="async"').replace('<img ', `<img class="frame${index === 0 ? ' is-on' : ''}" data-scrub-frame="${index}" `)}`).join('\n')}
+      </div>
+      <p class="stage-caption"><span data-scrub-caption>${esc(captions[0] ?? '')}</span><span class="mono" data-scrub-count>1 / ${frames.length}</span></p>
     </div>
+    <div class="drag-steps">
+${frames.map((_, index) => `      <div class="drag-step" data-scrub-step="${index}"></div>`).join('\n')}
+    </div>
+    <p class="aside">${esc(aside)}</p>
   </section>`;
 }
 
-const dragSection = demo.drag.length ? `  <section class="wrap drag" id="reroute" aria-labelledby="reroute-title">
-    <div class="brk-head">
-      <p class="eyebrow">A break from the map</p>
-      <h2 id="reroute-title">Move one box and watch the arrows re-route</h2>
-      <p>Select+Drag is held while one box steps down. The arrows are not dragged along with it — they are computed again at every step, so the picture stays readable while you are still deciding where the box belongs. Scroll to step through the drag.</p>
-    </div>
-    <div class="drag-stage">
-      <div class="stage-frame">
-${demo.drag.map((file, index) => `        <img class="frame${index === 0 ? ' is-on' : ''}" data-drag="${index}" src="assets/demo/${file}" alt="Step ${index + 1} of the drag" width="1200" height="760"${index < 2 ? '' : ' loading="lazy" decoding="async"'}>`).join('\n')}
-      </div>
-      <p class="stage-caption"><span data-drag-caption>Holding Select+Drag, before the first step.</span><span class="mono" data-drag-count>1 / ${demo.drag.length}</span></p>
-    </div>
-    <div class="drag-steps">
-${demo.drag.map((_, index) => `      <div class="drag-step" data-drag-step="${index}"></div>`).join('\n')}
-    </div>
-    <p class="aside">The last two frames are the release, and then one press of Layout putting the whole graph back into a tidy tree.</p>
-  </section>` : '';
+const followCaptions = [
+  'Select+Drag held, before the first step.',
+  ...Array.from({length: 8}, (_, i) => `Step ${i + 1}. Both arrows were recomputed, not dragged along.`),
+  'Released. The arrows keep the routes they found.',
+  'One press of Layout, and the graph is tidy again.',
+];
+const avoidCaptions = [
+  'Three boxes. Plan points at Ship it; Review sits below, out of the way.',
+  'Select+Drag held on Ship it.',
+  'Step 1. Ship it moves down. The arrow into it is recomputed on the press.',
+  'Step 2. The straight line would now run through Review, so it stops being straight.',
+  'Step 3. The arrow is routed over the top of Review rather than under it.',
+  'Released. The route holds, and nothing was drawn by hand.',
+];
+
+const followSection = scrubber('reroute', 'Move one box; its arrows find new routes',
+  'Select+Drag is held while one box steps down. The arrows are not dragged along with it — they are computed again at every step, so the picture stays readable while you are still deciding where the box belongs. Scroll to step through the drag.',
+  demo.follow, followCaptions,
+  'The last two frames are the release, and then one press of Layout putting the whole graph back into a tidy tree.');
+
+const avoidSection = scrubber('avoid', 'Push a box into an arrow, and the arrow goes around it',
+  'This is the routing goal that matters most: an arrow should not disappear behind a box. Plan points at Ship it, with Review sitting below them. As Ship it is dragged down, the straight line between Plan and Ship it would run through Review — so the router bends it over the top instead, on every keypress.',
+  demo.avoid, avoidCaptions,
+  'The small circle on the line is the point the route is being pulled through. Drop one of those by hand and it becomes a waypoint you control.');
 
 function outlineMarkup(entry, depth) {
   const pad = '  '.repeat(depth + 3);
@@ -207,16 +223,9 @@ ${actSection(ACTS[1])}
 ${menuBreak}
 ${actSection(ACTS[2])}
 ${actSection(ACTS[3])}
-${holdBreak('basics', 'What the keyboard is doing while a box appears',
-  'Four frames from the middle of this run, on the same graph. Every box on this page arrived this way.',
-  [
-    ['Standing on a box', 'Normal mode. The keyboard shows what is available: Add, Style, Layout, Undo, Search.'],
-    ['Add held', 'The keyboard becomes what Add can make — a box, a circle, a diamond, an edge, a label.'],
-    ['Then Box', 'Dashed outlines appear wherever a new box could go, and h j k l move between them.'],
-    ['Target chosen', 'The one under the crosshairs is where it will land. Let go of Add and it is there, connected, ready to type into.'],
-  ])}
 ${actSection(ACTS[4])}
-${dragSection}
+${followSection}
+${avoidSection}
 ${actSection(ACTS[5])}
 
   <section class="wrap close">
@@ -224,7 +233,7 @@ ${actSection(ACTS[5])}
       <p class="eyebrow">Before you open it</p>
       <h2>It is an alpha. Bring a keyboard.</h2>
       <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some arrows still route worse than you would draw them, and the navigation model will change. Anything on this page that is not in a frame is a plan, not a feature.</p>
-      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames.length} frames, one per box, with Layout pressed after each. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
+      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames} frames in all, five or six per box: the keys held down, the empty box, the label going in, the layout tween, and the graph at rest. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
       <div class="close-actions">
         <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
         <a class="button button-ghost" href="review/">Older captures</a>
@@ -252,4 +261,4 @@ ${readFileSync(join(here, 'page.script.html'), 'utf8')}
 `;
 
 writeFileSync(join(siteDir, 'index.html'), body);
-console.log(`site/index.html — ${ACTS.length} acts, ${entries.length} steps, ${map.frames.length} map frames, ${demo.drag.length} drag frames`);
+console.log(`site/index.html — ${ACTS.length} acts, ${entries.length} steps, ${map.frames} map frames, ${demo.follow.length + demo.avoid.length} scrub frames`);

@@ -119,6 +119,7 @@
     line-height: 1.08; margin: .5rem 0 0; text-wrap: balance;
   }
   .act-head .act-lede { color: var(--ink-muted); margin-top: .8rem; max-width: var(--measure); }
+  .step h3 code { font-size: .8em; }
 
   .act-stage {
     background: var(--ground); border-bottom: 1px solid var(--line-soft);
@@ -128,7 +129,7 @@
   }
   .stage { margin: 0; }
   .stage-frame {
-    aspect-ratio: 1200 / 760; background: #05070a;
+    aspect-ratio: 820 / 700; background: #05070a;
     border: 1px solid var(--line); border-radius: var(--radius);
     overflow: hidden; position: relative; width: 100%;
   }
@@ -170,14 +171,15 @@
   .js .step.is-active { border-left-color: var(--cyan); opacity: 1; }
 
   @media (min-width: 62rem) {
-    .act-inner { grid-template-columns: minmax(0, 27rem) minmax(0, 1fr); }
+    /* The frames are the argument, so they get two thirds of the width. */
+    .act-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
     .act-stage {
       align-self: start; background: none; border-bottom: 0;
       grid-column: 2; grid-row: 2; margin-inline: 0; padding: 0;
-      top: max(2rem, calc(50vh - 24vw));
+      top: max(1.5rem, calc(50vh - 28vw));
     }
     .act-steps { grid-column: 1; grid-row: 2; padding-top: 0; }
-    .step { min-height: 62vh; }
+    .step { min-height: 58vh; }
   }
   @media (prefers-reduced-motion: reduce) { .js .step { opacity: 1; } }
 
@@ -216,10 +218,10 @@
   .drag { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(3rem, 7vw, 5rem); position: relative; }
   .drag-stage {
     margin-top: 2rem; position: sticky;
-    top: max(1.5rem, calc(50vh - 26vw)); z-index: 2;
+    top: max(1.5rem, calc(50vh - 20rem)); z-index: 2;
   }
-  .drag-stage .stage-frame { margin-inline: auto; max-width: 60rem; }
-  .drag-stage .stage-caption { margin-inline: auto; max-width: 60rem; }
+  .drag-stage .stage-frame { margin-inline: auto; max-width: 46rem; }
+  .drag-stage .stage-caption { margin-inline: auto; max-width: 46rem; }
   .drag-steps { margin-top: -60vh; pointer-events: none; }
   .drag-step { height: 46vh; }
 

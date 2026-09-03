@@ -7,10 +7,11 @@ JavaScript. A homepage change therefore cannot break graph editing, and the
 homepage can load without the editor's application bundle.
 
 The page is built around one idea: the whole argument is a single graph, and
-you watch it get built. Every picture on the page is a screenshot of the
-running KiDraw app taken by a script that pressed the keys — one frame per box,
-ninety-six of them, plus a drag sequence showing arrows re-routing. The content
-of that graph is `index.org`.
+you watch it get built. Every picture is a screenshot of the running KiDraw app
+taken by a script that pressed the keys. Each of the ninety-six boxes is a short
+animation — the keys held down, the empty box, the label going in, the layout
+tween, the graph at rest — and two scroll-scrubbed sequences show arrows
+re-routing while a box moves. The content of that graph is `index.org`.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -37,10 +38,11 @@ and DNS are moved to the new page.
   `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
   still wraps it, but edit `tools/capture/` and regenerate rather than editing
   it by hand.
-- `assets/map/` holds the frame-per-box capture of the graph being built, with
-  `map.json` listing them in order.
-- `assets/demo/` holds the small four-box graph: the keymenu at rest and under
-  a held key, and the eleven-frame drag sequence.
+- `assets/map/` holds the capture of the graph being built: five or six frames
+  per box, with `map.json` listing each box's run in order.
+- `assets/demo/` holds the small graphs: the keymenu at rest and under a held
+  key, an eleven-frame drag where a box's own arrows re-route, and a six-frame
+  drag where an arrow bends over a box that got in its way.
 - `assets/captures/` holds the older August capture set. The homepage no longer
   uses it; it backs the review page, which is kept as a record.
 - `review/index.html` is the durable contact sheet for those older captures.
@@ -84,8 +86,9 @@ The smoke test checks, among other things:
 
 ```bash
 npm start                        # the capture scripts drive the real dev server
-node tools/capture/map.mjs       # ~17 min: builds the graph, one frame per box
-node tools/capture/demo.mjs      # the small graph, the keymenu, the drag
+node tools/capture/map.mjs       # ~23 min: builds the graph, a run of frames per box
+node tools/capture/demo.mjs      # the small graphs, the keymenu, the two drags
+node tools/capture/shrink.mjs 0.6 0.68   # re-encode the frames that only flash past
 node tools/capture/gen-page.mjs  # writes site/index.html
 npm run site:build && npm run site:test
 ```
@@ -97,7 +100,12 @@ operations the capture needs: type a label (Shift held for capitals and shifted
 punctuation, which is what the label-edit keymenu expects), grow a child, apply
 tree-right layout, fit the camera, zoom.
 
-Two things about the capture are worth knowing:
+Captures are taken at 820x700 — narrow enough that the on-screen keyboard fills
+the frame instead of floating in a wide empty canvas, which is also what makes
+the app readable when the frame is scaled down on a phone. The stage takes two
+thirds of the page width for the same reason.
+
+Three things about the capture are worth knowing:
 
 - **Placement is trial and error, and that is fine.** Which dashed ghost is
   free depends on what the layout has already put around the parent, so `grow`
@@ -105,6 +113,10 @@ Two things about the capture are worth knowing:
   the parent* appeared. A placement that drew an edge to an existing box, or
   left a box floating, is undone before the next try. Layout decides the final
   position anyway.
+- **The last frame of every run is deliberately boring.** `park()` clears the
+  selection and moves the crosshairs to the emptiest point on the canvas, so
+  the frame a reader actually sits on has nothing covered by a crosshair and
+  nothing lit up because it happens to be underneath.
 - **Moving the crosshairs to a named box is the one call that is not a key
   press.** `goTo` calls the same `moveCrosshairsBy` the movement keys call,
   with the delta worked out for it, because a person would press `hjkl` until
@@ -124,14 +136,15 @@ split at Advanced. Each act is a grid: a sticky `.act-stage` holding every frame
 for that act stacked on top of each other, and a column of `.step` articles
 beside it — one per box, carrying its label and its sentence or two.
 
-Only one frame in a stage has `is-on`; the rest sit at `opacity: 0`. On scroll
-the last step above the reading line becomes active, and the script turns on the
-frame with the matching `data-frame`, marks the step, and updates the caption
-and counter. The drag section works the same way: eleven frames, and a column of
-empty `.drag-step` spacers that scrub through them.
+Each frame carries `data-step` (which box it belongs to) and `data-seq` (where
+it sits in that box's run). Only one frame has `is-on`. When a step becomes
+active the script plays its run once at about 130ms a frame and holds the last
+one, which is the sharp, settled, nothing-selected frame. `prefers-reduced-motion`
+skips straight to that last frame.
 
-Nothing autoplays — the reader's scroll is the only thing that advances a frame,
-so `prefers-reduced-motion` only has to switch off the cross-fade.
+The two drag sections work differently: their frames are scrubbed rather than
+played, by a column of empty `.drag-step` spacers, so the reader's scroll speed
+is the playback speed.
 
 Without JavaScript the page is the prose, the first frame of each act, and the
 outline at the bottom, which is open until the script collapses it. A script

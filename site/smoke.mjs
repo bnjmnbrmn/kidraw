@@ -26,13 +26,22 @@ assert.doesNotMatch(generated, /site-head:(?:start|end)/);
 
 // Every frame on the page is a capture of the running app.
 const map = JSON.parse(readFileSync(join(dist, 'assets', 'map', 'map.json'), 'utf8'));
-assert.ok(map.frames.length > 90, `the map capture has a frame per node (${map.frames.length})`);
-for (const frame of map.frames) {
-  assert.ok(existsSync(join(dist, 'assets', 'map', frame.file)), `build includes ${frame.file}`);
+assert.equal(map.steps.length, 96, 'a frame sequence per box');
+assert.ok(map.frames > 400, `each box is captured as a short animation (${map.frames} frames)`);
+for (const step of map.steps) {
+  assert.ok(step.frames.length >= 4, `${step.id} is animated (${step.frames.length} frames)`);
+  for (const file of step.frames) {
+    assert.ok(existsSync(join(dist, 'assets', 'map', file)), `build includes ${file}`);
+  }
+}
+for (const extra of map.extras) {
+  assert.ok(existsSync(join(dist, 'assets', 'map', extra.file)), `build includes ${extra.file}`);
 }
 const demo = JSON.parse(readFileSync(join(dist, 'assets', 'demo', 'demo.json'), 'utf8'));
-assert.ok(demo.drag.length >= 8, `the drag sequence is long enough to read (${demo.drag.length})`);
-for (const file of [...demo.drag, ...demo.frames.map(frame => frame.file)]) {
+assert.equal(demo.menu.length, 3, 'the keymenu break has its three frames');
+assert.ok(demo.follow.length >= 10, `the follow sequence is long enough to read (${demo.follow.length})`);
+assert.ok(demo.avoid.length >= 5, `the avoid sequence is long enough to read (${demo.avoid.length})`);
+for (const file of [...demo.menu, ...demo.follow, ...demo.avoid]) {
   assert.ok(existsSync(join(dist, 'assets', 'demo', file)), `build includes ${file}`);
 }
 
@@ -106,7 +115,7 @@ async function scrollTo(page, pick) {
   await page.waitForTimeout(340);
 }
 const readTo = (page, act, index) => scrollTo(page, {act, index});
-const dragTo = (page, index) => scrollTo(page, {selector: '.drag-step', index});
+
 
 try {
   const desktop = await openPage({width: 1440, height: 1000});
@@ -133,7 +142,23 @@ try {
   const steps = await page.locator('.act .step').count();
   const frames = await page.locator('.act .frame').count();
   assert.ok(steps >= 96, `a step per node (${steps})`);
-  assert.equal(steps, frames, 'every step has a frame');
+  assert.ok(frames > steps * 3, `each step carries a run of frames (${frames} for ${steps} steps)`);
+  assert.equal(
+    await page.locator('.act').first().evaluate(act => {
+      const seen = new Set();
+      act.querySelectorAll('.frame').forEach(frame => seen.add(frame.getAttribute('data-step')));
+      return seen.size;
+    }),
+    await page.locator('.act').first().locator('.step').count(),
+    'every step in an act has frames of its own',
+  );
+
+  // The frames are the argument, so they take about two thirds of the width.
+  const columns = await page.locator('.act-inner').first().evaluate(
+    element => getComputedStyle(element).gridTemplateColumns.split(' ').map(parseFloat));
+  assert.equal(columns.length, 2);
+  assert.ok(columns[1] / (columns[0] + columns[1]) > 0.6,
+    `the stage column is about two thirds (${(columns[1] / (columns[0] + columns[1])).toFixed(2)})`);
 
   // The outline is the content of record, and the graph was built from it.
   const outlineItems = await page.locator('#map-outline li').count();
@@ -150,20 +175,35 @@ try {
   await readTo(page, 1, 0);
   assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^1 \/ \d+$/);
   const openingCaption = await whatStage.locator('[data-stage-caption]').textContent();
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-frame'), '0');
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '0');
 
   await readTo(page, 1, 4);
   assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^5 \/ \d+$/);
   assert.notEqual(await whatStage.locator('[data-stage-caption]').textContent(), openingCaption);
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-frame'), '4');
   assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '4');
+  // The run plays and settles on its last frame.
+  await page.waitForTimeout(1400);
+  const settled = whatStage.locator('.frame.is-on');
+  assert.equal(await settled.getAttribute('data-step'), '4');
+  assert.equal(
+    await settled.evaluate(frame => {
+      const run = frame.closest('.stage-frame').querySelectorAll('[data-step="4"]');
+      return run[run.length - 1] === frame;
+    }),
+    true,
+    'the animation ends on the settled frame',
+  );
 
-  // The drag sequence scrubs the same way.
-  await dragTo(page, 0);
-  assert.equal(await page.locator('[data-drag].is-on').getAttribute('data-drag'), '0');
-  await dragTo(page, 5);
-  assert.equal(await page.locator('[data-drag].is-on').getAttribute('data-drag'), '5');
-  assert.match(await page.locator('[data-drag-caption]').textContent() ?? '', /Step 5/);
+  // Both drag sequences scrub the same way.
+  assert.equal(await page.locator('[data-scrub]').count(), 2, 'a follow demo and an avoid demo');
+  await scrollTo(page, {selector: '#reroute [data-scrub-step]', index: 0});
+  assert.equal(await page.locator('#reroute [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '0');
+  await scrollTo(page, {selector: '#reroute [data-scrub-step]', index: 5});
+  assert.equal(await page.locator('#reroute [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '5');
+  await scrollTo(page, {selector: '#avoid [data-scrub-step]', index: 4});
+  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '4');
+  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').count(), 1);
 
   await page.keyboard.press('Home');
   await page.keyboard.press('Tab');
@@ -189,8 +229,16 @@ try {
     'reduced motion stops the frames cross-fading',
   );
   await readTo(reduced.page, 1, 3);
-  assert.equal(await reduced.page.locator('.act').nth(1).locator('.frame.is-on').getAttribute('data-frame'), '3',
-    'reduced motion still steps through the build');
+  const reducedFrame = reduced.page.locator('.act').nth(1).locator('.frame.is-on');
+  assert.equal(await reducedFrame.getAttribute('data-step'), '3', 'reduced motion still steps through the build');
+  assert.equal(
+    await reducedFrame.evaluate(frame => {
+      const run = frame.closest('.stage-frame').querySelectorAll('[data-step="3"]');
+      return run[run.length - 1] === frame;
+    }),
+    true,
+    'reduced motion goes straight to the settled frame',
+  );
   assert.deepEqual(reduced.errors, []);
   await reduced.context.close();
 

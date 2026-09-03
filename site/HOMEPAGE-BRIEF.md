@@ -1,5 +1,26 @@
 # KiDraw homepage brief
 
+## September 3, 2026 — third revision (animation and proportions)
+
+Ben, on the second revision: the frames should take about two thirds of the page
+rather than a third; zoom in so the text is legible on a phone; animate the
+build so the tweens and the label going in are visible; make the capture window
+narrower so the keymenu is not floating in empty canvas; keep the crosshairs off
+to one side between animations so nothing is covered or highlighted; and add a
+demo of dragging a box so its arrow has to route around another box.
+
+All six are in. The capture window is 820x700, the stage column is `2fr` against
+`1fr` of prose, every box is a five- or six-frame run played at ~130ms, `park()`
+clears the selection and parks the crosshairs on the emptiest part of the canvas
+for the settled frame, and there are now two drag demos: one where a box's own
+arrows follow it, and one where dragging *Ship it* down forces the *Plan → Ship
+it* arrow to bend over *Review* instead of running behind it.
+
+The character-by-character typing is three frames per label (empty, about half,
+all of it) rather than one frame per character — the page already carries ~560
+frames at about 9MB, and a frame per character would multiply that. Frames that
+only flash past are stored smaller and cheaper than the one the reader sits on.
+
 ## September 3, 2026 — second revision (real captures)
 
 Ben's feedback on the first revision: keep the spacing and placement of the

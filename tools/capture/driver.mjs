@@ -92,11 +92,11 @@ export async function open({width = 1280, height = 800, url = 'http://localhost:
  */
 export function shooter(dir, {type = 'webp', quality = 0.78, scratch = null} = {}) {
   mkdirSync(dir, {recursive: true});
-  return async function shot(page, name, {wait = 260} = {}) {
+  return async function shot(page, name, {wait = 260, quality: q = quality} = {}) {
     await page.waitForTimeout(wait);
     if (type !== 'webp') {
       const file = join(dir, `${name}.${type === 'jpeg' ? 'jpg' : 'png'}`);
-      await page.screenshot({path: file, type, ...(type === 'jpeg' ? {quality: Math.round(quality * 100)} : {})});
+      await page.screenshot({path: file, type, ...(type === 'jpeg' ? {quality: Math.round(q * 100)} : {})});
       return file;
     }
     const png = await page.screenshot({type: 'png'});
@@ -109,7 +109,7 @@ export function shooter(dir, {type = 'webp', quality = 0.78, scratch = null} = {
       canvas.height = image.naturalHeight;
       canvas.getContext('2d').drawImage(image, 0, 0);
       return canvas.toDataURL('image/webp', q).split(',')[1];
-    }, [png.toString('base64'), quality]);
+    }, [png.toString('base64'), q]);
     const file = join(dir, `${name}.webp`);
     writeFileSync(file, Buffer.from(encoded, 'base64'));
     return file;

@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 /**
- * Build the whole KiDraw map in the running app and capture a frame per node.
+ * Build the whole KiDraw map in the running app and capture the build as a
+ * short frame sequence per box: the held keys, the empty box, the label going
+ * in, the layout tween, and the settled graph with the crosshairs parked off to
+ * one side so nothing is covered or lit up.
  *
  *   npm start                      # the dev server has to be up
  *   node tools/capture/map.mjs
- *
- * Frames land in site/assets/map/ as WebP, described by map.json.
  */
-import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
+import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {seed, grow, layout, focus, fit, counts, undo, settle, typeLabel, labels, mode, edges} from './build.mjs';
+import {seed, grow, layout, focus, fit, park, counts, undo, settle, typeLabel, labels, mode, edges} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -19,88 +20,107 @@ const outDir = join(here, '..', '..', 'site', 'assets', 'map');
 rmSync(outDir, {recursive: true, force: true});
 mkdirSync(outDir, {recursive: true});
 
-/** Org markup belongs to the page, not to the node label. */
+const VIEWPORT = {width: 820, height: 700};
+// The frames that flash past inside an animation can be leaner than the one the
+// reader actually sits on.
+const QUALITY = {target: .58, blank: .55, typing: .55, typed: .62, tween: .56, rest: .8};
+
 const plain = text => text.replace(/[=_]([^=_]+)[=_]/g, '$1');
 
-const {browser, page, scratch, errors} = await open({width: 1200, height: 760, scale: 1});
-const shot = shooter(outDir, {type: 'webp', quality: 0.78, scratch});
+const {browser, page, scratch, errors} = await open({...VIEWPORT, scale: 1});
+const shot = shooter(outDir, {type: 'webp', quality: 0.7, scratch});
 
-const frames = [];
-async function frame(id, kind) {
-  const name = `${String(frames.length).padStart(3, '0')}-${id}`;
-  await shot(page, name);
-  frames.push({file: `${name}.webp`, id, kind});
-  return name;
+let counter = 0;
+const steps = [];
+const extras = [];
+
+async function keep(id, kind) {
+  const name = `${String(counter++).padStart(3, '0')}-${id}-${kind}`;
+  await shot(page, name, {quality: QUALITY[kind] ?? 0.7, wait: 120});
+  return `${name}.webp`;
+}
+
+/** Frames taken during a grow attempt are provisional: the attempt may be
+ *  rolled back. Shoot them under a temporary name and rename on success. */
+let pending = [];
+async function provisional(kind) {
+  if (kind === 'target') pending = [];
+  const file = await shot(page, `tmp-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
+  pending.push({kind, file});
+}
+function commit(id) {
+  return pending.map(({kind, file}) => {
+    const name = `${String(counter++).padStart(3, '0')}-${id}-${kind}.webp`;
+    renameSync(file, join(outDir, name));
+    return name;
+  });
+}
+
+/** Layout animates; catch it mid-flight, then let it settle. */
+async function layoutWithTween(id, frames) {
+  await keys(page, '[b l]');
+  frames.push(await keep(id, 'tween'));
+  await settle(page, 700);
 }
 
 const entries = flatten(OUTLINE);
 const started = Date.now();
-console.log(`building ${entries.length} nodes`);
+console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height}`);
 
-await frame('empty', 'empty');
+const opening = [];
+opening.push(await keep('kidraw', 'target'));
+await keys(page, 'a');
+opening.push(await keep('kidraw', 'blank'));
+await typeLabel(page, plain(entries[0].node.t));
+opening.push(await keep('kidraw', 'typed'));
+await keys(page, 'Escape Escape');
+await layoutWithTween('kidraw', opening);
+await focus(page, plain(entries[0].node.t));
+await park(page);
+opening.push(await keep('kidraw', 'rest'));
+steps.push({id: 'kidraw', frames: opening});
+
+const limit = Number(process.env.CAPTURE_LIMIT ?? entries.length);
 for (const [index, {node, parent}] of entries.entries()) {
+  if (index === 0) continue;
+  if (index >= limit) break;
   const label = plain(node.t);
-  if (index === 0) {
-    await seed(page, label);
-  } else {
-    const parentLabel = plain(parent.t);
-    await focus(page, parentLabel);
-    await grow(page, label, {parent: parentLabel, refocus: () => focus(page, parentLabel)});
-  }
-  await layout(page);
+  const parentLabel = plain(parent.t);
+  await focus(page, parentLabel);
+  await grow(page, label, {
+    parent: parentLabel,
+    refocus: () => focus(page, parentLabel),
+    onStage: provisional,
+  });
+  const frames = commit(node.id);
+  await layoutWithTween(node.id, frames);
   await focus(page, label);
-  await frame(node.id, 'node');
-
-  const next = entries[index + 1];
-  const branchDone = index > 1 && (!next || next.depth === 1);
-  if (branchDone) {
-    await fit(page);
-    await frame(`overview-${node.id}`, 'overview');
-  }
+  await park(page);
+  frames.push(await keep(node.id, 'rest'));
+  steps.push({id: node.id, frames});
   if (index % 8 === 0) {
-    const mins = ((Date.now() - started) / 60000).toFixed(1);
-    console.log(`  ${index}/${entries.length} ${node.id} (${mins}m)`);
+    console.log(`  ${index}/${entries.length} ${node.id} (${((Date.now() - started) / 60000).toFixed(1)}m)`);
   }
 }
 
-await fit(page);
-await frame('whole-map', 'overview');
-
-// A short demonstration pass: what the keyboard and the canvas look like while
-// Add is held. Each one is rolled back so the map keeps its shape.
-for (const id of ['basics', 'advanced', 'plugins']) {
+// Two overviews, taken where the whole branch still reads at a distance.
+for (const id of ['wip', 'vim-curve']) {
   const entry = entries.find(item => item.node.id === id);
-  const label = plain(entry.node.t);
-  await focus(page, label);
-  const before = await counts(page);
-  await frame(`${id}-rest`, 'rest');
-  await page.keyboard.down('a');
-  await settle(page, 420);
-  await frame(`${id}-hold`, 'hold');
-  await page.keyboard.press('d');
-  await settle(page, 420);
-  await frame(`${id}-target`, 'target');
-  await page.keyboard.press('j');
-  await settle(page, 380);
-  await frame(`${id}-placed`, 'placed');
-  await page.keyboard.up('a');
-  await settle(page, 400);
-  await keys(page, 'Escape Escape');
-  for (let attempt = 0; attempt < 30; attempt++) {
-    const now = await counts(page);
-    if (now.nodes <= before.nodes && now.edges <= before.edges) break;
-    await undo(page);
-    await settle(page, 140);
-  }
-  await layout(page);
+  if (!steps.some(step => step.id === id)) continue;
+  await fit(page);
+  await park(page);
+  extras.push({id: `overview-${id}`, file: await keep(`overview-${id}`, 'rest')});
+  await focus(page, plain(entry.node.t));
 }
 
 writeFileSync(join(outDir, 'map.json'), JSON.stringify({
-  viewport: {width: 1200, height: 760},
+  viewport: VIEWPORT,
   nodes: (await labels(page)).length,
   edges: (await edges(page)).length,
-  frames,
+  steps,
+  extras,
+  frames: counter,
 }, null, 1));
-console.log(`captured ${frames.length} frames in ${((Date.now() - started) / 60000).toFixed(1)}m`);
+console.log(`captured ${counter} frames in ${((Date.now() - started) / 60000).toFixed(1)}m`);
 console.log('errors:', errors);
 await browser.close();

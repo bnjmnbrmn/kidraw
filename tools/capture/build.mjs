@@ -85,6 +85,63 @@ export async function climb(page) {
 
 export const undo = page => keys(page, 'u');
 
+/**
+ * Clear the selection and move the crosshairs somewhere empty.
+ *
+ * Between one box and the next the frame should show the graph, not a crosshair
+ * sitting on a label or a node lit up because it happens to be underneath.
+ */
+export async function park(page) {
+  await keys(page, 'c');
+  await settle(page, 180);
+  await page.evaluate(() => {
+    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const stage = component.stage;
+    const layer = component.crosshairsLayer;
+    const boxes = component.drawingLayer.getDANodes()
+      .map(node => node.group.getClientRect({relativeTo: stage}));
+    // The keymenu covers the bottom of the stage, so stay above it.
+    const usable = stage.height() - 300;
+    const candidates = [];
+    for (let x = 40; x <= stage.width() - 40; x += 60) {
+      for (let y = 40; y <= Math.max(60, usable); y += 50) candidates.push({x, y});
+    }
+    const clearance = point => boxes.reduce((worst, box) => {
+      const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
+      const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
+      return Math.min(worst, Math.hypot(dx, dy));
+    }, Infinity);
+    const best = candidates.reduce((a, b) => (clearance(b) > clearance(a) ? b : a), candidates[0]);
+    component.moveCrosshairsBy(best.x - layer.crosshairsX(), best.y - layer.crosshairsY());
+    component.clearCrosshairHoverHighlight(true);
+  });
+  await settle(page, 220);
+}
+
+/** Pan with the camera keys until every box sits above the keymenu. */
+export async function frameAbove(page) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const {top, bottom, height} = await page.evaluate(() => {
+      const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+      const stage = component.stage;
+      const rects = component.drawingLayer.getDANodes()
+        .map(node => node.group.getClientRect({relativeTo: stage}));
+      return {
+        top: Math.min(...rects.map(r => r.y)),
+        bottom: Math.max(...rects.map(r => r.y + r.height)),
+        height: stage.height(),
+      };
+    });
+    const floor = height - 300;
+    if (top >= 30 && bottom <= floor) return true;
+    if (bottom > floor && top > 30) await keys(page, '[r j]');
+    else if (top < 30 && bottom < floor) await keys(page, '[r k]');
+    else { await keys(page, '[r o]'); await keys(page, '[r p]'); }
+    await settle(page, 380);
+  }
+  return false;
+}
+
 /** Zoom percentage as the header reports it. */
 export const zoom = page => page.evaluate(() => {
   const match = document.body.innerText.match(/(\d+)%/);
@@ -199,18 +256,48 @@ export function counts(page) {
  * parent*, so each placement is checked and rolled back if it drew an edge to
  * something that already existed, or left a box floating on its own.
  */
-export async function grow(page, text, {parent, refocus, placements = PLACEMENTS} = {}) {
+export async function grow(page, text, {parent, refocus, onStage, placements = PLACEMENTS} = {}) {
   const before = await counts(page);
   for (const [attempt, placement] of placements.entries()) {
     // Undoing a failed placement leaves the crosshairs somewhere else, so the
     // parent has to be picked up again before the next try.
     if (attempt > 0 && refocus) await refocus();
-    await keys(page, `[a d ${placement}]`);
-    await settle(page, 150);
+    if (onStage) {
+      // Same three presses as `[a d <placement>]`, held open long enough to
+      // photograph the menu and the dashed targets the reader is being told
+      // about.
+      await page.keyboard.down('a');
+      await settle(page, 320);
+      await page.keyboard.press('d');
+      await settle(page, 300);
+      for (const step of placement.split(' ')) {
+        await page.keyboard.press(step);
+        await settle(page, 220);
+      }
+      await onStage('target');
+      await page.keyboard.up('a');
+      await settle(page, 260);
+    } else {
+      await keys(page, `[a d ${placement}]`);
+      await settle(page, 150);
+    }
     // A new node opens label edit; landing on an existing node just draws an
     // edge and leaves us in normal mode.
     if (/edit/.test(await mode(page))) {
-      await typeLabel(page, text);
+      if (onStage) {
+        await onStage('blank');
+        const split = text.length > 9 ? Math.ceil(text.length * 0.45) : 0;
+        if (split) {
+          await typeLabel(page, text.slice(0, split));
+          await onStage('typing');
+          await typeLabel(page, text.slice(split));
+        } else {
+          await typeLabel(page, text);
+        }
+        await onStage('typed');
+      } else {
+        await typeLabel(page, text);
+      }
       await keys(page, 'Escape Escape');
       await settle(page, 150);
       const drawn = await edges(page);

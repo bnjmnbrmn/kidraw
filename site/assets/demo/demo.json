@@ -1,36 +1,32 @@
 {
  "viewport": {
-  "width": 1200,
-  "height": 760
+  "width": 820,
+  "height": 700
  },
- "frames": [
-  {
-   "file": "menu-rest.webp",
-   "name": "menu-rest",
-   "kind": "menu"
-  },
-  {
-   "file": "menu-add-held.webp",
-   "name": "menu-add-held",
-   "kind": "menu"
-  },
-  {
-   "file": "menu-add-target.webp",
-   "name": "menu-add-target",
-   "kind": "menu"
-  }
+ "menu": [
+  "menu-rest.webp",
+  "menu-add-held.webp",
+  "menu-add-target.webp"
  ],
- "drag": [
-  "drag-00.webp",
-  "drag-01.webp",
-  "drag-02.webp",
-  "drag-03.webp",
-  "drag-04.webp",
-  "drag-05.webp",
-  "drag-06.webp",
-  "drag-07.webp",
-  "drag-08.webp",
-  "drag-09.webp",
-  "drag-10.webp"
+ "follow": [
+  "follow-00.webp",
+  "follow-01.webp",
+  "follow-02.webp",
+  "follow-03.webp",
+  "follow-04.webp",
+  "follow-05.webp",
+  "follow-06.webp",
+  "follow-07.webp",
+  "follow-08.webp",
+  "follow-09.webp",
+  "follow-10.webp"
+ ],
+ "avoid": [
+  "avoid-00.webp",
+  "avoid-01.webp",
+  "avoid-02.webp",
+  "avoid-03.webp",
+  "avoid-04.webp",
+  "avoid-05.webp"
  ]
 }
