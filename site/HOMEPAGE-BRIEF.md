@@ -1,5 +1,97 @@
 # KiDraw homepage brief
 
+## September 3, 2026 — fourth revision (a portrait capture for phones)
+
+The third revision was still wrong on a phone: a 820x700 frame at 390px wide is
+a 333px strip, about a third of the screen. Ben wants the app to take the top two
+thirds in portrait, and was right that it needs a second set of images.
+
+So the capture runs twice. `CAPTURE_PROFILE=mobile` captures the same build at
+820x1170 into `assets/map-m/` and `assets/demo-m/`; the page serves it through a
+`<picture>` with a `(max-width: 61.99rem)` source. Both profiles are 820 wide
+because that is the narrowest viewport the on-screen keyboard fits in — narrower
+than that and it is clipped rather than scaled, so there is no such thing as a
+phone-sized capture of this app.
+
+On a phone the stage goes edge to edge and 65vh tall. The padding had to go: the
+portrait frame is exactly the shape of the box, so any horizontal padding made
+`object-fit` crop the keyboard off both sides.
+
+## September 3, 2026 — third revision (animation and proportions)
+
+Ben, on the second revision: the frames should take about two thirds of the page
+rather than a third; zoom in so the text is legible on a phone; animate the
+build so the tweens and the label going in are visible; make the capture window
+narrower so the keymenu is not floating in empty canvas; keep the crosshairs off
+to one side between animations so nothing is covered or highlighted; and add a
+demo of dragging a box so its arrow has to route around another box.
+
+All six are in. The capture window is 820x700, the stage column is `2fr` against
+`1fr` of prose, every box is a five- or six-frame run played at ~130ms, `park()`
+clears the selection and parks the crosshairs on the emptiest part of the canvas
+for the settled frame, and there are now two drag demos: one where a box's own
+arrows follow it, and one where dragging *Ship it* down forces the *Plan → Ship
+it* arrow to bend over *Review* instead of running behind it.
+
+The character-by-character typing is three frames per label (empty, about half,
+all of it) rather than one frame per character — the page already carries ~560
+frames at about 9MB, and a frame per character would multiply that. Frames that
+only flash past are stored smaller and cheaper than the one the reader sits on.
+
+## September 3, 2026 — second revision (real captures)
+
+Ben's feedback on the first revision: keep the spacing and placement of the
+nodes, but use **actual screenshots of the graph being built in KiDraw** — the
+button presses, the zooming in on relevant nodes, the overviews — instead of an
+SVG redrawing of the same graph. Give each node **one or two sentences**, and
+cut the purple prose and the overstatement. Replace the seven-node demo graph
+with something smaller. And show, properly, how edges re-route while a node is
+dragged.
+
+So the hand-drawn SVG is gone. `tools/capture/map.mjs` drives the running dev
+server, types all ninety-six boxes with real key presses, applies tree-right
+layout after each one, and screenshots the result — one frame per box, plus an
+overview at the end of each branch. `tools/capture/demo.mjs` builds a four-box
+graph for the keymenu frames and an eleven-frame drag sequence. The page is
+generated from `tools/capture/outline.mjs`, which holds the outline and the
+prose together, so the sentences and the graph cannot drift apart.
+
+The prose target is now: short, concrete, no invented numbers, no rhetorical
+flourish. Where something is a plan rather than a feature, the sentence says so.
+
+Two honest gaps, both recorded rather than hidden:
+
+- The three cross-branch links (`↗` in the outline) are not in the captured
+  graph. Connecting two boxes that already exist has no target-picking step in
+  the held-key surface today, so the links live in the outline and the prose.
+- The capture moves the crosshairs to a named box by calling the app's own
+  `moveCrosshairsBy`, rather than pressing `hjkl` until it arrives. Everything
+  that appears in a frame — adding, typing, layout, camera — is a real press.
+
+## September 3, 2026 revision (superseded)
+
+`site/index.org` — Benjamin's own outline of KiDraw — is now the spine of the
+page. The instruction that came with it: *as the user scrolls down, they should
+see a diagram be built*, with breaks in the sequence of diagram screenshots
+(closeups of the keymenu, for instance), and where the outline says `List`, the
+edges to those children carry numbers as labels.
+
+So the page became five sticky stages, one per branch of the outline, each
+drawing that branch node by node as the reader scrolls, with the four capture
+sets breaking the sequence between them. (The drawing was replaced by real
+captures the same day — see above.) The outline itself ships as markup at
+the bottom of the page; the diagram is drawn from it, and it is what a reader
+without JavaScript gets. The frame-sequence widgets from the August 31 version
+are gone — the diagram carries the motion now, and the captures are static.
+
+Two spellings were normalised from the org file for a public page: *Geneology*
+to *Genealogy*. *Discover-able* was left as written.
+
+Everything below is the August 31 record and still governs voice, audience, and
+the capture set.
+
+## August 31, 2026 design session
+
 This document preserves the homepage decisions made in the August 31, 2026
 design session. It is written for someone who has not used KiDraw, read its
 source, or worked with Angular.

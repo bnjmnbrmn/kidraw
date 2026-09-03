@@ -1,0 +1,32 @@
+{
+ "viewport": {
+  "width": 820,
+  "height": 700
+ },
+ "menu": [
+  "menu-rest.webp",
+  "menu-add-held.webp",
+  "menu-add-target.webp"
+ ],
+ "follow": [
+  "follow-00.webp",
+  "follow-01.webp",
+  "follow-02.webp",
+  "follow-03.webp",
+  "follow-04.webp",
+  "follow-05.webp",
+  "follow-06.webp",
+  "follow-07.webp",
+  "follow-08.webp",
+  "follow-09.webp",
+  "follow-10.webp"
+ ],
+ "avoid": [
+  "avoid-00.webp",
+  "avoid-01.webp",
+  "avoid-02.webp",
+  "avoid-03.webp",
+  "avoid-04.webp",
+  "avoid-05.webp"
+ ]
+}

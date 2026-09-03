@@ -1,0 +1,301 @@
+<!-- site-head:start -->
+<title>KiDraw — Connect your thoughts, at the speed you have them</title>
+<meta name="author" content="Benjamin Berman">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+  :root {
+    --ground: #07090c;
+    --surface: #12171e;
+    --line: #28333f;
+    --line-soft: #18212a;
+    --ink: #eef3f8;
+    --ink-muted: #a5b2c1;
+    --ink-faint: #728092;
+    --cyan: #47d9e8;
+    --amber: #f4da27;
+    --grid: rgba(125, 153, 177, .05);
+    --grid-strong: rgba(125, 153, 177, .09);
+    --radius: 14px;
+    --measure: 40rem;
+  }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(var(--grid-strong) 1px, transparent 1px) 0 0 / 140px 140px,
+      linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px) 0 0 / 140px 140px,
+      var(--ground);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a { color: var(--cyan); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { color: #8cecf4; }
+  :focus-visible { border-radius: 4px; outline: 2px solid var(--cyan); outline-offset: 4px; }
+  p { margin: 0; }
+  img { height: auto; max-width: 100%; }
+  h1, h2, h3 { color: var(--ink); font-family: "JetBrains Mono", ui-monospace, monospace; }
+  code {
+    background: color-mix(in srgb, var(--amber) 12%, transparent);
+    border-radius: 4px;
+    color: var(--amber);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .86em;
+    padding: .1em .34em;
+  }
+  b { color: #fff; }
+
+  .wrap { margin: 0 auto; max-width: 78rem; padding-inline: clamp(1.15rem, 4vw, 2.5rem); }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .eyebrow {
+    color: var(--ink-faint);
+    font: 600 .69rem/1.4 "JetBrains Mono", monospace;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  .skip-link {
+    background: var(--amber); color: #171506;
+    font-family: "JetBrains Mono", monospace;
+    left: 1rem; padding: .5rem .75rem; position: fixed; top: 1rem;
+    transform: translateY(-5rem); z-index: 40;
+  }
+  .skip-link:focus { transform: translateY(0); }
+
+  .masthead {
+    align-items: center; display: flex; gap: 1rem;
+    justify-content: space-between; padding-block: 1.25rem;
+  }
+  .wordmark {
+    color: var(--ink); font-family: "JetBrains Mono", monospace;
+    font-size: 1.12rem; font-weight: 700; letter-spacing: -.04em; text-decoration: none;
+  }
+  .wordmark span { color: var(--cyan); }
+  .nav-link {
+    border: 1px solid color-mix(in srgb, var(--amber) 48%, transparent);
+    border-radius: 999px; color: var(--amber);
+    font: 500 .78rem/1 "JetBrains Mono", monospace;
+    padding: .55rem .9rem; text-decoration: none; white-space: nowrap;
+  }
+  .nav-link:hover { background: color-mix(in srgb, var(--amber) 10%, transparent); color: #fff173; }
+
+  .hero { padding-block: clamp(3rem, 9vw, 6rem) clamp(2rem, 5vw, 3.5rem); }
+  h1 {
+    font-size: clamp(2.3rem, 5.4vw, 4.2rem); letter-spacing: -.065em;
+    line-height: 1; margin: 1.1rem 0 1.4rem; max-width: 15ch; text-wrap: balance;
+  }
+  h1 .accent { color: var(--cyan); }
+  .lede { color: var(--ink-muted); font-size: clamp(1.04rem, 1.7vw, 1.2rem); max-width: 40rem; }
+  .lede + .lede { margin-top: .9rem; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 1.8rem; }
+  .button {
+    border-radius: 999px; display: inline-block;
+    font: 600 .92rem/1 "JetBrains Mono", monospace;
+    padding: .9rem 1.35rem; text-decoration: none; white-space: nowrap;
+  }
+  .button-primary { background: var(--amber); border: 1px solid var(--amber); color: #16150a; }
+  .button-primary:hover { background: #fff173; }
+  .button-ghost { border: 1px solid var(--line); color: var(--ink); }
+  .button-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+  .byline { color: var(--ink-faint); font-size: .9rem; margin-top: 1.5rem; }
+
+  /* ---------- acts ---------- */
+  .act { padding-block: clamp(1.5rem, 4vw, 3rem) clamp(3rem, 7vw, 5rem); }
+  .act-inner { display: grid; gap: 0 clamp(1.5rem, 4vw, 3rem); grid-template-columns: minmax(0, 1fr); }
+  .act-head { grid-column: 1 / -1; margin-bottom: 1.4rem; }
+  .act-head h2 {
+    font-size: clamp(1.65rem, 3.2vw, 2.4rem); letter-spacing: -.05em;
+    line-height: 1.08; margin: .5rem 0 0; text-wrap: balance;
+  }
+  .act-head .act-lede { color: var(--ink-muted); margin-top: .8rem; max-width: var(--measure); }
+  .step h3 code { font-size: .8em; }
+
+  /* Edge to edge on a phone: the portrait capture is exactly the shape of the
+     box, so any horizontal padding would crop the keyboard rather than letterbox. */
+  .act-stage {
+    background: var(--ground); border-bottom: 1px solid var(--line-soft);
+    margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem));
+    padding: 0 0 .4rem;
+    position: sticky; top: 0; z-index: 3;
+  }
+  .stage { margin: 0; }
+  /* Portrait on a phone, wide on a desktop — the frames are captured twice, so
+     the box they sit in changes shape at the same breakpoint. */
+  .stage-frame {
+    background: #05070a; border-block: 1px solid var(--line);
+    height: 65vh; overflow: hidden; position: relative; width: 100%;
+  }
+  .frame {
+    display: block; height: 100%; inset: 0; opacity: 0;
+    position: absolute; width: 100%;
+  }
+  .frame img { display: block; height: 100%; object-fit: contain; width: 100%; }
+  .frame.is-on { opacity: 1; }
+  .js .frame { transition: opacity .3s ease; }
+  @media (prefers-reduced-motion: reduce) { .js .frame { transition: none; } }
+  .shot-frame { display: block; }
+  .shot-frame img { display: block; width: 100%; }
+  .stage-caption {
+    align-items: baseline; color: var(--ink-faint); display: flex;
+    font-size: .8rem; gap: 1rem; justify-content: space-between;
+    line-height: 1.3; min-height: 2.2em;
+    padding: .4rem clamp(1.15rem, 4vw, 2.5rem) 0;
+  }
+  .stage-caption .mono { font-size: .74rem; white-space: nowrap; }
+
+  /* The stage takes the top two thirds of a phone screen, so a step only needs
+     to fill what is left. */
+  .act-steps { padding-top: 1.2rem; }
+  .step {
+    border-left: 1px solid var(--line-soft);
+    display: flex; flex-direction: column; justify-content: center;
+    max-width: var(--measure); min-height: 30vh;
+    padding: 1rem 0 1rem 1.3rem;
+    transition: border-color .35s ease, opacity .35s ease;
+  }
+  .step h3 {
+    align-items: baseline; display: flex; gap: .55rem;
+    font-size: clamp(1.02rem, 1.7vw, 1.2rem); letter-spacing: -.03em;
+    line-height: 1.3; margin: 0 0 .6rem;
+  }
+  .step p { color: var(--ink-muted); font-size: .98rem; }
+  .step-num {
+    border: 1px solid var(--cyan); border-radius: 999px; color: var(--cyan);
+    flex: none; font: 600 .7rem/1 "JetBrains Mono", monospace;
+    padding: .28rem .5rem;
+  }
+  .step.is-overview h3 { color: var(--ink-muted); }
+  .js .step { opacity: .4; }
+  .js .step.is-active { border-left-color: var(--cyan); opacity: 1; }
+
+  @media (min-width: 62rem) {
+    /* The frames are the argument, so they get two thirds of the width. */
+    .act-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+    .act-stage {
+      align-self: start; background: none; border-bottom: 0;
+      grid-column: 2; grid-row: 2; margin-inline: 0; padding: 0;
+      top: max(1.5rem, calc(50vh - 28vw));
+    }
+    .stage-frame {
+      aspect-ratio: 820 / 700; border: 1px solid var(--line);
+      border-radius: var(--radius); height: auto;
+    }
+    .stage-caption { padding-inline: 0; }
+    .act-steps { grid-column: 1; grid-row: 2; padding-top: 0; }
+    .step { min-height: 58vh; }
+  }
+  @media (prefers-reduced-motion: reduce) { .js .step { opacity: 1; } }
+
+  /* ---------- capture breaks ---------- */
+  .brk { padding-block: clamp(2.5rem, 6vw, 4.5rem); }
+  .brk-head { border-top: 1px solid var(--line-soft); padding-top: 2rem; }
+  .brk-head h2 {
+    font-size: clamp(1.5rem, 2.9vw, 2.1rem); letter-spacing: -.05em;
+    line-height: 1.12; margin: .6rem 0 0; max-width: 24ch; text-wrap: balance;
+  }
+  .brk-head p { color: var(--ink-muted); margin-top: .9rem; max-width: var(--measure); }
+  .shots { display: grid; gap: clamp(1rem, 2.4vw, 1.5rem); margin-top: 2rem; }
+  .shots.three, .shots.four { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 48rem) {
+    .shots.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .shots.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (min-width: 72rem) { .shots.four { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .shot {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); margin: 0; overflow: hidden;
+  }
+  .shot img { display: block; width: 100%; }
+  .shot figcaption {
+    border-top: 1px solid var(--line-soft); color: var(--ink-muted);
+    font-size: .85rem; line-height: 1.4; padding: .8rem 1rem;
+  }
+  .shot-label {
+    color: var(--cyan); display: block;
+    font: 600 .68rem/1.4 "JetBrains Mono", monospace;
+    letter-spacing: .12em; text-transform: uppercase;
+  }
+  .aside { color: var(--ink-faint); font-size: .92rem; margin-top: 1.5rem; max-width: var(--measure); }
+
+  /* ---------- the drag ---------- */
+  .drag { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(3rem, 7vw, 5rem); position: relative; }
+  .drag-stage {
+    margin-top: 2rem; position: sticky;
+    top: max(1.5rem, calc(50vh - 20rem)); z-index: 2;
+  }
+  .drag-stage .stage-frame {
+    margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem)); width: auto;
+  }
+  .drag-stage .stage-caption { margin-inline: auto; max-width: 46rem; }
+  @media (min-width: 62rem) {
+    .drag-stage .stage-frame {
+      aspect-ratio: 820 / 700; height: auto; margin-inline: auto; max-width: 46rem; width: 100%;
+    }
+  }
+  .drag-steps { margin-top: -60vh; pointer-events: none; }
+  .drag-step { height: 46vh; }
+
+  /* ---------- close ---------- */
+  .close { padding-block: clamp(2.5rem, 7vw, 5rem); }
+  .close-card {
+    background: linear-gradient(160deg, #10161d, #0a0e13);
+    border: 1px solid var(--line); border-radius: 20px;
+    padding: clamp(1.6rem, 4vw, 3rem);
+  }
+  .close-card h2 {
+    font-size: clamp(1.45rem, 3vw, 2.1rem); letter-spacing: -.05em;
+    line-height: 1.12; margin: .6rem 0 1rem; max-width: 24ch; text-wrap: balance;
+  }
+  .close-card p { color: var(--ink-muted); max-width: var(--measure); }
+  .close-card p + p { margin-top: .85rem; }
+  .close-actions { display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 1.7rem; }
+  .whole { margin: clamp(2rem, 5vw, 3.5rem) 0 0; }
+  .whole img { border: 1px solid var(--line); border-radius: var(--radius); display: block; width: 100%; }
+  .whole figcaption { color: var(--ink-faint); font-size: .88rem; margin-top: .7rem; }
+
+  /* ---------- outline ---------- */
+  .outline { border-top: 1px solid var(--line-soft); margin-top: clamp(2rem, 5vw, 3.5rem); padding-top: 1.5rem; }
+  .outline summary {
+    color: var(--ink); cursor: pointer;
+    font: 600 .95rem/1.4 "JetBrains Mono", monospace; letter-spacing: -.02em;
+  }
+  .outline summary::marker { color: var(--cyan); }
+  .outline .outline-note { color: var(--ink-faint); font-size: .9rem; margin: .8rem 0 1.3rem; max-width: var(--measure); }
+  .outline ul { list-style: none; margin: 0; padding-left: 0; }
+  .outline ul ul { border-left: 1px solid var(--line-soft); margin-left: .3rem; padding-left: 1rem; }
+  .outline li { color: var(--ink-muted); font-size: .94rem; margin: .28rem 0; }
+  .outline > ul > li > span { color: var(--ink); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+  .outline li[data-kind="q"] > span, .outline li[data-kind="quote"] > span { color: var(--ink); font-weight: 600; }
+  .outline li[data-num] > span::before {
+    color: var(--cyan); content: attr(data-num) " ";
+    font-family: "JetBrains Mono", monospace; font-size: .8em;
+  }
+  .outline li[data-link] > span::after {
+    color: #b9a0f2; content: " ↗ " attr(data-link);
+    font-family: "JetBrains Mono", monospace; font-size: .75em;
+  }
+
+  footer {
+    border-top: 1px solid var(--line-soft); color: var(--ink-faint);
+    font-size: .9rem; padding-block: 2.4rem 4rem;
+  }
+  footer .foot-row { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; }
+</style>
+<!-- site-head:end -->
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="wrap masthead">
+  <a class="wordmark" href="/">Ki<span>Draw</span></a>
+  <a class="nav-link" href="https://alpha.kidraw.net">Open the alpha →</a>
+</header>

@@ -1,0 +1,1061 @@
+{
+ "viewport": {
+  "width": 820,
+  "height": 700
+ },
+ "nodes": 96,
+ "edges": 95,
+ "steps": [
+  {
+   "id": "kidraw",
+   "frames": [
+    "000-kidraw-target.webp",
+    "001-kidraw-blank.webp",
+    "002-kidraw-typed.webp",
+    "003-kidraw-tween.webp",
+    "004-kidraw-rest.webp"
+   ]
+  },
+  {
+   "id": "tagline",
+   "frames": [
+    "005-tagline-target.webp",
+    "006-tagline-blank.webp",
+    "007-tagline-typing.webp",
+    "008-tagline-typed.webp",
+    "009-tagline-tween.webp",
+    "010-tagline-rest.webp"
+   ]
+  },
+  {
+   "id": "what",
+   "frames": [
+    "011-what-target.webp",
+    "012-what-blank.webp",
+    "013-what-typing.webp",
+    "014-what-typed.webp",
+    "015-what-tween.webp",
+    "016-what-rest.webp"
+   ]
+  },
+  {
+   "id": "diagram-editor",
+   "frames": [
+    "017-diagram-editor-target.webp",
+    "018-diagram-editor-blank.webp",
+    "019-diagram-editor-typing.webp",
+    "020-diagram-editor-typed.webp",
+    "021-diagram-editor-tween.webp",
+    "022-diagram-editor-rest.webp"
+   ]
+  },
+  {
+   "id": "graph-editor",
+   "frames": [
+    "023-graph-editor-target.webp",
+    "024-graph-editor-blank.webp",
+    "025-graph-editor-typing.webp",
+    "026-graph-editor-typed.webp",
+    "027-graph-editor-tween.webp",
+    "028-graph-editor-rest.webp"
+   ]
+  },
+  {
+   "id": "graph-def",
+   "frames": [
+    "029-graph-def-target.webp",
+    "030-graph-def-blank.webp",
+    "031-graph-def-typing.webp",
+    "032-graph-def-typed.webp",
+    "033-graph-def-tween.webp",
+    "034-graph-def-rest.webp"
+   ]
+  },
+  {
+   "id": "comparable",
+   "frames": [
+    "035-comparable-target.webp",
+    "036-comparable-blank.webp",
+    "037-comparable-typing.webp",
+    "038-comparable-typed.webp",
+    "039-comparable-tween.webp",
+    "040-comparable-rest.webp"
+   ]
+  },
+  {
+   "id": "miro",
+   "frames": [
+    "041-miro-target.webp",
+    "042-miro-blank.webp",
+    "043-miro-typed.webp",
+    "044-miro-tween.webp",
+    "045-miro-rest.webp"
+   ]
+  },
+  {
+   "id": "visio",
+   "frames": [
+    "046-visio-target.webp",
+    "047-visio-blank.webp",
+    "048-visio-typing.webp",
+    "049-visio-typed.webp",
+    "050-visio-tween.webp",
+    "051-visio-rest.webp"
+   ]
+  },
+  {
+   "id": "drawio",
+   "frames": [
+    "052-drawio-target.webp",
+    "053-drawio-blank.webp",
+    "054-drawio-typed.webp",
+    "055-drawio-tween.webp",
+    "056-drawio-rest.webp"
+   ]
+  },
+  {
+   "id": "excalidraw",
+   "frames": [
+    "057-excalidraw-target.webp",
+    "058-excalidraw-blank.webp",
+    "059-excalidraw-typing.webp",
+    "060-excalidraw-typed.webp",
+    "061-excalidraw-tween.webp",
+    "062-excalidraw-rest.webp"
+   ]
+  },
+  {
+   "id": "graphviz",
+   "frames": [
+    "063-graphviz-target.webp",
+    "064-graphviz-blank.webp",
+    "065-graphviz-typing.webp",
+    "066-graphviz-typed.webp",
+    "067-graphviz-tween.webp",
+    "068-graphviz-rest.webp"
+   ]
+  },
+  {
+   "id": "keyboard-first",
+   "frames": [
+    "069-keyboard-first-target.webp",
+    "070-keyboard-first-blank.webp",
+    "071-keyboard-first-typing.webp",
+    "072-keyboard-first-typed.webp",
+    "073-keyboard-first-tween.webp",
+    "074-keyboard-first-rest.webp"
+   ]
+  },
+  {
+   "id": "vi-inspired",
+   "frames": [
+    "075-vi-inspired-target.webp",
+    "076-vi-inspired-blank.webp",
+    "077-vi-inspired-typing.webp",
+    "078-vi-inspired-typed.webp",
+    "079-vi-inspired-tween.webp",
+    "080-vi-inspired-rest.webp"
+   ]
+  },
+  {
+   "id": "not-coders",
+   "frames": [
+    "081-not-coders-target.webp",
+    "082-not-coders-blank.webp",
+    "083-not-coders-typing.webp",
+    "084-not-coders-typed.webp",
+    "085-not-coders-tween.webp",
+    "086-not-coders-rest.webp"
+   ]
+  },
+  {
+   "id": "other-options",
+   "frames": [
+    "087-other-options-target.webp",
+    "088-other-options-blank.webp",
+    "089-other-options-typing.webp",
+    "090-other-options-typed.webp",
+    "091-other-options-tween.webp",
+    "092-other-options-rest.webp"
+   ]
+  },
+  {
+   "id": "discoverable",
+   "frames": [
+    "093-discoverable-target.webp",
+    "094-discoverable-blank.webp",
+    "095-discoverable-typing.webp",
+    "096-discoverable-typed.webp",
+    "097-discoverable-tween.webp",
+    "098-discoverable-rest.webp"
+   ]
+  },
+  {
+   "id": "experiment",
+   "frames": [
+    "099-experiment-target.webp",
+    "100-experiment-blank.webp",
+    "101-experiment-typing.webp",
+    "102-experiment-typed.webp",
+    "103-experiment-tween.webp",
+    "104-experiment-rest.webp"
+   ]
+  },
+  {
+   "id": "wip",
+   "frames": [
+    "105-wip-target.webp",
+    "106-wip-blank.webp",
+    "107-wip-typing.webp",
+    "108-wip-typed.webp",
+    "109-wip-tween.webp",
+    "110-wip-rest.webp"
+   ]
+  },
+  {
+   "id": "point",
+   "frames": [
+    "111-point-target.webp",
+    "112-point-blank.webp",
+    "113-point-typing.webp",
+    "114-point-typed.webp",
+    "115-point-tween.webp",
+    "116-point-rest.webp"
+   ]
+  },
+  {
+   "id": "graphs-everywhere",
+   "frames": [
+    "117-graphs-everywhere-target.webp",
+    "118-graphs-everywhere-blank.webp",
+    "119-graphs-everywhere-typing.webp",
+    "120-graphs-everywhere-typed.webp",
+    "121-graphs-everywhere-tween.webp",
+    "122-graphs-everywhere-rest.webp"
+   ]
+  },
+  {
+   "id": "road-maps",
+   "frames": [
+    "123-road-maps-target.webp",
+    "124-road-maps-blank.webp",
+    "125-road-maps-typed.webp",
+    "126-road-maps-tween.webp",
+    "127-road-maps-rest.webp"
+   ]
+  },
+  {
+   "id": "mind-maps",
+   "frames": [
+    "128-mind-maps-target.webp",
+    "129-mind-maps-blank.webp",
+    "130-mind-maps-typed.webp",
+    "131-mind-maps-tween.webp",
+    "132-mind-maps-rest.webp"
+   ]
+  },
+  {
+   "id": "logical-arguments",
+   "frames": [
+    "133-logical-arguments-target.webp",
+    "134-logical-arguments-blank.webp",
+    "135-logical-arguments-typing.webp",
+    "136-logical-arguments-typed.webp",
+    "137-logical-arguments-tween.webp",
+    "138-logical-arguments-rest.webp"
+   ]
+  },
+  {
+   "id": "outlines-graph",
+   "frames": [
+    "139-outlines-graph-target.webp",
+    "140-outlines-graph-blank.webp",
+    "141-outlines-graph-typing.webp",
+    "142-outlines-graph-typed.webp",
+    "143-outlines-graph-tween.webp",
+    "144-outlines-graph-rest.webp"
+   ]
+  },
+  {
+   "id": "internet",
+   "frames": [
+    "145-internet-target.webp",
+    "146-internet-blank.webp",
+    "147-internet-typing.webp",
+    "148-internet-typed.webp",
+    "149-internet-tween.webp",
+    "150-internet-rest.webp"
+   ]
+  },
+  {
+   "id": "thoughts-slip",
+   "frames": [
+    "151-thoughts-slip-target.webp",
+    "152-thoughts-slip-blank.webp",
+    "153-thoughts-slip-typing.webp",
+    "154-thoughts-slip-typed.webp",
+    "155-thoughts-slip-tween.webp",
+    "156-thoughts-slip-rest.webp"
+   ]
+  },
+  {
+   "id": "bottleneck",
+   "frames": [
+    "157-bottleneck-target.webp",
+    "158-bottleneck-blank.webp",
+    "159-bottleneck-typing.webp",
+    "160-bottleneck-typed.webp",
+    "161-bottleneck-tween.webp",
+    "162-bottleneck-rest.webp"
+   ]
+  },
+  {
+   "id": "learnable",
+   "frames": [
+    "163-learnable-target.webp",
+    "164-learnable-blank.webp",
+    "165-learnable-typing.webp",
+    "166-learnable-typed.webp",
+    "167-learnable-tween.webp",
+    "168-learnable-rest.webp"
+   ]
+  },
+  {
+   "id": "vim-curve",
+   "frames": [
+    "169-vim-curve-target.webp",
+    "170-vim-curve-blank.webp",
+    "171-vim-curve-typing.webp",
+    "172-vim-curve-typed.webp",
+    "173-vim-curve-tween.webp",
+    "174-vim-curve-rest.webp"
+   ]
+  },
+  {
+   "id": "how",
+   "frames": [
+    "175-how-target.webp",
+    "176-how-blank.webp",
+    "177-how-typing.webp",
+    "178-how-typed.webp",
+    "179-how-tween.webp",
+    "180-how-rest.webp"
+   ]
+  },
+  {
+   "id": "basics",
+   "frames": [
+    "181-basics-target.webp",
+    "182-basics-blank.webp",
+    "183-basics-typed.webp",
+    "184-basics-tween.webp",
+    "185-basics-rest.webp"
+   ]
+  },
+  {
+   "id": "move-crosshairs",
+   "frames": [
+    "186-move-crosshairs-target.webp",
+    "187-move-crosshairs-blank.webp",
+    "188-move-crosshairs-typing.webp",
+    "189-move-crosshairs-typed.webp",
+    "190-move-crosshairs-tween.webp",
+    "191-move-crosshairs-rest.webp"
+   ]
+  },
+  {
+   "id": "key-h",
+   "frames": [
+    "192-key-h-target.webp",
+    "193-key-h-blank.webp",
+    "194-key-h-typing.webp",
+    "195-key-h-typed.webp",
+    "196-key-h-tween.webp",
+    "197-key-h-rest.webp"
+   ]
+  },
+  {
+   "id": "key-j",
+   "frames": [
+    "198-key-j-target.webp",
+    "199-key-j-blank.webp",
+    "200-key-j-typing.webp",
+    "201-key-j-typed.webp",
+    "202-key-j-tween.webp",
+    "203-key-j-rest.webp"
+   ]
+  },
+  {
+   "id": "key-k",
+   "frames": [
+    "204-key-k-target.webp",
+    "205-key-k-blank.webp",
+    "206-key-k-typed.webp",
+    "207-key-k-tween.webp",
+    "208-key-k-rest.webp"
+   ]
+  },
+  {
+   "id": "key-l",
+   "frames": [
+    "209-key-l-target.webp",
+    "210-key-l-blank.webp",
+    "211-key-l-typing.webp",
+    "212-key-l-typed.webp",
+    "213-key-l-tween.webp",
+    "214-key-l-rest.webp"
+   ]
+  },
+  {
+   "id": "hjkl",
+   "frames": [
+    "215-hjkl-target.webp",
+    "216-hjkl-blank.webp",
+    "217-hjkl-typing.webp",
+    "218-hjkl-typed.webp",
+    "219-hjkl-tween.webp",
+    "220-hjkl-rest.webp"
+   ]
+  },
+  {
+   "id": "add-node",
+   "frames": [
+    "221-add-node-target.webp",
+    "222-add-node-blank.webp",
+    "223-add-node-typing.webp",
+    "224-add-node-typed.webp",
+    "225-add-node-tween.webp",
+    "226-add-node-rest.webp"
+   ]
+  },
+  {
+   "id": "press-a",
+   "frames": [
+    "227-press-a-target.webp",
+    "228-press-a-blank.webp",
+    "229-press-a-typing.webp",
+    "230-press-a-typed.webp",
+    "231-press-a-tween.webp",
+    "232-press-a-rest.webp"
+   ]
+  },
+  {
+   "id": "edit-text",
+   "frames": [
+    "233-edit-text-target.webp",
+    "234-edit-text-blank.webp",
+    "235-edit-text-typing.webp",
+    "236-edit-text-typed.webp",
+    "237-edit-text-tween.webp",
+    "238-edit-text-rest.webp"
+   ]
+  },
+  {
+   "id": "vi-style",
+   "frames": [
+    "239-vi-style-target.webp",
+    "240-vi-style-blank.webp",
+    "241-vi-style-typed.webp",
+    "242-vi-style-tween.webp",
+    "243-vi-style-rest.webp"
+   ]
+  },
+  {
+   "id": "exit-edit",
+   "frames": [
+    "244-exit-edit-target.webp",
+    "245-exit-edit-blank.webp",
+    "246-exit-edit-typing.webp",
+    "247-exit-edit-typed.webp",
+    "248-exit-edit-tween.webp",
+    "249-exit-edit-rest.webp"
+   ]
+  },
+  {
+   "id": "press-esc",
+   "frames": [
+    "250-press-esc-target.webp",
+    "251-press-esc-blank.webp",
+    "252-press-esc-typing.webp",
+    "253-press-esc-typed.webp",
+    "254-press-esc-tween.webp",
+    "255-press-esc-rest.webp"
+   ]
+  },
+  {
+   "id": "connect",
+   "frames": [
+    "256-connect-target.webp",
+    "257-connect-blank.webp",
+    "258-connect-typing.webp",
+    "259-connect-typed.webp",
+    "260-connect-tween.webp",
+    "261-connect-rest.webp"
+   ]
+  },
+  {
+   "id": "crosshairs-over",
+   "frames": [
+    "262-crosshairs-over-target.webp",
+    "263-crosshairs-over-blank.webp",
+    "264-crosshairs-over-typing.webp",
+    "265-crosshairs-over-typed.webp",
+    "266-crosshairs-over-tween.webp",
+    "267-crosshairs-over-rest.webp"
+   ]
+  },
+  {
+   "id": "hold-a",
+   "frames": [
+    "268-hold-a-target.webp",
+    "269-hold-a-blank.webp",
+    "270-hold-a-typing.webp",
+    "271-hold-a-typed.webp",
+    "272-hold-a-tween.webp",
+    "273-hold-a-rest.webp"
+   ]
+  },
+  {
+   "id": "pick-dir",
+   "frames": [
+    "274-pick-dir-target.webp",
+    "275-pick-dir-blank.webp",
+    "276-pick-dir-typing.webp",
+    "277-pick-dir-typed.webp",
+    "278-pick-dir-tween.webp",
+    "279-pick-dir-rest.webp"
+   ]
+  },
+  {
+   "id": "advanced",
+   "frames": [
+    "280-advanced-target.webp",
+    "281-advanced-blank.webp",
+    "282-advanced-typed.webp",
+    "283-advanced-tween.webp",
+    "284-advanced-rest.webp"
+   ]
+  },
+  {
+   "id": "coarse-fine",
+   "frames": [
+    "285-coarse-fine-target.webp",
+    "286-coarse-fine-blank.webp",
+    "287-coarse-fine-typing.webp",
+    "288-coarse-fine-typed.webp",
+    "289-coarse-fine-tween.webp",
+    "290-coarse-fine-rest.webp"
+   ]
+  },
+  {
+   "id": "nav-by-node",
+   "frames": [
+    "291-nav-by-node-target.webp",
+    "292-nav-by-node-blank.webp",
+    "293-nav-by-node-typing.webp",
+    "294-nav-by-node-typed.webp",
+    "295-nav-by-node-tween.webp",
+    "296-nav-by-node-rest.webp"
+   ]
+  },
+  {
+   "id": "nav-by-link",
+   "frames": [
+    "297-nav-by-link-target.webp",
+    "298-nav-by-link-blank.webp",
+    "299-nav-by-link-typing.webp",
+    "300-nav-by-link-typed.webp",
+    "301-nav-by-link-tween.webp",
+    "302-nav-by-link-rest.webp"
+   ]
+  },
+  {
+   "id": "zoom-pan",
+   "frames": [
+    "303-zoom-pan-target.webp",
+    "304-zoom-pan-blank.webp",
+    "305-zoom-pan-typing.webp",
+    "306-zoom-pan-typed.webp",
+    "307-zoom-pan-tween.webp",
+    "308-zoom-pan-rest.webp"
+   ]
+  },
+  {
+   "id": "styling",
+   "frames": [
+    "309-styling-target.webp",
+    "310-styling-blank.webp",
+    "311-styling-typing.webp",
+    "312-styling-typed.webp",
+    "313-styling-tween.webp",
+    "314-styling-rest.webp"
+   ]
+  },
+  {
+   "id": "shape",
+   "frames": [
+    "315-shape-target.webp",
+    "316-shape-blank.webp",
+    "317-shape-typed.webp",
+    "318-shape-tween.webp",
+    "319-shape-rest.webp"
+   ]
+  },
+  {
+   "id": "color",
+   "frames": [
+    "320-color-target.webp",
+    "321-color-blank.webp",
+    "322-color-typed.webp",
+    "323-color-tween.webp",
+    "324-color-rest.webp"
+   ]
+  },
+  {
+   "id": "line-style",
+   "frames": [
+    "325-line-style-target.webp",
+    "326-line-style-blank.webp",
+    "327-line-style-typing.webp",
+    "328-line-style-typed.webp",
+    "329-line-style-tween.webp",
+    "330-line-style-rest.webp"
+   ]
+  },
+  {
+   "id": "routing",
+   "frames": [
+    "331-routing-target.webp",
+    "332-routing-blank.webp",
+    "333-routing-typing.webp",
+    "334-routing-typed.webp",
+    "335-routing-tween.webp",
+    "336-routing-rest.webp"
+   ]
+  },
+  {
+   "id": "avoid-under",
+   "frames": [
+    "337-avoid-under-target.webp",
+    "338-avoid-under-blank.webp",
+    "339-avoid-under-typing.webp",
+    "340-avoid-under-typed.webp",
+    "341-avoid-under-tween.webp",
+    "342-avoid-under-rest.webp"
+   ]
+  },
+  {
+   "id": "minimize-crossings",
+   "frames": [
+    "343-minimize-crossings-target.webp",
+    "344-minimize-crossings-blank.webp",
+    "345-minimize-crossings-typing.webp",
+    "346-minimize-crossings-typed.webp",
+    "347-minimize-crossings-tween.webp",
+    "348-minimize-crossings-rest.webp"
+   ]
+  },
+  {
+   "id": "small-angle",
+   "frames": [
+    "349-small-angle-target.webp",
+    "350-small-angle-blank.webp",
+    "351-small-angle-typing.webp",
+    "352-small-angle-typed.webp",
+    "353-small-angle-tween.webp",
+    "354-small-angle-rest.webp"
+   ]
+  },
+  {
+   "id": "short-edges",
+   "frames": [
+    "355-short-edges-target.webp",
+    "356-short-edges-blank.webp",
+    "357-short-edges-typing.webp",
+    "358-short-edges-typed.webp",
+    "359-short-edges-tween.webp",
+    "360-short-edges-rest.webp"
+   ]
+  },
+  {
+   "id": "waypoints",
+   "frames": [
+    "361-waypoints-target.webp",
+    "362-waypoints-blank.webp",
+    "363-waypoints-typing.webp",
+    "364-waypoints-typed.webp",
+    "365-waypoints-tween.webp",
+    "366-waypoints-rest.webp"
+   ]
+  },
+  {
+   "id": "auto-layout",
+   "frames": [
+    "367-auto-layout-target.webp",
+    "368-auto-layout-blank.webp",
+    "369-auto-layout-typing.webp",
+    "370-auto-layout-typed.webp",
+    "371-auto-layout-tween.webp",
+    "372-auto-layout-rest.webp"
+   ]
+  },
+  {
+   "id": "save",
+   "frames": [
+    "373-save-target.webp",
+    "374-save-blank.webp",
+    "375-save-typing.webp",
+    "376-save-typed.webp",
+    "377-save-tween.webp",
+    "378-save-rest.webp"
+   ]
+  },
+  {
+   "id": "two-files",
+   "frames": [
+    "379-two-files-target.webp",
+    "380-two-files-blank.webp",
+    "381-two-files-typing.webp",
+    "382-two-files-typed.webp",
+    "383-two-files-tween.webp",
+    "384-two-files-rest.webp"
+   ]
+  },
+  {
+   "id": "like-css",
+   "frames": [
+    "385-like-css-target.webp",
+    "386-like-css-blank.webp",
+    "387-like-css-typing.webp",
+    "388-like-css-typed.webp",
+    "389-like-css-tween.webp",
+    "390-like-css-rest.webp"
+   ]
+  },
+  {
+   "id": "chrome-only",
+   "frames": [
+    "391-chrome-only-target.webp",
+    "392-chrome-only-blank.webp",
+    "393-chrome-only-typing.webp",
+    "394-chrome-only-typed.webp",
+    "395-chrome-only-tween.webp",
+    "396-chrome-only-rest.webp"
+   ]
+  },
+  {
+   "id": "for-now",
+   "frames": [
+    "397-for-now-target.webp",
+    "398-for-now-blank.webp",
+    "399-for-now-typed.webp",
+    "400-for-now-tween.webp",
+    "401-for-now-rest.webp"
+   ]
+  },
+  {
+   "id": "going",
+   "frames": [
+    "402-going-target.webp",
+    "403-going-blank.webp",
+    "404-going-typing.webp",
+    "405-going-typed.webp",
+    "406-going-tween.webp",
+    "407-going-rest.webp"
+   ]
+  },
+  {
+   "id": "other-bindings",
+   "frames": [
+    "408-other-bindings-target.webp",
+    "409-other-bindings-blank.webp",
+    "410-other-bindings-typing.webp",
+    "411-other-bindings-typed.webp",
+    "412-other-bindings-tween.webp",
+    "413-other-bindings-rest.webp"
+   ]
+  },
+  {
+   "id": "bind-ijkl",
+   "frames": [
+    "414-bind-ijkl-target.webp",
+    "415-bind-ijkl-blank.webp",
+    "416-bind-ijkl-typing.webp",
+    "417-bind-ijkl-typed.webp",
+    "418-bind-ijkl-tween.webp",
+    "419-bind-ijkl-rest.webp"
+   ]
+  },
+  {
+   "id": "bind-wasd",
+   "frames": [
+    "420-bind-wasd-target.webp",
+    "421-bind-wasd-blank.webp",
+    "422-bind-wasd-typing.webp",
+    "423-bind-wasd-typed.webp",
+    "424-bind-wasd-tween.webp",
+    "425-bind-wasd-rest.webp"
+   ]
+  },
+  {
+   "id": "bind-arrows",
+   "frames": [
+    "426-bind-arrows-target.webp",
+    "427-bind-arrows-blank.webp",
+    "428-bind-arrows-typing.webp",
+    "429-bind-arrows-typed.webp",
+    "430-bind-arrows-tween.webp",
+    "431-bind-arrows-rest.webp"
+   ]
+  },
+  {
+   "id": "bind-emacs",
+   "frames": [
+    "432-bind-emacs-target.webp",
+    "433-bind-emacs-blank.webp",
+    "434-bind-emacs-typing.webp",
+    "435-bind-emacs-typed.webp",
+    "436-bind-emacs-tween.webp",
+    "437-bind-emacs-rest.webp"
+   ]
+  },
+  {
+   "id": "bind-etc",
+   "frames": [
+    "438-bind-etc-target.webp",
+    "439-bind-etc-blank.webp",
+    "440-bind-etc-typed.webp",
+    "441-bind-etc-tween.webp",
+    "442-bind-etc-rest.webp"
+   ]
+  },
+  {
+   "id": "collab",
+   "frames": [
+    "443-collab-target.webp",
+    "444-collab-blank.webp",
+    "445-collab-typing.webp",
+    "446-collab-typed.webp",
+    "447-collab-tween.webp",
+    "448-collab-rest.webp"
+   ]
+  },
+  {
+   "id": "with-people",
+   "frames": [
+    "449-with-people-target.webp",
+    "450-with-people-blank.webp",
+    "451-with-people-typing.webp",
+    "452-with-people-typed.webp",
+    "453-with-people-tween.webp",
+    "454-with-people-rest.webp"
+   ]
+  },
+  {
+   "id": "with-agents",
+   "frames": [
+    "455-with-agents-target.webp",
+    "456-with-agents-blank.webp",
+    "457-with-agents-typing.webp",
+    "458-with-agents-typed.webp",
+    "459-with-agents-tween.webp",
+    "460-with-agents-rest.webp"
+   ]
+  },
+  {
+   "id": "better-layout",
+   "frames": [
+    "461-better-layout-target.webp",
+    "462-better-layout-blank.webp",
+    "463-better-layout-typing.webp",
+    "464-better-layout-typed.webp",
+    "465-better-layout-tween.webp",
+    "466-better-layout-rest.webp"
+   ]
+  },
+  {
+   "id": "alt-algorithms",
+   "frames": [
+    "467-alt-algorithms-target.webp",
+    "468-alt-algorithms-blank.webp",
+    "469-alt-algorithms-typing.webp",
+    "470-alt-algorithms-typed.webp",
+    "471-alt-algorithms-tween.webp",
+    "472-alt-algorithms-rest.webp"
+   ]
+  },
+  {
+   "id": "alt-nav",
+   "frames": [
+    "473-alt-nav-target.webp",
+    "474-alt-nav-blank.webp",
+    "475-alt-nav-typing.webp",
+    "476-alt-nav-typed.webp",
+    "477-alt-nav-tween.webp",
+    "478-alt-nav-rest.webp"
+   ]
+  },
+  {
+   "id": "temp-views",
+   "frames": [
+    "479-temp-views-target.webp",
+    "480-temp-views-blank.webp",
+    "481-temp-views-typing.webp",
+    "482-temp-views-typed.webp",
+    "483-temp-views-tween.webp",
+    "484-temp-views-rest.webp"
+   ]
+  },
+  {
+   "id": "pull-neighbors",
+   "frames": [
+    "485-pull-neighbors-target.webp",
+    "486-pull-neighbors-blank.webp",
+    "487-pull-neighbors-typing.webp",
+    "488-pull-neighbors-typed.webp",
+    "489-pull-neighbors-tween.webp",
+    "490-pull-neighbors-rest.webp"
+   ]
+  },
+  {
+   "id": "collapse-expand",
+   "frames": [
+    "491-collapse-expand-target.webp",
+    "492-collapse-expand-blank.webp",
+    "493-collapse-expand-typing.webp",
+    "494-collapse-expand-typed.webp",
+    "495-collapse-expand-tween.webp",
+    "496-collapse-expand-rest.webp"
+   ]
+  },
+  {
+   "id": "plugins",
+   "frames": [
+    "497-plugins-target.webp",
+    "498-plugins-blank.webp",
+    "499-plugins-typed.webp",
+    "500-plugins-tween.webp",
+    "501-plugins-rest.webp"
+   ]
+  },
+  {
+   "id": "presentations",
+   "frames": [
+    "502-presentations-target.webp",
+    "503-presentations-blank.webp",
+    "504-presentations-typing.webp",
+    "505-presentations-typed.webp",
+    "506-presentations-tween.webp",
+    "507-presentations-rest.webp"
+   ]
+  },
+  {
+   "id": "saved-views",
+   "frames": [
+    "508-saved-views-target.webp",
+    "509-saved-views-blank.webp",
+    "510-saved-views-typing.webp",
+    "511-saved-views-typed.webp",
+    "512-saved-views-tween.webp",
+    "513-saved-views-rest.webp"
+   ]
+  },
+  {
+   "id": "diff-viz",
+   "frames": [
+    "514-diff-viz-target.webp",
+    "515-diff-viz-blank.webp",
+    "516-diff-viz-typing.webp",
+    "517-diff-viz-typed.webp",
+    "518-diff-viz-tween.webp",
+    "519-diff-viz-rest.webp"
+   ]
+  },
+  {
+   "id": "git",
+   "frames": [
+    "520-git-target.webp",
+    "521-git-blank.webp",
+    "522-git-typing.webp",
+    "523-git-typed.webp",
+    "524-git-tween.webp",
+    "525-git-rest.webp"
+   ]
+  },
+  {
+   "id": "diagram-types",
+   "frames": [
+    "526-diagram-types-target.webp",
+    "527-diagram-types-blank.webp",
+    "528-diagram-types-typing.webp",
+    "529-diagram-types-typed.webp",
+    "530-diagram-types-tween.webp",
+    "531-diagram-types-rest.webp"
+   ]
+  },
+  {
+   "id": "todo-graphs",
+   "frames": [
+    "532-todo-graphs-target.webp",
+    "533-todo-graphs-blank.webp",
+    "534-todo-graphs-typing.webp",
+    "535-todo-graphs-typed.webp",
+    "536-todo-graphs-tween.webp",
+    "537-todo-graphs-rest.webp"
+   ]
+  },
+  {
+   "id": "architecture",
+   "frames": [
+    "538-architecture-target.webp",
+    "539-architecture-blank.webp",
+    "540-architecture-typing.webp",
+    "541-architecture-typed.webp",
+    "542-architecture-tween.webp",
+    "543-architecture-rest.webp"
+   ]
+  },
+  {
+   "id": "genealogy",
+   "frames": [
+    "544-genealogy-target.webp",
+    "545-genealogy-blank.webp",
+    "546-genealogy-typed.webp",
+    "547-genealogy-tween.webp",
+    "548-genealogy-rest.webp"
+   ]
+  },
+  {
+   "id": "types-etc",
+   "frames": [
+    "549-types-etc-target.webp",
+    "550-types-etc-blank.webp",
+    "551-types-etc-typed.webp",
+    "552-types-etc-tween.webp",
+    "553-types-etc-rest.webp"
+   ]
+  },
+  {
+   "id": "polish",
+   "frames": [
+    "554-polish-target.webp",
+    "555-polish-blank.webp",
+    "556-polish-typing.webp",
+    "557-polish-typed.webp",
+    "558-polish-tween.webp",
+    "559-polish-rest.webp"
+   ]
+  }
+ ],
+ "extras": [
+  {
+   "id": "overview-wip",
+   "file": "560-overview-wip-rest.webp"
+  },
+  {
+   "id": "overview-vim-curve",
+   "file": "561-overview-vim-curve-rest.webp"
+  }
+ ],
+ "frames": 562
+}

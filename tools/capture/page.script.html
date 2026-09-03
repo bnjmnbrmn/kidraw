@@ -1,0 +1,125 @@
+<script>
+(function () {
+  'use strict';
+
+  var acts = Array.prototype.slice.call(document.querySelectorAll('.act'));
+  var scrubbers = Array.prototype.slice.call(document.querySelectorAll('[data-scrub]'));
+  if (!acts.length || !window.requestAnimationFrame) return;
+
+  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var FRAME_MS = 130;
+
+  /** One act: its steps, and the run of frames belonging to each step. */
+  function collect(act) {
+    var frames = Array.prototype.slice.call(act.querySelectorAll('.frame'));
+    var runs = [];
+    frames.forEach(function (frame) {
+      var index = Number(frame.getAttribute('data-step'));
+      (runs[index] = runs[index] || []).push(frame);
+    });
+    return {
+      steps: Array.prototype.slice.call(act.querySelectorAll('.step')),
+      frames: frames,
+      runs: runs,
+      caption: act.querySelector('[data-stage-caption]'),
+      count: act.querySelector('[data-stage-count]'),
+      active: -1,
+      timer: null
+    };
+  }
+
+  var stages = acts.map(collect);
+
+  function paint(stage, frame) {
+    stage.frames.forEach(function (candidate) {
+      candidate.classList.toggle('is-on', candidate === frame);
+    });
+  }
+
+  /** Play a step's frames once, then hold the last one. */
+  function play(stage, index) {
+    var run = stage.runs[index];
+    if (!run || !run.length) return;
+    window.clearInterval(stage.timer);
+    if (still.matches || run.length === 1) {
+      paint(stage, run[run.length - 1]);
+      return;
+    }
+    var at = 0;
+    paint(stage, run[0]);
+    stage.timer = window.setInterval(function () {
+      at += 1;
+      if (at >= run.length) {
+        window.clearInterval(stage.timer);
+        stage.timer = null;
+        return;
+      }
+      paint(stage, run[at]);
+    }, FRAME_MS);
+  }
+
+  function show(stage, index) {
+    if (stage.active === index) return;
+    stage.active = index;
+    stage.steps.forEach(function (step, i) { step.classList.toggle('is-active', i === index); });
+    var step = stage.steps[index];
+    if (stage.caption && step) stage.caption.textContent = step.getAttribute('data-label') || '';
+    if (stage.count) stage.count.textContent = (index + 1) + ' / ' + stage.steps.length;
+    play(stage, index);
+  }
+
+  var scrubs = scrubbers.map(function (stage) {
+    var section = stage.closest('section');
+    return {
+      frames: Array.prototype.slice.call(stage.querySelectorAll('[data-scrub-frame]')),
+      steps: Array.prototype.slice.call(section.querySelectorAll('[data-scrub-step]')),
+      caption: stage.querySelector('[data-scrub-caption]'),
+      count: stage.querySelector('[data-scrub-count]'),
+      active: -1
+    };
+  });
+
+  function showScrub(scrub, index) {
+    if (scrub.active === index) return;
+    scrub.active = index;
+    scrub.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
+    var frame = scrub.frames[index];
+    var image = frame && frame.querySelector ? frame.querySelector('img') : null;
+    if (scrub.caption && image) scrub.caption.textContent = image.getAttribute('alt') || '';
+    if (scrub.count) scrub.count.textContent = (index + 1) + ' / ' + scrub.frames.length;
+  }
+
+  var wide = window.matchMedia('(min-width: 62rem)');
+  function activeIndex(elements, line) {
+    var index = 0;
+    elements.forEach(function (element, i) {
+      if (element.getBoundingClientRect().top <= line) index = i;
+    });
+    return index;
+  }
+
+  function update() {
+    var line = window.innerHeight * (wide.matches ? 0.55 : 0.8);
+    stages.forEach(function (stage) { show(stage, activeIndex(stage.steps, line)); });
+    scrubs.forEach(function (scrub) {
+      if (!scrub.steps.length) return;
+      showScrub(scrub, Math.min(activeIndex(scrub.steps, line), scrub.frames.length - 1));
+    });
+  }
+
+  var queued = false;
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    window.requestAnimationFrame(function () { queued = false; update(); });
+  }
+
+  document.documentElement.classList.add('js');
+  var outline = document.getElementById('outline');
+  if (outline) outline.open = false;
+
+  update();
+  window.addEventListener('scroll', schedule, {passive: true});
+  window.addEventListener('resize', schedule);
+})();
+</script>
