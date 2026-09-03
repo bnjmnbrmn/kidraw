@@ -1,5 +1,28 @@
 # KiDraw homepage brief
 
+## September 3, 2026 revision
+
+`site/index.org` — Benjamin's own outline of KiDraw — is now the spine of the
+page. The instruction that came with it: *as the user scrolls down, they should
+see a diagram be built*, with breaks in the sequence of diagram screenshots
+(closeups of the keymenu, for instance), and where the outline says `List`, the
+edges to those children carry numbers as labels.
+
+So the page is now five sticky stages, one per branch of the outline, each
+drawing that branch node by node as the reader scrolls, with the four capture
+sets breaking the sequence between them. The outline itself ships as markup at
+the bottom of the page; the diagram is drawn from it, and it is what a reader
+without JavaScript gets. The frame-sequence widgets from the August 31 version
+are gone — the diagram carries the motion now, and the captures are static.
+
+Two spellings were normalised from the org file for a public page: *Geneology*
+to *Genealogy*. *Discover-able* was left as written.
+
+Everything below is the August 31 record and still governs voice, audience, and
+the capture set.
+
+## August 31, 2026 design session
+
 This document preserves the homepage decisions made in the August 31, 2026
 design session. It is written for someone who has not used KiDraw, read its
 source, or worked with Angular.

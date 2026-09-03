@@ -2,6 +2,7 @@
 <title>KiDraw — Connect your thoughts, at the speed you have them</title>
 <meta name="author" content="Benjamin Berman">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap">
 <style>
   :root {
@@ -21,10 +22,14 @@
     --grid: rgba(125, 153, 177, .055);
     --grid-strong: rgba(125, 153, 177, .1);
     --radius: 14px;
-    --measure: 44rem;
+    --measure: 42rem;
+    --stage-h: min(50vh, 400px);
+    --stage-top: 0px;
   }
 
   html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
   body {
     background:
       linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
@@ -37,6 +42,7 @@
     font-size: 17px;
     line-height: 1.65;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   a { color: var(--cyan); text-decoration-thickness: 1px; text-underline-offset: 3px; }
@@ -44,10 +50,20 @@
   :focus-visible { border-radius: 4px; outline: 2px solid var(--cyan); outline-offset: 4px; }
   p { margin: 0; }
   img { height: auto; }
+  h1, h2, h3 { color: var(--ink); font-family: "JetBrains Mono", ui-monospace, monospace; }
 
-  .wrap { margin: 0 auto; max-width: 76rem; padding-inline: clamp(1.15rem, 4vw, 2.5rem); }
+  .wrap { margin: 0 auto; max-width: 78rem; padding-inline: clamp(1.15rem, 4vw, 2.5rem); }
   .measure { max-width: var(--measure); }
   .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  code {
+    background: color-mix(in srgb, var(--amber) 12%, transparent);
+    border-radius: 4px;
+    color: var(--amber);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: .86em;
+    padding: .1em .34em;
+  }
+
   .skip-link {
     background: var(--amber);
     color: #171506;
@@ -57,10 +73,11 @@
     position: fixed;
     top: 1rem;
     transform: translateY(-5rem);
-    z-index: 20;
+    z-index: 40;
   }
   .skip-link:focus { transform: translateY(0); }
 
+  /* ---------- masthead ---------- */
   .masthead {
     align-items: center;
     display: flex;
@@ -88,493 +105,1312 @@
   }
   .nav-link:hover { background: color-mix(in srgb, var(--amber) 10%, transparent); color: #fff173; }
 
-  .hero {
-    display: grid;
-    gap: clamp(2.5rem, 6vw, 5rem);
-    padding-block: clamp(4rem, 10vw, 8rem) clamp(4rem, 8vw, 6rem);
-  }
+  /* ---------- hero ---------- */
+  .hero { padding-block: clamp(3rem, 9vw, 6.5rem) clamp(2.5rem, 6vw, 4.5rem); }
   .eyebrow {
     color: var(--ink-faint);
     font: 600 .69rem/1.4 "JetBrains Mono", monospace;
     letter-spacing: .16em;
     text-transform: uppercase;
   }
-  h1, h2, h3 { color: var(--ink); font-family: "JetBrains Mono", ui-monospace, monospace; }
   h1 {
-    font-size: clamp(2.55rem, 6vw, 4.75rem);
+    font-size: clamp(2.4rem, 5.6vw, 4.4rem);
     letter-spacing: -.065em;
-    line-height: .98;
+    line-height: 1;
     margin: 1.2rem 0 1.5rem;
-    max-width: 14.5ch;
+    max-width: 15ch;
     text-wrap: balance;
   }
   h1 .accent { color: var(--cyan); }
   .lede {
     color: var(--ink-muted);
-    font-size: clamp(1.08rem, 2vw, 1.3rem);
+    font-size: clamp(1.06rem, 1.8vw, 1.24rem);
     line-height: 1.55;
-    max-width: 39rem;
+    max-width: 40rem;
   }
+  .lede + .lede { margin-top: 1rem; }
   .lede strong { color: var(--ink); font-weight: 600; }
-  .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 1.8rem; }
+  .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 2rem; }
   .button {
-    align-items: center;
-    border: 1px solid transparent;
-    border-radius: 9px;
-    display: inline-flex;
-    font: 500 .88rem/1 "JetBrains Mono", monospace;
-    justify-content: center;
-    min-height: 2.8rem;
-    padding: .8rem 1.15rem;
+    border-radius: 999px;
+    display: inline-block;
+    font: 600 .92rem/1 "JetBrains Mono", monospace;
+    padding: .9rem 1.35rem;
     text-decoration: none;
+    white-space: nowrap;
   }
-  .button-primary { background: var(--amber); color: #171506; }
-  .button-primary:hover { color: #171506; filter: brightness(1.08); }
-  .button-quiet { border-color: var(--line); color: var(--ink); }
-  .button-quiet:hover { background: var(--surface); color: var(--ink); }
-  .alpha-note { color: var(--ink-faint); font-size: .84rem; }
-  .byline { color: var(--ink-faint); font-size: .88rem; margin-top: 1.4rem; }
-  .byline a { color: var(--ink-muted); }
+  .button-primary { background: var(--amber); border: 1px solid var(--amber); color: #16150a; }
+  .button-primary:hover { background: #fff173; color: #16150a; }
+  .button-ghost { border: 1px solid var(--line); color: var(--ink); }
+  .button-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+  .byline { color: var(--ink-faint); font-size: .9rem; margin-top: 1.6rem; }
 
-  article > section { border-top: 1px solid var(--line-soft); padding-block: clamp(4.5rem, 9vw, 7.5rem); }
-  .section-copy { display: flex; flex-direction: column; gap: 1.2rem; }
-  h2 {
-    font-size: clamp(1.7rem, 4vw, 2.65rem);
-    font-weight: 600;
-    letter-spacing: -.045em;
-    line-height: 1.14;
-    margin: .8rem 0 .5rem;
-    max-width: 18ch;
+  /* ---------- act / scrollytelling ---------- */
+  .act { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 8vw, 6rem); }
+  .act-inner { display: grid; gap: 0 clamp(1.5rem, 4vw, 3.5rem); grid-template-columns: minmax(0, 1fr); }
+  .act-head { grid-column: 1 / -1; margin-bottom: 1.5rem; }
+  .act-head h2 {
+    font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+    letter-spacing: -.05em;
+    line-height: 1.08;
+    margin: .5rem 0 0;
     text-wrap: balance;
   }
-  h3 { font-size: 1rem; letter-spacing: -.025em; margin: 0; }
-  .prose { color: var(--ink-muted); max-width: var(--measure); }
-  .prose + .prose { margin-top: 1rem; }
-  .prose strong { color: var(--ink); font-weight: 600; }
-  .aside {
-    border-left: 2px solid var(--cyan-dim);
-    color: var(--ink-muted);
-    font-size: .94rem;
-    margin-block: 1.7rem;
-    max-width: 40rem;
-    padding: .25rem 0 .25rem 1rem;
-  }
+  .act-head .act-lede { color: var(--ink-muted); margin-top: .9rem; max-width: var(--measure); }
 
-  .capture {
-    background: var(--ground-raised);
+  .act-stage {
+    background: var(--ground);
+    border-bottom: 1px solid var(--line-soft);
+    margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem));
+    padding: .5rem clamp(1.15rem, 4vw, 2.5rem) .6rem;
+    position: sticky;
+    top: var(--stage-top);
+    z-index: 3;
+  }
+  .stage { margin: 0; }
+  .stage-frame {
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 28px 28px,
+      #05070a;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    box-shadow: 0 28px 70px rgba(0, 0, 0, .4);
-    margin: 2.4rem 0 0;
+    height: var(--stage-h);
+    overflow: hidden;
+    position: relative;
+  }
+  .stage-frame svg { display: block; height: 100%; width: 100%; }
+  .stage-caption {
+    align-items: baseline;
+    color: var(--ink-faint);
+    display: flex;
+    font-size: .82rem;
+    gap: 1rem;
+    justify-content: space-between;
+    line-height: 1.4;
+    min-height: 2.5em;
+    padding-top: .55rem;
+  }
+  .stage-caption .mono { color: var(--ink-faint); font-size: .75rem; white-space: nowrap; }
+
+  .act-steps { padding-top: 1.5rem; }
+  .step {
+    border-left: 1px solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: var(--measure);
+    min-height: 46vh;
+    padding: 1.5rem 0 1.5rem 1.4rem;
+    transition: border-color .4s ease, opacity .4s ease;
+  }
+  .step h3 {
+    font-size: clamp(1.12rem, 2vw, 1.34rem);
+    letter-spacing: -.035em;
+    line-height: 1.25;
+    margin: 0 0 .8rem;
+  }
+  .step p { color: var(--ink-muted); }
+  .step p + p { margin-top: .85rem; }
+  .step strong { color: var(--ink); font-weight: 600; }
+  .js .step { opacity: .42; }
+  .js .step.is-active { border-left-color: var(--cyan); opacity: 1; }
+
+  @media (min-width: 62rem) {
+    .act-inner { grid-template-columns: minmax(0, 30rem) minmax(0, 1fr); }
+    .act-stage {
+      align-self: start;
+      background: none;
+      border-bottom: 0;
+      grid-column: 2;
+      grid-row: 2;
+      margin-inline: 0;
+      padding: 0;
+      top: max(2.5rem, calc(50vh - var(--stage-h) / 2 - 2rem));
+    }
+    .act-steps { grid-column: 1; grid-row: 2; padding-top: 0; }
+    .step { min-height: 74vh; }
+  }
+  @media (min-width: 62rem) { :root { --stage-h: min(66vh, 620px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .js .step { opacity: 1; }
+  }
+
+  /* ---------- graph ---------- */
+  .g-node rect {
+    fill: #101419;
+    stroke: #cfd8e2;
+    stroke-width: 1.4;
+  }
+  .g-node.k-root rect { fill: #0f1a1d; stroke: var(--cyan); stroke-width: 2; }
+  .g-node.k-q rect { fill: #131a16; stroke: var(--green); }
+  .g-node.k-quote rect { fill: #1a1707; stroke: var(--amber); }
+  .g-node text { fill: #e8eef5; font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif; }
+  .g-node.k-root text { fill: #ffffff; font-weight: 700; }
+  .g-node text .tk-code { fill: var(--amber); font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .g-node text .tk-bold { fill: #ffffff; font-weight: 700; }
+  .g-edge path { fill: none; stroke: var(--cyan); stroke-width: 1.6; }
+  .g-edge polygon { fill: var(--amber); }
+  .g-edge.is-link path { stroke: #b9a0f2; stroke-dasharray: 7 6; stroke-width: 1.5; }
+  .g-edge.is-link polygon { fill: #b9a0f2; }
+  .g-label circle { fill: #05070a; stroke: var(--cyan); stroke-width: 1.3; }
+  .g-label text { fill: var(--cyan); font-family: "JetBrains Mono", ui-monospace, monospace; font-weight: 600; }
+
+  .js .g-node, .js .g-edge, .js .g-label { opacity: 0; }
+  .js .g-node { transform: translateY(9px); transition: opacity .5s ease, transform .5s ease; }
+  .js .g-edge, .js .g-label { transition: opacity .5s ease .12s; }
+  .js .g-node.is-on, .js .g-edge.is-on, .js .g-label.is-on { opacity: 1; }
+  .js .g-node.is-on { transform: translateY(0); }
+  .js .g-node.is-dim { opacity: .34; }
+  .js .g-edge.is-dim, .js .g-label.is-dim { opacity: .3; }
+  .js .g-edge path { stroke-dashoffset: var(--len, 0); stroke-dasharray: var(--len, 0); transition: stroke-dashoffset .75s ease .1s; }
+  .js .g-edge.is-on path { stroke-dashoffset: 0; }
+  .js .g-edge.is-link path { stroke-dasharray: 7 6; }
+  .js .g-edge polygon { opacity: 0; transition: opacity .3s ease .55s; }
+  .js .g-edge.is-on polygon { opacity: 1; }
+  .cam { transition: transform .95s cubic-bezier(.4, 0, .18, 1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cam { transition: none; }
+    .js .g-node, .js .g-edge, .js .g-label { transition: none; transform: none; }
+    .js .g-edge path { transition: none; }
+    .js .g-edge polygon { transition: none; }
+  }
+
+  /* ---------- capture breaks ---------- */
+  .brk { padding-block: clamp(3rem, 7vw, 5.5rem); }
+  .brk-head { border-top: 1px solid var(--line-soft); padding-top: 2rem; }
+  .brk-head h2 {
+    font-size: clamp(1.55rem, 3vw, 2.15rem);
+    letter-spacing: -.05em;
+    line-height: 1.12;
+    margin: .6rem 0 0;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+  .brk-head p { color: var(--ink-muted); margin-top: 1rem; max-width: var(--measure); }
+  .shots { display: grid; gap: clamp(1rem, 2.5vw, 1.6rem); margin-top: 2.2rem; }
+  .shots.two { grid-template-columns: minmax(0, 1fr); }
+  .shots.three { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 48rem) {
+    .shots.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .shots.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  .shot {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin: 0;
     overflow: hidden;
   }
-  .capture img { display: block; width: 100%; }
-  .capture figcaption {
-    align-items: flex-start;
+  .shot img { display: block; width: 100%; }
+  .shot figcaption {
     border-top: 1px solid var(--line-soft);
     color: var(--ink-muted);
-    display: flex;
     font-size: .85rem;
-    gap: .8rem;
-    justify-content: space-between;
+    line-height: 1.45;
     padding: .8rem 1rem;
   }
-  .frame-number { color: var(--ink-faint); font-family: "JetBrains Mono", monospace; white-space: nowrap; }
-  .sequence-frame[hidden] { display: none; }
-  .sequence-controls {
-    align-items: center;
-    background: var(--surface);
-    border-top: 1px solid var(--line-soft);
-    display: flex;
-    flex-wrap: wrap;
-    gap: .55rem;
-    padding: .65rem .8rem;
-  }
-  .frame-button {
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    color: var(--ink-muted);
-    cursor: pointer;
-    font: 500 .72rem/1 "JetBrains Mono", monospace;
-    min-height: 2rem;
-    padding: .45rem .72rem;
-  }
-  .frame-button[aria-pressed="true"] { background: var(--cyan); border-color: var(--cyan); color: #071013; }
-  .sequence-status { color: var(--ink-faint); font-size: .75rem; margin-left: auto; }
-
-  .pair {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-top: 2.4rem;
-  }
-  .pair .capture { margin: 0; }
-  .pair .capture figcaption { display: block; }
-  .pair-label { color: var(--cyan); display: block; font: 500 .71rem/1.4 "JetBrains Mono", monospace; margin-bottom: .25rem; }
-
-  .principles {
-    border-bottom: 1px solid var(--line-soft);
-    border-top: 1px solid var(--line-soft);
-    margin-top: 2rem;
-  }
-  .principle {
-    display: grid;
-    gap: .5rem 1.5rem;
-    grid-template-columns: minmax(9rem, .8fr) minmax(0, 2fr);
-    padding-block: 1.25rem;
-  }
-  .principle + .principle { border-top: 1px solid var(--line-soft); }
-  .principle p { color: var(--ink-muted); font-size: .94rem; }
-  .key {
-    background: var(--surface-raised);
-    border: 1px solid var(--line);
-    border-radius: 5px 5px 5px 0;
+  .shot-label {
     color: var(--cyan);
-    display: inline-block;
-    font: 500 .74rem/1 "JetBrains Mono", monospace;
-    margin-right: .25rem;
-    padding: .25rem .4rem;
+    display: block;
+    font: 600 .68rem/1.4 "JetBrains Mono", monospace;
+    letter-spacing: .12em;
+    text-transform: uppercase;
   }
+  .aside { color: var(--ink-faint); font-size: .93rem; margin-top: 1.6rem; max-width: var(--measure); }
 
-  .comparison {
-    background: linear-gradient(135deg, rgba(71, 217, 232, .07), transparent 60%), var(--surface);
+  /* ---------- close ---------- */
+  .close { padding-block: clamp(3rem, 8vw, 6rem); }
+  .close-card {
+    background: linear-gradient(160deg, #10161d, #0a0e13);
     border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin-top: 2rem;
-    max-width: var(--measure);
-    padding: clamp(1.2rem, 4vw, 2rem);
+    border-radius: 20px;
+    padding: clamp(1.6rem, 4vw, 3rem);
   }
-  .comparison p { color: var(--ink-muted); }
-  .comparison p + p { margin-top: 1rem; }
-
-  .roadmap {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-top: 2.2rem;
+  .close-card h2 {
+    font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+    letter-spacing: -.05em;
+    line-height: 1.12;
+    margin: .6rem 0 1rem;
+    max-width: 24ch;
+    text-wrap: balance;
   }
-  .roadmap-item { border-top: 2px solid var(--line); padding-top: 1rem; }
-  .roadmap-item:first-child { border-color: var(--green); }
-  .roadmap-item:nth-child(2) { border-color: var(--cyan); }
-  .roadmap-item:nth-child(3) { border-color: var(--amber); }
-  .roadmap-item .phase { color: var(--ink-faint); font: 600 .68rem/1 "JetBrains Mono", monospace; letter-spacing: .13em; text-transform: uppercase; }
-  .roadmap-item h3 { margin: .55rem 0 .65rem; }
-  .roadmap-item p { color: var(--ink-muted); font-size: .9rem; }
+  .close-card p { color: var(--ink-muted); max-width: var(--measure); }
+  .close-card p + p { margin-top: .9rem; }
+  .close-actions { display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 1.8rem; }
 
-  .experiment {
-    background:
-      radial-gradient(circle at 92% 15%, rgba(71, 217, 232, .12), transparent 32%),
-      var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: clamp(1.5rem, 5vw, 3.5rem);
+  /* ---------- outline appendix ---------- */
+  .outline {
+    border-top: 1px solid var(--line-soft);
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    padding-top: 1.6rem;
   }
-  .experiment h2 { max-width: 21ch; }
-  .experiment .prose { color: #bac5d1; }
+  .outline summary {
+    color: var(--ink);
+    cursor: pointer;
+    font: 600 .95rem/1.4 "JetBrains Mono", monospace;
+    letter-spacing: -.02em;
+  }
+  .outline summary::marker { color: var(--cyan); }
+  .outline .outline-note { color: var(--ink-faint); font-size: .9rem; margin: .8rem 0 1.4rem; max-width: var(--measure); }
+  .outline ul { list-style: none; margin: 0; padding-left: 0; }
+  .outline ul ul { border-left: 1px solid var(--line-soft); margin-left: .3rem; padding-left: 1.05rem; }
+  .outline li { color: var(--ink-muted); font-size: .95rem; margin: .3rem 0; }
+  .outline > ul > li > span { color: var(--ink); font-family: "JetBrains Mono", monospace; font-weight: 700; }
+  .outline li[data-kind="q"] > span, .outline li[data-kind="quote"] > span { color: var(--ink); font-weight: 600; }
+  .outline li[data-num] > span::before {
+    color: var(--cyan);
+    content: attr(data-num) " ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: .8em;
+  }
+  .outline li[data-link] > span::after {
+    color: #b9a0f2;
+    content: " ↗ " attr(data-link);
+    font-family: "JetBrains Mono", monospace;
+    font-size: .75em;
+  }
 
-  .closing { align-items: flex-start; display: flex; flex-wrap: wrap; gap: 2rem; justify-content: space-between; }
-  .closing h2 { margin-top: 0; }
-  .closing-actions { display: flex; flex-direction: column; gap: .65rem; }
+  /* ---------- footer ---------- */
   footer {
     border-top: 1px solid var(--line-soft);
     color: var(--ink-faint);
-    display: flex;
-    flex-wrap: wrap;
-    font-size: .84rem;
-    gap: .5rem 1.4rem;
+    font-size: .9rem;
     padding-block: 2.5rem 4rem;
   }
-  footer a { color: var(--ink-muted); }
-
-  @media (min-width: 950px) {
-    .hero { grid-template-columns: minmax(0, 1.15fr) minmax(28rem, .85fr); align-items: center; gap: 3.5rem; }
-    .hero .capture { margin-top: 0; }
-    .wide-section { display: grid; gap: 4rem; grid-template-columns: minmax(18rem, .7fr) minmax(0, 1.3fr); align-items: start; }
-    .wide-section > .capture, .wide-section > .pair { margin-top: 0; }
-  }
-  @media (max-width: 720px) {
-    body { font-size: 16px; }
-    .pair, .roadmap { grid-template-columns: 1fr; }
-    .principle { grid-template-columns: 1fr; }
-    .capture figcaption { display: block; }
-    .frame-number { display: block; margin-top: .25rem; }
-    .sequence-status { margin-left: 0; width: 100%; }
-  }
-  @media (max-width: 420px) {
-    .masthead { align-items: flex-start; }
-    .nav-link { font-size: .68rem; }
-    .button { width: 100%; }
-    .hero-actions { align-items: stretch; flex-direction: column; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-  }
+  footer .foot-row { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; }
 </style>
 <!-- site-head:end -->
+<a class="skip-link" href="#main">Skip to content</a>
 
-<a class="skip-link" href="#main">Skip to the article</a>
-<div class="wrap">
-  <nav class="masthead" aria-label="Primary">
-    <a class="wordmark" href="#main" aria-label="KiDraw home">Ki<span>Draw</span></a>
-    <a class="nav-link" href="https://alpha.kidraw.net">Open the alpha →</a>
-  </nav>
+<header class="wrap masthead">
+  <a class="wordmark" href="/">Ki<span>Draw</span></a>
+  <a class="nav-link" href="https://alpha.kidraw.net">Open the alpha →</a>
+</header>
 
-  <main id="main">
-    <article>
-      <header class="hero">
-        <div>
-          <p class="eyebrow">A keyboard-first graph editor</p>
-          <h1>Connect your thoughts, <span class="accent">at the speed you have them.</span></h1>
-          <p class="lede">KiDraw turns ideas and their relationships into a picture <strong>without making you stop to operate the picture.</strong> Create, connect, navigate, and arrange a graph from the keyboard while the interface shows what every key will do.</p>
-          <div class="hero-actions">
-            <a class="button button-primary" href="https://alpha.kidraw.net">Try the live alpha →</a>
-            <a class="button button-quiet" href="#why">Why I built it</a>
-            <span class="alpha-note">Desktop browser · physical keyboard · no account</span>
-          </div>
-          <p class="byline">By <a href="https://bnjmnbrmn.com">Benjamin Berman</a> · <a href="https://github.com/bnjmnbrmn">GitHub</a></p>
-        </div>
+<main id="main">
+  <section class="wrap hero">
+    <p class="eyebrow">A keyboard-first graph editor</p>
+    <h1>Connect your thoughts, <span class="accent">at the speed you have them.</span></h1>
+    <p class="lede">KiDraw draws graphs: <strong>boxes for ideas, arrows for how they relate</strong>. You build them without leaving the keyboard, and an on-screen keymenu lights only the keys that mean something right now.</p>
+    <p class="lede">This page is one of those graphs. Scroll, and it gets drawn.</p>
+    <div class="hero-actions">
+      <a class="button button-primary" href="https://alpha.kidraw.net">Try the live alpha →</a>
+      <a class="button button-ghost" href="#what">See the map</a>
+    </div>
+    <p class="byline">By <a href="https://bnjmnbrmn.com">Benjamin Berman</a> · alpha software · <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a></p>
+  </section>
 
-        <figure class="capture sequence" data-sequence data-autoplay="true" data-delay="2400">
-          <div class="sequence-stage">
-            <img class="sequence-frame" data-frame data-caption="Start with one thought and its first connection." src="assets/captures/grow-0.png" alt="A KiDraw graph with two connected nodes">
-            <img class="sequence-frame" data-frame data-caption="New thoughts land and the graph arranges itself." src="assets/captures/grow-1.png" alt="The same KiDraw graph grown to four nodes" hidden>
-            <img class="sequence-frame" data-frame data-caption="Seven nodes, including an idea with two parents—structure an outline cannot show." src="assets/captures/grow-2.png" alt="The graph grown to seven nodes with a multi-parent connection" hidden>
+  <section class="act" id="what" aria-labelledby="what-title">
+    <div class="wrap act-inner">
+      <div class="act-head">
+        <p class="eyebrow">Question one</p>
+        <h2 id="what-title">What is it?</h2>
+        <p class="act-lede">The diagram on the right is the answer, drawn one branch at a time as you read.</p>
+      </div>
+      <div class="act-stage">
+        <figure class="stage" data-stage="what">
+          <div class="stage-frame">
+            <svg data-graph role="img" aria-label="A graph growing from a root box labelled KiDraw into the branch that answers “What is it?”. The same content is written out in the outline at the end of this page."></svg>
           </div>
-          <figcaption><span data-sequence-caption>Start with one thought and its first connection.</span><span class="frame-number" data-sequence-number>1 / 3</span></figcaption>
-          <div class="sequence-controls" aria-label="Graph growth frames">
-            <button class="frame-button" type="button" data-frame-button aria-pressed="true">2 nodes</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">4 nodes</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">7 nodes</button>
-            <span class="sequence-status" data-sequence-status>Playing</span>
-          </div>
+          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
-      </header>
+      </div>
+      <div class="act-steps">
+        <article class="step" data-reveal="kidraw tagline what" data-caption="A root, a promise, and the first question.">
+          <h3>One root, one promise, four questions</h3>
+          <p>Every KiDraw graph starts as a single box. This one starts with the sentence at the top of the page and the four questions I get asked whenever I show the tool to somebody.</p>
+        </article>
+        <article class="step" data-reveal="what+" data-caption="“What is it?” and its five answers.">
+          <h3>Five answers, all of them short</h3>
+          <p>It is a diagram editor. You drive it from the keyboard. The shortcuts are meant to be discovered rather than memorised. It is an experiment, and it is unfinished.</p>
+          <p>Everything past this point is detail hanging off one of those five.</p>
+        </article>
+        <article class="step" data-reveal="diagram-editor*" data-caption="The category, and the neighbours.">
+          <h3>Technically, a graph editor</h3>
+          <p>A graph is just <strong>nodes</strong> — boxes, circles — and <strong>edges</strong>: lines, sometimes with arrowheads. That is the entire data model, and it is the same one underneath Miro, Visio, Draw.io, Excalidraw and Graphviz.</p>
+          <p>KiDraw belongs in that list. The difference is not what it draws; it is what your hands are doing while you draw. Those tools expect a mouse for creating, connecting and arranging, and most of them are very good at that.</p>
+        </article>
+        <article class="step" data-reveal="keyboard-first*" data-caption="Keyboard-first, and where the bindings came from.">
+          <h3>Keyboard-first, starting from vi</h3>
+          <p>The first bindings are borrowed from vi, because that is the keyboard language I already think in. <code>h</code> <code>j</code> <code>k</code> <code>l</code> move, and holding a key opens a second layer instead of a dialog.</p>
+          <p>That is a starting point, not a requirement. You should not have to be a programmer to use this, and other binding styles are on the list further down.</p>
+        </article>
+        <article class="step" data-focus="discoverable experiment wip" data-caption="Three claims that still need evidence.">
+          <h3>Discoverable, experimental, unfinished</h3>
+          <p>vi's real problem is that the manual lives in your head. KiDraw draws the manual on the screen instead: a keyboard that lights only the keys that mean something right now.</p>
+          <p>Whether that actually works is the experiment. The <a href="https://alpha.kidraw.net">alpha</a> is where you can judge it, and the next three screenshots are what it looks like.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
-      <section id="why">
-        <div class="section-copy measure">
-          <p class="eyebrow">Why another graph editor?</p>
-          <h2>I wanted the graph to keep up.</h2>
-          <p class="prose">Most visual tools make me alternate between two jobs: having the thought, then reaching for the mouse to manufacture the box, drag a connector, and repair the layout. Each step is small. Together they are enough friction to lose the next thought.</p>
-          <p class="prose">KiDraw begins from a different assumption: <strong>making the structure should feel more like editing text.</strong> The canvas has a crosshair. The keyboard is the primary control surface. The graph responds while your hands remain where the words are coming from.</p>
-        </div>
-        <div class="principles measure" aria-label="KiDraw's three design principles">
-          <div class="principle">
-            <h3>Stay on the keyboard</h3>
-            <p>Add ideas, connect them, edit their words, move around, and change layout without a trip to the pointer.</p>
-          </div>
-          <div class="principle">
-            <h3>The menu is the documentation</h3>
-            <p>The app draws the available keys, then redraws them as the question changes. You can learn by looking instead of memorizing.</p>
-          </div>
-          <div class="principle">
-            <h3>Automatic or exact</h3>
-            <p>Let KiDraw arrange the whole graph, or move one item yourself and keep its links legible. The machine helps without taking authorship.</p>
-          </div>
-        </div>
-      </section>
+  <section class="wrap brk" aria-labelledby="menu-title">
+    <div class="brk-head">
+      <p class="eyebrow">A break from the diagram · the keymenu</p>
+      <h2 id="menu-title">The menu is the documentation</h2>
+      <p>KiDraw draws a keyboard along the bottom of the screen. At rest it lights only the commands that do something in the current mode. Hold one down and the same keyboard becomes that command's next choices, while the canvas previews where the result would land.</p>
+    </div>
+    <div class="shots three">
+      <figure class="shot">
+        <img src="assets/captures/menu-root.png" alt="The KiDraw keymenu in normal mode, with available commands lit and unavailable keys dimmed" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">At rest</span>Normal mode. Add, Style, Undo, Layout, Search — dimmed keys do nothing, so there is nothing to guess at.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/menu-held.png" alt="The keymenu while the Add key is held: the keyboard shows direction choices and dashed ghost nodes appear on the canvas" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Holding Add</span>The keyboard turns into Add's choices and dashed landing spots appear. The breadcrumb reads <span class="mono">add &gt; choose target</span>.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/menu-held-drag.png" alt="The keymenu while Select and Drag is held, showing a different set of lit keys" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Holding Select+Drag</span>Same keyboard, different question. Nothing was memorised to get here.</figcaption>
+      </figure>
+    </div>
+    <div class="shots two" style="margin-top: clamp(1rem, 2.5vw, 1.6rem)">
+      <figure class="shot">
+        <img src="assets/captures/fix-release-zoom.png" alt="Close view of the Add key card showing the release mark in the bottom-left corner" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Detail</span>Two independent marks on a key card: the lift in the bottom-left means “fires when you let go”, the chamfer in the bottom-right means “has more choices”.</figcaption>
+      </figure>
+      <figure class="shot" style="align-content: center; padding: clamp(1rem, 3vw, 1.6rem)">
+        <figcaption style="border: 0; padding: 0"><span class="shot-label">About these captures</span>These are real frames from the running app, not mockups. In several of them the crosshair sits over the word “Docs”, and the drag frames are clipped at the top — capture problems I have not re-shot yet. The full contact sheet, flaws listed, is on the <a href="review/">capture review page</a>.</figcaption>
+      </figure>
+    </div>
+  </section>
 
-      <section>
-        <div class="wide-section">
-          <div class="section-copy">
-            <p class="eyebrow">The menu is the documentation</p>
-            <h2>Hold a key and the interface answers.</h2>
-            <p class="prose">The keymenu is laid out like the physical keyboard. At rest, only commands that work now are lit. Hold <span class="key">a</span> for Add and the keyboard becomes Add's possible next steps. The canvas answers at the same time with dashed landing places.</p>
-            <p class="prose">The breadcrumb says where you are. The card shapes carry a small grammar of their own: a cut corner means there are more choices; the lift in the opposite corner means the action happens when you release the key.</p>
-            <p class="aside">This is discoverability without a toolbar: the interface can remain dense because it only shows the vocabulary for the current moment.</p>
+  <section class="act" id="point" aria-labelledby="point-title">
+    <div class="wrap act-inner">
+      <div class="act-head">
+        <p class="eyebrow">Question two</p>
+        <h2 id="point-title">What's the point?</h2>
+        <p class="act-lede">Three reasons, and one of them points back at a box you have already seen.</p>
+      </div>
+      <div class="act-stage">
+        <figure class="stage" data-stage="point">
+          <div class="stage-frame">
+            <svg data-graph role="img" aria-label="The graph continues into the branch that answers “What's the point?”, including a dashed link back to the Keyboard-first box."></svg>
           </div>
-          <div class="pair">
-            <figure class="capture">
-              <img src="assets/captures/menu-root.png" alt="KiDraw's full on-screen keyboard in normal mode">
-              <figcaption><span class="pair-label">At rest</span>Only the commands available in normal mode are lit.</figcaption>
-            </figure>
-            <figure class="capture">
-              <img src="assets/captures/menu-held.png" alt="KiDraw's Add menu and possible landing places while the A key is held">
-              <figcaption><span class="pair-label">Hold Add</span>The keyboard shows targets while the canvas previews locations.</figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div class="section-copy measure">
-          <p class="eyebrow">Manual and automatic</p>
-          <h2>Move one thought. Let its links find their way.</h2>
-          <p class="prose">A graph is useful because the links stay distinct enough to read. KiDraw's routing work tries to avoid crossings and, where an intersection cannot be avoided, to avoid the confusing shallow angles that make two links look like one.</p>
-          <p class="prose">Here, I move “Docs” with the keyboard. Its incoming and outgoing links follow it. Then a full-graph layout can restore a regular tree in one command. <strong>I am still iterating on the routing design;</strong> this sequence shows the intended balance, not a claim that every graph is solved.</p>
-        </div>
-
-        <figure class="capture sequence" data-sequence data-autoplay="true" data-delay="1900">
-          <div class="sequence-stage">
-            <img class="sequence-frame" data-frame data-caption="Before: Select+Drag is active over Docs." src="assets/captures/reroute-0.png" alt="Docs selected before keyboard dragging">
-            <img class="sequence-frame" data-frame data-caption="One movement step: both attached links update." src="assets/captures/reroute-1.png" alt="Docs after one keyboard movement step" hidden>
-            <img class="sequence-frame" data-frame data-caption="A second step opens more room around the node." src="assets/captures/reroute-2.png" alt="Docs after two keyboard movement steps" hidden>
-            <img class="sequence-frame" data-frame data-caption="Release: the links settle into distinct routes." src="assets/captures/reroute-final.png" alt="Docs after keyboard dragging is released" hidden>
-            <img class="sequence-frame" data-frame data-caption="Or apply automatic layout to the whole graph." src="assets/captures/reroute-relaid.png" alt="The graph after automatic tree layout" hidden>
-          </div>
-          <figcaption><span data-sequence-caption>Before: Select+Drag is active over Docs.</span><span class="frame-number" data-sequence-number>1 / 5</span></figcaption>
-          <div class="sequence-controls" aria-label="Node movement and layout frames">
-            <button class="frame-button" type="button" data-frame-button aria-pressed="true">Before</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">Move 1</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">Move 2</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">Release</button>
-            <button class="frame-button" type="button" data-frame-button aria-pressed="false">Auto-layout</button>
-            <span class="sequence-status" data-sequence-status>Playing</span>
-          </div>
+          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
         </figure>
-      </section>
+      </div>
+      <div class="act-steps">
+        <article class="step" data-reveal="point+" data-caption="Three reasons hanging off the second question.">
+          <h3>Why bother building another diagram tool</h3>
+          <p>Because graphs are worth more than the effort they currently cost, because ideas leave faster than a mouse can catch them, and because keyboard tools are worth learning but hard to start.</p>
+        </article>
+        <article class="step" data-reveal="graphs-everywhere*" data-caption="Graphs, once you start noticing them.">
+          <h3>Graphs are already everywhere</h3>
+          <p>Road maps, mind maps, the shape of an argument, the web itself. You have been reading and drawing graphs all along under other names.</p>
+          <p>An outline — including the one this page is built from — is a graph that has agreed to be a tree. Most of what I actually think about refuses.</p>
+        </article>
+        <article class="step" data-reveal="thoughts-slip*" data-edges="bottleneck&gt;keyboard-first" data-focus="thoughts-slip* keyboard-first" data-caption="A dashed link: this branch depends on that one.">
+          <h3>Thoughts leave before the mouse arrives</h3>
+          <p>The dashed arrow is the whole argument of the tool. “Avoid the mouse-keyboard switching bottleneck” is not a child of “Keyboard-first”, it points at it — a second parent, from another branch entirely.</p>
+          <p>Reaching for the mouse costs about a second, and a second is long enough to lose the thing you were about to write down. Do it forty times while sketching and the diagram ends up shaped by the interface instead of the idea.</p>
+        </article>
+        <article class="step" data-reveal="learnable*" data-focus="learnable* point" data-caption="The third reason: a gentler on-ramp.">
+          <h3>And a way into keyboard tools</h3>
+          <p>Vi and Vim are worth the learning curve, but the curve is real and it is mostly about not knowing what is available. If a lit keyboard on screen can teach modal editing to somebody who would never install vim, that is a second thing worth having.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
-      <section>
-        <div class="wide-section">
-          <div class="section-copy">
-            <p class="eyebrow">Navigation</p>
-            <h2>Move between ideas, not pixels.</h2>
-            <p class="prose">Large graphs create a different problem: getting around. KiDraw is experimenting with movement by node and movement by link, so a direction means “take me to the next meaningful thing,” not “move the pointer eight more pixels.”</p>
-            <p class="prose">The model is still a work in progress, and I am judging several versions by feel. One part is already concrete: when the graph is too far out to read, landing on a node raises a full-size reading lens without zooming the rest of the canvas.</p>
-          </div>
-          <div class="pair">
-            <figure class="capture">
-              <img src="assets/captures/ghost-before.png" alt="A KiDraw graph zoomed out to 22 percent">
-              <figcaption><span class="pair-label">The whole graph</span>At 22%, structure is visible but words are not.</figcaption>
-            </figure>
-            <figure class="capture">
-              <img src="assets/captures/ghost-after.png" alt="A full-size readable node appearing under the crosshair">
-              <figcaption><span class="pair-label">The current thought</span>Land on a node and it becomes readable in place.</figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
+  <section class="wrap brk" aria-labelledby="grow-title">
+    <div class="brk-head">
+      <p class="eyebrow">A break from the diagram · a real session</p>
+      <h2 id="grow-title">A graph appearing, one key at a time</h2>
+      <p>Three frames from the running app. Nodes arrive and the layout re-flows around them, so arranging is not a separate chore saved for the end.</p>
+    </div>
+    <div class="shots three">
+      <figure class="shot">
+        <img src="assets/captures/grow-0.png" alt="A KiDraw canvas with two connected nodes" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Two nodes</span>One thought, and the first thing that follows from it.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/grow-1.png" alt="The same canvas with four connected nodes" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Four nodes</span>Still a tree, still one hand's worth of keys.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/grow-2.png" alt="The same canvas with seven nodes, where the node labelled Copy has two incoming arrows" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Seven nodes</span>“Copy” now has two parents. That is the moment an outline stops being able to describe the picture.</figcaption>
+      </figure>
+    </div>
+    <p class="aside">Same idea as the dashed arrow in the diagram above: real thinking has cross-links, and a tool that only does trees quietly asks you to throw them away.</p>
+  </section>
 
-      <section>
-        <div class="section-copy measure">
-          <p class="eyebrow">A deliberately different starting point</p>
-          <h2>This is not an infinite whiteboard with extra hotkeys.</h2>
-          <p class="prose">Obsidian Canvas is a useful reference because it serves many of the same people. Its documented, out-of-the-box flow is visual: double-click or use the toolbar to make a card, drag from a card edge to connect it, and drag cards to arrange them. KiDraw starts with the keyboard and treats arrangement as something the computer can help with.</p>
-        </div>
-        <div class="comparison">
-          <p><strong>The comparison is about defaults, not capability.</strong> Obsidian has configurable hotkeys, an open canvas format, and a plugin ecosystem. It is also a mature notes application, while KiDraw is an alpha focused tightly on graph interaction.</p>
-          <p>What I want to learn is whether a keyboard-native editor changes the kinds of graphs people are willing to make—because adding one more relationship becomes cheap enough to do while the thought is still present.</p>
-          <p><a href="https://obsidian.md/help/Plugins/Canvas">Read Obsidian's official Canvas workflow ↗</a></p>
-        </div>
-      </section>
+  <section class="act" id="how" aria-labelledby="how-title">
+    <div class="wrap act-inner">
+      <div class="act-head">
+        <p class="eyebrow">Question three</p>
+        <h2 id="how-title">How does it work?</h2>
+        <p class="act-lede">Numbers on the arrows mean order. These five are the whole beginner's manual.</p>
+      </div>
+      <div class="act-stage">
+        <figure class="stage" data-stage="how">
+          <div class="stage-frame">
+            <svg data-graph role="img" aria-label="The branch that answers “How does it work?”, whose numbered arrows give the five basic moves in order."></svg>
+          </div>
+          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
+        </figure>
+      </div>
+      <div class="act-steps">
+        <article class="step" data-reveal="how basics" data-caption="Basics first; the rest can wait.">
+          <h3>There is a beginner's half and a deep end</h3>
+          <p>Almost everything KiDraw can do is optional. The part you need on day one fits in five steps, and the arrows leading to them are numbered because their order matters.</p>
+        </article>
+        <article class="step" data-reveal="basics+" data-caption="Five numbered moves. Learn these and you can use it.">
+          <h3>Five moves</h3>
+          <p>Move the crosshairs. Add a node. Type into it. Escape. Connect it to another one. That is the entire first session — everything else is convenience layered on top.</p>
+        </article>
+        <article class="step" data-reveal="move-crosshairs*" data-caption="Moving: h, j, k, l.">
+          <h3>Move the crosshairs with <code>hjkl</code></h3>
+          <p>A crosshair, not a pointer. <code>h</code> left, <code>j</code> down, <code>k</code> up, <code>l</code> right — the same four keys vi has used for fifty years, and the same four that will be re-bindable to arrows or <code>wasd</code> later.</p>
+        </article>
+        <article class="step" data-reveal="add-node* edit-text* exit-edit*" data-caption="Add, type, escape.">
+          <h3>Add a node, type, escape</h3>
+          <p>Press and release <code>a</code> and a box appears under the crosshairs. Type its text the way you would in vi. <code>ESC</code> or <code>Ctrl-[</code> takes you back out to normal mode.</p>
+          <p>Press and <em>release</em> matters: KiDraw treats a tap and a hold as two different commands, which is where most of its depth comes from without adding more keys.</p>
+        </article>
+        <article class="step" data-reveal="connect*" data-caption="Connecting: hold, then choose a direction.">
+          <h3>Connect two nodes by holding</h3>
+          <p>Park the crosshairs on a node, press <em>and hold</em> <code>a</code>, then use <code>h</code> <code>j</code> <code>k</code> <code>l</code> to pick which of the neighbouring positions the new box lands in. The link is drawn as you choose.</p>
+          <p>That hold is the same gesture that lit up the keymenu in the screenshots above, which is not a coincidence — the menu exists so that holding a key is never a guess.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
-      <section>
-        <div class="section-copy measure">
-          <p class="eyebrow">Roadmap</p>
-          <h2>The alpha is a working argument, not a finished product.</h2>
-          <p class="prose">The order changes as daily use exposes better questions. This is the current shape of the work, summarized from the task graph I use to build KiDraw.</p>
-        </div>
-        <div class="roadmap">
-          <div class="roadmap-item">
-            <span class="phase">Now</span>
-            <h3>Make the core feel dependable</h3>
-            <p>Polish the keymenu, refine movement by node and link, improve edge routing, and remove the small inconsistencies that interrupt a keyboard flow.</p>
-          </div>
-          <div class="roadmap-item">
-            <span class="phase">Next</span>
-            <h3>Give graphs more meaning</h3>
-            <p>Develop diagram types, plugins, tags and style mappings; improve file management; and explore Git and cloud-backed storage without abandoning local files.</p>
-          </div>
-          <div class="roadmap-item">
-            <span class="phase">Later</span>
-            <h3>Think with other people—and tools</h3>
-            <p>Add human collaboration and AI integration while preserving clear authorship, inspectable files, and the speed of direct manipulation.</p>
-          </div>
-        </div>
-      </section>
+  <section class="wrap brk" aria-labelledby="ghost-title">
+    <div class="brk-head">
+      <p class="eyebrow">A break from the diagram · navigation</p>
+      <h2 id="ghost-title">Move between ideas, not pixels</h2>
+      <p>Zoomed out to 22%, the boxes are unreadable specks — but you still know where things are, because you built the shape. Land the crosshairs on one and it is drawn at readable size in place, without moving the rest of the graph.</p>
+    </div>
+    <div class="shots two">
+      <figure class="shot">
+        <img src="assets/captures/ghost-before.png" alt="A KiDraw graph zoomed out to 22 percent, where node text is too small to read" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Zoomed out</span>Structure survives, words do not.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/ghost-after.png" alt="The same zoomed-out graph with the node under the crosshair drawn at full readable size" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Under the crosshair</span>The current thought becomes legible where it sits.</figcaption>
+      </figure>
+    </div>
+    <p class="aside">Hopping node to node and following a link are the two interactions I am least sure about; both are still being judged by feel, and neither is captured here yet because the capture would go stale in a week.</p>
+  </section>
 
-      <section>
-        <div class="experiment">
-          <p class="eyebrow">The larger experiment</p>
-          <h2>AI makes unusual interfaces cheaper to try.</h2>
-          <p class="prose">KiDraw matters to me as a product, but it is also an experiment in how software gets made now. For years, many interface ideas were too expensive to test unless their business case was already obvious. AI-assisted development changes that equation: I can try a held-key menu, use it for real work, throw away the parts that feel wrong, and keep iterating.</p>
-          <p class="prose">There is a recursive part I like: AI agents help build KiDraw from a task graph maintained inside KiDraw. The tool is both the experiment and part of the workshop. That does not make every generated answer good. It makes more questions affordable to ask.</p>
-        </div>
-      </section>
-
-      <section>
-        <div class="closing">
-          <div class="section-copy measure">
-            <p class="eyebrow">Try it where it is</p>
-            <h2>It is an alpha. Bring a keyboard and expect edges.</h2>
-            <p class="prose">KiDraw runs in a desktop browser and works with files on your machine. There is no account and no collaboration yet. Some interactions are still changing quickly, and bugs are part of the current experience. If the premise sounds useful, the live app is the best explanation I have.</p>
+  <section class="act" id="advanced" aria-labelledby="advanced-title">
+    <div class="wrap act-inner">
+      <div class="act-head">
+        <p class="eyebrow">Question three, continued</p>
+        <h2 id="advanced-title">The deep end</h2>
+        <p class="act-lede">Styling, routing, layout, and where your file actually goes.</p>
+      </div>
+      <div class="act-stage">
+        <figure class="stage" data-stage="advanced">
+          <div class="stage-frame">
+            <svg data-graph role="img" aria-label="The advanced branch: movement, navigation, styling, automatic edge routing, waypoints, layout and local saving."></svg>
           </div>
-          <div class="closing-actions">
-            <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
-            <span class="alpha-note">Feedback and rough edges welcome.</span>
-          </div>
-        </div>
-      </section>
-    </article>
-  </main>
+          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
+        </figure>
+      </div>
+      <div class="act-steps">
+        <article class="step" data-reveal="advanced" data-focus="how basics advanced" data-caption="The other half of question three.">
+          <h3>Everything you can ignore on day one</h3>
+          <p>The second child of “How does it work?” is the part I use constantly and a new reader never needs: coarser and finer movement, navigation that follows the graph rather than the screen, styling, routing, layout, and saving.</p>
+        </article>
+        <article class="step" data-reveal="advanced+" data-focus="advanced coarse-fine nav-by-node nav-by-link zoom-pan" data-caption="Movement and navigation, then the machinery.">
+          <h3>Movement that knows about the graph</h3>
+          <p>Coarse and fine movement change how far one keypress travels. Hopping node to node and following an edge ignore distance entirely — you move along the structure you drew, not across the canvas it happens to sit on.</p>
+        </article>
+        <article class="step" data-reveal="styling*" data-caption="Style: shape, colour, stroke.">
+          <h3>Styling, kept small on purpose</h3>
+          <p>Shape, colour, and solid versus dotted versus dashed. Enough to carry meaning — this one is done, that one is speculative — and not so much that the file turns into a design project.</p>
+        </article>
+        <article class="step" data-reveal="routing*" data-caption="Four things the router is trying to do at once.">
+          <h3>Automatic edge routing</h3>
+          <p>Four goals, constantly in tension: do not run a line under a box, do not cross other lines, and when a crossing is unavoidable, cross closer to square than to a graze — a shallow crossing is the one your eye follows into the wrong branch. And keep the whole thing short.</p>
+          <p>This is the part of KiDraw I am actively rewriting. Some graphs still come out with routes I would not have drawn by hand.</p>
+        </article>
+        <article class="step" data-edges="waypoints&gt;routing" data-focus="waypoints routing" data-caption="Waypoints override the router where it is wrong.">
+          <h3>Waypoints, for when the router is wrong</h3>
+          <p>Another dashed cross-link: waypoints exist <em>because</em> automatic routing exists. You drop a point the edge has to pass through, the router honours it, and everything else keeps re-routing on its own.</p>
+          <p>Automatic layout works the same way — one command re-lays the whole graph, and you overrule it locally when you disagree.</p>
+        </article>
+        <article class="step" data-reveal="save*" data-caption="Saving: two files, local, Chrome for now.">
+          <h3>Save locally, in two files</h3>
+          <p>The meaning and the appearance are saved separately, the way HTML and CSS split content from presentation: restyle a graph without touching what it says, or diff what changed in the thinking without wading through colour edits.</p>
+          <p>Saving goes to your own disk. It is Chrome-only for now, because it uses the file system access API and I have not written the fallback yet.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
-  <footer>
-    <span>KiDraw · an experiment by Benjamin Berman</span>
-    <a href="https://bnjmnbrmn.com">bnjmnbrmn.com</a>
-    <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a>
-    <a href="review/">capture review</a>
-  </footer>
-</div>
+  <section class="wrap brk" aria-labelledby="reroute-title">
+    <div class="brk-head">
+      <p class="eyebrow">A break from the diagram · routing and layout</p>
+      <h2 id="reroute-title">Move one thought; let the links find their way</h2>
+      <p>Select+Drag is held while “Docs” moves down. Its two links do not stay a fixed bundle being dragged along — they are re-routed at every step, so the picture stays readable while you are still deciding where the box belongs.</p>
+    </div>
+    <div class="shots two">
+      <figure class="shot">
+        <img src="assets/captures/reroute-0.png" alt="A KiDraw graph before the Docs node is moved" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Before</span>The crosshair is parked on “Docs”.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/reroute-1.png" alt="The Docs node after moving one step down, with its links re-routed" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">One step</span>Both links pick new angles immediately.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/reroute-2.png" alt="The Docs node after moving two steps down" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Two steps</span>Still no crossings, still no manual clean-up.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="assets/captures/reroute-final.png" alt="The graph after the drag is released and the links have settled" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">Released</span>The two links have settled into their new routes.</figcaption>
+      </figure>
+    </div>
+    <div class="shots two" style="margin-top: clamp(1rem, 2.5vw, 1.6rem)">
+      <figure class="shot">
+        <img src="assets/captures/reroute-relaid.png" alt="The same graph after automatic layout returns it to a clean three-column tree" width="1200" height="744" loading="lazy" decoding="async">
+        <figcaption><span class="shot-label">And then, one command</span>Automatic layout puts the whole graph back into a clean three-column tree. Machine help, without giving up the ability to move one box on purpose.</figcaption>
+      </figure>
+      <figure class="shot" style="align-content: center; padding: clamp(1rem, 3vw, 1.6rem)">
+        <figcaption style="border: 0; padding: 0"><span class="shot-label">Known flaw</span>These frames pre-date a spacing fix, so the wide boxes sit closer together than the current build would place them, and the top row is clipped by the capture. Listed, with the rest, on the <a href="review/">capture review page</a>.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="act" id="going" aria-labelledby="going-title">
+    <div class="wrap act-inner">
+      <div class="act-head">
+        <p class="eyebrow">Question four</p>
+        <h2 id="going-title">Where is this going?</h2>
+        <p class="act-lede">A roadmap is just a graph you have not finished arguing with yet.</p>
+      </div>
+      <div class="act-stage">
+        <figure class="stage" data-stage="going">
+          <div class="stage-frame">
+            <svg data-graph role="img" aria-label="The final branch: other keybinding styles, collaboration, better layout, temporary views and plugins — ending with the whole graph seen at once."></svg>
+          </div>
+          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
+        </figure>
+      </div>
+      <div class="act-steps">
+        <article class="step" data-reveal="going+" data-focus="going other-bindings collab better-layout" data-caption="Seven directions, none of them shipped.">
+          <h3>What is not built yet</h3>
+          <p>Everything on this branch is a claim about the future, so read it that way. I would rather publish the list and be held to it than pretend the alpha is finished.</p>
+        </article>
+        <article class="step" data-reveal="other-bindings*" data-edges="other-bindings&gt;other-options" data-caption="Other keybindings — the dashed link runs back up to question one.">
+          <h3>Other styles of keybindings</h3>
+          <p><code>ijkl</code>, <code>wasd</code>, arrow keys, Emacs. The dashed arrow leaving the top of the frame goes all the way back to “Support other options in the future” in the first branch — the promise and the plan are the same node seen twice.</p>
+          <p>vi bindings are the ones I could design fastest, not the ones everybody should have to use.</p>
+        </article>
+        <article class="step" data-reveal="collab* better-layout*" data-caption="Other people, other agents, better routing.">
+          <h3>Collaborators, human and otherwise</h3>
+          <p>Two people on one graph is the obvious version. The one I care more about is an agent editing the same graph I am editing — agents already do much of the work on this project, and the handover happens through files instead of through the picture.</p>
+          <p>Layout and routing keep improving underneath all of it, probably with alternative algorithms you can choose between rather than one that claims to always be right.</p>
+        </article>
+        <article class="step" data-reveal="temp-views* alt-nav" data-caption="Temporary views: change what you see, not what is true.">
+          <h3>Temporary views</h3>
+          <p>Pull in the neighbours of the node you are on. Collapse a subgraph to a single box and expand it again. The graph does not change; only what you are being shown does — which is the only way a big graph stays workable on one screen.</p>
+        </article>
+        <article class="step" data-reveal="plugins*" data-caption="Plugins: presentations, diffs, git, diagram types.">
+          <h3>Plugins, once the core deserves them</h3>
+          <p>A saved series of views is a presentation. A diff between two versions of a graph is a review. Git integration makes both of those history. And once a graph can carry a type — a todo graph, an architecture, a family tree — the tool can start being opinionated in useful ways.</p>
+          <p>Plus visual polish, which is last on purpose.</p>
+        </article>
+        <article class="step" data-fit="all" data-caption="The whole map, at once.">
+          <h3>All of it, from far enough away</h3>
+          <p>That is the entire page as one graph. You cannot read it at this size — and that is exactly the state KiDraw is usually in when I am looking for the branch I want, which is why moving between nodes matters more than moving pixels.</p>
+          <p>It also happens to be how I keep the project's own task list, which is a slightly recursive way to find bugs.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap close">
+    <div class="close-card">
+      <p class="eyebrow">Before you open it</p>
+      <h2>It is an alpha. Bring a keyboard.</h2>
+      <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some edges still route worse than you would draw them by hand, and the navigation model is going to change. Anything on this page that is not in a screenshot is a claim, not a shipped feature.</p>
+      <p>I am also building it to find out something else: whether AI-assisted development makes unusual interfaces cheap enough to actually try. I keep KiDraw's own task list in KiDraw, which is a blunt way of finding out what the tool is still bad at.</p>
+      <div class="close-actions">
+        <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
+        <a class="button button-ghost" href="review/">See the raw captures</a>
+      </div>
+    </div>
+
+    <details class="outline" id="outline" open>
+      <summary>The whole map, as an outline</summary>
+      <p class="outline-note">The diagram above is drawn from this list — it is the same file I keep in org-mode. Numbers mark ordered steps; <span class="mono">↗</span> marks a link to a box in another branch.</p>
+      <ul id="map-outline">
+      <li data-id="kidraw" data-kind="root"><span>KiDraw</span>
+        <ul>
+          <li data-id="tagline" data-kind="quote"><span>Connect your thoughts, at the speed you have them</span></li>
+          <li data-id="what" data-kind="q"><span>What is it?</span>
+            <ul>
+              <li data-id="diagram-editor"><span>Diagram editor</span>
+                <ul>
+                  <li data-id="graph-editor"><span>Technically, a Graph Editor</span>
+                    <ul>
+                      <li data-id="graph-def"><span>A &#8220;Graph&#8221; is basically just a bunch of nodes (boxes, circles, etc) and edges (lines, possibly with arrowheads)</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="comparable"><span>Comparable to</span>
+                    <ul>
+                      <li data-id="n1"><span>Miro</span></li>
+                      <li data-id="n2"><span>Microsoft Visio</span></li>
+                      <li data-id="n3"><span>Draw.io</span></li>
+                      <li data-id="n4"><span>Excalidraw</span></li>
+                      <li data-id="n5"><span>Graphviz (dot)</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li data-id="keyboard-first"><span>Keyboard-first</span>
+                <ul>
+                  <li data-id="vi-inspired"><span>Initial key bindings inspired by the vi coding editor</span>
+                    <ul>
+                      <li data-id="n6"><span>Not just for coders</span></li>
+                      <li data-id="other-options"><span>Support other options in the future</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li data-id="discoverable"><span>Discover-able shortcuts</span></li>
+              <li data-id="experiment"><span>An experiment</span></li>
+              <li data-id="wip"><span>Work in progress</span></li>
+            </ul>
+          </li>
+          <li data-id="point" data-kind="q"><span>What&#8217;s the point?</span>
+            <ul>
+              <li data-id="graphs-everywhere"><span>Graphs are everywhere</span>
+                <ul>
+                  <li data-id="n7"><span>Road maps</span></li>
+                  <li data-id="n8"><span>Mind maps</span></li>
+                  <li data-id="logical-arguments"><span>Logical arguments</span>
+                    <ul>
+                      <li data-id="n9"><span>Outlines are a special type of graph</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="n10"><span>The Internet</span></li>
+                </ul>
+              </li>
+              <li data-id="thoughts-slip"><span>Get our thoughts down before they slip away</span>
+                <ul>
+                  <li data-id="bottleneck" data-link="keyboard-first"><span>Avoid the mouse-keyboard switching bottleneck</span></li>
+                </ul>
+              </li>
+              <li data-id="learnable"><span>Make it easier to learn keyboard-based tools</span>
+                <ul>
+                  <li data-id="n11"><span>Vi and Vim have a learning curve</span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li data-id="how" data-kind="q"><span>How does it work?</span>
+            <ul>
+              <li data-id="basics"><span>Basics</span>
+                <ul>
+                  <li data-id="move-crosshairs" data-num="1"><span>Move the crosshairs</span>
+                    <ul>
+                      <li data-id="n12" data-num="1"><span><code>h</code> for left</span></li>
+                      <li data-id="n13" data-num="2"><span><code>j</code> for down</span></li>
+                      <li data-id="n14" data-num="3"><span><code>k</code> for up</span></li>
+                      <li data-id="n15" data-num="4"><span><code>l</code> for right</span></li>
+                      <li data-id="n16"><span>using <code>hjkl</code></span></li>
+                    </ul>
+                  </li>
+                  <li data-id="add-node" data-num="2"><span>Add a node</span>
+                    <ul>
+                      <li data-id="n17"><span>Press and release <code>a</code></span></li>
+                    </ul>
+                  </li>
+                  <li data-id="edit-text" data-num="3"><span>Edit the node&#8217;s text</span>
+                    <ul>
+                      <li data-id="n18"><span>Vi style</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="exit-edit" data-num="4"><span>Exit node edit mode</span>
+                    <ul>
+                      <li data-id="n19"><span>Press <code>ESC</code> or <code>Ctrl-[</code></span></li>
+                    </ul>
+                  </li>
+                  <li data-id="connect" data-num="5"><span>Connect two nodes</span>
+                    <ul>
+                      <li data-id="n20" data-num="1"><span>Have crosshairs over node</span></li>
+                      <li data-id="n21" data-num="2"><span>Press <b>and hold</b> <code>a</code></span></li>
+                      <li data-id="n22" data-num="3"><span>Use <code>h</code> for left, <code>j</code> for down, <code>k</code> for up, <code>l</code> for right</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li data-id="advanced"><span>Advanced</span>
+                <ul>
+                  <li data-id="coarse-fine"><span>Coarse and fine movement</span></li>
+                  <li data-id="nav-by-node"><span>Navigate by hopping from node to node</span></li>
+                  <li data-id="nav-by-link"><span>Navigate by following edges</span></li>
+                  <li data-id="zoom-pan"><span>Zoom, Pan, and Recenter</span></li>
+                  <li data-id="styling"><span>Node and Edge Styling</span>
+                    <ul>
+                      <li data-id="n23"><span>Shape</span></li>
+                      <li data-id="n24"><span>Color</span></li>
+                      <li data-id="n25"><span>Solid vs Dotted vs Dashed</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="routing"><span>Automatic edge routing</span>
+                    <ul>
+                      <li data-id="n26"><span>Avoid edges crossing under nodes</span></li>
+                      <li data-id="n27"><span>Minimize edges crossing each other</span></li>
+                      <li data-id="n28"><span>Avoid small-angle crossings</span></li>
+                      <li data-id="n29"><span>Minimize edge length</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="waypoints" data-link="routing"><span>&#8220;Waypoints&#8221; for fine tuning edge routing</span></li>
+                  <li data-id="auto-layout"><span>Automatic node layout</span></li>
+                  <li data-id="save"><span>Save locally</span>
+                    <ul>
+                      <li data-id="two-files"><span>Separate semantic and style files</span>
+                        <ul>
+                          <li data-id="n30"><span>Like HTML and CSS</span></li>
+                        </ul>
+                      </li>
+                      <li data-id="chrome-only"><span>Chrome only</span>
+                        <ul>
+                          <li data-id="n31"><span>for now</span></li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+          <li data-id="going" data-kind="q"><span>Where is this going?</span>
+            <ul>
+              <li data-id="other-bindings" data-link="other-options"><span>Other styles of keybindings</span>
+                <ul>
+                  <li data-id="n32" data-num="1"><span><code>i</code>, <code>j</code>, <code>k</code>, and <code>l</code></span></li>
+                  <li data-id="n33" data-num="2"><span><code>w</code>, <code>a</code>, <code>s</code>, and <code>d</code></span></li>
+                  <li data-id="n34" data-num="3"><span>arrow keys</span></li>
+                  <li data-id="n35" data-num="4"><span>Emacs style</span></li>
+                  <li data-id="n36" data-num="5"><span>etc.</span></li>
+                </ul>
+              </li>
+              <li data-id="collab"><span>Collaborate on graphs</span>
+                <ul>
+                  <li data-id="n37"><span>with other people</span></li>
+                  <li data-id="n38"><span>with AI agents</span></li>
+                </ul>
+              </li>
+              <li data-id="better-layout"><span>Improvements to graph layout / edge routing</span>
+                <ul>
+                  <li data-id="n39"><span>Including alternative algorithms</span></li>
+                </ul>
+              </li>
+              <li data-id="alt-nav"><span>Alternative navigation</span></li>
+              <li data-id="temp-views"><span>Temporary views</span>
+                <ul>
+                  <li data-id="n40"><span>Pull in neighboring nodes</span></li>
+                  <li data-id="n41"><span>Collapse/expand subgraphs</span></li>
+                </ul>
+              </li>
+              <li data-id="plugins"><span>Plugins</span>
+                <ul>
+                  <li data-id="presentations"><span>Presentations</span>
+                    <ul>
+                      <li data-id="n42"><span>Saved series of views</span></li>
+                    </ul>
+                  </li>
+                  <li data-id="n43"><span>Diff visualization</span></li>
+                  <li data-id="n44"><span>Git integration</span></li>
+                  <li data-id="diagram-types"><span>Diagram types</span>
+                    <ul>
+                      <li data-id="n45" data-num="1"><span>Todo graphs</span></li>
+                      <li data-id="n46" data-num="2"><span>Software architecture</span></li>
+                      <li data-id="n47" data-num="3"><span>Genealogy</span></li>
+                      <li data-id="n48" data-num="4"><span>etc.</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li data-id="polish"><span>Visual polish</span></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      </ul>
+    </details>
+  </section>
+</main>
+
+<footer class="wrap">
+  <div class="foot-row">
+    <p>KiDraw — a keyboard-first graph editor by <a href="https://bnjmnbrmn.com">Benjamin Berman</a>.</p>
+    <p><a href="https://alpha.kidraw.net">alpha.kidraw.net</a> · <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a> · <a href="review/">capture review</a></p>
+  </div>
+</footer>
 
 <script>
-  (() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+(function () {
+  'use strict';
 
-    document.querySelectorAll('[data-sequence]').forEach(sequence => {
-      const frames = [...sequence.querySelectorAll('[data-frame]')];
-      const buttons = [...sequence.querySelectorAll('[data-frame-button]')];
-      const caption = sequence.querySelector('[data-sequence-caption]');
-      const number = sequence.querySelector('[data-sequence-number]');
-      const status = sequence.querySelector('[data-sequence-status]');
-      const delay = Number(sequence.dataset.delay) || 2200;
-      let activeIndex = 0;
-      let timer;
-      let userPaused = false;
+  var outlineRoot = document.getElementById('map-outline');
+  var acts = Array.prototype.slice.call(document.querySelectorAll('.act'));
+  if (!outlineRoot || !acts.length || !document.createElementNS || !window.requestAnimationFrame) return;
 
-      const show = index => {
-        activeIndex = (index + frames.length) % frames.length;
-        frames.forEach((frame, frameIndex) => {
-          frame.hidden = frameIndex !== activeIndex;
-        });
-        buttons.forEach((button, buttonIndex) => {
-          button.setAttribute('aria-pressed', String(buttonIndex === activeIndex));
-        });
-        if (caption) caption.textContent = frames[activeIndex]?.dataset.caption || '';
-        if (number) number.textContent = `${activeIndex + 1} / ${frames.length}`;
-      };
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var XML_NS = 'http://www.w3.org/XML/1998/namespace';
+  var NODE_W = 210;
+  var PAD_X = 14;
+  var PAD_Y = 12;
+  var COL_GAP = 96;
+  var V_GAP = 24;
+  var MIN_H = 46;
+  var SIZES = {root: 18, q: 16.5, quote: 15.5, node: 15};
+  var SANS = '"Public Sans", ui-sans-serif, system-ui, sans-serif';
+  var MONO = '"JetBrains Mono", ui-monospace, monospace';
 
-      const stop = label => {
-        window.clearInterval(timer);
-        timer = undefined;
-        if (status) status.textContent = label;
-      };
+  /* ---------- read the outline ---------- */
 
-      const play = () => {
-        if (reducedMotion.matches || userPaused || sequence.dataset.autoplay !== 'true') {
-          stop(reducedMotion.matches ? 'Motion paused' : 'Paused');
-          return;
-        }
-        stop('Playing');
-        timer = window.setInterval(() => show(activeIndex + 1), delay);
-      };
-
-      buttons.forEach((button, index) => {
-        button.addEventListener('click', () => {
-          userPaused = true;
-          stop('Paused');
-          show(index);
-        });
+  function tokenize(span) {
+    var tokens = [];
+    var space = false;
+    Array.prototype.forEach.call(span.childNodes, function (child) {
+      var style = 'plain';
+      if (child.nodeType === 1) {
+        var tag = child.tagName.toLowerCase();
+        style = tag === 'code' ? 'code' : tag === 'b' ? 'bold' : 'plain';
+      }
+      (child.textContent || '').split(/(\s+)/).forEach(function (part) {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { space = true; return; }
+        tokens.push({text: part, style: style, space: space});
+        space = false;
       });
-      sequence.addEventListener('pointerenter', () => stop('Paused'));
-      sequence.addEventListener('pointerleave', play);
-      sequence.addEventListener('focusin', () => stop('Paused'));
-      sequence.addEventListener('focusout', event => {
-        if (!sequence.contains(event.relatedTarget)) play();
-      });
-      reducedMotion.addEventListener?.('change', play);
-      show(0);
-      play();
     });
-  })();
+    return tokens;
+  }
+
+  var byId = {};
+  function read(li, parent, depth) {
+    var span = li.querySelector(':scope > span');
+    var node = {
+      id: li.getAttribute('data-id'),
+      kind: li.getAttribute('data-kind') || 'node',
+      num: Number(li.getAttribute('data-num') || 0),
+      link: li.getAttribute('data-link') || '',
+      tokens: tokenize(span),
+      parent: parent,
+      depth: depth,
+      children: []
+    };
+    byId[node.id] = node;
+    var list = li.querySelector(':scope > ul');
+    if (list) {
+      Array.prototype.forEach.call(list.children, function (child) {
+        node.children.push(read(child, node, depth + 1));
+      });
+    }
+    return node;
+  }
+
+  var rootLi = outlineRoot.querySelector(':scope > li');
+  if (!rootLi) return;
+  var root = read(rootLi, null, 0);
+
+  /* ---------- measure and lay out ---------- */
+
+  var ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return;
+
+  function fontFor(style, size) {
+    if (style === 'code') return '600 ' + (size - 1) + 'px ' + MONO;
+    if (style === 'bold') return '700 ' + size + 'px ' + SANS;
+    return '400 ' + size + 'px ' + SANS;
+  }
+
+  function wrap(node) {
+    var size = SIZES[node.kind] || SIZES.node;
+    var limit = NODE_W - PAD_X * 2;
+    var lines = [];
+    var line = [];
+    var width = 0;
+    node.tokens.forEach(function (token) {
+      ctx.font = fontFor(token.style, size);
+      var w = ctx.measureText(token.text).width;
+      ctx.font = fontFor('plain', size);
+      var gap = line.length && token.space !== false ? ctx.measureText(' ').width : 0;
+      if (line.length && width + gap + w > limit) {
+        lines.push(line);
+        line = [];
+        width = 0;
+        gap = 0;
+      }
+      line.push(token);
+      width += gap + w;
+    });
+    if (line.length) lines.push(line);
+    node.lines = lines.length ? lines : [[{text: ' ', style: 'plain'}]];
+    node.size = size;
+    node.lineHeight = Math.round(size * 1.28);
+    node.h = Math.max(MIN_H, node.lines.length * node.lineHeight + PAD_Y * 2);
+  }
+
+  var cursor = 0;
+  function place(node) {
+    wrap(node);
+    node.x = node.depth * (NODE_W + COL_GAP);
+    if (!node.children.length) {
+      node.cy = cursor + node.h / 2;
+      cursor += node.h + V_GAP;
+      return;
+    }
+    var start = cursor;
+    node.children.forEach(place);
+    var first = node.children[0];
+    var last = node.children[node.children.length - 1];
+    node.cy = node.kind === 'root' && node.children.length > 2
+      ? (first.cy + node.children[1].cy) / 2
+      : (first.cy + last.cy) / 2;
+    if (cursor - start < node.h + V_GAP) cursor = start + node.h + V_GAP;
+  }
+
+  function boxOf(node) {
+    return {x1: node.x, y1: node.cy - node.h / 2, x2: node.x + NODE_W, y2: node.cy + node.h / 2};
+  }
+
+  /* ---------- steps ---------- */
+
+  function collect(node, out) {
+    out.push(node);
+    node.children.forEach(function (child) { collect(child, out); });
+  }
+
+  function expand(token) {
+    var mode = 'self';
+    var id = token;
+    if (/\*$/.test(token)) { id = token.slice(0, -1); mode = 'sub'; }
+    else if (/\+$/.test(token)) { id = token.slice(0, -1); mode = 'kids'; }
+    var node = byId[id];
+    if (!node) return [];
+    var out = [node];
+    if (mode === 'kids') out = out.concat(node.children);
+    if (mode === 'sub') { out = []; collect(node, out); }
+    return out;
+  }
+
+  function idsFrom(value) {
+    var out = [];
+    (value || '').split(/\s+/).forEach(function (token) {
+      if (token) out = out.concat(expand(token));
+    });
+    return out;
+  }
+
+  var steps = [];
+  var revealed = {};
+  var shownEdges = {};
+  var plans = acts.map(function (act) {
+    var stage = act.querySelector('[data-stage]');
+    var stepEls = Array.prototype.slice.call(act.querySelectorAll('.step'));
+    var plan = {
+      act: act,
+      stage: stage,
+      svg: stage ? stage.querySelector('[data-graph]') : null,
+      frame: stage ? stage.querySelector('.stage-frame') : null,
+      caption: stage ? stage.querySelector('[data-stage-caption]') : null,
+      count: stage ? stage.querySelector('[data-stage-count]') : null,
+      stepEls: stepEls,
+      steps: [],
+      nodes: null,
+      edges: null,
+      active: -1
+    };
+    stepEls.forEach(function (el) {
+      var index = steps.length;
+      var step = {
+        index: index,
+        el: el,
+        plan: plan,
+        fit: el.getAttribute('data-fit') === 'all',
+        caption: el.getAttribute('data-caption') || '',
+        reveal: idsFrom(el.getAttribute('data-reveal')),
+        focus: idsFrom(el.getAttribute('data-focus') || el.getAttribute('data-reveal')),
+        edges: (el.getAttribute('data-edges') || '').split(/\s+/).filter(Boolean)
+      };
+      step.reveal.forEach(function (node) {
+        if (revealed[node.id] === undefined) revealed[node.id] = index;
+      });
+      step.edges.forEach(function (pair) {
+        if (shownEdges[pair] === undefined) shownEdges[pair] = index;
+      });
+      steps.push(step);
+      plan.steps.push(step);
+    });
+    plan.lastIndex = steps.length - 1;
+    return plan;
+  });
+
+  /* ---------- draw ---------- */
+
+  function el(name, attrs) {
+    var node = document.createElementNS(SVG_NS, name);
+    for (var key in attrs) if (attrs.hasOwnProperty(key)) node.setAttribute(key, attrs[key]);
+    return node;
+  }
+
+  function cubic(p, t) {
+    var u = 1 - t;
+    return {
+      x: u * u * u * p[0] + 3 * u * u * t * p[2] + 3 * u * t * t * p[4] + t * t * t * p[6],
+      y: u * u * u * p[1] + 3 * u * u * t * p[3] + 3 * u * t * t * p[5] + t * t * t * p[7]
+    };
+  }
+
+  function curve(p) {
+    return 'M' + p[0] + ' ' + p[1] + ' C' + p[2] + ' ' + p[3] + ' ' + p[4] + ' ' + p[5] + ' ' + p[6] + ' ' + p[7];
+  }
+
+  function treeCurve(parent, child) {
+    var x1 = parent.x + NODE_W;
+    var y1 = parent.cy;
+    var x2 = child.x - 10;
+    var y2 = child.cy;
+    var dx = Math.max(46, (x2 - x1) * 0.5);
+    return [x1, y1, x1 + dx, y1, x2 - dx, y2, x2, y2];
+  }
+
+  function linkCurve(from, to) {
+    if (to.x >= from.x + NODE_W + 60) {
+      return [from.x + NODE_W, from.cy, from.x + NODE_W + 130, from.cy, to.x - 130, to.cy, to.x - 10, to.cy];
+    }
+    if (to.x + NODE_W + 60 <= from.x) {
+      return [from.x, from.cy, from.x - 130, from.cy, to.x + NODE_W + 130, to.cy, to.x + NODE_W + 10, to.cy];
+    }
+    return [from.x - 4, from.cy, from.x - 200, from.cy, to.x - 200, to.cy, to.x - 10, to.cy];
+  }
+
+  function arrow(p) {
+    var tip = cubic(p, 1);
+    var angle = Math.atan2(p[7] - p[5], p[6] - p[4]) * 180 / Math.PI;
+    return el('polygon', {
+      points: '0,0 -12,-5.5 -12,5.5',
+      transform: 'translate(' + tip.x.toFixed(1) + ' ' + tip.y.toFixed(1) + ') rotate(' + angle.toFixed(1) + ')'
+    });
+  }
+
+  function drawNode(node) {
+    var group = el('g', {class: 'g-node k-' + node.kind, 'data-on': revealed[node.id]});
+    group.appendChild(el('rect', {
+      x: node.x, y: node.cy - node.h / 2, width: NODE_W, height: node.h, rx: 9
+    }));
+    var text = el('text', {
+      x: node.x + NODE_W / 2,
+      y: node.cy - (node.lines.length - 1) * node.lineHeight / 2 + node.size * 0.34,
+      'text-anchor': 'middle',
+      'font-size': node.size
+    });
+    text.setAttributeNS(XML_NS, 'xml:space', 'preserve');
+    node.lines.forEach(function (line, i) {
+      var lineSpan = el('tspan', {x: node.x + NODE_W / 2, dy: i ? node.lineHeight : 0});
+      line.forEach(function (token, j) {
+        var run = el('tspan', token.style === 'plain' ? {} : {class: 'tk-' + token.style});
+        run.textContent = (j && token.space !== false ? ' ' : '') + token.text;
+        lineSpan.appendChild(run);
+      });
+      text.appendChild(lineSpan);
+    });
+    group.appendChild(text);
+    return group;
+  }
+
+  function drawEdge(points, on, isLink) {
+    var group = el('g', {class: 'g-edge' + (isLink ? ' is-link' : ''), 'data-on': on});
+    group.appendChild(el('path', {d: curve(points)}));
+    group.appendChild(arrow(points));
+    return group;
+  }
+
+  function drawLabel(points, num, on) {
+    var mid = cubic(points, 0.5);
+    var group = el('g', {class: 'g-label', 'data-on': on});
+    group.appendChild(el('circle', {cx: mid.x.toFixed(1), cy: mid.y.toFixed(1), r: 11.5}));
+    var text = el('text', {
+      x: mid.x.toFixed(1), y: (mid.y + 4.2).toFixed(1), 'text-anchor': 'middle', 'font-size': 12
+    });
+    text.textContent = String(num);
+    group.appendChild(text);
+    return group;
+  }
+
+  var all = [];
+  collect(root, all);
+  var bounds = null;
+
+  function union(nodes) {
+    return nodes.reduce(function (acc, node) {
+      var box = boxOf(node);
+      return {
+        x1: Math.min(acc.x1, box.x1), y1: Math.min(acc.y1, box.y1),
+        x2: Math.max(acc.x2, box.x2), y2: Math.max(acc.y2, box.y2)
+      };
+    }, {x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity});
+  }
+
+  function render(plan) {
+    if (!plan.svg || !plan.steps.length) return;
+    while (plan.svg.firstChild) plan.svg.removeChild(plan.svg.firstChild);
+    var limit = plan.lastIndex;
+    var edgesLayer = el('g', {class: 'g-edges'});
+    var nodesLayer = el('g', {class: 'g-nodes'});
+    var cam = el('g', {class: 'cam'});
+    cam.appendChild(edgesLayer);
+    cam.appendChild(nodesLayer);
+
+    all.forEach(function (node) {
+      var on = revealed[node.id];
+      if (on === undefined || on > limit) return;
+      if (node.parent && revealed[node.parent.id] !== undefined) {
+        var points = treeCurve(node.parent, node);
+        edgesLayer.appendChild(drawEdge(points, on, false));
+        if (node.num) edgesLayer.appendChild(drawLabel(points, node.num, on));
+      }
+      nodesLayer.appendChild(drawNode(node));
+    });
+
+    Object.keys(shownEdges).forEach(function (pair) {
+      var on = shownEdges[pair];
+      if (on > limit) return;
+      var ends = pair.split('>');
+      var from = byId[ends[0]];
+      var to = byId[ends[1]];
+      if (!from || !to) return;
+      edgesLayer.appendChild(drawEdge(linkCurve(from, to), on, true));
+    });
+
+    plan.svg.appendChild(cam);
+    plan.cam = cam;
+    plan.active = -1;
+    plan.parts = Array.prototype.slice.call(plan.svg.querySelectorAll('[data-on]'));
+    plan.parts.forEach(function (part) {
+      part.onStep = Number(part.getAttribute('data-on'));
+      if (part.classList.contains('g-edge') && !part.classList.contains('is-link')) {
+        var path = part.firstChild;
+        var length = path.getTotalLength ? path.getTotalLength() : 0;
+        if (length) part.style.setProperty('--len', length.toFixed(1));
+      }
+    });
+  }
+
+  /* ---------- camera and scroll ---------- */
+
+  function sizeStages() {
+    plans.forEach(function (plan) {
+      if (!plan.frame || !plan.svg) return;
+      var w = Math.max(1, Math.round(plan.frame.clientWidth));
+      var h = Math.max(1, Math.round(plan.frame.clientHeight));
+      plan.view = {w: w, h: h};
+      plan.svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    });
+  }
+
+  function aim(plan, step) {
+    if (!plan.view || !plan.cam) return;
+    var rect = step.rect;
+    var pad = step.fit ? 40 : plan.view.w < 640 ? 26 : 54;
+    var fw = rect.x2 - rect.x1 + pad * 2;
+    var fh = rect.y2 - rect.y1 + pad * 2;
+    var scale = Math.min(plan.view.w / fw, plan.view.h / fh);
+    scale = Math.max(step.fit ? 0.05 : 0.34, Math.min(step.fit ? 1 : 1.15, scale));
+    var cx = (rect.x1 + rect.x2) / 2;
+    var cy = (rect.y1 + rect.y2) / 2;
+    plan.cam.style.transform =
+      'translate(' + (plan.view.w / 2 - cx * scale).toFixed(2) + 'px,' +
+      (plan.view.h / 2 - cy * scale).toFixed(2) + 'px) scale(' + scale.toFixed(4) + ')';
+  }
+
+  function show(plan, index) {
+    var step = plan.steps[index];
+    if (!step) return;
+    if (plan.active !== index) {
+      plan.active = index;
+      plan.parts.forEach(function (part) {
+        part.classList.toggle('is-on', part.onStep <= step.index);
+        part.classList.toggle('is-dim', !step.fit && !part.classList.contains('g-node') && part.onStep < step.index - 1);
+      });
+      plan.stepEls.forEach(function (stepEl, i) { stepEl.classList.toggle('is-active', i === index); });
+      if (plan.caption) plan.caption.textContent = step.caption;
+      if (plan.count) plan.count.textContent = (index + 1) + ' / ' + plan.steps.length;
+    }
+    aim(plan, step);
+  }
+
+  var wide = window.matchMedia('(min-width: 62rem)');
+  function update() {
+    var line = window.innerHeight * (wide.matches ? 0.55 : 0.74);
+    plans.forEach(function (plan) {
+      if (!plan.cam) return;
+      var index = 0;
+      plan.stepEls.forEach(function (stepEl, i) {
+        if (stepEl.getBoundingClientRect().top <= line) index = i;
+      });
+      show(plan, index);
+    });
+  }
+
+  var queued = false;
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    window.requestAnimationFrame(function () {
+      queued = false;
+      update();
+    });
+  }
+
+  function build() {
+    cursor = 0;
+    place(root);
+    bounds = union(all);
+    steps.forEach(function (step) {
+      step.rect = step.fit || !step.focus.length ? bounds : union(step.focus);
+    });
+    plans.forEach(render);
+    sizeStages();
+    update();
+  }
+
+  function resize() {
+    sizeStages();
+    plans.forEach(function (plan) {
+      if (plan.cam && plan.steps[plan.active]) aim(plan, plan.steps[plan.active]);
+    });
+    schedule();
+  }
+
+  function start() {
+    document.documentElement.classList.add('js');
+    var details = document.getElementById('outline');
+    if (details) details.open = false;
+    build();
+    window.addEventListener('scroll', schedule, {passive: true});
+    window.addEventListener('resize', resize);
+  }
+
+  if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === 'function') {
+    var started = false;
+    var once = function () {
+      if (started) return;
+      started = true;
+      start();
+    };
+    document.fonts.ready.then(once, once);
+    window.setTimeout(once, 1500);
+  } else {
+    start();
+  }
+})();
 </script>
