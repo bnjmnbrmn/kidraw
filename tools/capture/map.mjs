@@ -12,7 +12,7 @@ import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {seed, grow, layout, focus, fit, park, counts, undo, settle, typeLabel, labels, mode, edges} from './build.mjs';
+import {seed, grow, layout, focus, fit, park, counts, undo, settle, typeLabel, labels, mode, edges, MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,25 +44,29 @@ let counter = 0;
 const steps = [];
 const extras = [];
 
-async function keep(id, kind) {
+/** How long each kind of frame stays on screen, in milliseconds. Typing frames
+ *  carry their own, worked out from how many characters they added. */
+const HOLD = {target: 820, blank: 260, typed: 420, tween: 450, rest: 0};
+
+async function keep(id, kind, ms) {
   const name = `${String(counter++).padStart(3, '0')}-${id}-${kind}`;
   await shot(page, name, {quality: QUALITY[kind] ?? 0.7, wait: 120});
-  return `${name}.webp`;
+  return {file: `${name}.webp`, ms: ms ?? HOLD[kind] ?? 300};
 }
 
 /** Frames taken during a grow attempt are provisional: the attempt may be
  *  rolled back. Shoot them under a temporary name and rename on success. */
 let pending = [];
-async function provisional(kind) {
+async function provisional(kind, meta = {}) {
   if (kind === 'target') pending = [];
   const file = await shot(page, `tmp-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
-  pending.push({kind, file});
+  pending.push({kind, file, ms: meta.ms ?? HOLD[kind] ?? 300});
 }
 function commit(id) {
-  return pending.map(({kind, file}) => {
+  return pending.map(({kind, file, ms}) => {
     const name = `${String(counter++).padStart(3, '0')}-${id}-${kind}.webp`;
     renameSync(file, join(outDir, name));
-    return name;
+    return {file: name, ms};
   });
 }
 
@@ -73,15 +77,18 @@ async function layoutWithTween(id, frames) {
   await settle(page, 700);
 }
 
+const chars = text => text.length * MS_PER_CHAR;
+
 const entries = flatten(OUTLINE);
 const started = Date.now();
 console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height} into ${profile.dir}`);
 
 const opening = [];
-opening.push(await keep('kidraw', 'target'));
+const rootLabel = plain(entries[0].node.t);
+opening.push(await keep('kidraw', 'target', 600));
 await keys(page, 'a');
-opening.push(await keep('kidraw', 'blank'));
-await typeLabel(page, plain(entries[0].node.t));
+opening.push(await keep('kidraw', 'blank', chars(rootLabel)));
+await typeLabel(page, rootLabel);
 opening.push(await keep('kidraw', 'typed'));
 await keys(page, 'Escape Escape');
 await layoutWithTween('kidraw', opening);
@@ -119,7 +126,7 @@ for (const id of ['wip', 'vim-curve']) {
   if (!steps.some(step => step.id === id)) continue;
   await fit(page);
   await park(page);
-  extras.push({id: `overview-${id}`, file: await keep(`overview-${id}`, 'rest')});
+  extras.push({id: `overview-${id}`, ...(await keep(`overview-${id}`, 'rest'))});
   await focus(page, plain(entry.node.t));
 }
 
