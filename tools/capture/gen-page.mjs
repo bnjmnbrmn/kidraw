@@ -15,9 +15,29 @@ import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const siteDir = process.env.GEN_SITE_DIR ?? join(here, '..', '..', 'site');
-const map = JSON.parse(readFileSync(join(siteDir, 'assets', 'map', 'map.json'), 'utf8'));
-const demoPath = join(siteDir, 'assets', 'demo', 'demo.json');
-const demo = existsSync(demoPath) ? JSON.parse(readFileSync(demoPath, 'utf8')) : {menu: [], follow: [], avoid: []};
+const read = path => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null);
+const map = read(join(siteDir, 'assets', 'map', 'map.json'));
+const demo = read(join(siteDir, 'assets', 'demo', 'demo.json')) ?? {menu: [], follow: [], avoid: []};
+// The portrait set is optional: without it the page simply serves the desktop
+// frames everywhere.
+const mapM = read(join(siteDir, 'assets', 'map-m', 'map.json'));
+const demoM = read(join(siteDir, 'assets', 'demo-m', 'demo.json'));
+const PHONE = '(max-width: 61.99rem)';
+
+/**
+ * A frame, art-directed: the portrait capture on a phone, the wide one on a
+ * desktop. The two sets are different shapes, which srcset cannot express, so
+ * this is a <picture> with a media query rather than a responsive <img>.
+ */
+function frame(desktopSrc, mobileSrc, {classes, attrs = '', alt, lazy}) {
+  const loading = lazy ? ' loading="lazy" decoding="async"' : '';
+  const source = mobileSrc ? `<source media="${PHONE}" srcset="${mobileSrc}">` : '';
+  const image = `<img src="${desktopSrc}" alt="${attr(alt)}" width="${map.viewport.width}" height="${map.viewport.height}"${loading}>`;
+  return `<picture class="${classes}"${attrs}>${source}${image}</picture>`;
+}
+
+const mapMStep = id => mapM && mapM.steps.find(step => step.id === id);
+const mapMExtra = id => mapM && mapM.extras.find(extra => extra.id === id);
 
 const esc = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const attr = text => esc(text).replace(/"/g, '&quot;');
@@ -66,19 +86,30 @@ function stageFigure(act, steps, closing) {
   steps.forEach(({node}, index) => {
     const step = stepFor(node.id);
     if (!step) throw new Error(`no frames for ${node.id}`);
+    const portrait = mapMStep(node.id);
     step.frames.forEach((file, seq) => {
       const last = seq === step.frames.length - 1;
-      const eager = index < 1 ? '' : ' loading="lazy" decoding="async"';
-      const alt = last
-        ? ` alt="The KiDraw canvas after the box &quot;${attr(plain(node.t))}&quot; was typed and the graph re-laid out"`
-        : ' alt=""';
-      images.push(`            <img class="frame${index === 0 && last ? ' is-on' : ''}" data-step="${index}" data-seq="${seq}"` +
-        ` src="assets/map/${file}"${alt} width="${map.viewport.width}" height="${map.viewport.height}"${eager}>`);
+      images.push('            ' + frame(
+        `assets/map/${file}`,
+        portrait && portrait.frames[seq] ? `assets/map-m/${portrait.frames[seq]}` : null,
+        {
+          classes: `frame${index === 0 && last ? ' is-on' : ''}`,
+          attrs: ` data-step="${index}" data-seq="${seq}"`,
+          alt: last
+            ? `The KiDraw canvas after the box "${plain(node.t)}" was typed and the graph re-laid out`
+            : '',
+          lazy: index >= 1,
+        },
+      ));
     });
   });
   if (closing) {
-    images.push(`            <img class="frame" data-step="${steps.length}" data-seq="0" src="assets/map/${closing.file}"` +
-      ` alt="The branch so far, zoomed out" width="${map.viewport.width}" height="${map.viewport.height}" loading="lazy" decoding="async">`);
+    const portrait = mapMExtra(closing.id);
+    images.push('            ' + frame(
+      `assets/map/${closing.file}`,
+      portrait ? `assets/map-m/${portrait.file}` : null,
+      {classes: 'frame', attrs: ` data-step="${steps.length}" data-seq="0"`, alt: 'The branch so far, zoomed out', lazy: true},
+    ));
   }
   return `        <figure class="stage" data-stage="${act.id}">
           <div class="stage-frame">
@@ -121,13 +152,16 @@ ${articles.join('\n')}${overview}
   </section>`;
 }
 
-const demoImage = (file, alt, extra = ' loading="lazy" decoding="async"') =>
-  `<img src="assets/demo/${file}" alt="${attr(alt)}" width="${demo.viewport.width}" height="${demo.viewport.height}"${extra}>`;
+const demoFrame = (file, alt, options = {}) => frame(
+  `assets/demo/${file}`,
+  demoM ? `assets/demo-m/${file}` : null,
+  {classes: options.classes ?? 'shot-frame', attrs: options.attrs ?? '', alt, lazy: options.lazy !== false},
+);
 
 function shot(file, label, caption) {
   if (!file) return '';
   return `      <figure class="shot">
-        ${demoImage(file, caption)}
+        ${demoFrame(file, caption)}
         <figcaption><span class="shot-label">${esc(label)}</span>${esc(caption)}</figcaption>
       </figure>`;
 }
@@ -160,7 +194,11 @@ function scrubber(id, title, intro, frames, captions, aside) {
     </div>
     <div class="drag-stage" data-scrub="${id}">
       <div class="stage-frame">
-${frames.map((file, index) => `        ${demoImage(file, captions[index] ?? `Step ${index + 1}`, index < 2 ? '' : ' loading="lazy" decoding="async"').replace('<img ', `<img class="frame${index === 0 ? ' is-on' : ''}" data-scrub-frame="${index}" `)}`).join('\n')}
+${frames.map((file, index) => `        ${demoFrame(file, captions[index] ?? `Step ${index + 1}`, {
+        classes: `frame${index === 0 ? ' is-on' : ''}`,
+        attrs: ` data-scrub-frame="${index}"`,
+        lazy: index >= 2,
+      })}`).join('\n')}
       </div>
       <p class="stage-caption"><span data-scrub-caption>${esc(captions[0] ?? '')}</span><span class="mono" data-scrub-count>1 / ${frames.length}</span></p>
     </div>
@@ -233,7 +271,7 @@ ${actSection(ACTS[5])}
       <p class="eyebrow">Before you open it</p>
       <h2>It is an alpha. Bring a keyboard.</h2>
       <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some arrows still route worse than you would draw them, and the navigation model will change. Anything on this page that is not in a frame is a plan, not a feature.</p>
-      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames} frames in all, five or six per box: the keys held down, the empty box, the label going in, the layout tween, and the graph at rest. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
+      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames}${mapM ? ' frames of it, captured twice so a phone gets a portrait shape and a desktop a wide one' : ' frames'} in all, five or six per box: the keys held down, the empty box, the label going in, the layout tween, and the graph at rest. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
       <div class="close-actions">
         <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
         <a class="button button-ghost" href="review/">Older captures</a>
@@ -261,4 +299,5 @@ ${readFileSync(join(here, 'page.script.html'), 'utf8')}
 `;
 
 writeFileSync(join(siteDir, 'index.html'), body);
-console.log(`site/index.html — ${ACTS.length} acts, ${entries.length} steps, ${map.frames} map frames, ${demo.follow.length + demo.avoid.length} scrub frames`);
+console.log(`site/index.html — ${ACTS.length} acts, ${entries.length} steps, ${map.frames} map frames` +
+  `${mapM ? ` (+${mapM.frames} portrait)` : ''}, ${demo.follow.length + demo.avoid.length} scrub frames`);

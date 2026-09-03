@@ -1,5 +1,22 @@
 # KiDraw homepage brief
 
+## September 3, 2026 — fourth revision (a portrait capture for phones)
+
+The third revision was still wrong on a phone: a 820x700 frame at 390px wide is
+a 333px strip, about a third of the screen. Ben wants the app to take the top two
+thirds in portrait, and was right that it needs a second set of images.
+
+So the capture runs twice. `CAPTURE_PROFILE=mobile` captures the same build at
+820x1170 into `assets/map-m/` and `assets/demo-m/`; the page serves it through a
+`<picture>` with a `(max-width: 61.99rem)` source. Both profiles are 820 wide
+because that is the narrowest viewport the on-screen keyboard fits in — narrower
+than that and it is clipped rather than scaled, so there is no such thing as a
+phone-sized capture of this app.
+
+On a phone the stage goes edge to edge and 65vh tall. The padding had to go: the
+portrait frame is exactly the shape of the box, so any horizontal padding made
+`object-fit` crop the keyboard off both sides.
+
 ## September 3, 2026 — third revision (animation and proportions)
 
 Ben, on the second revision: the frames should take about two thirds of the page

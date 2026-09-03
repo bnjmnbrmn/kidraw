@@ -84,7 +84,8 @@
     scrub.active = index;
     scrub.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
     var frame = scrub.frames[index];
-    if (scrub.caption && frame) scrub.caption.textContent = frame.getAttribute('alt') || '';
+    var image = frame && frame.querySelector ? frame.querySelector('img') : null;
+    if (scrub.caption && image) scrub.caption.textContent = image.getAttribute('alt') || '';
     if (scrub.count) scrub.count.textContent = (index + 1) + ' / ' + scrub.frames.length;
   }
 

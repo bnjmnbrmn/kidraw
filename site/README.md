@@ -38,11 +38,15 @@ and DNS are moved to the new page.
   `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
   still wraps it, but edit `tools/capture/` and regenerate rather than editing
   it by hand.
-- `assets/map/` holds the capture of the graph being built: five or six frames
-  per box, with `map.json` listing each box's run in order.
-- `assets/demo/` holds the small graphs: the keymenu at rest and under a held
-  key, an eleven-frame drag where a box's own arrows re-route, and a six-frame
-  drag where an arrow bends over a box that got in its way.
+- `assets/map/` and `assets/map-m/` hold the capture of the graph being built:
+  five or six frames per box, with `map.json` listing each box's run in order.
+  The two directories are the same run captured at two shapes — 820x700 for the
+  frames that sit beside the prose, 820x1170 for the portrait ones that fill the
+  top of a phone screen. File names match across the two.
+- `assets/demo/` and `assets/demo-m/` hold the small graphs, in the same two
+  shapes: the keymenu at rest and under a held key, an eleven-frame drag where a
+  box's own arrows re-route, and a six-frame drag where an arrow bends over a
+  box that got in its way.
 - `assets/captures/` holds the older August capture set. The homepage no longer
   uses it; it backs the review page, which is kept as a record.
 - `review/index.html` is the durable contact sheet for those older captures.
@@ -88,7 +92,10 @@ The smoke test checks, among other things:
 npm start                        # the capture scripts drive the real dev server
 node tools/capture/map.mjs       # ~23 min: builds the graph, a run of frames per box
 node tools/capture/demo.mjs      # the small graphs, the keymenu, the two drags
-node tools/capture/shrink.mjs 0.6 0.68   # re-encode the frames that only flash past
+CAPTURE_PROFILE=mobile node tools/capture/map.mjs    # ~23 min: the portrait set
+CAPTURE_PROFILE=mobile node tools/capture/demo.mjs
+node tools/capture/shrink.mjs 0.6 0.68 map     # the frames that only flash past
+node tools/capture/shrink.mjs 0.6 0.68 map-m
 node tools/capture/gen-page.mjs  # writes site/index.html
 npm run site:build && npm run site:test
 ```
@@ -100,10 +107,15 @@ operations the capture needs: type a label (Shift held for capitals and shifted
 punctuation, which is what the label-edit keymenu expects), grow a child, apply
 tree-right layout, fit the camera, zoom.
 
-Captures are taken at 820x700 — narrow enough that the on-screen keyboard fills
-the frame instead of floating in a wide empty canvas, which is also what makes
-the app readable when the frame is scaled down on a phone. The stage takes two
-thirds of the page width for the same reason.
+Captures are taken at 820 wide in both profiles. That is the narrowest viewport
+the on-screen keyboard fits in — below it the keyboard is *clipped*, not scaled,
+so a genuinely phone-sized capture is not an option. The two profiles differ in
+height: 820x700 for the wide frames that sit beside the prose, 820x1170 for the
+portrait ones, whose shape matches a phone screen closely enough that the frame
+fills the top 65% of it without cropping.
+
+The stage takes two thirds of the page width on a desktop and the top two thirds
+of the screen on a phone.
 
 Three things about the capture are worth knowing:
 
@@ -136,8 +148,11 @@ split at Advanced. Each act is a grid: a sticky `.act-stage` holding every frame
 for that act stacked on top of each other, and a column of `.step` articles
 beside it — one per box, carrying its label and its sentence or two.
 
-Each frame carries `data-step` (which box it belongs to) and `data-seq` (where
-it sits in that box's run). Only one frame has `is-on`. When a step becomes
+Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
+at the portrait capture, and an `<img>` with the wide one. The two sets are
+different shapes, which `srcset` cannot express, so this is art direction rather
+than a responsive image. Each frame carries `data-step` (which box it belongs to)
+and `data-seq` (where it sits in that box's run). Only one frame has `is-on`. When a step becomes
 active the script plays its run once at about 130ms a frame and holds the last
 one, which is the sharp, settled, nothing-selected frame. `prefers-reduced-motion`
 skips straight to that last frame.

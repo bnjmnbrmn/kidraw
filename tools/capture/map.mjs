@@ -16,11 +16,21 @@ import {seed, grow, layout, focus, fit, park, counts, undo, settle, typeLabel, l
 import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = join(here, '..', '..', 'site', 'assets', 'map');
+// Two shapes of the same run. The desktop frames sit beside the prose; the
+// portrait ones fill the top two thirds of a phone. Both are 820 wide because
+// that is the narrowest viewport the on-screen keyboard fits in without being
+// clipped.
+const PROFILES = {
+  desktop: {dir: 'map', viewport: {width: 820, height: 700}},
+  mobile: {dir: 'map-m', viewport: {width: 820, height: 1170}},
+};
+const profile = PROFILES[process.env.CAPTURE_PROFILE ?? 'desktop'];
+if (!profile) throw new Error(`unknown CAPTURE_PROFILE ${process.env.CAPTURE_PROFILE}`);
+const outDir = join(here, '..', '..', 'site', 'assets', profile.dir);
 rmSync(outDir, {recursive: true, force: true});
 mkdirSync(outDir, {recursive: true});
 
-const VIEWPORT = {width: 820, height: 700};
+const VIEWPORT = profile.viewport;
 // The frames that flash past inside an animation can be leaner than the one the
 // reader actually sits on.
 const QUALITY = {target: .58, blank: .55, typing: .55, typed: .62, tween: .56, rest: .8};
@@ -65,7 +75,7 @@ async function layoutWithTween(id, frames) {
 
 const entries = flatten(OUTLINE);
 const started = Date.now();
-console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height}`);
+console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height} into ${profile.dir}`);
 
 const opening = [];
 opening.push(await keep('kidraw', 'target'));

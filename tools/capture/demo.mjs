@@ -14,11 +14,17 @@ import {open, keys, shooter} from './driver.mjs';
 import {seed, grow, layout, focus, fit, frameAbove, park, goTo, edges, settle, counts, undo, typeLabel, labels} from './build.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = join(here, '..', '..', 'site', 'assets', 'demo');
+const PROFILES = {
+  desktop: {dir: 'demo', viewport: {width: 820, height: 700}},
+  mobile: {dir: 'demo-m', viewport: {width: 820, height: 1170}},
+};
+const profile = PROFILES[process.env.CAPTURE_PROFILE ?? 'desktop'];
+if (!profile) throw new Error(`unknown CAPTURE_PROFILE ${process.env.CAPTURE_PROFILE}`);
+const outDir = join(here, '..', '..', 'site', 'assets', profile.dir);
 rmSync(outDir, {recursive: true, force: true});
 mkdirSync(outDir, {recursive: true});
 
-const VIEWPORT = {width: 820, height: 700};
+const VIEWPORT = profile.viewport;
 let session = await open({...VIEWPORT, scale: 1});
 let {page} = session;
 let shot = shooter(outDir, {type: 'webp', quality: 0.76, scratch: session.scratch});

@@ -37,12 +37,27 @@ for (const step of map.steps) {
 for (const extra of map.extras) {
   assert.ok(existsSync(join(dist, 'assets', 'map', extra.file)), `build includes ${extra.file}`);
 }
+// The portrait set: same runs, a different shape, so a phone gets frames that
+// fill the top of the screen instead of a letterboxed strip.
+const mapM = JSON.parse(readFileSync(join(dist, 'assets', 'map-m', 'map.json'), 'utf8'));
+assert.equal(mapM.steps.length, map.steps.length, 'the portrait capture covers the same boxes');
+assert.ok(mapM.viewport.height / mapM.viewport.width > 1.3,
+  `the portrait capture is actually portrait (${mapM.viewport.width}x${mapM.viewport.height})`);
+for (const step of mapM.steps) {
+  assert.equal(step.frames.length, map.steps.find(other => other.id === step.id).frames.length,
+    `${step.id} has the same run in both shapes`);
+  for (const file of step.frames) {
+    assert.ok(existsSync(join(dist, 'assets', 'map-m', file)), `build includes map-m/${file}`);
+  }
+}
+
 const demo = JSON.parse(readFileSync(join(dist, 'assets', 'demo', 'demo.json'), 'utf8'));
 assert.equal(demo.menu.length, 3, 'the keymenu break has its three frames');
 assert.ok(demo.follow.length >= 10, `the follow sequence is long enough to read (${demo.follow.length})`);
 assert.ok(demo.avoid.length >= 5, `the avoid sequence is long enough to read (${demo.avoid.length})`);
 for (const file of [...demo.menu, ...demo.follow, ...demo.avoid]) {
   assert.ok(existsSync(join(dist, 'assets', 'demo', file)), `build includes ${file}`);
+  assert.ok(existsSync(join(dist, 'assets', 'demo-m', file)), `build includes demo-m/${file}`);
 }
 
 // The older capture set still backs the review page.
@@ -249,6 +264,16 @@ try {
     await mobile.page.locator('.act-stage').first().evaluate(element => getComputedStyle(element).position),
     'sticky',
     'the frame stays in view while the text scrolls under it',
+  );
+  // The app fills the top two thirds of a phone screen.
+  const share = await mobile.page.locator('.stage-frame').first().evaluate(
+    element => element.getBoundingClientRect().height / innerHeight);
+  assert.ok(share > 0.6 && share < 0.72, `the frame is about two thirds of the screen (${share.toFixed(2)})`);
+  assert.equal(
+    await mobile.page.locator('.frame').first().evaluate(
+      picture => picture.querySelector('img').currentSrc.includes('/map-m/')),
+    true,
+    'a phone is served the portrait capture',
   );
   await readTo(mobile.page, 3, 3);
   assert.equal(await mobile.page.locator('.act').nth(3).locator('.frame.is-on').count(), 1);

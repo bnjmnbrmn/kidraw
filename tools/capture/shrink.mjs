@@ -10,7 +10,7 @@
  * eighth of a second they are visible, and the frame the animation settles on
  * is full size and sharp.
  *
- *   node tools/capture/shrink.mjs [quality] [scale]
+ *   node tools/capture/shrink.mjs [quality] [scale] [dir] [fleeting|rest|all]
  */
 import {readdirSync, readFileSync, writeFileSync, statSync} from 'node:fs';
 import {dirname, join} from 'node:path';
@@ -18,12 +18,19 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const dir = join(here, '..', '..', 'site', 'assets', 'map');
+const dir = join(here, '..', '..', 'site', 'assets', process.argv[4] ?? 'map');
 const quality = Number(process.argv[2] ?? 0.45);
 const scale = Number(process.argv[3] ?? 1);
 const FLEETING = /-(target|blank|typing|tween)\.webp$/;
+const which = process.argv[5] ?? 'fleeting';
+const PICK = {
+  fleeting: name => FLEETING.test(name),
+  rest: name => name.endsWith('-rest.webp'),
+  all: () => true,
+};
+if (!PICK[which]) throw new Error(`unknown selection ${which}; use fleeting, rest or all`);
 
-const files = readdirSync(dir).filter(name => FLEETING.test(name));
+const files = readdirSync(dir).filter(name => name.endsWith('.webp')).filter(PICK[which]);
 const before = files.reduce((total, name) => total + statSync(join(dir, name)).size, 0);
 
 const browser = await chromium.launch({headless: true});
@@ -48,4 +55,4 @@ for (const name of files) {
 await browser.close();
 
 const after = files.reduce((total, name) => total + statSync(join(dir, name)).size, 0);
-console.log(`${files.length} fleeting frames: ${(before / 1e6).toFixed(1)}MB -> ${(after / 1e6).toFixed(1)}MB at q${quality} x${scale}`);
+console.log(`${files.length} ${which} frames: ${(before / 1e6).toFixed(1)}MB -> ${(after / 1e6).toFixed(1)}MB at q${quality} x${scale}`);
