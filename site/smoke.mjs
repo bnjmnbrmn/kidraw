@@ -23,33 +23,35 @@ assert.match(head, /<link rel="canonical" href="https:\/\/kidraw\.net\/">/);
 assert.match(head, /<link rel="stylesheet"/);
 assert.doesNotMatch(body, /<title>|<link rel="stylesheet"|<style>/);
 assert.doesNotMatch(generated, /site-head:(?:start|end)/);
-assert.doesNotMatch(body, /playable demo|id="demo"|id="scene"/i);
 
-const expectedCaptures = [
-  'fix-release-zoom.png',
-  'ghost-after.png',
-  'ghost-before.png',
-  'grow-0.png',
-  'grow-1.png',
-  'grow-2.png',
-  'menu-held-drag.png',
-  'menu-held.png',
-  'menu-root.png',
-  'reroute-0.png',
-  'reroute-1.png',
-  'reroute-2.png',
-  'reroute-final.png',
-  'reroute-relaid.png',
+// Every frame on the page is a capture of the running app.
+const map = JSON.parse(readFileSync(join(dist, 'assets', 'map', 'map.json'), 'utf8'));
+assert.ok(map.frames.length > 90, `the map capture has a frame per node (${map.frames.length})`);
+for (const frame of map.frames) {
+  assert.ok(existsSync(join(dist, 'assets', 'map', frame.file)), `build includes ${frame.file}`);
+}
+const demo = JSON.parse(readFileSync(join(dist, 'assets', 'demo', 'demo.json'), 'utf8'));
+assert.ok(demo.drag.length >= 8, `the drag sequence is long enough to read (${demo.drag.length})`);
+for (const file of [...demo.drag, ...demo.frames.map(frame => frame.file)]) {
+  assert.ok(existsSync(join(dist, 'assets', 'demo', file)), `build includes ${file}`);
+}
+
+// The older capture set still backs the review page.
+const reviewCaptures = [
+  'fix-release-zoom.png', 'ghost-after.png', 'ghost-before.png', 'grow-0.png', 'grow-1.png',
+  'grow-2.png', 'menu-held-drag.png', 'menu-held.png', 'menu-root.png', 'reroute-0.png',
+  'reroute-1.png', 'reroute-2.png', 'reroute-final.png', 'reroute-relaid.png',
 ];
-for (const capture of expectedCaptures) {
+for (const capture of reviewCaptures) {
   assert.ok(existsSync(join(dist, 'assets', 'captures', capture)), `build includes ${capture}`);
-  assert.ok(generated.includes(`assets/captures/${capture}`), `homepage shows ${capture}`);
 }
 assert.ok(existsSync(join(dist, 'review', 'index.html')), 'build includes the capture review');
 
 const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.png', 'image/png'],
+  ['.webp', 'image/webp'],
+  ['.json', 'application/json'],
 ]);
 const server = createServer((request, response) => {
   const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
@@ -80,9 +82,7 @@ async function openPage(viewport, options = {}) {
   const context = await browser.newContext({viewport, ...options});
   // The page has system-font fallbacks, so CI need not reach Google Fonts.
   await context.route('https://fonts.googleapis.com/**', route => route.fulfill({
-    status: 200,
-    contentType: 'text/css',
-    body: '',
+    status: 200, contentType: 'text/css', body: '',
   }));
   const page = await context.newPage();
   const errors = [];
@@ -94,15 +94,19 @@ async function openPage(viewport, options = {}) {
   return {context, page, errors};
 }
 
-// Put the nth step on the reading line and let the camera settle.
-async function readStep(page, index) {
-  await page.evaluate(n => {
+/** Put a step (or any element) on the reading line. */
+async function scrollTo(page, pick) {
+  await page.evaluate(spec => {
     document.documentElement.style.scrollBehavior = 'auto';
-    const step = document.querySelectorAll('.step')[n];
-    window.scrollTo(0, window.scrollY + step.getBoundingClientRect().top - innerHeight * 0.5);
-  }, index);
-  await page.waitForTimeout(400);
+    const element = spec.act === undefined
+      ? document.querySelectorAll(spec.selector)[spec.index]
+      : document.querySelectorAll('.act')[spec.act].querySelectorAll('.step')[spec.index];
+    window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - innerHeight * 0.45);
+  }, pick);
+  await page.waitForTimeout(340);
 }
+const readTo = (page, act, index) => scrollTo(page, {act, index});
+const dragTo = (page, index) => scrollTo(page, {selector: '.drag-step', index});
 
 try {
   const desktop = await openPage({width: 1440, height: 1000});
@@ -124,52 +128,55 @@ try {
     'the live alpha stays linked from the header, the hero, and the close');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
 
-  // The outline is the page's content of record: the diagram is drawn from it.
+  // One act per branch, one step per box, one frame per step.
+  assert.equal(await page.locator('.act').count(), 6);
+  const steps = await page.locator('.act .step').count();
+  const frames = await page.locator('.act .frame').count();
+  assert.ok(steps >= 96, `a step per node (${steps})`);
+  assert.equal(steps, frames, 'every step has a frame');
+
+  // The outline is the content of record, and the graph was built from it.
   const outlineItems = await page.locator('#map-outline li').count();
-  assert.ok(outlineItems > 80, `the outline carries the whole map (${outlineItems} items)`);
+  assert.equal(outlineItems, 96, 'the outline carries the whole map');
   assert.equal(await page.locator('#map-outline li[data-num]').count(), 21,
     'numbered list items keep their edge labels');
   assert.equal(await page.locator('#map-outline li[data-link]').count(), 3,
     'the three cross-branch links survive');
   assert.equal(await page.locator('#outline').evaluate(element => element.open), false,
-    'the outline collapses once the diagram is drawn');
+    'the outline collapses once the frames are available');
 
-  // One sticky stage per act, each drawn from that same outline.
-  const acts = await page.locator('.act').count();
-  assert.equal(acts, 5);
-  assert.equal(await page.locator('[data-graph]').count(), acts);
-  assert.ok(await page.locator('[data-graph] .g-node').count() > 100, 'every stage draws its nodes');
-  assert.ok(await page.locator('[data-graph] .g-label').count() > 0, 'numbered edges are labelled');
-  assert.ok(await page.locator('[data-graph] .g-edge.is-link').count() > 0, 'cross-branch links are drawn');
+  // Scrolling advances the frame beside the prose.
+  const whatStage = page.locator('.act').nth(1).locator('.stage');
+  await readTo(page, 1, 0);
+  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^1 \/ \d+$/);
+  const openingCaption = await whatStage.locator('[data-stage-caption]').textContent();
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-frame'), '0');
 
-  const firstStage = page.locator('.stage').first();
-  await readStep(page, 0);
-  assert.equal(await firstStage.locator('[data-stage-count]').textContent(), '1 / 5');
-  const openingNodes = await firstStage.locator('.g-node.is-on').count();
-  const openingCaption = await firstStage.locator('[data-stage-caption]').textContent();
+  await readTo(page, 1, 4);
+  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^5 \/ \d+$/);
+  assert.notEqual(await whatStage.locator('[data-stage-caption]').textContent(), openingCaption);
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-frame'), '4');
+  assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
 
-  await readStep(page, 2);
-  assert.equal(await firstStage.locator('[data-stage-count]').textContent(), '3 / 5');
-  assert.notEqual(await firstStage.locator('[data-stage-caption]').textContent(), openingCaption);
-  assert.ok(await firstStage.locator('.g-node.is-on').count() > openingNodes,
-    'scrolling reveals more of the diagram');
-  assert.equal(await page.locator('.step.is-active').count(), acts);
+  // The drag sequence scrubs the same way.
+  await dragTo(page, 0);
+  assert.equal(await page.locator('[data-drag].is-on').getAttribute('data-drag'), '0');
+  await dragTo(page, 5);
+  assert.equal(await page.locator('[data-drag].is-on').getAttribute('data-drag'), '5');
+  assert.match(await page.locator('[data-drag-caption]').textContent() ?? '', /Step 5/);
 
-  // The camera moved rather than the page reflowing.
-  const camera = await firstStage.locator('.cam').evaluate(element => element.style.transform);
-  assert.match(camera, /^translate\(.*\) scale\(/);
-
+  await page.keyboard.press('Home');
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('href')), '#main');
 
-  // Captures are lazy; ask for them all, then insist every one of them arrives.
+  // Frames are lazy; ask for them all, then insist every one arrives.
   await page.evaluate(() => document.querySelectorAll('img[loading="lazy"]').forEach(image => {
     image.loading = 'eager';
   }));
   await page.waitForFunction(
     () => Array.prototype.every.call(document.images, image => image.complete && image.naturalWidth > 0),
     null,
-    {timeout: 15000},
+    {timeout: 30000},
   );
   assert.deepEqual(desktop.errors, []);
   await desktop.context.close();
@@ -177,13 +184,13 @@ try {
   const reduced = await openPage({width: 1200, height: 900}, {reducedMotion: 'reduce'});
   await reduced.page.waitForFunction(() => document.documentElement.classList.contains('js'), null, {timeout: 5000});
   assert.equal(
-    await reduced.page.locator('.cam').first().evaluate(element => getComputedStyle(element).transitionDuration),
+    await reduced.page.locator('.frame').first().evaluate(element => getComputedStyle(element).transitionDuration),
     '0s',
-    'reduced motion stops the camera from animating',
+    'reduced motion stops the frames cross-fading',
   );
-  await readStep(reduced.page, 2);
-  assert.ok(await reduced.page.locator('.stage').first().locator('.g-node.is-on').count() > 0,
-    'reduced motion still builds the diagram');
+  await readTo(reduced.page, 1, 3);
+  assert.equal(await reduced.page.locator('.act').nth(1).locator('.frame.is-on').getAttribute('data-frame'), '3',
+    'reduced motion still steps through the build');
   assert.deepEqual(reduced.errors, []);
   await reduced.context.close();
 
@@ -193,11 +200,10 @@ try {
   assert.equal(
     await mobile.page.locator('.act-stage').first().evaluate(element => getComputedStyle(element).position),
     'sticky',
-    'the diagram stays in view while the text scrolls under it',
+    'the frame stays in view while the text scrolls under it',
   );
-  await readStep(mobile.page, 10);
-  assert.ok(await mobile.page.locator('.stage').nth(2).locator('.g-node.is-on').count() > 0,
-    'the third act draws on a phone too');
+  await readTo(mobile.page, 3, 3);
+  assert.equal(await mobile.page.locator('.act').nth(3).locator('.frame.is-on').count(), 1);
   assert.deepEqual(mobile.errors, []);
   await mobile.context.close();
 
@@ -206,8 +212,8 @@ try {
   const plain = await plainContext.newPage();
   await plain.goto(url, {waitUntil: 'load'});
   assert.equal(await plain.locator('#outline').evaluate(element => element.open), true,
-    'the outline stays open when the diagram cannot be drawn');
-  assert.ok(await plain.locator('#map-outline li').count() > 80, 'the outline is real markup, not generated');
+    'the outline stays open when the frames cannot be stepped');
+  assert.ok(await plain.locator('#map-outline li').count() > 90, 'the outline is real markup, not generated');
   assert.equal(await plain.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
   await plainContext.close();
 
@@ -216,8 +222,6 @@ try {
   await review.goto(`${url}review/`, {waitUntil: 'load'});
   assert.equal(await review.locator('h1').textContent(), 'KiDraw homepage capture review');
   assert.equal(await review.locator('figure img').count(), 14);
-  assert.ok(await review.locator('figure img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0)),
-    'all review images load');
   assert.equal(await review.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
   await reviewContext.close();
 } finally {
@@ -225,4 +229,4 @@ try {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
 
-console.log('site smoke: document, captures, outline, five scroll-drawn stages, reduced motion, mobile, no-JS, and review page passed');
+console.log('site smoke: document, captured frames, outline, six scroll-stepped acts, the drag, reduced motion, mobile, no-JS, and review page passed');

@@ -1,6 +1,36 @@
 # KiDraw homepage brief
 
-## September 3, 2026 revision
+## September 3, 2026 — second revision (real captures)
+
+Ben's feedback on the first revision: keep the spacing and placement of the
+nodes, but use **actual screenshots of the graph being built in KiDraw** — the
+button presses, the zooming in on relevant nodes, the overviews — instead of an
+SVG redrawing of the same graph. Give each node **one or two sentences**, and
+cut the purple prose and the overstatement. Replace the seven-node demo graph
+with something smaller. And show, properly, how edges re-route while a node is
+dragged.
+
+So the hand-drawn SVG is gone. `tools/capture/map.mjs` drives the running dev
+server, types all ninety-six boxes with real key presses, applies tree-right
+layout after each one, and screenshots the result — one frame per box, plus an
+overview at the end of each branch. `tools/capture/demo.mjs` builds a four-box
+graph for the keymenu frames and an eleven-frame drag sequence. The page is
+generated from `tools/capture/outline.mjs`, which holds the outline and the
+prose together, so the sentences and the graph cannot drift apart.
+
+The prose target is now: short, concrete, no invented numbers, no rhetorical
+flourish. Where something is a plan rather than a feature, the sentence says so.
+
+Two honest gaps, both recorded rather than hidden:
+
+- The three cross-branch links (`↗` in the outline) are not in the captured
+  graph. Connecting two boxes that already exist has no target-picking step in
+  the held-key surface today, so the links live in the outline and the prose.
+- The capture moves the crosshairs to a named box by calling the app's own
+  `moveCrosshairsBy`, rather than pressing `hjkl` until it arrives. Everything
+  that appears in a frame — adding, typing, layout, camera — is a real press.
+
+## September 3, 2026 revision (superseded)
 
 `site/index.org` — Benjamin's own outline of KiDraw — is now the spine of the
 page. The instruction that came with it: *as the user scrolls down, they should
@@ -8,9 +38,10 @@ see a diagram be built*, with breaks in the sequence of diagram screenshots
 (closeups of the keymenu, for instance), and where the outline says `List`, the
 edges to those children carry numbers as labels.
 
-So the page is now five sticky stages, one per branch of the outline, each
+So the page became five sticky stages, one per branch of the outline, each
 drawing that branch node by node as the reader scrolls, with the four capture
-sets breaking the sequence between them. The outline itself ships as markup at
+sets breaking the sequence between them. (The drawing was replaced by real
+captures the same day — see above.) The outline itself ships as markup at
 the bottom of the page; the diagram is drawn from it, and it is what a reader
 without JavaScript gets. The frame-sequence widgets from the August 31 version
 are gone — the diagram carries the motion now, and the captures are static.

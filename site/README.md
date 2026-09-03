@@ -7,8 +7,10 @@ JavaScript. A homepage change therefore cannot break graph editing, and the
 homepage can load without the editor's application bundle.
 
 The page is built around one idea: the whole argument is a single graph, and
-it is drawn branch by branch as the reader scrolls, with real screenshots
-breaking the sequence. The content of that graph is `index.org`.
+you watch it get built. Every picture on the page is a screenshot of the
+running KiDraw app taken by a script that pressed the keys — one frame per box,
+ninety-six of them, plus a drag sequence showing arrows re-routing. The content
+of that graph is `index.org`.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -27,14 +29,21 @@ and DNS are moved to the new page.
 
 ## Files
 
-- `index.org` is the source of the argument: the outline Benjamin keeps in
-  org-mode. `index.html` transcribes it; nothing else reads the `.org` file.
-- `index.html` is the homepage source. Its `site-head` block contains the page
-  title, fonts, and CSS. The rest is body markup, the outline the diagram is
-  drawn from, and the script that draws it.
-- `assets/captures/` contains real screenshots from the app. The build keeps
-  them as separate files so the browser can cache them.
-- `review/index.html` is the durable contact sheet for those captures.
+- `index.org` is where the argument started: the outline Benjamin keeps in
+  org-mode. `tools/capture/outline.mjs` is its machine-readable form, with the
+  sentence or two of prose that sits beside each box. Nothing reads the `.org`
+  file directly.
+- `index.html` is **generated** — see "How the page is made" below. Its
+  `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
+  still wraps it, but edit `tools/capture/` and regenerate rather than editing
+  it by hand.
+- `assets/map/` holds the frame-per-box capture of the graph being built, with
+  `map.json` listing them in order.
+- `assets/demo/` holds the small four-box graph: the keymenu at rest and under
+  a held key, and the eleven-frame drag sequence.
+- `assets/captures/` holds the older August capture set. The homepage no longer
+  uses it; it backs the review page, which is kept as a record.
+- `review/index.html` is the durable contact sheet for those older captures.
 - `build.mjs` makes a complete HTML document in `dist/index.html`, then copies
   the review and assets into `dist/`.
 - `smoke.mjs` builds the site, serves it locally, and checks the generated
@@ -71,36 +80,62 @@ The smoke test checks, among other things:
 - the no-JavaScript fallback: the outline stays open and complete;
 - successful loading of every screenshot.
 
-## How the scroll-drawn diagram works
+## How the page is made
 
-There is one source of truth for the diagram: the nested `<ul id="map-outline">`
-at the bottom of `index.html`, inside a `<details>` element. It is ordinary
-markup — a `<li>` per node, `<span>` for the label, `data-num` for a numbered
-edge, `data-link` for a cross-branch arrow, `data-id` so steps can name a node.
+```bash
+npm start                        # the capture scripts drive the real dev server
+node tools/capture/map.mjs       # ~17 min: builds the graph, one frame per box
+node tools/capture/demo.mjs      # the small graph, the keymenu, the drag
+node tools/capture/gen-page.mjs  # writes site/index.html
+npm run site:build && npm run site:test
+```
 
-The script at the bottom of the page reads that list, measures every label on a
-canvas, lays the graph out as a left-to-right tidy tree, and draws an SVG into
-each act's sticky stage. Each act renders every node revealed up to the end of
-that act, so later stages carry the earlier branches as context.
+`tools/capture/driver.mjs` dispatches keys the way `tools/playwright-screenshot.js`
+does — `[a d j]` means "hold Add, press Box, press j, release Add" — with waits
+long enough for the held-key surfaces to settle. `build.mjs` wraps that in the
+operations the capture needs: type a label (Shift held for capitals and shifted
+punctuation, which is what the label-edit keymenu expects), grow a child, apply
+tree-right layout, fit the camera, zoom.
 
-Reading order is driven by the `.step` articles beside the stage:
+Two things about the capture are worth knowing:
 
-- `data-reveal` names what appears — `id` for one node, `id+` for a node and
-  its children, `id*` for a whole subtree;
-- `data-focus` names what the camera frames, defaulting to `data-reveal`;
-- `data-edges` (`from>to`) reveals a cross-branch link;
-- `data-fit="all"` frames the entire graph;
-- `data-caption` is the line under the stage.
+- **Placement is trial and error, and that is fine.** Which dashed ghost is
+  free depends on what the layout has already put around the parent, so `grow`
+  tries placements in order and checks after each one that a *new box joined to
+  the parent* appeared. A placement that drew an edge to an existing box, or
+  left a box floating, is undone before the next try. Layout decides the final
+  position anyway.
+- **Moving the crosshairs to a named box is the one call that is not a key
+  press.** `goTo` calls the same `moveCrosshairsBy` the movement keys call,
+  with the delta worked out for it, because a person would press `hjkl` until
+  they arrived and a hundred-node run cannot afford to guess. The camera has to
+  be pulled back first when the target is off screen — the crosshairs cannot
+  leave the viewport.
 
-On scroll the last step above the reading line becomes active. Its nodes and
-edges get `is-on`, older edges get `is-dim`, and the `.cam` group's CSS
-transform moves the camera. Nothing reflows, so the transition is a pan and a
-zoom rather than a redraw. `prefers-reduced-motion` removes those transitions
-and leaves the stepping intact.
+Known gap: the three cross-branch links in the outline (`↗`) are *not* in the
+captured graph. Drawing an edge between two boxes that already exist needs a
+target-picking step the held-key surface does not currently offer, so the links
+live in the outline and the prose but not in the frames.
 
-Without JavaScript the page is the prose plus the open outline: a script
-failure loses the picture, not the content. The `.js` class that hides the
-unrevealed parts is only added once the diagram has been built.
+## How the scroll-stepped frames work
+
+The page is six acts, one per branch of the outline, with "How does it work?"
+split at Advanced. Each act is a grid: a sticky `.act-stage` holding every frame
+for that act stacked on top of each other, and a column of `.step` articles
+beside it — one per box, carrying its label and its sentence or two.
+
+Only one frame in a stage has `is-on`; the rest sit at `opacity: 0`. On scroll
+the last step above the reading line becomes active, and the script turns on the
+frame with the matching `data-frame`, marks the step, and updates the caption
+and counter. The drag section works the same way: eleven frames, and a column of
+empty `.drag-step` spacers that scrub through them.
+
+Nothing autoplays — the reader's scroll is the only thing that advances a frame,
+so `prefers-reduced-motion` only has to switch off the cross-fade.
+
+Without JavaScript the page is the prose, the first frame of each act, and the
+outline at the bottom, which is open until the script collapses it. A script
+failure loses the stepping, not the content.
 
 ## Updating screenshots
 

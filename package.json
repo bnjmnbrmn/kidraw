@@ -13,7 +13,9 @@
     "screenshot": "node tools/playwright-screenshot.js",
     "routing-eval": "node tools/routing-eval/run.mjs",
     "routing-eval:screens": "node tools/routing-eval/render-screens.mjs",
-    "routing-test": "node tools/routing-eval/test.mjs"
+    "routing-test": "node tools/routing-eval/test.mjs",
+    "site:capture": "node tools/capture/map.mjs && node tools/capture/demo.mjs",
+    "site:page": "node tools/capture/gen-page.mjs"
   },
   "private": true,
   "dependencies": {

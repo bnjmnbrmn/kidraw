@@ -1,0 +1,89 @@
+<script>
+(function () {
+  'use strict';
+
+  var acts = Array.prototype.slice.call(document.querySelectorAll('.act'));
+  var drag = document.querySelector('.drag');
+  if (!acts.length || !window.requestAnimationFrame) return;
+
+  function collect(act) {
+    return {
+      steps: Array.prototype.slice.call(act.querySelectorAll('.step')),
+      frames: Array.prototype.slice.call(act.querySelectorAll('.frame')),
+      caption: act.querySelector('[data-stage-caption]'),
+      count: act.querySelector('[data-stage-count]'),
+      active: -1
+    };
+  }
+
+  var stages = acts.map(collect);
+
+  function show(stage, index) {
+    if (stage.active === index) return;
+    stage.active = index;
+    stage.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
+    stage.steps.forEach(function (step, i) { step.classList.toggle('is-active', i === index); });
+    var step = stage.steps[index];
+    if (stage.caption && step) stage.caption.textContent = step.getAttribute('data-label') || '';
+    if (stage.count) stage.count.textContent = (index + 1) + ' / ' + stage.steps.length;
+  }
+
+  var dragState = null;
+  if (drag) {
+    dragState = {
+      steps: Array.prototype.slice.call(drag.querySelectorAll('.drag-step')),
+      frames: Array.prototype.slice.call(drag.querySelectorAll('[data-drag]')),
+      caption: drag.querySelector('[data-drag-caption]'),
+      count: drag.querySelector('[data-drag-count]'),
+      active: -1
+    };
+  }
+
+  function dragCaption(index, total) {
+    if (index === 0) return 'Select+Drag held, before the first step.';
+    if (index === total - 1) return 'One press of Layout, and the whole graph is tidy again.';
+    if (index === total - 2) return 'Released. The arrows keep the routes they found.';
+    return 'Step ' + index + '. Both arrows were recomputed, not dragged along.';
+  }
+
+  function showDrag(index) {
+    if (!dragState || dragState.active === index) return;
+    dragState.active = index;
+    dragState.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
+    if (dragState.caption) dragState.caption.textContent = dragCaption(index, dragState.frames.length);
+    if (dragState.count) dragState.count.textContent = (index + 1) + ' / ' + dragState.frames.length;
+  }
+
+  var wide = window.matchMedia('(min-width: 62rem)');
+  function activeIndex(elements, line) {
+    var index = 0;
+    elements.forEach(function (element, i) {
+      if (element.getBoundingClientRect().top <= line) index = i;
+    });
+    return index;
+  }
+
+  function update() {
+    var line = window.innerHeight * (wide.matches ? 0.55 : 0.78);
+    stages.forEach(function (stage) { show(stage, activeIndex(stage.steps, line)); });
+    if (dragState && dragState.steps.length) {
+      showDrag(Math.min(activeIndex(dragState.steps, line), dragState.frames.length - 1));
+    }
+  }
+
+  var queued = false;
+  function schedule() {
+    if (queued) return;
+    queued = true;
+    window.requestAnimationFrame(function () { queued = false; update(); });
+  }
+
+  document.documentElement.classList.add('js');
+  var outline = document.getElementById('outline');
+  if (outline) outline.open = false;
+
+  update();
+  window.addEventListener('scroll', schedule, {passive: true});
+  window.addEventListener('resize', schedule);
+})();
+</script>

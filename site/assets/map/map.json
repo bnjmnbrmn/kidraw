@@ -1,0 +1,580 @@
+{
+ "viewport": {
+  "width": 1200,
+  "height": 760
+ },
+ "nodes": 96,
+ "edges": 95,
+ "frames": [
+  {
+   "file": "000-empty.webp",
+   "id": "empty",
+   "kind": "empty"
+  },
+  {
+   "file": "001-kidraw.webp",
+   "id": "kidraw",
+   "kind": "node"
+  },
+  {
+   "file": "002-tagline.webp",
+   "id": "tagline",
+   "kind": "node"
+  },
+  {
+   "file": "003-what.webp",
+   "id": "what",
+   "kind": "node"
+  },
+  {
+   "file": "004-diagram-editor.webp",
+   "id": "diagram-editor",
+   "kind": "node"
+  },
+  {
+   "file": "005-graph-editor.webp",
+   "id": "graph-editor",
+   "kind": "node"
+  },
+  {
+   "file": "006-graph-def.webp",
+   "id": "graph-def",
+   "kind": "node"
+  },
+  {
+   "file": "007-comparable.webp",
+   "id": "comparable",
+   "kind": "node"
+  },
+  {
+   "file": "008-miro.webp",
+   "id": "miro",
+   "kind": "node"
+  },
+  {
+   "file": "009-visio.webp",
+   "id": "visio",
+   "kind": "node"
+  },
+  {
+   "file": "010-drawio.webp",
+   "id": "drawio",
+   "kind": "node"
+  },
+  {
+   "file": "011-excalidraw.webp",
+   "id": "excalidraw",
+   "kind": "node"
+  },
+  {
+   "file": "012-graphviz.webp",
+   "id": "graphviz",
+   "kind": "node"
+  },
+  {
+   "file": "013-keyboard-first.webp",
+   "id": "keyboard-first",
+   "kind": "node"
+  },
+  {
+   "file": "014-vi-inspired.webp",
+   "id": "vi-inspired",
+   "kind": "node"
+  },
+  {
+   "file": "015-not-coders.webp",
+   "id": "not-coders",
+   "kind": "node"
+  },
+  {
+   "file": "016-other-options.webp",
+   "id": "other-options",
+   "kind": "node"
+  },
+  {
+   "file": "017-discoverable.webp",
+   "id": "discoverable",
+   "kind": "node"
+  },
+  {
+   "file": "018-experiment.webp",
+   "id": "experiment",
+   "kind": "node"
+  },
+  {
+   "file": "019-wip.webp",
+   "id": "wip",
+   "kind": "node"
+  },
+  {
+   "file": "020-overview-wip.webp",
+   "id": "overview-wip",
+   "kind": "overview"
+  },
+  {
+   "file": "021-point.webp",
+   "id": "point",
+   "kind": "node"
+  },
+  {
+   "file": "022-graphs-everywhere.webp",
+   "id": "graphs-everywhere",
+   "kind": "node"
+  },
+  {
+   "file": "023-road-maps.webp",
+   "id": "road-maps",
+   "kind": "node"
+  },
+  {
+   "file": "024-mind-maps.webp",
+   "id": "mind-maps",
+   "kind": "node"
+  },
+  {
+   "file": "025-logical-arguments.webp",
+   "id": "logical-arguments",
+   "kind": "node"
+  },
+  {
+   "file": "026-outlines-graph.webp",
+   "id": "outlines-graph",
+   "kind": "node"
+  },
+  {
+   "file": "027-internet.webp",
+   "id": "internet",
+   "kind": "node"
+  },
+  {
+   "file": "028-thoughts-slip.webp",
+   "id": "thoughts-slip",
+   "kind": "node"
+  },
+  {
+   "file": "029-bottleneck.webp",
+   "id": "bottleneck",
+   "kind": "node"
+  },
+  {
+   "file": "030-learnable.webp",
+   "id": "learnable",
+   "kind": "node"
+  },
+  {
+   "file": "031-vim-curve.webp",
+   "id": "vim-curve",
+   "kind": "node"
+  },
+  {
+   "file": "032-overview-vim-curve.webp",
+   "id": "overview-vim-curve",
+   "kind": "overview"
+  },
+  {
+   "file": "033-how.webp",
+   "id": "how",
+   "kind": "node"
+  },
+  {
+   "file": "034-basics.webp",
+   "id": "basics",
+   "kind": "node"
+  },
+  {
+   "file": "035-move-crosshairs.webp",
+   "id": "move-crosshairs",
+   "kind": "node"
+  },
+  {
+   "file": "036-key-h.webp",
+   "id": "key-h",
+   "kind": "node"
+  },
+  {
+   "file": "037-key-j.webp",
+   "id": "key-j",
+   "kind": "node"
+  },
+  {
+   "file": "038-key-k.webp",
+   "id": "key-k",
+   "kind": "node"
+  },
+  {
+   "file": "039-key-l.webp",
+   "id": "key-l",
+   "kind": "node"
+  },
+  {
+   "file": "040-hjkl.webp",
+   "id": "hjkl",
+   "kind": "node"
+  },
+  {
+   "file": "041-add-node.webp",
+   "id": "add-node",
+   "kind": "node"
+  },
+  {
+   "file": "042-press-a.webp",
+   "id": "press-a",
+   "kind": "node"
+  },
+  {
+   "file": "043-edit-text.webp",
+   "id": "edit-text",
+   "kind": "node"
+  },
+  {
+   "file": "044-vi-style.webp",
+   "id": "vi-style",
+   "kind": "node"
+  },
+  {
+   "file": "045-exit-edit.webp",
+   "id": "exit-edit",
+   "kind": "node"
+  },
+  {
+   "file": "046-press-esc.webp",
+   "id": "press-esc",
+   "kind": "node"
+  },
+  {
+   "file": "047-connect.webp",
+   "id": "connect",
+   "kind": "node"
+  },
+  {
+   "file": "048-crosshairs-over.webp",
+   "id": "crosshairs-over",
+   "kind": "node"
+  },
+  {
+   "file": "049-hold-a.webp",
+   "id": "hold-a",
+   "kind": "node"
+  },
+  {
+   "file": "050-pick-dir.webp",
+   "id": "pick-dir",
+   "kind": "node"
+  },
+  {
+   "file": "051-advanced.webp",
+   "id": "advanced",
+   "kind": "node"
+  },
+  {
+   "file": "052-coarse-fine.webp",
+   "id": "coarse-fine",
+   "kind": "node"
+  },
+  {
+   "file": "053-nav-by-node.webp",
+   "id": "nav-by-node",
+   "kind": "node"
+  },
+  {
+   "file": "054-nav-by-link.webp",
+   "id": "nav-by-link",
+   "kind": "node"
+  },
+  {
+   "file": "055-zoom-pan.webp",
+   "id": "zoom-pan",
+   "kind": "node"
+  },
+  {
+   "file": "056-styling.webp",
+   "id": "styling",
+   "kind": "node"
+  },
+  {
+   "file": "057-shape.webp",
+   "id": "shape",
+   "kind": "node"
+  },
+  {
+   "file": "058-color.webp",
+   "id": "color",
+   "kind": "node"
+  },
+  {
+   "file": "059-line-style.webp",
+   "id": "line-style",
+   "kind": "node"
+  },
+  {
+   "file": "060-routing.webp",
+   "id": "routing",
+   "kind": "node"
+  },
+  {
+   "file": "061-avoid-under.webp",
+   "id": "avoid-under",
+   "kind": "node"
+  },
+  {
+   "file": "062-minimize-crossings.webp",
+   "id": "minimize-crossings",
+   "kind": "node"
+  },
+  {
+   "file": "063-small-angle.webp",
+   "id": "small-angle",
+   "kind": "node"
+  },
+  {
+   "file": "064-short-edges.webp",
+   "id": "short-edges",
+   "kind": "node"
+  },
+  {
+   "file": "065-waypoints.webp",
+   "id": "waypoints",
+   "kind": "node"
+  },
+  {
+   "file": "066-auto-layout.webp",
+   "id": "auto-layout",
+   "kind": "node"
+  },
+  {
+   "file": "067-save.webp",
+   "id": "save",
+   "kind": "node"
+  },
+  {
+   "file": "068-two-files.webp",
+   "id": "two-files",
+   "kind": "node"
+  },
+  {
+   "file": "069-like-css.webp",
+   "id": "like-css",
+   "kind": "node"
+  },
+  {
+   "file": "070-chrome-only.webp",
+   "id": "chrome-only",
+   "kind": "node"
+  },
+  {
+   "file": "071-for-now.webp",
+   "id": "for-now",
+   "kind": "node"
+  },
+  {
+   "file": "072-overview-for-now.webp",
+   "id": "overview-for-now",
+   "kind": "overview"
+  },
+  {
+   "file": "073-going.webp",
+   "id": "going",
+   "kind": "node"
+  },
+  {
+   "file": "074-other-bindings.webp",
+   "id": "other-bindings",
+   "kind": "node"
+  },
+  {
+   "file": "075-bind-ijkl.webp",
+   "id": "bind-ijkl",
+   "kind": "node"
+  },
+  {
+   "file": "076-bind-wasd.webp",
+   "id": "bind-wasd",
+   "kind": "node"
+  },
+  {
+   "file": "077-bind-arrows.webp",
+   "id": "bind-arrows",
+   "kind": "node"
+  },
+  {
+   "file": "078-bind-emacs.webp",
+   "id": "bind-emacs",
+   "kind": "node"
+  },
+  {
+   "file": "079-bind-etc.webp",
+   "id": "bind-etc",
+   "kind": "node"
+  },
+  {
+   "file": "080-collab.webp",
+   "id": "collab",
+   "kind": "node"
+  },
+  {
+   "file": "081-with-people.webp",
+   "id": "with-people",
+   "kind": "node"
+  },
+  {
+   "file": "082-with-agents.webp",
+   "id": "with-agents",
+   "kind": "node"
+  },
+  {
+   "file": "083-better-layout.webp",
+   "id": "better-layout",
+   "kind": "node"
+  },
+  {
+   "file": "084-alt-algorithms.webp",
+   "id": "alt-algorithms",
+   "kind": "node"
+  },
+  {
+   "file": "085-alt-nav.webp",
+   "id": "alt-nav",
+   "kind": "node"
+  },
+  {
+   "file": "086-temp-views.webp",
+   "id": "temp-views",
+   "kind": "node"
+  },
+  {
+   "file": "087-pull-neighbors.webp",
+   "id": "pull-neighbors",
+   "kind": "node"
+  },
+  {
+   "file": "088-collapse-expand.webp",
+   "id": "collapse-expand",
+   "kind": "node"
+  },
+  {
+   "file": "089-plugins.webp",
+   "id": "plugins",
+   "kind": "node"
+  },
+  {
+   "file": "090-presentations.webp",
+   "id": "presentations",
+   "kind": "node"
+  },
+  {
+   "file": "091-saved-views.webp",
+   "id": "saved-views",
+   "kind": "node"
+  },
+  {
+   "file": "092-diff-viz.webp",
+   "id": "diff-viz",
+   "kind": "node"
+  },
+  {
+   "file": "093-git.webp",
+   "id": "git",
+   "kind": "node"
+  },
+  {
+   "file": "094-diagram-types.webp",
+   "id": "diagram-types",
+   "kind": "node"
+  },
+  {
+   "file": "095-todo-graphs.webp",
+   "id": "todo-graphs",
+   "kind": "node"
+  },
+  {
+   "file": "096-architecture.webp",
+   "id": "architecture",
+   "kind": "node"
+  },
+  {
+   "file": "097-genealogy.webp",
+   "id": "genealogy",
+   "kind": "node"
+  },
+  {
+   "file": "098-types-etc.webp",
+   "id": "types-etc",
+   "kind": "node"
+  },
+  {
+   "file": "099-polish.webp",
+   "id": "polish",
+   "kind": "node"
+  },
+  {
+   "file": "100-overview-polish.webp",
+   "id": "overview-polish",
+   "kind": "overview"
+  },
+  {
+   "file": "101-whole-map.webp",
+   "id": "whole-map",
+   "kind": "overview"
+  },
+  {
+   "file": "102-basics-rest.webp",
+   "id": "basics-rest",
+   "kind": "rest"
+  },
+  {
+   "file": "103-basics-hold.webp",
+   "id": "basics-hold",
+   "kind": "hold"
+  },
+  {
+   "file": "104-basics-target.webp",
+   "id": "basics-target",
+   "kind": "target"
+  },
+  {
+   "file": "105-basics-placed.webp",
+   "id": "basics-placed",
+   "kind": "placed"
+  },
+  {
+   "file": "106-advanced-rest.webp",
+   "id": "advanced-rest",
+   "kind": "rest"
+  },
+  {
+   "file": "107-advanced-hold.webp",
+   "id": "advanced-hold",
+   "kind": "hold"
+  },
+  {
+   "file": "108-advanced-target.webp",
+   "id": "advanced-target",
+   "kind": "target"
+  },
+  {
+   "file": "109-advanced-placed.webp",
+   "id": "advanced-placed",
+   "kind": "placed"
+  },
+  {
+   "file": "110-plugins-rest.webp",
+   "id": "plugins-rest",
+   "kind": "rest"
+  },
+  {
+   "file": "111-plugins-hold.webp",
+   "id": "plugins-hold",
+   "kind": "hold"
+  },
+  {
+   "file": "112-plugins-target.webp",
+   "id": "plugins-target",
+   "kind": "target"
+  },
+  {
+   "file": "113-plugins-placed.webp",
+   "id": "plugins-placed",
+   "kind": "placed"
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "viewport": {
+  "width": 1200,
+  "height": 760
+ },
+ "frames": [
+  {
+   "file": "menu-rest.webp",
+   "name": "menu-rest",
+   "kind": "menu"
+  },
+  {
+   "file": "menu-add-held.webp",
+   "name": "menu-add-held",
+   "kind": "menu"
+  },
+  {
+   "file": "menu-add-target.webp",
+   "name": "menu-add-target",
+   "kind": "menu"
+  }
+ ],
+ "drag": [
+  "drag-00.webp",
+  "drag-01.webp",
+  "drag-02.webp",
+  "drag-03.webp",
+  "drag-04.webp",
+  "drag-05.webp",
+  "drag-06.webp",
+  "drag-07.webp",
+  "drag-08.webp",
+  "drag-09.webp",
+  "drag-10.webp"
+ ]
+}
