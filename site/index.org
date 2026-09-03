@@ -1,0 +1,108 @@
+#+title: Index
+
+As the user scrolls down, they should see a diagram be built with the following.  Breaks in the sequence of diagram screenshots should also be present (e.g. showing closeups of the key menu).  Where I have "List", use numbers as labels to the edges to the children.
+
+* KiDraw
+** "Connect your thoughts, at the speed you have them"
+** What is it?
+*** Diagram editor
+**** Technically, a Graph Editor
+***** A "Graph" is basically just a bunch of nodes (boxes, circles, etc) and edges (lines, possibly with arrowheads)
+**** Comparable to
+***** Miro
+***** Microsoft Visio
+***** Draw.io
+***** Excalidraw
+***** Graphviz (dot)
+*** Keyboard-first
+**** Initial key bindings inspired by the vi coding editor
+***** Not just for coders
+***** Support other options in the future
+*** Discover-able shortcuts
+*** An experiment
+*** Work in progress
+
+** What's the point?
+*** Graphs are everywhere
+**** Road maps
+**** Mind maps
+**** Logical arguments
+***** Outlines are a special type of graph
+**** The Internet
+*** Get our thoughts down before they slip away
+**** Avoid the mouse-keyboard switching bottleneck [[*Keyboard-first]]
+*** Make it easier to learn keyboard-based tools
+**** Vi and Vim have a learning curve
+
+** How does it work?
+*** Basics
+**** List
+***** Move the crosshairs
+****** List
+******* h for left
+******* j for down
+******* k for up
+******* l for right
+****** using hjkl
+***** Add a node
+****** Press and release =a=
+***** Edit the node's text
+****** Vi style
+***** Exit node edit mode
+****** Press ESC or Ctrl-[
+***** Connect two nodes
+****** List
+******* Have crosshairs over node
+******* Press _and hold_ =a=
+******* Use h for left, j for down, k for up, l for right
+*** Advanced
+**** Coarse and fine movement
+**** Navigate by hopping from node to node
+**** Navigate by following edges
+**** Zoom, Pan, and Recenter
+**** Node and Edge Styling
+***** Shape
+***** Color
+***** Solid vs Dotted vs Dashed
+**** Automatic edge routing
+***** Avoid edges crossing under nodes
+***** Minimize edges crossing each other
+***** Avoid small-angle crossings
+***** Minimize edge length
+**** "Waypoints" for fine tuning edge routing [[*Automatic edge routing]]
+**** Automatic node layout
+**** Save locally
+***** Separate semantic and style files
+****** Like HTML and CSS
+***** Chrome only
+****** for now
+
+** Where is this going?
+*** Other styles of keybindings [[*Support other options in the future]]
+**** List
+***** i, j, k, and l
+***** w, a, s, and d
+***** arrow keys
+***** Emacs style
+***** etc.
+*** Collaborate on graphs
+**** with other people
+**** with AI agents
+*** Improvements to graph layout/edge routing
+**** Including alternative algorithms
+*** Alternative navigation
+*** Temporary views
+**** Pull in neighboring nodes
+**** Collapse/expand subgraphs
+*** Plugins
+**** Presentations
+***** Saved series of views
+**** Diff visualization
+**** Git integration
+**** Diagram types
+***** List
+****** Todo graphs
+****** Software architecture
+****** Geneology
+****** etc.
+*** Visual polish
