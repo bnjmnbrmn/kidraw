@@ -39,6 +39,39 @@ function frame(desktopSrc, mobileSrc, {classes, attrs = '', alt, lazy}) {
 const mapMStep = id => mapM && mapM.steps.find(step => step.id === id);
 const mapMExtra = id => mapM && mapM.extras.find(extra => extra.id === id);
 
+// A manifest entry is either a bare filename (older captures) or {file, ms}.
+const fileOf = entry => (typeof entry === 'string' ? entry : entry.file);
+const kindOf = entry => fileOf(entry).replace(/\.webp$/, '').split('-').pop();
+
+/**
+ * How long a frame stays on screen.
+ *
+ * A quick typist runs at about eight characters a second, and a keystroke that
+ * opens a menu takes a beat longer than one that adds a letter. Captures record
+ * this now; for older ones it is worked back out from the frame's kind and the
+ * length of the label being typed.
+ */
+const MS_PER_CHAR = 125;
+function frameMs(entry, run, seq, label) {
+  if (typeof entry !== 'string' && entry.ms !== undefined) return entry.ms;
+  const kind = kindOf(entry);
+  if (kind === 'target') return 820;
+  if (kind === 'tween') return 450;
+  if (kind === 'typed') return 420;
+  if (kind === 'rest') return 0;
+  // blank and typing: how much of the label lands before the next frame.
+  const typing = run.filter(other => ['blank', 'typing', 'typed'].includes(kindOf(other)));
+  const steps = typing.length - 1;
+  const at = typing.findIndex(other => other === entry);
+  if (steps < 1 || at < 0) return 300;
+  const done = Math.round((label.length * at) / steps);
+  const next = Math.round((label.length * (at + 1)) / steps);
+  // Capped: an older capture split a long label into two frames, and holding a
+  // still picture for three seconds reads as broken rather than as typing. A
+  // re-captured run carries its own ms and is not clamped.
+  return Math.min(900, Math.max(180, (next - done) * MS_PER_CHAR));
+}
+
 const esc = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const attr = text => esc(text).replace(/"/g, '&quot;');
 /** Org emphasis: =verbatim= becomes code, _underline_ becomes bold. */
@@ -87,16 +120,17 @@ function stageFigure(act, steps, closing) {
     const step = stepFor(node.id);
     if (!step) throw new Error(`no frames for ${node.id}`);
     const portrait = mapMStep(node.id);
-    step.frames.forEach((file, seq) => {
+    const label = plain(node.t);
+    step.frames.forEach((entry, seq) => {
       const last = seq === step.frames.length - 1;
       images.push('            ' + frame(
-        `assets/map/${file}`,
-        portrait && portrait.frames[seq] ? `assets/map-m/${portrait.frames[seq]}` : null,
+        `assets/map/${fileOf(entry)}`,
+        portrait && portrait.frames[seq] ? `assets/map-m/${fileOf(portrait.frames[seq])}` : null,
         {
           classes: `frame${index === 0 && last ? ' is-on' : ''}`,
-          attrs: ` data-step="${index}" data-seq="${seq}"`,
+          attrs: ` data-step="${index}" data-seq="${seq}" data-ms="${frameMs(entry, step.frames, seq, label)}"`,
           alt: last
-            ? `The KiDraw canvas after the box "${plain(node.t)}" was typed and the graph re-laid out`
+            ? `The KiDraw canvas after the box "${label}" was typed and the graph re-laid out`
             : '',
           lazy: index >= 1,
         },
@@ -143,6 +177,7 @@ function actSection(act) {
         <p class="act-lede">${esc(act.lede)}</p>
       </div>
       <div class="act-stage">
+        <p class="stage-head" aria-hidden="true"><span class="stage-eyebrow">${esc(act.eyebrow)}</span>${esc(act.title)}</p>
 ${stageFigure(act, steps, closing)}
       </div>
       <div class="act-steps">

@@ -197,17 +197,21 @@ try {
   assert.notEqual(await whatStage.locator('[data-stage-caption]').textContent(), openingCaption);
   assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
   assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '4');
-  // The run plays and settles on its last frame.
-  await page.waitForTimeout(1400);
-  const settled = whatStage.locator('.frame.is-on');
-  assert.equal(await settled.getAttribute('data-step'), '4');
-  assert.equal(
-    await settled.evaluate(frame => {
-      const run = frame.closest('.stage-frame').querySelectorAll('[data-step="4"]');
-      return run[run.length - 1] === frame;
-    }),
-    true,
-    'the animation ends on the settled frame',
+  // The run plays at a human pace and settles on its last frame. Frames carry
+  // their own duration — roughly as long as the keys they stand for would take
+  // to press — so this waits rather than assuming a fixed frame rate.
+  const startedPlaying = Date.now();
+  await page.waitForFunction(() => {
+    const run = document.querySelectorAll('.act')[1].querySelectorAll('[data-step="4"]');
+    return run[run.length - 1].classList.contains('is-on');
+  }, null, {timeout: 20000});
+  const played = Date.now() - startedPlaying;
+  assert.ok(played > 600, `the run is paced for a reader rather than flashed past (${played}ms)`);
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '4');
+  assert.ok(
+    await page.locator('.act').nth(1).locator('[data-step="4"]').evaluateAll(
+      frames => frames.every(frame => Number(frame.getAttribute('data-ms')) >= 0)),
+    'every frame declares how long it stays up',
   );
 
   // Both drag sequences scrub the same way.

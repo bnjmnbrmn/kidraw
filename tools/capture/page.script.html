@@ -7,7 +7,12 @@
   if (!acts.length || !window.requestAnimationFrame) return;
 
   var still = window.matchMedia('(prefers-reduced-motion: reduce)');
-  var FRAME_MS = 130;
+  /** Each frame carries how long it should stay up: roughly as long as the keys
+   *  it stands for would take a quick typist. */
+  var holdOf = function (frame) {
+    var ms = Number(frame.getAttribute('data-ms'));
+    return ms > 0 ? ms : 300;
+  };
 
   /** One act: its steps, and the run of frames belonging to each step. */
   function collect(act) {
@@ -40,22 +45,23 @@
   function play(stage, index) {
     var run = stage.runs[index];
     if (!run || !run.length) return;
-    window.clearInterval(stage.timer);
+    window.clearTimeout(stage.timer);
     if (still.matches || run.length === 1) {
       paint(stage, run[run.length - 1]);
       return;
     }
     var at = 0;
     paint(stage, run[0]);
-    stage.timer = window.setInterval(function () {
+    var next = function () {
       at += 1;
       if (at >= run.length) {
-        window.clearInterval(stage.timer);
         stage.timer = null;
         return;
       }
       paint(stage, run[at]);
-    }, FRAME_MS);
+      stage.timer = window.setTimeout(next, holdOf(run[at]));
+    };
+    stage.timer = window.setTimeout(next, holdOf(run[0]));
   }
 
   function show(stage, index) {

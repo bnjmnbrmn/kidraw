@@ -144,9 +144,17 @@ live in the outline and the prose but not in the frames.
 ## How the scroll-stepped frames work
 
 The page is six acts, one per branch of the outline, with "How does it work?"
-split at Advanced. Each act is a grid: a sticky `.act-stage` holding every frame
-for that act stacked on top of each other, and a column of `.step` articles
+split at Advanced. Each act is a grid: a sticky `.act-stage` holding a slim
+`.stage-head` with the section title — the real `<h2>` has scrolled away by then
+— and every frame for that act stacked on top of each other, and a column of `.step` articles
 beside it — one per box, carrying its label and its sentence or two.
+
+Each frame carries `data-ms`: how long it stays on screen. A quick typist runs
+at about eight characters a second, so a frame that adds five characters sits up
+for about six hundred milliseconds, and a frame standing for "hold Add, choose
+Box, pick a target" gets most of a second. `map.mjs` records these while
+capturing; `gen-page.mjs` works them back out for older captures from the frame's
+kind and the length of the label, clamped so a two-frame label does not freeze.
 
 Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
 at the portrait capture, and an `<img>` with the wide one. The two sets are

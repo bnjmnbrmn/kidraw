@@ -232,6 +232,22 @@ export async function seed(page, text) {
   await keys(page, 'Escape Escape');
 }
 
+/**
+ * How long a label takes to type, and in what chunks.
+ *
+ * A quick typist runs at about eight characters a second, so a frame that shows
+ * four more characters should sit on screen for about half a second. Chunks are
+ * kept small enough that the label looks like it is being typed rather than
+ * pasted, and few enough that a long label does not cost a dozen frames.
+ */
+export const MS_PER_CHAR = 125;
+export function typingChunks(text, {maxFrames = 6, minChunk = 3} = {}) {
+  const size = Math.max(minChunk, Math.ceil(text.length / maxFrames));
+  const chunks = [];
+  for (let at = 0; at < text.length; at += size) chunks.push(text.slice(at, at + size));
+  return chunks.length ? chunks : [text];
+}
+
 /** Ghost placements to try, in order. Which one is free depends on what the
  *  layout has already put around the parent, so the caller just takes the
  *  first that yields a new node joined to it. */
@@ -274,7 +290,8 @@ export async function grow(page, text, {parent, refocus, onStage, placements = P
         await page.keyboard.press(step);
         await settle(page, 220);
       }
-      await onStage('target');
+      // Three presses in one frame: hold Add, choose Box, pick a target.
+      await onStage('target', {ms: 820});
       await page.keyboard.up('a');
       await settle(page, 260);
     } else {
@@ -285,16 +302,16 @@ export async function grow(page, text, {parent, refocus, onStage, placements = P
     // edge and leaves us in normal mode.
     if (/edit/.test(await mode(page))) {
       if (onStage) {
-        await onStage('blank');
-        const split = text.length > 9 ? Math.ceil(text.length * 0.45) : 0;
-        if (split) {
-          await typeLabel(page, text.slice(0, split));
-          await onStage('typing');
-          await typeLabel(page, text.slice(split));
-        } else {
-          await typeLabel(page, text);
+        const chunks = typingChunks(text);
+        // Each frame is shown for as long as the next chunk would take to type.
+        await onStage('blank', {ms: chunks[0].length * MS_PER_CHAR});
+        for (const [index, chunk] of chunks.entries()) {
+          await typeLabel(page, chunk);
+          const last = index === chunks.length - 1;
+          await onStage(last ? 'typed' : 'typing', {
+            ms: last ? 420 : chunks[index + 1].length * MS_PER_CHAR,
+          });
         }
-        await onStage('typed');
       } else {
         await typeLabel(page, text);
       }
