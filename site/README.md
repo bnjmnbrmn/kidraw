@@ -6,13 +6,13 @@ Konva canvases, while this page is plain HTML, CSS, and a small amount of
 JavaScript. A homepage change therefore cannot break graph editing, and the
 homepage can load without the editor's application bundle.
 
-The page is built around one idea: the whole argument is a single graph, and
-you watch it get built. Every picture is a screenshot of the running KiDraw app
+The page is built around one idea: the whole argument is a single diagram, and
+you watch it get built. The page says "diagram" throughout, never "graph". Every picture is a screenshot of the running KiDraw app
 taken by a script that pressed the keys. Each of the twenty-eight boxes is a
-short animation — the keys held down, the empty box, the label going in a few
-characters at a time, the layout tween, the graph at rest — and two
-scroll-scrubbed sequences show arrows re-routing while a box moves. The content
-of that graph is `index.org`.
+short animation — the keys held down, the empty box, the label typed one
+character at a time, the box shrinking to fit it, and the box selected and
+centred — and two scroll-scrubbed sequences show arrows re-routing while a box
+moves. The content of that diagram is `index.org`.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -121,6 +121,18 @@ fills the top 65% of it without cropping.
 The stage takes two thirds of the page width on a desktop and the top two thirds
 of the screen on a phone.
 
+What each frame of a box's run is doing, in order: Add held with the dashed
+targets showing; the empty box in label edit; one frame per character typed at
+about eight characters a second; `Style > Overflow > Fit`, so the box shrinks to
+its text rather than sitting at the default size; and the box selected, zoomed
+to 200%, centred between the bottom of the header and the top of the keymenu,
+with the crosshairs parked somewhere empty.
+
+Layout is not run after every box. It runs when a branch finishes, and when
+there is genuinely no room — either no free slot next to the parent, or a long
+label made a box that overlaps a neighbour. Both cases are *shown*: the frames
+include the Layout key going down and the tween that follows.
+
 Three things about the capture are worth knowing:
 
 - **Placement is trial and error, and that is fine.** Which dashed ghost is
@@ -129,10 +141,10 @@ Three things about the capture are worth knowing:
   the parent* appeared. A placement that drew an edge to an existing box, or
   left a box floating, is undone before the next try. Layout decides the final
   position anyway.
-- **The last frame of every run is deliberately boring.** `park()` clears the
-  selection and moves the crosshairs to the emptiest point on the canvas, so
-  the frame a reader actually sits on has nothing covered by a crosshair and
-  nothing lit up because it happens to be underneath.
+- **The last frame of every run is the point of it.** The box is selected, so
+  the blue highlight says which one the step is about; `park()` moves the
+  crosshairs to the emptiest point on the canvas, well clear of the edges,
+  because moving them near one pans the view and would undo the centring.
 - **Moving the crosshairs to a named box is the one call that is not a key
   press.** `goTo` calls the same `moveCrosshairsBy` the movement keys call,
   with the delta worked out for it, because a person would press `hjkl` until

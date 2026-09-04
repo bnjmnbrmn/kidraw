@@ -90,15 +90,21 @@
   .nav-link:hover { background: color-mix(in srgb, var(--amber) 10%, transparent); color: #fff173; }
 
   .hero { padding-block: clamp(3rem, 9vw, 6rem) clamp(2rem, 5vw, 3.5rem); }
-  h1 {
-    font-size: clamp(2.3rem, 5.4vw, 4.2rem); letter-spacing: -.065em;
-    line-height: 1; margin: 1.1rem 0 1.4rem; max-width: 15ch; text-wrap: balance;
+  /* The name, then what it is, then what it is for — each a step smaller. */
+  .wordmark-big {
+    font-size: clamp(4rem, 13vw, 9rem); letter-spacing: -.07em;
+    line-height: .92; margin: 0;
   }
-  h1 .accent { color: var(--cyan); }
-  .lede { color: var(--ink-muted); font-size: clamp(1.04rem, 1.7vw, 1.2rem); max-width: 40rem; }
-  .lede + .lede { margin-top: .9rem; }
-  .lede strong { color: var(--ink); font-weight: 600; }
-  .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 1.8rem; }
+  .hero-subtitle {
+    color: var(--ink); font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: clamp(1.15rem, 2.8vw, 1.9rem); letter-spacing: -.04em;
+    margin-top: .6rem;
+  }
+  .hero-tagline {
+    color: var(--ink-muted); font-size: clamp(.95rem, 1.6vw, 1.15rem);
+    margin-top: .5rem;
+  }
+  .hero-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .8rem 1rem; margin-top: 2rem; }
   .button {
     border-radius: 999px; display: inline-block;
     font: 600 .92rem/1 "JetBrains Mono", monospace;
@@ -176,18 +182,20 @@
     padding: 1rem 0 1rem 1.3rem;
     transition: border-color .35s ease, opacity .35s ease;
   }
-  .step h3 {
-    align-items: baseline; display: flex; gap: .55rem;
-    font-size: clamp(1.02rem, 1.7vw, 1.2rem); letter-spacing: -.03em;
-    line-height: 1.3; margin: 0 0 .6rem;
-  }
   .step p { color: var(--ink-muted); font-size: .98rem; }
-  .step-num {
-    border: 1px solid var(--cyan); border-radius: 999px; color: var(--cyan);
-    flex: none; font: 600 .7rem/1 "JetBrains Mono", monospace;
-    padding: .28rem .5rem;
+  .step-bullets { color: var(--ink-muted); font-size: .98rem; margin: 0; padding-left: 1.1rem; }
+  .step-bullets li { margin: .2rem 0; }
+  .step p + .step-bullets { margin-top: .6rem; }
+  .digression { margin: 1.1rem 0 0; }
+  .digression img {
+    border: 1px solid var(--line); border-radius: 10px; display: block; width: 100%;
   }
-  .step.is-overview h3 { color: var(--ink-muted); }
+  .digression figcaption { color: var(--ink-faint); font-size: .85rem; margin-top: .5rem; }
+  .visually-hidden {
+    clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden;
+    position: absolute; white-space: nowrap; width: 1px;
+  }
+  .act-head.is-quiet { margin-bottom: .8rem; }
   .js .step { opacity: .4; }
   .js .step.is-active { border-left-color: var(--cyan); opacity: 1; }
 

@@ -1,5 +1,32 @@
 # KiDraw homepage brief
 
+## September 4, 2026 — sixth revision (drier, and closer to the app)
+
+`site/current-homepage-criticism.org`: the page read as a sales brochure rather
+than a description. The fixes, in the order they were raised:
+
+- **Typography.** KiDraw is the biggest thing on the page, "A keyboard-first
+  diagram editor" is a subtitle, the tagline is smaller still.
+- **"Diagram", never "graph".** Applied everywhere, including the subtitle,
+  which the criticism quoted with the old word.
+- **Less text that is not in the screenshot.** No step heading repeating the
+  label that is already in the frame, no caption repeating it either, no "It
+  starts with one box". The opening act is one line — "The following
+  description of KiDraw uses actual screenshots of KiDraw" — and a frame.
+- **The author's own bullets, verbatim**, instead of paraphrases of them.
+- **Boxes fit their text** (`Style > Overflow > Fit`), the box a step is about
+  is **selected**, **centred between the header and the keymenu** rather than in
+  the middle of the frame, and the whole thing is captured at **200%**.
+- **Less auto-layout.** It runs when a branch finishes, or when there is
+  actually no room — no free slot, or a long label overlapping a neighbour —
+  and the Layout and Recenter keypresses are in the frames rather than applied
+  between them.
+- **More like a video.** One frame per character, at a fast typist's speed.
+- **Three digressions** in "How does it work?": the keymenu alone with Move by
+  Link held, the whole window with the same key held so the lit arrows show,
+  and the keymenu alone with Add held so the release mark is visible.
+- **The keymenu break is gone**, since those digressions cover it.
+
 ## September 4, 2026 — fifth revision (a shorter outline)
 
 A new `index.org`: 28 headings instead of 96, no `List` numbering, no

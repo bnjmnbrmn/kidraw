@@ -3,11 +3,11 @@
   "width": 820,
   "height": 700
  },
- "menu": [
-  "menu-rest.webp",
-  "menu-add-held.webp",
-  "menu-add-target.webp"
- ],
+ "digressions": {
+  "menu-f": "menu-f.png",
+  "window-f": "window-f.webp",
+  "menu-a": "menu-a.png"
+ },
  "follow": [
   "follow-00.webp",
   "follow-01.webp",

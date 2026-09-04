@@ -39,7 +39,7 @@ const under = page => page.evaluate(() => {
   return typeof value === 'string' ? value : (value && value.text ? value.text() : null);
 });
 
-const menu = [];
+const digressions = {};
 const follow = [];
 const avoid = [];
 
@@ -61,19 +61,28 @@ console.log('graph:', JSON.stringify(await edges(page)));
 await fit(page);
 await frameAbove(page);
 await park(page);
-menu.push(`${await shotName('menu-rest')}`);
+
+// Three digressions the page uses inline: the keymenu on its own with a key
+// held, and once with the whole window so the canvas answer shows too.
+async function keymenuShot(name) {
+  await page.locator('app-keymenu').screenshot({path: join(outDir, `${name}.png`)});
+  digressions[name] = `${name}.png`;
+}
 
 await goTo(page, 'Landing page');
+await page.keyboard.down('f');
+await settle(page, 620);
+await keymenuShot('menu-f');
+await shot(page, 'window-f', {wait: 160});
+digressions['window-f'] = 'window-f.webp';
+await page.keyboard.up('f');
+await settle(page, 400);
+
 await page.keyboard.down('a');
-await settle(page, 480);
-menu.push(await shotName('menu-add-held'));
-await page.keyboard.press('d');
-await settle(page, 480);
-menu.push(await shotName('menu-add-target'));
-await page.keyboard.press('j');
-await settle(page, 320);
+await settle(page, 620);
+await keymenuShot('menu-a');
 await page.keyboard.up('a');
-await settle(page, 380);
+await settle(page, 400);
 await keys(page, 'Escape Escape');
 await rollBackTo(4, 3);
 await layout(page);
@@ -182,9 +191,9 @@ await park(page);
 avoid.push(await shotName('avoid-05'));
 
 writeFileSync(join(outDir, 'demo.json'), JSON.stringify({
-  viewport: VIEWPORT, menu, follow, avoid,
+  viewport: VIEWPORT, digressions, follow, avoid,
 }, null, 1));
-console.log(`demo: ${menu.length} menu, ${follow.length} follow, ${avoid.length} avoid`);
+console.log(`demo: ${Object.keys(digressions).length} digressions, ${follow.length} follow, ${avoid.length} avoid`);
 allErrors.push(...session.errors);
 console.log('errors:', allErrors);
 await session.browser.close();
