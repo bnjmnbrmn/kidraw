@@ -12,7 +12,7 @@ import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {seed, grow, layout, focus, fit, park, counts, undo, settle, typeLabel, labels, mode, edges, MS_PER_CHAR} from './build.mjs';
+import {seed, grow, layout, focus, fit, frameAbove, park, counts, undo, settle, typeLabel, labels, mode, edges, MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -59,7 +59,9 @@ async function keep(id, kind, ms) {
 let pending = [];
 async function provisional(kind, meta = {}) {
   if (kind === 'target') pending = [];
-  const file = await shot(page, `tmp-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
+  // A label is typed in several chunks, so the name has to be unique within the
+  // attempt as well as by kind.
+  const file = await shot(page, `tmp-${pending.length}-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
   pending.push({kind, file, ms: meta.ms ?? HOLD[kind] ?? 300});
 }
 function commit(id) {
@@ -98,7 +100,7 @@ opening.push(await keep('kidraw', 'rest'));
 steps.push({id: 'kidraw', frames: opening});
 
 const limit = Number(process.env.CAPTURE_LIMIT ?? entries.length);
-for (const [index, {node, parent}] of entries.entries()) {
+for (const [index, {node, parent, depth}] of entries.entries()) {
   if (index === 0) continue;
   if (index >= limit) break;
   const label = plain(node.t);
@@ -115,19 +117,25 @@ for (const [index, {node, parent}] of entries.entries()) {
   await park(page);
   frames.push(await keep(node.id, 'rest'));
   steps.push({id: node.id, frames});
+
+  // An overview whenever a branch finishes, laid out downward for it: a
+  // tree-right graph is far taller than it is wide, and fitting that on screen
+  // leaves nothing readable.
+  const next = entries[index + 1];
+  if (depth >= 1 && (!next || next.depth === 1)) {
+    await keys(page, '[b j]');
+    await settle(page, 900);
+    await fit(page);
+    await frameAbove(page);
+    await park(page);
+    extras.push({id: `overview-${node.id}`, ...(await keep(`overview-${node.id}`, 'rest'))});
+    await keys(page, '[b l]');
+    await settle(page, 900);
+  }
+
   if (index % 8 === 0) {
     console.log(`  ${index}/${entries.length} ${node.id} (${((Date.now() - started) / 60000).toFixed(1)}m)`);
   }
-}
-
-// Two overviews, taken where the whole branch still reads at a distance.
-for (const id of ['wip', 'vim-curve']) {
-  const entry = entries.find(item => item.node.id === id);
-  if (!steps.some(step => step.id === id)) continue;
-  await fit(page);
-  await park(page);
-  extras.push({id: `overview-${id}`, ...(await keep(`overview-${id}`, 'rest'))});
-  await focus(page, plain(entry.node.t));
 }
 
 writeFileSync(join(outDir, 'map.json'), JSON.stringify({

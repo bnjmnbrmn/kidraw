@@ -1,5 +1,25 @@
 # KiDraw homepage brief
 
+## September 4, 2026 — fifth revision (a shorter outline)
+
+A new `index.org`: 28 headings instead of 96, no `List` numbering, no
+`[[*cross-links]]`, and a new rule stated at the top — **headings correspond to
+nodes, bullet points do not**. The bullets are the author's supporting lines;
+they are folded into the prose beside each frame and kept verbatim in the
+outline appendix, but they never become boxes.
+
+Four branches, so five acts: the opening box, then What is it? / What's the
+point? / How does it work? / Important features?. The org file also now asks for
+breaks showing "closeups of the key menu **and demos of automatic edge
+routing**", so the keymenu break sits after the first branch and the two routing
+demos after the third and fourth.
+
+Frame timing became honest at the same time. Every frame carries how long it
+stays up: a label is typed in up to six chunks at about eight characters a
+second, so a 62-character heading takes nearly eight seconds to appear, which is
+what it would actually take. Overviews switched to the downward layout, because
+fitting a tree-right graph on screen leaves an unreadable thread.
+
 ## September 3, 2026 — fourth revision (a portrait capture for phones)
 
 The third revision was still wrong on a phone: a 820x700 frame at 390px wide is
