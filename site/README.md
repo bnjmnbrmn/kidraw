@@ -8,10 +8,11 @@ homepage can load without the editor's application bundle.
 
 The page is built around one idea: the whole argument is a single graph, and
 you watch it get built. Every picture is a screenshot of the running KiDraw app
-taken by a script that pressed the keys. Each of the ninety-six boxes is a short
-animation — the keys held down, the empty box, the label going in, the layout
-tween, the graph at rest — and two scroll-scrubbed sequences show arrows
-re-routing while a box moves. The content of that graph is `index.org`.
+taken by a script that pressed the keys. Each of the twenty-eight boxes is a
+short animation — the keys held down, the empty box, the label going in a few
+characters at a time, the layout tween, the graph at rest — and two
+scroll-scrubbed sequences show arrows re-routing while a box moves. The content
+of that graph is `index.org`.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -30,10 +31,13 @@ and DNS are moved to the new page.
 
 ## Files
 
-- `index.org` is where the argument started: the outline Benjamin keeps in
-  org-mode. `tools/capture/outline.mjs` is its machine-readable form, with the
-  sentence or two of prose that sits beside each box. Nothing reads the `.org`
-  file directly.
+- `index.org` is the argument, as Benjamin keeps it in org-mode. Its own rule:
+  **headings are nodes, bullets are not** — a bullet is supporting detail for
+  the heading above it, and never becomes a box.
+  `tools/capture/outline.mjs` is its machine-readable form, carrying each
+  heading, its bullets, and the sentence or two of prose that sits beside its
+  frames. Nothing reads the `.org` file directly, so the two are kept in step by
+  hand when the outline changes.
 - `index.html` is **generated** — see "How the page is made" below. Its
   `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
   still wraps it, but edit `tools/capture/` and regenerate rather than editing
@@ -136,10 +140,16 @@ Three things about the capture are worth knowing:
   be pulled back first when the target is off screen — the crosshairs cannot
   leave the viewport.
 
-Known gap: the three cross-branch links in the outline (`↗`) are *not* in the
-captured graph. Drawing an edge between two boxes that already exist needs a
-target-picking step the held-key surface does not currently offer, so the links
-live in the outline and the prose but not in the frames.
+Known gap: an edge between two boxes that *already exist* cannot be drawn by
+key press today — holding Add and choosing Edge offers only Self Loop, with no
+way to pick a target. The current outline is a plain tree so nothing needs it,
+but a cross-branch link would have to be faked or added to the app first.
+
+Overviews are captured at the end of each branch with the *downward* layout
+(`[b j]`) rather than the tree-right one the rest of the run uses. A tree-right
+graph is far taller than it is wide, and fitting that on an 820x700 canvas
+leaves a thread; laid out downward the same graph fits at 22% and its shape
+still reads.
 
 ## How the scroll-stepped frames work
 

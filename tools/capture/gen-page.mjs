@@ -82,35 +82,28 @@ const plain = text => text.replace(/[=_]([^=_]+)[=_]/g, '$1');
 
 const entries = flatten(OUTLINE);
 const stepFor = id => map.steps.find(step => step.id === id);
-// The finished graph is ninety-six boxes tall, so "fit the whole thing" lands
-// at 3% for the later branches — a dark thread, no shape to read. Only the two
-// early overviews are worth showing.
 const overviewAfter = id => map.extras.find(extra => extra.id === `overview-${id}`);
 
 // Acts: one per top-level branch, with "How does it work?" split at Advanced
 // because its two halves are a beginner's manual and a reference.
 const ACTS = [
   {id: 'start', eyebrow: 'The first box', title: 'It starts with one box',
-   lede: 'Everything below is one graph, built in KiDraw as you scroll. These are frames from the app, not drawings of it.'},
+   lede: 'Everything below is one graph, built inside KiDraw as you scroll. These are frames from the running app, not drawings of it.'},
   {id: 'what', eyebrow: 'Question one', title: 'What is it?',
-   lede: 'Five answers, and the detail hanging off them.'},
+   lede: 'Three answers.'},
   {id: 'point', eyebrow: 'Question two', title: "What's the point?",
-   lede: 'Three reasons to build another diagram tool.'},
-  {id: 'basics', eyebrow: 'Question three', title: 'How does it work?',
-   lede: 'The five moves you need on day one. The numbers on those arrows are the order.'},
-  {id: 'advanced', eyebrow: 'Question three, continued', title: 'The deep end',
-   lede: 'Movement, styling, routing, layout, saving. None of it is needed to draw your first graph.'},
-  {id: 'going', eyebrow: 'Question four', title: 'Where is this going?',
-   lede: 'Planned, not built.'},
+   lede: 'One answer, in three parts.'},
+  {id: 'how', eyebrow: 'Question three', title: 'How does it work?',
+   lede: 'Five things to know about the keyboard.'},
+  {id: 'features', eyebrow: 'Question four', title: 'Important features?',
+   lede: 'What is built today.'},
 ];
 
+// One act per branch of the outline; the root gets its own opening act.
 let actId = 'start';
 const byAct = new Map(ACTS.map(act => [act.id, []]));
 for (const entry of entries) {
-  if (entry.depth === 1 && entry.node.kind === 'q') {
-    actId = entry.node.id === 'how' ? 'basics' : entry.node.id;
-  }
-  if (entry.node.id === 'advanced') actId = 'advanced';
+  if (entry.depth === 1 && entry.node.kind === 'q') actId = entry.node.id;
   byAct.get(actId).push(entry);
 }
 
@@ -277,11 +270,15 @@ function outlineMarkup(entry, depth) {
   if (node.num) attrs.push(`data-num="${node.num}"`);
   if (node.link) attrs.push(`data-link="${node.link}"`);
   const open = `${pad}<li ${attrs.join(' ')}><span>${rich(node.t)}</span>`;
-  if (!node.c.length) return [`${open}</li>`];
+  const bullets = (node.bullets ?? []).map(line =>
+    `${pad}    <li class="outline-note-item">${esc(line)}</li>`);
+  const children = node.c.flatMap(child => outlineMarkup({node: child}, depth + 2));
+  if (!bullets.length && !children.length) return [`${open}</li>`];
   return [
     open,
     `${pad}  <ul>`,
-    ...node.c.flatMap(child => outlineMarkup({node: child}, depth + 2)),
+    ...bullets,
+    ...children,
     `${pad}  </ul>`,
     `${pad}</li>`,
   ];
@@ -296,17 +293,16 @@ ${actSection(ACTS[1])}
 ${menuBreak}
 ${actSection(ACTS[2])}
 ${actSection(ACTS[3])}
-${actSection(ACTS[4])}
 ${followSection}
+${actSection(ACTS[4])}
 ${avoidSection}
-${actSection(ACTS[5])}
 
   <section class="wrap close">
     <div class="close-card">
       <p class="eyebrow">Before you open it</p>
       <h2>It is an alpha. Bring a keyboard.</h2>
       <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some arrows still route worse than you would draw them, and the navigation model will change. Anything on this page that is not in a frame is a plan, not a feature.</p>
-      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames}${mapM ? ' frames of it, captured twice so a phone gets a portrait shape and a desktop a wide one' : ' frames'} in all, five or six per box: the keys held down, the empty box, the label going in, the layout tween, and the graph at rest. Fitted on screen the finished graph sits at 3% zoom, which is the honest reason navigation matters more than a minimap.</p>
+      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames}${mapM ? ' frames of it, captured twice so a phone gets a portrait shape and a desktop a wide one' : ' frames'} in all, roughly ten per box: the keys held down, the empty box, the label going in a few characters at a time, the layout tween, and the graph at rest. Each frame is held for about as long as the keys it stands for would take to press.</p>
       <div class="close-actions">
         <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
         <a class="button button-ghost" href="review/">Older captures</a>

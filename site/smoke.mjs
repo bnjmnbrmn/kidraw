@@ -26,13 +26,18 @@ assert.doesNotMatch(generated, /site-head:(?:start|end)/);
 
 // Every frame on the page is a capture of the running app.
 const map = JSON.parse(readFileSync(join(dist, 'assets', 'map', 'map.json'), 'utf8'));
-assert.equal(map.steps.length, 96, 'a frame sequence per box');
-assert.ok(map.frames > 400, `each box is captured as a short animation (${map.frames} frames)`);
+assert.equal(map.steps.length, 28, 'a frame sequence per box');
+assert.ok(map.frames > 28 * 6, `each box is captured as a short animation (${map.frames} frames)`);
+// A manifest entry is {file, ms}: the frame, and how long it stays on screen.
+const fileOf = entry => (typeof entry === 'string' ? entry : entry.file);
 for (const step of map.steps) {
   assert.ok(step.frames.length >= 4, `${step.id} is animated (${step.frames.length} frames)`);
-  for (const file of step.frames) {
-    assert.ok(existsSync(join(dist, 'assets', 'map', file)), `build includes ${file}`);
+  for (const entry of step.frames) {
+    assert.ok(existsSync(join(dist, 'assets', 'map', fileOf(entry))), `build includes ${fileOf(entry)}`);
   }
+  const typing = step.frames.filter(entry => /-(blank|typing|typed)\.webp$/.test(fileOf(entry)));
+  const spent = typing.reduce((total, entry) => total + (entry.ms ?? 0), 0);
+  assert.ok(spent > 300, `${step.id} spends a human amount of time typing its label (${spent}ms)`);
 }
 for (const extra of map.extras) {
   assert.ok(existsSync(join(dist, 'assets', 'map', extra.file)), `build includes ${extra.file}`);
@@ -46,8 +51,8 @@ assert.ok(mapM.viewport.height / mapM.viewport.width > 1.3,
 for (const step of mapM.steps) {
   assert.equal(step.frames.length, map.steps.find(other => other.id === step.id).frames.length,
     `${step.id} has the same run in both shapes`);
-  for (const file of step.frames) {
-    assert.ok(existsSync(join(dist, 'assets', 'map-m', file)), `build includes map-m/${file}`);
+  for (const entry of step.frames) {
+    assert.ok(existsSync(join(dist, 'assets', 'map-m', fileOf(entry))), `build includes map-m/${fileOf(entry)}`);
   }
 }
 
@@ -153,10 +158,14 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
 
   // One act per branch, one step per box, one frame per step.
-  assert.equal(await page.locator('.act').count(), 6);
+  assert.equal(await page.locator('.act').count(), 5);
+  // The section title travels with the frames, since the real heading scrolls
+  // away as soon as the stage sticks.
+  assert.equal(await page.locator('.act').nth(1).locator('.stage-head').count(), 1);
+  assert.match(await page.locator('.act').nth(1).locator('.stage-head').innerText(), /What is it\?/);
   const steps = await page.locator('.act .step').count();
   const frames = await page.locator('.act .frame').count();
-  assert.ok(steps >= 96, `a step per node (${steps})`);
+  assert.ok(steps >= 28, `a step per node (${steps})`);
   assert.ok(frames > steps * 3, `each step carries a run of frames (${frames} for ${steps} steps)`);
   assert.equal(
     await page.locator('.act').first().evaluate(act => {
@@ -176,12 +185,10 @@ try {
     `the stage column is about two thirds (${(columns[1] / (columns[0] + columns[1])).toFixed(2)})`);
 
   // The outline is the content of record, and the graph was built from it.
-  const outlineItems = await page.locator('#map-outline li').count();
-  assert.equal(outlineItems, 96, 'the outline carries the whole map');
-  assert.equal(await page.locator('#map-outline li[data-num]').count(), 21,
-    'numbered list items keep their edge labels');
-  assert.equal(await page.locator('#map-outline li[data-link]').count(), 3,
-    'the three cross-branch links survive');
+  assert.equal(await page.locator('#map-outline li[data-id]').count(), 28,
+    'the outline carries every box');
+  assert.equal(await page.locator('#map-outline .outline-note-item').count(), 6,
+    'the org bullets are kept as notes, not turned into boxes');
   assert.equal(await page.locator('#outline').evaluate(element => element.open), false,
     'the outline collapses once the frames are available');
 
@@ -192,24 +199,26 @@ try {
   const openingCaption = await whatStage.locator('[data-stage-caption]').textContent();
   assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '0');
 
-  await readTo(page, 1, 4);
-  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^5 \/ \d+$/);
+  // Step 2 rather than the last one: the closing overview is a single frame and
+  // would settle instantly.
+  await readTo(page, 1, 2);
+  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^3 \/ \d+$/);
   assert.notEqual(await whatStage.locator('[data-stage-caption]').textContent(), openingCaption);
   assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '4');
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '2');
   // The run plays at a human pace and settles on its last frame. Frames carry
   // their own duration — roughly as long as the keys they stand for would take
   // to press — so this waits rather than assuming a fixed frame rate.
   const startedPlaying = Date.now();
   await page.waitForFunction(() => {
-    const run = document.querySelectorAll('.act')[1].querySelectorAll('[data-step="4"]');
+    const run = document.querySelectorAll('.act')[1].querySelectorAll('[data-step="2"]');
     return run[run.length - 1].classList.contains('is-on');
   }, null, {timeout: 20000});
   const played = Date.now() - startedPlaying;
   assert.ok(played > 600, `the run is paced for a reader rather than flashed past (${played}ms)`);
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '4');
+  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '2');
   assert.ok(
-    await page.locator('.act').nth(1).locator('[data-step="4"]').evaluateAll(
+    await page.locator('.act').nth(1).locator('[data-step="2"]').evaluateAll(
       frames => frames.every(frame => Number(frame.getAttribute('data-ms')) >= 0)),
     'every frame declares how long it stays up',
   );
@@ -290,7 +299,7 @@ try {
   await plain.goto(url, {waitUntil: 'load'});
   assert.equal(await plain.locator('#outline').evaluate(element => element.open), true,
     'the outline stays open when the frames cannot be stepped');
-  assert.ok(await plain.locator('#map-outline li').count() > 90, 'the outline is real markup, not generated');
+  assert.ok(await plain.locator('#map-outline li').count() >= 28, 'the outline is real markup, not generated');
   assert.equal(await plain.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
   await plainContext.close();
 
@@ -306,4 +315,4 @@ try {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
 
-console.log('site smoke: document, captured frames, outline, six scroll-stepped acts, the drag, reduced motion, mobile, no-JS, and review page passed');
+console.log('site smoke: document, captured frames, outline, five scroll-stepped acts, the drag, reduced motion, mobile, no-JS, and review page passed');

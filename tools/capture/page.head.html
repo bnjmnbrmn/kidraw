@@ -290,6 +290,10 @@
   .outline li { color: var(--ink-muted); font-size: .94rem; margin: .28rem 0; }
   .outline > ul > li > span { color: var(--ink); font-family: "JetBrains Mono", monospace; font-weight: 700; }
   .outline li[data-kind="q"] > span, .outline li[data-kind="quote"] > span { color: var(--ink); font-weight: 600; }
+  .outline .outline-note-item {
+    color: var(--ink-faint); font-size: .88rem; list-style: none;
+  }
+  .outline .outline-note-item::before { color: var(--ink-faint); content: "– "; }
   .outline li[data-num] > span::before {
     color: var(--cyan); content: attr(data-num) " ";
     font-family: "JetBrains Mono", monospace; font-size: .8em;
