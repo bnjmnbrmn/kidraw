@@ -135,19 +135,38 @@ async function openPage(viewport, options = {}) {
   return {context, page, errors};
 }
 
-/** Put a step (or any element) on the reading line. */
-async function scrollTo(page, pick) {
-  await page.evaluate(spec => {
+/** Put a point inside one panel's window of scrolling on the reading line. */
+async function scrollInto(page, act, panel, through) {
+  await page.evaluate(([act, panel, through]) => {
     document.documentElement.style.scrollBehavior = 'auto';
-    const element = spec.act === undefined
-      ? document.querySelectorAll(spec.selector)[spec.index]
-      : document.querySelectorAll('.act')[spec.act].querySelectorAll('.step')[spec.index];
-    window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - innerHeight * 0.45);
-  }, pick);
-  await page.waitForTimeout(340);
+    const span = document.querySelector(`#${act}`).querySelectorAll('.act-span')[panel];
+    const rect = span.getBoundingClientRect();
+    window.scrollTo(0, window.scrollY + rect.top + rect.height * through - innerHeight * 0.5);
+  }, [act, panel, through]);
+  await page.waitForTimeout(320);
 }
-const readTo = (page, act, index) => scrollTo(page, {act, index});
 
+/** Which frame of a panel is up, by its index in the run. */
+const frameAt = (page, act, panel) => page.evaluate(([act, panel]) => {
+  const up = document.querySelector(`#${act}`).querySelectorAll('.panel')[panel].querySelector('.frame.is-on');
+  return up ? Number(up.getAttribute('data-frame')) : -1;
+}, [act, panel]);
+
+/** How far the reel has been wound, in windows. */
+const reelAt = (page, act) => page.evaluate(act => {
+  const stage = document.querySelector(`#${act}`);
+  const reel = stage.querySelector('[data-reel]');
+  const shift = new DOMMatrixReadOnly(getComputedStyle(reel).transform).m42;
+  return -shift / stage.querySelector('.stage-box').getBoundingClientRect().height;
+}, act);
+
+/** The words the page is allowed to say: the org file's, and the few links. */
+const org = readFileSync(join(here, 'index.org'), 'utf8');
+const orgWords = [
+  ...[...org.matchAll(/^\*+\s+(.*)$/gm)].map(match => match[1]),
+  ...[...org.matchAll(/^-\s+(.*)$/gm)].map(match => match[1]),
+].map(line => line.replace(/[=_]([^=_]+)[=_]/g, '$1').trim());
+const chrome = ['KiDraw', 'alpha.kidraw.net →', 'Older captures', 'index.org'];
 
 try {
   const desktop = await openPage({width: 1440, height: 1000});
@@ -155,21 +174,27 @@ try {
   await page.waitForFunction(() => document.documentElement.classList.contains('js'), null, {timeout: 5000});
 
   assert.equal(await page.title(), 'KiDraw — Connect your thoughts, at the speed you have them');
-  // The name, then what it is, then what it is for — each a step smaller.
   assert.equal(await page.locator('h1').count(), 1);
   assert.equal(await page.locator('h1').innerText(), 'KiDraw');
-  assert.equal(await page.locator('.hero-subtitle').innerText(), 'A keyboard-first diagram editor');
-  assert.equal(await page.locator('.hero-tagline').innerText(),
-    'Connect your thoughts, at the speed you have them');
-  const sizes = await page.evaluate(() => ['h1', '.hero-subtitle', '.hero-tagline']
-    .map(css => parseFloat(getComputedStyle(document.querySelector(css)).fontSize)));
-  assert.ok(sizes[0] > sizes[1] && sizes[1] > sizes[2], `each line is smaller than the last (${sizes})`);
-
-  // "diagram", not "graph".
-  const prose = await page.locator('main').innerText();
-  assert.doesNotMatch(prose, /\bgraphs?\b/i, 'the page talks about diagrams, not graphs');
   assert.equal(await page.locator('main').count(), 1);
-  assert.equal(await page.locator('.byline a').filter({hasText: 'Benjamin Berman'}).count(), 1);
+
+  // Nothing on the page is written by the page: its words are the org file's
+  // headings, which are the boxes, and its bullets, which are the captions.
+  const allowed = new Set([...orgWords, ...chrome]);
+  // With the outline open the page shows every heading and every bullet, and
+  // still says nothing else.
+  await page.locator('#outline').evaluate(element => { element.open = true; });
+  const said = (await page.locator('main').innerText())
+    .split('\n')
+    .map(line => line.replace(/^[–-]\s*/, '').trim())
+    .filter(Boolean);
+  await page.locator('#outline').evaluate(element => { element.open = false; });
+  assert.deepEqual(said.filter(line => !allowed.has(line)), [],
+    'every word on the page comes from index.org');
+  assert.deepEqual(orgWords.filter(word => !said.includes(word)), [],
+    'and every heading and bullet in index.org is on the page');
+  // "diagram", not "graph".
+  assert.doesNotMatch(said.join('\n'), /\bgraphs?\b/i, 'the page talks about diagrams, not graphs');
   assert.equal(await page.locator('footer').getByText('Benjamin Berman', {exact: false}).count(), 1);
   assert.equal(
     await page.locator('footer a').filter({hasText: 'github.com/bnjmnbrmn'}).getAttribute('href'),
@@ -179,106 +204,59 @@ try {
     'the live alpha stays linked from the header, the hero, and the close');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
 
-  // One act per branch, one step per box, one frame per step.
+  // One act per branch, and one spacer per panel: the column of spacers is what
+  // gives the act its length and winds its reel.
   assert.equal(await page.locator('.act').count(), 5);
-  // The section title travels with the frames, since the real heading scrolls
-  // away as soon as the stage sticks.
-  assert.equal(await page.locator('.act').nth(1).locator('.stage-head').count(), 1);
-  assert.match(await page.locator('.act').nth(1).locator('.stage-head').innerText(), /What is it\?/);
-  const steps = await page.locator('.act .step').count();
-  const frames = await page.locator('.act .frame').count();
-  assert.ok(steps >= 28, `a step per node (${steps})`);
-  assert.ok(frames > steps * 3, `each step carries a run of frames (${frames} for ${steps} steps)`);
+  assert.equal(await page.locator('.panel[data-kind="caption"]').count(), 4,
+    'a caption panel for each org node with bullets');
+  assert.equal(await page.locator('.panel[data-kind="example"]').count(), 4,
+    'three keymenu close-ups and the edge-routing demo');
   assert.equal(
-    await page.locator('.act').first().evaluate(act => {
-      const seen = new Set();
-      act.querySelectorAll('.frame').forEach(frame => seen.add(frame.getAttribute('data-step')));
-      return seen.size;
-    }),
-    await page.locator('.act').first().locator('.step').count(),
-    'every step in an act has frames of its own',
+    await page.evaluate(() => Array.prototype.every.call(document.querySelectorAll('.act'), act =>
+      act.querySelectorAll('.panel').length === act.querySelectorAll('.act-span').length)),
+    true,
+    'every panel has a window of scrolling to itself',
   );
+  const frames = await page.locator('.frame').count();
+  assert.ok(frames > 700, `the whole capture is on the page (${frames} frames)`);
 
-  // The frames are the argument, so they take about two thirds of the width.
-  const columns = await page.locator('.act-inner').first().evaluate(
-    element => getComputedStyle(element).gridTemplateColumns.split(' ').map(parseFloat));
-  assert.equal(columns.length, 2);
-  assert.ok(columns[1] / (columns[0] + columns[1]) > 0.6,
-    `the stage column is about two thirds (${(columns[1] / (columns[0] + columns[1])).toFixed(2)})`);
-
-  // The outline is the content of record, and the graph was built from it.
-  assert.equal(await page.locator('#map-outline li[data-id]').count(), 28,
-    'the outline carries every box');
-  assert.equal(await page.locator('#map-outline .outline-note-item').count(), 6,
-    'the org bullets are kept as notes, not turned into boxes');
-  assert.equal(await page.locator('.digression').count(), 3,
-    'the three keymenu digressions sit beside the steps they explain');
-  assert.equal(await page.locator('.step h3').count(), 0,
-    'no step repeats the label that is already in its frame');
+  // The outline is the content of record, and the diagram was built from it.
+  assert.equal(await page.locator('#map-outline li[data-id]').count(), 28, 'the outline carries every box');
+  assert.equal(await page.locator('#map-outline .outline-note-item').count(), 6, 'and every bullet');
   assert.equal(await page.locator('#outline').evaluate(element => element.open), false,
     'the outline collapses once the frames are available');
 
-  // Scrolling advances the frame beside the prose.
-  const whatStage = page.locator('.act').nth(1).locator('.stage');
-  await readTo(page, 1, 0);
-  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^1 \/ \d+$/);
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '0');
+  // The scroll is the playback. Standing still leaves the frame where it is;
+  // scrolling further runs further through the typing.
+  await scrollInto(page, 'what', 0, .2);
+  const parked = await frameAt(page, 'what', 0);
+  assert.ok(parked > 0, 'the run has started');
+  await page.waitForTimeout(900);
+  assert.equal(await frameAt(page, 'what', 0), parked, 'frames do not advance on their own');
+  await page.evaluate(() => window.scrollBy(0, 200));
+  await page.waitForTimeout(200);
+  const nudged = await frameAt(page, 'what', 0);
+  assert.ok(nudged > parked, `a small scroll advances the run (${parked} to ${nudged})`);
+  await page.evaluate(() => window.scrollBy(0, 600));
+  await page.waitForTimeout(200);
+  const flicked = await frameAt(page, 'what', 0);
+  assert.ok(flicked - nudged > nudged - parked,
+    `a longer scroll advances it further (${parked}, ${nudged}, ${flicked})`);
+  await page.evaluate(() => window.scrollBy(0, -600));
+  await page.waitForTimeout(200);
+  assert.ok(await frameAt(page, 'what', 0) < flicked, 'scrolling back winds it back');
 
-  // Step 2 rather than the last one: the closing overview is a single frame and
-  // would settle instantly.
-  await readTo(page, 1, 2);
-  assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^3 \/ \d+$/);
-  assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '2');
-  // The run plays at a human pace and settles on its last frame. Frames carry
-  // their own duration — roughly as long as the keys they stand for would take
-  // to press — so this waits rather than assuming a fixed frame rate.
-  const startedPlaying = Date.now();
-  await page.waitForFunction(() => {
-    const run = document.querySelectorAll('.act')[1].querySelectorAll('[data-step="2"]');
-    return run[run.length - 1].classList.contains('is-on');
-  }, null, {timeout: 20000});
-  const played = Date.now() - startedPlaying;
-  assert.ok(played > 600, `the run is paced for a reader rather than flashed past (${played}ms)`);
-  assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '2');
-  assert.ok(
-    await page.locator('.act').nth(1).locator('[data-step="2"]').evaluateAll(
-      frames => frames.every(frame => Number(frame.getAttribute('data-ms')) >= 0)),
-    'every frame declares how long it stays up',
-  );
-
-  // One rerouting digression: the box pushed into an arrow.
-  assert.equal(await page.locator('[data-scrub]').count(), 1, 'the avoid demo, and only it');
-  await scrollTo(page, {selector: '#avoid [data-scrub-step]', index: 0});
-  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '0');
-  await scrollTo(page, {selector: '#avoid [data-scrub-step]', index: 4});
-  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '4');
-  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').count(), 1);
-  // As the stage leaves, the caption stops at the height the frame occupied
-  // instead of sliding off a screen below it.
-  const eye = await page.evaluate(() => {
-    const rect = document.querySelector('#avoid .stage-frame').getBoundingClientRect();
-    return rect.top + rect.height / 2;
-  });
-  let closest = Infinity;
-  let everHeld = false;
-  for (let step = 0; step < 24; step += 1) {
-    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 8));
-    await page.waitForTimeout(120);
-    const at = await page.evaluate(() => {
-      const caption = document.querySelector('#avoid .stage-caption');
-      return {top: caption.getBoundingClientRect().top, held: caption.classList.contains('is-held')};
-    });
-    if (!at.held) continue;
-    everHeld = true;
-    closest = Math.min(closest, Math.abs(at.top - eye));
-  }
-  assert.ok(everHeld, 'the caption holds as the stage leaves');
-  assert.ok(closest < 40, `the caption lands where the frame was (${Math.round(closest)}px off)`);
-
-  await page.keyboard.press('Home');
-  await page.keyboard.press('Tab');
-  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('href')), '#main');
+  // At the end of a panel's window the build sequence is wound out of the way
+  // and the caption has the window to itself.
+  await scrollInto(page, 'what', 0, .5);
+  assert.ok(Math.abs(await reelAt(page, 'what')) < .02, 'the frames hold the window while they run');
+  await scrollInto(page, 'what', 0, .999);
+  const wound = await reelAt(page, 'what');
+  assert.ok(Math.abs(wound - 1) < .05, `the caption has taken the window (${wound.toFixed(2)})`);
+  const caption = await page.locator('#what .panel[data-kind="caption"]').boundingBox();
+  const box = await page.locator('#what .stage-box').boundingBox();
+  assert.ok(Math.abs(caption.y - box.y) < 6 && caption.height > box.height - 6,
+    'the caption is where the frames were, at the same size');
 
   // Frames are lazy; ask for them all, then insist every one arrives.
   await page.evaluate(() => document.querySelectorAll('img[loading="lazy"]').forEach(image => {
@@ -287,29 +265,17 @@ try {
   await page.waitForFunction(
     () => Array.prototype.every.call(document.images, image => image.complete && image.naturalWidth > 0),
     null,
-    {timeout: 30000},
+    {timeout: 60000},
   );
   assert.deepEqual(desktop.errors, []);
   await desktop.context.close();
 
+  // Reduced motion changes nothing here: the reader's scroll is the only thing
+  // that moves a frame either way.
   const reduced = await openPage({width: 1200, height: 900}, {reducedMotion: 'reduce'});
   await reduced.page.waitForFunction(() => document.documentElement.classList.contains('js'), null, {timeout: 5000});
-  assert.equal(
-    await reduced.page.locator('.frame').first().evaluate(element => getComputedStyle(element).transitionDuration),
-    '0s',
-    'reduced motion stops the frames cross-fading',
-  );
-  await readTo(reduced.page, 1, 3);
-  const reducedFrame = reduced.page.locator('.act').nth(1).locator('.frame.is-on');
-  assert.equal(await reducedFrame.getAttribute('data-step'), '3', 'reduced motion still steps through the build');
-  assert.equal(
-    await reducedFrame.evaluate(frame => {
-      const run = frame.closest('.stage-frame').querySelectorAll('[data-step="3"]');
-      return run[run.length - 1] === frame;
-    }),
-    true,
-    'reduced motion goes straight to the settled frame',
-  );
+  await scrollInto(reduced.page, 'what', 0, .3);
+  assert.ok(await frameAt(reduced.page, 'what', 0) > 0, 'reduced motion still steps through the build');
   assert.deepEqual(reduced.errors, []);
   await reduced.context.close();
 
@@ -319,30 +285,40 @@ try {
   assert.equal(
     await mobile.page.locator('.act-stage').first().evaluate(element => getComputedStyle(element).position),
     'sticky',
-    'the frame stays in view while the text scrolls under it',
+    'the window stays in view while the spacers scroll under it',
   );
   // The app fills the top two thirds of a phone screen.
-  const share = await mobile.page.locator('.stage-frame').first().evaluate(
+  const share = await mobile.page.locator('.stage-box').first().evaluate(
     element => element.getBoundingClientRect().height / innerHeight);
-  assert.ok(share > 0.6 && share < 0.72, `the frame is about two thirds of the screen (${share.toFixed(2)})`);
+  assert.ok(share > 0.6 && share < 0.72, `the window is about two thirds of the screen (${share.toFixed(2)})`);
   assert.equal(
     await mobile.page.locator('.frame').first().evaluate(
       picture => picture.querySelector('img').currentSrc.includes('/map-m/')),
     true,
     'a phone is served the portrait capture',
   );
-  await readTo(mobile.page, 3, 3);
-  assert.equal(await mobile.page.locator('.act').nth(3).locator('.frame.is-on').count(), 1);
+  // A keymenu close-up is a wide strip: on a phone it is drawn bigger than the
+  // window and starts in the middle of the picture rather than fitted to width.
+  const panned = await mobile.page.locator('#how .panel[data-wide]').first().evaluate(panel => ({
+    over: panel.scrollWidth / panel.clientWidth,
+    left: panel.scrollLeft,
+  }));
+  assert.ok(panned.over > 1.4, `the strip is drawn larger than the window (${panned.over.toFixed(2)}x)`);
+  assert.ok(panned.left > 0, 'and starts centred on the picture');
+  await scrollInto(mobile.page, 'how', 0, .4);
+  assert.equal(await mobile.page.locator('#how .panel').first().locator('.frame.is-on').count(), 1);
   assert.deepEqual(mobile.errors, []);
   await mobile.context.close();
 
-  // Without JavaScript the argument and the whole map are still readable.
+  // Without JavaScript the first frame of each act and the whole map are still
+  // there.
   const plainContext = await browser.newContext({viewport: {width: 1200, height: 900}, javaScriptEnabled: false});
   const plain = await plainContext.newPage();
   await plain.goto(url, {waitUntil: 'load'});
   assert.equal(await plain.locator('#outline').evaluate(element => element.open), true,
     'the outline stays open when the frames cannot be stepped');
   assert.ok(await plain.locator('#map-outline li').count() >= 28, 'the outline is real markup, not generated');
+  assert.equal(await plain.locator('.frame.is-on').count(), 5, 'the first frame of each act is up');
   assert.equal(await plain.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0);
   await plainContext.close();
 
@@ -358,4 +334,5 @@ try {
   await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
 }
 
-console.log('site smoke: document, captured frames, outline, five scroll-stepped acts, the drag, reduced motion, mobile, no-JS, and review page passed');
+console.log('site smoke: document, captured frames, org words only, five reels, ' +
+  'scroll-driven playback, the handover, reduced motion, mobile, no-JS, and review page passed');

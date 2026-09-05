@@ -1,5 +1,40 @@
 # KiDraw homepage brief
 
+## September 5, 2026 — seventh revision (only the org file's words, on a reel)
+
+Ben, on the sixth revision: cut all the text that did not come from
+`index.org`; keep captions that come from its bullet points, and keep specific
+examples of features; be more aggressive about moving the build sequence out of
+the way for those captions and examples, which were sometimes occluded and never
+took the screenshot's place as the reader scrolled; and link the animation
+directly to the scroll — faster scrolling, faster animation, and no scrolling,
+no frames.
+
+- **The page writes nothing of its own.** What is left is the org headings —
+  once each, as an act title over the window — and the org bullets, as captions.
+  Gone: the act ledes and eyebrows, the per-box sentences in `outline.mjs`, the
+  section headings and intros over the demos, the per-frame captions and the
+  frame counter, the hero subtitle, tagline and byline, and the closing card's
+  paragraphs. The alpha link keeps its own URL as its label. `smoke.mjs` now
+  reads `index.org` and fails on any line of visible text that is not in it, and
+  on any heading or bullet missing from the page.
+- **One window, a strip of panels.** Each act is a sticky window with a reel
+  behind it. Consecutive boxes share a panel so the build runs on unbroken; a
+  caption or an example closes it and takes the window at full size. The last
+  18% of a panel's scroll is the handover, so the frames slide up and out while
+  the caption rises into the place they left. Nothing is beside or behind
+  anything any more, so nothing occludes anything.
+- **The examples moved into the reel.** The three keymenu close-ups no longer
+  sit as thumbnails in a text column, and the edge-routing drag is no longer a
+  separate section after the features act: each takes the window at the box it
+  belongs to. On a phone the keymenu strip is drawn at 190vw and pans sideways —
+  fitted to the width its labels are unreadable.
+- **The scroll is the playback.** No timers. The reading line's position within
+  a panel's spacer picks the frame, weighted by `data-ms`, so scrolling faster
+  runs the typing faster, scrolling back winds it back, and standing still holds
+  the frame. This replaces the play-on-arrival runs and, with them, the last of
+  the flicker.
+
 ## September 4, 2026 — sixth revision (drier, and closer to the app)
 
 `site/current-homepage-criticism.org`: the page read as a sales brochure rather

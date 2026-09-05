@@ -2,224 +2,140 @@
 (function () {
   'use strict';
 
-  var acts = Array.prototype.slice.call(document.querySelectorAll('.act'));
-  var scrubbers = Array.prototype.slice.call(document.querySelectorAll('[data-scrub]'));
+  var slice = function (nodes) { return Array.prototype.slice.call(nodes); };
+  var acts = slice(document.querySelectorAll('.act'));
   if (!acts.length || !window.requestAnimationFrame) return;
-
   var root = document.documentElement;
-  var still = window.matchMedia('(prefers-reduced-motion: reduce)');
-  /** Each frame carries how long it should stay up: roughly as long as the keys
-   *  it stands for would take a quick typist. */
-  var holdOf = function (frame) {
-    var ms = Number(frame.getAttribute('data-ms'));
-    return ms > 0 ? ms : 300;
-  };
 
-  /** True from the first scroll event until a short pause after the last one.
-   *  While it is set nothing animates: frames swap outright and no run plays,
-   *  so scrolling past a stage no longer flicks through its frames. */
-  var scrolling = false;
-  var settleTimer = null;
+  /** The last part of a panel's window hands the window over to the next one:
+   *  the frames slide up and the caption or example rises into their place. */
+  var HANDOVER = .18;
+  /** How far ahead to ask for frames. They load lazily, and the scroll is the
+   *  playback, so a frame that has not arrived stalls the flipbook. */
+  var LOOKAHEAD = 40;
+
+  /**
+   * One act: the strip of panels, and the column of spacers that scrolls it.
+   *
+   * A panel's frames are weighted by how long the keystrokes they stand for
+   * would take, so a label typed letter by letter takes more of the panel's
+   * scroll than the pause after it.
+   */
+  function collect(act) {
+    var reel = act.querySelector('[data-reel]');
+    if (!reel) return null;
+    var panels = slice(reel.querySelectorAll('.panel')).map(function (element) {
+      var frames = slice(element.querySelectorAll('.frame'));
+      var cum = [];
+      var total = 0;
+      frames.forEach(function (frame) {
+        cum.push(total);
+        total += Math.max(Number(frame.getAttribute('data-ms')) || 0, 120);
+      });
+      return {
+        el: element,
+        frames: frames,
+        cum: cum,
+        total: total || 1,
+        shown: element.querySelector('.frame.is-on'),
+        warmed: 0
+      };
+    });
+    return {
+      el: act,
+      reel: reel,
+      panels: panels,
+      spans: slice(act.querySelectorAll('.act-span')),
+      offset: -1
+    };
+  }
+
+  var stages = acts.map(collect).filter(Boolean);
 
   /**
    * Put one frame up.
    *
-   * The frames are stacked, not cross-faded: the one going out stays fully
-   * opaque underneath until the new one has faded in over it. Fading both at
-   * once let the black backing show through the middle of every swap, and a
-   * scroll that ran several swaps together read as a flicker. It also covers a
-   * lazy frame that has not arrived yet — the old picture shows through the
-   * hole instead of the backing.
+   * Frames are stacked, not cross-faded: the one going out stays opaque
+   * underneath, so a frame that has not loaded yet shows the last one rather
+   * than the black backing. A fade would only lag the scroll.
    */
-  function paint(view, frame) {
-    if (!frame || view.shown === frame) return;
-    view.frames.forEach(function (candidate) {
-      candidate.classList.remove('is-on');
-      candidate.classList.remove('is-under');
-    });
-    if (view.shown) view.shown.classList.add('is-under');
-    frame.classList.add('is-on');
-    view.shown = frame;
-  }
-
-  /** Ask for the frames about to be needed. They load lazily, and one that has
-   *  not arrived by the time it is due paints as a hole. */
-  function warm(runs, from, to) {
-    for (var i = Math.max(0, from); i <= to; i += 1) {
-      if (!runs[i]) continue;
-      runs[i].forEach(function (frame) {
-        var image = frame.querySelector('img');
-        if (image && image.loading === 'lazy') image.loading = 'eager';
-      });
-    }
-  }
-
-  function onScreen(element) {
-    var rect = element.getBoundingClientRect();
-    return rect.bottom > 0 && rect.top < window.innerHeight;
-  }
-
-  /** One act: its steps, and the run of frames belonging to each step. */
-  function collect(act) {
-    var frames = Array.prototype.slice.call(act.querySelectorAll('.frame'));
-    var runs = [];
-    frames.forEach(function (frame) {
-      var index = Number(frame.getAttribute('data-step'));
-      (runs[index] = runs[index] || []).push(frame);
-    });
-    return {
-      el: act,
-      steps: Array.prototype.slice.call(act.querySelectorAll('.step')),
-      frames: frames,
-      runs: runs,
-      caption: act.querySelector('[data-stage-caption]'),
-      count: act.querySelector('[data-stage-count]'),
-      shown: act.querySelector('.frame.is-on'),
-      active: -1,
-      played: -1,
-      timer: null
-    };
-  }
-
-  var stages = acts.map(collect);
-
-  /** Play a step's frames once, then hold the last one. */
-  function play(stage, index) {
-    var run = stage.runs[index];
-    if (!run || !run.length) return;
-    window.clearTimeout(stage.timer);
-    stage.played = index;
-    if (still.matches || run.length === 1) {
-      paint(stage, run[run.length - 1]);
+  function paint(panel, frame) {
+    if (!frame || panel.shown === frame) return;
+    var image = frame.querySelector('img');
+    // A frame that has not arrived yet is not put up at all. Painting it would
+    // lay a transparent picture over the last one and double-expose the two;
+    // holding the last one until it lands reads as the flipbook pausing.
+    if (image && !image.complete) {
+      if (!frame.waitingForImage) {
+        frame.waitingForImage = true;
+        image.addEventListener('load', schedule);
+        image.addEventListener('error', schedule);
+      }
       return;
     }
+    if (panel.shown) {
+      panel.shown.classList.remove('is-on');
+      panel.shown.classList.add('is-under');
+    }
+    frame.classList.remove('is-under');
+    frame.classList.add('is-on');
+    panel.shown = frame;
+  }
+
+  /** Ask for the frames just ahead of the one on screen. */
+  function warm(panel, from) {
+    if (from + LOOKAHEAD <= panel.warmed) return;
+    var end = Math.min(panel.frames.length, from + LOOKAHEAD);
+    for (var i = Math.max(0, panel.warmed); i < end; i += 1) {
+      var image = panel.frames[i].querySelector('img');
+      if (image && image.loading === 'lazy') image.loading = 'eager';
+    }
+    panel.warmed = end;
+  }
+
+  /** The frame this far through a panel's run. */
+  function scrub(stage, index, through) {
+    var panel = stage.panels[index];
+    if (!panel || !panel.frames.length) return;
+    var want = panel.total * Math.max(0, Math.min(1, through));
     var at = 0;
-    paint(stage, run[0]);
-    var next = function () {
-      at += 1;
-      if (at >= run.length) {
-        stage.timer = null;
-        return;
-      }
-      paint(stage, run[at]);
-      stage.timer = window.setTimeout(next, holdOf(run[at]));
-    };
-    stage.timer = window.setTimeout(next, holdOf(run[0]));
+    for (var i = 0; i < panel.cum.length; i += 1) {
+      if (panel.cum[i] <= want) at = i;
+      else break;
+    }
+    paint(panel, panel.frames[at]);
+    warm(panel, at);
   }
 
-  /** Where a step ends up, with none of the typing on the way there. */
-  function settleOn(stage, index) {
-    var run = stage.runs[index];
-    window.clearTimeout(stage.timer);
-    stage.timer = null;
-    stage.played = -1;
-    if (run && run.length) paint(stage, run[run.length - 1]);
-  }
-
-  function show(stage, index) {
-    if (stage.active === index) return;
-    stage.active = index;
-    stage.steps.forEach(function (step, i) { step.classList.toggle('is-active', i === index); });
-    var step = stage.steps[index];
-    if (stage.caption && step) stage.caption.textContent = step.getAttribute('data-label') || '';
-    if (stage.count) stage.count.textContent = (index + 1) + ' / ' + stage.steps.length;
-    warm(stage.runs, index, index + 1);
-    // Mid-scroll the step is only passed over, so show where it lands; the
-    // typing plays when the reader stops on it.
-    if (scrolling) settleOn(stage, index);
-    else play(stage, index);
-  }
-
-  var scrubs = scrubbers.map(function (stage) {
-    var section = stage.closest('section');
-    var frames = Array.prototype.slice.call(stage.querySelectorAll('[data-scrub-frame]'));
-    return {
-      el: section,
-      stage: stage,
-      box: stage.querySelector('.stage-frame'),
-      captionBox: stage.querySelector('.stage-caption'),
-      frames: frames,
-      runs: frames.map(function (frame) { return [frame]; }),
-      steps: Array.prototype.slice.call(section.querySelectorAll('[data-scrub-step]')),
-      caption: stage.querySelector('[data-scrub-caption]'),
-      count: stage.querySelector('[data-scrub-count]'),
-      shown: stage.querySelector('.frame.is-on'),
-      active: -1,
-      hold: 0
-    };
-  });
-
-  function showScrub(scrub, index) {
-    if (scrub.active === index) return;
-    scrub.active = index;
-    warm(scrub.runs, index, index + 2);
-    paint(scrub, scrub.frames[index]);
-    var frame = scrub.frames[index];
-    var image = frame && frame.querySelector ? frame.querySelector('img') : null;
-    if (scrub.caption && image) scrub.caption.textContent = image.getAttribute('alt') || '';
-    if (scrub.count) scrub.count.textContent = (index + 1) + ' / ' + scrub.frames.length;
-  }
-
-  /**
-   * Keep the caption where the reader is already looking.
-   *
-   * The caption sits under the frame while the stage is stuck, which is a long
-   * way below the picture being described. As the stage scrolls away the
-   * caption rises with it; this stops it at the height the frame occupied and
-   * holds it there for a third of a screen of scrolling, so the words arrive
-   * where the eyes already are instead of the eyes chasing them down the page.
-   * Past that it catches up with the stage and leaves with it — a caption left
-   * permanently offset would sit over whatever section came next.
-   */
-  var MAX_HOLD = .3;
-  function holdCaption(scrub) {
-    if (!scrub.box || !scrub.captionBox) return;
-    var stuckTop = parseFloat(window.getComputedStyle(scrub.stage).top) || 0;
-    var stageTop = scrub.stage.getBoundingClientRect().top;
-    var box = scrub.box.getBoundingClientRect();
-    // Where the frame sits while the stage is stuck — and so, near enough,
-    // where the reader was looking. Measured from the stage's own sticky
-    // offset, so it does not move as the stage leaves.
-    var eye = stuckTop + (box.top - stageTop) + box.height / 2;
-    var natural = scrub.captionBox.getBoundingClientRect().top - scrub.hold;
-    // How far past the eye line the caption would have travelled on its own:
-    // nothing yet, held there, then handed back at twice the speed.
-    var past = eye - natural;
-    var limit = window.innerHeight * MAX_HOLD;
-    var hold = past <= 0 ? 0 : past <= limit ? past : Math.max(0, 2 * limit - past);
-    if (Math.abs(hold - scrub.hold) < .5) return;
-    scrub.hold = hold;
-    scrub.captionBox.style.transform = hold ? 'translateY(' + hold + 'px)' : '';
-    scrub.captionBox.classList.toggle('is-held', hold > 1);
-  }
-
-  var wide = window.matchMedia('(min-width: 62rem)');
-  function activeIndex(elements, line) {
+  /** Which spacer the reading line is in, and how far through it. */
+  function locate(spans, line) {
     var index = 0;
-    elements.forEach(function (element, i) {
-      if (element.getBoundingClientRect().top <= line) index = i;
-    });
-    return index;
+    var at = spans[0].getBoundingClientRect();
+    for (var i = 0; i < spans.length; i += 1) {
+      var rect = spans[i].getBoundingClientRect();
+      if (rect.top <= line) { index = i; at = rect; }
+    }
+    var through = at.height > 0 ? (line - at.top) / at.height : 0;
+    return {index: index, through: Math.max(0, Math.min(1, through))};
   }
 
   function update() {
-    var line = window.innerHeight * (wide.matches ? 0.55 : 0.8);
-    stages.forEach(function (stage) { show(stage, activeIndex(stage.steps, line)); });
-    scrubs.forEach(function (scrub) {
-      if (!scrub.steps.length) return;
-      showScrub(scrub, Math.min(activeIndex(scrub.steps, line), scrub.frames.length - 1));
-      holdCaption(scrub);
-    });
-  }
-
-  /** The scroll has stopped: play whatever the reader has landed on. */
-  function settle() {
-    settleTimer = null;
-    scrolling = false;
-    root.classList.remove('is-scrolling');
+    var line = window.innerHeight * .5;
     stages.forEach(function (stage) {
-      if (stage.played === stage.active || !onScreen(stage.el)) return;
-      play(stage, stage.active);
+      var rect = stage.el.getBoundingClientRect();
+      if (rect.bottom < -240 || rect.top > window.innerHeight + 240) return;
+      var found = locate(stage.spans, line);
+      var index = Math.min(found.index, stage.panels.length - 1);
+      var handover = index < stage.panels.length - 1
+        ? Math.max(0, (found.through - (1 - HANDOVER)) / HANDOVER)
+        : 0;
+      var offset = index + Math.min(1, handover);
+      if (offset !== stage.offset) {
+        stage.reel.style.transform = 'translateY(' + (-offset * 100) + '%)';
+        stage.offset = offset;
+      }
+      scrub(stage, index, found.through / (1 - HANDOVER));
+      if (handover > 0) scrub(stage, index + 1, 0);
     });
   }
 
@@ -230,22 +146,19 @@
     window.requestAnimationFrame(function () { queued = false; update(); });
   }
 
-  function onScroll() {
-    if (!scrolling) {
-      scrolling = true;
-      root.classList.add('is-scrolling');
-    }
-    window.clearTimeout(settleTimer);
-    settleTimer = window.setTimeout(settle, 140);
-    schedule();
-  }
+  // A panel that is wider than its window starts in the middle of the picture.
+  slice(document.querySelectorAll('.panel[data-wide]')).forEach(function (panel) {
+    var centre = function () { panel.scrollLeft = (panel.scrollWidth - panel.clientWidth) / 2; };
+    centre();
+    window.addEventListener('resize', centre);
+  });
 
   root.classList.add('js');
   var outline = document.getElementById('outline');
   if (outline) outline.open = false;
 
   update();
-  window.addEventListener('scroll', onScroll, {passive: true});
+  window.addEventListener('scroll', schedule, {passive: true});
   window.addEventListener('resize', schedule);
 })();
 </script>

@@ -7,12 +7,18 @@ JavaScript. A homepage change therefore cannot break graph editing, and the
 homepage can load without the editor's application bundle.
 
 The page is built around one idea: the whole argument is a single diagram, and
-you watch it get built. The page says "diagram" throughout, never "graph". Every picture is a screenshot of the running KiDraw app
+you watch it get built. The page says "diagram" throughout, never "graph".
+
+**The page writes nothing of its own.** Every word on it is `index.org`: the
+headings, which are the boxes in the diagram, and the bullets, which are the
+captions. Everything else on screen is a screenshot of the running KiDraw app,
 taken by a script that pressed the keys. Each of the twenty-eight boxes is a
 short animation — the keys held down, the empty box, the label typed one
 character at a time, the box shrinking to fit it, and the box selected and
-centred — and one scroll-scrubbed sequence shows an arrow re-routing around a
-box pushed into it. The content of that diagram is `index.org`.
+centred — and the org file's "breaks in the sequence" are there too: three
+keymenu close-ups and a drag where an arrow re-routes around a box pushed into
+it. The smoke test enforces the rule, comparing every line of visible text
+against the org file.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -35,9 +41,10 @@ and DNS are moved to the new page.
   **headings are nodes, bullets are not** — a bullet is supporting detail for
   the heading above it, and never becomes a box.
   `tools/capture/outline.mjs` is its machine-readable form, carrying each
-  heading, its bullets, and the sentence or two of prose that sits beside its
-  frames. Nothing reads the `.org` file directly, so the two are kept in step by
-  hand when the outline changes.
+  heading, its bullets, and which nodes earn an example. It holds no prose of
+  its own. Nothing reads the `.org` file directly at build time, so the two are
+  kept in step by hand when the outline changes; `smoke.mjs` does read it, and
+  fails if the page says anything the org file does not.
 - `index.html` is **generated** — see "How the page is made" below. Its
   `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
   still wraps it, but edit `tools/capture/` and regenerate rather than editing
@@ -96,7 +103,7 @@ The smoke test checks, among other things:
 ```bash
 npm start                        # the capture scripts drive the real dev server
 node tools/capture/map.mjs       # ~23 min: builds the graph, a run of frames per box
-node tools/capture/demo.mjs      # the small graphs, the keymenu, the two drags
+node tools/capture/demo.mjs      # the small graphs, the keymenu, the drags
 CAPTURE_PROFILE=mobile node tools/capture/map.mjs    # ~23 min: the portrait set
 CAPTURE_PROFILE=mobile node tools/capture/demo.mjs
 node tools/capture/shrink.mjs 0.6 0.68 map     # the frames that only flash past
@@ -119,8 +126,9 @@ height: 820x700 for the wide frames that sit beside the prose, 820x1170 for the
 portrait ones, whose shape matches a phone screen closely enough that the frame
 fills the top 65% of it without cropping.
 
-The stage takes two thirds of the page width on a desktop and the top two thirds
-of the screen on a phone.
+The window the frames play in is centred and as wide as it can be without
+growing taller than the screen; on a phone it is edge to edge and takes the top
+two thirds.
 
 What each frame of a box's run is doing, in order: Add held with the dashed
 targets showing; the empty box in label edit; one frame per character typed at
@@ -164,49 +172,57 @@ graph is far taller than it is wide, and fitting that on an 820x700 canvas
 leaves a thread; laid out downward the same graph fits at 22% and its shape
 still reads.
 
-## How the scroll-stepped frames work
+## How the reel works
 
-The page is six acts, one per branch of the outline, with "How does it work?"
-split at Advanced. Each act is a grid: a sticky `.act-stage` holding a slim
-`.stage-head` with the section title — the real `<h2>` has scrolled away by then
-— and every frame for that act stacked on top of each other, and a column of `.step` articles
-beside it — one per box, carrying its label and its sentence or two.
+The page is five acts, one per branch of the outline. An act is one window with
+a strip of full-size panels behind it, and a column of empty `.act-span` spacers
+that gives the act its length. The spacers and the window share a single grid
+cell, so the window can be `position: sticky` for exactly as long as the spacers
+last, with no negative margins.
 
-Each frame carries `data-ms`: how long it stays on screen. A quick typist runs
-at about eight characters a second, so a frame that adds five characters sits up
-for about six hundred milliseconds, and a frame standing for "hold Add, choose
-Box, pick a target" gets most of a second. `map.mjs` records these while
-capturing; `gen-page.mjs` works them back out for older captures from the frame's
-kind and the length of the label, clamped so a two-frame label does not freeze.
+A panel is either a run of frames or a caption:
+
+- **Frames.** Consecutive boxes share one panel, so the build runs on unbroken.
+  The panel also stands for one *example* — a keymenu close-up, or the six-frame
+  drag where an arrow re-routes around a box.
+- **Caption.** The bullets under one org heading, set large, centred, alone.
+
+A caption or an example closes the frames panel and takes the window for itself,
+which is the point: the build sequence is wound out of the way rather than
+sitting beside or behind the thing being explained. Each panel gets one spacer,
+so `.act-span` heights are what pace the page — a run's height comes from how
+long its keystrokes would take, a caption or a still example gets 80vh.
+
+**The scroll is the playback.** Nothing advances on a timer. The reading line is
+the middle of the window; the script finds which spacer that line is in and how
+far through, and that fraction picks the frame. Scrolling faster runs the
+animation faster, scrolling back winds it back, and standing still holds the
+frame exactly where it is. Within a panel, frames are weighted by `data-ms` —
+how long the keystrokes they stand for would take a quick typist — so a label
+typed letter by letter takes more of the panel's scroll than the pause after it.
+`map.mjs` records these while capturing; `gen-page.mjs` works them back out for
+older captures from the frame's kind and the length of the label.
+
+The last 18% of a panel's spacer is the handover: the reel winds on by one
+window, so the frames slide up and out while the caption or example rises into
+the place they just left.
 
 Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
 at the portrait capture, and an `<img>` with the wide one. The two sets are
 different shapes, which `srcset` cannot express, so this is art direction rather
-than a responsive image. Each frame carries `data-step` (which box it belongs to)
-and `data-seq` (where it sits in that box's run). Only one frame has `is-on`, and
-the one it replaced keeps `is-under`: they are stacked rather than cross-faded,
-because fading both at once let the black backing show through the middle of
-every swap. When a step becomes active the script plays its run once at about
-130ms a frame and holds the last one, which is the sharp, settled,
-nothing-selected frame. `prefers-reduced-motion` skips straight to that last
-frame.
+than a responsive image. Only one frame carries `is-on`, and the one it replaced
+keeps `is-under`, stacked underneath rather than cross-faded — there is no fade
+at all, since a fade can only lag a scroll it is chasing. A frame whose image
+has not arrived is not put up: the last one holds until it lands, because
+painting a transparent picture over the last one double-exposes the two.
 
-Nothing animates while the page is being scrolled: the root carries
-`is-scrolling` from the first scroll event until 140ms after the last, frames
-swap outright, and a step scrolled past shows where it lands rather than typing
-itself out. The run plays when the reader stops on it. Scrolling over an act
-used to start and abandon a run per step, which is what read as a flicker.
+A keymenu close-up is a strip eight times wider than it is tall. Fitted to the
+width of a phone its labels are unreadable, so there it is drawn at 190vw and
+the panel pans sideways, starting centred on the picture.
 
-The drag section works differently: its frames are scrubbed rather than played,
-by a column of empty `.drag-step` spacers, so the reader's scroll speed is the
-playback speed. Its caption does not simply leave with the stage — as the stage
-scrolls away the caption stops at the height the frame occupied and holds there
-for a third of a screen, so the words arrive where the reader is already
-looking, then catches up and goes.
-
-Without JavaScript the page is the prose, the first frame of each act, and the
-outline at the bottom, which is open until the script collapses it. A script
-failure loses the stepping, not the content.
+Without JavaScript the page is the first frame of each act and the outline at
+the bottom, which is open until the script collapses it. A script failure loses
+the stepping, not the content.
 
 ## Updating screenshots
 
