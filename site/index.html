@@ -156,11 +156,19 @@
   }
   .frame {
     display: block; height: 100%; inset: 0; opacity: 0;
-    position: absolute; width: 100%;
+    position: absolute; width: 100%; z-index: 0;
   }
   .frame img { display: block; height: 100%; object-fit: contain; width: 100%; }
-  .frame.is-on { opacity: 1; }
+  .frame.is-on { opacity: 1; z-index: 2; }
   .js .frame { transition: opacity .3s ease; }
+  /* Stacked, not cross-faded: the frame going out stays fully opaque under the
+     one coming in. Fading both at once let the black backing show through the
+     middle of every swap, and a scroll running several swaps together read as a
+     flicker. It also covers a lazy frame that has not arrived yet. */
+  .frame.is-under { opacity: 1; transition: none; z-index: 1; }
+  /* Mid-scroll the frames are a flipbook the reader is driving, not a video:
+     swap them outright, and let the run play once the scrolling stops. */
+  .js.is-scrolling .frame { transition: none; }
   @media (prefers-reduced-motion: reduce) { .js .frame { transition: none; } }
   .shot-frame { display: block; }
   .shot-frame img { display: block; width: 100%; }
@@ -259,6 +267,13 @@
     margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem)); width: auto;
   }
   .drag-stage .stage-caption { margin-inline: auto; max-width: 46rem; }
+  /* Held at the height the frame occupied while the stage scrolls away, so the
+     words arrive where the eyes already are. It sits over whatever is coming up
+     behind it, so it carries the page colour with it. */
+  .drag-stage .stage-caption.is-held {
+    background: var(--ground); border-radius: 10px;
+    padding-bottom: .35rem; position: relative; z-index: 4;
+  }
   @media (min-width: 62rem) {
     .drag-stage .stage-frame {
       aspect-ratio: 820 / 700; height: auto; margin-inline: auto; max-width: 46rem; width: 100%;
@@ -912,42 +927,6 @@
       </div>
     </div>
   </section>
-  <section class="wrap drag" id="reroute" aria-labelledby="reroute-title">
-    <div class="brk-head">
-      <h2 id="reroute-title">Move a box; its arrows find new routes</h2>
-      <p>Select+Drag is held while one box steps down. Its arrows are not dragged along; they are computed again at every step. Scroll to step through it.</p>
-    </div>
-    <div class="drag-stage" data-scrub="reroute">
-      <div class="stage-frame">
-        <picture class="frame is-on" data-scrub-frame="0"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-00.webp"><img src="assets/demo/follow-00.webp" alt="Select+Drag held, before the first step." width="820" height="700"></picture>
-        <picture class="frame" data-scrub-frame="1"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-01.webp"><img src="assets/demo/follow-01.webp" alt="Step 1. Both arrows were recomputed, not dragged along." width="820" height="700"></picture>
-        <picture class="frame" data-scrub-frame="2"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-02.webp"><img src="assets/demo/follow-02.webp" alt="Step 2. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="3"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-03.webp"><img src="assets/demo/follow-03.webp" alt="Step 3. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="4"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-04.webp"><img src="assets/demo/follow-04.webp" alt="Step 4. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="5"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-05.webp"><img src="assets/demo/follow-05.webp" alt="Step 5. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="6"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-06.webp"><img src="assets/demo/follow-06.webp" alt="Step 6. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="7"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-07.webp"><img src="assets/demo/follow-07.webp" alt="Step 7. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="8"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-08.webp"><img src="assets/demo/follow-08.webp" alt="Step 8. Both arrows were recomputed, not dragged along." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="9"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-09.webp"><img src="assets/demo/follow-09.webp" alt="Released. The arrows keep the routes they found." width="820" height="700" loading="lazy" decoding="async"></picture>
-        <picture class="frame" data-scrub-frame="10"><source media="(max-width: 61.99rem)" srcset="assets/demo-m/follow-10.webp"><img src="assets/demo/follow-10.webp" alt="One press of Layout, and the graph is tidy again." width="820" height="700" loading="lazy" decoding="async"></picture>
-      </div>
-      <p class="stage-caption"><span data-scrub-caption>Select+Drag held, before the first step.</span><span class="mono" data-scrub-count>1 / 11</span></p>
-    </div>
-    <div class="drag-steps">
-      <div class="drag-step" data-scrub-step="0"></div>
-      <div class="drag-step" data-scrub-step="1"></div>
-      <div class="drag-step" data-scrub-step="2"></div>
-      <div class="drag-step" data-scrub-step="3"></div>
-      <div class="drag-step" data-scrub-step="4"></div>
-      <div class="drag-step" data-scrub-step="5"></div>
-      <div class="drag-step" data-scrub-step="6"></div>
-      <div class="drag-step" data-scrub-step="7"></div>
-      <div class="drag-step" data-scrub-step="8"></div>
-      <div class="drag-step" data-scrub-step="9"></div>
-      <div class="drag-step" data-scrub-step="10"></div>
-    </div>
-    <p class="aside">The last two frames are the release, and one press of Layout.</p>
-  </section>
   <section class="act" id="features" aria-labelledby="features-title">
     <div class="wrap act-inner">
       <div class="act-head">
@@ -1474,6 +1453,7 @@
   var scrubbers = Array.prototype.slice.call(document.querySelectorAll('[data-scrub]'));
   if (!acts.length || !window.requestAnimationFrame) return;
 
+  var root = document.documentElement;
   var still = window.matchMedia('(prefers-reduced-motion: reduce)');
   /** Each frame carries how long it should stay up: roughly as long as the keys
    *  it stands for would take a quick typist. */
@@ -1481,6 +1461,50 @@
     var ms = Number(frame.getAttribute('data-ms'));
     return ms > 0 ? ms : 300;
   };
+
+  /** True from the first scroll event until a short pause after the last one.
+   *  While it is set nothing animates: frames swap outright and no run plays,
+   *  so scrolling past a stage no longer flicks through its frames. */
+  var scrolling = false;
+  var settleTimer = null;
+
+  /**
+   * Put one frame up.
+   *
+   * The frames are stacked, not cross-faded: the one going out stays fully
+   * opaque underneath until the new one has faded in over it. Fading both at
+   * once let the black backing show through the middle of every swap, and a
+   * scroll that ran several swaps together read as a flicker. It also covers a
+   * lazy frame that has not arrived yet — the old picture shows through the
+   * hole instead of the backing.
+   */
+  function paint(view, frame) {
+    if (!frame || view.shown === frame) return;
+    view.frames.forEach(function (candidate) {
+      candidate.classList.remove('is-on');
+      candidate.classList.remove('is-under');
+    });
+    if (view.shown) view.shown.classList.add('is-under');
+    frame.classList.add('is-on');
+    view.shown = frame;
+  }
+
+  /** Ask for the frames about to be needed. They load lazily, and one that has
+   *  not arrived by the time it is due paints as a hole. */
+  function warm(runs, from, to) {
+    for (var i = Math.max(0, from); i <= to; i += 1) {
+      if (!runs[i]) continue;
+      runs[i].forEach(function (frame) {
+        var image = frame.querySelector('img');
+        if (image && image.loading === 'lazy') image.loading = 'eager';
+      });
+    }
+  }
+
+  function onScreen(element) {
+    var rect = element.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  }
 
   /** One act: its steps, and the run of frames belonging to each step. */
   function collect(act) {
@@ -1491,29 +1515,27 @@
       (runs[index] = runs[index] || []).push(frame);
     });
     return {
+      el: act,
       steps: Array.prototype.slice.call(act.querySelectorAll('.step')),
       frames: frames,
       runs: runs,
       caption: act.querySelector('[data-stage-caption]'),
       count: act.querySelector('[data-stage-count]'),
+      shown: act.querySelector('.frame.is-on'),
       active: -1,
+      played: -1,
       timer: null
     };
   }
 
   var stages = acts.map(collect);
 
-  function paint(stage, frame) {
-    stage.frames.forEach(function (candidate) {
-      candidate.classList.toggle('is-on', candidate === frame);
-    });
-  }
-
   /** Play a step's frames once, then hold the last one. */
   function play(stage, index) {
     var run = stage.runs[index];
     if (!run || !run.length) return;
     window.clearTimeout(stage.timer);
+    stage.played = index;
     if (still.matches || run.length === 1) {
       paint(stage, run[run.length - 1]);
       return;
@@ -1532,6 +1554,15 @@
     stage.timer = window.setTimeout(next, holdOf(run[0]));
   }
 
+  /** Where a step ends up, with none of the typing on the way there. */
+  function settleOn(stage, index) {
+    var run = stage.runs[index];
+    window.clearTimeout(stage.timer);
+    stage.timer = null;
+    stage.played = -1;
+    if (run && run.length) paint(stage, run[run.length - 1]);
+  }
+
   function show(stage, index) {
     if (stage.active === index) return;
     stage.active = index;
@@ -1539,28 +1570,74 @@
     var step = stage.steps[index];
     if (stage.caption && step) stage.caption.textContent = step.getAttribute('data-label') || '';
     if (stage.count) stage.count.textContent = (index + 1) + ' / ' + stage.steps.length;
-    play(stage, index);
+    warm(stage.runs, index, index + 1);
+    // Mid-scroll the step is only passed over, so show where it lands; the
+    // typing plays when the reader stops on it.
+    if (scrolling) settleOn(stage, index);
+    else play(stage, index);
   }
 
   var scrubs = scrubbers.map(function (stage) {
     var section = stage.closest('section');
+    var frames = Array.prototype.slice.call(stage.querySelectorAll('[data-scrub-frame]'));
     return {
-      frames: Array.prototype.slice.call(stage.querySelectorAll('[data-scrub-frame]')),
+      el: section,
+      stage: stage,
+      box: stage.querySelector('.stage-frame'),
+      captionBox: stage.querySelector('.stage-caption'),
+      frames: frames,
+      runs: frames.map(function (frame) { return [frame]; }),
       steps: Array.prototype.slice.call(section.querySelectorAll('[data-scrub-step]')),
       caption: stage.querySelector('[data-scrub-caption]'),
       count: stage.querySelector('[data-scrub-count]'),
-      active: -1
+      shown: stage.querySelector('.frame.is-on'),
+      active: -1,
+      hold: 0
     };
   });
 
   function showScrub(scrub, index) {
     if (scrub.active === index) return;
     scrub.active = index;
-    scrub.frames.forEach(function (frame, i) { frame.classList.toggle('is-on', i === index); });
+    warm(scrub.runs, index, index + 2);
+    paint(scrub, scrub.frames[index]);
     var frame = scrub.frames[index];
     var image = frame && frame.querySelector ? frame.querySelector('img') : null;
     if (scrub.caption && image) scrub.caption.textContent = image.getAttribute('alt') || '';
     if (scrub.count) scrub.count.textContent = (index + 1) + ' / ' + scrub.frames.length;
+  }
+
+  /**
+   * Keep the caption where the reader is already looking.
+   *
+   * The caption sits under the frame while the stage is stuck, which is a long
+   * way below the picture being described. As the stage scrolls away the
+   * caption rises with it; this stops it at the height the frame occupied and
+   * holds it there for a third of a screen of scrolling, so the words arrive
+   * where the eyes already are instead of the eyes chasing them down the page.
+   * Past that it catches up with the stage and leaves with it — a caption left
+   * permanently offset would sit over whatever section came next.
+   */
+  var MAX_HOLD = .3;
+  function holdCaption(scrub) {
+    if (!scrub.box || !scrub.captionBox) return;
+    var stuckTop = parseFloat(window.getComputedStyle(scrub.stage).top) || 0;
+    var stageTop = scrub.stage.getBoundingClientRect().top;
+    var box = scrub.box.getBoundingClientRect();
+    // Where the frame sits while the stage is stuck — and so, near enough,
+    // where the reader was looking. Measured from the stage's own sticky
+    // offset, so it does not move as the stage leaves.
+    var eye = stuckTop + (box.top - stageTop) + box.height / 2;
+    var natural = scrub.captionBox.getBoundingClientRect().top - scrub.hold;
+    // How far past the eye line the caption would have travelled on its own:
+    // nothing yet, held there, then handed back at twice the speed.
+    var past = eye - natural;
+    var limit = window.innerHeight * MAX_HOLD;
+    var hold = past <= 0 ? 0 : past <= limit ? past : Math.max(0, 2 * limit - past);
+    if (Math.abs(hold - scrub.hold) < .5) return;
+    scrub.hold = hold;
+    scrub.captionBox.style.transform = hold ? 'translateY(' + hold + 'px)' : '';
+    scrub.captionBox.classList.toggle('is-held', hold > 1);
   }
 
   var wide = window.matchMedia('(min-width: 62rem)');
@@ -1578,6 +1655,18 @@
     scrubs.forEach(function (scrub) {
       if (!scrub.steps.length) return;
       showScrub(scrub, Math.min(activeIndex(scrub.steps, line), scrub.frames.length - 1));
+      holdCaption(scrub);
+    });
+  }
+
+  /** The scroll has stopped: play whatever the reader has landed on. */
+  function settle() {
+    settleTimer = null;
+    scrolling = false;
+    root.classList.remove('is-scrolling');
+    stages.forEach(function (stage) {
+      if (stage.played === stage.active || !onScreen(stage.el)) return;
+      play(stage, stage.active);
     });
   }
 
@@ -1588,12 +1677,22 @@
     window.requestAnimationFrame(function () { queued = false; update(); });
   }
 
-  document.documentElement.classList.add('js');
+  function onScroll() {
+    if (!scrolling) {
+      scrolling = true;
+      root.classList.add('is-scrolling');
+    }
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(settle, 140);
+    schedule();
+  }
+
+  root.classList.add('js');
   var outline = document.getElementById('outline');
   if (outline) outline.open = false;
 
   update();
-  window.addEventListener('scroll', schedule, {passive: true});
+  window.addEventListener('scroll', onScroll, {passive: true});
   window.addEventListener('resize', schedule);
 })();
 </script>

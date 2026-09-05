@@ -11,8 +11,8 @@ you watch it get built. The page says "diagram" throughout, never "graph". Every
 taken by a script that pressed the keys. Each of the twenty-eight boxes is a
 short animation — the keys held down, the empty box, the label typed one
 character at a time, the box shrinking to fit it, and the box selected and
-centred — and two scroll-scrubbed sequences show arrows re-routing while a box
-moves. The content of that diagram is `index.org`.
+centred — and one scroll-scrubbed sequence shows an arrow re-routing around a
+box pushed into it. The content of that diagram is `index.org`.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -48,9 +48,10 @@ and DNS are moved to the new page.
   frames that sit beside the prose, 820x1170 for the portrait ones that fill the
   top of a phone screen. File names match across the two.
 - `assets/demo/` and `assets/demo-m/` hold the small graphs, in the same two
-  shapes: the keymenu at rest and under a held key, an eleven-frame drag where a
-  box's own arrows re-route, and a six-frame drag where an arrow bends over a
-  box that got in its way.
+  shapes: the keymenu at rest and under a held key, a six-frame drag where an
+  arrow bends over a box that got in its way, and an eleven-frame drag where a
+  box's own arrows re-route — still captured, but no longer shown: one
+  re-routing digression is enough.
 - `assets/captures/` holds the older August capture set. The homepage no longer
   uses it; it backs the review page, which is kept as a record.
 - `review/index.html` is the durable contact sheet for those older captures.
@@ -182,14 +183,26 @@ Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
 at the portrait capture, and an `<img>` with the wide one. The two sets are
 different shapes, which `srcset` cannot express, so this is art direction rather
 than a responsive image. Each frame carries `data-step` (which box it belongs to)
-and `data-seq` (where it sits in that box's run). Only one frame has `is-on`. When a step becomes
-active the script plays its run once at about 130ms a frame and holds the last
-one, which is the sharp, settled, nothing-selected frame. `prefers-reduced-motion`
-skips straight to that last frame.
+and `data-seq` (where it sits in that box's run). Only one frame has `is-on`, and
+the one it replaced keeps `is-under`: they are stacked rather than cross-faded,
+because fading both at once let the black backing show through the middle of
+every swap. When a step becomes active the script plays its run once at about
+130ms a frame and holds the last one, which is the sharp, settled,
+nothing-selected frame. `prefers-reduced-motion` skips straight to that last
+frame.
 
-The two drag sections work differently: their frames are scrubbed rather than
-played, by a column of empty `.drag-step` spacers, so the reader's scroll speed
-is the playback speed.
+Nothing animates while the page is being scrolled: the root carries
+`is-scrolling` from the first scroll event until 140ms after the last, frames
+swap outright, and a step scrolled past shows where it lands rather than typing
+itself out. The run plays when the reader stops on it. Scrolling over an act
+used to start and abandon a run per step, which is what read as a flicker.
+
+The drag section works differently: its frames are scrubbed rather than played,
+by a column of empty `.drag-step` spacers, so the reader's scroll speed is the
+playback speed. Its caption does not simply leave with the stage — as the stage
+scrolls away the caption stops at the height the frame occupied and holds there
+for a third of a screen, so the words arrive where the reader is already
+looking, then catches up and goes.
 
 Without JavaScript the page is the prose, the first frame of each act, and the
 outline at the bottom, which is open until the script collapses it. A script

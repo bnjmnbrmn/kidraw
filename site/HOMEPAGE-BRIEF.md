@@ -76,9 +76,10 @@ demo of dragging a box so its arrow has to route around another box.
 All six are in. The capture window is 820x700, the stage column is `2fr` against
 `1fr` of prose, every box is a five- or six-frame run played at ~130ms, `park()`
 clears the selection and parks the crosshairs on the emptiest part of the canvas
-for the settled frame, and there are now two drag demos: one where a box's own
-arrows follow it, and one where dragging *Ship it* down forces the *Plan → Ship
-it* arrow to bend over *Review* instead of running behind it.
+for the settled frame, and the page carries one drag demo: dragging *Ship it*
+down forces the *Plan → Ship it* arrow to bend over *Review* instead of running
+behind it. A second one, where a box's own arrows follow it, is still captured
+but was cut — one re-routing digression makes the point.
 
 The character-by-character typing is three frames per label (empty, about half,
 all of it) rather than one frame per character — the page already carries ~560

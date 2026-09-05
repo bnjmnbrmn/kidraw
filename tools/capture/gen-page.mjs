@@ -233,12 +233,8 @@ ${frames.map((_, index) => `      <div class="drag-step" data-scrub-step="${inde
   </section>`;
 }
 
-const followCaptions = [
-  'Select+Drag held, before the first step.',
-  ...Array.from({length: 8}, (_, i) => `Step ${i + 1}. Both arrows were recomputed, not dragged along.`),
-  'Released. The arrows keep the routes they found.',
-  'One press of Layout, and the graph is tidy again.',
-];
+// One rerouting digression, not two: the follow run is still captured (see
+// demo.mjs), but the page shows only the box pushed into an arrow.
 const avoidCaptions = [
   'Three boxes. Plan points at Ship it; Review sits below, out of the way.',
   'Select+Drag held on Ship it.',
@@ -247,11 +243,6 @@ const avoidCaptions = [
   'Step 3. The arrow is routed over the top of Review rather than under it.',
   'Released. The route holds, and nothing was drawn by hand.',
 ];
-
-const followSection = scrubber('reroute', 'Move a box; its arrows find new routes',
-  'Select+Drag is held while one box steps down. Its arrows are not dragged along; they are computed again at every step. Scroll to step through it.',
-  demo.follow, followCaptions,
-  'The last two frames are the release, and one press of Layout.');
 
 const avoidSection = scrubber('avoid', 'Push a box into an arrow, and the arrow goes around it',
   'An arrow should not disappear behind a box. Plan points at Ship it, with Review below them; as Ship it is dragged down, the straight line would run through Review, so the route bends over it instead — recomputed on every keypress.',
@@ -288,7 +279,6 @@ ${actSection(ACTS[0])}
 ${actSection(ACTS[1])}
 ${actSection(ACTS[2])}
 ${actSection(ACTS[3])}
-${followSection}
 ${actSection(ACTS[4])}
 ${avoidSection}
 
@@ -326,4 +316,4 @@ ${readFileSync(join(here, 'page.script.html'), 'utf8')}
 
 writeFileSync(join(siteDir, 'index.html'), body);
 console.log(`site/index.html — ${ACTS.length} acts, ${entries.length} steps, ${map.frames} map frames` +
-  `${mapM ? ` (+${mapM.frames} portrait)` : ''}, ${demo.follow.length + demo.avoid.length} scrub frames`);
+  `${mapM ? ` (+${mapM.frames} portrait)` : ''}, ${demo.avoid.length} scrub frames`);

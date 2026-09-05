@@ -66,6 +66,7 @@ assert.ok(paired >= mapM.steps.length - 3,
 
 const demo = JSON.parse(readFileSync(join(dist, 'assets', 'demo', 'demo.json'), 'utf8'));
 assert.equal(Object.keys(demo.digressions).length, 3, 'the three keymenu digressions were captured');
+// The follow run is still captured, though the page shows only the avoid one.
 assert.ok(demo.follow.length >= 10, `the follow sequence is long enough to read (${demo.follow.length})`);
 assert.ok(demo.avoid.length >= 5, `the avoid sequence is long enough to read (${demo.avoid.length})`);
 for (const file of [...demo.follow, ...demo.avoid]) {
@@ -246,15 +247,34 @@ try {
     'every frame declares how long it stays up',
   );
 
-  // Both drag sequences scrub the same way.
-  assert.equal(await page.locator('[data-scrub]').count(), 2, 'a follow demo and an avoid demo');
-  await scrollTo(page, {selector: '#reroute [data-scrub-step]', index: 0});
-  assert.equal(await page.locator('#reroute [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '0');
-  await scrollTo(page, {selector: '#reroute [data-scrub-step]', index: 5});
-  assert.equal(await page.locator('#reroute [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '5');
+  // One rerouting digression: the box pushed into an arrow.
+  assert.equal(await page.locator('[data-scrub]').count(), 1, 'the avoid demo, and only it');
+  await scrollTo(page, {selector: '#avoid [data-scrub-step]', index: 0});
+  assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '0');
   await scrollTo(page, {selector: '#avoid [data-scrub-step]', index: 4});
   assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').getAttribute('data-scrub-frame'), '4');
   assert.equal(await page.locator('#avoid [data-scrub-frame].is-on').count(), 1);
+  // As the stage leaves, the caption stops at the height the frame occupied
+  // instead of sliding off a screen below it.
+  const eye = await page.evaluate(() => {
+    const rect = document.querySelector('#avoid .stage-frame').getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  });
+  let closest = Infinity;
+  let everHeld = false;
+  for (let step = 0; step < 24; step += 1) {
+    await page.evaluate(() => window.scrollBy(0, window.innerHeight / 8));
+    await page.waitForTimeout(120);
+    const at = await page.evaluate(() => {
+      const caption = document.querySelector('#avoid .stage-caption');
+      return {top: caption.getBoundingClientRect().top, held: caption.classList.contains('is-held')};
+    });
+    if (!at.held) continue;
+    everHeld = true;
+    closest = Math.min(closest, Math.abs(at.top - eye));
+  }
+  assert.ok(everHeld, 'the caption holds as the stage leaves');
+  assert.ok(closest < 40, `the caption lands where the frame was (${Math.round(closest)}px off)`);
 
   await page.keyboard.press('Home');
   await page.keyboard.press('Tab');

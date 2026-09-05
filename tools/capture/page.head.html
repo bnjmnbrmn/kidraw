@@ -156,11 +156,19 @@
   }
   .frame {
     display: block; height: 100%; inset: 0; opacity: 0;
-    position: absolute; width: 100%;
+    position: absolute; width: 100%; z-index: 0;
   }
   .frame img { display: block; height: 100%; object-fit: contain; width: 100%; }
-  .frame.is-on { opacity: 1; }
+  .frame.is-on { opacity: 1; z-index: 2; }
   .js .frame { transition: opacity .3s ease; }
+  /* Stacked, not cross-faded: the frame going out stays fully opaque under the
+     one coming in. Fading both at once let the black backing show through the
+     middle of every swap, and a scroll running several swaps together read as a
+     flicker. It also covers a lazy frame that has not arrived yet. */
+  .frame.is-under { opacity: 1; transition: none; z-index: 1; }
+  /* Mid-scroll the frames are a flipbook the reader is driving, not a video:
+     swap them outright, and let the run play once the scrolling stops. */
+  .js.is-scrolling .frame { transition: none; }
   @media (prefers-reduced-motion: reduce) { .js .frame { transition: none; } }
   .shot-frame { display: block; }
   .shot-frame img { display: block; width: 100%; }
@@ -259,6 +267,13 @@
     margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem)); width: auto;
   }
   .drag-stage .stage-caption { margin-inline: auto; max-width: 46rem; }
+  /* Held at the height the frame occupied while the stage scrolls away, so the
+     words arrive where the eyes already are. It sits over whatever is coming up
+     behind it, so it carries the page colour with it. */
+  .drag-stage .stage-caption.is-held {
+    background: var(--ground); border-radius: 10px;
+    padding-bottom: .35rem; position: relative; z-index: 4;
+  }
   @media (min-width: 62rem) {
     .drag-stage .stage-frame {
       aspect-ratio: 820 / 700; height: auto; margin-inline: auto; max-width: 46rem; width: 100%;
