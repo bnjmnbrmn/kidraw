@@ -1,44 +1,11 @@
 #+title: Current Homepage Criticism
 
-In general, this feels too much like a sales brochure and not enough like an academic document.  I want it to be drier, and much more concise.
+Let's put "A keyboard-first diagram editor" and "Connect your thoughts, at the speed you have them" back in.
 
-Let's start by making "KiDraw" much bigger, and treat "A keyboard-first graph editor" as a subtitle (so slightly smaller).  "Connect your thoughts, at the speed you have them" should be smaller still.
+Also, include near the top, "A work in progress. I'd love to hear your ideas about how to improve it."
 
-Instead of using the term graph in this page, let's just use the term "diagram".
+Let's avoid doing so much autolayout.  Only do (force) autolayout after you've introduced the idea.  Use the new grid of potential new node spots.
 
-I think we can mostly get rid of the text that isn't actually in the screenshot.  For example, in this section "The First Box, It starts with one box", we see the text "KiDraw" in three places, not including the header in the screenshot.  I just want to see the screenshot, zoomed in a bit more on the KiDraw box, with the box centered between the top of the key menu and the bottom of the header (rather than in the center of the screenshot).  In addition, we really don't need all this filler text, like "It starts with one box"--sounds like an ad for athletic-wear.  The text "The first box. Everything else on this page hangs off it, and the whole graph gets built inside KiDraw as you scroll." is also unnecessary.  You can keep "Everything below is one graph, built inside KiDraw as you scroll. These are frames from the running app, not drawings of it.", except maybe change it to something like "The following description of KiDraw uses actual screenshots of KiDraw".
+Instead of "Discoverable shortcuts", let's say "Explorable keybindings"
 
-In general for these screenshots, rather than having these boxes all the same size, I think we should have the boxes fit the text they contain (I think this is the default setting in KiDraw).  Also, when we are focusing on a particular node, like "KiDraw" in the first screenshot, I want to be 1) centered on it and 2) have it selected (with the blue highlighting).  Also, let's make the default zoom level for these screenshots higher in general.
-
-"It works, and it is not finished. Whether a keyboard-first diagram editor is actually nicer to use is the open question."  Change this to "It works, but it isn't finished and has some rough edges.  I'd love to hear your ideas about how to improve it."
-
-"The same graph, from further away
-One press of Recenter fits the branch on screen. The words go, the shape stays." -- Get rid of "One press of Recenter fits the branch on screen. The words go, the shape stays." and actually show the keypresses used to get there (make sure you go slowly enough that they are visible).
-
-"A break from the map
-
-The keyboard on screen is the manual
-A four-box graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.
-
-Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.
-At rest
-Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.
-The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.
-Add held
-The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.
-Dashed outlines mark where the new box could go, and h j k l move between them.
-Add, then Box
-Dashed outlines mark where the new box could go, and h j k l move between them.
-Every frame on this page was taken the same way: a script pressed the keys and screenshotted the result." -- I think we cover this whole section later, so cut this.o
-
-Let's avoid doing so much auto-layout.  Only do this at the end, of creating the diagram, or when you really don't have enough space (I'm looking at the "Efficiency" section when I'm thinking of this).
-
-I also want it to feel more like a video and less like a series of screenshots.  I do want to see the individual characters being typed, but at the speed of a fast typist.
-
-Make sure you are using the bullets I provided in index.org.  For instance, use "Get both text and connections down, before they slip away" instead of "Typing a label and joining it to something else are the same handful of keys, so both land before either slips away."
-
-With "Press and hold submenu keys", let's take a digression and show a screenshot of (just) the key menu with the f key held down.
-
-With "Some submenu keys allow you to change how you navigate", take another digression and show a screenshot of the full window with the f key held down (showing both the keymenu and the highlighted edges).
-
-With "Some submenu keys have an action on release", take another digression and show a screenshot of just the key menu with the a key held down.
+When we switch to the bullet points, or to screenshots.  I want the square containing the animated graph-building to slide up and a new square, contianing the bullets or screenshots to slide up.  (And when we are done with the bullets/screenshots, have their box slide up and be replaced by the box containing the animated graph-building).
