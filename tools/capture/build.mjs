@@ -568,10 +568,10 @@ export const newBoxIsClear = page => page.evaluate(() => {
   return true;
 });
 
-/** Walk the ghost lanes: the anchor's row and column, out to three slots, plus
- *  whatever midpoints the app offers between it and its neighbours. A press
- *  lands on the nearest *free* target in that direction, so repeating one moves
- *  further out rather than onto something. */
+/** Walk the ghost lattice: three cells each way around the anchor, diagonals
+ *  included. A press steps one cell in that direction, so repeating one walks
+ *  out along the row or column; cells whose box would land on a node are not
+ *  offered at all. */
 export const GHOST_WALKS = (() => {
   const walks = [];
   for (let steps = 1; steps <= 5; steps++) {

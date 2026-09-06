@@ -323,24 +323,63 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.redrawGrowGhost).toHaveBeenCalled();
     });
 
-    it('lands on insertion ghosts through the same Move by Node result', () => {
+    /** The lattice hop needs a little more of the canvas stubbed than the
+     *  engine one: it lands the crosshairs itself. */
+    const withLattice = (component: any, ghosts: unknown[]) => {
+      component.growGhostTargets = ghosts;
+      component.drawingLayer.x = () => 0;
+      component.drawingLayer.y = () => 0;
+      component.drawingLayer.scaleX = () => 1;
+      component.hideNodeGrid = jasmine.createSpy('hideNodeGrid');
+      component.hideQuadrantGoalRay = jasmine.createSpy('hideQuadrantGoalRay');
+      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
+      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection');
+      return component;
+    };
+
+    it('steps one cell along the lattice, without asking Move by Node', () => {
       const anchor = {id: 'anchor'};
-      const ghost = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
-      const component = buildComponent({allNodes: [anchor]});
+      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
+      const northEast = {id: 'grow-ghost:grid:1:-1', x: 400, y: 0, source: 'grid'};
+      const component = withLattice(buildComponent({allNodes: [anchor]}), [east, northEast]);
       component.growAnchor = anchor;
-      component.growGhostTargets = [ghost];
-      component.graphItemNavigationStrategy = 'adaptive-band-grid';
-      component.navGridLast = null;
+
+      component.growHop('right');
+      expect(component.growInsertionTarget).toBe(east);
+      expect(component.growTarget).toBeNull();
+
+      // A turn from there is the neighbouring cell, not a rethink of the field.
+      component.growHop('up');
+      expect(component.growInsertionTarget).toBe(northEast);
+      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
+      expect(component.jumpCrosshairsToStopCenter).toHaveBeenCalledTimes(2);
+      expect(component.redrawGrowGhost).toHaveBeenCalledTimes(2);
+    });
+
+    it('falls through to Move by Node where the lattice has no cell', () => {
+      const anchor = {id: 'anchor'};
+      const target = {id: 'target'};
+      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
+      const component = withLattice(
+        buildComponent({allNodes: [anchor, target]}), [east]);
+      component.growAnchor = anchor;
+      component.graphItemNavigationStrategy = 'adaptive-quadrant-rings';
+      component.quadrantNavLast = null;
       component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
         .and.callFake(() => {
-          component.navGridLast = {id: ghost.id, kind: 'node'};
+          component.quadrantNavLast = {id: 'target', kind: 'node'};
         });
-      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
-      component.growHop('right');
 
-      expect(component.growTarget).toBeNull();
-      expect(component.growInsertionTarget).toBe(ghost);
-      expect(component.redrawGrowGhost).toHaveBeenCalled();
+      component.growHop('right');
+      expect(component.growInsertionTarget).toBe(east);
+
+      // Nothing further east on the lattice: the engine takes the next hop and
+      // the real node beyond it stays reachable.
+      component.growHop('right');
+      expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
+      expect(component.growTarget).toBe(target);
+      expect(component.growInsertionTarget).toBeNull();
     });
 
     it('turns a pristine release over a node into a self-loop', () => {
@@ -359,7 +398,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
 
     it('creates and edits a node when an insertion ghost is released', () => {
       const anchor = {id: 'anchor'};
-      const ghost = {id: 'grow-ghost:midpoint:a:b', x: 250, y: 300, source: 'midpoint'};
+      const ghost = {id: 'grow-ghost:grid:1:1', x: 250, y: 300, source: 'grid'};
       const component = buildComponent();
       component.growAnchor = anchor;
       component.growInsertionTarget = ghost;

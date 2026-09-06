@@ -287,6 +287,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Centre-to-centre distance for a node placed beside `anchor`: the box it
    *  has to clear, plus a gap proportional to that box. */
+  /** The cell of the held-Add lattice: the placement slot on each axis, rounded
+   *  up to a whole major grid cell so every candidate spot sits a whole number
+   *  of coarse squares from the anchor. */
+  private growLatticeStep(anchor: DANode | null = this.growAnchor): {x: number; y: number} {
+    const cell = Math.max(1, this.drawingLayer.getGridSpacing());
+    const onGrid = (slot: number) => Math.max(cell, Math.ceil(slot / cell) * cell);
+    return {
+      x: onGrid(this.quickAddSlot(false, anchor)),
+      y: onGrid(this.quickAddSlot(true, anchor)),
+    };
+  }
+
   private quickAddSlot(vertical: boolean, anchor: DANode | null = this.growAnchor): number {
     const D = DrawingAreaComponent;
     const fresh = this.drawingLayer?.newNodeDefaultSize?.()
@@ -7195,11 +7207,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       nodes,
       source,
       bounds,
-      // The lattice's row and column get their own step, so placing above is
+      // The lattice's rows and columns get their own step, so placing above is
       // as close as the vertical slot says while placing beside still clears
-      // a wide anchor box (da-559).
-      {x: this.quickAddSlot(false, anchor), y: this.quickAddSlot(true, anchor)},
-      nodes.filter(node => visibleIds.has(node.id)),
+      // a wide anchor box (da-559). Each is rounded up to a whole cell of the
+      // major drawing grid: the spots then read as a grid — a coarse one, well
+      // above the background's fine squares — rather than as free positions.
+      this.growLatticeStep(anchor),
       // The anchor's own box stands in for the node a target would create —
       // it is also what the placement ghost is drawn at, so what is refused
       // is exactly what you would have seen land on something (da-510).
@@ -7345,6 +7358,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  turn re-origin semantics. */
   private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
     if (!this.growAnchor) return;
+    if (this.growHopOnLattice(direction)) return;
     // The crosshairs ride the candidate: Move-by-Node moves them to whatever
     // the hop landed on, and that is the thing being aimed. Pinning them to
     // the anchor instead (da-448) made the pin itself the problem — "it seems
@@ -7364,6 +7378,58 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
 
+
+  /** Which cell of the placement lattice a ghost target is, if it is one. */
+  private growLatticeCell(id: string | null | undefined): {ix: number; iy: number} | null {
+    const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(id ?? '');
+    return match ? {ix: Number(match[1]), iy: Number(match[2])} : null;
+  }
+
+  /**
+   * A hop between placement spots is a step on the lattice.
+   *
+   * Move by Node reads a field of stops as bands and rings, which is right for
+   * the scattered real nodes it was built for and wrong for a regular grid:
+   * with every intersection filled, a repeated right press wanders up and down
+   * the first column instead of walking out along the row. Aiming from the
+   * anchor or from another spot therefore steps by index — one cell in the
+   * direction pressed — and only falls through to the engine when the lattice
+   * has nothing there, which is how the real nodes beyond it stay reachable.
+   */
+  private growHopOnLattice(direction: 'left' | 'right' | 'up' | 'down'): boolean {
+    if (this.growTarget) return false;
+    const from = this.growInsertionTarget
+      ? this.growLatticeCell(this.growInsertionTarget.id)
+      : {ix: 0, iy: 0};
+    if (!from) return false;
+    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
+    const next = this.growGhostTargets.find(target => {
+      const cell = this.growLatticeCell(target.id);
+      return !!cell && cell.ix === from.ix + dx && cell.iy === from.iy + dy;
+    });
+    if (!next) return false;
+
+    this.finishTweens();
+    this.growTarget = null;
+    this.growInsertionTarget = next;
+    // The lattice of spots *is* the overlay while the aim is on it; the bands
+    // and rings the engine draws describe a decision that is not being made.
+    this.hideNodeGrid();
+    this.hideQuadrantGoalRay();
+    // Keep the engine's memory in step, so a hop off the end of the lattice
+    // carries on from the spot the reader is actually looking at.
+    this.navGridLast = {id: next.id, kind: 'node'};
+    this.quadrantNavLast = {id: next.id, kind: 'node'};
+    this.quadrantLastDirection = null;
+    const scale = this.drawingLayer.scaleX();
+    this.jumpCrosshairsToStopCenter({
+      x: this.drawingLayer.x() + next.x * scale,
+      y: this.drawingLayer.y() + next.y * scale,
+    });
+    this.redrawGrowGhost();
+    return true;
+  }
 
   /** `/` in grow mode: fuzzy-search the target by label (sticky phase —
    *  the hold key is naturally released to type; Enter commits the edge,
@@ -7800,8 +7866,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         );
         marker.name(active ? 'grow-insertion-target-active' : 'grow-insertion-target');
         marker.setAttr('ghostSource', target.source);
-        marker.dash(target.source === 'midpoint' ? [10, 5] : [2, 7]);
-        marker.opacity(active ? 1 : target.source === 'midpoint' ? 0.42 : 0.24);
+        marker.dash([2, 7]);
+        marker.opacity(active ? 1 : 0.24);
         ghost.add(marker);
         ghost.add(new Konva.Text({
           name: `grow-insertion-kind grow-insertion-kind-${target.source}`,
@@ -7809,11 +7875,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           y: target.y - 10 / scale,
           width: 48 / scale,
           align: 'center',
-          text: target.source === 'midpoint' ? '½' : '+',
+          text: '+',
           fontSize: 20 / scale,
           fontStyle: 'bold',
           fill: stroke,
-          opacity: active ? 1 : target.source === 'midpoint' ? 0.7 : 0.5,
+          opacity: active ? 1 : 0.5,
           listening: false,
         }));
       }

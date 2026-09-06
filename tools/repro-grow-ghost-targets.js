@@ -2,7 +2,8 @@
  * Exact physical-key regression for the 2026-08-09 held-Add redesign:
  *
  *   - tap Add over a node creates a self-loop;
- *   - held Add exposes pairwise midpoint + source-grid insertion ghosts;
+ *   - held Add exposes a lattice of insertion ghosts around the source,
+ *     diagonals included and no pairwise midpoints (2026-09-06);
  *   - hjkl reaches a ghost through Move by Node, and release creates the
  *     linked node at that exact landing and enters text insertion;
  *   - the same augmented navigation can continue through ghosts to a real
@@ -103,11 +104,16 @@ async function main() {
   await page.keyboard.down('a');
   await page.waitForTimeout(180);
   current = await state();
-  check('held Add renders midpoint ghosts',
-    current.ghosts.some(target => target.source === 'midpoint' &&
-      target.id.includes('da-a') && target.id.includes('da-b')));
-  check('held Add renders source-grid ghosts',
-    current.ghosts.some(target => target.source === 'grid'));
+  check('held Add renders no midpoint ghosts',
+    current.ghosts.every(target => target.source === 'grid'),
+    JSON.stringify(current.ghosts.filter(target => target.source !== 'grid')));
+  check('held Add renders the anchor row and column',
+    current.ghosts.some(target => /:grid:1:0$/.test(target.id)) &&
+    current.ghosts.some(target => /:grid:0:-1$/.test(target.id)));
+  check('held Add renders the diagonals too',
+    ['1:-1', '1:1', '-1:-1', '-1:1'].every(cell =>
+      current.ghosts.some(target => target.id.endsWith(`:grid:${cell}`))),
+    JSON.stringify(current.ghosts.map(target => target.id.replace('grow-ghost:grid:', ''))));
   check('Move by Node receives the augmented target tier',
     current.augmentedStops === current.nodes.length + current.ghosts.length,
     JSON.stringify({stops: current.augmentedStops, nodes: current.nodes.length, ghosts: current.ghosts.length}));
@@ -131,6 +137,31 @@ async function main() {
       current.edges[0].from === 'da-a' && current.edges[0].to === inserted.id,
     JSON.stringify({chosenGhost, inserted, edges: current.edges}));
   check('ghost insertion enters text insert mode', current.mode === 'labelEdit', current.mode);
+
+  // A run of presses in one direction walks the lattice row, one cell each,
+  // rather than wandering through the cells of the first column.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await resetGraph();
+  await parkOn('A');
+  await page.keyboard.down('a');
+  const row = [];
+  for (let step = 0; step < 3; step++) {
+    await page.keyboard.press('l');
+    await page.waitForTimeout(120);
+    row.push((await state()).insertion?.id.replace('grow-ghost:grid:', '') ?? null);
+  }
+  check('a run of right presses walks out along the row',
+    JSON.stringify(row) === JSON.stringify(['1:0', '2:0', '3:0']), JSON.stringify(row));
+  await page.keyboard.press('k');
+  await page.waitForTimeout(120);
+  check('and a turn steps one cell off it',
+    (await state()).insertion?.id.endsWith(':grid:3:-1'),
+    (await state()).insertion?.id);
+  await page.keyboard.up('a');
+  await page.waitForTimeout(250);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
 
   // Start clean and walk east until the real node is reached. Ghosts are
   // intermediate stops, but existing nodes remain first-class destinations.

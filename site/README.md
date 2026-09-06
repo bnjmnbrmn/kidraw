@@ -178,10 +178,9 @@ weight.
 
 Three things about the capture are worth knowing:
 
-- **Placement is trial and error, and that is fine.** The ghost targets are the
-  parent's own row and column, three slots each way, plus the midpoints between
-  it and its neighbours; a press walks to the nearest *free* one in that
-  direction. `growEmpty` walks one to five steps in each direction in turn and
+- **Placement is trial and error, and that is fine.** The ghost targets are a
+  lattice around the parent, three cells each way and diagonals included; a
+  press steps one cell in that direction. `growEmpty` walks one to five steps in each direction in turn and
   checks after each try that a *new box joined to the parent* appeared. A try
   that drew an edge to an existing box, or left a box floating, is undone —
   nodes and edges both, since a placement that landed on an existing box adds an
