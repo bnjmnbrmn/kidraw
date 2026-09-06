@@ -1,5 +1,47 @@
 # KiDraw homepage brief
 
+## September 6, 2026 — eighth revision (an approximate force layout, one box at a time)
+
+Ben, on the seventh: follow an approximate force layout instead of running the
+auto layout as the build goes along, so the transitions stop being jerky; show
+all the tweens; do not start a box as a large square — it should be small and
+expand as the label is typed; do not place a new box on top of an existing box
+or edge; and the captions take too much scrolling to get past.
+
+- **Nothing is laid out globally any more.** Each box is pinned once it has
+  found its place (`Toggle Pin`, one press, box selected), and `applyLayout`
+  only moves what is unpinned — so the Force layout that runs after each box
+  moves *that box alone*, from the slot it was grown into to somewhere clear of
+  the nodes and the edges already there. The tree layouts that used to run at
+  each branch end, and again whenever a long label made a box overlap, are gone,
+  and so is the jump they made. The end shape is an approximate force layout,
+  arrived at one box at a time. Two things had to be got right: layout applies
+  to the selection when there is one, so the selection is cleared first; and the
+  pin markers the app draws with the grid are hidden before each shot.
+- **Small box, growing.** The box is fitted to its (empty) text before the label
+  goes in, so it starts at its minimum and each character grows it; the
+  default-sized square is never on screen. The demo graphs are fitted too, so
+  every box on the page is sized to its own text. The label is typed into the
+  editor the grow itself opens, and Fit is set on the node rather than chorded,
+  because both have to happen without leaving that editor: typing appends to the
+  *selection*, `Edit Text` re-picks the selection from whatever is under the
+  crosshairs, and an edge crossing a small box wins that pick — after which the
+  keystrokes go nowhere at all, silently. Five capture runs died on that before
+  it was understood.
+- **The tweens are the animation.** The layout glide and every camera step take
+  a burst of frames rather than one, so the page plays the movement instead of
+  cutting across it.
+- **Placement.** Ghost targets are the parent's row and column plus midpoints,
+  and the app already refuses a target whose box would land on an existing node.
+  Landing on an *edge* it does not refuse, so the capture checks that itself now
+  — the new box's rectangle against every edge and waypoint — and keeps walking
+  until it finds a clear spot (four boxes out of twenty-eight had to settle). The walk list
+  runs one to five steps in each direction, and because the Force pass moves a
+  child off the slot it was grown into, the slot is free for the next one —
+  nine children go in through a single `j`.
+- **Captions are shorter to scroll past**: 45vh rather than 80, and a still
+  example 55vh.
+
 ## September 5, 2026 — seventh revision (only the org file's words, on a reel)
 
 Ben, on the sixth revision: cut all the text that did not come from

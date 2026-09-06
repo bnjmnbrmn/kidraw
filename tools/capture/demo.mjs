@@ -11,7 +11,7 @@ import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {seed, grow, layout, focus, fit, frameAbove, park, goTo, edges, settle, counts, undo, typeLabel, labels} from './build.mjs';
+import {seed, grow, layout, focus, fit, frameAbove, park, goTo, edges, settle, counts, undo, typeLabel, labels, fitEveryBox} from './build.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PROFILES = {
@@ -58,6 +58,8 @@ for (const [parent, child] of [
 }
 console.log('graph:', JSON.stringify(await edges(page)));
 
+await fitEveryBox(page);
+await layout(page);
 await fit(page);
 await frameAbove(page);
 await park(page);
@@ -124,6 +126,7 @@ await seed(page, 'Plan');
 await layout(page);
 await focus(page, 'Plan');
 await grow(page, 'Ship it', {parent: 'Plan', refocus: () => focus(page, 'Plan')});
+await fitEveryBox(page);
 await layout(page);
 
 // Pull the two apart so the arrow between them has room for an obstacle.
@@ -159,6 +162,9 @@ await settle(page, 300);
 await keys(page, 'a');
 await typeLabel(page, 'Review');
 await keys(page, 'Escape Escape');
+await goTo(page, 'Review');
+await keys(page, '[w [f h]]');
+await settle(page, 260);
 await keys(page, 'c');
 await fit(page);
 await frameAbove(page);

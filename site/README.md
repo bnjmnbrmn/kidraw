@@ -13,9 +13,10 @@ you watch it get built. The page says "diagram" throughout, never "graph".
 headings, which are the boxes in the diagram, and the bullets, which are the
 captions. Everything else on screen is a screenshot of the running KiDraw app,
 taken by a script that pressed the keys. Each of the twenty-eight boxes is a
-short animation — the keys held down, the empty box, the label typed one
-character at a time, the box shrinking to fit it, and the box selected and
-centred — and the org file's "breaks in the sequence" are there too: three
+short animation — the keys held down with the dashed targets showing, a small
+empty box, the label growing it letter by letter, the box gliding to the place
+an approximate force layout finds for it, and the camera moving in to frame it,
+selected — and the org file's "breaks in the sequence" are there too: three
 keymenu close-ups and a drag where an arrow re-routes around a box pushed into
 it. The smoke test enforces the rule, comparing every line of visible text
 against the org file.
@@ -131,25 +132,71 @@ growing taller than the screen; on a phone it is edge to edge and takes the top
 two thirds.
 
 What each frame of a box's run is doing, in order: Add held with the dashed
-targets showing; the empty box in label edit; one frame per character typed at
-about eight characters a second; `Style > Overflow > Fit`, so the box shrinks to
-its text rather than sitting at the default size; and the box selected, zoomed
-to 200%, centred between the bottom of the header and the top of the keymenu,
-with the crosshairs parked somewhere empty.
+targets showing; a *small* empty box — `Style > Overflow > Fit`, so the box
+starts at its minimum and the text grows it rather than filling a square that
+was already there; one frame per character typed at about eight characters a
+second; the Layout key going down and the box gliding to where Force puts it;
+and the camera moving in on the box, selected, zoomed to 200%, centred between
+the bottom of the header and the top of the keymenu, with the crosshairs parked
+somewhere empty.
 
-Layout is not run after every box. It runs when a branch finishes, and when
-there is genuinely no room — either no free slot next to the parent, or a long
-label made a box that overlaps a neighbour. Both cases are *shown*: the frames
-include the Layout key going down and the tween that follows.
+The label is typed into the editor the grow itself opened, and Fit is the one
+thing the capture *sets* rather than presses. Both follow from the same fact:
+typing appends to the **selection**, and `Edit Text` re-picks the selection from
+whatever is under the crosshairs. Leaving the editor to press the Fit chord and
+coming back with `Edit Text` therefore works right up until an edge crosses the
+small box — then the edge wins the pick, the box is not selected, and every
+keystroke goes nowhere at all, silently. The grow's own editor is already on the
+new box, already in insert, already selected, so the label goes in there and the
+node's overflow mode is set on the node instead of chorded. The app makes the
+same setting the default for new nodes under its todo-graph identity, so it is a
+setting rather than a fiction. Even so, all three facts are checked before a
+character is typed and the label is read back afterwards.
+
+**The diagram is never laid out globally.** A box that has found its place is
+pinned — `Toggle Pin`, one press, with the box selected, and by label rather
+than by "the newest node", since the layout has just moved it and may have
+carried it off screen — and `applyLayout`
+only moves what is unpinned. So the Force layout that runs after each box moves
+that box and nothing else: it slides from the slot it was grown into to
+somewhere clear of the nodes *and* the edges already on the canvas (the "clear"
+variant adds node-to-edge repulsion), while everything around it stays exactly
+where the reader last saw it. The whole-graph tree layouts, which used to run at
+each branch end and whenever a box would not fit, are gone; so is the jump they
+made. The shape the diagram ends up in is an approximate force layout, built one
+box at a time.
+
+Two details make that work. Layout applies to the *selection* when there is one,
+so the selection is cleared before the key goes down — a selected box would be
+laid out on its own, with none of the edges or neighbours that decide where it
+belongs. And the app draws a small square on a pinned node whenever the grid
+indicators are up, which is every frame here; the capture hides those markers
+before each shot, since they are an artefact of how the run is driven rather
+than anything the reader is being shown.
+
+**Anything that moves is photographed while it moves.** The layout glide and
+every camera step — each zoom press, each pan press — take a burst of frames, so
+the page can play the tween instead of cutting across it. Those frames are
+stored leaner and carry a short `data-ms`, so they cost little scroll and little
+weight.
 
 Three things about the capture are worth knowing:
 
-- **Placement is trial and error, and that is fine.** Which dashed ghost is
-  free depends on what the layout has already put around the parent, so `grow`
-  tries placements in order and checks after each one that a *new box joined to
-  the parent* appeared. A placement that drew an edge to an existing box, or
-  left a box floating, is undone before the next try. Layout decides the final
-  position anyway.
+- **Placement is trial and error, and that is fine.** The ghost targets are the
+  parent's own row and column, three slots each way, plus the midpoints between
+  it and its neighbours; a press walks to the nearest *free* one in that
+  direction. `growEmpty` walks one to five steps in each direction in turn and
+  checks after each try that a *new box joined to the parent* appeared. A try
+  that drew an edge to an existing box, or left a box floating, is undone —
+  nodes and edges both, since a placement that landed on an existing box adds an
+  edge without adding a node. It also has to land **clear of the edges**: the
+  app refuses a target whose box would cover an existing *node*, but nothing
+  stops one landing on a line, so the walk continues until the new box's
+  rectangle misses every edge and waypoint on the canvas, and settles for an
+  overlap only when there is no alternative (four boxes out of twenty-eight).
+  The Force layout then decides where the box actually sits, which is also what
+  frees the slot for the next child: nine children all went in through a single
+  `j`.
 - **The last frame of every run is the point of it.** The box is selected, so
   the blue highlight says which one the step is about; `park()` moves the
   crosshairs to the emptiest point on the canvas, well clear of the edges,
@@ -166,11 +213,9 @@ key press today — holding Add and choosing Edge offers only Self Loop, with no
 way to pick a target. The current outline is a plain tree so nothing needs it,
 but a cross-branch link would have to be faked or added to the app first.
 
-Overviews are captured at the end of each branch with the *downward* layout
-(`[b j]`) rather than the tree-right one the rest of the run uses. A tree-right
-graph is far taller than it is wide, and fitting that on an 820x700 canvas
-leaves a thread; laid out downward the same graph fits at 22% and its shape
-still reads.
+Overviews are captured at the end of each branch by Recenter alone (`[r p]`),
+which is a camera move: the diagram is already in the shape the reader watched
+it grow into, and re-laying it out for the photograph would undo the point.
 
 ## How the reel works
 

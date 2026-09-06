@@ -1,22 +1,35 @@
 #!/usr/bin/env node
 /**
  * Build the whole KiDraw map in the running app and capture the build as a
- * short frame sequence per box: the held keys, the empty box, the label going
- * in, the layout tween, and the settled graph with the crosshairs parked off to
- * one side so nothing is covered or lit up.
+ * frame sequence per box.
  *
  *   npm start                      # the dev server has to be up
  *   node tools/capture/map.mjs
+ *
+ * What a box's run shows, in order: the dashed ghost targets with Add held; a
+ * small empty box; the label growing it letter by letter; the box gliding to
+ * the place an approximate force layout finds for it; and the camera moving in
+ * to frame it, selected, in the band between the header and the keymenu.
+ *
+ * Nothing is ever laid out globally. Every box that has found its place is
+ * pinned, so the Force layout that runs after each one moves that box alone —
+ * which is what keeps the diagram from jumping about, and what keeps a new box
+ * off the nodes and edges already on the canvas.
+ *
+ * Anything that moves is photographed while it moves. The frames of a tween are
+ * the point of the page, not an artefact of it.
  */
 import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {seed, grow, goTo, focus, fit, fitToText, overlaps, select, centreInBand, frameAbove, park, zoomTo, settle, typeLabel, labels, edges, MS_PER_CHAR} from './build.mjs';
+import {goTo, goToNewest, growEmpty, shrinkToText, typeInto, pinBox, fit, focus,
+        park, select, centreInBand, frameAbove, zoomTo, settle, labels, edges,
+        MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-// Two shapes of the same run. The desktop frames sit beside the prose; the
+// Two shapes of the same run. The desktop frames sit in the page's window; the
 // portrait ones fill the top two thirds of a phone. Both are 820 wide because
 // that is the narrowest viewport the on-screen keyboard fits in without being
 // clipped.
@@ -34,13 +47,19 @@ const VIEWPORT = profile.viewport;
 // The frames that flash past inside an animation can be leaner than the one the
 // reader actually sits on.
 const QUALITY = {
-  target: .58, blank: .55, typing: .5, typed: .6, fit: .6,
-  menu: .6, tween: .56, rest: .82, overview: .82,
+  target: .58, blank: .55, typing: .5, typed: .6,
+  menu: .6, tween: .5, camera: .5, rest: .82, overview: .82,
 };
 // The build happens at 100%; each box is then framed at twice that, centred in
 // the band between the header and the keymenu, and left selected.
 const BUILD_ZOOM = 100;
 const FOCUS_ZOOM = 200;
+/** A frame taken mid-movement is on screen only as long as the movement. */
+const TWEEN_MS = 150;
+/** How many frames one glide is worth. A screenshot costs about as long as the
+ *  gap a tween wants, so these are taken back to back. */
+const TWEEN_SHOTS = 5;
+const CAMERA_SHOTS = 4;
 
 const plain = text => text.replace(/[=_]([^=_]+)[=_]/g, '$1');
 
@@ -53,11 +72,27 @@ const extras = [];
 
 /** How long each kind of frame stays on screen, in milliseconds. Typing frames
  *  carry their own, worked out from how many characters they added. */
-const HOLD = {target: 820, blank: 260, typed: 420, fit: 320, menu: 700, tween: 500, rest: 0, overview: 0};
+const HOLD = {target: 820, blank: 300, typed: 420, menu: 700, tween: TWEEN_MS,
+              camera: TWEEN_MS, rest: 0, overview: 0};
+
+/**
+ * Pin markers are a side effect of the capture, not of the drawing.
+ *
+ * The build pins each box once it has found its place, so the next Force layout
+ * leaves it alone. The app draws a small square on a pinned node whenever the
+ * grid indicators are up — true of every frame here, since each is taken right
+ * after a keypress. A reader would be looking at twenty-eight of them.
+ */
+const hidePins = () => page.evaluate(() => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  component.drawingLayer.getDANodes().forEach(node => node.setPinIndicatorVisible(false));
+  component.drawingLayer.batchDraw();
+});
 
 async function keep(id, kind, ms) {
+  await hidePins();
   const name = `${String(counter++).padStart(3, '0')}-${id}-${kind}`;
-  await shot(page, name, {quality: QUALITY[kind] ?? 0.7, wait: 120});
+  await shot(page, name, {quality: QUALITY[kind] ?? 0.7, wait: kind === 'tween' || kind === 'camera' ? 0 : 120});
   return {file: `${name}.webp`, ms: ms ?? HOLD[kind] ?? 300};
 }
 
@@ -66,8 +101,7 @@ async function keep(id, kind, ms) {
 let pending = [];
 async function provisional(kind, meta = {}) {
   if (kind === 'target') pending = [];
-  // A label is typed in several chunks, so the name has to be unique within the
-  // attempt as well as by kind.
+  await hidePins();
   const file = await shot(page, `tmp-${pending.length}-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
   pending.push({kind, file, ms: meta.ms ?? HOLD[kind] ?? 300});
 }
@@ -79,46 +113,68 @@ function commit(id) {
   });
 }
 
-/** Layout animates; catch it mid-flight, then let it settle. */
-const chars = text => text.length * MS_PER_CHAR;
+/** Photograph something while it moves. */
+async function during(id, frames, count, kind = 'tween') {
+  for (let index = 0; index < count; index++) frames.push(await keep(id, kind, TWEEN_MS));
+}
+
+/** Type the label into the small empty box, a frame per character. */
+async function typeLabelFrames(id, frames, label) {
+  await typeInto(page, label, async index => {
+    if (index === null) frames.push(await keep(id, 'blank', MS_PER_CHAR));
+    else {
+      const last = index === label.length - 1;
+      frames.push(await keep(id, last ? 'typed' : 'typing', last ? HOLD.typed : MS_PER_CHAR));
+    }
+  });
+}
+
+/** Let the box find its place, and watch it go. */
+async function findItsPlace(id, frames, label) {
+  // Layout runs on the selection when there is one, and on the whole diagram
+  // when there is not. A selected box would be laid out on its own, with none
+  // of the edges or neighbours that decide where it belongs.
+  await keys(page, 'c');
+  await settle(page, 220);
+  await page.keyboard.down('b');
+  await settle(page, 420);
+  frames.push(await keep(id, 'menu'));
+  await page.keyboard.press('k');
+  await during(id, frames, TWEEN_SHOTS);
+  await page.keyboard.up('b');
+  await settle(page, 500);
+  // Pinned, so the next box's layout leaves this one alone.
+  if (!await pinBox(page, label)) throw new Error(`could not pin ${id}`);
+}
 
 /** Frame the box a step is about: zoomed in, centred in the visible band, still
- *  selected, with the crosshairs moved off its label. */
-async function frameBox(label) {
-  // Fitting the box to its text moves its edges, so the crosshairs have to be
-  // put back on it before Select will find anything.
+ *  selected, with the crosshairs moved off its label. The camera is shown
+ *  moving rather than cut to. */
+async function frameBox(id, frames, label) {
   await goTo(page, label);
   await select(page);
-  await zoomTo(page, FOCUS_ZOOM);
-  // Park before centring: moving the crosshairs can pan the view, and the
-  // centring has to be the last thing that touches the camera.
+  let taken = 0;
+  const onStep = async () => {
+    if (taken++ < CAMERA_SHOTS) frames.push(await keep(id, 'camera'));
+  };
+  await zoomTo(page, FOCUS_ZOOM, onStep);
   await park(page);
-  await centreInBand(page, label);
+  await centreInBand(page, label, onStep);
+  // A fixed number of camera frames, however many presses the move took: the
+  // portrait run is captured separately, and the page can only pair the two
+  // sets frame for frame if a box's run is the same length in both.
+  while (taken++ < CAMERA_SHOTS) frames.push(await keep(id, 'camera'));
 }
 
-/** Lay the diagram out, as a visible pair of keypresses. */
-async function showLayout(id, frames) {
-  await zoomTo(page, BUILD_ZOOM);
-  await keys(page, 'c');
-  await settle(page, 200);
-  await page.keyboard.down('b');
-  await settle(page, 480);
-  frames.push(await keep(id, 'menu'));
-  await page.keyboard.press('j');
-  await page.keyboard.up('b');
-  await settle(page, 260);
-  frames.push(await keep(id, 'tween'));
-  await settle(page, 800);
-}
-
-/** Fit the whole diagram on screen, also as visible keypresses. */
-async function showRecenter(page_, id, frames) {
+/** Fit the whole diagram on screen, as visible keypresses. */
+async function showRecenter(id, frames) {
   await page.keyboard.down('r');
-  await settle(page, 480);
+  await settle(page, 420);
   frames.push(await keep(id, 'menu'));
   await page.keyboard.press('p');
+  await during(id, frames, TWEEN_SHOTS);
   await page.keyboard.up('r');
-  await settle(page, 1100);
+  await settle(page, 900);
   await frameAbove(page);
 }
 
@@ -126,80 +182,51 @@ const entries = flatten(OUTLINE);
 const started = Date.now();
 console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height} into ${profile.dir}`);
 
-const opening = [];
+const index = new Map();
 const rootLabel = plain(entries[0].node.t);
+const opening = [];
 opening.push(await keep('kidraw', 'target', 600));
 await keys(page, 'a');
-opening.push(await keep('kidraw', 'blank', MS_PER_CHAR));
-for (const [index, character] of Array.from(rootLabel).entries()) {
-  await typeLabel(page, character);
-  const last = index === rootLabel.length - 1;
-  opening.push(await keep('kidraw', last ? 'typed' : 'typing', last ? HOLD.typed : MS_PER_CHAR));
-}
-await keys(page, 'Escape Escape');
-await goTo(page, rootLabel);
-await fitToText(page);
-opening.push(await keep('kidraw', 'fit'));
-await frameBox(rootLabel);
+await settle(page, 300);
+await shrinkToText(page);
+await typeLabelFrames('kidraw', opening, rootLabel);
+index.set(entries[0].node.id, 0);
+await findItsPlace('kidraw', opening, rootLabel);
+await frameBox('kidraw', opening, rootLabel);
 opening.push(await keep('kidraw', 'rest'));
 steps.push({id: 'kidraw', frames: opening});
 
 const limit = Number(process.env.CAPTURE_LIMIT ?? entries.length);
-for (const [index, {node, parent, depth}] of entries.entries()) {
-  if (index === 0) continue;
-  if (index >= limit) break;
+for (const [at, {node, parent, depth}] of entries.entries()) {
+  if (at === 0) continue;
+  if (at >= limit) break;
   const label = plain(node.t);
   const parentLabel = plain(parent.t);
   await fit(page);
   await focus(page, parentLabel, BUILD_ZOOM);
-  const growArgs = {
-    parent: parentLabel,
+  const {index: mine} = await growEmpty(page, {
+    parentIndex: index.get(parent.id),
     refocus: () => focus(page, parentLabel, BUILD_ZOOM),
     onStage: provisional,
-  };
-  let frames;
-  try {
-    await grow(page, label, growArgs);
-    frames = commit(node.id);
-  } catch (crowded) {
-    // No free spot around the parent — which is the one time the diagram gets
-    // laid out mid-branch, and it is shown rather than done quietly.
-    console.log(`  ! ${node.id}: no room, laying out first`);
-    const relaid = [];
-    await showLayout(node.id, relaid);
-    await fit(page);
-    await focus(page, parentLabel, BUILD_ZOOM);
-    await grow(page, label, growArgs);
-    frames = [...relaid, ...commit(node.id)];
-  }
-  // The crosshairs come to rest where the new box was placed, which is close
-  // enough to its incoming arrow that Style and Select would act on the arrow.
-  await goTo(page, label);
-  await fitToText(page);
-  frames.push(await keep(node.id, 'fit'));
-  // A long label can make a box that no longer fits the slot it was grown into.
-  // That is the other case where the diagram gets laid out mid-branch.
-  if (await overlaps(page, label)) {
-    console.log(`  ! ${node.id}: overlapping, laying out`);
-    await showLayout(node.id, frames);
-    await fit(page);
-  }
-  await frameBox(label);
+  });
+  index.set(node.id, mine);
+  const frames = commit(node.id);
+  await shrinkToText(page);
+  await typeLabelFrames(node.id, frames, label);
+  await findItsPlace(node.id, frames, label);
+  await frameBox(node.id, frames, label);
   frames.push(await keep(node.id, 'rest'));
 
-  // Layout and recenter when a branch is done — shown, not quietly applied.
-  const next = entries[index + 1];
+  // A look at the whole diagram when a branch is done — camera only.
+  const next = entries[at + 1];
   if (depth >= 1 && (!next || next.depth === 1)) {
-    await showLayout(node.id, frames);
-    await showRecenter(page, node.id, frames);
+    await showRecenter(node.id, frames);
     await park(page);
     extras.push({id: `overview-${node.id}`, ...(await keep(`overview-${node.id}`, 'overview'))});
   }
 
   steps.push({id: node.id, frames});
-  if (index % 5 === 0) {
-    console.log(`  ${index}/${entries.length} ${node.id} (${((Date.now() - started) / 60000).toFixed(1)}m)`);
-  }
+  console.log(`  ${at}/${entries.length} ${node.id} — ${frames.length} frames (${((Date.now() - started) / 60000).toFixed(1)}m)`);
 }
 
 writeFileSync(join(outDir, 'map.json'), JSON.stringify({

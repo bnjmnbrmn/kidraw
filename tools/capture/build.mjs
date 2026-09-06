@@ -220,7 +220,7 @@ export async function select(page) {
  * between the bottom of the header and the top of the keymenu, not the middle
  * of the whole frame.
  */
-export async function centreInBand(page, label) {
+export async function centreInBand(page, label, onStep) {
   await settle(page, 300);
   for (let attempt = 0; attempt < 10; attempt++) {
     const gap = await page.evaluate(text => {
@@ -248,18 +248,21 @@ export async function centreInBand(page, label) {
     if (Math.abs(gap.dy) <= 30 && Math.abs(gap.dx) <= 40) return true;
     if (Math.abs(gap.dy) > 30) await keys(page, gap.dy > 0 ? '[r j]' : '[r k]');
     else await keys(page, gap.dx > 0 ? '[r l]' : '[r h]');
+    // The pan animates; the caller photographs it on the way.
+    if (onStep) await onStep();
     await settle(page, 420);
   }
   return false;
 }
 
 /** Zoom in or out until the level is near `target`, recentring as we go. */
-export async function zoomTo(page, target = 100) {
+export async function zoomTo(page, target = 100, onStep) {
   let changed = false;
   for (let step = 0; step < 5; step++) {
     const level = await zoom(page);
     if (level >= target * 0.7 && level <= target * 1.45) break;
     await keys(page, level < target ? '[r i]' : '[r o]');
+    if (onStep) await onStep();
     await settle(page, 300);
     changed = true;
   }
@@ -439,4 +442,374 @@ async function rollBack(page, before) {
     await settle(page, 120);
   }
   throw new Error('could not undo a failed placement');
+}
+
+// ---------------------------------------------------------------------------
+// Growing a node the way the page shows it: a small empty box that grows as
+// the label is typed, then an approximate force layout that lets it find a
+// place clear of the nodes and edges already there.
+//
+// Nothing is laid out globally. Every node that has found its place is pinned,
+// and `applyLayout` only moves what is unpinned, so running Force after each
+// box moves that box (and, if the caller asks, its siblings) and nothing else.
+// ---------------------------------------------------------------------------
+
+/**
+ * Put the crosshairs on the node added last, and make sure they landed.
+ *
+ * Same affordance as `goTo` — the new box has no label to aim at yet — with the
+ * same hazard: the crosshairs cannot leave the viewport, so a box the camera
+ * has drifted away from cannot be reached, and asking anyway parks them on
+ * whatever *is* there. Everything that follows (fit the empty box, open its
+ * label, type into it) then happens to the wrong box, which is how a whole
+ * label once ended up inside its predecessor. So this checks what it landed on
+ * and pulls the camera back before trying again.
+ */
+export async function goToNewest(page, {dx = 0, dy = 0} = {}) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const landed = await page.evaluate(([dx, dy]) => {
+      const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+      // Reading a box mid-tween gives a position it is about to leave, and the
+      // crosshairs then land wherever it *was* — often inside a neighbour.
+      component.finishTweens();
+      const nodes = component.drawingLayer.getDANodes();
+      const node = nodes[nodes.length - 1];
+      if (!node) return 'missing';
+      const stage = component.stage;
+      const box = node.group.getClientRect({relativeTo: stage});
+      // The aim can be offset within the box: an edge crossing its middle wins
+      // the "what is under the crosshairs" contest that decides what an edit
+      // opens on, and a different corner of the same box does not.
+      const centre = {
+        x: box.x + box.width * (0.5 + dx),
+        y: box.y + box.height * (0.5 + dy),
+      };
+      const margin = 40;
+      if (centre.x < margin || centre.y < margin ||
+          centre.x > stage.width() - margin || centre.y > stage.height() - margin) return 'offscreen';
+      const layer = component.crosshairsLayer;
+      component.moveCrosshairsBy(centre.x - layer.crosshairsX(), centre.y - layer.crosshairsY());
+      component.refreshCrosshairHoverHighlight();
+      const under = component.getDANodesContainingCrosshairs
+        ? component.getDANodesContainingCrosshairs()
+        : [];
+      return under.length && !under.includes(node) ? 'missed' : 'ok';
+    }, [dx, dy]);
+    if (landed === 'missing') throw new Error('there is no new box to go to');
+    if (landed === 'ok') {
+      await settle(page, 260);
+      return true;
+    }
+    await fit(page);
+  }
+  throw new Error('cannot put the crosshairs on the new box');
+}
+
+/** Labels of the nodes, in creation order — the oracle for "did that press
+ *  make a new box, joined to the one I grew it from?" */
+export function graphShape(page) {
+  return page.evaluate(() => {
+    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const read = node => {
+      const value = node.label;
+      if (!value) return '';
+      return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
+    };
+    const nodes = component.drawingLayer.getDANodes();
+    const index = new Map(nodes.map((node, at) => [node, at]));
+    return {
+      labels: nodes.map(read),
+      edges: component.drawingLayer.getDAEdges()
+        .map(edge => [index.get(edge.srcNode) ?? -1, index.get(edge.destNode) ?? -1]),
+    };
+  });
+}
+
+/**
+ * Is the box that was just grown clear of the edges already on the canvas?
+ *
+ * The app refuses a ghost target whose box would land on an existing *node*,
+ * but nothing stops one landing on an *edge*. That matters twice over: the page
+ * should not show a box sitting on a line, and an edge (or a waypoint) crossing
+ * a small box wins the "what is under the crosshairs" contest that decides what
+ * `Edit Text` opens, which leaves the label untypable.
+ */
+export const newBoxIsClear = page => page.evaluate(() => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  component.finishTweens();
+  const layer = component.drawingLayer;
+  const nodes = layer.getDANodes();
+  const node = nodes[nodes.length - 1];
+  if (!node) return false;
+  const rect = node.group.getClientRect({relativeTo: layer});
+  const pad = 10;
+  const inside = point => point.x > rect.x - pad && point.x < rect.x + rect.width + pad &&
+    point.y > rect.y - pad && point.y < rect.y + rect.height + pad;
+  const toLayer = layer.getAbsoluteTransform().copy().invert();
+  for (const edge of layer.getDAEdges()) {
+    // Its own arrow reaches the box by definition.
+    if (edge.srcNode === node || edge.destNode === node) continue;
+    const line = edge._line;
+    if (!line) continue;
+    const shapeToLayer = point => toLayer.point(line.getAbsoluteTransform().point(point));
+    const points = line.points();
+    for (let at = 0; at + 3 < points.length; at += 2) {
+      const from = shapeToLayer({x: points[at], y: points[at + 1]});
+      const to = shapeToLayer({x: points[at + 2], y: points[at + 3]});
+      for (let step = 0; step <= 20; step++) {
+        const t = step / 20;
+        if (inside({x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t})) return false;
+      }
+    }
+    for (const waypoint of edge.waypoints ?? []) {
+      if (inside(shapeToLayer({x: waypoint.x, y: waypoint.y}))) return false;
+    }
+  }
+  return true;
+});
+
+/** Walk the ghost lanes: the anchor's row and column, out to three slots, plus
+ *  whatever midpoints the app offers between it and its neighbours. A press
+ *  lands on the nearest *free* target in that direction, so repeating one moves
+ *  further out rather than onto something. */
+export const GHOST_WALKS = (() => {
+  const walks = [];
+  for (let steps = 1; steps <= 5; steps++) {
+    for (const direction of ['j', 'l', 'k', 'h']) {
+      walks.push(Array(steps).fill(direction).join(' '));
+    }
+  }
+  return walks;
+})();
+
+/**
+ * Add an empty box joined to the node under the crosshairs.
+ *
+ * The label is not typed here: the box is fitted to its (empty) text first, so
+ * it starts small and grows letter by letter. That means the usual "did the
+ * right edge appear" check cannot go by label, so it goes by node count and by
+ * the edge landing on the box that was just created.
+ */
+export async function growEmpty(page, {parentIndex, refocus, onStage, walks = GHOST_WALKS} = {}) {
+  const before = await graphShape(page);
+  let fallback = null;
+  for (const [attempt, walk] of walks.entries()) {
+    if (attempt > 0 && refocus) await refocus();
+    await page.keyboard.down('a');
+    await settle(page, 300);
+    await page.keyboard.press('d');
+    await settle(page, 280);
+    for (const step of walk.split(' ')) {
+      await page.keyboard.press(step);
+      await settle(page, 200);
+    }
+    if (onStage) await onStage('target', {ms: 820});
+    await page.keyboard.up('a');
+    await settle(page, 260);
+    // A new box opens label edit; landing on an existing node only draws an
+    // edge and leaves us in normal mode. The editor the grow opened is left
+    // open on success: it is already pointed at the new box, which nothing
+    // else reliably is.
+    const opened = /edit/.test(await mode(page));
+    if (opened) {
+      const now = await graphShape(page);
+      const grown = now.labels.length - 1;
+      const joined = now.edges.some(([from, to]) =>
+        (from === parentIndex && to === grown) || (to === parentIndex && from === grown));
+      if (now.labels.length === before.labels.length + 1 && joined) {
+        if (await newBoxIsClear(page)) return {index: grown, walk};
+        // Structurally right but sitting on an edge: remember it, look for a
+        // clear one, and come back to this only if there is none.
+        if (!fallback) fallback = walk;
+        if (process.env.CAPTURE_DEBUG) console.log(`    ~ walk ${walk}: lands on an edge`);
+      } else if (process.env.CAPTURE_DEBUG) {
+        console.log(`    ! walk ${walk}: ${JSON.stringify(now.edges)}`);
+      }
+      await keys(page, 'Escape Escape');
+      await settle(page, 200);
+    }
+    await rollBackTo(page, before);
+  }
+  if (fallback) {
+    if (refocus) await refocus();
+    await keys(page, `[a d ${fallback}]`);
+    await settle(page, 260);
+    if (/edit/.test(await mode(page))) {
+      const now = await graphShape(page);
+      if (now.labels.length === before.labels.length + 1) {
+        console.log(`    (${fallback} was the only placement, and it lands on an edge)`);
+        return {index: now.labels.length - 1, walk: fallback};
+      }
+      await keys(page, 'Escape Escape');
+      await settle(page, 200);
+    }
+    await rollBackTo(page, before);
+  }
+  throw new Error(`no free placement around node ${parentIndex}`);
+}
+
+/** Undo until the graph is the size it was. Edges count as well as nodes: a
+ *  placement that landed on an existing box draws an edge without adding a
+ *  node, and stopping at the node count would leave that edge behind. */
+async function rollBackTo(page, before) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const now = await graphShape(page);
+    if (now.labels.length <= before.labels.length && now.edges.length <= before.edges.length) return;
+    await undo(page);
+    await settle(page, 120);
+  }
+  throw new Error('could not undo a failed placement');
+}
+
+/**
+ * Make the new box fit its text, so the label grows it letter by letter rather
+ * than filling a square that was already the full size.
+ *
+ * This is `Style > Overflow > Fit Text` — the same thing the chord does — set
+ * on the node instead of pressed, because it has to happen *while the label
+ * editor the grow opened is still open*, and inside the editor those keys are
+ * text. The alternative, leaving the editor and coming back with `Edit Text`,
+ * is what a person would do, but `Edit Text` re-picks its target from whatever
+ * is under the crosshairs: an edge crossing a small box wins, and the label
+ * then goes nowhere at all. The app itself makes this the default for new
+ * nodes under the todo-graph identity, so it is a setting, not a fiction.
+ */
+export async function shrinkToText(page) {
+  await page.evaluate(() => {
+    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const nodes = component.drawingLayer.getDANodes();
+    const node = nodes[nodes.length - 1];
+    if (node) node.textOverflowMode = 'fit';
+    component.drawingLayer.batchDraw();
+  });
+  await settle(page, 320);
+}
+
+/** Open the label for editing and type it, a character at a time. `onChar` is
+ *  called after each one, which is where the capture takes its frames. */
+/** Is the box that was just grown the one the editor is on? Typing appends to
+ *  the *selection*, so this is the question that matters. */
+const editingTheNewBox = page => page.evaluate(() => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  const nodes = component.drawingLayer.getDANodes();
+  const selected = component.drawingLayer.getSelectedDANodes();
+  return selected.length === 1 && selected[0] === nodes[nodes.length - 1];
+});
+
+export async function typeInto(page, text, onChar) {
+  // The grow left the label editor open on the new box, in insert mode, with
+  // the box selected — which is what typing appends to. Check all three rather
+  // than assume: every one of them has been wrong at some point.
+  if (await mode(page) !== 'edit') throw new Error(`the label editor is not open (${await mode(page)})`);
+  if (!await editingTheNewBox(page)) throw new Error('the label editor is open on something else');
+  if (onChar) await onChar(null);
+  for (const [index, character] of Array.from(text).entries()) {
+    await typeLabel(page, character);
+    await settle(page, 60);
+    if (onChar) await onChar(index);
+  }
+  await keys(page, 'Escape Escape');
+  await settle(page, 200);
+  const {labels: written} = await graphShape(page);
+  if (written[written.length - 1] !== text) {
+    throw new Error(`typed ${JSON.stringify(text)} but the new box reads ` +
+      `${JSON.stringify(written[written.length - 1])} — ${JSON.stringify(await aim(page))}`);
+  }
+  return true;
+}
+
+/** What the app thinks it is pointing at — for the message when it is not what
+ *  the build thought. */
+export const aim = page => page.evaluate(() => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  const read = node => {
+    const value = node && node.label;
+    if (!value) return '';
+    return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
+  };
+  const containing = component.getDANodesContainingCrosshairs
+    ? component.getDANodesContainingCrosshairs().map(read) : ['?'];
+  return {
+    selected: component.drawingLayer.getSelectedDANodes().map(read),
+    under: containing,
+    nearest: read(component.nearestNodeToCrosshairs && component.nearestNodeToCrosshairs()),
+    newest: read(component.drawingLayer.getDANodes().at(-1)),
+  };
+});
+
+/** Pin every node, or all but the ones named — what `applyLayout` may move. */
+export function pinAll(page, looseIndices = []) {
+  return page.evaluate(loose => {
+    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    component.drawingLayer.getDANodes().forEach((node, index) => {
+      node.pinned = !loose.includes(index);
+    });
+  }, looseIndices);
+}
+
+/**
+ * Let the new box find its place.
+ *
+ * Force layout with everything else pinned: the box glides from the slot it was
+ * grown into to somewhere clear of the nodes *and* the edges — the "clear"
+ * variant adds node-to-edge repulsion — and nothing else on the canvas moves.
+ * `onTween` is called while it is moving.
+ */
+export async function relax(page, {loose, onTween} = {}) {
+  await pinAll(page, loose);
+  // Layout runs on the selection when there is one, and on the whole diagram
+  // when there is not. A selected box would be laid out on its own, with none
+  // of the edges or neighbours that decide where it belongs — so clear first.
+  await keys(page, 'c');
+  await settle(page, 200);
+  await keys(page, '[b k]');
+  if (onTween) await onTween();
+  await settle(page, 900);
+}
+
+/** Fit every box to its text. The map's boxes are all sized to their labels
+ *  now, and the small demo graphs should not be the odd ones out. */
+export async function fitEveryBox(page) {
+  for (const name of await labels(page)) {
+    if (!name || name === '\u25A0') continue;
+    if (!await goTo(page, name)) continue;
+    await keys(page, '[w [f h]]');
+    await settle(page, 240);
+  }
+}
+
+/** Whether the box with this label is pinned. */
+export const isPinned = (page, label) => page.evaluate(text => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  const read = node => {
+    const value = node.label;
+    if (!value) return '';
+    return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
+  };
+  const node = component.drawingLayer.getDANodes().find(candidate => read(candidate) === text);
+  return !!node && !!node.pinned;
+}, label);
+
+/**
+ * Pin the box that has just found its place, with the key a person would use.
+ *
+ * By label, not by "the newest node": the layout has just moved the box, which
+ * can leave it off screen, and `focus` is the part of the build that knows how
+ * to pull the camera back until a named box can be reached. Toggle Pin acts on
+ * the selection and toggles, so this checks rather than assumes — a box left
+ * unpinned would be moved again by the next box's layout, and the whole point
+ * is that one thing moves at a time.
+ */
+export async function pinBox(page, label) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await isPinned(page, label)) return true;
+    // `goTo` leaves the camera alone and says whether it could reach the box;
+    // only when the layout has carried it off screen is a camera move needed,
+    // and that one is worth making because nothing else can reach it.
+    if (!await goTo(page, label)) await focus(page, label, 100);
+    await select(page);
+    await keys(page, '[v p]');
+    await settle(page, 300);
+  }
+  return isPinned(page, label);
 }

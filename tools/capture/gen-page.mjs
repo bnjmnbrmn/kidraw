@@ -111,9 +111,11 @@ for (const entry of entries) {
 }
 
 // How long a panel's window of scrolling is. Frames are paced by what they
-// stand for; a caption or a still example gets most of a screen to be read on.
+// stand for. A caption is two lines: it needs long enough to be read and no
+// longer, or the reader is scrolling past nothing.
 const VH_PER_SECOND = 10;
-const READING_VH = 80;
+const CAPTION_VH = 45;
+const STILL_VH = 55;
 const MIN_RUN_VH = 45;
 const EXAMPLE_MS = 1600;
 
@@ -204,9 +206,9 @@ function panelsFor(act) {
   for (const panel of panels) {
     const ms = (panel.frames ?? []).reduce((total, frame) => total + Math.max(frame.ms, 120), 0);
     panel.vh = panel.kind === 'caption'
-      ? READING_VH
+      ? CAPTION_VH
       : panel.frames.length === 1
-        ? READING_VH
+        ? STILL_VH
         : Math.max(MIN_RUN_VH, Math.round((ms / 1000) * VH_PER_SECOND));
   }
   return panels;
