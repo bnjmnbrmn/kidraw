@@ -66,6 +66,9 @@ describe('overlay freshness', () => {
 
   it('re-traces after a node grows under it', () => {
     const hovered = new DANode(400, 300, 'hovered');
+    // `resizeBy` moves the base box; under the default `fit` overflow the drawn
+    // box follows the text, so growing it needs a fixed-size mode.
+    hovered.textOverflowMode = 'widen-both';
     const component = componentWith([hovered]);
     component.getDANodesContainingCrosshairs = () => [hovered];
 

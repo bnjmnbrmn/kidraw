@@ -132,26 +132,22 @@ growing taller than the screen; on a phone it is edge to edge and takes the top
 two thirds.
 
 What each frame of a box's run is doing, in order: Add held with the dashed
-targets showing; a *small* empty box — `Style > Overflow > Fit`, so the box
-starts at its minimum and the text grows it rather than filling a square that
-was already there; one frame per character typed at about eight characters a
-second; the Layout key going down and the box gliding to where Force puts it;
+targets showing; a *small* empty box — `fit` is the app's default overflow now,
+so a box is born the size of its text and the label grows it rather than filling
+a square that was already there; one frame per character typed at about eight
+characters a second; the Layout key going down and the box gliding to where Force puts it;
 and the camera moving in on the box, selected, zoomed to 200%, centred between
 the bottom of the header and the top of the keymenu, with the crosshairs parked
 somewhere empty.
 
-The label is typed into the editor the grow itself opened, and Fit is the one
-thing the capture *sets* rather than presses. Both follow from the same fact:
-typing appends to the **selection**, and `Edit Text` re-picks the selection from
-whatever is under the crosshairs. Leaving the editor to press the Fit chord and
-coming back with `Edit Text` therefore works right up until an edge crosses the
-small box — then the edge wins the pick, the box is not selected, and every
-keystroke goes nowhere at all, silently. The grow's own editor is already on the
-new box, already in insert, already selected, so the label goes in there and the
-node's overflow mode is set on the node instead of chorded. The app makes the
-same setting the default for new nodes under its todo-graph identity, so it is a
-setting rather than a fiction. Even so, all three facts are checked before a
-character is typed and the label is read back afterwards.
+The label is typed into the editor the grow itself opened, and never through
+`Edit Text`. Typing appends to the **selection**, and `Edit Text` re-picks the
+selection from whatever is under the crosshairs — so leaving the editor and
+coming back works right up until an edge crosses the small box, at which point
+the edge wins the pick, the box is not selected, and every keystroke goes
+nowhere at all, silently. The grow's own editor is already on the new box,
+already in insert, already selected. All three facts are checked before a
+character is typed, and the label is read back afterwards.
 
 **The diagram is never laid out globally.** A box that has found its place is
 pinned — `Toggle Pin`, one press, with the box selected, and by label rather

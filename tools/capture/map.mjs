@@ -23,7 +23,7 @@ import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {goTo, goToNewest, growEmpty, shrinkToText, typeInto, pinBox, fit, focus,
+import {goTo, goToNewest, growEmpty, typeInto, pinBox, fit, focus,
         park, select, centreInBand, frameAbove, zoomTo, settle, labels, edges,
         MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
@@ -187,8 +187,9 @@ const rootLabel = plain(entries[0].node.t);
 const opening = [];
 opening.push(await keep('kidraw', 'target', 600));
 await keys(page, 'a');
-await settle(page, 300);
-await shrinkToText(page);
+// A new box is born fitted to its text — that is the app's default overflow —
+// so it starts at its minimum and the label grows it.
+await settle(page, 500);
 await typeLabelFrames('kidraw', opening, rootLabel);
 index.set(entries[0].node.id, 0);
 await findItsPlace('kidraw', opening, rootLabel);
@@ -211,7 +212,7 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   });
   index.set(node.id, mine);
   const frames = commit(node.id);
-  await shrinkToText(page);
+  await settle(page, 500);
   await typeLabelFrames(node.id, frames, label);
   await findItsPlace(node.id, frames, label);
   await frameBox(node.id, frames, label);

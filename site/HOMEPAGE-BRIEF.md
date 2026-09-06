@@ -18,16 +18,15 @@ or edge; and the captions take too much scrolling to get past.
   arrived at one box at a time. Two things had to be got right: layout applies
   to the selection when there is one, so the selection is cleared first; and the
   pin markers the app draws with the grid are hidden before each shot.
-- **Small box, growing.** The box is fitted to its (empty) text before the label
-  goes in, so it starts at its minimum and each character grows it; the
-  default-sized square is never on screen. The demo graphs are fitted too, so
-  every box on the page is sized to its own text. The label is typed into the
-  editor the grow itself opens, and Fit is set on the node rather than chorded,
-  because both have to happen without leaving that editor: typing appends to the
-  *selection*, `Edit Text` re-picks the selection from whatever is under the
-  crosshairs, and an edge crossing a small box wins that pick — after which the
-  keystrokes go nowhere at all, silently. Five capture runs died on that before
-  it was understood.
+- **Small box, growing.** A box is born the size of its text and each character
+  grows it; the default-sized square is never on screen. This started as
+  something the capture set on the node, and became the app's own default
+  overflow the next day (dev-status 82), so the page and the app now show the
+  same thing. The label is typed into the editor the grow itself opens, because
+  typing appends to the *selection*, `Edit Text` re-picks the selection from
+  whatever is under the crosshairs, and an edge crossing a small box wins that
+  pick — after which the keystrokes go nowhere at all, silently. Five capture
+  runs died on that before it was understood.
 - **The tweens are the animation.** The layout glide and every camera step take
   a burst of frames rather than one, so the page plays the movement instead of
   cutting across it.

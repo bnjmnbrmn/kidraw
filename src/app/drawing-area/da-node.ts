@@ -72,7 +72,11 @@ export class DANode {
   private _nodeHeight: number;
   private _fontSize = this.DEFAULT_FONT_SIZE;
 
-  private _textOverflowMode: TextOverflowMode = 'widen-both';
+  // Fit is the default: a new box is the size of its text, and grows as the
+  // text does, rather than starting as a full-size square and staying one.
+  // `_baseWidth` stays the *maximum* width in this mode, so a long label wraps
+  // at the old default size instead of running off across the canvas.
+  private _textOverflowMode: TextOverflowMode = 'fit';
   private _baseWidth: number = this.DEFAULT_NODE_WIDTH;
   private _baseHeight: number = this.DEFAULT_NODE_HEIGHT;
   private _baseFontSize: number = this.DEFAULT_FONT_SIZE;
@@ -846,7 +850,7 @@ export class DANode {
     this._baseWidth = baseWidth ?? width;
     this._baseHeight = baseHeight ?? height;
     this._baseFontSize = baseFontSize ?? fontSize;
-    this._textOverflowMode = textOverflowMode ?? 'widen-both';
+    this._textOverflowMode = textOverflowMode ?? 'fit';
     this._nodeWidth = width;
     this._nodeHeight = height;
     this._fontSize = fontSize;

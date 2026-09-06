@@ -52,6 +52,10 @@ describe('DrawingArea Unit Tests', () => {
 
     it('should resize node dimensions within bounds', () => {
       const node = new DANode(0, 0, 'test');
+      // Resizing moves the *base* box. Under the default `fit` overflow the
+      // drawn box follows the text instead, so this asks for a mode where the
+      // two are the same thing.
+      node.textOverflowMode = 'widen-both';
 
       expect(node.resizeBy(40)).toBe(true);
       expect(node.NODE_WIDTH).toBe(node.DEFAULT_NODE_WIDTH + 40);
@@ -65,6 +69,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('should clamp node resizing at min/max bounds', () => {
       const node = new DANode(0, 0, 'test');
+      node.textOverflowMode = 'widen-both';
 
       expect(node.resizeBy(10000)).toBe(true);
       expect(node.NODE_WIDTH).toBe(node.MAX_NODE_SIZE);
@@ -962,6 +967,9 @@ describe('DrawingArea Unit Tests', () => {
 
     it('should create distinct editable routes for multiple self-loops', () => {
       const node = new DANode(100, 100, 'node');
+      // Self-loop lanes are laid out around the box, so this test wants the
+      // full-size one rather than the default `fit` box around 'node'.
+      node.textOverflowMode = 'widen-both';
       drawingLayer.addRawNode(node);
 
       const inner = drawingLayer.addEdge(node, node);

@@ -410,6 +410,12 @@ _Updated 2026-08-30. Branch: `main`._
 
     Verified: 454 unit tests, `repro-da-343-vim-operators.js` all-pass. `repro-label-edit-flow.js` keeps its two pre-existing failures — one of them, "long text fully stored", is the *edge-label* caret landing at a stale index, which is DALabel's own path and untouched here.
 
+82. **Fit Text is the default overflow (2026-09-06).** Ben: "In the actual app, make 'Fit text' the default overflow." A new box is now the size of its label and grows with it, instead of being born a 120x120 square and staying one. Three places, which have to agree: `DANode._textOverflowMode`, the `restoreState` fallback, and `APP_NODE_DEFAULTS.textOverflow` — the bottom of the file-format cascade, so a `fit` node saves without the property and a `widen-both` one now writes it explicitly.
+    - `width`/`height` keep their meaning as the **base** box, which under `fit` is the maximum a label wraps at rather than the size a box is drawn at. Files that carry explicit style props are unaffected; one written under the omit-if-default policy with `widen-both` nodes will now open fitted (its boxes shrink to their text; positions are untouched).
+    - The todo-graph identity already set `fit`, so its graphs are unchanged. What changes is every plain graph, and the flow Ben has been reviewing on the homepage: press Add, get a small box, watch it grow as you type.
+    - **Resize means something different in this mode.** `resizeBy` moves the base box, and under `fit` the drawn box follows the text, so growing the base past the label does nothing visible. Four unit tests were relying on the old default to test resize arithmetic, self-loop lane geometry and overlay re-tracing; each now asks for `widen-both` explicitly, which is what it was actually testing. 527/527 unit tests.
+    - The homepage capture no longer sets the mode on the node it grew — the app's own default does it — so nothing in that pipeline styles a node behind the keyboard's back.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.

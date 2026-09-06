@@ -661,32 +661,6 @@ async function rollBackTo(page, before) {
   throw new Error('could not undo a failed placement');
 }
 
-/**
- * Make the new box fit its text, so the label grows it letter by letter rather
- * than filling a square that was already the full size.
- *
- * This is `Style > Overflow > Fit Text` — the same thing the chord does — set
- * on the node instead of pressed, because it has to happen *while the label
- * editor the grow opened is still open*, and inside the editor those keys are
- * text. The alternative, leaving the editor and coming back with `Edit Text`,
- * is what a person would do, but `Edit Text` re-picks its target from whatever
- * is under the crosshairs: an edge crossing a small box wins, and the label
- * then goes nowhere at all. The app itself makes this the default for new
- * nodes under the todo-graph identity, so it is a setting, not a fiction.
- */
-export async function shrinkToText(page) {
-  await page.evaluate(() => {
-    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const nodes = component.drawingLayer.getDANodes();
-    const node = nodes[nodes.length - 1];
-    if (node) node.textOverflowMode = 'fit';
-    component.drawingLayer.batchDraw();
-  });
-  await settle(page, 320);
-}
-
-/** Open the label for editing and type it, a character at a time. `onChar` is
- *  called after each one, which is where the capture takes its frames. */
 /** Is the box that was just grown the one the editor is on? Typing appends to
  *  the *selection*, so this is the question that matters. */
 const editingTheNewBox = page => page.evaluate(() => {

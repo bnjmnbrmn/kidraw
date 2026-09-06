@@ -36,13 +36,15 @@ import {
 } from './types';
 import { resolveIdentity } from '../../extensions/extension-registry';
 
-/** App-level bottom of the node style cascade; mirrors DANode's defaults. */
+/** App-level bottom of the node style cascade; mirrors DANode's defaults.
+ *  `width`/`height` are the *base* box — under the default `fit` overflow they
+ *  are the maximum a label wraps at, not the size a box is drawn at. */
 export const APP_NODE_DEFAULTS = {
   shape: 'box',
   width: 120,
   height: 120,
   fontSize: 16,
-  textOverflow: 'widen-both',
+  textOverflow: 'fit',
 } as const;
 
 export const DEFAULT_LABEL_FONT_SIZE = 14;
