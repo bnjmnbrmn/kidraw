@@ -42,11 +42,13 @@
 .km-typing-hint {
   position: absolute;
   left: 50%;
-  /* Where the card would be, not above the mode chip: the two used to sit in
-   * the same strip and overlapped once the menu moved down (da-533). This is
-   * also the honest place for it — it stands in for the keyboard. */
-  top: 50%;
-  transform: translate(-50%, -50%);
+  /* Down at the bottom with the mode chip, not up where the card would be: the
+   * three gaps down the bottom of the screen stay equal — hint → chip, chip →
+   * edge — which is the same rule the card follows (da-479). 23px is the chip's
+   * own height plus its 9px gap in app.component.css; this host already sits
+   * 9px off the edge, so that gap is inherited. */
+  bottom: 32px;
+  transform: translateX(-50%);
   white-space: nowrap;
   padding: 10px 18px;
   border-radius: 6px;

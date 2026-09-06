@@ -48,8 +48,8 @@ const VIEWPORT = profile.viewport;
 // The frames that flash past inside an animation can be leaner than the one the
 // reader actually sits on.
 const QUALITY = {
-  target: .58, blank: .55, typing: .5, typed: .6,
-  menu: .6, tween: .5, camera: .5, rest: .82, overview: .82,
+  target: .58, aim: .5, blank: .55, typing: .5, typed: .6,
+  menu: .6, tween: .5, camera: .5, link: .5, rest: .82, overview: .82,
 };
 // The build happens at 100%; each box is then framed at twice that, centred in
 // the band between the header and the keymenu, and left selected.
@@ -73,8 +73,8 @@ const extras = [];
 
 /** How long each kind of frame stays on screen, in milliseconds. Typing frames
  *  carry their own, worked out from how many characters they added. */
-const HOLD = {target: 820, blank: 300, typed: 420, menu: 700, tween: TWEEN_MS,
-              camera: TWEEN_MS, rest: 0, overview: 0};
+const HOLD = {target: 820, aim: 220, blank: 300, typed: 420, menu: 620,
+              tween: TWEEN_MS, camera: TWEEN_MS, link: TWEEN_MS, rest: 0, overview: 0};
 
 /**
  * Pin markers are a side effect of the capture, not of the drawing.
@@ -101,7 +101,6 @@ async function keep(id, kind, ms) {
  *  rolled back. Shoot them under a temporary name and rename on success. */
 let pending = [];
 async function provisional(kind, meta = {}) {
-  if (kind === 'target') pending = [];
   await hidePins();
   const file = await shot(page, `tmp-${pending.length}-${kind}`, {quality: QUALITY[kind] ?? 0.7, wait: 120});
   pending.push({kind, file, ms: meta.ms ?? HOLD[kind] ?? 300});
@@ -121,13 +120,15 @@ async function during(id, frames, count, kind = 'tween') {
 
 /** Type the label into the small empty box, a frame per character. */
 async function typeLabelFrames(id, frames, label) {
+  // A spoilt take is typed again; its frames are dropped from the run.
+  const mark = frames.length;
   await typeInto(page, label, async index => {
     if (index === null) frames.push(await keep(id, 'blank', MS_PER_CHAR));
     else {
       const last = index === label.length - 1;
       frames.push(await keep(id, last ? 'typed' : 'typing', last ? HOLD.typed : MS_PER_CHAR));
     }
-  });
+  }, () => { frames.length = mark; });
 }
 
 /**
@@ -142,7 +143,6 @@ async function typeLabelFrames(id, frames, label) {
 async function showForceLayout(id, frames) {
   await keys(page, 'c');
   await settle(page, 220);
-  await showRecenter(id, frames);
   await park(page);
   await page.keyboard.down('b');
   await settle(page, 420);
@@ -151,9 +151,58 @@ async function showForceLayout(id, frames) {
   await during(id, frames, TWEEN_SHOTS * 2);
   await page.keyboard.up('b');
   await settle(page, 900);
+  // Force pulls the diagram in on itself, so the view that fitted it a moment
+  // ago now frames a stamp in the middle of an empty canvas. Fit it again, and
+  // let that zoom be part of the animation.
+  await page.keyboard.down('r');
+  await settle(page, 420);
+  frames.push(await keep(id, 'menu'));
+  await page.keyboard.press('p');
+  await during(id, frames, TWEEN_SHOTS, 'camera');
+  await page.keyboard.up('r');
+  await settle(page, 900);
   await frameAbove(page);
   await park(page);
-  frames.push(await keep(id, 'overview'));
+}
+
+/**
+ * Walk the crosshairs from the box just finished to the box the next one grows
+ * from, one link at a time.
+ *
+ * The build used to teleport: fit the whole graph, then drop the crosshairs on
+ * the parent. Following the links is what a person does, and it is the thing
+ * the page is describing — so Move by Link is held, the arrows it can follow
+ * light up, and the view rides along with the crosshairs.
+ */
+async function followLinks(id, frames, chain) {
+  for (const [from, to] of chain) {
+    await goTo(page, from);
+    const a = await nodeCentre(page, from);
+    const b = await nodeCentre(page, to);
+    if (!a || !b) break;
+    const key = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)
+      ? (b.x > a.x ? 'l' : 'h')
+      : (b.y > a.y ? 'j' : 'k');
+    await page.keyboard.down('f');
+    await settle(page, 420);
+    frames.push(await keep(id, 'menu'));
+    await page.keyboard.press(key);
+    await during(id, frames, TWEEN_SHOTS, 'link');
+    await page.keyboard.up('f');
+    await settle(page, 500);
+  }
+}
+
+/** The boxes between one and another, up the tree: [[from, to], ...]. */
+function climbChain(fromEntry, toNode) {
+  const hops = [];
+  let at = fromEntry;
+  while (at && at.node !== toNode) {
+    if (!at.parent) return [];
+    hops.push([plain(at.node.t), plain(at.parent.t)]);
+    at = entries.find(entry => entry.node === at.parent);
+  }
+  return hops;
 }
 
 /**
@@ -212,6 +261,7 @@ const started = Date.now();
 console.log(`building ${entries.length} boxes at ${VIEWPORT.width}x${VIEWPORT.height} into ${profile.dir}`);
 
 const index = new Map();
+let previous = entries[0];
 const rootLabel = plain(entries[0].node.t);
 const opening = [];
 opening.push(await keep('kidraw', 'target', 600));
@@ -231,28 +281,48 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   if (at >= limit) break;
   const label = plain(node.t);
   const parentLabel = plain(parent.t);
-  await fit(page);
-  await focus(page, parentLabel, BUILD_ZOOM);
   const grandparent = entries.find(entry => entry.node === parent)?.parent ?? null;
+  // Ride the links from the box just finished up to the one this grows from,
+  // then pull back far enough that the placement grid has room to show.
+  const opening = [];
+  await followLinks(node.id, opening, climbChain(previous, parent));
+  await focus(page, parentLabel, BUILD_ZOOM);
+  let cameraShots = 0;
+  await zoomTo(page, BUILD_ZOOM, async () => {
+    if (cameraShots++ < CAMERA_SHOTS) opening.push(await keep(node.id, 'camera'));
+  });
+  // A fresh set of provisional frames: everything from here to the release is
+  // this box's, and is thrown away with it if the placement is rolled back.
+  pending = [];
   const {index: mine} = await growAtCell(page, {
     parentIndex: index.get(parent.id),
     aim: await aimFor(node, parent, grandparent),
+    // A wide family needs a longer arc to sit on, or the last children have
+    // nowhere left to go.
+    preferred: 260 + 25 * Math.max(0, parent.c.length - 3),
     refocus: () => focus(page, parentLabel, BUILD_ZOOM),
     onStage: provisional,
+    onAim: () => provisional('aim'),
   });
   index.set(node.id, mine);
-  const frames = commit(node.id);
-  await settle(page, 500);
+  const frames = [...opening, ...commit(node.id)];
+  // The box opens for editing: the camera flies in to 400% and centres on it.
+  await during(node.id, frames, 3, 'camera');
+  await settle(page, 400);
   await typeLabelFrames(node.id, frames, label);
   await frameBox(node.id, frames, label);
   frames.push(await keep(node.id, 'rest'));
-  // The one place a layout runs: the box that introduces the idea.
-  if (node.id === 'layout') await showForceLayout(node.id, frames);
+  previous = entries.find(entry => entry.node === node);
 
   // A look at the whole diagram when a branch is done — camera only.
   const next = entries[at + 1];
   if (depth >= 1 && (!next || next.depth === 1)) {
     await showRecenter(node.id, frames);
+    // The last box of the last branch is where the diagram gets laid out — the
+    // one layout on the page, kept until after the box that introduces the
+    // idea, and the finale: every box up to here was placed by hand on the
+    // grid, and Force tidies the lot in one move.
+    if (!next) await showForceLayout(node.id, frames);
     await park(page);
     extras.push({id: `overview-${node.id}`, ...(await keep(`overview-${node.id}`, 'overview'))});
   }

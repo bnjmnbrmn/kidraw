@@ -144,7 +144,7 @@
      belong to it and not to the window, and the padding is the gap the two
      cards pass each other through. */
   .panel {
-    inset: 0; padding-block: 10px; position: absolute;
+    inset: 0; padding-block: 4px; position: absolute;
     transform: translateY(calc(var(--i) * 100%));
   }
   .card {
@@ -152,7 +152,11 @@
     height: 100%; overflow: hidden; position: relative;
   }
   .frame { display: block; inset: 0; opacity: 0; position: absolute; z-index: 0; }
-  .frame img { display: block; height: 100%; object-fit: contain; width: 100%; }
+  /* `cover`, not `contain`: the card is a few pixels off the capture's shape
+     (the gap the cards pass each other through comes out of its height), and
+     letterboxing it left a strip down each side with no grid in it — through
+     which, being transparent, the frame underneath showed its own edges. */
+  .frame img { display: block; height: 100%; object-fit: cover; width: 100%; }
   .frame.is-on { opacity: 1; z-index: 2; }
   /* The frame going out stays opaque underneath the one coming in, so a frame
      that has not loaded yet shows the last one rather than the backing. There

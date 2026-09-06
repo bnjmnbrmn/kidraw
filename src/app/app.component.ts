@@ -93,6 +93,10 @@ export class AppComponent implements OnInit, OnDestroy {
    *  the full width even though the card is centred — a viewport with a
    *  notch in it is not worth the complexity. */
   get keymenuInset(): number {
+    // Typing hides the keyboard, so the graph gets that room back: the inset is
+    // just the hint and the mode chip, and the box being edited is centred in
+    // the window rather than in the band above a keyboard that is not there.
+    if (this.keymenuTyping) return KeymenuComponent.typingOccludedHeightPx();
     return this.keymenuDisplay === 'keyboard' ? KeymenuComponent.occludedHeightPx() : 0;
   }
 

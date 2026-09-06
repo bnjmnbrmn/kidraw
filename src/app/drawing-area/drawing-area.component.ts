@@ -326,6 +326,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly RESIZE_REFLOW_GAP = 16;
   /** Preserve closer views, but never label a new node below natural scale. */
   private static readonly NODE_EDIT_MIN_ZOOM = 1;
+  /** Where the camera goes when a label is opened for editing: close enough
+   *  that the text you are typing is the thing you are looking at. */
+  private static readonly NODE_EDIT_ZOOM = 4;
   /** Stage-pixel radius within which the crosshairs count as standing on a
    *  traversal stop (label/waypoint pseudo-node). */
   private headingRadians = -Math.PI / 2;
@@ -6419,13 +6422,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return best;
   }
 
-  private focusNewNodeForLabelEdit(node: DANode): void {
+  private focusNodeForLabelEdit(node: DANode): void {
     this.finishTweens();
     const targetScale = Math.min(
       this.MAX_ZOOM,
       Math.max(
         this.drawingLayer.scaleX(),
-        DrawingAreaComponent.NODE_EDIT_MIN_ZOOM,
+        DrawingAreaComponent.NODE_EDIT_ZOOM,
       ),
     );
     // While the focus zoom is in flight, the edit lens must judge legibility
@@ -6443,10 +6446,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     );
   }
 
-  /** Enter label editing for a node that has just been added. Existing-node
-   *  edits intentionally keep their current viewport; insertion gets this
-   *  stronger focus treatment because the new node may have landed far from
-   *  its anchor or while the whole graph was fit at a tiny scale. */
+  /** Enter label editing for a node that has just been added. Every label edit
+   *  now takes the same focus — in at 400% and centred on the box — since what
+   *  you are typing is the thing you want to be looking at. */
   private beginNewNodeLabelEdit(node: DANode): void {
     this.pendingNodeLabelEdit = null;
     this.clearLabelEditGhost();
@@ -6454,10 +6456,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     node.setCursorToEnd();
     node.showCursor();
     this.crosshairsLayer.hideCrosshairs();
-    this.focusNewNodeForLabelEdit(node);
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
     this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
+    // After the mode is out: typing hides the keyboard, and the viewport it
+    // was occupying is the difference between "centred" and "in the top
+    // third". The inset lands on the next turn, so the camera waits for it.
+    setTimeout(() => this.focusNodeForLabelEdit(node));
   }
 
   private beginPendingNodeLabelEdit(): void {
@@ -8103,6 +8108,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.showEditCarets(cursorPoint);
       this.drawingLayer.batchDraw();
       this.daOut.emit({kind: 'started-label-editing-mode', mode: 'vimNormal'});
+      // The same focus a new box gets: editing a label is close work. It waits
+      // a turn for the keyboard's viewport inset to go away.
+      const editing = this.drawingLayer.getSelectedDANodes();
+      if (editing.length === 1) setTimeout(() => this.focusNodeForLabelEdit(editing[0]));
       return;
     }
     const edges = this.getDAEdgesContainingCrosshairs();

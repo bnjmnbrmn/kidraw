@@ -42,7 +42,7 @@ export const OUTLINE = n('kidraw', 'KiDraw', {kind: 'root'}, [
     n('modal-text', 'Vi-style modal text editing'),
   ]),
 
-  n('features', 'Important features?', {kind: 'q'}, [
+  n('features', 'What are some important features?', {kind: 'q'}, [
     n('routing', 'Automatic edge routing', {example: 'avoid'}, [
       n('waypoints', 'Waypoints for fine tuning'),
     ]),

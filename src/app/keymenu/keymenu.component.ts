@@ -1357,6 +1357,23 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       + cardHeight;
   }
 
+  /**
+   * Height the typing hint and the mode chip occupy, measured up from the
+   * bottom of the drawing area.
+   *
+   * While a label is being typed the keyboard is not drawn — every key is just
+   * a character — so the graph gets that room back and the box being edited can
+   * sit in the middle of the window rather than in the top third of it. The
+   * three gaps at the bottom are equal (hint → chip, chip → edge), so this is
+   * the chip band plus the hint's own height. Keep in step with
+   * `.km-typing-hint` in keymenu.component.css.
+   */
+  static typingOccludedHeightPx(): number {
+    const CHIP_BAND_PX = 32;
+    const HINT_HEIGHT_PX = 37;
+    return KeymenuComponent.HOST_BOTTOM_GAP_PX + CHIP_BAND_PX + HINT_HEIGHT_PX;
+  }
+
   /** Plain-text twin of the typing hint in keymenu.component.html, for the
    *  compact panel. Keep the two in step. */
   static readonly TYPING_HINT = 'Go ahead and type. Press Ctrl-[ or Esc to exit.';

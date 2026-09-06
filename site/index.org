@@ -27,7 +27,7 @@ As the user scrolls down, they should see a diagram be built with the following.
 *** Press ESC or Ctrl-[ once or twice to get back to the main menu
 *** Vi-style modal text editing
 
-** Important features?
+** What are some important features?
 *** Automatic edge routing
 **** Waypoints for fine tuning
 *** Node/edge layout on demand

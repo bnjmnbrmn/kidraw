@@ -67,43 +67,43 @@
    "id": "what",
    "frames": [
     {
-     "file": "013-what-target.webp",
+     "file": "013-what-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "014-what-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "015-what-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "016-what-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "017-what-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "018-what-target.webp",
      "ms": 820
     },
     {
-     "file": "014-what-blank.webp",
-     "ms": 125
+     "file": "019-what-camera.webp",
+     "ms": 150
     },
     {
-     "file": "015-what-typing.webp",
-     "ms": 125
+     "file": "020-what-camera.webp",
+     "ms": 150
     },
     {
-     "file": "016-what-typing.webp",
-     "ms": 125
+     "file": "021-what-camera.webp",
+     "ms": 150
     },
     {
-     "file": "017-what-typing.webp",
-     "ms": 125
-    },
-    {
-     "file": "018-what-typing.webp",
-     "ms": 125
-    },
-    {
-     "file": "019-what-typing.webp",
-     "ms": 125
-    },
-    {
-     "file": "020-what-typing.webp",
-     "ms": 125
-    },
-    {
-     "file": "021-what-typing.webp",
-     "ms": 125
-    },
-    {
-     "file": "022-what-typing.webp",
+     "file": "022-what-blank.webp",
      "ms": 125
     },
     {
@@ -115,27 +115,59 @@
      "ms": 125
     },
     {
-     "file": "025-what-typed.webp",
+     "file": "025-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "026-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "027-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "028-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "029-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "030-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "031-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "032-what-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "033-what-typed.webp",
      "ms": 420
     },
     {
-     "file": "026-what-camera.webp",
+     "file": "034-what-camera.webp",
      "ms": 150
     },
     {
-     "file": "027-what-camera.webp",
+     "file": "035-what-camera.webp",
      "ms": 150
     },
     {
-     "file": "028-what-camera.webp",
+     "file": "036-what-camera.webp",
      "ms": 150
     },
     {
-     "file": "029-what-camera.webp",
+     "file": "037-what-camera.webp",
      "ms": 150
     },
     {
-     "file": "030-what-rest.webp",
+     "file": "038-what-rest.webp",
      "ms": 0
     }
    ]
@@ -144,87 +176,111 @@
    "id": "diagram-editor",
    "frames": [
     {
-     "file": "031-diagram-editor-target.webp",
+     "file": "039-diagram-editor-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "040-diagram-editor-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "041-diagram-editor-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "042-diagram-editor-target.webp",
      "ms": 820
     },
     {
-     "file": "032-diagram-editor-blank.webp",
+     "file": "043-diagram-editor-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "044-diagram-editor-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "045-diagram-editor-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "046-diagram-editor-blank.webp",
      "ms": 125
     },
     {
-     "file": "033-diagram-editor-typing.webp",
+     "file": "047-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "034-diagram-editor-typing.webp",
+     "file": "048-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "035-diagram-editor-typing.webp",
+     "file": "049-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "036-diagram-editor-typing.webp",
+     "file": "050-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "037-diagram-editor-typing.webp",
+     "file": "051-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "038-diagram-editor-typing.webp",
+     "file": "052-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "039-diagram-editor-typing.webp",
+     "file": "053-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "040-diagram-editor-typing.webp",
+     "file": "054-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "041-diagram-editor-typing.webp",
+     "file": "055-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "042-diagram-editor-typing.webp",
+     "file": "056-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "043-diagram-editor-typing.webp",
+     "file": "057-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "044-diagram-editor-typing.webp",
+     "file": "058-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "045-diagram-editor-typing.webp",
+     "file": "059-diagram-editor-typing.webp",
      "ms": 125
     },
     {
-     "file": "046-diagram-editor-typed.webp",
+     "file": "060-diagram-editor-typed.webp",
      "ms": 420
     },
     {
-     "file": "047-diagram-editor-camera.webp",
+     "file": "061-diagram-editor-camera.webp",
      "ms": 150
     },
     {
-     "file": "048-diagram-editor-camera.webp",
+     "file": "062-diagram-editor-camera.webp",
      "ms": 150
     },
     {
-     "file": "049-diagram-editor-camera.webp",
+     "file": "063-diagram-editor-camera.webp",
      "ms": 150
     },
     {
-     "file": "050-diagram-editor-camera.webp",
+     "file": "064-diagram-editor-camera.webp",
      "ms": 150
     },
     {
-     "file": "051-diagram-editor-rest.webp",
+     "file": "065-diagram-editor-rest.webp",
      "ms": 0
     }
    ]
@@ -233,99 +289,151 @@
    "id": "keyboard-oriented",
    "frames": [
     {
-     "file": "052-keyboard-oriented-target.webp",
+     "file": "066-keyboard-oriented-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "067-keyboard-oriented-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "068-keyboard-oriented-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "069-keyboard-oriented-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "070-keyboard-oriented-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "071-keyboard-oriented-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "072-keyboard-oriented-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "073-keyboard-oriented-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "074-keyboard-oriented-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "075-keyboard-oriented-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "076-keyboard-oriented-target.webp",
      "ms": 820
     },
     {
-     "file": "053-keyboard-oriented-blank.webp",
+     "file": "077-keyboard-oriented-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "078-keyboard-oriented-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "079-keyboard-oriented-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "080-keyboard-oriented-blank.webp",
      "ms": 125
     },
     {
-     "file": "054-keyboard-oriented-typing.webp",
+     "file": "081-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "055-keyboard-oriented-typing.webp",
+     "file": "082-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "056-keyboard-oriented-typing.webp",
+     "file": "083-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "057-keyboard-oriented-typing.webp",
+     "file": "084-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "058-keyboard-oriented-typing.webp",
+     "file": "085-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "059-keyboard-oriented-typing.webp",
+     "file": "086-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "060-keyboard-oriented-typing.webp",
+     "file": "087-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "061-keyboard-oriented-typing.webp",
+     "file": "088-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "062-keyboard-oriented-typing.webp",
+     "file": "089-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "063-keyboard-oriented-typing.webp",
+     "file": "090-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "064-keyboard-oriented-typing.webp",
+     "file": "091-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "065-keyboard-oriented-typing.webp",
+     "file": "092-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "066-keyboard-oriented-typing.webp",
+     "file": "093-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "067-keyboard-oriented-typing.webp",
+     "file": "094-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "068-keyboard-oriented-typing.webp",
+     "file": "095-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "069-keyboard-oriented-typing.webp",
+     "file": "096-keyboard-oriented-typing.webp",
      "ms": 125
     },
     {
-     "file": "070-keyboard-oriented-typed.webp",
+     "file": "097-keyboard-oriented-typed.webp",
      "ms": 420
     },
     {
-     "file": "071-keyboard-oriented-camera.webp",
+     "file": "098-keyboard-oriented-camera.webp",
      "ms": 150
     },
     {
-     "file": "072-keyboard-oriented-camera.webp",
+     "file": "099-keyboard-oriented-camera.webp",
      "ms": 150
     },
     {
-     "file": "073-keyboard-oriented-camera.webp",
+     "file": "100-keyboard-oriented-camera.webp",
      "ms": 150
     },
     {
-     "file": "074-keyboard-oriented-camera.webp",
+     "file": "101-keyboard-oriented-camera.webp",
      "ms": 150
     },
     {
-     "file": "075-keyboard-oriented-rest.webp",
+     "file": "102-keyboard-oriented-rest.webp",
      "ms": 0
     }
    ]
@@ -334,119 +442,163 @@
    "id": "wip",
    "frames": [
     {
-     "file": "076-wip-target.webp",
+     "file": "103-wip-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "104-wip-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "105-wip-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "106-wip-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "107-wip-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "108-wip-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "109-wip-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "110-wip-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "111-wip-target.webp",
      "ms": 820
     },
     {
-     "file": "077-wip-blank.webp",
+     "file": "112-wip-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "113-wip-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "114-wip-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "115-wip-blank.webp",
      "ms": 125
     },
     {
-     "file": "078-wip-typing.webp",
+     "file": "116-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "079-wip-typing.webp",
+     "file": "117-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "080-wip-typing.webp",
+     "file": "118-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "081-wip-typing.webp",
+     "file": "119-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "082-wip-typing.webp",
+     "file": "120-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "083-wip-typing.webp",
+     "file": "121-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "084-wip-typing.webp",
+     "file": "122-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "085-wip-typing.webp",
+     "file": "123-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "086-wip-typing.webp",
+     "file": "124-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "087-wip-typing.webp",
+     "file": "125-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "088-wip-typing.webp",
+     "file": "126-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "089-wip-typing.webp",
+     "file": "127-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "090-wip-typing.webp",
+     "file": "128-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "091-wip-typing.webp",
+     "file": "129-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "092-wip-typing.webp",
+     "file": "130-wip-typing.webp",
      "ms": 125
     },
     {
-     "file": "093-wip-typed.webp",
+     "file": "131-wip-typed.webp",
      "ms": 420
     },
     {
-     "file": "094-wip-camera.webp",
+     "file": "132-wip-camera.webp",
      "ms": 150
     },
     {
-     "file": "095-wip-camera.webp",
+     "file": "133-wip-camera.webp",
      "ms": 150
     },
     {
-     "file": "096-wip-camera.webp",
+     "file": "134-wip-camera.webp",
      "ms": 150
     },
     {
-     "file": "097-wip-camera.webp",
+     "file": "135-wip-camera.webp",
      "ms": 150
     },
     {
-     "file": "098-wip-rest.webp",
+     "file": "136-wip-rest.webp",
      "ms": 0
     },
     {
-     "file": "099-wip-menu.webp",
-     "ms": 700
+     "file": "137-wip-menu.webp",
+     "ms": 620
     },
     {
-     "file": "100-wip-tween.webp",
+     "file": "138-wip-tween.webp",
      "ms": 150
     },
     {
-     "file": "101-wip-tween.webp",
+     "file": "139-wip-tween.webp",
      "ms": 150
     },
     {
-     "file": "102-wip-tween.webp",
+     "file": "140-wip-tween.webp",
      "ms": 150
     },
     {
-     "file": "103-wip-tween.webp",
+     "file": "141-wip-tween.webp",
      "ms": 150
     },
     {
-     "file": "104-wip-tween.webp",
+     "file": "142-wip-tween.webp",
      "ms": 150
     }
    ]
@@ -455,99 +607,179 @@
    "id": "point",
    "frames": [
     {
-     "file": "106-point-target.webp",
+     "file": "144-point-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "145-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "146-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "147-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "148-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "149-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "150-point-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "151-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "152-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "153-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "154-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "155-point-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "156-point-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "157-point-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "158-point-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "159-point-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "160-point-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "161-point-target.webp",
      "ms": 820
     },
     {
-     "file": "107-point-blank.webp",
+     "file": "162-point-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "163-point-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "164-point-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "165-point-blank.webp",
      "ms": 125
     },
     {
-     "file": "108-point-typing.webp",
+     "file": "166-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "109-point-typing.webp",
+     "file": "167-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "110-point-typing.webp",
+     "file": "168-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "111-point-typing.webp",
+     "file": "169-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "112-point-typing.webp",
+     "file": "170-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "113-point-typing.webp",
+     "file": "171-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "114-point-typing.webp",
+     "file": "172-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "115-point-typing.webp",
+     "file": "173-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "116-point-typing.webp",
+     "file": "174-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "117-point-typing.webp",
+     "file": "175-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "118-point-typing.webp",
+     "file": "176-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "119-point-typing.webp",
+     "file": "177-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "120-point-typing.webp",
+     "file": "178-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "121-point-typing.webp",
+     "file": "179-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "122-point-typing.webp",
+     "file": "180-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "123-point-typing.webp",
+     "file": "181-point-typing.webp",
      "ms": 125
     },
     {
-     "file": "124-point-typed.webp",
+     "file": "182-point-typed.webp",
      "ms": 420
     },
     {
-     "file": "125-point-camera.webp",
+     "file": "183-point-camera.webp",
      "ms": 150
     },
     {
-     "file": "126-point-camera.webp",
+     "file": "184-point-camera.webp",
      "ms": 150
     },
     {
-     "file": "127-point-camera.webp",
+     "file": "185-point-camera.webp",
      "ms": 150
     },
     {
-     "file": "128-point-camera.webp",
+     "file": "186-point-camera.webp",
      "ms": 150
     },
     {
-     "file": "129-point-rest.webp",
+     "file": "187-point-rest.webp",
      "ms": 0
     }
    ]
@@ -556,71 +788,99 @@
    "id": "efficiency",
    "frames": [
     {
-     "file": "130-efficiency-target.webp",
+     "file": "188-efficiency-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "189-efficiency-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "190-efficiency-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "191-efficiency-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "192-efficiency-target.webp",
      "ms": 820
     },
     {
-     "file": "131-efficiency-blank.webp",
+     "file": "193-efficiency-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "194-efficiency-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "195-efficiency-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "196-efficiency-blank.webp",
      "ms": 125
     },
     {
-     "file": "132-efficiency-typing.webp",
+     "file": "197-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "133-efficiency-typing.webp",
+     "file": "198-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "134-efficiency-typing.webp",
+     "file": "199-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "135-efficiency-typing.webp",
+     "file": "200-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "136-efficiency-typing.webp",
+     "file": "201-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "137-efficiency-typing.webp",
+     "file": "202-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "138-efficiency-typing.webp",
+     "file": "203-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "139-efficiency-typing.webp",
+     "file": "204-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "140-efficiency-typing.webp",
+     "file": "205-efficiency-typing.webp",
      "ms": 125
     },
     {
-     "file": "141-efficiency-typed.webp",
+     "file": "206-efficiency-typed.webp",
      "ms": 420
     },
     {
-     "file": "142-efficiency-camera.webp",
+     "file": "207-efficiency-camera.webp",
      "ms": 150
     },
     {
-     "file": "143-efficiency-camera.webp",
+     "file": "208-efficiency-camera.webp",
      "ms": 150
     },
     {
-     "file": "144-efficiency-camera.webp",
+     "file": "209-efficiency-camera.webp",
      "ms": 150
     },
     {
-     "file": "145-efficiency-camera.webp",
+     "file": "210-efficiency-camera.webp",
      "ms": 150
     },
     {
-     "file": "146-efficiency-rest.webp",
+     "file": "211-efficiency-rest.webp",
      "ms": 0
     }
    ]
@@ -629,119 +889,139 @@
    "id": "writing-connecting",
    "frames": [
     {
-     "file": "147-writing-connecting-target.webp",
+     "file": "212-writing-connecting-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "213-writing-connecting-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "214-writing-connecting-target.webp",
      "ms": 820
     },
     {
-     "file": "148-writing-connecting-blank.webp",
+     "file": "215-writing-connecting-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "216-writing-connecting-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "217-writing-connecting-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "218-writing-connecting-blank.webp",
      "ms": 125
     },
     {
-     "file": "149-writing-connecting-typing.webp",
+     "file": "219-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "150-writing-connecting-typing.webp",
+     "file": "220-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "151-writing-connecting-typing.webp",
+     "file": "221-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "152-writing-connecting-typing.webp",
+     "file": "222-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "153-writing-connecting-typing.webp",
+     "file": "223-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "154-writing-connecting-typing.webp",
+     "file": "224-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "155-writing-connecting-typing.webp",
+     "file": "225-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "156-writing-connecting-typing.webp",
+     "file": "226-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "157-writing-connecting-typing.webp",
+     "file": "227-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "158-writing-connecting-typing.webp",
+     "file": "228-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "159-writing-connecting-typing.webp",
+     "file": "229-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "160-writing-connecting-typing.webp",
+     "file": "230-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "161-writing-connecting-typing.webp",
+     "file": "231-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "162-writing-connecting-typing.webp",
+     "file": "232-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "163-writing-connecting-typing.webp",
+     "file": "233-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "164-writing-connecting-typing.webp",
+     "file": "234-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "165-writing-connecting-typing.webp",
+     "file": "235-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "166-writing-connecting-typing.webp",
+     "file": "236-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "167-writing-connecting-typing.webp",
+     "file": "237-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "168-writing-connecting-typing.webp",
+     "file": "238-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "169-writing-connecting-typing.webp",
+     "file": "239-writing-connecting-typing.webp",
      "ms": 125
     },
     {
-     "file": "170-writing-connecting-typed.webp",
+     "file": "240-writing-connecting-typed.webp",
      "ms": 420
     },
     {
-     "file": "171-writing-connecting-camera.webp",
+     "file": "241-writing-connecting-camera.webp",
      "ms": 150
     },
     {
-     "file": "172-writing-connecting-camera.webp",
+     "file": "242-writing-connecting-camera.webp",
      "ms": 150
     },
     {
-     "file": "173-writing-connecting-camera.webp",
+     "file": "243-writing-connecting-camera.webp",
      "ms": 150
     },
     {
-     "file": "174-writing-connecting-camera.webp",
+     "file": "244-writing-connecting-camera.webp",
      "ms": 150
     },
     {
-     "file": "175-writing-connecting-rest.webp",
+     "file": "245-writing-connecting-rest.webp",
      "ms": 0
     }
    ]
@@ -750,71 +1030,135 @@
    "id": "navigation",
    "frames": [
     {
-     "file": "176-navigation-target.webp",
+     "file": "246-navigation-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "247-navigation-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "248-navigation-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "249-navigation-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "250-navigation-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "251-navigation-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "252-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "253-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "254-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "255-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "256-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "257-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "258-navigation-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "259-navigation-target.webp",
      "ms": 820
     },
     {
-     "file": "177-navigation-blank.webp",
+     "file": "260-navigation-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "261-navigation-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "262-navigation-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "263-navigation-blank.webp",
      "ms": 125
     },
     {
-     "file": "178-navigation-typing.webp",
+     "file": "264-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "179-navigation-typing.webp",
+     "file": "265-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "180-navigation-typing.webp",
+     "file": "266-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "181-navigation-typing.webp",
+     "file": "267-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "182-navigation-typing.webp",
+     "file": "268-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "183-navigation-typing.webp",
+     "file": "269-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "184-navigation-typing.webp",
+     "file": "270-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "185-navigation-typing.webp",
+     "file": "271-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "186-navigation-typing.webp",
+     "file": "272-navigation-typing.webp",
      "ms": 125
     },
     {
-     "file": "187-navigation-typed.webp",
+     "file": "273-navigation-typed.webp",
      "ms": 420
     },
     {
-     "file": "188-navigation-camera.webp",
+     "file": "274-navigation-camera.webp",
      "ms": 150
     },
     {
-     "file": "189-navigation-camera.webp",
+     "file": "275-navigation-camera.webp",
      "ms": 150
     },
     {
-     "file": "190-navigation-camera.webp",
+     "file": "276-navigation-camera.webp",
      "ms": 150
     },
     {
-     "file": "191-navigation-camera.webp",
+     "file": "277-navigation-camera.webp",
      "ms": 150
     },
     {
-     "file": "192-navigation-rest.webp",
+     "file": "278-navigation-rest.webp",
      "ms": 0
     }
    ]
@@ -823,87 +1167,139 @@
    "id": "learning",
    "frames": [
     {
-     "file": "193-learning-target.webp",
+     "file": "279-learning-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "280-learning-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "281-learning-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "282-learning-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "283-learning-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "284-learning-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "285-learning-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "286-learning-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "287-learning-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "288-learning-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "289-learning-target.webp",
      "ms": 820
     },
     {
-     "file": "194-learning-blank.webp",
+     "file": "290-learning-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "291-learning-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "292-learning-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "293-learning-blank.webp",
      "ms": 125
     },
     {
-     "file": "195-learning-typing.webp",
+     "file": "294-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "196-learning-typing.webp",
+     "file": "295-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "197-learning-typing.webp",
+     "file": "296-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "198-learning-typing.webp",
+     "file": "297-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "199-learning-typing.webp",
+     "file": "298-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "200-learning-typing.webp",
+     "file": "299-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "201-learning-typing.webp",
+     "file": "300-learning-typing.webp",
      "ms": 125
     },
     {
-     "file": "202-learning-typed.webp",
+     "file": "301-learning-typed.webp",
      "ms": 420
     },
     {
-     "file": "203-learning-camera.webp",
+     "file": "302-learning-camera.webp",
      "ms": 150
     },
     {
-     "file": "204-learning-camera.webp",
+     "file": "303-learning-camera.webp",
      "ms": 150
     },
     {
-     "file": "205-learning-camera.webp",
+     "file": "304-learning-camera.webp",
      "ms": 150
     },
     {
-     "file": "206-learning-camera.webp",
+     "file": "305-learning-camera.webp",
      "ms": 150
     },
     {
-     "file": "207-learning-rest.webp",
+     "file": "306-learning-rest.webp",
      "ms": 0
     },
     {
-     "file": "208-learning-menu.webp",
-     "ms": 700
+     "file": "307-learning-menu.webp",
+     "ms": 620
     },
     {
-     "file": "209-learning-tween.webp",
+     "file": "308-learning-tween.webp",
      "ms": 150
     },
     {
-     "file": "210-learning-tween.webp",
+     "file": "309-learning-tween.webp",
      "ms": 150
     },
     {
-     "file": "211-learning-tween.webp",
+     "file": "310-learning-tween.webp",
      "ms": 150
     },
     {
-     "file": "212-learning-tween.webp",
+     "file": "311-learning-tween.webp",
      "ms": 150
     },
     {
-     "file": "213-learning-tween.webp",
+     "file": "312-learning-tween.webp",
      "ms": 150
     }
    ]
@@ -912,99 +1308,203 @@
    "id": "how",
    "frames": [
     {
-     "file": "215-how-target.webp",
+     "file": "314-how-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "315-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "316-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "317-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "318-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "319-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "320-how-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "321-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "322-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "323-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "324-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "325-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "326-how-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "327-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "328-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "329-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "330-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "331-how-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "332-how-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "333-how-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "334-how-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "335-how-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "336-how-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "337-how-target.webp",
      "ms": 820
     },
     {
-     "file": "216-how-blank.webp",
+     "file": "338-how-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "339-how-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "340-how-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "341-how-blank.webp",
      "ms": 125
     },
     {
-     "file": "217-how-typing.webp",
+     "file": "342-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "218-how-typing.webp",
+     "file": "343-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "219-how-typing.webp",
+     "file": "344-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "220-how-typing.webp",
+     "file": "345-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "221-how-typing.webp",
+     "file": "346-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "222-how-typing.webp",
+     "file": "347-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "223-how-typing.webp",
+     "file": "348-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "224-how-typing.webp",
+     "file": "349-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "225-how-typing.webp",
+     "file": "350-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "226-how-typing.webp",
+     "file": "351-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "227-how-typing.webp",
+     "file": "352-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "228-how-typing.webp",
+     "file": "353-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "229-how-typing.webp",
+     "file": "354-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "230-how-typing.webp",
+     "file": "355-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "231-how-typing.webp",
+     "file": "356-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "232-how-typing.webp",
+     "file": "357-how-typing.webp",
      "ms": 125
     },
     {
-     "file": "233-how-typed.webp",
+     "file": "358-how-typed.webp",
      "ms": 420
     },
     {
-     "file": "234-how-camera.webp",
+     "file": "359-how-camera.webp",
      "ms": 150
     },
     {
-     "file": "235-how-camera.webp",
+     "file": "360-how-camera.webp",
      "ms": 150
     },
     {
-     "file": "236-how-camera.webp",
+     "file": "361-how-camera.webp",
      "ms": 150
     },
     {
-     "file": "237-how-camera.webp",
+     "file": "362-how-camera.webp",
      "ms": 150
     },
     {
-     "file": "238-how-rest.webp",
+     "file": "363-how-rest.webp",
      "ms": 0
     }
    ]
@@ -1013,139 +1513,167 @@
    "id": "hold-submenu",
    "frames": [
     {
-     "file": "239-hold-submenu-target.webp",
+     "file": "364-hold-submenu-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "365-hold-submenu-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "366-hold-submenu-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "367-hold-submenu-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "368-hold-submenu-target.webp",
      "ms": 820
     },
     {
-     "file": "240-hold-submenu-blank.webp",
+     "file": "369-hold-submenu-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "370-hold-submenu-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "371-hold-submenu-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "372-hold-submenu-blank.webp",
      "ms": 125
     },
     {
-     "file": "241-hold-submenu-typing.webp",
+     "file": "373-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "242-hold-submenu-typing.webp",
+     "file": "374-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "243-hold-submenu-typing.webp",
+     "file": "375-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "244-hold-submenu-typing.webp",
+     "file": "376-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "245-hold-submenu-typing.webp",
+     "file": "377-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "246-hold-submenu-typing.webp",
+     "file": "378-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "247-hold-submenu-typing.webp",
+     "file": "379-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "248-hold-submenu-typing.webp",
+     "file": "380-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "249-hold-submenu-typing.webp",
+     "file": "381-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "250-hold-submenu-typing.webp",
+     "file": "382-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "251-hold-submenu-typing.webp",
+     "file": "383-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "252-hold-submenu-typing.webp",
+     "file": "384-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "253-hold-submenu-typing.webp",
+     "file": "385-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "254-hold-submenu-typing.webp",
+     "file": "386-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "255-hold-submenu-typing.webp",
+     "file": "387-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "256-hold-submenu-typing.webp",
+     "file": "388-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "257-hold-submenu-typing.webp",
+     "file": "389-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "258-hold-submenu-typing.webp",
+     "file": "390-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "259-hold-submenu-typing.webp",
+     "file": "391-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "260-hold-submenu-typing.webp",
+     "file": "392-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "261-hold-submenu-typing.webp",
+     "file": "393-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "262-hold-submenu-typing.webp",
+     "file": "394-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "263-hold-submenu-typing.webp",
+     "file": "395-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "264-hold-submenu-typing.webp",
+     "file": "396-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "265-hold-submenu-typing.webp",
+     "file": "397-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "266-hold-submenu-typing.webp",
+     "file": "398-hold-submenu-typing.webp",
      "ms": 125
     },
     {
-     "file": "267-hold-submenu-typed.webp",
+     "file": "399-hold-submenu-typed.webp",
      "ms": 420
     },
     {
-     "file": "268-hold-submenu-camera.webp",
+     "file": "400-hold-submenu-camera.webp",
      "ms": 150
     },
     {
-     "file": "269-hold-submenu-camera.webp",
+     "file": "401-hold-submenu-camera.webp",
      "ms": 150
     },
     {
-     "file": "270-hold-submenu-camera.webp",
+     "file": "402-hold-submenu-camera.webp",
      "ms": 150
     },
     {
-     "file": "271-hold-submenu-camera.webp",
+     "file": "403-hold-submenu-camera.webp",
      "ms": 150
     },
     {
-     "file": "272-hold-submenu-rest.webp",
+     "file": "404-hold-submenu-rest.webp",
      "ms": 0
     }
    ]
@@ -1154,247 +1682,303 @@
    "id": "submenu-navigate",
    "frames": [
     {
-     "file": "273-submenu-navigate-target.webp",
+     "file": "405-submenu-navigate-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "406-submenu-navigate-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "407-submenu-navigate-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "408-submenu-navigate-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "409-submenu-navigate-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "410-submenu-navigate-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "411-submenu-navigate-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "412-submenu-navigate-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "413-submenu-navigate-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "414-submenu-navigate-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "415-submenu-navigate-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "416-submenu-navigate-target.webp",
      "ms": 820
     },
     {
-     "file": "274-submenu-navigate-blank.webp",
+     "file": "417-submenu-navigate-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "418-submenu-navigate-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "419-submenu-navigate-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "420-submenu-navigate-blank.webp",
      "ms": 125
     },
     {
-     "file": "275-submenu-navigate-typing.webp",
+     "file": "421-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "276-submenu-navigate-typing.webp",
+     "file": "422-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "277-submenu-navigate-typing.webp",
+     "file": "423-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "278-submenu-navigate-typing.webp",
+     "file": "424-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "279-submenu-navigate-typing.webp",
+     "file": "425-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "280-submenu-navigate-typing.webp",
+     "file": "426-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "281-submenu-navigate-typing.webp",
+     "file": "427-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "282-submenu-navigate-typing.webp",
+     "file": "428-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "283-submenu-navigate-typing.webp",
+     "file": "429-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "284-submenu-navigate-typing.webp",
+     "file": "430-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "285-submenu-navigate-typing.webp",
+     "file": "431-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "286-submenu-navigate-typing.webp",
+     "file": "432-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "287-submenu-navigate-typing.webp",
+     "file": "433-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "288-submenu-navigate-typing.webp",
+     "file": "434-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "289-submenu-navigate-typing.webp",
+     "file": "435-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "290-submenu-navigate-typing.webp",
+     "file": "436-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "291-submenu-navigate-typing.webp",
+     "file": "437-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "292-submenu-navigate-typing.webp",
+     "file": "438-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "293-submenu-navigate-typing.webp",
+     "file": "439-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "294-submenu-navigate-typing.webp",
+     "file": "440-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "295-submenu-navigate-typing.webp",
+     "file": "441-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "296-submenu-navigate-typing.webp",
+     "file": "442-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "297-submenu-navigate-typing.webp",
+     "file": "443-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "298-submenu-navigate-typing.webp",
+     "file": "444-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "299-submenu-navigate-typing.webp",
+     "file": "445-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "300-submenu-navigate-typing.webp",
+     "file": "446-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "301-submenu-navigate-typing.webp",
+     "file": "447-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "302-submenu-navigate-typing.webp",
+     "file": "448-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "303-submenu-navigate-typing.webp",
+     "file": "449-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "304-submenu-navigate-typing.webp",
+     "file": "450-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "305-submenu-navigate-typing.webp",
+     "file": "451-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "306-submenu-navigate-typing.webp",
+     "file": "452-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "307-submenu-navigate-typing.webp",
+     "file": "453-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "308-submenu-navigate-typing.webp",
+     "file": "454-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "309-submenu-navigate-typing.webp",
+     "file": "455-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "310-submenu-navigate-typing.webp",
+     "file": "456-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "311-submenu-navigate-typing.webp",
+     "file": "457-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "312-submenu-navigate-typing.webp",
+     "file": "458-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "313-submenu-navigate-typing.webp",
+     "file": "459-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "314-submenu-navigate-typing.webp",
+     "file": "460-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "315-submenu-navigate-typing.webp",
+     "file": "461-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "316-submenu-navigate-typing.webp",
+     "file": "462-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "317-submenu-navigate-typing.webp",
+     "file": "463-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "318-submenu-navigate-typing.webp",
+     "file": "464-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "319-submenu-navigate-typing.webp",
+     "file": "465-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "320-submenu-navigate-typing.webp",
+     "file": "466-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "321-submenu-navigate-typing.webp",
+     "file": "467-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "322-submenu-navigate-typing.webp",
+     "file": "468-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "323-submenu-navigate-typing.webp",
+     "file": "469-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "324-submenu-navigate-typing.webp",
+     "file": "470-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "325-submenu-navigate-typing.webp",
+     "file": "471-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "326-submenu-navigate-typing.webp",
+     "file": "472-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "327-submenu-navigate-typing.webp",
+     "file": "473-submenu-navigate-typing.webp",
      "ms": 125
     },
     {
-     "file": "328-submenu-navigate-typed.webp",
+     "file": "474-submenu-navigate-typed.webp",
      "ms": 420
     },
     {
-     "file": "329-submenu-navigate-camera.webp",
+     "file": "475-submenu-navigate-camera.webp",
      "ms": 150
     },
     {
-     "file": "330-submenu-navigate-camera.webp",
+     "file": "476-submenu-navigate-camera.webp",
      "ms": 150
     },
     {
-     "file": "331-submenu-navigate-camera.webp",
+     "file": "477-submenu-navigate-camera.webp",
      "ms": 150
     },
     {
-     "file": "332-submenu-navigate-camera.webp",
+     "file": "478-submenu-navigate-camera.webp",
      "ms": 150
     },
     {
-     "file": "333-submenu-navigate-rest.webp",
+     "file": "479-submenu-navigate-rest.webp",
      "ms": 0
     }
    ]
@@ -1403,203 +1987,251 @@
    "id": "action-on-release",
    "frames": [
     {
-     "file": "334-action-on-release-target.webp",
+     "file": "480-action-on-release-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "481-action-on-release-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "482-action-on-release-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "483-action-on-release-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "484-action-on-release-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "485-action-on-release-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "486-action-on-release-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "487-action-on-release-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "488-action-on-release-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "489-action-on-release-target.webp",
      "ms": 820
     },
     {
-     "file": "335-action-on-release-blank.webp",
+     "file": "490-action-on-release-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "491-action-on-release-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "492-action-on-release-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "493-action-on-release-blank.webp",
      "ms": 125
     },
     {
-     "file": "336-action-on-release-typing.webp",
+     "file": "494-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "337-action-on-release-typing.webp",
+     "file": "495-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "338-action-on-release-typing.webp",
+     "file": "496-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "339-action-on-release-typing.webp",
+     "file": "497-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "340-action-on-release-typing.webp",
+     "file": "498-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "341-action-on-release-typing.webp",
+     "file": "499-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "342-action-on-release-typing.webp",
+     "file": "500-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "343-action-on-release-typing.webp",
+     "file": "501-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "344-action-on-release-typing.webp",
+     "file": "502-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "345-action-on-release-typing.webp",
+     "file": "503-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "346-action-on-release-typing.webp",
+     "file": "504-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "347-action-on-release-typing.webp",
+     "file": "505-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "348-action-on-release-typing.webp",
+     "file": "506-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "349-action-on-release-typing.webp",
+     "file": "507-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "350-action-on-release-typing.webp",
+     "file": "508-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "351-action-on-release-typing.webp",
+     "file": "509-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "352-action-on-release-typing.webp",
+     "file": "510-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "353-action-on-release-typing.webp",
+     "file": "511-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "354-action-on-release-typing.webp",
+     "file": "512-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "355-action-on-release-typing.webp",
+     "file": "513-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "356-action-on-release-typing.webp",
+     "file": "514-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "357-action-on-release-typing.webp",
+     "file": "515-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "358-action-on-release-typing.webp",
+     "file": "516-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "359-action-on-release-typing.webp",
+     "file": "517-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "360-action-on-release-typing.webp",
+     "file": "518-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "361-action-on-release-typing.webp",
+     "file": "519-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "362-action-on-release-typing.webp",
+     "file": "520-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "363-action-on-release-typing.webp",
+     "file": "521-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "364-action-on-release-typing.webp",
+     "file": "522-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "365-action-on-release-typing.webp",
+     "file": "523-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "366-action-on-release-typing.webp",
+     "file": "524-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "367-action-on-release-typing.webp",
+     "file": "525-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "368-action-on-release-typing.webp",
+     "file": "526-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "369-action-on-release-typing.webp",
+     "file": "527-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "370-action-on-release-typing.webp",
+     "file": "528-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "371-action-on-release-typing.webp",
+     "file": "529-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "372-action-on-release-typing.webp",
+     "file": "530-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "373-action-on-release-typing.webp",
+     "file": "531-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "374-action-on-release-typing.webp",
+     "file": "532-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "375-action-on-release-typing.webp",
+     "file": "533-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "376-action-on-release-typing.webp",
+     "file": "534-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "377-action-on-release-typing.webp",
+     "file": "535-action-on-release-typing.webp",
      "ms": 125
     },
     {
-     "file": "378-action-on-release-typed.webp",
+     "file": "536-action-on-release-typed.webp",
      "ms": 420
     },
     {
-     "file": "379-action-on-release-camera.webp",
+     "file": "537-action-on-release-camera.webp",
      "ms": 150
     },
     {
-     "file": "380-action-on-release-camera.webp",
+     "file": "538-action-on-release-camera.webp",
      "ms": 150
     },
     {
-     "file": "381-action-on-release-camera.webp",
+     "file": "539-action-on-release-camera.webp",
      "ms": 150
     },
     {
-     "file": "382-action-on-release-camera.webp",
+     "file": "540-action-on-release-camera.webp",
      "ms": 150
     },
     {
-     "file": "383-action-on-release-rest.webp",
+     "file": "541-action-on-release-rest.webp",
      "ms": 0
     }
    ]
@@ -1608,279 +2240,339 @@
    "id": "escape",
    "frames": [
     {
-     "file": "384-escape-target.webp",
+     "file": "542-escape-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "543-escape-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "544-escape-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "545-escape-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "546-escape-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "547-escape-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "548-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "549-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "550-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "551-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "552-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "553-escape-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "554-escape-target.webp",
      "ms": 820
     },
     {
-     "file": "385-escape-blank.webp",
+     "file": "555-escape-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "556-escape-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "557-escape-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "558-escape-blank.webp",
      "ms": 125
     },
     {
-     "file": "386-escape-typing.webp",
+     "file": "559-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "387-escape-typing.webp",
+     "file": "560-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "388-escape-typing.webp",
+     "file": "561-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "389-escape-typing.webp",
+     "file": "562-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "390-escape-typing.webp",
+     "file": "563-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "391-escape-typing.webp",
+     "file": "564-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "392-escape-typing.webp",
+     "file": "565-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "393-escape-typing.webp",
+     "file": "566-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "394-escape-typing.webp",
+     "file": "567-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "395-escape-typing.webp",
+     "file": "568-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "396-escape-typing.webp",
+     "file": "569-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "397-escape-typing.webp",
+     "file": "570-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "398-escape-typing.webp",
+     "file": "571-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "399-escape-typing.webp",
+     "file": "572-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "400-escape-typing.webp",
+     "file": "573-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "401-escape-typing.webp",
+     "file": "574-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "402-escape-typing.webp",
+     "file": "575-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "403-escape-typing.webp",
+     "file": "576-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "404-escape-typing.webp",
+     "file": "577-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "405-escape-typing.webp",
+     "file": "578-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "406-escape-typing.webp",
+     "file": "579-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "407-escape-typing.webp",
+     "file": "580-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "408-escape-typing.webp",
+     "file": "581-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "409-escape-typing.webp",
+     "file": "582-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "410-escape-typing.webp",
+     "file": "583-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "411-escape-typing.webp",
+     "file": "584-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "412-escape-typing.webp",
+     "file": "585-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "413-escape-typing.webp",
+     "file": "586-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "414-escape-typing.webp",
+     "file": "587-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "415-escape-typing.webp",
+     "file": "588-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "416-escape-typing.webp",
+     "file": "589-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "417-escape-typing.webp",
+     "file": "590-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "418-escape-typing.webp",
+     "file": "591-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "419-escape-typing.webp",
+     "file": "592-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "420-escape-typing.webp",
+     "file": "593-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "421-escape-typing.webp",
+     "file": "594-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "422-escape-typing.webp",
+     "file": "595-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "423-escape-typing.webp",
+     "file": "596-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "424-escape-typing.webp",
+     "file": "597-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "425-escape-typing.webp",
+     "file": "598-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "426-escape-typing.webp",
+     "file": "599-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "427-escape-typing.webp",
+     "file": "600-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "428-escape-typing.webp",
+     "file": "601-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "429-escape-typing.webp",
+     "file": "602-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "430-escape-typing.webp",
+     "file": "603-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "431-escape-typing.webp",
+     "file": "604-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "432-escape-typing.webp",
+     "file": "605-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "433-escape-typing.webp",
+     "file": "606-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "434-escape-typing.webp",
+     "file": "607-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "435-escape-typing.webp",
+     "file": "608-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "436-escape-typing.webp",
+     "file": "609-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "437-escape-typing.webp",
+     "file": "610-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "438-escape-typing.webp",
+     "file": "611-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "439-escape-typing.webp",
+     "file": "612-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "440-escape-typing.webp",
+     "file": "613-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "441-escape-typing.webp",
+     "file": "614-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "442-escape-typing.webp",
+     "file": "615-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "443-escape-typing.webp",
+     "file": "616-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "444-escape-typing.webp",
+     "file": "617-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "445-escape-typing.webp",
+     "file": "618-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "446-escape-typing.webp",
+     "file": "619-escape-typing.webp",
      "ms": 125
     },
     {
-     "file": "447-escape-typed.webp",
+     "file": "620-escape-typed.webp",
      "ms": 420
     },
     {
-     "file": "448-escape-camera.webp",
+     "file": "621-escape-camera.webp",
      "ms": 150
     },
     {
-     "file": "449-escape-camera.webp",
+     "file": "622-escape-camera.webp",
      "ms": 150
     },
     {
-     "file": "450-escape-camera.webp",
+     "file": "623-escape-camera.webp",
      "ms": 150
     },
     {
-     "file": "451-escape-camera.webp",
+     "file": "624-escape-camera.webp",
      "ms": 150
     },
     {
-     "file": "452-escape-rest.webp",
+     "file": "625-escape-rest.webp",
      "ms": 0
     }
    ]
@@ -1889,163 +2581,215 @@
    "id": "modal-text",
    "frames": [
     {
-     "file": "453-modal-text-target.webp",
+     "file": "626-modal-text-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "627-modal-text-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "628-modal-text-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "629-modal-text-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "630-modal-text-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "631-modal-text-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "632-modal-text-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "633-modal-text-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "634-modal-text-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "635-modal-text-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "636-modal-text-target.webp",
      "ms": 820
     },
     {
-     "file": "454-modal-text-blank.webp",
+     "file": "637-modal-text-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "638-modal-text-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "639-modal-text-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "640-modal-text-blank.webp",
      "ms": 125
     },
     {
-     "file": "455-modal-text-typing.webp",
+     "file": "641-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "456-modal-text-typing.webp",
+     "file": "642-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "457-modal-text-typing.webp",
+     "file": "643-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "458-modal-text-typing.webp",
+     "file": "644-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "459-modal-text-typing.webp",
+     "file": "645-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "460-modal-text-typing.webp",
+     "file": "646-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "461-modal-text-typing.webp",
+     "file": "647-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "462-modal-text-typing.webp",
+     "file": "648-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "463-modal-text-typing.webp",
+     "file": "649-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "464-modal-text-typing.webp",
+     "file": "650-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "465-modal-text-typing.webp",
+     "file": "651-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "466-modal-text-typing.webp",
+     "file": "652-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "467-modal-text-typing.webp",
+     "file": "653-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "468-modal-text-typing.webp",
+     "file": "654-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "469-modal-text-typing.webp",
+     "file": "655-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "470-modal-text-typing.webp",
+     "file": "656-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "471-modal-text-typing.webp",
+     "file": "657-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "472-modal-text-typing.webp",
+     "file": "658-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "473-modal-text-typing.webp",
+     "file": "659-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "474-modal-text-typing.webp",
+     "file": "660-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "475-modal-text-typing.webp",
+     "file": "661-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "476-modal-text-typing.webp",
+     "file": "662-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "477-modal-text-typing.webp",
+     "file": "663-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "478-modal-text-typing.webp",
+     "file": "664-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "479-modal-text-typing.webp",
+     "file": "665-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "480-modal-text-typing.webp",
+     "file": "666-modal-text-typing.webp",
      "ms": 125
     },
     {
-     "file": "481-modal-text-typed.webp",
+     "file": "667-modal-text-typed.webp",
      "ms": 420
     },
     {
-     "file": "482-modal-text-camera.webp",
+     "file": "668-modal-text-camera.webp",
      "ms": 150
     },
     {
-     "file": "483-modal-text-camera.webp",
+     "file": "669-modal-text-camera.webp",
      "ms": 150
     },
     {
-     "file": "484-modal-text-camera.webp",
+     "file": "670-modal-text-camera.webp",
      "ms": 150
     },
     {
-     "file": "485-modal-text-camera.webp",
+     "file": "671-modal-text-camera.webp",
      "ms": 150
     },
     {
-     "file": "486-modal-text-rest.webp",
+     "file": "672-modal-text-rest.webp",
      "ms": 0
     },
     {
-     "file": "487-modal-text-menu.webp",
-     "ms": 700
+     "file": "673-modal-text-menu.webp",
+     "ms": 620
     },
     {
-     "file": "488-modal-text-tween.webp",
+     "file": "674-modal-text-tween.webp",
      "ms": 150
     },
     {
-     "file": "489-modal-text-tween.webp",
+     "file": "675-modal-text-tween.webp",
      "ms": 150
     },
     {
-     "file": "490-modal-text-tween.webp",
+     "file": "676-modal-text-tween.webp",
      "ms": 150
     },
     {
-     "file": "491-modal-text-tween.webp",
+     "file": "677-modal-text-tween.webp",
      "ms": 150
     },
     {
-     "file": "492-modal-text-tween.webp",
+     "file": "678-modal-text-tween.webp",
      "ms": 150
     }
    ]
@@ -2054,107 +2798,243 @@
    "id": "features",
    "frames": [
     {
-     "file": "494-features-target.webp",
+     "file": "680-features-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "681-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "682-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "683-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "684-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "685-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "686-features-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "687-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "688-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "689-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "690-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "691-features-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "692-features-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "693-features-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "694-features-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "695-features-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "696-features-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "697-features-target.webp",
      "ms": 820
     },
     {
-     "file": "495-features-blank.webp",
+     "file": "698-features-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "699-features-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "700-features-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "701-features-blank.webp",
      "ms": 125
     },
     {
-     "file": "496-features-typing.webp",
+     "file": "702-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "497-features-typing.webp",
+     "file": "703-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "498-features-typing.webp",
+     "file": "704-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "499-features-typing.webp",
+     "file": "705-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "500-features-typing.webp",
+     "file": "706-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "501-features-typing.webp",
+     "file": "707-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "502-features-typing.webp",
+     "file": "708-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "503-features-typing.webp",
+     "file": "709-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "504-features-typing.webp",
+     "file": "710-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "505-features-typing.webp",
+     "file": "711-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "506-features-typing.webp",
+     "file": "712-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "507-features-typing.webp",
+     "file": "713-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "508-features-typing.webp",
+     "file": "714-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "509-features-typing.webp",
+     "file": "715-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "510-features-typing.webp",
+     "file": "716-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "511-features-typing.webp",
+     "file": "717-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "512-features-typing.webp",
+     "file": "718-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "513-features-typing.webp",
+     "file": "719-features-typing.webp",
      "ms": 125
     },
     {
-     "file": "514-features-typed.webp",
+     "file": "720-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "721-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "722-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "723-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "724-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "725-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "726-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "727-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "728-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "729-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "730-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "731-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "732-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "733-features-typing.webp",
+     "ms": 125
+    },
+    {
+     "file": "734-features-typed.webp",
      "ms": 420
     },
     {
-     "file": "515-features-camera.webp",
+     "file": "735-features-camera.webp",
      "ms": 150
     },
     {
-     "file": "516-features-camera.webp",
+     "file": "736-features-camera.webp",
      "ms": 150
     },
     {
-     "file": "517-features-camera.webp",
+     "file": "737-features-camera.webp",
      "ms": 150
     },
     {
-     "file": "518-features-camera.webp",
+     "file": "738-features-camera.webp",
      "ms": 150
     },
     {
-     "file": "519-features-rest.webp",
+     "file": "739-features-rest.webp",
      "ms": 0
     }
    ]
@@ -2163,119 +3043,143 @@
    "id": "routing",
    "frames": [
     {
-     "file": "520-routing-target.webp",
+     "file": "740-routing-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "741-routing-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "742-routing-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "743-routing-target.webp",
      "ms": 820
     },
     {
-     "file": "521-routing-blank.webp",
+     "file": "744-routing-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "745-routing-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "746-routing-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "747-routing-blank.webp",
      "ms": 125
     },
     {
-     "file": "522-routing-typing.webp",
+     "file": "748-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "523-routing-typing.webp",
+     "file": "749-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "524-routing-typing.webp",
+     "file": "750-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "525-routing-typing.webp",
+     "file": "751-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "526-routing-typing.webp",
+     "file": "752-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "527-routing-typing.webp",
+     "file": "753-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "528-routing-typing.webp",
+     "file": "754-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "529-routing-typing.webp",
+     "file": "755-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "530-routing-typing.webp",
+     "file": "756-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "531-routing-typing.webp",
+     "file": "757-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "532-routing-typing.webp",
+     "file": "758-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "533-routing-typing.webp",
+     "file": "759-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "534-routing-typing.webp",
+     "file": "760-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "535-routing-typing.webp",
+     "file": "761-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "536-routing-typing.webp",
+     "file": "762-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "537-routing-typing.webp",
+     "file": "763-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "538-routing-typing.webp",
+     "file": "764-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "539-routing-typing.webp",
+     "file": "765-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "540-routing-typing.webp",
+     "file": "766-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "541-routing-typing.webp",
+     "file": "767-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "542-routing-typing.webp",
+     "file": "768-routing-typing.webp",
      "ms": 125
     },
     {
-     "file": "543-routing-typed.webp",
+     "file": "769-routing-typed.webp",
      "ms": 420
     },
     {
-     "file": "544-routing-camera.webp",
+     "file": "770-routing-camera.webp",
      "ms": 150
     },
     {
-     "file": "545-routing-camera.webp",
+     "file": "771-routing-camera.webp",
      "ms": 150
     },
     {
-     "file": "546-routing-camera.webp",
+     "file": "772-routing-camera.webp",
      "ms": 150
     },
     {
-     "file": "547-routing-camera.webp",
+     "file": "773-routing-camera.webp",
      "ms": 150
     },
     {
-     "file": "548-routing-rest.webp",
+     "file": "774-routing-rest.webp",
      "ms": 0
     }
    ]
@@ -2284,131 +3188,151 @@
    "id": "waypoints",
    "frames": [
     {
-     "file": "549-waypoints-target.webp",
+     "file": "775-waypoints-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "776-waypoints-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "777-waypoints-target.webp",
      "ms": 820
     },
     {
-     "file": "550-waypoints-blank.webp",
+     "file": "778-waypoints-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "779-waypoints-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "780-waypoints-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "781-waypoints-blank.webp",
      "ms": 125
     },
     {
-     "file": "551-waypoints-typing.webp",
+     "file": "782-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "552-waypoints-typing.webp",
+     "file": "783-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "553-waypoints-typing.webp",
+     "file": "784-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "554-waypoints-typing.webp",
+     "file": "785-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "555-waypoints-typing.webp",
+     "file": "786-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "556-waypoints-typing.webp",
+     "file": "787-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "557-waypoints-typing.webp",
+     "file": "788-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "558-waypoints-typing.webp",
+     "file": "789-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "559-waypoints-typing.webp",
+     "file": "790-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "560-waypoints-typing.webp",
+     "file": "791-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "561-waypoints-typing.webp",
+     "file": "792-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "562-waypoints-typing.webp",
+     "file": "793-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "563-waypoints-typing.webp",
+     "file": "794-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "564-waypoints-typing.webp",
+     "file": "795-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "565-waypoints-typing.webp",
+     "file": "796-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "566-waypoints-typing.webp",
+     "file": "797-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "567-waypoints-typing.webp",
+     "file": "798-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "568-waypoints-typing.webp",
+     "file": "799-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "569-waypoints-typing.webp",
+     "file": "800-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "570-waypoints-typing.webp",
+     "file": "801-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "571-waypoints-typing.webp",
+     "file": "802-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "572-waypoints-typing.webp",
+     "file": "803-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "573-waypoints-typing.webp",
+     "file": "804-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "574-waypoints-typing.webp",
+     "file": "805-waypoints-typing.webp",
      "ms": 125
     },
     {
-     "file": "575-waypoints-typed.webp",
+     "file": "806-waypoints-typed.webp",
      "ms": 420
     },
     {
-     "file": "576-waypoints-camera.webp",
+     "file": "807-waypoints-camera.webp",
      "ms": 150
     },
     {
-     "file": "577-waypoints-camera.webp",
+     "file": "808-waypoints-camera.webp",
      "ms": 150
     },
     {
-     "file": "578-waypoints-camera.webp",
+     "file": "809-waypoints-camera.webp",
      "ms": 150
     },
     {
-     "file": "579-waypoints-camera.webp",
+     "file": "810-waypoints-camera.webp",
      "ms": 150
     },
     {
-     "file": "580-waypoints-rest.webp",
+     "file": "811-waypoints-rest.webp",
      "ms": 0
     }
    ]
@@ -2417,207 +3341,203 @@
    "id": "layout",
    "frames": [
     {
-     "file": "581-layout-target.webp",
+     "file": "812-layout-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "813-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "814-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "815-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "816-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "817-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "818-layout-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "819-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "820-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "821-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "822-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "823-layout-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "824-layout-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "825-layout-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "826-layout-target.webp",
      "ms": 820
     },
     {
-     "file": "582-layout-blank.webp",
+     "file": "827-layout-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "828-layout-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "829-layout-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "830-layout-blank.webp",
      "ms": 125
     },
     {
-     "file": "583-layout-typing.webp",
+     "file": "831-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "584-layout-typing.webp",
+     "file": "832-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "585-layout-typing.webp",
+     "file": "833-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "586-layout-typing.webp",
+     "file": "834-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "587-layout-typing.webp",
+     "file": "835-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "588-layout-typing.webp",
+     "file": "836-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "589-layout-typing.webp",
+     "file": "837-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "590-layout-typing.webp",
+     "file": "838-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "591-layout-typing.webp",
+     "file": "839-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "592-layout-typing.webp",
+     "file": "840-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "593-layout-typing.webp",
+     "file": "841-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "594-layout-typing.webp",
+     "file": "842-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "595-layout-typing.webp",
+     "file": "843-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "596-layout-typing.webp",
+     "file": "844-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "597-layout-typing.webp",
+     "file": "845-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "598-layout-typing.webp",
+     "file": "846-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "599-layout-typing.webp",
+     "file": "847-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "600-layout-typing.webp",
+     "file": "848-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "601-layout-typing.webp",
+     "file": "849-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "602-layout-typing.webp",
+     "file": "850-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "603-layout-typing.webp",
+     "file": "851-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "604-layout-typing.webp",
+     "file": "852-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "605-layout-typing.webp",
+     "file": "853-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "606-layout-typing.webp",
+     "file": "854-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "607-layout-typing.webp",
+     "file": "855-layout-typing.webp",
      "ms": 125
     },
     {
-     "file": "608-layout-typed.webp",
+     "file": "856-layout-typed.webp",
      "ms": 420
     },
     {
-     "file": "609-layout-camera.webp",
+     "file": "857-layout-camera.webp",
      "ms": 150
     },
     {
-     "file": "610-layout-camera.webp",
+     "file": "858-layout-camera.webp",
      "ms": 150
     },
     {
-     "file": "611-layout-camera.webp",
+     "file": "859-layout-camera.webp",
      "ms": 150
     },
     {
-     "file": "612-layout-camera.webp",
+     "file": "860-layout-camera.webp",
      "ms": 150
     },
     {
-     "file": "613-layout-rest.webp",
-     "ms": 0
-    },
-    {
-     "file": "614-layout-menu.webp",
-     "ms": 700
-    },
-    {
-     "file": "615-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "616-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "617-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "618-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "619-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "620-layout-menu.webp",
-     "ms": 700
-    },
-    {
-     "file": "621-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "622-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "623-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "624-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "625-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "626-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "627-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "628-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "629-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "630-layout-tween.webp",
-     "ms": 150
-    },
-    {
-     "file": "631-layout-overview.webp",
+     "file": "861-layout-rest.webp",
      "ms": 0
     }
    ]
@@ -2626,127 +3546,175 @@
    "id": "coarse-fine",
    "frames": [
     {
-     "file": "632-coarse-fine-target.webp",
+     "file": "862-coarse-fine-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "863-coarse-fine-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "864-coarse-fine-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "865-coarse-fine-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "866-coarse-fine-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "867-coarse-fine-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "868-coarse-fine-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "869-coarse-fine-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "870-coarse-fine-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "871-coarse-fine-target.webp",
      "ms": 820
     },
     {
-     "file": "633-coarse-fine-blank.webp",
+     "file": "872-coarse-fine-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "873-coarse-fine-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "874-coarse-fine-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "875-coarse-fine-blank.webp",
      "ms": 125
     },
     {
-     "file": "634-coarse-fine-typing.webp",
+     "file": "876-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "635-coarse-fine-typing.webp",
+     "file": "877-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "636-coarse-fine-typing.webp",
+     "file": "878-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "637-coarse-fine-typing.webp",
+     "file": "879-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "638-coarse-fine-typing.webp",
+     "file": "880-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "639-coarse-fine-typing.webp",
+     "file": "881-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "640-coarse-fine-typing.webp",
+     "file": "882-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "641-coarse-fine-typing.webp",
+     "file": "883-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "642-coarse-fine-typing.webp",
+     "file": "884-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "643-coarse-fine-typing.webp",
+     "file": "885-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "644-coarse-fine-typing.webp",
+     "file": "886-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "645-coarse-fine-typing.webp",
+     "file": "887-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "646-coarse-fine-typing.webp",
+     "file": "888-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "647-coarse-fine-typing.webp",
+     "file": "889-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "648-coarse-fine-typing.webp",
+     "file": "890-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "649-coarse-fine-typing.webp",
+     "file": "891-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "650-coarse-fine-typing.webp",
+     "file": "892-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "651-coarse-fine-typing.webp",
+     "file": "893-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "652-coarse-fine-typing.webp",
+     "file": "894-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "653-coarse-fine-typing.webp",
+     "file": "895-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "654-coarse-fine-typing.webp",
+     "file": "896-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "655-coarse-fine-typing.webp",
+     "file": "897-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "656-coarse-fine-typing.webp",
+     "file": "898-coarse-fine-typing.webp",
      "ms": 125
     },
     {
-     "file": "657-coarse-fine-typed.webp",
+     "file": "899-coarse-fine-typed.webp",
      "ms": 420
     },
     {
-     "file": "658-coarse-fine-camera.webp",
+     "file": "900-coarse-fine-camera.webp",
      "ms": 150
     },
     {
-     "file": "659-coarse-fine-camera.webp",
+     "file": "901-coarse-fine-camera.webp",
      "ms": 150
     },
     {
-     "file": "660-coarse-fine-camera.webp",
+     "file": "902-coarse-fine-camera.webp",
      "ms": 150
     },
     {
-     "file": "661-coarse-fine-camera.webp",
+     "file": "903-coarse-fine-camera.webp",
      "ms": 150
     },
     {
-     "file": "662-coarse-fine-rest.webp",
+     "file": "904-coarse-fine-rest.webp",
      "ms": 0
     }
    ]
@@ -2755,179 +3723,227 @@
    "id": "hop",
    "frames": [
     {
-     "file": "663-hop-target.webp",
+     "file": "905-hop-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "906-hop-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "907-hop-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "908-hop-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "909-hop-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "910-hop-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "911-hop-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "912-hop-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "913-hop-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "914-hop-target.webp",
      "ms": 820
     },
     {
-     "file": "664-hop-blank.webp",
+     "file": "915-hop-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "916-hop-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "917-hop-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "918-hop-blank.webp",
      "ms": 125
     },
     {
-     "file": "665-hop-typing.webp",
+     "file": "919-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "666-hop-typing.webp",
+     "file": "920-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "667-hop-typing.webp",
+     "file": "921-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "668-hop-typing.webp",
+     "file": "922-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "669-hop-typing.webp",
+     "file": "923-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "670-hop-typing.webp",
+     "file": "924-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "671-hop-typing.webp",
+     "file": "925-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "672-hop-typing.webp",
+     "file": "926-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "673-hop-typing.webp",
+     "file": "927-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "674-hop-typing.webp",
+     "file": "928-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "675-hop-typing.webp",
+     "file": "929-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "676-hop-typing.webp",
+     "file": "930-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "677-hop-typing.webp",
+     "file": "931-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "678-hop-typing.webp",
+     "file": "932-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "679-hop-typing.webp",
+     "file": "933-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "680-hop-typing.webp",
+     "file": "934-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "681-hop-typing.webp",
+     "file": "935-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "682-hop-typing.webp",
+     "file": "936-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "683-hop-typing.webp",
+     "file": "937-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "684-hop-typing.webp",
+     "file": "938-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "685-hop-typing.webp",
+     "file": "939-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "686-hop-typing.webp",
+     "file": "940-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "687-hop-typing.webp",
+     "file": "941-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "688-hop-typing.webp",
+     "file": "942-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "689-hop-typing.webp",
+     "file": "943-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "690-hop-typing.webp",
+     "file": "944-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "691-hop-typing.webp",
+     "file": "945-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "692-hop-typing.webp",
+     "file": "946-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "693-hop-typing.webp",
+     "file": "947-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "694-hop-typing.webp",
+     "file": "948-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "695-hop-typing.webp",
+     "file": "949-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "696-hop-typing.webp",
+     "file": "950-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "697-hop-typing.webp",
+     "file": "951-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "698-hop-typing.webp",
+     "file": "952-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "699-hop-typing.webp",
+     "file": "953-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "700-hop-typing.webp",
+     "file": "954-hop-typing.webp",
      "ms": 125
     },
     {
-     "file": "701-hop-typed.webp",
+     "file": "955-hop-typed.webp",
      "ms": 420
     },
     {
-     "file": "702-hop-camera.webp",
+     "file": "956-hop-camera.webp",
      "ms": 150
     },
     {
-     "file": "703-hop-camera.webp",
+     "file": "957-hop-camera.webp",
      "ms": 150
     },
     {
-     "file": "704-hop-camera.webp",
+     "file": "958-hop-camera.webp",
      "ms": 150
     },
     {
-     "file": "705-hop-camera.webp",
+     "file": "959-hop-camera.webp",
      "ms": 150
     },
     {
-     "file": "706-hop-rest.webp",
+     "file": "960-hop-rest.webp",
      "ms": 0
     }
    ]
@@ -2936,139 +3952,191 @@
    "id": "follow-edges",
    "frames": [
     {
-     "file": "707-follow-edges-target.webp",
+     "file": "961-follow-edges-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "962-follow-edges-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "963-follow-edges-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "964-follow-edges-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "965-follow-edges-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "966-follow-edges-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "967-follow-edges-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "968-follow-edges-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "969-follow-edges-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "970-follow-edges-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "971-follow-edges-target.webp",
      "ms": 820
     },
     {
-     "file": "708-follow-edges-blank.webp",
+     "file": "972-follow-edges-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "973-follow-edges-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "974-follow-edges-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "975-follow-edges-blank.webp",
      "ms": 125
     },
     {
-     "file": "709-follow-edges-typing.webp",
+     "file": "976-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "710-follow-edges-typing.webp",
+     "file": "977-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "711-follow-edges-typing.webp",
+     "file": "978-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "712-follow-edges-typing.webp",
+     "file": "979-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "713-follow-edges-typing.webp",
+     "file": "980-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "714-follow-edges-typing.webp",
+     "file": "981-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "715-follow-edges-typing.webp",
+     "file": "982-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "716-follow-edges-typing.webp",
+     "file": "983-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "717-follow-edges-typing.webp",
+     "file": "984-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "718-follow-edges-typing.webp",
+     "file": "985-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "719-follow-edges-typing.webp",
+     "file": "986-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "720-follow-edges-typing.webp",
+     "file": "987-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "721-follow-edges-typing.webp",
+     "file": "988-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "722-follow-edges-typing.webp",
+     "file": "989-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "723-follow-edges-typing.webp",
+     "file": "990-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "724-follow-edges-typing.webp",
+     "file": "991-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "725-follow-edges-typing.webp",
+     "file": "992-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "726-follow-edges-typing.webp",
+     "file": "993-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "727-follow-edges-typing.webp",
+     "file": "994-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "728-follow-edges-typing.webp",
+     "file": "995-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "729-follow-edges-typing.webp",
+     "file": "996-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "730-follow-edges-typing.webp",
+     "file": "997-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "731-follow-edges-typing.webp",
+     "file": "998-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "732-follow-edges-typing.webp",
+     "file": "999-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "733-follow-edges-typing.webp",
+     "file": "1000-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "734-follow-edges-typing.webp",
+     "file": "1001-follow-edges-typing.webp",
      "ms": 125
     },
     {
-     "file": "735-follow-edges-typed.webp",
+     "file": "1002-follow-edges-typed.webp",
      "ms": 420
     },
     {
-     "file": "736-follow-edges-camera.webp",
+     "file": "1003-follow-edges-camera.webp",
      "ms": 150
     },
     {
-     "file": "737-follow-edges-camera.webp",
+     "file": "1004-follow-edges-camera.webp",
      "ms": 150
     },
     {
-     "file": "738-follow-edges-camera.webp",
+     "file": "1005-follow-edges-camera.webp",
      "ms": 150
     },
     {
-     "file": "739-follow-edges-camera.webp",
+     "file": "1006-follow-edges-camera.webp",
      "ms": 150
     },
     {
-     "file": "740-follow-edges-rest.webp",
+     "file": "1007-follow-edges-rest.webp",
      "ms": 0
     }
    ]
@@ -3077,123 +4145,167 @@
    "id": "camera",
    "frames": [
     {
-     "file": "741-camera-target.webp",
+     "file": "1008-camera-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1009-camera-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1010-camera-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1011-camera-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1012-camera-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1013-camera-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1014-camera-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1015-camera-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1016-camera-target.webp",
      "ms": 820
     },
     {
-     "file": "742-camera-blank.webp",
+     "file": "1017-camera-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1018-camera-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1019-camera-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1020-camera-blank.webp",
      "ms": 125
     },
     {
-     "file": "743-camera-typing.webp",
+     "file": "1021-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "744-camera-typing.webp",
+     "file": "1022-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "745-camera-typing.webp",
+     "file": "1023-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "746-camera-typing.webp",
+     "file": "1024-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "747-camera-typing.webp",
+     "file": "1025-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "748-camera-typing.webp",
+     "file": "1026-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "749-camera-typing.webp",
+     "file": "1027-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "750-camera-typing.webp",
+     "file": "1028-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "751-camera-typing.webp",
+     "file": "1029-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "752-camera-typing.webp",
+     "file": "1030-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "753-camera-typing.webp",
+     "file": "1031-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "754-camera-typing.webp",
+     "file": "1032-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "755-camera-typing.webp",
+     "file": "1033-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "756-camera-typing.webp",
+     "file": "1034-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "757-camera-typing.webp",
+     "file": "1035-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "758-camera-typing.webp",
+     "file": "1036-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "759-camera-typing.webp",
+     "file": "1037-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "760-camera-typing.webp",
+     "file": "1038-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "761-camera-typing.webp",
+     "file": "1039-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "762-camera-typing.webp",
+     "file": "1040-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "763-camera-typing.webp",
+     "file": "1041-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "764-camera-typing.webp",
+     "file": "1042-camera-typing.webp",
      "ms": 125
     },
     {
-     "file": "765-camera-typed.webp",
+     "file": "1043-camera-typed.webp",
      "ms": 420
     },
     {
-     "file": "766-camera-camera.webp",
+     "file": "1044-camera-camera.webp",
      "ms": 150
     },
     {
-     "file": "767-camera-camera.webp",
+     "file": "1045-camera-camera.webp",
      "ms": 150
     },
     {
-     "file": "768-camera-camera.webp",
+     "file": "1046-camera-camera.webp",
      "ms": 150
     },
     {
-     "file": "769-camera-camera.webp",
+     "file": "1047-camera-camera.webp",
      "ms": 150
     },
     {
-     "file": "770-camera-rest.webp",
+     "file": "1048-camera-rest.webp",
      "ms": 0
     }
    ]
@@ -3202,115 +4314,171 @@
    "id": "styling",
    "frames": [
     {
-     "file": "771-styling-target.webp",
+     "file": "1049-styling-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1050-styling-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1051-styling-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1052-styling-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1053-styling-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1054-styling-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1055-styling-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1056-styling-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1057-styling-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1058-styling-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1059-styling-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1060-styling-target.webp",
      "ms": 820
     },
     {
-     "file": "772-styling-blank.webp",
+     "file": "1061-styling-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1062-styling-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1063-styling-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1064-styling-blank.webp",
      "ms": 125
     },
     {
-     "file": "773-styling-typing.webp",
+     "file": "1065-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "774-styling-typing.webp",
+     "file": "1066-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "775-styling-typing.webp",
+     "file": "1067-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "776-styling-typing.webp",
+     "file": "1068-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "777-styling-typing.webp",
+     "file": "1069-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "778-styling-typing.webp",
+     "file": "1070-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "779-styling-typing.webp",
+     "file": "1071-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "780-styling-typing.webp",
+     "file": "1072-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "781-styling-typing.webp",
+     "file": "1073-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "782-styling-typing.webp",
+     "file": "1074-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "783-styling-typing.webp",
+     "file": "1075-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "784-styling-typing.webp",
+     "file": "1076-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "785-styling-typing.webp",
+     "file": "1077-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "786-styling-typing.webp",
+     "file": "1078-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "787-styling-typing.webp",
+     "file": "1079-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "788-styling-typing.webp",
+     "file": "1080-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "789-styling-typing.webp",
+     "file": "1081-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "790-styling-typing.webp",
+     "file": "1082-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "791-styling-typing.webp",
+     "file": "1083-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "792-styling-typing.webp",
+     "file": "1084-styling-typing.webp",
      "ms": 125
     },
     {
-     "file": "793-styling-typed.webp",
+     "file": "1085-styling-typed.webp",
      "ms": 420
     },
     {
-     "file": "794-styling-camera.webp",
+     "file": "1086-styling-camera.webp",
      "ms": 150
     },
     {
-     "file": "795-styling-camera.webp",
+     "file": "1087-styling-camera.webp",
      "ms": 150
     },
     {
-     "file": "796-styling-camera.webp",
+     "file": "1088-styling-camera.webp",
      "ms": 150
     },
     {
-     "file": "797-styling-camera.webp",
+     "file": "1089-styling-camera.webp",
      "ms": 150
     },
     {
-     "file": "798-styling-rest.webp",
+     "file": "1090-styling-rest.webp",
      "ms": 0
     }
    ]
@@ -3319,75 +4487,123 @@
    "id": "edge-labels",
    "frames": [
     {
-     "file": "799-edge-labels-target.webp",
+     "file": "1091-edge-labels-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1092-edge-labels-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1093-edge-labels-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1094-edge-labels-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1095-edge-labels-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1096-edge-labels-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1097-edge-labels-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1098-edge-labels-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1099-edge-labels-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1100-edge-labels-target.webp",
      "ms": 820
     },
     {
-     "file": "800-edge-labels-blank.webp",
+     "file": "1101-edge-labels-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1102-edge-labels-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1103-edge-labels-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1104-edge-labels-blank.webp",
      "ms": 125
     },
     {
-     "file": "801-edge-labels-typing.webp",
+     "file": "1105-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "802-edge-labels-typing.webp",
+     "file": "1106-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "803-edge-labels-typing.webp",
+     "file": "1107-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "804-edge-labels-typing.webp",
+     "file": "1108-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "805-edge-labels-typing.webp",
+     "file": "1109-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "806-edge-labels-typing.webp",
+     "file": "1110-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "807-edge-labels-typing.webp",
+     "file": "1111-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "808-edge-labels-typing.webp",
+     "file": "1112-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "809-edge-labels-typing.webp",
+     "file": "1113-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "810-edge-labels-typing.webp",
+     "file": "1114-edge-labels-typing.webp",
      "ms": 125
     },
     {
-     "file": "811-edge-labels-typed.webp",
+     "file": "1115-edge-labels-typed.webp",
      "ms": 420
     },
     {
-     "file": "812-edge-labels-camera.webp",
+     "file": "1116-edge-labels-camera.webp",
      "ms": 150
     },
     {
-     "file": "813-edge-labels-camera.webp",
+     "file": "1117-edge-labels-camera.webp",
      "ms": 150
     },
     {
-     "file": "814-edge-labels-camera.webp",
+     "file": "1118-edge-labels-camera.webp",
      "ms": 150
     },
     {
-     "file": "815-edge-labels-camera.webp",
+     "file": "1119-edge-labels-camera.webp",
      "ms": 150
     },
     {
-     "file": "816-edge-labels-rest.webp",
+     "file": "1120-edge-labels-rest.webp",
      "ms": 0
     }
    ]
@@ -3396,123 +4612,199 @@
    "id": "saving",
    "frames": [
     {
-     "file": "817-saving-target.webp",
+     "file": "1121-saving-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1122-saving-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1123-saving-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1124-saving-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1125-saving-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1126-saving-link.webp",
+     "ms": 150
+    },
+    {
+     "file": "1127-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1128-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1129-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1130-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1131-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1132-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1133-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1134-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1135-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1136-saving-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1137-saving-target.webp",
      "ms": 820
     },
     {
-     "file": "818-saving-blank.webp",
+     "file": "1138-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1139-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1140-saving-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1141-saving-blank.webp",
      "ms": 125
     },
     {
-     "file": "819-saving-typing.webp",
+     "file": "1142-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "820-saving-typing.webp",
+     "file": "1143-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "821-saving-typing.webp",
+     "file": "1144-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "822-saving-typing.webp",
+     "file": "1145-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "823-saving-typing.webp",
+     "file": "1146-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "824-saving-typing.webp",
+     "file": "1147-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "825-saving-typing.webp",
+     "file": "1148-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "826-saving-typing.webp",
+     "file": "1149-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "827-saving-typing.webp",
+     "file": "1150-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "828-saving-typing.webp",
+     "file": "1151-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "829-saving-typing.webp",
+     "file": "1152-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "830-saving-typing.webp",
+     "file": "1153-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "831-saving-typing.webp",
+     "file": "1154-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "832-saving-typing.webp",
+     "file": "1155-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "833-saving-typing.webp",
+     "file": "1156-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "834-saving-typing.webp",
+     "file": "1157-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "835-saving-typing.webp",
+     "file": "1158-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "836-saving-typing.webp",
+     "file": "1159-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "837-saving-typing.webp",
+     "file": "1160-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "838-saving-typing.webp",
+     "file": "1161-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "839-saving-typing.webp",
+     "file": "1162-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "840-saving-typing.webp",
+     "file": "1163-saving-typing.webp",
      "ms": 125
     },
     {
-     "file": "841-saving-typed.webp",
+     "file": "1164-saving-typed.webp",
      "ms": 420
     },
     {
-     "file": "842-saving-camera.webp",
+     "file": "1165-saving-camera.webp",
      "ms": 150
     },
     {
-     "file": "843-saving-camera.webp",
+     "file": "1166-saving-camera.webp",
      "ms": 150
     },
     {
-     "file": "844-saving-camera.webp",
+     "file": "1167-saving-camera.webp",
      "ms": 150
     },
     {
-     "file": "845-saving-camera.webp",
+     "file": "1168-saving-camera.webp",
      "ms": 150
     },
     {
-     "file": "846-saving-rest.webp",
+     "file": "1169-saving-rest.webp",
      "ms": 0
     }
    ]
@@ -3521,139 +4813,231 @@
    "id": "chrome-only",
    "frames": [
     {
-     "file": "847-chrome-only-target.webp",
+     "file": "1170-chrome-only-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1171-chrome-only-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1172-chrome-only-aim.webp",
+     "ms": 220
+    },
+    {
+     "file": "1173-chrome-only-target.webp",
      "ms": 820
     },
     {
-     "file": "848-chrome-only-blank.webp",
+     "file": "1174-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1175-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1176-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1177-chrome-only-blank.webp",
      "ms": 125
     },
     {
-     "file": "849-chrome-only-typing.webp",
+     "file": "1178-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "850-chrome-only-typing.webp",
+     "file": "1179-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "851-chrome-only-typing.webp",
+     "file": "1180-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "852-chrome-only-typing.webp",
+     "file": "1181-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "853-chrome-only-typing.webp",
+     "file": "1182-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "854-chrome-only-typing.webp",
+     "file": "1183-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "855-chrome-only-typing.webp",
+     "file": "1184-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "856-chrome-only-typing.webp",
+     "file": "1185-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "857-chrome-only-typing.webp",
+     "file": "1186-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "858-chrome-only-typing.webp",
+     "file": "1187-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "859-chrome-only-typing.webp",
+     "file": "1188-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "860-chrome-only-typing.webp",
+     "file": "1189-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "861-chrome-only-typing.webp",
+     "file": "1190-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "862-chrome-only-typing.webp",
+     "file": "1191-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "863-chrome-only-typing.webp",
+     "file": "1192-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "864-chrome-only-typing.webp",
+     "file": "1193-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "865-chrome-only-typing.webp",
+     "file": "1194-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "866-chrome-only-typing.webp",
+     "file": "1195-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "867-chrome-only-typing.webp",
+     "file": "1196-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "868-chrome-only-typing.webp",
+     "file": "1197-chrome-only-typing.webp",
      "ms": 125
     },
     {
-     "file": "869-chrome-only-typed.webp",
+     "file": "1198-chrome-only-typed.webp",
      "ms": 420
     },
     {
-     "file": "870-chrome-only-camera.webp",
+     "file": "1199-chrome-only-camera.webp",
      "ms": 150
     },
     {
-     "file": "871-chrome-only-camera.webp",
+     "file": "1200-chrome-only-camera.webp",
      "ms": 150
     },
     {
-     "file": "872-chrome-only-camera.webp",
+     "file": "1201-chrome-only-camera.webp",
      "ms": 150
     },
     {
-     "file": "873-chrome-only-camera.webp",
+     "file": "1202-chrome-only-camera.webp",
      "ms": 150
     },
     {
-     "file": "874-chrome-only-rest.webp",
+     "file": "1203-chrome-only-rest.webp",
      "ms": 0
     },
     {
-     "file": "875-chrome-only-menu.webp",
-     "ms": 700
+     "file": "1204-chrome-only-menu.webp",
+     "ms": 620
     },
     {
-     "file": "876-chrome-only-tween.webp",
+     "file": "1205-chrome-only-tween.webp",
      "ms": 150
     },
     {
-     "file": "877-chrome-only-tween.webp",
+     "file": "1206-chrome-only-tween.webp",
      "ms": 150
     },
     {
-     "file": "878-chrome-only-tween.webp",
+     "file": "1207-chrome-only-tween.webp",
      "ms": 150
     },
     {
-     "file": "879-chrome-only-tween.webp",
+     "file": "1208-chrome-only-tween.webp",
      "ms": 150
     },
     {
-     "file": "880-chrome-only-tween.webp",
+     "file": "1209-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1210-chrome-only-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1211-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1212-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1213-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1214-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1215-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1216-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1217-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1218-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1219-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1220-chrome-only-tween.webp",
+     "ms": 150
+    },
+    {
+     "file": "1221-chrome-only-menu.webp",
+     "ms": 620
+    },
+    {
+     "file": "1222-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1223-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1224-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1225-chrome-only-camera.webp",
+     "ms": 150
+    },
+    {
+     "file": "1226-chrome-only-camera.webp",
      "ms": 150
     }
    ]
@@ -3662,24 +5046,24 @@
  "extras": [
   {
    "id": "overview-wip",
-   "file": "105-overview-wip-overview.webp",
+   "file": "143-overview-wip-overview.webp",
    "ms": 0
   },
   {
    "id": "overview-learning",
-   "file": "214-overview-learning-overview.webp",
+   "file": "313-overview-learning-overview.webp",
    "ms": 0
   },
   {
    "id": "overview-modal-text",
-   "file": "493-overview-modal-text-overview.webp",
+   "file": "679-overview-modal-text-overview.webp",
    "ms": 0
   },
   {
    "id": "overview-chrome-only",
-   "file": "881-overview-chrome-only-overview.webp",
+   "file": "1227-overview-chrome-only-overview.webp",
    "ms": 0
   }
  ],
- "frames": 882
+ "frames": 1228
 }

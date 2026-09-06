@@ -1,5 +1,37 @@
 # KiDraw homepage brief
 
+## September 6, 2026 — tenth revision (the animation, in full)
+
+`site/current-homepage-criticism.org`, third round. Two of these are app
+changes, not page ones.
+
+- **Editing a label takes the camera in to 400% and centres the box** (app), and
+  the graph gets back the room the keyboard was occupying while it is hidden, so
+  the box is centred in the window rather than in the band above a keyboard that
+  is not there. The typing hint moved down beside the mode chip: the gaps hint →
+  chip and chip → edge are equal, the same rule the keyboard card follows.
+- **The animation starts where the reader is.** A box's run now opens with the
+  crosshairs riding the links from the box just finished up to the one this one
+  grows from — Move by Link held, the arrows it can follow lit — and the ghost
+  then steps across the placement grid from that box to the spot it settles on.
+  It used to cut straight to the spot with no explanation of how it got there.
+- **Every camera move is photographed while it moves**: zoom presses, pan
+  presses, link hops, the layout glide.
+- **The settled frame holds** for three quarters of the time the label took to
+  type.
+- **Placement**: spots are scored against crossing an existing arrow as well as
+  landing on one, and a wide family gets a longer arc to sit on. "Important
+  features?" is "What are some important features?" (in `index.org` too).
+- **Layout moved to the finale.** Running Force at the box that introduces it
+  left the last eight boxes to be placed into a reorganised tangle. It now runs
+  after the last box: the whole diagram is hand-placed, then tidied in one move,
+  then fitted again — Force pulls it in on itself, so the fit is part of the
+  animation.
+- **The card is filled by the capture.** `object-fit: cover` rather than
+  `contain`: the letterboxed strips down each side had no grid in them, and
+  being transparent they let the frame underneath show its own edges through —
+  the "weird coloured pixels".
+
 ## September 6, 2026 — ninth revision (placed, not laid out; and the cards slide)
 
 `site/current-homepage-criticism.org`, second round.

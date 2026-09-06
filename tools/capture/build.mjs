@@ -606,7 +606,7 @@ export const growAim = page => page.evaluate(() => {
  * how much clear space it leaves against the boxes and the arrows already
  * drawn. The lattice has already refused anything that would land on a node.
  */
-export const rankGrowCells = (page, aim, preferred = 300) => page.evaluate(([aim, preferred]) => {
+export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim, preferred]) => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
   const layer = component.drawingLayer;
   const anchor = component.growAnchor;
@@ -620,15 +620,29 @@ export const rankGrowCells = (page, aim, preferred = 300) => page.evaluate(([aim
   const boxes = others.map(node => node.group.getClientRect({relativeTo: layer}));
   const toLayer = layer.getAbsoluteTransform().copy().invert();
   const edgePoints = [];
+  const edgeSegments = [];
   for (const edge of layer.getDAEdges()) {
     const line = edge._line;
     if (!line) continue;
     const points = line.points();
+    const path = [];
     for (let at = 0; at + 1 < points.length; at += 2) {
-      edgePoints.push(toLayer.point(
-        line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]})));
+      const point = toLayer.point(
+        line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]}));
+      edgePoints.push(point);
+      path.push(point);
+    }
+    for (let at = 0; at + 1 < path.length; at++) {
+      edgeSegments.push([path[at], path[at + 1], edge.srcNode, edge.destNode]);
     }
   }
+  // Would the new arrow cross one that is already drawn? Segments sharing an
+  // endpoint node do not count: those meet at a box, they do not cross.
+  const side = (a, b, c) => Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+  const crosses = to => edgeSegments.some(([p, q, src, dest]) => {
+    if (src === anchor || dest === anchor) return false;
+    return side(from, to, p) !== side(from, to, q) && side(p, q, from) !== side(p, q, to);
+  });
   const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
   const half = {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2};
   return component.growGhostTargets
@@ -667,7 +681,10 @@ export const rankGrowCells = (page, aim, preferred = 300) => page.evaluate(([aim
       const cost = heading * 2.2
         + Math.abs(distance - preferred) / preferred
         + (gapToBox < 90 ? (90 - Math.max(gapToBox, 0)) / 90 * 2.5 : 0)
-        + (gapToEdge < 50 ? (50 - Math.max(gapToEdge, 0)) / 50 * 2 : 0)
+        // Sitting on a line is worse than sitting near one, and an arrow that
+        // crosses another is worse than either.
+        + (gapToEdge < 90 ? (90 - Math.max(gapToEdge, 0)) / 90 * 4 : 0)
+        + (crosses({x: target.x, y: target.y}) ? 6 : 0)
         + blocked * 1.5;
       return {ix, iy, cost};
     })
@@ -684,7 +701,7 @@ export const rankGrowCells = (page, aim, preferred = 300) => page.evaluate(([aim
  * connect-two-nodes gesture, so the walk steps back off it and tries the next
  * spot rather than drawing an edge nobody asked for.
  */
-export async function growAtCell(page, {parentIndex, aim = 0, refocus, onStage} = {}) {
+export async function growAtCell(page, {parentIndex, aim = 0, preferred, refocus, onStage, onAim} = {}) {
   const before = await graphShape(page);
   for (let round = 0; round < 3; round++) {
     if (round > 0 && refocus) await refocus();
@@ -692,12 +709,13 @@ export async function growAtCell(page, {parentIndex, aim = 0, refocus, onStage} 
     await settle(page, 300);
     await page.keyboard.press('d');
     await settle(page, 300);
-    const ranked = await rankGrowCells(page, aim);
+    const ranked = await rankGrowCells(page, aim, preferred);
     let landed = null;
+    if (onAim) await onAim();
     for (const [attempt, want] of ranked.slice(0, 6).entries()) {
       // The axis order alternates: if a box blocked the way along one, the
       // other way round often walks around it.
-      if (await walkToCell(page, want, attempt % 2 === 1)) {
+      if (await walkToCell(page, want, attempt % 2 === 1, onAim)) {
         landed = want;
         break;
       }
@@ -710,6 +728,7 @@ export async function growAtCell(page, {parentIndex, aim = 0, refocus, onStage} 
         if (at.kind === 'cell') break;
         await page.keyboard.press(key);
         await settle(page, 220);
+        if (onAim) await onAim();
         at = await growAim(page);
       }
       if (at.kind === 'cell') landed = at;
@@ -753,7 +772,7 @@ export async function growAtCell(page, {parentIndex, aim = 0, refocus, onStage} 
  * node stands on, so this keeps its own count and presses on. It gives up when
  * a press changes nothing, and the caller tries the next-best spot.
  */
-async function walkToCell(page, want, verticalFirst = false) {
+async function walkToCell(page, want, verticalFirst = false, onAim) {
   const delta = {l: [1, 0], h: [-1, 0], j: [0, 1], k: [0, -1]};
   let cur = {ix: 0, iy: 0};
   let stalled = 0;
@@ -777,6 +796,7 @@ async function walkToCell(page, want, verticalFirst = false) {
     const key = horizontal ? (dx > 0 ? 'l' : 'h') : (dy > 0 ? 'j' : 'k');
     await page.keyboard.press(key);
     await settle(page, 220);
+    if (onAim) await onAim();
     // The app counts from wherever it landed, including from a box it stopped
     // on, so the count carries on either way.
     cur = {ix: cur.ix + delta[key][0], iy: cur.iy + delta[key][1]};
@@ -806,26 +826,41 @@ const editingTheNewBox = page => page.evaluate(() => {
   return selected.length === 1 && selected[0] === nodes[nodes.length - 1];
 });
 
-export async function typeInto(page, text, onChar) {
+export async function typeInto(page, text, onChar, onRetry) {
   // The grow left the label editor open on the new box, in insert mode, with
   // the box selected — which is what typing appends to. Check all three rather
   // than assume: every one of them has been wrong at some point.
   if (await mode(page) !== 'edit') throw new Error(`the label editor is not open (${await mode(page)})`);
   if (!await editingTheNewBox(page)) throw new Error('the label editor is open on something else');
-  if (onChar) await onChar(null);
-  for (const [index, character] of Array.from(text).entries()) {
-    await typeLabel(page, character);
-    await settle(page, 60);
-    if (onChar) await onChar(index);
+  const label = async () => (await graphShape(page)).labels.at(-1);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      // Rare, but it happens: a keystroke lands twice and the label comes out
+      // misspelt. Back it out inside the same editor and type it again; the
+      // caller drops the frames of the spoilt take.
+      for (let press = 0; press < text.length * 2 + 8; press++) {
+        if (!(await label()).length) break;
+        await page.keyboard.press('Backspace');
+        await settle(page, 40);
+      }
+      if (onRetry) await onRetry();
+    }
+    if (onChar) await onChar(null);
+    for (const [index, character] of Array.from(text).entries()) {
+      await typeLabel(page, character);
+      await settle(page, 60);
+      if (onChar) await onChar(index);
+    }
+    if (await label() === text) {
+      await keys(page, 'Escape Escape');
+      await settle(page, 200);
+      return true;
+    }
+    console.log(`    ! typed ${JSON.stringify(await label())}, typing it again`);
   }
   await keys(page, 'Escape Escape');
-  await settle(page, 200);
-  const {labels: written} = await graphShape(page);
-  if (written[written.length - 1] !== text) {
-    throw new Error(`typed ${JSON.stringify(text)} but the new box reads ` +
-      `${JSON.stringify(written[written.length - 1])} — ${JSON.stringify(await aim(page))}`);
-  }
-  return true;
+  throw new Error(`typed ${JSON.stringify(text)} but the new box reads ` +
+    `${JSON.stringify(await label())} — ${JSON.stringify(await aim(page))}`);
 }
 
 /** What the app thinks it is pointing at — for the message when it is not what

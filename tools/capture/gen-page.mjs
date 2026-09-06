@@ -100,7 +100,7 @@ const ACTS = [
   {id: 'what', title: 'What is it?'},
   {id: 'point', title: "What's the point?"},
   {id: 'how', title: 'How does it work?'},
-  {id: 'features', title: 'Important features?'},
+  {id: 'features', title: 'What are some important features?'},
 ];
 
 let actId = 'start';
@@ -113,7 +113,7 @@ for (const entry of entries) {
 // How long a panel's window of scrolling is. Frames are paced by what they
 // stand for. A caption is two lines: it needs long enough to be read and no
 // longer, or the reader is scrolling past nothing.
-const VH_PER_SECOND = 10;
+const VH_PER_SECOND = 7;
 const CAPTION_VH = 45;
 const STILL_VH = 55;
 const MIN_RUN_VH = 45;
@@ -125,7 +125,7 @@ function stepFrames(node) {
   if (!step) throw new Error(`no frames for ${node.id}`);
   const portrait = mapMStep(node.id);
   const label = plain(node.t);
-  return step.frames.map((entry, seq) => {
+  const built = step.frames.map((entry, seq) => {
     const last = seq === step.frames.length - 1;
     // The two runs can diverge by a frame or two when one of them needs a
     // layout the other did not; pair only when the frame really matches.
@@ -139,6 +139,13 @@ function stepFrames(node) {
       alt: last ? `KiDraw after the box "${label}" was typed` : '',
     };
   });
+  // The settled frame is the one the reader is meant to look at, so it holds:
+  // three quarters of the time the label itself took to type.
+  const typed = built
+    .filter(frame => ['blank', 'typing', 'typed'].includes(frame.kind))
+    .reduce((total, frame) => total + frame.ms, 0);
+  for (const frame of built) if (frame.kind === 'rest') frame.ms = Math.round(typed * 0.75);
+  return built;
 }
 
 /** The frames behind one example: a keymenu close-up, or a short drag. */

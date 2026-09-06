@@ -133,13 +133,23 @@ The window the frames play in is centred and as wide as it can be without
 growing taller than the screen; on a phone it is edge to edge and takes the top
 two thirds.
 
-What each frame of a box's run is doing, in order: Add held with the lattice of
-placement spots showing and the chosen one aimed at; a *small* empty box — `fit` is the app's default overflow now,
-so a box is born the size of its text and the label grows it rather than filling
-a square that was already there; one frame per character typed at about eight
-characters a second; and the camera moving in on the box, selected, zoomed to 200%, centred between
-the bottom of the header and the top of the keymenu, with the crosshairs parked
-somewhere empty.
+What each frame of a box's run is doing, in order: the crosshairs riding the
+links from the box just finished up to the one this one grows from (Move by Link
+held, the arrows it can follow lit, the view travelling with it); the camera
+pulling back to where the placement grid has room; Add held, the grid of spots
+showing, and the aim stepping across it from the box it is growing from to the
+spot it settles on; a *small* empty box — `fit` is the app's default overflow
+now, so a box is born the size of its text and the label grows it rather than
+filling a square that was already there; one frame per character typed at about
+eight characters a second, close up, since the app takes the camera in to 400%
+and centres the box the moment its label opens; and the camera pulling back to
+200% and framing the box, selected, with the crosshairs parked somewhere empty.
+That settled frame then holds for three quarters of the time the label took to
+type: it is the one the reader is meant to look at.
+
+Every one of those camera moves is photographed while it happens — each zoom
+press, each pan press, each link hop — so the page plays the movement rather
+than cutting across it.
 
 The label is typed into the editor the grow itself opened, and never through
 `Edit Text`. Typing appends to the **selection**, and `Edit Text` re-picks the
@@ -162,10 +172,13 @@ direction its own branch is going, so a subtree keeps to its own part of the
 page. Nothing is pinned any more, and the pin markers the capture used to hide
 are gone with the pins.
 
-Layout runs **once**, at the box that introduces the idea — *Node/edge layout on
-demand*. There the camera pulls back, Force runs on the whole diagram, and the
-reader watches it reorganise. That is the only layout on the page, and the only
-time anything moves that the reader did not just add. Layout applies to the
+Layout runs **once**, as the finale: after the last box the camera pulls back,
+Force runs on the whole diagram, and the reader watches it tidy the thing they
+have just watched being built by hand. It waits until then because the idea has
+to be introduced first (*Node/edge layout on demand*, eight boxes earlier), and
+because a box placed into a freshly reorganised diagram is a box placed into a
+tangle. Force pulls the diagram in on itself, so the view is fitted again
+afterwards and that zoom is part of the animation. Layout applies to the
 *selection* when there is one, so the selection is cleared before the Layout key
 goes down: a selected box would be laid out on its own, with none of the edges
 or neighbours that decide where it belongs.
