@@ -230,6 +230,12 @@ A panel is either a run of frames or a caption:
   drag where an arrow re-routes around a box.
 - **Caption.** The bullets under one org heading, set large, centred, alone.
 
+A caption or an example closes the frames panel **at its box's settled frame**,
+not at the end of whatever the run went on to do: the last box of a branch is
+followed by the camera pulling back to show the branch, and watching that before
+the caption left the reader looking at frames the caption is not about. Whatever
+the run did after that box opens the next frames panel.
+
 A caption or an example closes the frames panel and takes the window for itself,
 which is the point: the build sequence is wound out of the way rather than
 sitting beside or behind the thing being explained. Each panel gets one spacer,

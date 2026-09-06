@@ -135,6 +135,7 @@ function stepFrames(node) {
       src: `assets/map/${fileOf(entry)}`,
       mobile: paired ? `assets/map-m/${fileOf(twin)}` : null,
       ms: frameMs(entry, step.frames, label),
+      kind: kindOf(entry),
       alt: last ? `KiDraw after the box "${label}" was typed` : '',
     };
   });
@@ -180,18 +181,26 @@ function panelsFor(act) {
     run.frames.push(...frames);
   };
   for (const {node} of steps) {
-    intoRun(stepFrames(node));
-    if ((node.bullets ?? []).length) {
-      run = null;
-      panels.push({kind: 'caption', bullets: node.bullets});
+    const frames = stepFrames(node);
+    const example = node.example ? exampleFrames(node.example) : [];
+    const bullets = node.bullets ?? [];
+    if (!bullets.length && !example.length) {
+      intoRun(frames);
+      continue;
     }
-    if (node.example) {
-      const frames = exampleFrames(node.example);
-      if (frames.length) {
-        run = null;
-        panels.push({kind: 'example', frames});
-      }
-    }
+    // A caption belongs to its box, so it takes the window the moment that box
+    // is settled and centred — not after whatever the run went on to do. The
+    // last box of a branch is followed by the camera pulling back to show the
+    // branch, and watching that first left the reader looking at frames the
+    // caption is not about.
+    const settled = frames.findIndex(frame => frame.kind === 'rest');
+    const shown = settled >= 0 ? frames.slice(0, settled + 1) : frames;
+    const after = settled >= 0 ? frames.slice(settled + 1) : [];
+    intoRun(shown);
+    run = null;
+    if (bullets.length) panels.push({kind: 'caption', bullets});
+    if (example.length) panels.push({kind: 'example', frames: example});
+    if (after.length) intoRun(after);
   }
   const closing = overviewAfter(steps[steps.length - 1].node.id);
   if (closing) {
