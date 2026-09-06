@@ -86,14 +86,12 @@ export async function climb(page) {
 export const undo = page => keys(page, 'u');
 
 /**
- * Clear the selection and move the crosshairs somewhere empty.
+ * Move the crosshairs somewhere empty, leaving the selection alone.
  *
- * Between one box and the next the frame should show the graph, not a crosshair
- * sitting on a label or a node lit up because it happens to be underneath.
+ * The box a frame is about stays selected — that is what the blue highlight is
+ * for — but the crosshairs should not sit on top of its label.
  */
 export async function park(page) {
-  await keys(page, 'c');
-  await settle(page, 180);
   await page.evaluate(() => {
     const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const stage = component.stage;
@@ -101,10 +99,13 @@ export async function park(page) {
     const boxes = component.drawingLayer.getDANodes()
       .map(node => node.group.getClientRect({relativeTo: stage}));
     // The keymenu covers the bottom of the stage, so stay above it.
-    const usable = stage.height() - 300;
+    // Kept well clear of the edges: the view pans to keep the crosshairs on
+    // screen, and a park near an edge would slide the frame we just centred.
+    const inset = 100;
+    const usable = stage.height() - 320;
     const candidates = [];
-    for (let x = 40; x <= stage.width() - 40; x += 60) {
-      for (let y = 40; y <= Math.max(60, usable); y += 50) candidates.push({x, y});
+    for (let x = inset; x <= stage.width() - inset; x += 60) {
+      for (let y = inset; y <= Math.max(inset + 20, usable); y += 50) candidates.push({x, y});
     }
     const clearance = point => boxes.reduce((worst, box) => {
       const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
@@ -150,8 +151,106 @@ export const zoom = page => page.evaluate(() => {
 
 /** Recenter view: zooms out until the whole graph fits. */
 export async function fit(page) {
+  // With something selected, Recenter centres on the selection without changing
+  // the zoom; the whole-graph fit only happens with nothing selected.
+  await keys(page, 'c');
+  await settle(page, 150);
   await keys(page, '[r p]');
   await settle(page, 850);
+}
+
+/** Style > Overflow > Fit on the box under the crosshairs: it shrinks to its
+ *  text instead of sitting at the default size. */
+export async function fitToText(page) {
+  await keys(page, '[w [f h]]');
+  await settle(page, 380);
+}
+
+/**
+ * Does this box overlap another one?
+ *
+ * Boxes are grown into a free slot sized for the default box, but a long label
+ * makes a wider one — so "there was room" at placement time is not the same as
+ * "there is room now". This is the other half of laying out only when space
+ * actually runs out.
+ */
+export function overlaps(page, label) {
+  return page.evaluate(text => {
+    const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const read = node => {
+      const value = node.label;
+      return typeof value === 'string' ? value : (value && value.text ? value.text() : '');
+    };
+    const nodes = component.drawingLayer.getDANodes();
+    const subject = nodes.find(node => read(node) === text);
+    if (!subject) return false;
+    const box = node => node.group.getClientRect({relativeTo: component.drawingLayer});
+    const mine = box(subject);
+    const pad = 6;
+    return nodes.some(other => {
+      if (other === subject) return false;
+      const theirs = box(other);
+      return mine.x < theirs.x + theirs.width + pad &&
+        theirs.x < mine.x + mine.width + pad &&
+        mine.y < theirs.y + theirs.height + pad &&
+        theirs.y < mine.y + mine.height + pad;
+    });
+  }, label);
+}
+
+/** A tap of Select+Drag selects the box under the crosshairs — the blue
+ *  highlight that says which box a frame is about. */
+export async function select(page) {
+  const count = () => page.evaluate(() =>
+    window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer.getSelectedDANodes().length);
+  // A tap toggles, and a freshly grown box may already be selected, so this
+  // checks rather than assuming.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const selected = await count();
+    if (process.env.CAPTURE_DEBUG) console.log(`    select: ${selected} selected`);
+    if (selected === 1) return true;
+    await keys(page, selected > 1 ? 'c' : 'v');
+    await settle(page, 300);
+  }
+  return (await count()) === 1;
+}
+
+/**
+ * Pan so a box sits in the middle of the band the reader can actually see —
+ * between the bottom of the header and the top of the keymenu, not the middle
+ * of the whole frame.
+ */
+export async function centreInBand(page, label) {
+  await settle(page, 300);
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const gap = await page.evaluate(text => {
+      const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+      // Measuring mid-tween reads a position the frame will not have.
+      component.finishTweens();
+      const read = node => {
+        const value = node.label;
+        return typeof value === 'string' ? value : (value && value.text ? value.text() : '');
+      };
+      const node = component.drawingLayer.getDANodes().find(candidate => read(candidate) === text);
+      if (!node) return null;
+      const box = node.group.getClientRect({relativeTo: component.stage});
+      const header = document.querySelector('app-header')?.getBoundingClientRect();
+      const menu = document.querySelector('app-keymenu')?.getBoundingClientRect();
+      const top = header ? header.bottom : 60;
+      const bottom = menu ? menu.top : component.stage.height() - 300;
+      return {
+        dy: (box.y + box.height / 2) - (top + bottom) / 2,
+        dx: (box.x + box.width / 2) - component.stage.width() / 2,
+      };
+    }, label);
+    if (!gap) return false;
+    if (process.env.CAPTURE_DEBUG) console.log(`    centre ${label}: dy=${Math.round(gap.dy)} dx=${Math.round(gap.dx)}`);
+    if (Math.abs(gap.dy) <= 30 && Math.abs(gap.dx) <= 40) return true;
+    if (Math.abs(gap.dy) > 30) await keys(page, gap.dy > 0 ? '[r j]' : '[r k]');
+    else await keys(page, gap.dx > 0 ? '[r l]' : '[r h]');
+    await settle(page, 420);
+  }
+  return false;
 }
 
 /** Zoom in or out until the level is near `target`, recentring as we go. */
@@ -178,10 +277,17 @@ export async function zoomTo(page, target = 100) {
  * camera pulls back far enough to show it.
  */
 export async function focus(page, label, target = 100) {
-  if (!(await goTo(page, label))) {
+  let landed = await goTo(page, label);
+  for (let attempt = 0; !landed && attempt < 3; attempt++) {
     await fit(page);
-    if (!(await goTo(page, label))) throw new Error(`cannot reach ${JSON.stringify(label)}`);
+    // Still off screen: pull back another step and try again.
+    if (attempt > 0) {
+      await keys(page, '[r o]');
+      await settle(page, 420);
+    }
+    landed = await goTo(page, label);
   }
+  if (!landed) throw new Error(`cannot reach ${JSON.stringify(label)}`);
   await keys(page, '[r u]');
   await settle(page, 520);
   await zoomTo(page, target);
@@ -241,11 +347,8 @@ export async function seed(page, text) {
  * pasted, and few enough that a long label does not cost a dozen frames.
  */
 export const MS_PER_CHAR = 125;
-export function typingChunks(text, {maxFrames = 6, minChunk = 3} = {}) {
-  const size = Math.max(minChunk, Math.ceil(text.length / maxFrames));
-  const chunks = [];
-  for (let at = 0; at < text.length; at += size) chunks.push(text.slice(at, at + size));
-  return chunks.length ? chunks : [text];
+export function typingChunks(text) {
+  return text.length ? Array.from(text) : [text];
 }
 
 /** Ghost placements to try, in order. Which one is free depends on what the

@@ -48,21 +48,32 @@ const mapM = JSON.parse(readFileSync(join(dist, 'assets', 'map-m', 'map.json'), 
 assert.equal(mapM.steps.length, map.steps.length, 'the portrait capture covers the same boxes');
 assert.ok(mapM.viewport.height / mapM.viewport.width > 1.3,
   `the portrait capture is actually portrait (${mapM.viewport.width}x${mapM.viewport.height})`);
+// The two runs are independent, so one can need a layout the other did not and
+// end up a frame or two longer. The page pairs frames only where they match and
+// falls back to the wide capture otherwise, so this checks the shapes are close
+// rather than identical.
+let paired = 0;
 for (const step of mapM.steps) {
-  assert.equal(step.frames.length, map.steps.find(other => other.id === step.id).frames.length,
-    `${step.id} has the same run in both shapes`);
+  const wide = map.steps.find(other => other.id === step.id);
+  assert.ok(wide, `${step.id} was captured in both shapes`);
+  if (wide.frames.length === step.frames.length) paired += 1;
   for (const entry of step.frames) {
     assert.ok(existsSync(join(dist, 'assets', 'map-m', fileOf(entry))), `build includes map-m/${fileOf(entry)}`);
   }
 }
+assert.ok(paired >= mapM.steps.length - 3,
+  `nearly every step lines up between the two shapes (${paired}/${mapM.steps.length})`);
 
 const demo = JSON.parse(readFileSync(join(dist, 'assets', 'demo', 'demo.json'), 'utf8'));
-assert.equal(demo.menu.length, 3, 'the keymenu break has its three frames');
+assert.equal(Object.keys(demo.digressions).length, 3, 'the three keymenu digressions were captured');
 assert.ok(demo.follow.length >= 10, `the follow sequence is long enough to read (${demo.follow.length})`);
 assert.ok(demo.avoid.length >= 5, `the avoid sequence is long enough to read (${demo.avoid.length})`);
-for (const file of [...demo.menu, ...demo.follow, ...demo.avoid]) {
+for (const file of [...demo.follow, ...demo.avoid]) {
   assert.ok(existsSync(join(dist, 'assets', 'demo', file)), `build includes ${file}`);
   assert.ok(existsSync(join(dist, 'assets', 'demo-m', file)), `build includes demo-m/${file}`);
+}
+for (const file of Object.values(demo.digressions)) {
+  assert.ok(existsSync(join(dist, 'assets', 'demo', file)), `build includes ${file}`);
 }
 
 // The older capture set still backs the review page.
@@ -143,9 +154,19 @@ try {
   await page.waitForFunction(() => document.documentElement.classList.contains('js'), null, {timeout: 5000});
 
   assert.equal(await page.title(), 'KiDraw — Connect your thoughts, at the speed you have them');
+  // The name, then what it is, then what it is for — each a step smaller.
   assert.equal(await page.locator('h1').count(), 1);
-  assert.equal((await page.locator('h1').innerText()).replace(/\s+/g, ' '),
-    'Connect your thoughts, at the speed you have them.');
+  assert.equal(await page.locator('h1').innerText(), 'KiDraw');
+  assert.equal(await page.locator('.hero-subtitle').innerText(), 'A keyboard-first diagram editor');
+  assert.equal(await page.locator('.hero-tagline').innerText(),
+    'Connect your thoughts, at the speed you have them');
+  const sizes = await page.evaluate(() => ['h1', '.hero-subtitle', '.hero-tagline']
+    .map(css => parseFloat(getComputedStyle(document.querySelector(css)).fontSize)));
+  assert.ok(sizes[0] > sizes[1] && sizes[1] > sizes[2], `each line is smaller than the last (${sizes})`);
+
+  // "diagram", not "graph".
+  const prose = await page.locator('main').innerText();
+  assert.doesNotMatch(prose, /\bgraphs?\b/i, 'the page talks about diagrams, not graphs');
   assert.equal(await page.locator('main').count(), 1);
   assert.equal(await page.locator('.byline a').filter({hasText: 'Benjamin Berman'}).count(), 1);
   assert.equal(await page.locator('footer').getByText('Benjamin Berman', {exact: false}).count(), 1);
@@ -189,6 +210,10 @@ try {
     'the outline carries every box');
   assert.equal(await page.locator('#map-outline .outline-note-item').count(), 6,
     'the org bullets are kept as notes, not turned into boxes');
+  assert.equal(await page.locator('.digression').count(), 3,
+    'the three keymenu digressions sit beside the steps they explain');
+  assert.equal(await page.locator('.step h3').count(), 0,
+    'no step repeats the label that is already in its frame');
   assert.equal(await page.locator('#outline').evaluate(element => element.open), false,
     'the outline collapses once the frames are available');
 
@@ -196,14 +221,12 @@ try {
   const whatStage = page.locator('.act').nth(1).locator('.stage');
   await readTo(page, 1, 0);
   assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^1 \/ \d+$/);
-  const openingCaption = await whatStage.locator('[data-stage-caption]').textContent();
   assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '0');
 
   // Step 2 rather than the last one: the closing overview is a single frame and
   // would settle instantly.
   await readTo(page, 1, 2);
   assert.match(await whatStage.locator('[data-stage-count]').textContent() ?? '', /^3 \/ \d+$/);
-  assert.notEqual(await whatStage.locator('[data-stage-caption]').textContent(), openingCaption);
   assert.equal(await whatStage.locator('.frame.is-on').count(), 1, 'exactly one frame is shown');
   assert.equal(await whatStage.locator('.frame.is-on').getAttribute('data-step'), '2');
   // The run plays at a human pace and settles on its last frame. Frames carry

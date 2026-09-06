@@ -17,7 +17,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const siteDir = process.env.GEN_SITE_DIR ?? join(here, '..', '..', 'site');
 const read = path => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null);
 const map = read(join(siteDir, 'assets', 'map', 'map.json'));
-const demo = read(join(siteDir, 'assets', 'demo', 'demo.json')) ?? {menu: [], follow: [], avoid: []};
+const demo = read(join(siteDir, 'assets', 'demo', 'demo.json')) ?? {digressions: {}, follow: [], avoid: []};
 // The portrait set is optional: without it the page simply serves the desktop
 // frames everywhere.
 const mapM = read(join(siteDir, 'assets', 'map-m', 'map.json'));
@@ -87,16 +87,12 @@ const overviewAfter = id => map.extras.find(extra => extra.id === `overview-${id
 // Acts: one per top-level branch, with "How does it work?" split at Advanced
 // because its two halves are a beginner's manual and a reference.
 const ACTS = [
-  {id: 'start', eyebrow: 'The first box', title: 'It starts with one box',
-   lede: 'Everything below is one graph, built inside KiDraw as you scroll. These are frames from the running app, not drawings of it.'},
-  {id: 'what', eyebrow: 'Question one', title: 'What is it?',
-   lede: 'Three answers.'},
-  {id: 'point', eyebrow: 'Question two', title: "What's the point?",
-   lede: 'One answer, in three parts.'},
-  {id: 'how', eyebrow: 'Question three', title: 'How does it work?',
-   lede: 'Five things to know about the keyboard.'},
-  {id: 'features', eyebrow: 'Question four', title: 'Important features?',
-   lede: 'What is built today.'},
+  {id: 'start', eyebrow: '', title: '',
+   lede: 'The following description of KiDraw uses actual screenshots of KiDraw.'},
+  {id: 'what', eyebrow: 'Question one', title: 'What is it?', lede: ''},
+  {id: 'point', eyebrow: 'Question two', title: "What's the point?", lede: ''},
+  {id: 'how', eyebrow: 'Question three', title: 'How does it work?', lede: ''},
+  {id: 'features', eyebrow: 'Question four', title: 'Important features?', lede: ''},
 ];
 
 // One act per branch of the outline; the root gets its own opening act.
@@ -116,9 +112,13 @@ function stageFigure(act, steps, closing) {
     const label = plain(node.t);
     step.frames.forEach((entry, seq) => {
       const last = seq === step.frames.length - 1;
+      // The two runs can diverge by a frame or two when one of them needs a
+      // layout the other did not; pair only when the frame really matches.
+      const twin = portrait && portrait.frames[seq];
+      const paired = twin && kindOf(twin) === kindOf(entry) && portrait.frames.length === step.frames.length;
       images.push('            ' + frame(
         `assets/map/${fileOf(entry)}`,
-        portrait && portrait.frames[seq] ? `assets/map-m/${fileOf(portrait.frames[seq])}` : null,
+        paired ? `assets/map-m/${fileOf(twin)}` : null,
         {
           classes: `frame${index === 0 && last ? ' is-on' : ''}`,
           attrs: ` data-step="${index}" data-seq="${seq}" data-ms="${frameMs(entry, step.frames, seq, label)}"`,
@@ -142,35 +142,50 @@ function stageFigure(act, steps, closing) {
           <div class="stage-frame">
 ${images.join('\n')}
           </div>
-          <figcaption class="stage-caption"><span data-stage-caption></span><span class="mono" data-stage-count></span></figcaption>
+          <figcaption class="stage-caption"><span class="mono" data-stage-count></span></figcaption>
         </figure>`;
+}
+
+function digression(node) {
+  if (!node.digression || !demo.digressions) return '';
+  const file = demo.digressions[node.digression];
+  if (!file) return '';
+  return `
+          <figure class="digression">
+            ${demoFrame(file, node.digressionCaption ?? '')}
+            <figcaption>${esc(node.digressionCaption ?? '')}</figcaption>
+          </figure>`;
 }
 
 function actSection(act) {
   const steps = byAct.get(act.id);
+  // No heading repeating the label: it is already in the frame, in the box the
+  // step is about. Only what the outline actually says goes here.
   const articles = steps.map(({node}, index) => {
-    const numbered = node.num ? `<span class="step-num">${node.num}</span>` : '';
-    return `        <article class="step" data-frame="${index}" data-label="${attr(plain(node.t))}">
-          <h3>${numbered}${rich(node.t)}</h3>
-          <p>${esc(node.note)}</p>
+    const bullets = (node.bullets ?? []).length
+      ? `\n          <ul class="step-bullets">${node.bullets.map(line => `<li>${esc(line)}</li>`).join('')}</ul>`
+      : '';
+    const note = node.note ? `\n          <p>${esc(node.note)}</p>` : '';
+    return `        <article class="step" data-frame="${index}" data-label="${attr(plain(node.t))}">${note}${bullets}${digression(node)}
         </article>`;
   });
   const closing = overviewAfter(steps[steps.length - 1].node.id);
-  const overview = closing ? `
-        <article class="step is-overview" data-frame="${steps.length}" data-label="the branch, zoomed out">
-          <h3>The same graph, from further away</h3>
-          <p>One press of Recenter fits the branch on screen. The words go, the shape stays.</p>
-        </article>` : '';
+  const overview = closing
+    ? `\n        <article class="step is-overview" data-frame="${steps.length}" data-label="laid out and recentred"></article>`
+    : '';
+  const head = act.title
+    ? `        <p class="eyebrow">${esc(act.eyebrow)}</p>
+        <h2 id="${act.id}-title">${esc(act.title)}</h2>`
+    : `        <h2 id="${act.id}-title" class="visually-hidden">Screenshots</h2>`;
 
   return `  <section class="act" id="${act.id}" aria-labelledby="${act.id}-title">
     <div class="wrap act-inner">
-      <div class="act-head">
-        <p class="eyebrow">${esc(act.eyebrow)}</p>
-        <h2 id="${act.id}-title">${esc(act.title)}</h2>
-        <p class="act-lede">${esc(act.lede)}</p>
+      <div class="act-head${act.title ? '' : ' is-quiet'}">
+${head}
+${act.lede ? `        <p class="act-lede">${esc(act.lede)}</p>` : ''}
       </div>
       <div class="act-stage">
-        <p class="stage-head" aria-hidden="true"><span class="stage-eyebrow">${esc(act.eyebrow)}</span>${esc(act.title)}</p>
+${act.title ? `        <p class="stage-head" aria-hidden="true"><span class="stage-eyebrow">${esc(act.eyebrow)}</span>${esc(act.title)}</p>` : ''}
 ${stageFigure(act, steps, closing)}
       </div>
       <div class="act-steps">
@@ -180,35 +195,17 @@ ${articles.join('\n')}${overview}
   </section>`;
 }
 
-const demoFrame = (file, alt, options = {}) => frame(
-  `assets/demo/${file}`,
-  demoM ? `assets/demo-m/${file}` : null,
-  {classes: options.classes ?? 'shot-frame', attrs: options.attrs ?? '', alt, lazy: options.lazy !== false},
+const demoFrame = (file, alt, options = {}) => (
+  // The keymenu digressions are one-off PNGs of a single element, the same
+  // whatever the screen: no portrait twin, no <picture>.
+  file.endsWith('.png')
+    ? `<img src="assets/demo/${file}" alt="${attr(alt)}" loading="lazy" decoding="async">`
+    : frame(
+      `assets/demo/${file}`,
+      demoM ? `assets/demo-m/${file}` : null,
+      {classes: options.classes ?? 'shot-frame', attrs: options.attrs ?? '', alt, lazy: options.lazy !== false},
+    )
 );
-
-function shot(file, label, caption) {
-  if (!file) return '';
-  return `      <figure class="shot">
-        ${demoFrame(file, caption)}
-        <figcaption><span class="shot-label">${esc(label)}</span>${esc(caption)}</figcaption>
-      </figure>`;
-}
-
-const menuBreak = demo.menu.length === 3 ? `  <section class="wrap brk" aria-labelledby="menu-title">
-    <div class="brk-head">
-      <p class="eyebrow">A break from the map</p>
-      <h2 id="menu-title">The keyboard on screen is the manual</h2>
-      <p>A four-box graph, so the keyboard is easy to read. At rest it lights only the commands that do something in the current mode. Hold one down and it becomes that command's next choices.</p>
-    </div>
-    <div class="shots three">
-${[
-  shot(demo.menu[0], 'At rest', 'Normal mode. Add, Style, Layout, Undo, Search — the dark keys do nothing right now.'),
-  shot(demo.menu[1], 'Add held', 'The same keyboard now offers what Add can make: a box, a circle, a diamond, an edge, a label.'),
-  shot(demo.menu[2], 'Add, then Box', 'Dashed outlines mark where the new box could go, and h j k l move between them.'),
-].filter(Boolean).join('\n')}
-    </div>
-    <p class="aside">Every frame on this page was taken the same way: a script pressed the keys and screenshotted the result.</p>
-  </section>` : '';
 
 /** A scroll-scrubbed sequence: sticky frames, and a column of spacers to
  *  step through them. */
@@ -216,7 +213,6 @@ function scrubber(id, title, intro, frames, captions, aside) {
   if (!frames.length) return '';
   return `  <section class="wrap drag" id="${id}" aria-labelledby="${id}-title">
     <div class="brk-head">
-      <p class="eyebrow">A break from the map</p>
       <h2 id="${id}-title">${esc(title)}</h2>
       <p>${esc(intro)}</p>
     </div>
@@ -252,15 +248,15 @@ const avoidCaptions = [
   'Released. The route holds, and nothing was drawn by hand.',
 ];
 
-const followSection = scrubber('reroute', 'Move one box; its arrows find new routes',
-  'Select+Drag is held while one box steps down. The arrows are not dragged along with it — they are computed again at every step, so the picture stays readable while you are still deciding where the box belongs. Scroll to step through the drag.',
+const followSection = scrubber('reroute', 'Move a box; its arrows find new routes',
+  'Select+Drag is held while one box steps down. Its arrows are not dragged along; they are computed again at every step. Scroll to step through it.',
   demo.follow, followCaptions,
-  'The last two frames are the release, and then one press of Layout putting the whole graph back into a tidy tree.');
+  'The last two frames are the release, and one press of Layout.');
 
 const avoidSection = scrubber('avoid', 'Push a box into an arrow, and the arrow goes around it',
-  'This is the routing goal that matters most: an arrow should not disappear behind a box. Plan points at Ship it, with Review sitting below them. As Ship it is dragged down, the straight line between Plan and Ship it would run through Review — so the router bends it over the top instead, on every keypress.',
+  'An arrow should not disappear behind a box. Plan points at Ship it, with Review below them; as Ship it is dragged down, the straight line would run through Review, so the route bends over it instead — recomputed on every keypress.',
   demo.avoid, avoidCaptions,
-  'The small circle on the line is the point the route is being pulled through. Drop one of those by hand and it becomes a waypoint you control.');
+  'The small circle on the line is the point the route is pulled through; dropping one by hand makes it a waypoint you control.');
 
 function outlineMarkup(entry, depth) {
   const pad = '  '.repeat(depth + 3);
@@ -290,7 +286,6 @@ const body = `${template}
 ${readFileSync(join(here, 'page.hero.html'), 'utf8')}
 ${actSection(ACTS[0])}
 ${actSection(ACTS[1])}
-${menuBreak}
 ${actSection(ACTS[2])}
 ${actSection(ACTS[3])}
 ${followSection}
@@ -301,8 +296,8 @@ ${avoidSection}
     <div class="close-card">
       <p class="eyebrow">Before you open it</p>
       <h2>It is an alpha. Bring a keyboard.</h2>
-      <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, some arrows still route worse than you would draw them, and the navigation model will change. Anything on this page that is not in a frame is a plan, not a feature.</p>
-      <p>The ${map.nodes} boxes above were typed into KiDraw by a script driving the real app — ${map.frames}${mapM ? ' frames of it, captured twice so a phone gets a portrait shape and a desktop a wide one' : ' frames'} in all, roughly ten per box: the keys held down, the empty box, the label going in a few characters at a time, the layout tween, and the graph at rest. Each frame is held for about as long as the keys it stands for would take to press.</p>
+      <p>Chrome, a physical keyboard, and some patience. Saving is local-only and Chrome-only, and some arrows still route worse than you would draw them.</p>
+      <p>Every frame above is a screenshot of the running app: ${map.frames} of them${mapM ? ', captured a second time in portrait for phones' : ''}, one per character typed, each held for about as long as the keypress would take.</p>
       <div class="close-actions">
         <a class="button button-primary" href="https://alpha.kidraw.net">Open alpha.kidraw.net →</a>
         <a class="button button-ghost" href="review/">Older captures</a>
@@ -311,7 +306,7 @@ ${avoidSection}
 
     <details class="outline" id="outline" open>
       <summary>The whole map, as an outline</summary>
-      <p class="outline-note">The same list the graph was built from, and the file this page began as. Numbers mark ordered steps; <span class="mono">↗</span> marks a box that also points at a box in another branch.</p>
+      <p class="outline-note">The file this page is built from. Headings are boxes; bullets are not.</p>
       <ul id="map-outline">
 ${outlineMarkup({node: OUTLINE}, 0).join('\n')}
       </ul>
@@ -321,7 +316,7 @@ ${outlineMarkup({node: OUTLINE}, 0).join('\n')}
 
 <footer class="wrap">
   <div class="foot-row">
-    <p>KiDraw — a keyboard-first graph editor by <a href="https://bnjmnbrmn.com">Benjamin Berman</a>.</p>
+    <p>KiDraw — a keyboard-first diagram editor by <a href="https://bnjmnbrmn.com">Benjamin Berman</a>.</p>
     <p><a href="https://alpha.kidraw.net">alpha.kidraw.net</a> · <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a> · <a href="review/">capture review</a></p>
   </div>
 </footer>
