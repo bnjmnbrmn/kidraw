@@ -163,6 +163,37 @@ async function main() {
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 
+  // An existing node off the lattice is still what a press toward it lands on:
+  // this is the connect-two-nodes flow, and the spots must not shadow it.
+  await resetGraph();
+  await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const b = da.drawingLayer.getDANodes().find(node => node.label.text() === 'B');
+    // Between the first and second spot east of A, and off their row.
+    b.group.x(640);
+    b.group.y(290);
+    da.drawingLayer.batchDraw();
+  });
+  await parkOn('A');
+  await page.keyboard.down('a');
+  const reached = [];
+  for (let step = 0; step < 3; step++) {
+    await page.keyboard.press('l');
+    await page.waitForTimeout(140);
+    const landing = await state();
+    reached.push(landing.target ?? landing.insertion?.id ?? null);
+    if (landing.target === 'da-b') break;
+  }
+  check('a node off the lattice is reached, not walked past',
+    reached.includes('da-b'), JSON.stringify(reached));
+  await page.keyboard.up('a');
+  await page.waitForTimeout(250);
+  current = await state();
+  check('and releasing there connects the two existing nodes',
+    current.nodes.length === 3 && current.edges.length === 1 &&
+      current.edges[0].from === 'da-a' && current.edges[0].to === 'da-b',
+    JSON.stringify({nodes: current.nodes.length, edges: current.edges}));
+
   // Start clean and walk east until the real node is reached. Ghosts are
   // intermediate stops, but existing nodes remain first-class destinations.
   await page.keyboard.press('Escape');

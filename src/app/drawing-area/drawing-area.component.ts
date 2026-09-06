@@ -7404,31 +7404,120 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!from) return false;
     const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
     const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-    const next = this.growGhostTargets.find(target => {
-      const cell = this.growLatticeCell(target.id);
-      return !!cell && cell.ix === from.ix + dx && cell.iy === from.iy + dy;
+    const anchorCentre = this.growOrigin;
+    if (!anchorCentre) return false;
+    const step = this.growLatticeStep();
+    const to = {ix: from.ix + dx, iy: from.iy + dy};
+    // Where that cell is, whether or not it is on offer: a cell the lattice
+    // withheld is usually one an existing node is standing on, and that node
+    // is what the press was aimed at.
+    const at = {
+      x: anchorCentre.x + to.ix * step.x,
+      y: anchorCentre.y + to.iy * step.y,
+    };
+    const here = this.growInsertionTarget ?? anchorCentre;
+    // A node between here and there wins: connecting two nodes must not mean
+    // walking past one of them because a placement spot lay beyond it.
+    const between = this.growNodeInTheWay(here, {x: dx, y: dy}, at);
+    if (between) {
+      this.landGrowAim(between);
+      return true;
+    }
+    const cell = this.growGhostTargets.find(target => {
+      const found = this.growLatticeCell(target.id);
+      return !!found && found.ix === to.ix && found.iy === to.iy;
     });
-    if (!next) return false;
+    if (cell) {
+      this.landGrowAim(cell);
+      return true;
+    }
+    const occupier = this.growNodeAtCell(at);
+    if (occupier) {
+      this.landGrowAim(occupier);
+      return true;
+    }
+    // Off the end of the lattice: the engine knows about everything else.
+    return false;
+  }
 
+  /** The node standing on a lattice cell — which is why the cell was not
+   *  offered — by the same geometry the builder refuses it with (da-510). */
+  private growNodeAtCell(at: {x: number; y: number}): DANode | null {
+    const anchor = this.growAnchor;
+    const clearance = 12;
+    let best: {node: DANode; distance: number} | null = null;
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node === anchor) continue;
+      const centre = this.getNodeCenterInLayerCoordinates(node);
+      const halfW = node.NODE_WIDTH / 2 + (anchor?.NODE_WIDTH ?? 0) / 2 + clearance;
+      const halfH = node.NODE_HEIGHT / 2 + (anchor?.NODE_HEIGHT ?? 0) / 2 + clearance;
+      if (Math.abs(centre.x - at.x) >= halfW || Math.abs(centre.y - at.y) >= halfH) continue;
+      const distance = Math.hypot(centre.x - at.x, centre.y - at.y);
+      if (!best || distance < best.distance) best = {node, distance};
+    }
+    return best?.node ?? null;
+  }
+
+  /**
+   * The node a hop would pass through on its way to the next lattice cell.
+   *
+   * Cells the lattice offers are, by construction, clear of node boxes — so a
+   * step that stays on the lattice can walk straight past a node standing off
+   * the grid, which is what broke connecting two existing nodes. Anything whose
+   * box reaches into the corridor of the step, and which is nearer than the
+   * cell, is taken first; a node further out is simply reached a press later.
+   */
+  private growNodeInTheWay(
+    from: {x: number; y: number},
+    step: {x: number; y: number},
+    cell: {x: number; y: number},
+  ): DANode | null {
+    const reach = Math.abs(step.x * (cell.x - from.x) + step.y * (cell.y - from.y));
+    if (reach <= 0) return null;
+    const lattice = this.growLatticeStep();
+    const corridor = (step.x !== 0 ? lattice.y : lattice.x) / 2;
+    let best: {node: DANode; along: number} | null = null;
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node === this.growAnchor) continue;
+      const centre = this.getNodeCenterInLayerCoordinates(node);
+      const dxToNode = centre.x - from.x;
+      const dyToNode = centre.y - from.y;
+      const along = step.x * dxToNode + step.y * dyToNode;
+      const across = Math.abs(step.x !== 0 ? dyToNode : dxToNode);
+      const half = (step.x !== 0 ? node.NODE_HEIGHT : node.NODE_WIDTH) / 2;
+      if (along <= 1 || along >= reach) continue;
+      if (across - half > corridor) continue;
+      if (!best || along < best.along) best = {node, along};
+    }
+    return best?.node ?? null;
+  }
+
+  /** Put the aim on a spot or a node: the ghost follows, the crosshairs ride
+   *  it, and Move by Node's memory is kept in step so a later hop off the
+   *  lattice carries on from what the reader is looking at. */
+  private landGrowAim(aim: GrowGhostTarget | DANode): void {
     this.finishTweens();
-    this.growTarget = null;
-    this.growInsertionTarget = next;
+    const ghost = 'source' in aim ? aim : null;
+    const node = ghost ? null : aim as DANode;
+    this.growTarget = node;
+    this.growInsertionTarget = ghost;
     // The lattice of spots *is* the overlay while the aim is on it; the bands
     // and rings the engine draws describe a decision that is not being made.
     this.hideNodeGrid();
     this.hideQuadrantGoalRay();
-    // Keep the engine's memory in step, so a hop off the end of the lattice
-    // carries on from the spot the reader is actually looking at.
-    this.navGridLast = {id: next.id, kind: 'node'};
-    this.quadrantNavLast = {id: next.id, kind: 'node'};
+    const id = ghost ? ghost.id : node!.id;
+    this.navGridLast = {id, kind: 'node'};
+    this.quadrantNavLast = {id, kind: 'node'};
     this.quadrantLastDirection = null;
+    const centre = ghost
+      ? {x: ghost.x, y: ghost.y}
+      : this.getNodeCenterInLayerCoordinates(node!);
     const scale = this.drawingLayer.scaleX();
     this.jumpCrosshairsToStopCenter({
-      x: this.drawingLayer.x() + next.x * scale,
-      y: this.drawingLayer.y() + next.y * scale,
+      x: this.drawingLayer.x() + centre.x * scale,
+      y: this.drawingLayer.y() + centre.y * scale,
     });
     this.redrawGrowGhost();
-    return true;
   }
 
   /** `/` in grow mode: fuzzy-search the target by label (sticky phase —

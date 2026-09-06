@@ -324,9 +324,13 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     });
 
     /** The lattice hop needs a little more of the canvas stubbed than the
-     *  engine one: it lands the crosshairs itself. */
+     *  engine one: it works in layer coordinates and lands the crosshairs
+     *  itself. Cells are 400 across and 100 down, anchored at the origin. */
     const withLattice = (component: any, ghosts: unknown[]) => {
       component.growGhostTargets = ghosts;
+      component.growOrigin = {x: 0, y: 0};
+      component.growLatticeStep = () => ({x: 400, y: 100});
+      component.getNodeCenterInLayerCoordinates = (node: any) => node.centre ?? {x: 0, y: 0};
       component.drawingLayer.x = () => 0;
       component.drawingLayer.y = () => 0;
       component.drawingLayer.scaleX = () => 1;
@@ -337,11 +341,13 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection');
       return component;
     };
+    const box = (id: string, cx: number, cy: number) =>
+      ({id, centre: {x: cx, y: cy}, NODE_WIDTH: 120, NODE_HEIGHT: 60});
 
     it('steps one cell along the lattice, without asking Move by Node', () => {
-      const anchor = {id: 'anchor'};
-      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
-      const northEast = {id: 'grow-ghost:grid:1:-1', x: 400, y: 0, source: 'grid'};
+      const anchor = box('anchor', 0, 0);
+      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
+      const northEast = {id: 'grow-ghost:grid:1:-1', x: 400, y: -100, source: 'grid'};
       const component = withLattice(buildComponent({allNodes: [anchor]}), [east, northEast]);
       component.growAnchor = anchor;
 
@@ -358,9 +364,11 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     });
 
     it('falls through to Move by Node where the lattice has no cell', () => {
-      const anchor = {id: 'anchor'};
-      const target = {id: 'target'};
-      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 100, source: 'grid'};
+      const anchor = box('anchor', 0, 0);
+      // Far past the end of the lattice, so it is neither in the way of the
+      // next cell nor standing on it.
+      const target = box('target', 4000, 0);
+      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
       const component = withLattice(
         buildComponent({allNodes: [anchor, target]}), [east]);
       component.growAnchor = anchor;
@@ -380,6 +388,36 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
       expect(component.growTarget).toBe(target);
       expect(component.growInsertionTarget).toBeNull();
+    });
+
+    it('takes an existing node standing between the aim and the next cell', () => {
+      const anchor = box('anchor', 0, 0);
+      // Off the lattice, half a cell short of the spot beyond it.
+      const between = box('between', 200, 0);
+      const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
+      const component = withLattice(
+        buildComponent({allNodes: [anchor, between]}), [east]);
+      component.growAnchor = anchor;
+
+      component.growHop('right');
+
+      expect(component.growTarget).toBe(between);
+      expect(component.growInsertionTarget).toBeNull();
+      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
+    });
+
+    it('takes the node a withheld cell is standing on', () => {
+      const anchor = box('anchor', 0, 0);
+      // On the cell, which is therefore not offered at all.
+      const sitting = box('sitting', 400, 0);
+      const component = withLattice(
+        buildComponent({allNodes: [anchor, sitting]}), []);
+      component.growAnchor = anchor;
+
+      component.growHop('right');
+
+      expect(component.growTarget).toBe(sitting);
+      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
     });
 
     it('turns a pristine release over a node into a self-loop', () => {
