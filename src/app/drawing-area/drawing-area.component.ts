@@ -7379,6 +7379,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
 
+  /** The cell of the placement lattice a node is standing on, if it is near
+   *  enough to one to carry on walking from. */
+  private growCellOfNode(
+    node: DANode,
+    anchorCentre: {x: number; y: number},
+    step: {x: number; y: number},
+  ): {ix: number; iy: number} | null {
+    const centre = this.getNodeCenterInLayerCoordinates(node);
+    const ix = Math.round((centre.x - anchorCentre.x) / step.x);
+    const iy = Math.round((centre.y - anchorCentre.y) / step.y);
+    if (!ix && !iy) return null;
+    const off = Math.max(
+      Math.abs(centre.x - anchorCentre.x - ix * step.x) / step.x,
+      Math.abs(centre.y - anchorCentre.y - iy * step.y) / step.y,
+    );
+    return off <= 0.6 ? {ix, iy} : null;
+  }
+
   /** Which cell of the placement lattice a ghost target is, if it is one. */
   private growLatticeCell(id: string | null | undefined): {ix: number; iy: number} | null {
     const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(id ?? '');
@@ -7397,16 +7415,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * has nothing there, which is how the real nodes beyond it stay reachable.
    */
   private growHopOnLattice(direction: 'left' | 'right' | 'up' | 'down'): boolean {
-    if (this.growTarget) return false;
-    const from = this.growInsertionTarget
-      ? this.growLatticeCell(this.growInsertionTarget.id)
-      : {ix: 0, iy: 0};
-    if (!from) return false;
-    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     const anchorCentre = this.growOrigin;
     if (!anchorCentre) return false;
     const step = this.growLatticeStep();
+    // Aiming at a node is not the end of the walk. The node stands on (or near)
+    // a cell of the same lattice, so pressing on from it carries on across the
+    // grid — otherwise a spot behind a neighbour could not be reached at all,
+    // and a diagonal one is only ever reached through its orthogonal
+    // neighbours.
+    const from = this.growInsertionTarget
+      ? this.growLatticeCell(this.growInsertionTarget.id)
+      : this.growTarget
+        ? this.growCellOfNode(this.growTarget, anchorCentre, step)
+        : {ix: 0, iy: 0};
+    if (!from) return false;
+    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
+    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     const to = {ix: from.ix + dx, iy: from.iy + dy};
     // Where that cell is, whether or not it is on offer: a cell the lattice
     // withheld is usually one an existing node is standing on, and that node
@@ -7415,7 +7439,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: anchorCentre.x + to.ix * step.x,
       y: anchorCentre.y + to.iy * step.y,
     };
-    const here = this.growInsertionTarget ?? anchorCentre;
+    const here = this.growInsertionTarget
+      ?? (this.growTarget ? this.getNodeCenterInLayerCoordinates(this.growTarget) : anchorCentre);
     // A node between here and there wins: connecting two nodes must not mean
     // walking past one of them because a placement spot lay beyond it.
     const between = this.growNodeInTheWay(here, {x: dx, y: dy}, at);

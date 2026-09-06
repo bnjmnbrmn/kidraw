@@ -216,16 +216,20 @@ function panelsFor(act) {
 
 function panelMarkup(panel, index, first) {
   const body = panel.kind === 'caption'
-    ? `\n            <ul class="panel-bullets">${panel.bullets.map(line => `<li>${esc(line)}</li>`).join('')}</ul>\n          `
-    : `\n${panel.frames.map((frame, seq) => '            ' + picture(frame.src, frame.mobile, {
+    ? `\n              <ul class="panel-bullets">${panel.bullets.map(line => `<li>${esc(line)}</li>`).join('')}</ul>\n            `
+    : `\n${panel.frames.map((frame, seq) => '              ' + picture(frame.src, frame.mobile, {
       classes: `frame${first && seq === 0 ? ' is-on' : ''}`,
       attrs: ` data-frame="${seq}" data-ms="${Math.max(frame.ms, 120)}"`,
       alt: frame.alt,
       lazy: !(first && seq === 0),
       size: frame.size,
-    })).join('\n')}\n          `;
+    })).join('\n')}\n            `;
   const wide = (panel.frames ?? []).some(frame => frame.wide) ? ' data-wide' : '';
-  return `          <div class="panel" data-panel="${index}" data-kind="${panel.kind}"${wide} style="--i:${index}">${body}</div>`;
+  // The card, not the window, is what the reader sees slide: it carries the
+  // border and the ground, and the panel around it is the gap between cards.
+  return `          <div class="panel" data-panel="${index}" data-kind="${panel.kind}"${wide} style="--i:${index}">
+            <div class="card">${body}</div>
+          </div>`;
 }
 
 function actSection(act) {

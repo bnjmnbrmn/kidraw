@@ -23,7 +23,7 @@ import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {goTo, goToNewest, growEmpty, typeInto, pinBox, fit, focus,
+import {goTo, goToNewest, growAtCell, typeInto, nodeCentre, fit, focus,
         park, select, centreInBand, frameAbove, zoomTo, settle, labels, edges,
         MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
@@ -39,7 +39,8 @@ const PROFILES = {
 };
 const profile = PROFILES[process.env.CAPTURE_PROFILE ?? 'desktop'];
 if (!profile) throw new Error(`unknown CAPTURE_PROFILE ${process.env.CAPTURE_PROFILE}`);
-const outDir = join(here, '..', '..', 'site', 'assets', profile.dir);
+// CAPTURE_OUT lets a trial run write somewhere that is not the live asset set.
+const outDir = process.env.CAPTURE_OUT ?? join(here, '..', '..', 'site', 'assets', profile.dir);
 rmSync(outDir, {recursive: true, force: true});
 mkdirSync(outDir, {recursive: true});
 
@@ -129,22 +130,50 @@ async function typeLabelFrames(id, frames, label) {
   });
 }
 
-/** Let the box find its place, and watch it go. */
-async function findItsPlace(id, frames, label) {
-  // Layout runs on the selection when there is one, and on the whole diagram
-  // when there is not. A selected box would be laid out on its own, with none
-  // of the edges or neighbours that decide where it belongs.
+/**
+ * Force layout, once, where the diagram says what it is for.
+ *
+ * The build places every box itself, on the lattice, and never lays the
+ * diagram out along the way — that is what used to make it jump. The one time
+ * the reader sees a layout run is the box that introduces the idea, and there
+ * it is the whole diagram that moves, zoomed out far enough to watch it
+ * happen.
+ */
+async function showForceLayout(id, frames) {
   await keys(page, 'c');
   await settle(page, 220);
+  await showRecenter(id, frames);
+  await park(page);
   await page.keyboard.down('b');
   await settle(page, 420);
   frames.push(await keep(id, 'menu'));
   await page.keyboard.press('k');
-  await during(id, frames, TWEEN_SHOTS);
+  await during(id, frames, TWEEN_SHOTS * 2);
   await page.keyboard.up('b');
-  await settle(page, 500);
-  // Pinned, so the next box's layout leaves this one alone.
-  if (!await pinBox(page, label)) throw new Error(`could not pin ${id}`);
+  await settle(page, 900);
+  await frameAbove(page);
+  await park(page);
+  frames.push(await keep(id, 'overview'));
+}
+
+/**
+ * Which way this box should go from its parent, in radians.
+ *
+ * The four questions take a quarter of the canvas each; everything below fans
+ * around the direction its own branch is already heading, so a subtree keeps
+ * to its own part of the page.
+ */
+const QUARTERS = [-Math.PI / 4, Math.PI / 4, (3 * Math.PI) / 4, (-3 * Math.PI) / 4];
+const FAN = Math.PI * 0.8;
+async function aimFor(node, parent, grandparent) {
+  const kin = parent.c;
+  const index = kin.indexOf(node);
+  const fan = FAN * (index - (kin.length - 1) / 2) / Math.max(kin.length, 2);
+  if (!grandparent) return QUARTERS[index % QUARTERS.length];
+  const from = await nodeCentre(page, plain(grandparent.t));
+  const to = await nodeCentre(page, plain(parent.t));
+  if (!from || !to) return fan;
+  return Math.atan2(to.y - from.y, to.x - from.x) + fan;
 }
 
 /** Frame the box a step is about: zoomed in, centred in the visible band, still
@@ -192,7 +221,6 @@ await keys(page, 'a');
 await settle(page, 500);
 await typeLabelFrames('kidraw', opening, rootLabel);
 index.set(entries[0].node.id, 0);
-await findItsPlace('kidraw', opening, rootLabel);
 await frameBox('kidraw', opening, rootLabel);
 opening.push(await keep('kidraw', 'rest'));
 steps.push({id: 'kidraw', frames: opening});
@@ -205,8 +233,10 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   const parentLabel = plain(parent.t);
   await fit(page);
   await focus(page, parentLabel, BUILD_ZOOM);
-  const {index: mine} = await growEmpty(page, {
+  const grandparent = entries.find(entry => entry.node === parent)?.parent ?? null;
+  const {index: mine} = await growAtCell(page, {
     parentIndex: index.get(parent.id),
+    aim: await aimFor(node, parent, grandparent),
     refocus: () => focus(page, parentLabel, BUILD_ZOOM),
     onStage: provisional,
   });
@@ -214,9 +244,10 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   const frames = commit(node.id);
   await settle(page, 500);
   await typeLabelFrames(node.id, frames, label);
-  await findItsPlace(node.id, frames, label);
   await frameBox(node.id, frames, label);
   frames.push(await keep(node.id, 'rest'));
+  // The one place a layout runs: the box that introduces the idea.
+  if (node.id === 'layout') await showForceLayout(node.id, frames);
 
   // A look at the whole diagram when a branch is done — camera only.
   const next = entries[at + 1];

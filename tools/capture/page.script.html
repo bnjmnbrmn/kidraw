@@ -146,8 +146,8 @@
     window.requestAnimationFrame(function () { queued = false; update(); });
   }
 
-  // A panel that is wider than its window starts in the middle of the picture.
-  slice(document.querySelectorAll('.panel[data-wide]')).forEach(function (panel) {
+  // A card that is wider than its window starts in the middle of the picture.
+  slice(document.querySelectorAll('.panel[data-wide] .card')).forEach(function (panel) {
     var centre = function () { panel.scrollLeft = (panel.scrollWidth - panel.clientWidth) / 2; };
     centre();
     window.addEventListener('resize', centre);

@@ -9,9 +9,11 @@ homepage can load without the editor's application bundle.
 The page is built around one idea: the whole argument is a single diagram, and
 you watch it get built. The page says "diagram" throughout, never "graph".
 
-**The page writes nothing of its own.** Every word on it is `index.org`: the
+**The page writes almost nothing of its own.** Its words are `index.org` — the
 headings, which are the boxes in the diagram, and the bullets, which are the
-captions. Everything else on screen is a screenshot of the running KiDraw app,
+captions — plus three lines of hero and the two links: the name, what it is,
+what it is for, and the invitation to say what would make it better. Everything
+else on screen is a screenshot of the running KiDraw app,
 taken by a script that pressed the keys. Each of the twenty-eight boxes is a
 short animation — the keys held down with the dashed targets showing, a small
 empty box, the label growing it letter by letter, the box gliding to the place
@@ -19,7 +21,7 @@ an approximate force layout finds for it, and the camera moving in to frame it,
 selected — and the org file's "breaks in the sequence" are there too: three
 keymenu close-ups and a drag where an arrow re-routes around a box pushed into
 it. The smoke test enforces the rule, comparing every line of visible text
-against the org file.
+against the org file plus that short list.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -131,12 +133,11 @@ The window the frames play in is centred and as wide as it can be without
 growing taller than the screen; on a phone it is edge to edge and takes the top
 two thirds.
 
-What each frame of a box's run is doing, in order: Add held with the dashed
-targets showing; a *small* empty box — `fit` is the app's default overflow now,
+What each frame of a box's run is doing, in order: Add held with the lattice of
+placement spots showing and the chosen one aimed at; a *small* empty box — `fit` is the app's default overflow now,
 so a box is born the size of its text and the label grows it rather than filling
 a square that was already there; one frame per character typed at about eight
-characters a second; the Layout key going down and the box gliding to where Force puts it;
-and the camera moving in on the box, selected, zoomed to 200%, centred between
+characters a second; and the camera moving in on the box, selected, zoomed to 200%, centred between
 the bottom of the header and the top of the keymenu, with the crosshairs parked
 somewhere empty.
 
@@ -149,26 +150,25 @@ nowhere at all, silently. The grow's own editor is already on the new box,
 already in insert, already selected. All three facts are checked before a
 character is typed, and the label is read back afterwards.
 
-**The diagram is never laid out globally.** A box that has found its place is
-pinned — `Toggle Pin`, one press, with the box selected, and by label rather
-than by "the newest node", since the layout has just moved it and may have
-carried it off screen — and `applyLayout`
-only moves what is unpinned. So the Force layout that runs after each box moves
-that box and nothing else: it slides from the slot it was grown into to
-somewhere clear of the nodes *and* the edges already on the canvas (the "clear"
-variant adds node-to-edge repulsion), while everything around it stays exactly
-where the reader last saw it. The whole-graph tree layouts, which used to run at
-each branch end and whenever a box would not fit, are gone; so is the jump they
-made. The shape the diagram ends up in is an approximate force layout, built one
-box at a time.
+**The diagram is not laid out as it is built.** Every box is grown straight
+onto a chosen cell of the held-Add lattice — the grid of placement spots, which
+is what that grid is for — so the shape of the finished diagram is the capture's
+own decision, and nothing ever jumps. `rankGrowCells` picks the spot: it scores
+every cell the app is offering on whether it carries on the way the branch is
+already heading, whether it sits a comfortable distance out, and how much clear
+space it leaves against the boxes and the arrows already drawn. The four
+questions take a quarter of the canvas each; below them a family fans around the
+direction its own branch is going, so a subtree keeps to its own part of the
+page. Nothing is pinned any more, and the pin markers the capture used to hide
+are gone with the pins.
 
-Two details make that work. Layout applies to the *selection* when there is one,
-so the selection is cleared before the key goes down — a selected box would be
-laid out on its own, with none of the edges or neighbours that decide where it
-belongs. And the app draws a small square on a pinned node whenever the grid
-indicators are up, which is every frame here; the capture hides those markers
-before each shot, since they are an artefact of how the run is driven rather
-than anything the reader is being shown.
+Layout runs **once**, at the box that introduces the idea — *Node/edge layout on
+demand*. There the camera pulls back, Force runs on the whole diagram, and the
+reader watches it reorganise. That is the only layout on the page, and the only
+time anything moves that the reader did not just add. Layout applies to the
+*selection* when there is one, so the selection is cleared before the Layout key
+goes down: a selected box would be laid out on its own, with none of the edges
+or neighbours that decide where it belongs.
 
 **Anything that moves is photographed while it moves.** The layout glide and
 every camera step — each zoom press, each pan press — take a burst of frames, so
@@ -178,9 +178,12 @@ weight.
 
 Three things about the capture are worth knowing:
 
-- **Placement is trial and error, and that is fine.** The ghost targets are a
-  lattice around the parent, three cells each way and diagonals included; a
-  press steps one cell in that direction. `growEmpty` walks one to five steps in each direction in turn and
+- **Placement is aimed, and then checked.** The ghost targets are a lattice
+  around the parent, three cells each way and diagonals included; a press steps
+  one cell in that direction, and the walk to the chosen cell checks after every
+  press what the app thinks is aimed at. A node standing in the way takes the
+  aim — that is the connect-two-nodes gesture — so the walk backs out and tries
+  the next-best spot rather than drawing an edge nobody asked for. `growEmpty` walks one to five steps in each direction in turn and
   checks after each try that a *new box joined to the parent* appeared. A try
   that drew an edge to an existing box, or left a box floating, is undone —
   nodes and edges both, since a placement that landed on an existing box adds an
@@ -245,7 +248,11 @@ older captures from the frame's kind and the length of the label.
 
 The last 18% of a panel's spacer is the handover: the reel winds on by one
 window, so the frames slide up and out while the caption or example rises into
-the place they just left.
+the place they just left. **What slides is a card, not the content inside a
+fixed frame.** The border and the ground belong to each panel's `.card`, and the
+panel around it is the gap the two cards pass each other through, so the reader
+sees one box leave as the next arrives — and, when the caption or example is
+done, the box of frames slide back up into its place.
 
 Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
 at the portrait capture, and an `<img>` with the wide one. The two sets are

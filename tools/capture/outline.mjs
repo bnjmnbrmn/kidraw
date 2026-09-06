@@ -18,7 +18,7 @@ export const OUTLINE = n('kidraw', 'KiDraw', {kind: 'root'}, [
   n('what', 'What is it?', {kind: 'q'}, [
     n('diagram-editor', 'Diagram editor'),
     n('keyboard-oriented', 'Keyboard-oriented',
-      {bullets: ['Inspired by the vi coding editor', 'Discoverable shortcuts']}),
+      {bullets: ['Inspired by the vi coding editor', 'Explorable keybindings']}),
     n('wip', 'A WIP experiment'),
   ]),
 

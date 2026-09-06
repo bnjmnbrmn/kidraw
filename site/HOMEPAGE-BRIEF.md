@@ -1,5 +1,32 @@
 # KiDraw homepage brief
 
+## September 6, 2026 — ninth revision (placed, not laid out; and the cards slide)
+
+`site/current-homepage-criticism.org`, second round.
+
+- **The three hero lines are back**, and a fourth: "A work in progress. I'd love
+  to hear your ideas about how to improve it." Those four and the two links are
+  now the whole of the page's own voice; `smoke.mjs` checks every other line
+  against `index.org`.
+- **"Discoverable shortcuts" is "Explorable keybindings"** — in `index.org`
+  itself, and in the outline the capture reads.
+- **Much less auto-layout.** The build no longer lays the diagram out at all
+  while it grows. Every box is placed straight onto a chosen cell of the
+  held-Add lattice — the grid of spots added to the app the same day — scored on
+  whether it carries on the way the branch is heading, sits a comfortable
+  distance out, and leaves clear space against the boxes and arrows already
+  drawn. The four questions take a quarter of the canvas each and each family
+  fans around its own heading, so subtrees stay out of each other's way. Layout
+  runs exactly once, at the box that introduces it (*Node/edge layout on
+  demand*): the camera pulls back and Force reorganises the whole diagram while
+  the reader watches. Nothing is pinned any more, and the pin markers the
+  capture had to hide went with the pins.
+- **A card slides, not the picture inside a frame.** The border and the ground
+  moved from the window to each panel, so when the build hands over to a caption
+  or an example the reader sees one box slide up and out and the next slide up
+  into its place — and back to the build's box when the caption is done. The gap
+  between them is the panel's padding.
+
 ## September 6, 2026 — eighth revision (an approximate force layout, one box at a time)
 
 Ben, on the seventh: follow an approximate force layout instead of running the

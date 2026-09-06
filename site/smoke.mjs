@@ -166,7 +166,17 @@ const orgWords = [
   ...[...org.matchAll(/^\*+\s+(.*)$/gm)].map(match => match[1]),
   ...[...org.matchAll(/^-\s+(.*)$/gm)].map(match => match[1]),
 ].map(line => line.replace(/[=_]([^=_]+)[=_]/g, '$1').trim());
-const chrome = ['KiDraw', 'alpha.kidraw.net →', 'Older captures', 'index.org'];
+// The page's own words, all of them: three lines of hero and the links. Ben
+// asked for these back on 2026-09-06; everything else on the page is org.
+const chrome = [
+  'KiDraw',
+  'A keyboard-first diagram editor',
+  'Connect your thoughts, at the speed you have them',
+  "A work in progress. I'd love to hear your ideas about how to improve it.",
+  'alpha.kidraw.net →',
+  'Older captures',
+  'index.org',
+];
 
 try {
   const desktop = await openPage({width: 1440, height: 1000});
@@ -177,6 +187,14 @@ try {
   assert.equal(await page.locator('h1').count(), 1);
   assert.equal(await page.locator('h1').innerText(), 'KiDraw');
   assert.equal(await page.locator('main').count(), 1);
+  // The name, then what it is, then what it is for — each a step smaller.
+  assert.equal(await page.locator('.hero-subtitle').innerText(), 'A keyboard-first diagram editor');
+  assert.equal(await page.locator('.hero-tagline').innerText(),
+    'Connect your thoughts, at the speed you have them');
+  assert.match(await page.locator('.hero-note').innerText(), /^A work in progress\./);
+  const sizes = await page.evaluate(() => ['h1', '.hero-subtitle', '.hero-tagline']
+    .map(css => parseFloat(getComputedStyle(document.querySelector(css)).fontSize)));
+  assert.ok(sizes[0] > sizes[1] && sizes[1] > sizes[2], `each line is smaller than the last (${sizes})`);
 
   // Nothing on the page is written by the page: its words are the org file's
   // headings, which are the boxes, and its bullets, which are the captions.
@@ -219,6 +237,23 @@ try {
   );
   const frames = await page.locator('.frame').count();
   assert.ok(frames > 700, `the whole capture is on the page (${frames} frames)`);
+  // What slides is a card, not the content inside a fixed frame: the border and
+  // the ground belong to the panel's card, so one box leaves as the next
+  // arrives.
+  assert.equal(await page.locator('.panel > .card').count(),
+    await page.locator('.panel').count(), 'every panel is a card');
+  assert.equal(
+    await page.locator('#what .panel .card').first().evaluate(
+      element => getComputedStyle(element).borderTopWidth),
+    '1px',
+    'the card carries the outline that travels with it',
+  );
+  assert.equal(
+    await page.locator('.stage-box').first().evaluate(
+      element => getComputedStyle(element).borderTopWidth),
+    '0px',
+    'and the window it slides through has none',
+  );
 
   // The outline is the content of record, and the diagram was built from it.
   assert.equal(await page.locator('#map-outline li[data-id]').count(), 28, 'the outline carries every box');
@@ -299,7 +334,7 @@ try {
   );
   // A keymenu close-up is a wide strip: on a phone it is drawn bigger than the
   // window and starts in the middle of the picture rather than fitted to width.
-  const panned = await mobile.page.locator('#how .panel[data-wide]').first().evaluate(panel => ({
+  const panned = await mobile.page.locator('#how .panel[data-wide] .card').first().evaluate(panel => ({
     over: panel.scrollWidth / panel.clientWidth,
     left: panel.scrollLeft,
   }));

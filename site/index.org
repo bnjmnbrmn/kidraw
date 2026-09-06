@@ -7,7 +7,7 @@ As the user scrolls down, they should see a diagram be built with the following.
 *** Diagram editor
 *** Keyboard-oriented
 - Inspired by the vi coding editor
-- Discoverable shortcuts
+- Explorable keybindings
 *** A WIP experiment
 
 ** What's the point?

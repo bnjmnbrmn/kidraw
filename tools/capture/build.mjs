@@ -260,7 +260,12 @@ export async function zoomTo(page, target = 100, onStep) {
   let changed = false;
   for (let step = 0; step < 5; step++) {
     const level = await zoom(page);
-    if (level >= target * 0.7 && level <= target * 1.45) break;
+    // A tight window, so every box is framed at the same scale: the zoom
+    // ladder steps by about a third, and 0.85-1.2 is wide enough to always
+    // contain one of its stops while excluding the stop either side of the
+    // target (a run where one box was shot at 200% and the next at 266% reads
+    // as the camera lurching).
+    if (level >= target * 0.85 && level <= target * 1.2) break;
     await keys(page, level < target ? '[r i]' : '[r o]');
     if (onStep) await onStep();
     await settle(page, 300);
@@ -568,84 +573,215 @@ export const newBoxIsClear = page => page.evaluate(() => {
   return true;
 });
 
-/** Walk the ghost lattice: three cells each way around the anchor, diagonals
- *  included. A press steps one cell in that direction, so repeating one walks
- *  out along the row or column; cells whose box would land on a node are not
- *  offered at all. */
-export const GHOST_WALKS = (() => {
-  const walks = [];
-  for (let steps = 1; steps <= 5; steps++) {
-    for (const direction of ['j', 'l', 'k', 'h']) {
-      walks.push(Array(steps).fill(direction).join(' '));
-    }
-  }
-  return walks;
-})();
+/** The centre of a node, in drawing-layer coordinates. */
+export const nodeCentre = (page, label) => page.evaluate(text => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  const read = node => {
+    const value = node.label;
+    if (!value) return '';
+    return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
+  };
+  const node = component.drawingLayer.getDANodes().find(candidate => read(candidate) === text);
+  if (!node) return null;
+  const box = node.group.getClientRect({relativeTo: component.drawingLayer});
+  return {x: box.x + box.width / 2, y: box.y + box.height / 2};
+}, label);
+
+/** Which spot the held-Add aim is on: a lattice cell, a node, or nothing. */
+export const growAim = page => page.evaluate(() => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  if (component.growTarget) return {kind: 'node'};
+  const id = component.growInsertionTarget?.id ?? '';
+  const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(id);
+  return match ? {kind: 'cell', ix: Number(match[1]), iy: Number(match[2])} : {kind: 'none'};
+});
 
 /**
- * Add an empty box joined to the node under the crosshairs.
+ * Rank the spots on offer for where this box should go.
  *
- * The label is not typed here: the box is fitted to its (empty) text first, so
- * it starts small and grows letter by letter. That means the usual "did the
- * right edge appear" check cannot go by label, so it goes by node count and by
- * the edge landing on the box that was just created.
+ * The build places every box itself now — there is no layout pass to tidy up
+ * after it — so this is where the shape of the diagram is decided. A spot is
+ * judged on three things: whether it carries on the way the branch is already
+ * heading (`aim`, in radians), whether it sits a comfortable distance out, and
+ * how much clear space it leaves against the boxes and the arrows already
+ * drawn. The lattice has already refused anything that would land on a node.
  */
-export async function growEmpty(page, {parentIndex, refocus, onStage, walks = GHOST_WALKS} = {}) {
+export const rankGrowCells = (page, aim, preferred = 300) => page.evaluate(([aim, preferred]) => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  const layer = component.drawingLayer;
+  const anchor = component.growAnchor;
+  if (!anchor) return [];
+  const centreOf = node => {
+    const box = node.group.getClientRect({relativeTo: layer});
+    return {x: box.x + box.width / 2, y: box.y + box.height / 2};
+  };
+  const from = centreOf(anchor);
+  const others = layer.getDANodes().filter(node => node !== anchor);
+  const boxes = others.map(node => node.group.getClientRect({relativeTo: layer}));
+  const toLayer = layer.getAbsoluteTransform().copy().invert();
+  const edgePoints = [];
+  for (const edge of layer.getDAEdges()) {
+    const line = edge._line;
+    if (!line) continue;
+    const points = line.points();
+    for (let at = 0; at + 1 < points.length; at += 2) {
+      edgePoints.push(toLayer.point(
+        line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]})));
+    }
+  }
+  const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  const half = {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2};
+  return component.growGhostTargets
+    .map(target => {
+      const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(target.id);
+      if (!match) return null;
+      const dx = target.x - from.x;
+      const dy = target.y - from.y;
+      const heading = turn(Math.atan2(dy, dx), aim);
+      const distance = Math.hypot(dx, dy);
+      // Room around the spot: the gap to the nearest box, and to the nearest
+      // point on an arrow. Both are capped — past a screenful they stop being
+      // a reason to prefer one spot over another.
+      const gapToBox = boxes.reduce((worst, box) => Math.min(worst,
+        Math.max(box.x - (target.x + half.w), target.x - half.w - (box.x + box.width),
+                 box.y - (target.y + half.h), target.y - half.h - (box.y + box.height))),
+        Infinity);
+      const gapToEdge = edgePoints.reduce((worst, point) => Math.min(worst,
+        Math.max(Math.abs(point.x - target.x) - half.w, Math.abs(point.y - target.y) - half.h)),
+        Infinity);
+      // Getting there matters as much as being there: the aim walks the
+      // lattice cell by cell, and a box sitting on one of those cells takes
+      // the aim (that is the connect-two-nodes gesture). A spot behind a
+      // neighbour is a spot the walk will not reach.
+      const ix = Number(match[1]);
+      const iy = Number(match[2]);
+      const stepX = ix === 0 ? 0 : (target.x - from.x) / ix;
+      const stepY = iy === 0 ? 0 : (target.y - from.y) / iy;
+      let blocked = 0;
+      for (let step = 1; step <= Math.abs(ix) + Math.abs(iy); step++) {
+        const cx = from.x + Math.min(step, Math.abs(ix)) * Math.sign(ix) * Math.abs(stepX || 0);
+        const cy = from.y + Math.max(0, step - Math.abs(ix)) * Math.sign(iy) * Math.abs(stepY || 0);
+        if (boxes.some(box => cx > box.x - half.w && cx < box.x + box.width + half.w &&
+                              cy > box.y - half.h && cy < box.y + box.height + half.h)) blocked++;
+      }
+      const cost = heading * 2.2
+        + Math.abs(distance - preferred) / preferred
+        + (gapToBox < 90 ? (90 - Math.max(gapToBox, 0)) / 90 * 2.5 : 0)
+        + (gapToEdge < 50 ? (50 - Math.max(gapToEdge, 0)) / 50 * 2 : 0)
+        + blocked * 1.5;
+      return {ix, iy, cost};
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.cost - b.cost)
+    .slice(0, 8);
+}, [aim, preferred]);
+
+/**
+ * Grow a child onto a chosen cell of the placement lattice.
+ *
+ * Add is held once and the aim walked to the best-scoring spot. Walking is the
+ * fiddly part: a node standing in the way takes the aim, because that is the
+ * connect-two-nodes gesture, so the walk steps back off it and tries the next
+ * spot rather than drawing an edge nobody asked for.
+ */
+export async function growAtCell(page, {parentIndex, aim = 0, refocus, onStage} = {}) {
   const before = await graphShape(page);
-  let fallback = null;
-  for (const [attempt, walk] of walks.entries()) {
-    if (attempt > 0 && refocus) await refocus();
+  for (let round = 0; round < 3; round++) {
+    if (round > 0 && refocus) await refocus();
     await page.keyboard.down('a');
     await settle(page, 300);
     await page.keyboard.press('d');
-    await settle(page, 280);
-    for (const step of walk.split(' ')) {
-      await page.keyboard.press(step);
-      await settle(page, 200);
-    }
-    if (onStage) await onStage('target', {ms: 820});
-    await page.keyboard.up('a');
-    await settle(page, 260);
-    // A new box opens label edit; landing on an existing node only draws an
-    // edge and leaves us in normal mode. The editor the grow opened is left
-    // open on success: it is already pointed at the new box, which nothing
-    // else reliably is.
-    const opened = /edit/.test(await mode(page));
-    if (opened) {
-      const now = await graphShape(page);
-      const grown = now.labels.length - 1;
-      const joined = now.edges.some(([from, to]) =>
-        (from === parentIndex && to === grown) || (to === parentIndex && from === grown));
-      if (now.labels.length === before.labels.length + 1 && joined) {
-        if (await newBoxIsClear(page)) return {index: grown, walk};
-        // Structurally right but sitting on an edge: remember it, look for a
-        // clear one, and come back to this only if there is none.
-        if (!fallback) fallback = walk;
-        if (process.env.CAPTURE_DEBUG) console.log(`    ~ walk ${walk}: lands on an edge`);
-      } else if (process.env.CAPTURE_DEBUG) {
-        console.log(`    ! walk ${walk}: ${JSON.stringify(now.edges)}`);
+    await settle(page, 300);
+    const ranked = await rankGrowCells(page, aim);
+    let landed = null;
+    for (const [attempt, want] of ranked.slice(0, 6).entries()) {
+      // The axis order alternates: if a box blocked the way along one, the
+      // other way round often walks around it.
+      if (await walkToCell(page, want, attempt % 2 === 1)) {
+        landed = want;
+        break;
       }
-      await keys(page, 'Escape Escape');
+      if (process.env.CAPTURE_DEBUG) console.log(`    ~ ${want.ix}:${want.iy} unreachable`);
+    }
+    // Nothing planned worked out: any spot beats abandoning the box.
+    if (!landed) {
+      let at = await growAim(page);
+      for (const key of ['h', 'j', 'k', 'l']) {
+        if (at.kind === 'cell') break;
+        await page.keyboard.press(key);
+        await settle(page, 220);
+        at = await growAim(page);
+      }
+      if (at.kind === 'cell') landed = at;
+    }
+    if (landed) {
+      if (onStage) await onStage('target', {ms: 820});
+      await page.keyboard.up('a');
+      await settle(page, 260);
+      if (/edit/.test(await mode(page))) {
+        const now = await graphShape(page);
+        const grown = now.labels.length - 1;
+        const joined = now.edges.some(([from, to]) =>
+          (from === parentIndex && to === grown) || (to === parentIndex && from === grown));
+        if (now.labels.length === before.labels.length + 1 && joined) {
+          return {index: grown, cell: landed};
+        }
+        await keys(page, 'Escape Escape');
+        await settle(page, 200);
+      }
+    } else {
+      // Back out without committing: a release on a node draws an edge, and a
+      // release on the anchor makes a self-loop.
+      await keys(page, 'Escape');
       await settle(page, 200);
+      await page.keyboard.up('a');
+      await settle(page, 250);
+      await keys(page, 'Escape Escape');
     }
     await rollBackTo(page, before);
+    console.log(`    ! nothing reachable, round ${round + 1} — offered ` +
+      `${ranked.map(spot => `${spot.ix}:${spot.iy}`).join(' ') || 'nothing'}`);
   }
-  if (fallback) {
-    if (refocus) await refocus();
-    await keys(page, `[a d ${fallback}]`);
-    await settle(page, 260);
-    if (/edit/.test(await mode(page))) {
-      const now = await graphShape(page);
-      if (now.labels.length === before.labels.length + 1) {
-        console.log(`    (${fallback} was the only placement, and it lands on an edge)`);
-        return {index: now.labels.length - 1, walk: fallback};
-      }
-      await keys(page, 'Escape Escape');
-      await settle(page, 200);
+  throw new Error(`could not grow a child of node ${parentIndex}`);
+}
+
+/**
+ * Step the aim to a cell, one press at a time.
+ *
+ * A node on the way takes the aim — that is the connect-two-nodes gesture — but
+ * the walk carries on through it: the app keeps counting cells from the one the
+ * node stands on, so this keeps its own count and presses on. It gives up when
+ * a press changes nothing, and the caller tries the next-best spot.
+ */
+async function walkToCell(page, want, verticalFirst = false) {
+  const delta = {l: [1, 0], h: [-1, 0], j: [0, 1], k: [0, -1]};
+  let cur = {ix: 0, iy: 0};
+  let stalled = 0;
+  for (let press = 0; press < 20; press++) {
+    const at = await growAim(page);
+    if (at.kind === 'cell') {
+      if (at.ix === cur.ix && at.iy === cur.iy && press > 0) stalled++;
+      else stalled = 0;
+      cur = {ix: at.ix, iy: at.iy};
+      if (cur.ix === want.ix && cur.iy === want.iy) return true;
+    } else if (at.kind === 'none' && press > 0) {
+      return false;
     }
-    await rollBackTo(page, before);
+    if (stalled > 1) return false;
+    const dx = want.ix - cur.ix;
+    const dy = want.iy - cur.iy;
+    if (!dx && !dy) return at.kind === 'cell';
+    const horizontal = verticalFirst
+      ? dy === 0
+      : (Math.abs(dx) >= Math.abs(dy) ? dx !== 0 : dy === 0);
+    const key = horizontal ? (dx > 0 ? 'l' : 'h') : (dy > 0 ? 'j' : 'k');
+    await page.keyboard.press(key);
+    await settle(page, 220);
+    // The app counts from wherever it landed, including from a box it stopped
+    // on, so the count carries on either way.
+    cur = {ix: cur.ix + delta[key][0], iy: cur.iy + delta[key][1]};
   }
-  throw new Error(`no free placement around node ${parentIndex}`);
+  return false;
 }
 
 /** Undo until the graph is the size it was. Edges count as well as nodes: a
