@@ -1,11 +1,13 @@
 #+title: Current Homepage Criticism
 
-Let's put "A keyboard-first diagram editor" and "Connect your thoughts, at the speed you have them" back in.
-
-Also, include near the top, "A work in progress. I'd love to hear your ideas about how to improve it."
-
-Let's avoid doing so much autolayout.  Only do (force) autolayout after you've introduced the idea.  Use the new grid of potential new node spots.
-
-Instead of "Discoverable shortcuts", let's say "Explorable keybindings"
-
-When we switch to the bullet points, or to screenshots.  I want the square containing the animated graph-building to slide up and a new square, contianing the bullets or screenshots to slide up.  (And when we are done with the bullets/screenshots, have their box slide up and be replaced by the box containing the animated graph-building).
+- Let's have a video rather than this scrolling system with the screenshots so we have consistent speed.
+- Make sure we capture the tweens for zooming, panning, navigating, etc.  These are important.
+- Instead of static screen captures for, e.g. holding down "Move by Link", "Add", etc., show pressing, holding, and releasing (maybe half a second before you press the key and 1, held down, half a second released, and then repeat once).
+- Make sure you capture the animation for the key menu examples (i.e. move ), and zoom in key menu, so that the d through k keys on the home row are visible.
+- Instead of this "Ship the alpha", "Landing page", etc, example, let's just have nodes "a", "b", "c", and "d".
+- Make sure you capture animation for moving by link (actually move from node to node, rather than just showing the highlighted edge, and do this for a few edge traversals).
+- Have another animated example for moving by node.  Make sure you capture moving between unconnected nodes as well as connected nodes, and make sure you capture changing direction too.  Use a, b, c, d, etc., here as well.
+- Let's also use "a", "b", and "c" for showing edges being rerouted to avoid obstacle nodes as you move (instead of "Plan", "Review", "Ship it")
+- Have another small example, using a, b, c, d, etc., of applying the horizontal tree layout, then then vertical tree, and then the force layout.  Make sure you start with a layout which will actually be changed when you apply the horizontal tree layout.
+- Keep a breadcrumb trail at the top of the video showing where we are in the tree we are generating.  For example, "KiDraw > How does it work? > Press and hold submenu keys".  This will replace the current section headers (i.e. "How does it work", "What are some important features?", etc.).
+- Let's just have the bullet points be new leaf nodes rather than separate screens.  Make sure we continue to follow the lessons learned about initial placement of nodes and avoiding applying automatic layouts as we go.
