@@ -33,12 +33,18 @@ mkdirSync(outDir, {recursive: true});
 
 const VIEWPORT = {width: 820, height: 700};
 /**
- * The build happens at 100%. Editing a label takes the camera to 400% and
- * centres it there — that is the app's own behaviour, not something the film
- * arranges — so the box just made is looked at from there, and the zoom back
- * out to 100% for the next one doubles as the shot that puts it in context.
+ * The build happens at 200%, not 100%.
+ *
+ * Editing a label takes the camera to 400% and centres it there — the app's own
+ * behaviour, not something the film arranges — so every box costs one trip out
+ * to the building zoom and one back. From 100% that trip is three or four rungs
+ * of the ladder each way, thirty-four times over, which is a great deal of
+ * zooming for a reader to watch and none of it is about anything. From 200% it
+ * is one rung. The placement lattice is wider than the frame at this zoom, so
+ * the view follows the aim as it walks, which reads as looking rather than as
+ * the camera going somewhere and coming back.
  */
-const BUILD_ZOOM = 100;
+const BUILD_ZOOM = 200;
 
 const {browser, page, errors} = await open({...VIEWPORT, scale: 1});
 const rec = await startRecorder(page, {dir: join(outDir, 'frames'), viewport: VIEWPORT});
@@ -92,6 +98,40 @@ async function settleOn(label) {
   await park(page);
   await hidePins();
   rec.hold(1100);
+}
+
+/**
+ * The last thing the film does: lay the whole diagram out.
+ *
+ * Force first, because that is the one that has to reckon with everything at
+ * once, and then a tree — the diagram *is* a tree, and a tree layout is the
+ * shape it should end in. Generations run top to bottom, which is the way
+ * round that fits a frame wider than it is tall.
+ */
+async function showLayoutFinale() {
+  const layout = async (key, settleFor) => {
+    await keys(page, 'c');
+    await settle(page, 240);
+    await page.keyboard.down('b');
+    await settle(page, 420);
+    rec.hold(650);
+    await page.keyboard.press(key);
+    await settle(page, settleFor);
+    await page.keyboard.up('b');
+    await settle(page, 600);
+    // Every layout pulls the diagram into a different shape, so the view that
+    // fitted the last one frames a stamp; the fit is part of the move.
+    await keys(page, 'c');
+    await keys(page, '[r p]');
+    await settle(page, 1200);
+    await frameAbove(page);
+  };
+  await layout('k', 1700);
+  await park(page);
+  rec.hold(1700);
+  await layout('j', 1700);
+  await park(page);
+  rec.hold(2600);
 }
 
 /** Fit the whole diagram on screen, as keypresses a reader can follow. */
@@ -200,6 +240,7 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   const next = entries[at + 1];
   if (depth >= 1 && (!next || next.depth === 1)) {
     await showRecenter();
+    if (!next) await showLayoutFinale();
     await park(page);
   }
 

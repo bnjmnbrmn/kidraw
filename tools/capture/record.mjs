@@ -157,7 +157,7 @@ export function lensAt(lens, through, aspect, frame) {
   const want = fitAspect({
     x: lens.x * frame.scale, y: lens.y * frame.scale,
     w: lens.w * frame.scale, h: lens.h * frame.scale,
-  }, aspect, frame);
+  }, aspect, frame, lens.bias ?? 0.5);
   const ease = t => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
   const t = ease(Math.max(0, Math.min(1, through)));
   return {
@@ -168,10 +168,18 @@ export function lensAt(lens, through, aspect, frame) {
   };
 }
 
-function fitAspect(rect, aspect, frame) {
+/**
+ * Widen a crop to the video's shape.
+ *
+ * `bias` says where the height it has to gain comes from: 0.5 splits it evenly,
+ * and lower puts more of it above — which is what a crop of the keymenu wants,
+ * since the keymenu is at the bottom of the window and the growth would
+ * otherwise be half canvas, half nothing at all.
+ */
+function fitAspect(rect, aspect, frame, bias = 0.5) {
   let {x, y, w, h} = rect;
   if (w / h < aspect) { const grown = h * aspect; x -= (grown - w) / 2; w = grown; }
-  else { const grown = w / aspect; y -= (grown - h) / 2; h = grown; }
+  else { const grown = w / aspect; y -= (grown - h) * bias; h = grown; }
   x = Math.max(0, Math.min(x, frame.width - Math.min(w, frame.width)));
   y = Math.max(0, Math.min(y, frame.height - Math.min(h, frame.height)));
   return {x, y, w: Math.min(w, frame.width), h: Math.min(h, frame.height)};

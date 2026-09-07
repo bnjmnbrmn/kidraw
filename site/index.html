@@ -171,6 +171,11 @@
   .film-seek {
     accent-color: var(--cyan); background: none; flex: 1; height: 1.5rem; min-width: 0;
   }
+  .film-time {
+    color: var(--ink-faint); font: 500 .78rem/1 "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .film-frame video { cursor: pointer; }
   .film-full::before {
     border: 2px solid currentColor; border-radius: 2px; content: "";
     height: .75rem; width: .95rem;
@@ -244,7 +249,7 @@
             <source src="assets/film/what.webm" type="video/webm">
           </video>
         </div>
-        <script type="application/json" data-cues="what">[{"t":0,"trail":["KiDraw"]},{"t":3.56,"trail":["KiDraw","What is it?"]},{"t":11.88,"trail":["KiDraw","What is it?","Diagram editor"]},{"t":20.76,"trail":["KiDraw","What is it?","Keyboard-oriented"]},{"t":31.2,"trail":["KiDraw","What is it?","Keyboard-oriented","Inspired by the vi coding editor"]},{"t":40.92,"trail":["KiDraw","What is it?","Keyboard-oriented","Explorable keybindings"]},{"t":50.48,"trail":["KiDraw","What is it?","WIP experiment"]}]</script>
+        <script type="application/json" data-cues="what">[{"t":0,"trail":["KiDraw"]},{"t":3.56,"trail":["KiDraw","What is it?"]},{"t":11.12,"trail":["KiDraw","What is it?","Diagram editor"]},{"t":18.92,"trail":["KiDraw","What is it?","Keyboard-oriented"]},{"t":27.92,"trail":["KiDraw","What is it?","Keyboard-oriented","Inspired by the vi coding editor"]},{"t":36.48,"trail":["KiDraw","What is it?","Keyboard-oriented","Explorable keybindings"]},{"t":45.84,"trail":["KiDraw","What is it?","WIP experiment"]}]</script>
       </div>
     </div>
   </section>
@@ -261,7 +266,7 @@
             <source src="assets/film/point.webm" type="video/webm">
           </video>
         </div>
-        <script type="application/json" data-cues="point">[{"t":0,"trail":["KiDraw","What's the point?"]},{"t":10.52,"trail":["KiDraw","What's the point?","Efficiency"]},{"t":18.52,"trail":["KiDraw","What's the point?","Efficiency","Writing and Connecting"]},{"t":27.48,"trail":["KiDraw","What's the point?","Efficiency","Writing and Connecting","Get both text and connections down, before they slip away"]},{"t":38.96,"trail":["KiDraw","What's the point?","Efficiency","Navigation"]},{"t":49.68,"trail":["KiDraw","What's the point?","Efficiency","Navigation","Skip the empty space"]},{"t":58.68,"trail":["KiDraw","What's the point?","Efficiency","Navigation","Follow the links"]},{"t":68.44,"trail":["KiDraw","What's the point?","Efficiency","Learning"]},{"t":78.4,"trail":["KiDraw","What's the point?","Efficiency","Learning","Explore the keybindings, without reading the manual"]}]</script>
+        <script type="application/json" data-cues="point">[{"t":0,"trail":["KiDraw","What's the point?"]},{"t":9.08,"trail":["KiDraw","What's the point?","Efficiency"]},{"t":16.36,"trail":["KiDraw","What's the point?","Efficiency","Writing and Connecting"]},{"t":24.4,"trail":["KiDraw","What's the point?","Efficiency","Writing and Connecting","Get both text and connections down, before they slip away"]},{"t":34.72,"trail":["KiDraw","What's the point?","Efficiency","Navigation"]},{"t":44.56,"trail":["KiDraw","What's the point?","Efficiency","Navigation","Skip the empty space"]},{"t":52.56,"trail":["KiDraw","What's the point?","Efficiency","Navigation","Follow the links"]},{"t":61.64,"trail":["KiDraw","What's the point?","Efficiency","Learning"]},{"t":71.4,"trail":["KiDraw","What's the point?","Efficiency","Learning","Explore the keybindings, without reading the manual"]}]</script>
       </div>
     </div>
   </section>
@@ -278,7 +283,7 @@
             <source src="assets/film/how.webm" type="video/webm">
           </video>
         </div>
-        <script type="application/json" data-cues="how">[{"t":0,"trail":["KiDraw","How does it work?"]},{"t":10.04,"trail":["KiDraw","How does it work?","Press and hold submenu keys"]},{"t":22.12,"trail":["KiDraw","How does it work?","Some submenu keys allow you to change how you navigate"]},{"t":41.28,"trail":["KiDraw","How does it work?","Some submenu keys have an action on release"]},{"t":65.64,"trail":["KiDraw","How does it work?","Press ESC or Ctrl-[ once or twice to get back to the main menu"]},{"t":78.2,"trail":["KiDraw","How does it work?","Text editing with vi(m) modes and bindings"]}]</script>
+        <script type="application/json" data-cues="how">[{"t":0,"trail":["KiDraw","How does it work?"]},{"t":10.24,"trail":["KiDraw","How does it work?","Press and hold submenu keys"]},{"t":22.2,"trail":["KiDraw","How does it work?","Some submenu keys allow you to change how you navigate"]},{"t":39.72,"trail":["KiDraw","How does it work?","Some submenu keys have an action on release"]},{"t":62.96,"trail":["KiDraw","How does it work?","Press ESC or Ctrl-[ once or twice to get back to the main menu"]},{"t":75.2,"trail":["KiDraw","How does it work?","Text editing with vi(m) modes and bindings"]}]</script>
       </div>
     </div>
   </section>
@@ -295,7 +300,7 @@
             <source src="assets/film/features.webm" type="video/webm">
           </video>
         </div>
-        <script type="application/json" data-cues="features">[{"t":0,"trail":["KiDraw","What are some important features?"]},{"t":9.64,"trail":["KiDraw","What are some important features?","Automatic edge routing"]},{"t":24.4,"trail":["KiDraw","What are some important features?","Automatic edge routing","Waypoints for fine tuning"]},{"t":38.36,"trail":["KiDraw","What are some important features?","Node/edge layout on demand"]},{"t":58.44,"trail":["KiDraw","What are some important features?","Coarse and fine movement"]},{"t":73.8,"trail":["KiDraw","What are some important features?","Navigate by hopping from node to node"]},{"t":89.56,"trail":["KiDraw","What are some important features?","Navigate by following edges"]},{"t":104.24,"trail":["KiDraw","What are some important features?","Zoom, pan, and recenter"]},{"t":117.56,"trail":["KiDraw","What are some important features?","Node and Edge Styling"]},{"t":138.44,"trail":["KiDraw","What are some important features?","Edge labels"]},{"t":151.44,"trail":["KiDraw","What are some important features?","Saving diagrams locally"]},{"t":161.4,"trail":["KiDraw","What are some important features?","Saving diagrams locally","currently Chrome only"]}]</script>
+        <script type="application/json" data-cues="features">[{"t":0,"trail":["KiDraw","What are some important features?"]},{"t":10.56,"trail":["KiDraw","What are some important features?","Automatic edge routing"]},{"t":25.2,"trail":["KiDraw","What are some important features?","Automatic edge routing","Waypoints for fine tuning"]},{"t":38.88,"trail":["KiDraw","What are some important features?","Node/edge layout on demand"]},{"t":58.84,"trail":["KiDraw","What are some important features?","Coarse and fine movement"]},{"t":73.96,"trail":["KiDraw","What are some important features?","Navigate by hopping from node to node"]},{"t":88.64,"trail":["KiDraw","What are some important features?","Navigate by following edges"]},{"t":102.52,"trail":["KiDraw","What are some important features?","Zoom, pan, and recenter"]},{"t":112.12,"trail":["KiDraw","What are some important features?","Node and Edge Styling"]},{"t":132.6,"trail":["KiDraw","What are some important features?","Edge labels"]},{"t":145.76,"trail":["KiDraw","What are some important features?","Saving diagrams locally"]},{"t":158.92,"trail":["KiDraw","What are some important features?","Saving diagrams locally","currently Chrome only"]}]</script>
       </div>
     </div>
   </section>
@@ -463,6 +468,10 @@
     seek.value = 0;
     seek.setAttribute('aria-label', 'Seek');
 
+    var clock = document.createElement('span');
+    clock.className = 'film-time';
+    clock.textContent = '0:00';
+
     var full = document.createElement('button');
     full.type = 'button';
     full.className = 'film-full';
@@ -470,13 +479,19 @@
 
     bar.appendChild(play);
     bar.appendChild(seek);
+    bar.appendChild(clock);
     bar.appendChild(full);
     frame.parentNode.insertBefore(bar, frame.nextSibling);
 
-    play.addEventListener('click', function () {
+    var toggle = function () {
       if (video.paused) video.play().catch(function () {});
       else video.pause();
-    });
+    };
+    play.addEventListener('click', toggle);
+    // The picture is the biggest button on the page and clicking it is what
+    // everyone tries first — but nothing is drawn over the video to say so,
+    // because what is under there is the app's own mode chip.
+    video.addEventListener('click', toggle);
     full.addEventListener('click', function () {
       if (document.fullscreenElement) document.exitFullscreen();
       else if (frame.requestFullscreen) frame.requestFullscreen();
@@ -498,9 +513,20 @@
     seek.addEventListener('input', function () {
       if (video.duration) video.currentTime = (seek.value / 1000) * video.duration;
     });
-    video.addEventListener('timeupdate', function () {
+    // Where you are, so a note about the film can say when.
+    var clockText = function (seconds) {
+      if (!isFinite(seconds)) return '0:00';
+      var whole = Math.floor(seconds);
+      return Math.floor(whole / 60) + ':' + ('0' + (whole % 60)).slice(-2);
+    };
+    var tick = function () {
       if (!scrubbing && video.duration) seek.value = (video.currentTime / video.duration) * 1000;
-    });
+      clock.textContent = clockText(video.currentTime) +
+        (video.duration ? ' / ' + clockText(video.duration) : '');
+    };
+    video.addEventListener('timeupdate', tick);
+    video.addEventListener('loadedmetadata', tick);
+    tick();
   }
 
   videos.forEach(function (video) {

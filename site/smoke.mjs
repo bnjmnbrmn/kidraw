@@ -195,7 +195,9 @@ try {
   const said = await page.evaluate(() => {
     // The breadcrumb is checked on its own: its steps are laid out in a row,
     // so they would come back run together.
-    const bars = document.querySelectorAll('.crumbs');
+    // The breadcrumb is laid out in a row and the player's clock is a widget,
+    // not prose; both are checked on their own terms below.
+    const bars = document.querySelectorAll('.crumbs, .film-controls');
     bars.forEach(bar => { bar.style.display = 'none'; });
     const text = document.querySelector('main').innerText;
     bars.forEach(bar => { bar.style.display = ''; });
@@ -279,6 +281,22 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForFunction(
     () => document.querySelector('video[data-act="what"]').paused, null, {timeout: 8000});
+
+  // Elapsed time, so a note about the film can say when.
+  await page.waitForFunction(
+    () => /^\d+:\d\d/.test(document.querySelector('#what .film-time')?.textContent ?? ''),
+    null, {timeout: 8000});
+  // And the picture itself starts and stops it, with nothing drawn over it.
+  const clicked = await page.evaluate(async () => {
+    const video = document.querySelector('video[data-act="what"]');
+    video.pause();
+    video.click();
+    await new Promise(resolve => setTimeout(resolve, 400));
+    const playing = !video.paused;
+    video.pause();
+    return playing;
+  });
+  assert.ok(clicked, 'clicking the video plays it');
   assert.deepEqual(desktop.errors, []);
   await desktop.context.close();
 

@@ -20,7 +20,17 @@ const keymenuBox = page => page.locator('app-keymenu').boundingBox();
  */
 export async function keymenuLens(page, {easeMs = 420} = {}) {
   const box = await keymenuBox(page);
-  return {x: box.x + box.width * 0.07, y: box.y, w: box.width * 0.86, h: box.height, easeMs};
+  // Tighter than the whole strip, and biased downwards: the crop has to be
+  // widened to the video's shape, and splitting that evenly filled the top of
+  // the frame with empty canvas instead of keys.
+  return {
+    x: box.x + box.width * 0.16,
+    y: box.y,
+    w: box.width * 0.68,
+    h: box.height,
+    bias: 0.78,
+    easeMs,
+  };
 }
 
 /** Press and release, held long enough to read. Twice, because the first time
@@ -344,10 +354,12 @@ export async function aimCamera(page, label, target = 100) {
   throw new Error(`cannot reach ${JSON.stringify(label)}`);
 }
 
-/** Zoom percentage as the header reports it. */
+/** Zoom percentage, read off the layer rather than the header: the header
+ *  catches up a beat late, and a ladder that reads a stale value presses one
+ *  rung too many and lands somewhere it did not mean to. */
 const zoomLevel = page => page.evaluate(() => {
-  const match = document.body.innerText.match(/(\d+)%/);
-  return match ? Number(match[1]) : 100;
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  return Math.round(component.drawingLayer.scaleX() * 100);
 });
 
 /**
@@ -371,7 +383,9 @@ async function zoomToLevel(page, target) {
     // steps by about a third, and 0.85-1.2 always contains one of its stops.
     if (level >= target * 0.85 && level <= target * 1.2) break;
     await page.keyboard.press(level < target ? 'i' : 'o');
-    await settle(page, 280);
+    // Long enough for the zoom to land: the next reading decides whether to
+    // press again.
+    await settle(page, 460);
   }
   await page.keyboard.up('r');
   await settle(page, 240);

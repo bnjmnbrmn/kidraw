@@ -70,6 +70,10 @@
     seek.value = 0;
     seek.setAttribute('aria-label', 'Seek');
 
+    var clock = document.createElement('span');
+    clock.className = 'film-time';
+    clock.textContent = '0:00';
+
     var full = document.createElement('button');
     full.type = 'button';
     full.className = 'film-full';
@@ -77,13 +81,19 @@
 
     bar.appendChild(play);
     bar.appendChild(seek);
+    bar.appendChild(clock);
     bar.appendChild(full);
     frame.parentNode.insertBefore(bar, frame.nextSibling);
 
-    play.addEventListener('click', function () {
+    var toggle = function () {
       if (video.paused) video.play().catch(function () {});
       else video.pause();
-    });
+    };
+    play.addEventListener('click', toggle);
+    // The picture is the biggest button on the page and clicking it is what
+    // everyone tries first — but nothing is drawn over the video to say so,
+    // because what is under there is the app's own mode chip.
+    video.addEventListener('click', toggle);
     full.addEventListener('click', function () {
       if (document.fullscreenElement) document.exitFullscreen();
       else if (frame.requestFullscreen) frame.requestFullscreen();
@@ -105,9 +115,20 @@
     seek.addEventListener('input', function () {
       if (video.duration) video.currentTime = (seek.value / 1000) * video.duration;
     });
-    video.addEventListener('timeupdate', function () {
+    // Where you are, so a note about the film can say when.
+    var clockText = function (seconds) {
+      if (!isFinite(seconds)) return '0:00';
+      var whole = Math.floor(seconds);
+      return Math.floor(whole / 60) + ':' + ('0' + (whole % 60)).slice(-2);
+    };
+    var tick = function () {
       if (!scrubbing && video.duration) seek.value = (video.currentTime / video.duration) * 1000;
-    });
+      clock.textContent = clockText(video.currentTime) +
+        (video.duration ? ' / ' + clockText(video.duration) : '');
+    };
+    video.addEventListener('timeupdate', tick);
+    video.addEventListener('loadedmetadata', tick);
+    tick();
   }
 
   videos.forEach(function (video) {
