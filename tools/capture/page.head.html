@@ -115,91 +115,44 @@
   .button-ghost { border: 1px solid var(--line); color: var(--ink); }
   .button-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
 
-  /* ---------- the reel ----------
-     An act is one window with a strip of panels behind it. The column of
-     spacers and the window share a single grid cell: the spacers give the act
-     its length, and the window sticks for as long as they last. */
-  .act { padding-block: clamp(1rem, 3vh, 2.5rem); }
-  .act-inner { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .act-scroll, .act-stage { grid-area: 1 / 1; }
-  .act-scroll { pointer-events: none; }
-  .act-stage { align-self: start; position: sticky; top: 0; z-index: 1; }
-  .act-title {
-    background: var(--ground);
-    font: 700 .95rem/1.3 "JetBrains Mono", monospace;
-    letter-spacing: -.03em;
-    margin: 0; padding: .55rem clamp(1.15rem, 4vw, 2.5rem) .5rem;
+  /* ---------- the film ----------
+     One video per branch of the outline, each under a breadcrumb saying where
+     in the diagram it is. The breadcrumb is what used to be a section heading:
+     it names the branch and the box being made in it, and it changes as the
+     video plays. */
+  .act { padding-block: clamp(1.2rem, 4vw, 2.4rem); }
+  .film { margin-inline: auto; max-width: 52rem; }
+  .crumbs {
+    align-items: baseline; display: flex; flex-wrap: wrap; gap: 0 .45rem;
+    font: 500 .82rem/1.5 "JetBrains Mono", ui-monospace, monospace;
+    /* Reserved, not fitted: the trail changes while the video plays, and a
+       breadcrumb that grows a line would push the picture down under it. */
+    margin-bottom: .55rem; min-height: 2.6em;
   }
-  /* Edge to edge on a phone: the portrait capture is exactly the shape of the
-     window, so horizontal padding would crop the keyboard rather than letterbox. */
-  .stage-box {
-    height: 65vh; margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem));
-    overflow: hidden; position: relative;
+  .crumbs .crumb { color: var(--ink-faint); }
+  /* The separator is drawn, not written: every word on this page comes out of
+     index.org, and a chevron is not one of its words. */
+  .crumbs .crumb + .crumb::before {
+    color: var(--line); content: "\203A"; margin-right: .45rem;
   }
-  .reel { inset: 0; position: absolute; }
-  .js .reel { will-change: transform; }
-  /* Each panel is one window tall, stacked below the one before it. Moving the
-     reel is what slides a caption or an example up into the place the frames
-     were: the card is what the reader sees move, so the border and the ground
-     belong to it and not to the window, and the padding is the gap the two
-     cards pass each other through. */
-  .panel {
-    inset: 0; padding-block: 4px; position: absolute;
-    transform: translateY(calc(var(--i) * 100%));
+  .crumbs .crumb:last-child { color: var(--ink); }
+  .film-frame {
+    background: #05070a; border: 1px solid var(--line); border-radius: var(--radius);
+    line-height: 0; overflow: hidden;
   }
-  .card {
-    background: #05070a; border-block: 1px solid var(--line);
-    height: 100%; overflow: hidden; position: relative;
+  .film-frame video {
+    aspect-ratio: 820 / 700; background: #05070a;
+    display: block; height: auto; width: 100%;
   }
-  .frame { display: block; inset: 0; opacity: 0; position: absolute; z-index: 0; }
-  /* `cover`, not `contain`: the card is a few pixels off the capture's shape
-     (the gap the cards pass each other through comes out of its height), and
-     letterboxing it left a strip down each side with no grid in it — through
-     which, being transparent, the frame underneath showed its own edges. */
-  .frame img { display: block; height: 100%; object-fit: cover; width: 100%; }
-  .frame.is-on { opacity: 1; z-index: 2; }
-  /* The frame going out stays opaque underneath the one coming in, so a frame
-     that has not loaded yet shows the last one rather than the backing. There
-     is no cross-fade: the scroll is the playback, and a fade only lags it. */
-  .frame.is-under { opacity: 1; z-index: 1; }
-
-  .panel[data-kind="caption"] .card {
-    display: grid; place-items: center;
-    padding: clamp(1.5rem, 6vw, 3.5rem);
-  }
-  .panel-bullets {
-    color: var(--ink); font-size: clamp(1.1rem, 3.2vw, 1.7rem);
-    line-height: 1.45; list-style: none; margin: 0; max-width: 26ch; padding: 0;
-    text-wrap: balance;
-  }
-  .panel-bullets li { padding-left: 1.1em; position: relative; }
-  .panel-bullets li + li { margin-top: .9em; }
-  .panel-bullets li::before { color: var(--cyan); content: "\2013"; left: 0; position: absolute; }
-
-  /* A keymenu close-up is a strip eight times wider than it is tall. Fitted to
-     the width of a phone its labels are unreadable, so there it is drawn larger
-     than the window and the panel pans sideways. */
-  @media (max-width: 61.99rem) {
-    .panel[data-wide] .card { overflow-x: auto; overscroll-behavior-x: contain; }
-    .panel[data-wide] .frame {
-      bottom: auto; right: auto; top: 50%; transform: translateY(-50%);
+  /* Edge to edge on a phone: a 820-wide capture inside the page's own padding
+     is small enough that the labels stop being readable. */
+  @media (max-width: 46rem) {
+    .film { margin-inline: calc(-1 * clamp(1.15rem, 4vw, 2.5rem)); }
+    .film-frame { border-inline: 0; border-radius: 0; }
+    .crumbs {
+      font-size: .74rem; min-height: 4.4em;
+      padding-inline: clamp(1.15rem, 4vw, 2.5rem);
     }
-    .panel[data-wide] .frame img { height: auto; max-width: none; width: 190vw; }
-  }
-
-  @media (min-width: 62rem) {
-    /* The window is as wide as it can be without growing taller than the
-       screen, and the title sits on its left edge rather than the page's. */
-    .act-stage { --box: min(52rem, calc((100vh - 9rem) * 820 / 700)); top: max(1rem, calc(50vh - 24rem)); }
-    .act-title {
-      background: none; margin-inline: auto; max-width: var(--box);
-      padding: 0 0 .5rem;
-    }
-    .stage-box {
-      aspect-ratio: 820 / 700; height: auto;
-      margin-inline: auto; max-width: var(--box);
-    }
-    .card { border: 1px solid var(--line); border-radius: var(--radius); }
   }
 
   /* ---------- close ---------- */

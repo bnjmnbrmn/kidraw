@@ -57,3 +57,6 @@ tools/debug.log
 /Screenshot*.PNG
 tools/draft-mirror.json
 site/dist/
+
+# Filming scratch: the raw screencast frames the film is cut from.
+/.capture

@@ -10,18 +10,27 @@ The page is built around one idea: the whole argument is a single diagram, and
 you watch it get built. The page says "diagram" throughout, never "graph".
 
 **The page writes almost nothing of its own.** Its words are `index.org` — the
-headings, which are the boxes in the diagram, and the bullets, which are the
-captions — plus three lines of hero and the two links: the name, what it is,
-what it is for, and the invitation to say what would make it better. Everything
-else on screen is a screenshot of the running KiDraw app,
-taken by a script that pressed the keys. Each of the twenty-eight boxes is a
-short animation — the keys held down with the dashed targets showing, a small
-empty box, the label growing it letter by letter, the box gliding to the place
-an approximate force layout finds for it, and the camera moving in to frame it,
-selected — and the org file's "breaks in the sequence" are there too: three
-keymenu close-ups and a drag where an arrow re-routes around a box pushed into
-it. The smoke test enforces the rule, comparing every line of visible text
-against the org file plus that short list.
+headings and the bullets, which are all boxes in the diagram — plus three lines
+of hero and the two links: the name, what it is, what it is for, and the
+invitation to say what would make it better. Everything else on screen is the
+running KiDraw app, filmed while a script pressed the keys. The smoke test
+enforces the rule, comparing every line of visible text against the org file
+plus that short list.
+
+**The page is four videos.** One per branch of the outline, each under a
+breadcrumb saying where in the diagram it has got to — `KiDraw › How does it
+work? › Press and hold submenu keys` — which is what used to be a section
+heading. Every one of the thirty-four boxes is made on camera: the crosshairs
+ride the arrows up to the box it grows from, the camera pulls back, Add is held
+and the aim walks the placement lattice, the release opens the label editor and
+the camera flies in, and the label is typed. The org file's "breaks in the
+sequence" are cut in where they belong: seven small demos, each on a graph of
+its own called a, b, c, d.
+
+The page used to be a flip-book — a screenshot per keystroke, played back by the
+reader's scroll. Scroll is a lumpy clock: the same gesture ran at a different
+speed for every reader, and a tween that took four screenshots looked like four
+screenshots. A video runs at one speed, which is the speed it was recorded at.
 
 The settled editorial and design decisions are in
 [`HOMEPAGE-BRIEF.md`](HOMEPAGE-BRIEF.md). Start there if you did not take part
@@ -40,28 +49,21 @@ and DNS are moved to the new page.
 
 ## Files
 
-- `index.org` is the argument, as Benjamin keeps it in org-mode. Its own rule:
-  **headings are nodes, bullets are not** — a bullet is supporting detail for
-  the heading above it, and never becomes a box.
-  `tools/capture/outline.mjs` is its machine-readable form, carrying each
-  heading, its bullets, and which nodes earn an example. It holds no prose of
-  its own. Nothing reads the `.org` file directly at build time, so the two are
-  kept in step by hand when the outline changes; `smoke.mjs` does read it, and
-  fails if the page says anything the org file does not.
+- `index.org` is the argument, as Benjamin keeps it in org-mode. Headings and
+  bullets are both boxes now: a bullet is a leaf hanging off the heading above
+  it. `tools/capture/outline.mjs` is its machine-readable form, carrying each
+  node, whether it is a heading or a bullet (`kind: 'note'`), and which nodes
+  earn a demo. It holds no prose of its own. Nothing reads the `.org` file
+  directly at build time, so the two are kept in step by hand when the outline
+  changes; `smoke.mjs` does read it, and fails if the page says anything the org
+  file does not.
 - `index.html` is **generated** — see "How the page is made" below. Its
   `site-head` block still carries the title, fonts, and CSS, and `build.mjs`
   still wraps it, but edit `tools/capture/` and regenerate rather than editing
   it by hand.
-- `assets/map/` and `assets/map-m/` hold the capture of the graph being built:
-  five or six frames per box, with `map.json` listing each box's run in order.
-  The two directories are the same run captured at two shapes — 820x700 for the
-  frames that sit beside the prose, 820x1170 for the portrait ones that fill the
-  top of a phone screen. File names match across the two.
-- `assets/demo/` and `assets/demo-m/` hold the small graphs, in the same two
-  shapes: the keymenu at rest and under a held key, a six-frame drag where an
-  arrow bends over a box that got in its way, and an eleven-frame drag where a
-  box's own arrows re-route — still captured, but no longer shown: one
-  re-routing digression is enough.
+- `assets/film/` holds the film: `what.webm`, `point.webm`, `how.webm`,
+  `features.webm`, a poster frame for each, and `film.json` — the durations and
+  the breadcrumb cues, which are what the page plays the trail against.
 - `assets/captures/` holds the older August capture set. The homepage no longer
   uses it; it backs the review page, which is kept as a record.
 - `review/index.html` is the durable contact sheet for those older captures.
@@ -88,68 +90,92 @@ available, point `CHROME_BIN` at a Chromium executable.
 The smoke test checks, among other things:
 
 - title, byline, canonical URL, and landmark structure;
-- removal of the rejected playable demo;
-- all fourteen capture files, used on the page, and the review page;
-- the outline: item count, the twenty-one numbered edges, the three
-  cross-branch links, and its collapse once the diagram is drawn;
-- five stages that each draw nodes, edge labels, and cross links;
-- scrolling: the caption, the counter, the step highlight, more revealed nodes,
-  and a camera transform rather than a reflow;
-- a still camera when `prefers-reduced-motion` is set;
-- no horizontal overflow at desktop and phone widths, and a sticky stage on a
-  phone;
-- the no-JavaScript fallback: the outline stays open and complete;
-- successful loading of every screenshot.
+- the film manifest: four videos, each present, each with a poster, each long
+  enough to show something, and a breadcrumb cue for every box in the outline;
+- that the breadcrumb follows the playhead — seek to the last cue and the trail
+  changes to match;
+- that every visible line of text, breadcrumbs included, is an org heading, an
+  org bullet, or one of the seven lines the page is allowed to say;
+- the outline: one item per box, the bullets among them, and its collapse once
+  the film is available;
+- that a video plays where it is being looked at and stops when it is not;
+- that `prefers-reduced-motion` leaves every video for the reader to start;
+- no horizontal overflow at desktop and phone widths, and a full-width video on
+  a phone;
+- the no-JavaScript fallback: the outline stays open and complete and every
+  video keeps its controls;
+- the review page.
 
 ## How the page is made
 
 ```bash
-npm start                        # the capture scripts drive the real dev server
-node tools/capture/map.mjs       # ~23 min: builds the graph, a run of frames per box
-node tools/capture/demo.mjs      # the small graphs, the keymenu, the drags
-CAPTURE_PROFILE=mobile node tools/capture/map.mjs    # ~23 min: the portrait set
-CAPTURE_PROFILE=mobile node tools/capture/demo.mjs
-node tools/capture/shrink.mjs 0.6 0.68 map     # the frames that only flash past
-node tools/capture/shrink.mjs 0.6 0.68 map-m
-node tools/capture/gen-page.mjs  # writes site/index.html
+npm start                            # the capture scripts drive the real dev server
+node tools/capture/film-map.mjs      # ~8 min: the whole diagram, filmed box by box
+node tools/capture/film-demos.mjs    # ~4 min: the seven small demos
+node tools/capture/film.mjs          # cuts the four videos and writes film.json
+node tools/capture/gen-page.mjs      # writes site/index.html
 npm run site:build && npm run site:test
 ```
+
+`film-demos.mjs` takes demo names, so a single one can be reshot:
+`node tools/capture/film-demos.mjs layouts hop`. The raw frames live in
+`.capture/`, which is not in git; the two passes can be run days apart, because
+`film.mjs` only reads their manifests.
+
+### Filming
+
+`tools/capture/record.mjs` is the camera. Chromium hands over a JPEG for every
+frame it paints (`Page.screencastFrame`), each acknowledged before the next
+arrives, so nothing is recorded while the app sits still. That is what makes the
+recording usable: the run waits whole seconds for a layout to settle and for a
+held-key surface to finish sliding in, and none of that is worth watching. Dead
+air between two painted frames is capped at 130ms — well above the gap between
+frames of anything that is actually moving, so a tween is never sped up by it —
+and where the reader *should* sit and look, the script says so with `hold(ms)`.
+
+`encode` then samples that timeline at the video's own frame rate rather than
+giving every recorded frame a slot of its own. The compositor paints at sixty a
+second when something moves; handing each of those a whole twenty-fifth would
+play the movement back three times slower than it happened. The film runs at
+`FILM_SPEED` (1.35 by default): the app has to be driven a little slower than a
+person uses it, and a third again puts it back to the speed the page is
+claiming — the same third everywhere, which is the point of using a video.
+
+Playwright ships its own ffmpeg for recording video, and it is a very small
+build: mjpeg in, VP8/WebM out. That is exactly this pipeline, so there is
+nothing to install.
 
 `tools/capture/driver.mjs` dispatches keys the way `tools/playwright-screenshot.js`
 does — `[a d j]` means "hold Add, press Box, press j, release Add" — with waits
 long enough for the held-key surfaces to settle. `build.mjs` wraps that in the
-operations the capture needs: type a label (Shift held for capitals and shifted
-punctuation, which is what the label-edit keymenu expects), grow a child, apply
-tree-right layout, fit the camera, zoom.
+operations the capture needs; `gestures.mjs` holds the ones that are about
+making a keypress *legible* rather than getting a diagram made: holding a key
+long enough to read the menu it opens, walking the crosshairs along the arrows,
+putting a box down at a spot chosen by hand, typing at something like a real
+hand.
 
-Captures are taken at 820 wide in both profiles. That is the narrowest viewport
-the on-screen keyboard fits in — below it the keyboard is *clipped*, not scaled,
-so a genuinely phone-sized capture is not an option. The two profiles differ in
-height: 820x700 for the wide frames that sit beside the prose, 820x1170 for the
-portrait ones, whose shape matches a phone screen closely enough that the frame
-fills the top 65% of it without cropping.
+Filming happens at 820x700. 820 is the narrowest viewport the on-screen keyboard
+fits in — below it the keyboard is *clipped*, not scaled, so a genuinely
+phone-sized capture is not an option. One shape now rather than the two the
+flip-book needed: a video scales, where two sets of screenshots had to be
+captured twice and paired frame for frame. On a phone the video runs edge to
+edge to get the width back.
 
-The window the frames play in is centred and as wide as it can be without
-growing taller than the screen; on a phone it is edge to edge and takes the top
-two thirds.
+### What one box's run shows
 
-What each frame of a box's run is doing, in order: the crosshairs riding the
-links from the box just finished up to the one this one grows from (Move by Link
-held, the arrows it can follow lit, the view travelling with it); the camera
-pulling back to where the placement grid has room; Add held, the grid of spots
-showing, and the aim stepping across it from the box it is growing from to the
-spot it settles on; a *small* empty box — `fit` is the app's default overflow
-now, so a box is born the size of its text and the label grows it rather than
-filling a square that was already there; one frame per character typed at about
-eight characters a second, close up, since the app takes the camera in to 400%
-and centres the box the moment its label opens; and the camera pulling back to
-200% and framing the box, selected, with the crosshairs parked somewhere empty.
-That settled frame then holds for three quarters of the time the label took to
-type: it is the one the reader is meant to look at.
+In order: the crosshairs riding the links from the box just finished up to the
+one this one grows from (Move by Link held, the arrows it can follow lit, the
+view travelling with it); the camera pulling back to 100% where the placement
+lattice has room, the whole zoom ladder inside a single hold of Pan/Zoom so it
+reads as one movement of the camera rather than four; Add held, the grid of
+spots showing, and the aim stepping across it; the release, which opens the
+label editor — the app takes the camera to 400% and centres the box by itself,
+which is the behaviour being shown — and the label typed into it; then the box
+sits, selected, with the crosshairs parked somewhere empty.
 
-Every one of those camera moves is photographed while it happens — each zoom
-press, each pan press, each link hop — so the page plays the movement rather
-than cutting across it.
+There is no separate "frame the box" move any more. The box is already centred
+at 400% when its label is done, and the zoom back out to 100% for the next box
+doubles as the shot that puts it in its place in the diagram.
 
 The label is typed into the editor the grow itself opened, and never through
 `Edit Text`. Typing appends to the **selection**, and `Edit Text` re-picks the
@@ -158,137 +184,123 @@ coming back works right up until an edge crosses the small box, at which point
 the edge wins the pick, the box is not selected, and every keystroke goes
 nowhere at all, silently. The grow's own editor is already on the new box,
 already in insert, already selected. All three facts are checked before a
-character is typed, and the label is read back afterwards.
+character is typed, and the label is read back afterwards. A spoilt take is
+backspaced and typed again, and the recorder is told to look away while that
+happens — as it is for a placement that has to be rolled back.
 
-**The diagram is not laid out as it is built.** Every box is grown straight
-onto a chosen cell of the held-Add lattice — the grid of placement spots, which
-is what that grid is for — so the shape of the finished diagram is the capture's
+### Placement
+
+**The diagram is not laid out as it is built.** Every box is grown straight onto
+a chosen cell of the held-Add lattice — the grid of placement spots, which is
+what that grid is for — so the shape of the finished diagram is the capture's
 own decision, and nothing ever jumps. `rankGrowCells` picks the spot: it scores
 every cell the app is offering on whether it carries on the way the branch is
 already heading, whether it sits a comfortable distance out, and how much clear
-space it leaves against the boxes and the arrows already drawn. The four
+space it leaves against the boxes and the arrows already drawn. A spot is judged
+on the box it will *become* once the label is in it, not on the empty 50px one
+that lands, and clearance to an arrow is measured along the whole arrow rather
+than at its corners. Covering an arrow or a box is disqualifying. The four
 questions take a quarter of the canvas each; below them a family fans around the
 direction its own branch is going, so a subtree keeps to its own part of the
-page. Nothing is pinned any more, and the pin markers the capture used to hide
-are gone with the pins.
+page.
+
+The walk to a chosen cell checks after every press what the app thinks is aimed
+at. A node standing in the way takes the aim — that is the connect-two-nodes
+gesture — and the walk carries on through it, counting cells itself, because a
+diagonal spot is only ever reached through its orthogonal neighbours.
 
 Layout runs **once**, as the finale: after the last box the camera pulls back,
 Force runs on the whole diagram, and the reader watches it tidy the thing they
 have just watched being built by hand. It waits until then because the idea has
-to be introduced first (*Node/edge layout on demand*, eight boxes earlier), and
-because a box placed into a freshly reorganised diagram is a box placed into a
-tangle. Force pulls the diagram in on itself, so the view is fitted again
-afterwards and that zoom is part of the animation. Layout applies to the
+to be introduced first (*Node/edge layout on demand*, which has a demo of its
+own), and because a box placed into a freshly reorganised diagram is a box
+placed into a tangle. Force pulls the diagram in on itself, so the view is
+fitted again afterwards and that zoom is part of the film. Layout applies to the
 *selection* when there is one, so the selection is cleared before the Layout key
-goes down: a selected box would be laid out on its own, with none of the edges
-or neighbours that decide where it belongs.
+goes down.
 
-**Anything that moves is photographed while it moves.** The layout glide and
-every camera step — each zoom press, each pan press — take a burst of frames, so
-the page can play the tween instead of cutting across it. Those frames are
-stored leaner and carry a short `data-ms`, so they cost little scroll and little
-weight.
+**Moving the crosshairs to a named box is the one call that is not a key
+press.** `goTo` calls the same `moveCrosshairsBy` the movement keys call, with
+the delta worked out for it, because a person would press `hjkl` until they
+arrived and a thirty-four-box run cannot afford to guess. The camera has to be
+pulled back first when the target is off screen — the crosshairs cannot leave
+the viewport.
 
-Three things about the capture are worth knowing:
+### The demos
 
-- **Placement is aimed, and then checked.** The ghost targets are a lattice
-  around the parent, three cells each way and diagonals included; a press steps
-  one cell in that direction, and the walk to the chosen cell checks after every
-  press what the app thinks is aimed at. A node standing in the way takes the
-  aim — that is the connect-two-nodes gesture — so the walk backs out and tries
-  the next-best spot rather than drawing an edge nobody asked for. `growEmpty` walks one to five steps in each direction in turn and
-  checks after each try that a *new box joined to the parent* appeared. A try
-  that drew an edge to an existing box, or left a box floating, is undone —
-  nodes and edges both, since a placement that landed on an existing box adds an
-  edge without adding a node. It also has to land **clear of the edges**: the
-  app refuses a target whose box would cover an existing *node*, but nothing
-  stops one landing on a line, so the walk continues until the new box's
-  rectangle misses every edge and waypoint on the canvas, and settles for an
-  overlap only when there is no alternative (four boxes out of twenty-eight).
-  The Force layout then decides where the box actually sits, which is also what
-  frees the slot for the next child: nine children all went in through a single
-  `j`.
-- **The last frame of every run is the point of it.** The box is selected, so
-  the blue highlight says which one the step is about; `park()` moves the
-  crosshairs to the emptiest point on the canvas, well clear of the edges,
-  because moving them near one pans the view and would undo the centring.
-- **Moving the crosshairs to a named box is the one call that is not a key
-  press.** `goTo` calls the same `moveCrosshairsBy` the movement keys call,
-  with the delta worked out for it, because a person would press `hjkl` until
-  they arrived and a hundred-node run cannot afford to guess. The camera has to
-  be pulled back first when the target is off screen — the crosshairs cannot
-  leave the viewport.
+Seven, each on its own three- or four-box graph called a, b, c, d, because the
+point of these is the gesture and not the words in the boxes. Each is filmed in
+its own browser so it starts from an empty canvas, and only the demonstration
+itself is recorded — building the graph is setup, and the recorder is off for
+it.
 
-Known gap: an edge between two boxes that *already exist* cannot be drawn by
-key press today — holding Add and choosing Edge offers only Self Loop, with no
-way to pick a target. The current outline is a plain tree so nothing needs it,
-but a cross-branch link would have to be faked or added to the app first.
+| demo | the box it belongs to | what it shows |
+| --- | --- | --- |
+| `hold` | Press and hold submenu keys | half a second before the press, the key held, half a second after the release — twice, because the first time the reader is still working out what changed |
+| `navkeys` | Some submenu keys allow you to change how you navigate | the same home row under Pan/Zoom, Move by Link and Move by node |
+| `release` | Some submenu keys have an action on release | Add held with the dashed spots up and nothing made yet, then let go |
+| `routing` | Automatic edge routing | b dragged down until the arrow into it swings across c, and bends around it |
+| `layouts` | Node/edge layout on demand | an untidy graph, then Tree →, Tree ↓, Force |
+| `hop` | Navigate by hopping from node to node | along the row, down to the box nothing joins, and back — changing direction |
+| `links` | Navigate by following edges | four traversals of the arrows, there and back |
 
-Overviews are captured at the end of each branch by Recenter alone (`[r p]`),
-which is a camera move: the diagram is already in the shape the reader watched
-it grow into, and re-laying it out for the photograph would undo the point.
+`hold` and `navkeys` are **lensed**: the frame is cropped towards the home row
+over about four tenths of a second, held there, and let back out at the end, so
+`d` through `k` can be read. The crop is widened to the video's own shape first,
+so nothing is ever letterboxed. It is applied when the film is cut, not when it
+is shot — the recording is the whole window either way.
 
-## How the reel works
+Three of the demos need a box put down at a spot the placement lattice would
+never offer — a free-standing box for hopping to, an obstacle in an arrow's way
+— so those are spawned by hand: the crosshairs moved to a point and Add tapped.
+Everything else is grown on the lattice like the map's own boxes, which is both
+less code and a better demonstration.
 
-The page is five acts, one per branch of the outline. An act is one window with
-a strip of full-size panels behind it, and a column of empty `.act-span` spacers
-that gives the act its length. The spacers and the window share a single grid
-cell, so the window can be `position: sticky` for exactly as long as the spacers
-last, with no negative margins.
+A spawn is judged against the **visible band**, not the viewport: the header is
+drawn over the top of the stage and the keymenu over the bottom three hundred
+pixels of it, so the middle of the stage is behind the keyboard. Getting this
+wrong is what put the first cut's layout demo in a heap — the offsets were
+worked out from a camera that had since flown to 400% to edit a label, so three
+boxes landed on top of each other and the edges between them came out as curls.
+Anything that measures the stage now fits the camera first.
 
-A panel is either a run of frames or a caption:
+Where a drag has to *end* somewhere in particular, the distance is measured
+rather than assumed: one press of Select+Drag moves a box a fixed number of
+drawing units, so how far that is on screen depends on the zoom. The routing
+demo presses until the arrow has actually swung onto the obstacle, and pulls
+the camera back a step first so the swing fits in the band at all.
 
-- **Frames.** Consecutive boxes share one panel, so the build runs on unbroken.
-  The panel also stands for one *example* — a keymenu close-up, or the six-frame
-  drag where an arrow re-routes around a box.
-- **Caption.** The bullets under one org heading, set large, centred, alone.
+## How the page plays the film
 
-A caption or an example closes the frames panel **at its box's settled frame**,
-not at the end of whatever the run went on to do: the last box of a branch is
-followed by the camera pulling back to show the branch, and watching that before
-the caption left the reader looking at frames the caption is not about. Whatever
-the run did after that box opens the next frames panel.
+The page is four `<section class="act">`, one per branch of the outline. Each
+holds a breadcrumb and a `<video>`; there are no section headings, because the
+breadcrumb says the same thing and goes on saying it.
 
-A caption or an example closes the frames panel and takes the window for itself,
-which is the point: the build sequence is wound out of the way rather than
-sitting beside or behind the thing being explained. Each panel gets one spacer,
-so `.act-span` heights are what pace the page — a run's height comes from how
-long its keystrokes would take, a caption or a still example gets 80vh.
+**The breadcrumb is the video's clock.** `film.json` carries, for each act, a
+list of `{t, trail}` cues in the video's own seconds — written when the film was
+cut, from a `crumb()` the capture emitted as it started each box. The page
+listens to `timeupdate` and `seeked` and puts up the trail whose cue has passed.
+A demo, filmed separately and carrying no cues of its own, therefore keeps the
+breadcrumb of the box it belongs to, which is what it is about.
 
-**The scroll is the playback.** Nothing advances on a timer. The reading line is
-the middle of the window; the script finds which spacer that line is in and how
-far through, and that fraction picks the frame. Scrolling faster runs the
-animation faster, scrolling back winds it back, and standing still holds the
-frame exactly where it is. Within a panel, frames are weighted by `data-ms` —
-how long the keystrokes they stand for would take a quick typist — so a label
-typed letter by letter takes more of the panel's scroll than the pause after it.
-`map.mjs` records these while capturing; `gen-page.mjs` works them back out for
-older captures from the frame's kind and the length of the label.
+The chevrons between the steps are drawn by CSS, not written into the markup:
+every word on this page comes out of `index.org`, and a chevron is not one of
+its words.
 
-The last 18% of a panel's spacer is the handover: the reel winds on by one
-window, so the frames slide up and out while the caption or example rises into
-the place they just left. **What slides is a card, not the content inside a
-fixed frame.** The border and the ground belong to each panel's `.card`, and the
-panel around it is the gap the two cards pass each other through, so the reader
-sees one box leave as the next arrives — and, when the caption or example is
-done, the box of frames slide back up into its place.
+**A video plays where it is being looked at.** An `IntersectionObserver` starts
+it at 55% visible and pauses it when it leaves, muted, so there is no autoplay
+to be blocked. Someone who pauses a video meant to pause it, so scrolling back
+into it does not start it up again. Only the first act asks for anything before
+the reader gets to it (`preload="metadata"`); the rest load nothing until they
+are in view, and every one of them keeps a poster frame, so the page looks the
+same before a byte of video has arrived.
 
-Each frame is a `<picture>`: a `<source media="(max-width: 61.99rem)">` pointing
-at the portrait capture, and an `<img>` with the wide one. The two sets are
-different shapes, which `srcset` cannot express, so this is art direction rather
-than a responsive image. Only one frame carries `is-on`, and the one it replaced
-keeps `is-under`, stacked underneath rather than cross-faded — there is no fade
-at all, since a fade can only lag a scroll it is chasing. A frame whose image
-has not arrived is not put up: the last one holds until it lands, because
-painting a transparent picture over the last one double-exposes the two.
+Under `prefers-reduced-motion` nothing plays itself: the videos are there with
+their controls and their posters, for the reader to start.
 
-A keymenu close-up is a strip eight times wider than it is tall. Fitted to the
-width of a phone its labels are unreadable, so there it is drawn at 190vw and
-the panel pans sideways, starting centred on the picture.
-
-Without JavaScript the page is the first frame of each act and the outline at
-the bottom, which is open until the script collapses it. A script failure loses
-the stepping, not the content.
+Without JavaScript the page is four playable videos and the outline at the
+bottom, which is open until the script collapses it. A script failure loses the
+breadcrumb tracking and the play-on-sight, not the content.
 
 ## Updating screenshots
 

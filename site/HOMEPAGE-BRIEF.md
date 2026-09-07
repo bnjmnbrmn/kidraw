@@ -1,5 +1,38 @@
 # KiDraw homepage brief
 
+## September 7, 2026 — eleventh revision (a film, not a flip-book)
+
+`site/current-homepage-criticism.org`, fourth round. This one replaces the
+playback mechanism, not just the content.
+
+- **The page is video.** Four WebM files, one per branch of the outline, cut
+  from a screencast of the running app. The flip-book is gone: scroll was the
+  clock, so the same gesture ran at a different speed for every reader, and a
+  tween that took four screenshots looked like four screenshots. A video runs at
+  one speed. The two capture profiles are gone with it — a video scales, where
+  two sets of screenshots had to be shot twice and paired frame for frame.
+- **A breadcrumb replaces the section headings.** `KiDraw › How does it work? ›
+  Press and hold submenu keys`, above each video, following the playhead against
+  a cue list written when the film was cut. It says both what a heading said and
+  where in the tree the build has got to.
+- **The bullets are boxes.** They were separate caption screens; now each one is
+  a leaf hanging off the heading above it, made on camera like every other box.
+  The diagram is thirty-four boxes rather than twenty-eight, and there are no
+  caption panels left on the page at all.
+- **Held keys are shown being held.** The three static keymenu close-ups became
+  press-hold-release sequences — half a second before, the key down, half a
+  second after — done twice, with the frame cropped towards the home row so `d`
+  through `k` can be read.
+- **Seven demos, on graphs called a, b, c, d.** "Ship the alpha" and "Plan /
+  Review / Ship it" are gone: the point of a demo is the gesture, not the words
+  in the boxes. Move by Link and Move by node each got one of their own — real
+  traversals, connected and unconnected, changing direction — and the layouts
+  demo starts from an untidy graph so Tree → has something to tidy.
+- **Every tween is in the film**, because the camera is the compositor now:
+  zooms, pans, link hops, the layout glide. Dead air between painted frames is
+  capped at 130ms, which squeezes the waiting without touching anything that
+  moves.
+
 ## September 6, 2026 — tenth revision (the animation, in full)
 
 `site/current-homepage-criticism.org`, third round. Two of these are app

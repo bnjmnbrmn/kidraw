@@ -1,0 +1,325 @@
+{
+ "width": 820,
+ "height": 700,
+ "fps": 25,
+ "speed": 1.35,
+ "acts": [
+  {
+   "id": "what",
+   "title": "What is it?",
+   "src": "assets/film/what.webm",
+   "poster": "assets/film/what.jpg",
+   "seconds": 66.2,
+   "cues": [
+    {
+     "t": 0,
+     "trail": [
+      "KiDraw"
+     ]
+    },
+    {
+     "t": 3.32,
+     "trail": [
+      "KiDraw",
+      "What is it?"
+     ]
+    },
+    {
+     "t": 11.6,
+     "trail": [
+      "KiDraw",
+      "What is it?",
+      "Diagram editor"
+     ]
+    },
+    {
+     "t": 18.56,
+     "trail": [
+      "KiDraw",
+      "What is it?",
+      "Keyboard-oriented"
+     ]
+    },
+    {
+     "t": 29.16,
+     "trail": [
+      "KiDraw",
+      "What is it?",
+      "Keyboard-oriented",
+      "Inspired by the vi coding editor"
+     ]
+    },
+    {
+     "t": 38.56,
+     "trail": [
+      "KiDraw",
+      "What is it?",
+      "Keyboard-oriented",
+      "Explorable keybindings"
+     ]
+    },
+    {
+     "t": 48.8,
+     "trail": [
+      "KiDraw",
+      "What is it?",
+      "A WIP experiment"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "point",
+   "title": "What's the point?",
+   "src": "assets/film/point.webm",
+   "poster": "assets/film/point.jpg",
+   "seconds": 93.64,
+   "cues": [
+    {
+     "t": 0,
+     "trail": [
+      "KiDraw",
+      "What's the point?"
+     ]
+    },
+    {
+     "t": 10.36,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency"
+     ]
+    },
+    {
+     "t": 17.28,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Writing and Connecting"
+     ]
+    },
+    {
+     "t": 24.68,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Writing and Connecting",
+      "Get both text and connections down, before they slip away"
+     ]
+    },
+    {
+     "t": 34.16,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Navigation"
+     ]
+    },
+    {
+     "t": 44.16,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Navigation",
+      "Skip the empty space"
+     ]
+    },
+    {
+     "t": 53,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Navigation",
+      "Follow the links"
+     ]
+    },
+    {
+     "t": 62.28,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Learning"
+     ]
+    },
+    {
+     "t": 72.56,
+     "trail": [
+      "KiDraw",
+      "What's the point?",
+      "Efficiency",
+      "Learning",
+      "Explore the keybindings, without reading the manual"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "how",
+   "title": "How does it work?",
+   "src": "assets/film/how.webm",
+   "poster": "assets/film/how.jpg",
+   "seconds": 99.52,
+   "cues": [
+    {
+     "t": 0,
+     "trail": [
+      "KiDraw",
+      "How does it work?"
+     ]
+    },
+    {
+     "t": 13.88,
+     "trail": [
+      "KiDraw",
+      "How does it work?",
+      "Press and hold submenu keys"
+     ]
+    },
+    {
+     "t": 26.12,
+     "trail": [
+      "KiDraw",
+      "How does it work?",
+      "Some submenu keys allow you to change how you navigate"
+     ]
+    },
+    {
+     "t": 43.72,
+     "trail": [
+      "KiDraw",
+      "How does it work?",
+      "Some submenu keys have an action on release"
+     ]
+    },
+    {
+     "t": 66.96,
+     "trail": [
+      "KiDraw",
+      "How does it work?",
+      "Press ESC or Ctrl-[ once or twice to get back to the main menu"
+     ]
+    },
+    {
+     "t": 79.16,
+     "trail": [
+      "KiDraw",
+      "How does it work?",
+      "Vi-style modal text editing"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "features",
+   "title": "What are some important features?",
+   "src": "assets/film/features.webm",
+   "poster": "assets/film/features.jpg",
+   "seconds": 147.88,
+   "cues": [
+    {
+     "t": 0,
+     "trail": [
+      "KiDraw",
+      "What are some important features?"
+     ]
+    },
+    {
+     "t": 11.52,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Automatic edge routing"
+     ]
+    },
+    {
+     "t": 25.16,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Automatic edge routing",
+      "Waypoints for fine tuning"
+     ]
+    },
+    {
+     "t": 32.52,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Node/edge layout on demand"
+     ]
+    },
+    {
+     "t": 51.64,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Coarse and fine movement"
+     ]
+    },
+    {
+     "t": 60.48,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Navigate by hopping from node to node"
+     ]
+    },
+    {
+     "t": 74.4,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Navigate by following edges"
+     ]
+    },
+    {
+     "t": 87.68,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Zoom, pan, and recenter"
+     ]
+    },
+    {
+     "t": 96.8,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Node and Edge Styling"
+     ]
+    },
+    {
+     "t": 106.56,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Edge labels"
+     ]
+    },
+    {
+     "t": 114.92,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Saving diagrams locally"
+     ]
+    },
+    {
+     "t": 124.92,
+     "trail": [
+      "KiDraw",
+      "What are some important features?",
+      "Saving diagrams locally",
+      "currently Chrome only"
+     ]
+    }
+   ]
+  }
+ ]
+}
