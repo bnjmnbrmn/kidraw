@@ -9,7 +9,7 @@
    "title": "What is it?",
    "src": "assets/film/what.webm",
    "poster": "assets/film/what.jpg",
-   "seconds": 66.2,
+   "seconds": 64.52,
    "cues": [
     {
      "t": 0,
@@ -18,14 +18,14 @@
      ]
     },
     {
-     "t": 3.32,
+     "t": 3.44,
      "trail": [
       "KiDraw",
       "What is it?"
      ]
     },
     {
-     "t": 11.6,
+     "t": 10.64,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -33,7 +33,7 @@
      ]
     },
     {
-     "t": 18.56,
+     "t": 17.44,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -41,7 +41,7 @@
      ]
     },
     {
-     "t": 29.16,
+     "t": 26.64,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -50,7 +50,7 @@
      ]
     },
     {
-     "t": 38.56,
+     "t": 35.72,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -59,7 +59,7 @@
      ]
     },
     {
-     "t": 48.8,
+     "t": 44.2,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -83,7 +83,7 @@
      ]
     },
     {
-     "t": 10.36,
+     "t": 10.88,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -91,7 +91,7 @@
      ]
     },
     {
-     "t": 17.28,
+     "t": 17.64,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -100,7 +100,7 @@
      ]
     },
     {
-     "t": 24.68,
+     "t": 25.04,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -110,7 +110,7 @@
      ]
     },
     {
-     "t": 34.16,
+     "t": 35.44,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -119,7 +119,7 @@
      ]
     },
     {
-     "t": 44.16,
+     "t": 45.52,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -129,7 +129,7 @@
      ]
     },
     {
-     "t": 53,
+     "t": 53.28,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -139,7 +139,7 @@
      ]
     },
     {
-     "t": 62.28,
+     "t": 63.2,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -148,7 +148,7 @@
      ]
     },
     {
-     "t": 72.56,
+     "t": 72.24,
      "trail": [
       "KiDraw",
       "What's the point?",
@@ -164,7 +164,7 @@
    "title": "How does it work?",
    "src": "assets/film/how.webm",
    "poster": "assets/film/how.jpg",
-   "seconds": 99.52,
+   "seconds": 98.96,
    "cues": [
     {
      "t": 0,
@@ -174,7 +174,7 @@
      ]
     },
     {
-     "t": 13.88,
+     "t": 13,
      "trail": [
       "KiDraw",
       "How does it work?",
@@ -182,7 +182,7 @@
      ]
     },
     {
-     "t": 26.12,
+     "t": 24.96,
      "trail": [
       "KiDraw",
       "How does it work?",
@@ -190,7 +190,7 @@
      ]
     },
     {
-     "t": 43.72,
+     "t": 42.28,
      "trail": [
       "KiDraw",
       "How does it work?",
@@ -198,7 +198,7 @@
      ]
     },
     {
-     "t": 66.96,
+     "t": 65.64,
      "trail": [
       "KiDraw",
       "How does it work?",
@@ -206,7 +206,7 @@
      ]
     },
     {
-     "t": 79.16,
+     "t": 77.8,
      "trail": [
       "KiDraw",
       "How does it work?",
@@ -220,7 +220,7 @@
    "title": "What are some important features?",
    "src": "assets/film/features.webm",
    "poster": "assets/film/features.jpg",
-   "seconds": 147.88,
+   "seconds": 152.16,
    "cues": [
     {
      "t": 0,
@@ -230,7 +230,7 @@
      ]
     },
     {
-     "t": 11.52,
+     "t": 11.4,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -238,7 +238,7 @@
      ]
     },
     {
-     "t": 25.16,
+     "t": 25,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -247,7 +247,7 @@
      ]
     },
     {
-     "t": 32.52,
+     "t": 32.32,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -255,7 +255,7 @@
      ]
     },
     {
-     "t": 51.64,
+     "t": 51.92,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -263,7 +263,7 @@
      ]
     },
     {
-     "t": 60.48,
+     "t": 60.84,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -271,7 +271,7 @@
      ]
     },
     {
-     "t": 74.4,
+     "t": 74.64,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -287,7 +287,7 @@
      ]
     },
     {
-     "t": 96.8,
+     "t": 96.64,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -295,7 +295,7 @@
      ]
     },
     {
-     "t": 106.56,
+     "t": 106.96,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -303,7 +303,7 @@
      ]
     },
     {
-     "t": 114.92,
+     "t": 116.4,
      "trail": [
       "KiDraw",
       "What are some important features?",
@@ -311,7 +311,7 @@
      ]
     },
     {
-     "t": 124.92,
+     "t": 125.04,
      "trail": [
       "KiDraw",
       "What are some important features?",

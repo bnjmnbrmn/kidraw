@@ -145,6 +145,15 @@ Playwright ships its own ffmpeg for recording video, and it is a very small
 build: mjpeg in, VP8/WebM out. That is exactly this pipeline, so there is
 nothing to install.
 
+The page being filmed has to be the app and nothing else. A dev-server error
+draws a Vite overlay across the whole window, and a run that is filming the
+window films that too — the first cut of the map has a permission error on a
+gcloud credentials file, which nothing in this project reads, sitting across
+the middle of it for a second and a half. `driver.mjs` installs a
+`MutationObserver` before any page script and takes `vite-error-overlay` off
+the page the moment it appears, counting them so both passes can say at the end
+if the dev server misbehaved.
+
 `tools/capture/driver.mjs` dispatches keys the way `tools/playwright-screenshot.js`
 does — `[a d j]` means "hold Add, press Box, press j, release Add" — with waits
 long enough for the held-key surfaces to settle. `build.mjs` wraps that in the

@@ -1,5 +1,21 @@
 # KiDraw homepage brief
 
+## September 7, 2026 — twelfth revision (what the camera should not see)
+
+Ben, on the first cut.
+
+- **A dev-server error overlay is in one of the videos** — a Vite panel about a
+  gcloud credentials file, which nothing in this project reads and which does
+  not reproduce. The capture now strips `vite-error-overlay` the moment it
+  appears and reports it, so weather in the dev server cannot get filmed again.
+- **The landing ghost stopped appearing over boxes you can read.** Editing a
+  label takes the camera to 400%, which makes the box taller than the band
+  between the header and the keymenu — which counted as "off screen", which
+  earned the box a stand-in copy at 100% laid over the middle of it. Zoomed in,
+  the stand-in is smaller than the thing it stands in for; it now takes more
+  than half the box being out of view to earn one. Zoomed out is unchanged:
+  that is the case the ghost was built for.
+
 ## September 7, 2026 — eleventh revision (a film, not a flip-book)
 
 `site/current-homepage-criticism.org`, fourth round. This one replaces the
