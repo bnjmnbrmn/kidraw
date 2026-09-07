@@ -18,7 +18,7 @@
 import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {open, keys} from './driver.mjs';
+import {open, keys, overlaysSeen} from './driver.mjs';
 import {goTo, growAtCell, nodeCentre, grownHalfExtents, park, select,
         frameAbove, settle, labels, edges} from './build.mjs';
 import {typeFilm, walkLinks, aimCamera} from './gestures.mjs';
@@ -218,5 +218,7 @@ writeFileSync(join(outDir, 'map.json'), JSON.stringify({
 }, null, 1));
 console.log(`filmed ${segments.length} boxes, ${(total / 1000).toFixed(0)}s of video, ` +
   `in ${((Date.now() - started) / 60000).toFixed(1)}m`);
+const overlays = await overlaysSeen(page);
+if (overlays) console.log(`!! the dev server threw ${overlays} error overlay(s) during the run`);
 console.log('errors:', errors);
 await browser.close();

@@ -16,7 +16,7 @@
 import {writeFileSync, mkdirSync, rmSync, existsSync, readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {open, keys} from './driver.mjs';
+import {open, keys, overlaysSeen} from './driver.mjs';
 import {seed, goTo, growAtCell, grownHalfExtents, park, settle, labels,
         fit, frameAbove} from './build.mjs';
 import {typeFilm, aimCamera, pressAndHold, keymenuLens, spawnAt,
@@ -71,7 +71,10 @@ async function stage(name, run) {
   const session = await open({...VIEWPORT, scale: 1});
   const recorder = await startRecorder(session.page, {dir: frames, viewport: VIEWPORT});
   try {
-    return await run(session.page, recorder);
+    const segment = await run(session.page, recorder);
+    const overlays = await overlaysSeen(session.page);
+    if (overlays) console.log(`  !! ${name}: the dev server threw ${overlays} error overlay(s)`);
+    return segment;
   } finally {
     await recorder.close();
     await session.browser.close();

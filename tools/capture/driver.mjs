@@ -75,6 +75,25 @@ export async function open({width = 1280, height = 800, url = 'http://localhost:
   const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: scale});
   // The captures are for a dark page, and the app remembers the choice.
   await context.addInitScript(() => window.localStorage.setItem('kidraw-theme', 'dark'));
+  // A dev-server error draws a Vite overlay across the whole page, and a run
+  // that is filming the page films that too: a permission error on a file
+  // nothing in this project reads once landed in the middle of the map. Take
+  // it out the moment it appears, and keep a count so the run can say so.
+  await context.addInitScript(() => {
+    window.__viteOverlays = 0;
+    const strip = () => {
+      for (const overlay of document.querySelectorAll('vite-error-overlay')) {
+        window.__viteOverlays++;
+        overlay.remove();
+      }
+    };
+    const watch = () => {
+      new MutationObserver(strip).observe(document.documentElement, {childList: true, subtree: true});
+      strip();
+    };
+    if (document.documentElement) watch();
+    else document.addEventListener('readystatechange', watch, {once: true});
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -85,6 +104,10 @@ export async function open({width = 1280, height = 800, url = 'http://localhost:
   await scratch.goto('about:blank');
   return {browser, page, scratch, errors};
 }
+
+/** How many dev-server error overlays have been taken off the page. Anything
+ *  above zero means the run was filming a broken dev server. */
+export const overlaysSeen = page => page.evaluate(() => window.__viteOverlays ?? 0);
 
 /**
  * Frames are re-encoded to WebP in a scratch page: the homepage embeds ~100 of
