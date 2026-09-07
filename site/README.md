@@ -163,6 +163,12 @@ long enough to read the menu it opens, walking the crosshairs along the arrows,
 putting a box down at a spot chosen by hand, typing at something like a real
 hand.
 
+**One browser at a time.** A capture run is about 700MB of Chromium, on a box
+with under 4GB that is also running the dev server, and a run has been killed
+for memory before now. So the passes are run one after another — never the map
+and the demos together, and never a cut (which opens its own browser for the
+lens) while either is filming.
+
 Filming happens at 820x700. 820 is the narrowest viewport the on-screen keyboard
 fits in — below it the keyboard is *clipped*, not scaled, so a genuinely
 phone-sized capture is not an option. One shape now rather than the two the
@@ -185,6 +191,9 @@ account for is worse than no move at all. Three sources of that:
   enough to the edge that the app panned to keep the crosshairs clear of it —
   sliding the box that had just been framed off centre. It takes the nearest
   clear point now, well inside the band.
+- **Parking on an arrow.** Whatever the crosshairs come to rest on gets a
+  hover trace, and an edge's is a fat white line drawn the length of it. `park`
+  samples the edge polylines as well as the boxes.
 - **`frameAbove` arguing with Recenter View.** It measured the floor as the
   keymenu element's top, but that element carries transparent padding above the
   card it draws, so `[r p]` — which fits to the app's own inset, about 32px

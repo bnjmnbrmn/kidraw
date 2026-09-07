@@ -130,6 +130,10 @@ async function showForceLayout() {
   await settle(page, 1200);
   await page.keyboard.up('r');
   await settle(page, 600);
+  // One correction, at most: Recenter View can leave the top row under the
+  // header, and the last thing the film shows should be the whole diagram.
+  await frameAbove(page);
+  await park(page);
   rec.hold(2400);
 }
 

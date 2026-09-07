@@ -106,13 +106,45 @@ export async function park(page) {
     for (let x = left; x <= right; x += 40) {
       for (let y = up; y <= down; y += 36) candidates.push({x, y});
     }
-    const clearance = point => boxes.reduce((worst, box) => {
-      const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
-      const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
-      return Math.min(worst, Math.hypot(dx, dy));
-    }, Infinity);
+    // Off the arrows as well as off the boxes: whatever the crosshairs come to
+    // rest on gets a hover trace, and an edge's is a fat white line drawn the
+    // length of it — which, in an overview shot, is a streak across the
+    // diagram that nothing explains.
+    const wires = [];
+    for (const edge of component.drawingLayer.getDAEdges()) {
+      const line = edge._line;
+      if (!line) continue;
+      const points = line.points();
+      const at = index => {
+        const local = line.getAbsoluteTransform().point({x: points[index], y: points[index + 1]});
+        return {x: local.x, y: local.y};
+      };
+      for (let index = 0; index + 3 < points.length; index += 2) {
+        const from = at(index);
+        const to = at(index + 2);
+        const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 14));
+        for (let step = 0; step <= steps; step++) {
+          wires.push({
+            x: from.x + ((to.x - from.x) * step) / steps,
+            y: from.y + ((to.y - from.y) * step) / steps,
+          });
+        }
+      }
+    }
+    const clearance = point => {
+      let worst = boxes.reduce((least, box) => {
+        const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
+        const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
+        return Math.min(least, Math.hypot(dx, dy));
+      }, Infinity);
+      for (const wire of wires) {
+        worst = Math.min(worst, Math.hypot(wire.x - point.x, wire.y - point.y));
+        if (worst < 45) return worst;
+      }
+      return worst;
+    };
     const away = point => Math.hypot(point.x - middle.x, point.y - middle.y);
-    // Off the labels, and then as little of a move as that allows.
+    // Off the labels and the arrows, and then as little of a move as that allows.
     const clear = candidates.filter(point => clearance(point) >= 45);
     const pool = clear.length ? clear : candidates;
     const best = pool.reduce((a, b) => (away(b) < away(a) ? b : a), pool[0]);
