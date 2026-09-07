@@ -1,6 +1,6 @@
 #+title: Index
 
-As the user scrolls down, they should see a diagram be built with the following.  Breaks in the sequence of diagram screenshots should also be present (e.g. showing closeups of the key menu and demos of automatic edge routing).  Headings correspond to nodes (bullet points do not).
+The homepage plays a video of this diagram being built.  Breaks in the sequence should also be present (e.g. showing closeups of the key menu and demos of automatic edge routing).  Headings and bullet points both correspond to nodes.
 
 * KiDraw
 ** What is it?
@@ -8,7 +8,7 @@ As the user scrolls down, they should see a diagram be built with the following.
 *** Keyboard-oriented
 - Inspired by the vi coding editor
 - Explorable keybindings
-*** A WIP experiment
+*** WIP experiment
 
 ** What's the point?
 *** Efficiency

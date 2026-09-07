@@ -3,8 +3,6 @@
  * Key dispatch follows tools/playwright-screenshot.js: bracket scopes hold a
  * key down, so `[a l]` means "hold Add, press l, release Add".
  */
-import {mkdirSync, writeFileSync} from 'node:fs';
-import {join} from 'node:path';
 import {chromium} from '@playwright/test';
 
 export const SPECIAL = {
@@ -71,47 +69,50 @@ export async function keys(page, sequence) {
 }
 
 export async function open({width = 1280, height = 800, url = 'http://localhost:4200', scale = 1} = {}) {
-  const browser = await chromium.launch({headless: true});
+  // This box has under 4GB and is also running the dev server, so a capture
+  // has been killed for memory more than once. One renderer, a bounded JS
+  // heap, and no shared-memory file to run out of.
+  const browser = await chromium.launch({
+    headless: true,
+    args: [
+      '--disable-dev-shm-usage',
+      '--renderer-process-limit=1',
+      '--js-flags=--max-old-space-size=256',
+      '--disable-extensions',
+      '--disable-background-networking',
+    ],
+  });
   const context = await browser.newContext({viewport: {width, height}, deviceScaleFactor: scale});
   // The captures are for a dark page, and the app remembers the choice.
   await context.addInitScript(() => window.localStorage.setItem('kidraw-theme', 'dark'));
+  // A dev-server error draws a Vite overlay across the whole page, and a run
+  // that is filming the page films that too: a permission error on a file
+  // nothing in this project reads once landed in the middle of the map. Take
+  // it out the moment it appears, and keep a count so the run can say so.
+  await context.addInitScript(() => {
+    window.__viteOverlays = 0;
+    const strip = () => {
+      for (const overlay of document.querySelectorAll('vite-error-overlay')) {
+        window.__viteOverlays++;
+        overlay.remove();
+      }
+    };
+    const watch = () => {
+      new MutationObserver(strip).observe(document.documentElement, {childList: true, subtree: true});
+      strip();
+    };
+    if (document.documentElement) watch();
+    else document.addEventListener('readystatechange', watch, {once: true});
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto(url, {waitUntil: 'networkidle'});
   await page.waitForSelector('app-drawing-area canvas', {timeout: 20000});
   await page.waitForTimeout(900);
-  const scratch = await context.newPage();
-  await scratch.goto('about:blank');
-  return {browser, page, scratch, errors};
+  return {browser, page, errors};
 }
 
-/**
- * Frames are re-encoded to WebP in a scratch page: the homepage embeds ~100 of
- * them, and WebP is roughly half the bytes of the JPEG Chromium would hand us.
- */
-export function shooter(dir, {type = 'webp', quality = 0.78, scratch = null} = {}) {
-  mkdirSync(dir, {recursive: true});
-  return async function shot(page, name, {wait = 260, quality: q = quality} = {}) {
-    await page.waitForTimeout(wait);
-    if (type !== 'webp') {
-      const file = join(dir, `${name}.${type === 'jpeg' ? 'jpg' : 'png'}`);
-      await page.screenshot({path: file, type, ...(type === 'jpeg' ? {quality: Math.round(q * 100)} : {})});
-      return file;
-    }
-    const png = await page.screenshot({type: 'png'});
-    const encoded = await scratch.evaluate(async ([data, q]) => {
-      const image = new Image();
-      image.src = 'data:image/png;base64,' + data;
-      await image.decode();
-      const canvas = document.createElement('canvas');
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      canvas.getContext('2d').drawImage(image, 0, 0);
-      return canvas.toDataURL('image/webp', q).split(',')[1];
-    }, [png.toString('base64'), q]);
-    const file = join(dir, `${name}.webp`);
-    writeFileSync(file, Buffer.from(encoded, 'base64'));
-    return file;
-  };
-}
+/** How many dev-server error overlays have been taken off the page. Anything
+ *  above zero means the run was filming a broken dev server. */
+export const overlaysSeen = page => page.evaluate(() => window.__viteOverlays ?? 0);

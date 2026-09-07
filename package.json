@@ -14,7 +14,7 @@
     "routing-eval": "node tools/routing-eval/run.mjs",
     "routing-eval:screens": "node tools/routing-eval/render-screens.mjs",
     "routing-test": "node tools/routing-eval/test.mjs",
-    "site:capture": "node tools/capture/map.mjs && node tools/capture/demo.mjs",
+    "site:film": "node tools/capture/film-map.mjs && node tools/capture/film-demos.mjs && node tools/capture/film.mjs",
     "site:page": "node tools/capture/gen-page.mjs"
   },
   "private": true,

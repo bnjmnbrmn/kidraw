@@ -465,6 +465,40 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.labelEditGhost).toBeNull();
     });
 
+    it('leaves a zoomed-in box alone, and stands in only where it cannot be read', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(0, 0, 'one\ntwo\nthree\nfour');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.stage = {width: () => 820, height: () => 700};
+      // The header over the top of the stage and the keymenu over the bottom:
+      // the band the reader can see is 72..423.
+      component.viewportInset = {left: 0, right: 0, top: 72, bottom: 277};
+      const band = {top: 72, bottom: 423};
+
+      // Zoomed in past natural size, and taller than that band, so some of it
+      // is behind the header. It is still perfectly readable, and a stand-in
+      // at natural size would be *smaller* than it.
+      drawingLayer.scale({x: 4, y: 4});
+      const tall = node.NODE_HEIGHT * 4;
+      expect(tall).withContext('the box is taller than the visible band').toBeGreaterThan(
+        band.bottom - band.top);
+      drawingLayer.position({x: 100, y: band.top + (band.bottom - band.top - tall) / 2});
+      expect(component.navigationGhostReasons(node)).toEqual([]);
+
+      // Zoomed out until the label is too small to read: that is what the
+      // stand-in is for.
+      drawingLayer.scale({x: 0.25, y: 0.25});
+      drawingLayer.position({x: 300, y: 200});
+      expect(component.navigationGhostReasons(node)).toContain('too-small');
+
+      // At natural size, but mostly behind the keymenu.
+      drawingLayer.scale({x: 1, y: 1});
+      drawingLayer.position({x: 300, y: band.bottom - node.NODE_HEIGHT * 0.25});
+      expect(component.navigationGhostReasons(node)).toContain('offscreen');
+    });
+
     it('pans the viewport to keep the active edit caret and line context visible', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();
@@ -784,6 +818,38 @@ describe('DrawingArea Unit Tests', () => {
       component.stage = {width: () => 800, height: () => 400};
 
       expect(component.navigationGhostReasons(node)).toContain('offscreen');
+    });
+  });
+
+  describe('background grid', () => {
+    it('covers the view wherever the camera has got to, not the origin', () => {
+      const drawingLayer = new DrawingLayer();
+      // Zoomed in, and a long way from (0, 0) — a box out at the edge of a
+      // diagram, looked at from 400%.
+      drawingLayer.scale({x: 4, y: 4});
+      drawingLayer.position({x: -4000, y: -3000});
+      drawingLayer.rebuildGrid(820, 700);
+
+      const lines = drawingLayer.find('Line') as Konva.Line[];
+      expect(lines.length).toBeGreaterThan(0);
+      // The visible strip of drawing-layer space, and a little way past both
+      // of its vertical edges.
+      const left = 4000 / 4;
+      const right = left + 820 / 4;
+      const spans = (at: number) => lines.some(line => {
+        const [x1, y1, x2] = line.points();
+        return x1 === x2 && Math.abs(x1 - at) <= drawingLayer.getGridSpacing();
+      });
+      expect(spans(left)).withContext('grid at the left of the view').toBeTrue();
+      expect(spans(right)).withContext('grid at the right of the view').toBeTrue();
+      // And the lines are long enough to cross it.
+      const vertical = lines.find(line => {
+        const [x1, , x2] = line.points();
+        return x1 === x2;
+      })!;
+      const [, top, , bottom] = vertical.points();
+      expect(top).toBeLessThanOrEqual(3000 / 4);
+      expect(bottom).toBeGreaterThanOrEqual(3000 / 4 + 700 / 4);
     });
   });
 

@@ -1,5 +1,69 @@
 # KiDraw homepage brief
 
+## September 7, 2026 — thirteenth revision (a camera that stays still)
+
+Ben, on the second cut: strange panning throughout and at the end, and "currently
+Chrome only" placed somewhere it does not belong.
+
+- **The camera pulls back before it reaches.** Every box used to fit the whole
+  diagram to find its parent and then climb back in to 100%; it now zooms out
+  first and pans once. That is most of the movement gone.
+- **Parking the crosshairs no longer moves the picture.** Off the label by the
+  shortest move that clears it, rather than to the emptiest corner of the
+  canvas — which at 400% was close enough to the edge to make the view pan.
+- **A box has to be placed further out than its parent.** Scoring alone let a
+  leaf of the features branch land next to the root, because a crowded arc in
+  the right direction costs more than an empty cell in the wrong one.
+
+## September 7, 2026 — twelfth revision (what the camera should not see)
+
+Ben, on the first cut.
+
+- **A dev-server error overlay is in one of the videos** — a Vite panel about a
+  gcloud credentials file, which nothing in this project reads and which does
+  not reproduce. The capture now strips `vite-error-overlay` the moment it
+  appears and reports it, so weather in the dev server cannot get filmed again.
+- **The landing ghost stopped appearing over boxes you can read.** Editing a
+  label takes the camera to 400%, which makes the box taller than the band
+  between the header and the keymenu — which counted as "off screen", which
+  earned the box a stand-in copy at 100% laid over the middle of it. Zoomed in,
+  the stand-in is smaller than the thing it stands in for; it now takes more
+  than half the box being out of view to earn one. Zoomed out is unchanged:
+  that is the case the ghost was built for.
+
+## September 7, 2026 — eleventh revision (a film, not a flip-book)
+
+`site/current-homepage-criticism.org`, fourth round. This one replaces the
+playback mechanism, not just the content.
+
+- **The page is video.** Four WebM files, one per branch of the outline, cut
+  from a screencast of the running app. The flip-book is gone: scroll was the
+  clock, so the same gesture ran at a different speed for every reader, and a
+  tween that took four screenshots looked like four screenshots. A video runs at
+  one speed. The two capture profiles are gone with it — a video scales, where
+  two sets of screenshots had to be shot twice and paired frame for frame.
+- **A breadcrumb replaces the section headings.** `KiDraw › How does it work? ›
+  Press and hold submenu keys`, above each video, following the playhead against
+  a cue list written when the film was cut. It says both what a heading said and
+  where in the tree the build has got to.
+- **The bullets are boxes.** They were separate caption screens; now each one is
+  a leaf hanging off the heading above it, made on camera like every other box.
+  The diagram is thirty-four boxes rather than twenty-eight, and there are no
+  caption panels left on the page at all.
+- **Held keys are shown being held.** The three static keymenu close-ups became
+  press-hold-release sequences — half a second before, the key down, half a
+  second after — done twice, with the frame cropped towards the home row so `d`
+  through `k` can be read.
+- **Seven demos, on graphs called a, b, c, d.** "Ship the alpha" and "Plan /
+  Review / Ship it" are gone: the point of a demo is the gesture, not the words
+  in the boxes. Move by Link and Move by node each got one of their own — real
+  traversals, connected and unconnected, changing direction — and the layouts
+  demo starts from an untidy graph so Tree → has something to tidy.
+- **Every tween is in the film**, because the camera is the compositor now:
+  zooms, pans, link hops, the layout glide. Dead air between painted frames is
+  capped at 130ms, which squeezes the waiting without touching anything that
+  moves.
+
 ## September 6, 2026 — tenth revision (the animation, in full)
 
 `site/current-homepage-criticism.org`, third round. Two of these are app

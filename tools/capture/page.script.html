@@ -3,162 +3,80 @@
   'use strict';
 
   var slice = function (nodes) { return Array.prototype.slice.call(nodes); };
-  var acts = slice(document.querySelectorAll('.act'));
-  if (!acts.length || !window.requestAnimationFrame) return;
-  var root = document.documentElement;
+  var videos = slice(document.querySelectorAll('video[data-act]'));
+  if (!videos.length) return;
+  document.documentElement.classList.add('js');
 
-  /** The last part of a panel's window hands the window over to the next one:
-   *  the frames slide up and the caption or example rises into their place. */
-  var HANDOVER = .18;
-  /** How far ahead to ask for frames. They load lazily, and the scroll is the
-   *  playback, so a frame that has not arrived stalls the flipbook. */
-  var LOOKAHEAD = 40;
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /**
-   * One act: the strip of panels, and the column of spacers that scrolls it.
+   * The breadcrumb.
    *
-   * A panel's frames are weighted by how long the keystrokes they stand for
-   * would take, so a label typed letter by letter takes more of the panel's
-   * scroll than the pause after it.
+   * Cues are [{t, trail}] in the video's own seconds, written when the film was
+   * cut; the trail stands until the next one, which is why a demo — filmed
+   * separately, with no cues of its own — keeps the breadcrumb of the box it
+   * belongs to.
    */
-  function collect(act) {
-    var reel = act.querySelector('[data-reel]');
-    if (!reel) return null;
-    var panels = slice(reel.querySelectorAll('.panel')).map(function (element) {
-      var frames = slice(element.querySelectorAll('.frame'));
-      var cum = [];
-      var total = 0;
-      frames.forEach(function (frame) {
-        cum.push(total);
-        total += Math.max(Number(frame.getAttribute('data-ms')) || 0, 120);
-      });
-      return {
-        el: element,
-        frames: frames,
-        cum: cum,
-        total: total || 1,
-        shown: element.querySelector('.frame.is-on'),
-        warmed: 0
-      };
-    });
-    return {
-      el: act,
-      reel: reel,
-      panels: panels,
-      spans: slice(act.querySelectorAll('.act-span')),
-      offset: -1
+  function crumbs(act) {
+    var holder = document.querySelector('[data-crumbs="' + act + '"]');
+    var source = document.querySelector('script[data-cues="' + act + '"]');
+    if (!holder || !source) return null;
+    var cues;
+    try { cues = JSON.parse(source.textContent); } catch (error) { return null; }
+    var showing = -1;
+    return function (time) {
+      var at = -1;
+      for (var i = 0; i < cues.length; i += 1) {
+        if (cues[i].t <= time + .001) at = i;
+        else break;
+      }
+      if (at < 0 || at === showing) return;
+      showing = at;
+      var trail = cues[at].trail;
+      var markup = '';
+      for (var step = 0; step < trail.length; step += 1) {
+        markup += '<span class="crumb">' +
+          trail[step].replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span>';
+      }
+      holder.innerHTML = markup;
     };
   }
 
-  var stages = acts.map(collect).filter(Boolean);
-
-  /**
-   * Put one frame up.
-   *
-   * Frames are stacked, not cross-faded: the one going out stays opaque
-   * underneath, so a frame that has not loaded yet shows the last one rather
-   * than the black backing. A fade would only lag the scroll.
-   */
-  function paint(panel, frame) {
-    if (!frame || panel.shown === frame) return;
-    var image = frame.querySelector('img');
-    // A frame that has not arrived yet is not put up at all. Painting it would
-    // lay a transparent picture over the last one and double-expose the two;
-    // holding the last one until it lands reads as the flipbook pausing.
-    if (image && !image.complete) {
-      if (!frame.waitingForImage) {
-        frame.waitingForImage = true;
-        image.addEventListener('load', schedule);
-        image.addEventListener('error', schedule);
-      }
-      return;
+  videos.forEach(function (video) {
+    var update = crumbs(video.getAttribute('data-act'));
+    if (update) {
+      video.addEventListener('timeupdate', function () { update(video.currentTime); });
+      video.addEventListener('seeked', function () { update(video.currentTime); });
     }
-    if (panel.shown) {
-      panel.shown.classList.remove('is-on');
-      panel.shown.classList.add('is-under');
-    }
-    frame.classList.remove('is-under');
-    frame.classList.add('is-on');
-    panel.shown = frame;
-  }
 
-  /** Ask for the frames just ahead of the one on screen. */
-  function warm(panel, from) {
-    if (from + LOOKAHEAD <= panel.warmed) return;
-    var end = Math.min(panel.frames.length, from + LOOKAHEAD);
-    for (var i = Math.max(0, panel.warmed); i < end; i += 1) {
-      var image = panel.frames[i].querySelector('img');
-      if (image && image.loading === 'lazy') image.loading = 'eager';
-    }
-    panel.warmed = end;
-  }
+    // Someone who pauses a video meant to pause it: scrolling back into it
+    // should not start it up again.
+    var byHand = false;
+    video.addEventListener('pause', function () { if (!video.seeking && !video.ended) byHand = true; });
+    video.addEventListener('play', function () { byHand = false; });
 
-  /** The frame this far through a panel's run. */
-  function scrub(stage, index, through) {
-    var panel = stage.panels[index];
-    if (!panel || !panel.frames.length) return;
-    var want = panel.total * Math.max(0, Math.min(1, through));
-    var at = 0;
-    for (var i = 0; i < panel.cum.length; i += 1) {
-      if (panel.cum[i] <= want) at = i;
-      else break;
-    }
-    paint(panel, panel.frames[at]);
-    warm(panel, at);
-  }
-
-  /** Which spacer the reading line is in, and how far through it. */
-  function locate(spans, line) {
-    var index = 0;
-    var at = spans[0].getBoundingClientRect();
-    for (var i = 0; i < spans.length; i += 1) {
-      var rect = spans[i].getBoundingClientRect();
-      if (rect.top <= line) { index = i; at = rect; }
-    }
-    var through = at.height > 0 ? (line - at.top) / at.height : 0;
-    return {index: index, through: Math.max(0, Math.min(1, through))};
-  }
-
-  function update() {
-    var line = window.innerHeight * .5;
-    stages.forEach(function (stage) {
-      var rect = stage.el.getBoundingClientRect();
-      if (rect.bottom < -240 || rect.top > window.innerHeight + 240) return;
-      var found = locate(stage.spans, line);
-      var index = Math.min(found.index, stage.panels.length - 1);
-      var handover = index < stage.panels.length - 1
-        ? Math.max(0, (found.through - (1 - HANDOVER)) / HANDOVER)
-        : 0;
-      var offset = index + Math.min(1, handover);
-      if (offset !== stage.offset) {
-        stage.reel.style.transform = 'translateY(' + (-offset * 100) + '%)';
-        stage.offset = offset;
-      }
-      scrub(stage, index, found.through / (1 - HANDOVER));
-      if (handover > 0) scrub(stage, index + 1, 0);
-    });
-  }
-
-  var queued = false;
-  function schedule() {
-    if (queued) return;
-    queued = true;
-    window.requestAnimationFrame(function () { queued = false; update(); });
-  }
-
-  // A card that is wider than its window starts in the middle of the picture.
-  slice(document.querySelectorAll('.panel[data-wide] .card')).forEach(function (panel) {
-    var centre = function () { panel.scrollLeft = (panel.scrollWidth - panel.clientWidth) / 2; };
-    centre();
-    window.addEventListener('resize', centre);
+    if (still || !('IntersectionObserver' in window)) return;
+    // The video is the page's only moving part, and it plays where it is being
+    // looked at. Loading waits for that too: only the first act asks for
+    // anything before the reader has got to it.
+    var watcher = new IntersectionObserver(function (records) {
+      records.forEach(function (record) {
+        if (record.isIntersecting) {
+          if (video.preload === 'none') video.preload = 'auto';
+          if (!byHand && video.paused) {
+            var started = video.play();
+            if (started && started.catch) started.catch(function () {});
+          }
+        } else if (!video.paused) {
+          video.pause();
+          byHand = false;
+        }
+      });
+    }, {threshold: .55});
+    watcher.observe(video);
   });
 
-  root.classList.add('js');
   var outline = document.getElementById('outline');
   if (outline) outline.open = false;
-
-  update();
-  window.addEventListener('scroll', schedule, {passive: true});
-  window.addEventListener('resize', schedule);
 })();
 </script>
