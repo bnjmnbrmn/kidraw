@@ -42,7 +42,76 @@
     };
   }
 
+  /**
+   * Controls of our own, under the video.
+   *
+   * The player's own are drawn over the bottom of the picture, which is where
+   * the app draws its mode chip — so with JavaScript they are replaced by a
+   * bar underneath. Without it the native ones stay: covering the mode chip
+   * beats having no way to play at all.
+   */
+  function controls(video) {
+    var frame = video.closest('.film-frame');
+    if (!frame) return;
+    video.removeAttribute('controls');
+    var bar = document.createElement('div');
+    bar.className = 'film-controls';
+
+    var play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'film-play';
+    play.setAttribute('aria-label', 'Play');
+
+    var seek = document.createElement('input');
+    seek.type = 'range';
+    seek.className = 'film-seek';
+    seek.min = 0;
+    seek.max = 1000;
+    seek.value = 0;
+    seek.setAttribute('aria-label', 'Seek');
+
+    var full = document.createElement('button');
+    full.type = 'button';
+    full.className = 'film-full';
+    full.setAttribute('aria-label', 'Full screen');
+
+    bar.appendChild(play);
+    bar.appendChild(seek);
+    bar.appendChild(full);
+    frame.parentNode.insertBefore(bar, frame.nextSibling);
+
+    play.addEventListener('click', function () {
+      if (video.paused) video.play().catch(function () {});
+      else video.pause();
+    });
+    full.addEventListener('click', function () {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (frame.requestFullscreen) frame.requestFullscreen();
+    });
+    var mark = function () {
+      var playing = !video.paused && !video.ended;
+      play.classList.toggle('is-playing', playing);
+      play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    };
+    video.addEventListener('play', mark);
+    video.addEventListener('pause', mark);
+    video.addEventListener('ended', mark);
+    mark();
+
+    // The reader may be dragging the handle; do not fight them for it.
+    var scrubbing = false;
+    seek.addEventListener('pointerdown', function () { scrubbing = true; });
+    seek.addEventListener('pointerup', function () { scrubbing = false; });
+    seek.addEventListener('input', function () {
+      if (video.duration) video.currentTime = (seek.value / 1000) * video.duration;
+    });
+    video.addEventListener('timeupdate', function () {
+      if (!scrubbing && video.duration) seek.value = (video.currentTime / video.duration) * 1000;
+    });
+  }
+
   videos.forEach(function (video) {
+    controls(video);
     var update = crumbs(video.getAttribute('data-act'));
     if (update) {
       video.addEventListener('timeupdate', function () { update(video.currentTime); });

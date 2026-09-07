@@ -6459,6 +6459,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // built during the tween survives at full zoom as a phantom second copy
     // of the freshly added node (da-198).
     this.focusZoomTargetScale = targetScale;
+    // And take down any lens built a moment ago, while the graph was still
+    // zoomed out: it would otherwise sit there for the whole flight in, a
+    // small copy of the node laid over the big one it is becoming.
+    this.refreshLabelEditGhost();
     this.centerViewOnLayerPoint(
       this.getNodeCenterInLayerCoordinates(node),
       targetScale,

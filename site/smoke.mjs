@@ -226,13 +226,28 @@ try {
     'the breadcrumb replaced the section headings');
   const players = await page.evaluate(() => Array.prototype.map.call(
     document.querySelectorAll('video[data-act]'), video => ({
+      // The player's own controls are drawn over the app's mode chip, so with
+      // JavaScript they are replaced by a bar underneath the video.
       controls: video.controls, muted: video.muted, poster: !!video.getAttribute('poster'),
       inline: video.hasAttribute('playsinline'),
       source: video.querySelector('source').getAttribute('type'),
+      bar: !!video.closest('.film-frame').nextElementSibling?.classList.contains('film-controls'),
+      play: !!video.closest('.film').querySelector('.film-play'),
+      seek: !!video.closest('.film').querySelector('input.film-seek'),
     })));
   for (const player of players) {
-    assert.deepEqual(player, {controls: true, muted: true, poster: true, inline: true, source: 'video/webm'});
+    assert.deepEqual(player, {
+      controls: false, muted: true, poster: true, inline: true, source: 'video/webm',
+      bar: true, play: true, seek: true,
+    });
   }
+  // And the bar is below the picture, which is the whole point of it.
+  const under = await page.evaluate(() => {
+    const frame = document.querySelector('#what .film-frame').getBoundingClientRect();
+    const bar = document.querySelector('#what .film-controls').getBoundingClientRect();
+    return bar.top >= frame.bottom - 1;
+  });
+  assert.ok(under, 'the controls sit under the video, clear of the mode chip');
 
   // The breadcrumb is the video's clock: seek, and it says where the build has
   // got to.
