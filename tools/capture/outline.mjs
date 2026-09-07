@@ -22,7 +22,7 @@ export const OUTLINE = n('kidraw', 'KiDraw', {kind: 'root'}, [
       n('vi-inspired', 'Inspired by the vi coding editor', {kind: 'note'}),
       n('explorable', 'Explorable keybindings', {kind: 'note'}),
     ]),
-    n('wip', 'A WIP experiment'),
+    n('wip', 'WIP experiment'),
   ]),
 
   n('point', "What's the point?", {kind: 'q'}, [

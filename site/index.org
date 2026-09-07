@@ -8,7 +8,7 @@ The homepage plays a video of this diagram being built.  Breaks in the sequence 
 *** Keyboard-oriented
 - Inspired by the vi coding editor
 - Explorable keybindings
-*** A WIP experiment
+*** WIP experiment
 
 ** What's the point?
 *** Efficiency

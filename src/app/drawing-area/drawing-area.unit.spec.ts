@@ -821,6 +821,38 @@ describe('DrawingArea Unit Tests', () => {
     });
   });
 
+  describe('background grid', () => {
+    it('covers the view wherever the camera has got to, not the origin', () => {
+      const drawingLayer = new DrawingLayer();
+      // Zoomed in, and a long way from (0, 0) — a box out at the edge of a
+      // diagram, looked at from 400%.
+      drawingLayer.scale({x: 4, y: 4});
+      drawingLayer.position({x: -4000, y: -3000});
+      drawingLayer.rebuildGrid(820, 700);
+
+      const lines = drawingLayer.find('Line') as Konva.Line[];
+      expect(lines.length).toBeGreaterThan(0);
+      // The visible strip of drawing-layer space, and a little way past both
+      // of its vertical edges.
+      const left = 4000 / 4;
+      const right = left + 820 / 4;
+      const spans = (at: number) => lines.some(line => {
+        const [x1, y1, x2] = line.points();
+        return x1 === x2 && Math.abs(x1 - at) <= drawingLayer.getGridSpacing();
+      });
+      expect(spans(left)).withContext('grid at the left of the view').toBeTrue();
+      expect(spans(right)).withContext('grid at the right of the view').toBeTrue();
+      // And the lines are long enough to cross it.
+      const vertical = lines.find(line => {
+        const [x1, , x2] = line.points();
+        return x1 === x2;
+      })!;
+      const [, top, , bottom] = vertical.points();
+      expect(top).toBeLessThanOrEqual(3000 / 4);
+      expect(bottom).toBeGreaterThanOrEqual(3000 / 4 + 700 / 4);
+    });
+  });
+
   describe('Move by Link quadrant overlay', () => {
     it('draws four zoom-stable diagonal boundary rays through the source', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;

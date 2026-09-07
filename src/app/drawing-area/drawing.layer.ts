@@ -64,10 +64,18 @@ export class DrawingLayer extends Konva.Layer {
     const majorStrokeWidth = 1 / scale;
     const minorStrokeWidth = 0.5 / scale;
 
-    // Extend grid well beyond visible area
-    const extent = Math.max(viewportWidth, viewportHeight) * 4 / scale;
-    const minCoord = -extent;
-    const maxCoord = extent;
+    // Extend well beyond the visible area — but around the *view*, not around
+    // the origin. Built as a square on (0,0), the mesh ran out as soon as the
+    // camera had travelled far enough from it: a box out at the edge of a
+    // diagram, looked at from 400%, sat with grid down one side of the screen
+    // and plain black down the other.
+    const viewLeft = -this.x() / scale;
+    const viewTop = -this.y() / scale;
+    const margin = (Math.max(viewportWidth, viewportHeight) * 2) / scale;
+    const minX = viewLeft - margin;
+    const maxX = viewLeft + viewportWidth / scale + margin;
+    const minY = viewTop - margin;
+    const maxY = viewTop + viewportHeight / scale + margin;
 
     // Skip minor lines when they'd be too close together on screen (<8 px apart)
     // — avoids visual clutter and wasted draw calls at low zoom
@@ -75,18 +83,18 @@ export class DrawingLayer extends Konva.Layer {
     const drawMinor = minorScreenSpacing >= 8;
 
     if (drawMinor) {
-      for (let x = Math.ceil(minCoord / minorSpacing) * minorSpacing; x <= maxCoord; x += minorSpacing) {
+      for (let x = Math.ceil(minX / minorSpacing) * minorSpacing; x <= maxX; x += minorSpacing) {
         this.gridGroup.add(new Konva.Line({
-          points: [x, minCoord, x, maxCoord],
+          points: [x, minY, x, maxY],
           stroke: color,
           strokeWidth: minorStrokeWidth,
           opacity: 0.2,
           listening: false,
         }));
       }
-      for (let y = Math.ceil(minCoord / minorSpacing) * minorSpacing; y <= maxCoord; y += minorSpacing) {
+      for (let y = Math.ceil(minY / minorSpacing) * minorSpacing; y <= maxY; y += minorSpacing) {
         this.gridGroup.add(new Konva.Line({
-          points: [minCoord, y, maxCoord, y],
+          points: [minX, y, maxX, y],
           stroke: color,
           strokeWidth: minorStrokeWidth,
           opacity: 0.2,
@@ -97,18 +105,18 @@ export class DrawingLayer extends Konva.Layer {
 
     // Major grid lines — slightly more visible when minor lines are hidden
     const majorOpacity = drawMinor ? 0.4 : 0.55;
-    for (let x = Math.ceil(minCoord / majorSpacing) * majorSpacing; x <= maxCoord; x += majorSpacing) {
+    for (let x = Math.ceil(minX / majorSpacing) * majorSpacing; x <= maxX; x += majorSpacing) {
       this.gridGroup.add(new Konva.Line({
-        points: [x, minCoord, x, maxCoord],
+        points: [x, minY, x, maxY],
         stroke: color,
         strokeWidth: majorStrokeWidth,
         opacity: majorOpacity,
         listening: false,
       }));
     }
-    for (let y = Math.ceil(minCoord / majorSpacing) * majorSpacing; y <= maxCoord; y += majorSpacing) {
+    for (let y = Math.ceil(minY / majorSpacing) * majorSpacing; y <= maxY; y += majorSpacing) {
       this.gridGroup.add(new Konva.Line({
-        points: [minCoord, y, maxCoord, y],
+        points: [minX, y, maxX, y],
         stroke: color,
         strokeWidth: majorStrokeWidth,
         opacity: majorOpacity,

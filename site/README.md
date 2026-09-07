@@ -118,7 +118,15 @@ npm run site:build && npm run site:test
 ```
 
 `film-demos.mjs` takes demo names, so a single one can be reshot:
-`node tools/capture/film-demos.mjs layouts hop`. The raw frames live in
+`node tools/capture/film-demos.mjs layouts hop`. `film.mjs` takes act ids the
+same way — `node tools/capture/film.mjs what` recuts the first video and leaves
+the other three files and their manifest entries alone.
+
+The build, though, is one run: `film-map.mjs` starts from an empty canvas and
+wipes its frames, so `CAPTURE_LIMIT=7` refilms the first act and *loses* the
+segments for the rest. Recutting a later act means filming the whole map again.
+The acts start at entry 0, 7, 16 and 22 of the outline, so the limit for the
+first act is 7. The raw frames live in
 `.capture/`, which is not in git; the two passes can be run days apart, because
 `film.mjs` only reads their manifests.
 

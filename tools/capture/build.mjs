@@ -139,15 +139,33 @@ export async function park(page) {
       }, Infinity);
       for (const wire of wires) {
         worst = Math.min(worst, Math.hypot(wire.x - point.x, wire.y - point.y));
-        if (worst < 45) return worst;
+        if (worst < 25) return worst;
       }
       return worst;
     };
     const away = point => Math.hypot(point.x - middle.x, point.y - middle.y);
-    // Off the labels and the arrows, and then as little of a move as that allows.
-    const clear = candidates.filter(point => clearance(point) >= 45);
-    const pool = clear.length ? clear : candidates;
-    const best = pool.reduce((a, b) => (away(b) < away(a) ? b : a), pool[0]);
+    // What the crosshairs *hit* is a box of hit radii around them, up to 42 to
+    // a side, so its corner reaches sixty-odd pixels — a point forty-five away
+    // from an arrow still lights it up. Ask for real room first and settle for
+    // less only when the diagram leaves none.
+    let pool = candidates;
+    for (const floor of [80, 60, 45, 25]) {
+      const clear = candidates.filter(point => clearance(point) >= floor);
+      if (clear.length) { pool = clear; break; }
+    }
+    // Nearest to the middle first, and then ask the app rather than trusting
+    // the arithmetic: what the crosshairs hit is its own geometry, and the
+    // only way to be sure they are on nothing is to put them there and look.
+    const ordered = pool.slice().sort((first, second) => away(first) - away(second));
+    const hits = () =>
+      (component.getDANodesContainingCrosshairs?.() ?? []).length +
+      (component.getDAEdgesContainingCrosshairs?.() ?? []).length;
+    let best = ordered[0];
+    for (const point of ordered.slice(0, 24)) {
+      component.moveCrosshairsBy(point.x - layer.crosshairsX(), point.y - layer.crosshairsY());
+      best = point;
+      if (!hits()) break;
+    }
     component.moveCrosshairsBy(best.x - layer.crosshairsX(), best.y - layer.crosshairsY());
     component.clearCrosshairHoverHighlight(true);
   });
@@ -164,7 +182,8 @@ export async function park(page) {
  * already right.
  */
 export async function frameAbove(page) {
-  for (let attempt = 0; attempt < 6; attempt++) {
+  let steppedBack = 0;
+  for (let attempt = 0; attempt < 8; attempt++) {
     const view = await page.evaluate(() => {
       const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
       component.finishTweens();
@@ -180,14 +199,32 @@ export async function frameAbove(page) {
       };
     });
     if (!view) return true;
+    if (process.env.CAPTURE_DEBUG) {
+      console.log(`    frameAbove ${attempt}: top=${Math.round(view.top)} ` +
+        `bottom=${Math.round(view.bottom)} band=${Math.round(view.ceiling)}..${Math.round(view.floor)}`);
+    }
     // A few pixels either way is not worth a pan the reader can see.
     const slack = 14;
+    const band = view.floor - view.ceiling;
     const high = view.top < view.ceiling - slack;
     const low = view.bottom > view.floor + slack;
     if (!high && !low) return true;
-    if (low && !high) await keys(page, '[r j]');
-    else if (high && !low) await keys(page, '[r k]');
-    else { await keys(page, '[r o]'); await keys(page, '[r p]'); }
+    // A pan is a fixed step, so a diagram that nearly fills the band overshoots
+    // one edge trying to clear the other — which is how the branch shot ended
+    // up with the top box under the header one week and the root behind the
+    // keyboard the next. A step back first makes room for the pan to land in.
+    // Room for a pan to land in: a press moves a fixed distance, so a diagram
+    // within a slack of filling the band cannot clear one edge without
+    // breaching the other. Only then is a step back worth the smaller picture.
+    const tight = view.bottom - view.top > band - slack * 2;
+    if ((high && low) || (tight && steppedBack < 4)) {
+      steppedBack++;
+      await keys(page, '[r o]');
+    } else if (low) {
+      await keys(page, '[r j]');
+    } else {
+      await keys(page, '[r k]');
+    }
     await settle(page, 380);
   }
   return false;

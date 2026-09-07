@@ -9,7 +9,7 @@
    "title": "What is it?",
    "src": "assets/film/what.webm",
    "poster": "assets/film/what.jpg",
-   "seconds": 65.52,
+   "seconds": 60.12,
    "cues": [
     {
      "t": 0,
@@ -18,14 +18,14 @@
      ]
     },
     {
-     "t": 3.32,
+     "t": 3.48,
      "trail": [
       "KiDraw",
       "What is it?"
      ]
     },
     {
-     "t": 11.6,
+     "t": 11.64,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -33,7 +33,7 @@
      ]
     },
     {
-     "t": 18.96,
+     "t": 19.24,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -41,7 +41,7 @@
      ]
     },
     {
-     "t": 28.04,
+     "t": 28.28,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -50,7 +50,7 @@
      ]
     },
     {
-     "t": 36.76,
+     "t": 37.64,
      "trail": [
       "KiDraw",
       "What is it?",
@@ -59,11 +59,11 @@
      ]
     },
     {
-     "t": 45.68,
+     "t": 46.56,
      "trail": [
       "KiDraw",
       "What is it?",
-      "A WIP experiment"
+      "WIP experiment"
      ]
     }
    ]

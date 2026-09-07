@@ -15,7 +15,7 @@
  * are looking at without loading five minutes of video first, and each one is
  * short enough to watch to the end.
  */
-import {mkdirSync, readFileSync, rmSync, writeFileSync, existsSync, statSync} from 'node:fs';
+import {mkdirSync, readFileSync, writeFileSync, existsSync, statSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
@@ -63,15 +63,44 @@ for (const entry of entries) {
 
 const segmentFor = id => map.segments.find(segment => segment.name === `node:${id}`);
 
-rmSync(outDir, {recursive: true, force: true});
+/**
+ * Which acts to cut. Everything, unless named — `node tools/capture/film.mjs
+ * what` recuts the first video and leaves the other three alone, which is what
+ * a change to one branch of the outline needs. The manifest is merged rather
+ * than rewritten, so an act nobody recut keeps the entry it had.
+ */
+const wanted = new Set(
+  (process.env.FILM_ACTS ?? process.argv.slice(2).join(',')).split(',').filter(Boolean));
+const filmPath = join(outDir, 'film.json');
+const previous = existsSync(filmPath)
+  ? JSON.parse(readFileSync(filmPath, 'utf8')).acts ?? []
+  : [];
 mkdirSync(outDir, {recursive: true});
-const browser = await chromium.launch({headless: true});
-const scratch = await browser.newPage();
-await scratch.goto('about:blank');
+// Opened only if a segment actually needs cropping — the keymenu demos do, a
+// branch of the build does not, and a browser is most of a cut's memory.
+let browser = null;
+const scratch = async () => {
+  if (!browser) {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--disable-dev-shm-usage', '--renderer-process-limit=1',
+             '--js-flags=--max-old-space-size=256'],
+    });
+    const page = await browser.newPage();
+    await page.goto('about:blank');
+    scratch.page = page;
+  }
+  return scratch.page;
+};
 
 const {width, height} = map.viewport;
 const cut = [];
 for (const act of ACTS) {
+  const kept = previous.find(entry => entry.id === act.id);
+  if (wanted.size && !wanted.has(act.id)) {
+    if (kept) cut.push(kept);
+    continue;
+  }
   const segments = [];
   const missing = [];
   for (const {node} of byAct.get(act.id)) {
@@ -85,7 +114,8 @@ for (const act of ACTS) {
     }
   }
   if (!segments.length) {
-    console.log(`  ${act.id} — nothing filmed yet, skipped`);
+    console.log(`  ${act.id} — nothing filmed yet, ${kept ? 'keeping the last cut' : 'skipped'}`);
+    if (kept) cut.push(kept);
     continue;
   }
   const file = join(outDir, `${act.id}.webm`);
@@ -113,4 +143,4 @@ writeFileSync(join(outDir, 'film.json'), JSON.stringify({
 }, null, 1));
 const seconds = cut.reduce((total, act) => total + act.seconds, 0);
 console.log(`film: ${cut.length} acts, ${Math.floor(seconds / 60)}m${String(Math.round(seconds % 60)).padStart(2, '0')}s`);
-await browser.close();
+if (browser) await browser.close();

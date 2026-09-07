@@ -225,7 +225,7 @@ export async function encode({segments, out, poster, posterAt = 4000, fps = 25, 
     '-y', '-f', 'image2pipe', '-framerate', String(fps), '-c:v', 'mjpeg', '-i', 'pipe:0',
     '-c:v', 'libvpx', '-b:v', bitrate, '-crf', '32', '-qmin', '4', '-qmax', '48',
     '-deadline', 'good', '-cpu-used', '2', '-lag-in-frames', '16', '-auto-alt-ref', '1',
-    '-threads', '4', '-pix_fmt', 'yuv420p', '-r', String(fps), out,
+    '-threads', '2', '-pix_fmt', 'yuv420p', '-r', String(fps), out,
   ], {stdio: ['pipe', 'ignore', 'pipe']});
   let stderr = '';
   ffmpeg.stderr.on('data', chunk => { stderr += chunk; });
@@ -278,10 +278,15 @@ function easeWindow(through, totalMs, easeMs) {
   return 1;
 }
 
-/** Crop and scale one frame, in a browser because that is where a JPEG decoder
- *  we already have is. */
+/**
+ * Crop and scale one frame, in a browser because that is where a JPEG decoder
+ * we already have is. `scratch` may be a page or a function that opens one:
+ * an act with no lensed segment never needs a browser at all, and on a box
+ * this size that is the difference between a cut finishing and being killed.
+ */
 async function transform(scratch, buffer, crop, width, height) {
-  const encoded = await scratch.evaluate(async ([data, crop, width, height]) => {
+  const page = typeof scratch === 'function' ? await scratch() : scratch;
+  const encoded = await page.evaluate(async ([data, crop, width, height]) => {
     const image = new Image();
     image.src = 'data:image/jpeg;base64,' + data;
     await image.decode();

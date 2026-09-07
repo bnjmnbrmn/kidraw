@@ -96,6 +96,12 @@ async function settleOn(label) {
 
 /** Fit the whole diagram on screen, as keypresses a reader can follow. */
 async function showRecenter() {
+  // Nothing selected first. Recenter View centres on the *selection* when
+  // there is one and only fits the whole diagram when there is not — and the
+  // box just made is still selected, so this was centring on it at 400% and
+  // leaving the branch shot to be salvaged by panning that could not reach.
+  await keys(page, 'c');
+  await settle(page, 200);
   await page.keyboard.down('r');
   await settle(page, 380);
   await page.keyboard.press('p');
@@ -103,7 +109,12 @@ async function showRecenter() {
   await page.keyboard.up('r');
   await settle(page, 400);
   await frameAbove(page);
-  rec.hold(1100);
+  // Off whatever the zoom-out left them on before the reader is asked to look
+  // at the branch: the crosshairs came to rest on the arrow into the last box
+  // and drew a trace the length of it, so the shot that should show a branch
+  // ended up being about one link.
+  await park(page);
+  rec.hold(1300);
 }
 
 /**
