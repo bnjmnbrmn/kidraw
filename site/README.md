@@ -170,6 +170,28 @@ flip-book needed: a video scales, where two sets of screenshots had to be
 captured twice and paired frame for frame. On a phone the video runs edge to
 edge to get the width back.
 
+### Keeping the camera still
+
+The film is a camera moving around a diagram, so a move the reader cannot
+account for is worse than no move at all. Three sources of that:
+
+- **The out-and-back.** `aimCamera` used to reach for the next box's parent
+  before zooming out. At 400% — where editing a label leaves the camera — the
+  parent is a screen and a half away, so the reach failed, the fallback fitted
+  the whole diagram to find it, and the ladder then climbed back in to 100%.
+  It pulls back first and reaches afterwards now.
+- **Parking.** `park` moves the crosshairs off the label so the box reads. It
+  took the emptiest point on the canvas, which at 400% is a far corner, close
+  enough to the edge that the app panned to keep the crosshairs clear of it —
+  sliding the box that had just been framed off centre. It takes the nearest
+  clear point now, well inside the band.
+- **`frameAbove` arguing with Recenter View.** It measured the floor as the
+  keymenu element's top, but that element carries transparent padding above the
+  card it draws, so `[r p]` — which fits to the app's own inset, about 32px
+  lower — always left it something to correct. It reads the component's own
+  `viewMinY`/`viewMaxY` now, with 14px of slack, and does nothing after a
+  recenter.
+
 ### What one box's run shows
 
 In order: the crosshairs riding the links from the box just finished up to the
@@ -212,6 +234,14 @@ than at its corners. Covering an arrow or a box is disqualifying. The four
 questions take a quarter of the canvas each; below them a family fans around the
 direction its own branch is going, so a subtree keeps to its own part of the
 page.
+
+**A child has to end up further out than its parent.** Not as a preference — as
+a refusal. Scored on heading, distance and clearance alone, a crowded arc in the
+right direction costs more than an empty cell in the wrong one, and "currently
+Chrome only" once landed beside the *root*, four cells back the way its branch
+had come, with a long detour of an arrow reaching up to the box it belongs to.
+So `rankGrowCells` takes the point the branch grew out of — the grandparent —
+and throws out any cell that is not further from it than the parent already is.
 
 The walk to a chosen cell checks after every press what the app thinks is aimed
 at. A node standing in the way takes the aim — that is the connect-two-nodes

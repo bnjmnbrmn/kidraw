@@ -89,48 +89,72 @@ export async function park(page) {
     const layer = component.crosshairsLayer;
     const boxes = component.drawingLayer.getDANodes()
       .map(node => node.group.getClientRect({relativeTo: stage}));
-    // The keymenu covers the bottom of the stage, so stay above it.
-    // Kept well clear of the edges: the view pans to keep the crosshairs on
-    // screen, and a park near an edge would slide the frame we just centred.
-    const inset = 100;
-    const usable = stage.height() - 320;
+    // The band the reader can see, as the app itself measures it.
+    const top = component.viewMinY ? component.viewMinY() : 60;
+    const bottom = component.viewMaxY ? component.viewMaxY() : stage.height() - 300;
+    // Kept well clear of the band's own edges: the view pans to keep the
+    // crosshairs off them, and parking in a far corner — which is where the
+    // emptiest point on the canvas is once you are at 400% — moved the box
+    // that had just been framed.
+    const inset = 90;
+    const left = inset;
+    const right = Math.max(left + 20, stage.width() - inset);
+    const up = top + inset;
+    const down = Math.max(up + 20, bottom - inset);
+    const middle = {x: (left + right) / 2, y: (up + down) / 2};
     const candidates = [];
-    for (let x = inset; x <= stage.width() - inset; x += 60) {
-      for (let y = inset; y <= Math.max(inset + 20, usable); y += 50) candidates.push({x, y});
+    for (let x = left; x <= right; x += 40) {
+      for (let y = up; y <= down; y += 36) candidates.push({x, y});
     }
     const clearance = point => boxes.reduce((worst, box) => {
       const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
       const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
       return Math.min(worst, Math.hypot(dx, dy));
     }, Infinity);
-    const best = candidates.reduce((a, b) => (clearance(b) > clearance(a) ? b : a), candidates[0]);
+    const away = point => Math.hypot(point.x - middle.x, point.y - middle.y);
+    // Off the labels, and then as little of a move as that allows.
+    const clear = candidates.filter(point => clearance(point) >= 45);
+    const pool = clear.length ? clear : candidates;
+    const best = pool.reduce((a, b) => (away(b) < away(a) ? b : a), pool[0]);
     component.moveCrosshairsBy(best.x - layer.crosshairsX(), best.y - layer.crosshairsY());
     component.clearCrosshairHoverHighlight(true);
   });
   await settle(page, 220);
 }
 
-/** Pan with the camera keys until every box sits above the keymenu. */
+/**
+ * Pan with the camera keys until every box sits in the band the reader sees.
+ *
+ * Measured against the app's own idea of that band, not against the keymenu's
+ * element box: the element carries transparent padding above the card it
+ * draws, so treating its top as the floor left this nudging the view after
+ * every Recenter View — which fits to exactly this band and was therefore
+ * already right.
+ */
 export async function frameAbove(page) {
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const {top, bottom, height} = await page.evaluate(() => {
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const view = await page.evaluate(() => {
       const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+      component.finishTweens();
       const stage = component.stage;
       const rects = component.drawingLayer.getDANodes()
         .map(node => node.group.getClientRect({relativeTo: stage}));
+      if (!rects.length) return null;
       return {
         top: Math.min(...rects.map(r => r.y)),
         bottom: Math.max(...rects.map(r => r.y + r.height)),
-        height: stage.height(),
+        ceiling: component.viewMinY ? component.viewMinY() : 60,
+        floor: component.viewMaxY ? component.viewMaxY() : stage.height() - 300,
       };
     });
-    // The header is drawn over the top of the stage, so "on screen" starts
-    // below it, not at the top edge.
-    const ceiling = 70;
-    const floor = height - 300;
-    if (top >= ceiling && bottom <= floor) return true;
-    if (bottom > floor && top > ceiling) await keys(page, '[r j]');
-    else if (top < ceiling && bottom < floor) await keys(page, '[r k]');
+    if (!view) return true;
+    // A few pixels either way is not worth a pan the reader can see.
+    const slack = 14;
+    const high = view.top < view.ceiling - slack;
+    const low = view.bottom > view.floor + slack;
+    if (!high && !low) return true;
+    if (low && !high) await keys(page, '[r j]');
+    else if (high && !low) await keys(page, '[r k]');
     else { await keys(page, '[r o]'); await keys(page, '[r p]'); }
     await settle(page, 380);
   }
@@ -281,8 +305,8 @@ export const growAim = page => page.evaluate(() => {
  * how much clear space it leaves against the boxes and the arrows already
  * drawn. The lattice has already refused anything that would land on a node.
  */
-export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
-  page.evaluate(([aim, preferred, grown]) => {
+export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward = null) =>
+  page.evaluate(([aim, preferred, grown, outward]) => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
   const layer = component.drawingLayer;
   const anchor = component.growAnchor;
@@ -322,6 +346,13 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
   // typed into it, which is how one came to sit across an arrow it cleared at
   // the moment it was put down.
   const half = grown ?? {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2};
+  // How far the anchor already is from the point the branch grew out of. A
+  // child belongs further out than its parent: "currently Chrome only" once
+  // landed beside the root, four cells back the way it had come, with a long
+  // detour of an arrow reaching up to the box it belongs to. Scoring alone
+  // could not stop that — a crowded arc costs more than a wrong direction —
+  // so this is a refusal, not a preference.
+  const away = outward ? Math.hypot(from.x - outward.x, from.y - outward.y) : 0;
   return component.growGhostTargets
     .map(target => {
       const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(target.id);
@@ -366,6 +397,8 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
         if (boxes.some(box => cx > box.x - half.w && cx < box.x + box.width + half.w &&
                               cy > box.y - half.h && cy < box.y + box.height + half.h)) blocked++;
       }
+      const backwards = outward &&
+        Math.hypot(target.x - outward.x, target.y - outward.y) < away + 30;
       const cost = heading * 2.2
         + Math.abs(distance - preferred) / preferred
         + (gapToBox < 90 ? (90 - Math.max(gapToBox, 0)) / 90 * 2.5 : 0)
@@ -376,13 +409,14 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
         + (gapToEdge < 0 ? 50 : 0)
         + (gapToBox < 0 ? 50 : 0)
         + (crosses({x: target.x, y: target.y}) ? 6 : 0)
+        + (backwards ? 40 : 0)
         + blocked * 1.5;
       return {ix, iy, cost};
     })
     .filter(Boolean)
     .sort((a, b) => a.cost - b.cost)
     .slice(0, 8);
-}, [aim, preferred, grown]);
+}, [aim, preferred, grown, outward]);
 
 /**
  * Grow a child onto a chosen cell of the placement lattice.
@@ -392,8 +426,8 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
  * connect-two-nodes gesture, so the walk steps back off it and tries the next
  * spot rather than drawing an edge nobody asked for.
  */
-export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, refocus, onStage, onAim,
-                                        onSpoiled, onResume} = {}) {
+export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, outward, refocus,
+                                        onStage, onAim, onSpoiled, onResume} = {}) {
   const before = await graphShape(page);
   for (let round = 0; round < 3; round++) {
     if (round > 0 && refocus) await refocus();
@@ -401,7 +435,7 @@ export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, 
     await settle(page, 300);
     await page.keyboard.press('d');
     await settle(page, 300);
-    const ranked = await rankGrowCells(page, aim, preferred, grown);
+    const ranked = await rankGrowCells(page, aim, preferred, grown, outward);
     let landed = null;
     if (onAim) await onAim();
     for (const [attempt, want] of ranked.slice(0, 6).entries()) {

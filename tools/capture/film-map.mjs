@@ -117,8 +117,6 @@ async function showRecenter() {
 async function showForceLayout() {
   await keys(page, 'c');
   await settle(page, 240);
-  await park(page);
-  rec.hold(700);
   await page.keyboard.down('b');
   await settle(page, 420);
   rec.hold(700);
@@ -129,11 +127,10 @@ async function showForceLayout() {
   await page.keyboard.down('r');
   await settle(page, 380);
   await page.keyboard.press('p');
-  await settle(page, 1100);
+  await settle(page, 1200);
   await page.keyboard.up('r');
-  await settle(page, 500);
-  await frameAbove(page);
-  rec.hold(2200);
+  await settle(page, 600);
+  rec.hold(2400);
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +172,10 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
     // What the box will be once the label is in it, so the spot is judged on
     // the box that ends up there rather than the empty one that lands.
     grown: grownHalfExtents(label),
+    // Where this branch grew out of. A child has to end up further from it
+    // than its parent is, so a subtree keeps heading outward instead of
+    // doubling back through the middle of the diagram.
+    outward: await nodeCentre(page, plain((grandparent ?? parent).t)),
     refocus: () => aimCamera(page, parentLabel, BUILD_ZOOM),
     // The dashed lattice, held long enough to see what is being chosen from.
     onStage: () => rec.hold(480),

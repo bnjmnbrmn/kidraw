@@ -1,5 +1,20 @@
 # KiDraw homepage brief
 
+## September 7, 2026 — thirteenth revision (a camera that stays still)
+
+Ben, on the second cut: strange panning throughout and at the end, and "currently
+Chrome only" placed somewhere it does not belong.
+
+- **The camera pulls back before it reaches.** Every box used to fit the whole
+  diagram to find its parent and then climb back in to 100%; it now zooms out
+  first and pans once. That is most of the movement gone.
+- **Parking the crosshairs no longer moves the picture.** Off the label by the
+  shortest move that clears it, rather than to the emptiest corner of the
+  canvas — which at 400% was close enough to the edge to make the view pan.
+- **A box has to be placed further out than its parent.** Scoring alone let a
+  leaf of the features branch land next to the root, because a crowded arc in
+  the right direction costs more than an empty cell in the wrong one.
+
 ## September 7, 2026 — twelfth revision (what the camera should not see)
 
 Ben, on the first cut.

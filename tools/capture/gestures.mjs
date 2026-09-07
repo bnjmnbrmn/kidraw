@@ -203,20 +203,25 @@ export async function walkLinks(page, chain) {
  * so this zooms, then centres, once.
  */
 export async function aimCamera(page, label, target = 100) {
-  let landed = await goTo(page, label);
-  for (let attempt = 0; !landed && attempt < 3; attempt++) {
-    await keys(page, 'c');
-    await settle(page, 150);
-    await keys(page, '[r p]');
-    await settle(page, 800);
-    if (attempt > 0) {
-      await keys(page, '[r o]');
-      await settle(page, 380);
-    }
-    landed = await goTo(page, label);
-  }
-  if (!landed) throw new Error(`cannot reach ${JSON.stringify(label)}`);
+  // Pull back first, then go. Reaching for the box before zooming out could not
+  // work — at 400% its parent is a screen and a half away, so `goTo` failed,
+  // the camera fitted the whole diagram to find it, and then climbed all the
+  // way back in to 100%. Every box in the film paid for two big camera moves
+  // that were not about the box being made, which is the panning that had no
+  // reason to be there.
   await zoomToLevel(page, target);
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (await goTo(page, label)) {
+      await keys(page, '[r u]');
+      await settle(page, 460);
+      return;
+    }
+    // Still out of reach: one more step back, which is a smaller move than
+    // fitting the whole diagram and climbing out of it again.
+    await keys(page, '[r o]');
+    await settle(page, 400);
+  }
+  throw new Error(`cannot reach ${JSON.stringify(label)}`);
 }
 
 /** Zoom percentage as the header reports it. */
@@ -244,9 +249,6 @@ async function zoomToLevel(page, target) {
     await page.keyboard.press(level < target ? 'i' : 'o');
     await settle(page, 280);
   }
-  // Centre on the crosshairs, inside the same hold.
-  await page.keyboard.press('u');
-  await settle(page, 460);
   await page.keyboard.up('r');
-  await settle(page, 260);
+  await settle(page, 240);
 }
