@@ -19,8 +19,8 @@ import {fileURLToPath} from 'node:url';
 import {open, keys, overlaysSeen} from './driver.mjs';
 import {seed, goTo, growAtCell, grownHalfExtents, park, settle, labels,
         fit, frameAbove} from './build.mjs';
-import {typeFilm, aimCamera, pressAndHold, keymenuLens, spawnAt,
-        stageBox, visibleBand, inBand} from './gestures.mjs';
+import {typeFilm, aimCamera, pressAndHold, keymenuLens, spawnAt, connect, latticeStep,
+        stageBox, visibleBand, inBand, crosshairsOn, stageScale} from './gestures.mjs';
 import {startRecorder} from './record.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -196,15 +196,88 @@ const DEMOS = {
     return rec.take({name: 'routing'});
   },
 
-  /* ---- three layouts on the same untidy graph ---- */
-  async layouts(page, rec) {
-    // Grown on the lattice, fanned out: three branches heading three ways,
-    // which is exactly the arrangement a tree layout has something to say
-    // about.
+  /* ---- a waypoint, added and moved ---- */
+  async waypoints(page, rec) {
     await seed(page, 'a');
-    await child(page, 'a', 'b', {aim: -Math.PI / 3, preferred: 280});
-    await child(page, 'a', 'c', {aim: Math.PI * 0.75, preferred: 280});
-    await child(page, 'c', 'd', {aim: Math.PI / 2, preferred: 280});
+    await child(page, 'a', 'b', {aim: 0, preferred: 420});
+    await keys(page, 'c');
+    await fit(page);
+    await frameAbove(page);
+    const band = await visibleBand(page);
+    const from = await stageBox(page, 'a');
+    const to = await stageBox(page, 'b');
+    await spawnAt(page, 'c', inBand({
+      x: (from.cx + to.cx) / 2,
+      y: (from.cy + to.cy) / 2 + 120,
+    }, band));
+    await keys(page, 'c');
+    await fit(page);
+    await frameAbove(page);
+    await settle(page, 400);
+
+    rec.on();
+    rec.hold(900);
+    // On the arrow, and a waypoint put down on it.
+    const a = await stageBox(page, 'a');
+    const b = await stageBox(page, 'b');
+    await crosshairsOn(page, {x: (a.cx + b.cx) / 2, y: (a.cy + b.cy) / 2});
+    await settle(page, 500);
+    rec.hold(700);
+    await keys(page, '[a w]');
+    await settle(page, 700);
+    rec.hold(1000);
+    // And dragged, so the arrow bends where it is told to rather than where
+    // the router would have put it.
+    await keys(page, 'v');
+    await settle(page, 380);
+    await page.keyboard.down('v');
+    await settle(page, 420);
+    for (let step = 0; step < 4; step++) {
+      await page.keyboard.press('j');
+      await settle(page, 440);
+    }
+    rec.hold(900);
+    await page.keyboard.up('v');
+    await settle(page, 460);
+    await keys(page, 'c');
+    await park(page);
+    rec.hold(1500);
+    await rec.off();
+    return rec.take({name: 'waypoints'});
+  },
+
+  /* ---- three layouts on a graph with somewhere to put things ---- */
+  async layouts(page, rec) {
+    // a->b, b->c, a->c, d->b, d->c: two ways to reach c and a box that feeds
+    // both, so a tree layout has a choice to make and Force has something to
+    // open out. A chain only ever comes back as a line.
+    //
+    // Every box is put down on a multiple of the *same* lattice step, because
+    // the held-Add aim can only walk from one box to another along it — a
+    // graph laid out by eye leaves half these edges unreachable, and a release
+    // that reaches nothing makes a self-loop rather than failing.
+    await seed(page, 'a');
+    // One step back before anything is measured: a lattice cell is most of the
+    // visible band at 100%, so the row below `a` would be behind the keyboard.
+    const home = async () => {
+      await aimCamera(page, 'a', 100);
+      await keys(page, '[r o]');
+      await settle(page, 460);
+    };
+    await home();
+    const step = await latticeStep(page, 'a');
+    for (const [label, across, down] of [['b', 1, 0], ['c', 1, 1], ['d', 2, 0]]) {
+      await home();
+      const scale = await stageScale(page);
+      const anchor = await stageBox(page, 'a');
+      await spawnAt(page, label, {
+        x: anchor.cx + across * step.x * scale,
+        y: anchor.cy + down * step.y * scale,
+      });
+    }
+    for (const [from, to] of [['a', 'b'], ['b', 'c'], ['a', 'c'], ['d', 'b'], ['d', 'c']]) {
+      await connect(page, from, to);
+    }
     await keys(page, 'c');
     await fit(page);
     await frameAbove(page);
@@ -230,6 +303,94 @@ const DEMOS = {
     }
     await rec.off();
     return rec.take({name: 'layouts'});
+  },
+
+  /* ---- the same key, two sizes of step ---- */
+  async coarsefine(page, rec) {
+    await chain(page, ['a', 'b', 'c'], {preferred: 300});
+    await goTo(page, 'a');
+    await settle(page, 450);
+
+    rec.on();
+    rec.hold(900);
+    for (const [held, presses] of [['s', 4], ['d', 6]]) {
+      await page.keyboard.down(held);
+      await settle(page, 460);
+      rec.hold(700);
+      for (let step = 0; step < presses; step++) {
+        await page.keyboard.press('l');
+        await settle(page, 420);
+      }
+      rec.hold(700);
+      await page.keyboard.up(held);
+      await settle(page, 460);
+    }
+    rec.hold(1100);
+    await rec.off();
+    return rec.take({name: 'coarsefine'});
+  },
+
+  /* ---- colour, shape, and a dashed arrow ---- */
+  async styling(page, rec) {
+    await chain(page, ['a', 'b', 'c'], {preferred: 320});
+    await goTo(page, 'a');
+    await settle(page, 450);
+
+    rec.on();
+    rec.hold(900);
+    await keys(page, 'v');
+    await settle(page, 400);
+    rec.hold(600);
+    await keys(page, '[w [r j]]');
+    await settle(page, 650);
+    rec.hold(900);
+    await keys(page, '[w [g j]]');
+    await settle(page, 700);
+    rec.hold(1000);
+    await keys(page, 'c');
+    await settle(page, 300);
+    // Now the arrow between b and c: the same submenu, a different thing
+    // under the crosshairs.
+    const b = await stageBox(page, 'b');
+    const c = await stageBox(page, 'c');
+    await crosshairsOn(page, {x: (b.cx + c.cx) / 2, y: (b.cy + c.cy) / 2});
+    await settle(page, 420);
+    await keys(page, 'v');
+    await settle(page, 420);
+    rec.hold(700);
+    await keys(page, '[w [q j]]');
+    await settle(page, 650);
+    rec.hold(800);
+    await keys(page, '[w [r l]]');
+    await settle(page, 650);
+    await keys(page, 'c');
+    await park(page);
+    rec.hold(1400);
+    await rec.off();
+    return rec.take({name: 'styling'});
+  },
+
+  /* ---- a word on the arrow itself ---- */
+  async edgelabels(page, rec) {
+    await chain(page, ['a', 'b', 'c'], {preferred: 340});
+    await settle(page, 400);
+
+    rec.on();
+    rec.hold(900);
+    const a = await stageBox(page, 'a');
+    const b = await stageBox(page, 'b');
+    await crosshairsOn(page, {x: (a.cx + b.cx) / 2, y: (a.cy + b.cy) / 2});
+    await settle(page, 500);
+    rec.hold(700);
+    await keys(page, '[a f]');
+    await settle(page, 700);
+    await typeFilm(page, 'then');
+    await settle(page, 400);
+    await keys(page, 'c');
+    await park(page);
+    rec.hold(1500);
+    await rec.off();
+    return rec.take({name: 'edgelabels'});
   },
 
   /* ---- hopping from box to box, joined or not ---- */

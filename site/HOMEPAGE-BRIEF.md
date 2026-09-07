@@ -1,5 +1,26 @@
 # KiDraw homepage brief
 
+## September 7, 2026 — fourteenth revision (videos two, three and four)
+
+Ben's notes on the rest of the film.
+
+- **Controls under the video**, not over the mode chip: the player's own are
+  replaced by a bar of ours when JavaScript is on.
+- **No lens over the node flying in.** It was built while the graph was still
+  zoomed out and only taken down when the flight landed.
+- **The camera pulls back before it rides the arrows**, so a hop is a hop
+  rather than half a screen of empty canvas — which is what the meandering at
+  the start of the third video was, and the ghost nodes covering the edges.
+- **The aim goes straight to the spot.** The search for a reachable cell now
+  happens off camera.
+- **A box that claims vi-style editing gets edited in vi style**: visual mode,
+  cut, insert, word motions, and `r` to fix a character. The org heading is the
+  text it ends up with.
+- **Four new demos and a rebuilt one**: waypoints, coarse and fine movement,
+  styling, edge labels, and the layout demo on a DAG rather than a chain.
+- **The Force finale is cut.** The layout demo makes the point now, so the
+  fourth video ends on a zoom-out and a recenter.
+
 ## September 7, 2026 — thirteenth revision (a camera that stays still)
 
 Ben, on the second cut: strange panning throughout and at the end, and "currently

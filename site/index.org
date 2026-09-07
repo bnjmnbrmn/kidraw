@@ -25,7 +25,7 @@ The homepage plays a video of this diagram being built.  Breaks in the sequence 
 *** Some submenu keys allow you to change how you navigate
 *** Some submenu keys have an action on release
 *** Press ESC or Ctrl-[ once or twice to get back to the main menu
-*** Vi-style modal text editing
+*** Text editing with vi(m) modes and bindings
 
 ** What are some important features?
 *** Automatic edge routing

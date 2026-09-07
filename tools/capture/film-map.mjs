@@ -19,9 +19,9 @@ import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, overlaysSeen} from './driver.mjs';
-import {goTo, growAtCell, nodeCentre, grownHalfExtents, park, select,
+import {goTo, growAtCell, findGrowCell, nodeCentre, grownHalfExtents, park, select,
         frameAbove, settle, labels, edges} from './build.mjs';
-import {typeFilm, walkLinks, aimCamera} from './gestures.mjs';
+import {typeFilm, walkLinks, aimCamera, pullBackTo, vimEdit} from './gestures.mjs';
 import {startRecorder} from './record.mjs';
 import {OUTLINE, flatten, plain, trailTo} from './outline.mjs';
 
@@ -91,7 +91,7 @@ async function settleOn(label) {
   await select(page);
   await park(page);
   await hidePins();
-  rec.hold(850);
+  rec.hold(1100);
 }
 
 /** Fit the whole diagram on screen, as keypresses a reader can follow. */
@@ -115,37 +115,6 @@ async function showRecenter() {
   // ended up being about one link.
   await park(page);
   rec.hold(1300);
-}
-
-/**
- * Force layout, once, at the end.
- *
- * Every box in the film was placed by hand on the lattice; the one time the
- * reader watches a layout run is after the diagram has finished saying the app
- * can run one. Force pulls everything in on itself, so the view that fitted a
- * moment ago now frames a stamp — the fit afterwards is part of the move.
- */
-async function showForceLayout() {
-  await keys(page, 'c');
-  await settle(page, 240);
-  await page.keyboard.down('b');
-  await settle(page, 420);
-  rec.hold(700);
-  await page.keyboard.press('k');
-  await settle(page, 1400);
-  await page.keyboard.up('b');
-  await settle(page, 700);
-  await page.keyboard.down('r');
-  await settle(page, 380);
-  await page.keyboard.press('p');
-  await settle(page, 1200);
-  await page.keyboard.up('r');
-  await settle(page, 600);
-  // One correction, at most: Recenter View can leave the top row under the
-  // header, and the last thing the film shows should be the whole diagram.
-  await frameAbove(page);
-  await park(page);
-  rec.hold(2400);
 }
 
 // ---------------------------------------------------------------------------
@@ -174,23 +143,33 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   const clock = {};
   let mark = Date.now();
   const lap = name => { clock[name] = Date.now() - mark; mark = Date.now(); };
+  // Back to the building zoom *before* riding the arrows: at 400% a hop is
+  // half a screen of empty canvas and the walk reads as wandering, and the
+  // boxes at either end of the arrow are too big to see at once.
+  await pullBackTo(page, BUILD_ZOOM);
+  lap('zoomout');
   await walkLinks(page, climbChain(previous, parent));
   lap('link');
   await aimCamera(page, parentLabel, BUILD_ZOOM);
-  lap('zoomout');
+  lap('aim');
+  const aim = await aimFor(node, parent, grandparent);
+  const preferred = 260 + 25 * Math.max(0, parent.c.length - 3);
+  const grown = grownHalfExtents(label);
+  const outward = await nodeCentre(page, plain((grandparent ?? parent).t));
+  // Find a reachable spot with the camera off, so the walk that is filmed can
+  // go straight there.
+  await rec.off();
+  const preferCell = await findGrowCell(page, {aim, preferred, grown, outward});
+  await aimCamera(page, parentLabel, BUILD_ZOOM);
+  rec.on();
   const {index: mine} = await growAtCell(page, {
     parentIndex: index.get(parent.id),
-    aim: await aimFor(node, parent, grandparent),
-    // A wide family needs a longer arc to sit on, or the last children have
-    // nowhere left to go.
-    preferred: 260 + 25 * Math.max(0, parent.c.length - 3),
-    // What the box will be once the label is in it, so the spot is judged on
-    // the box that ends up there rather than the empty one that lands.
-    grown: grownHalfExtents(label),
-    // Where this branch grew out of. A child has to end up further from it
-    // than its parent is, so a subtree keeps heading outward instead of
-    // doubling back through the middle of the diagram.
-    outward: await nodeCentre(page, plain((grandparent ?? parent).t)),
+    preferCell,
+    aim,
+    // A wide family needs a longer arc to sit on; the box is judged as what it
+    // will be once the label is in it; and a child has to end up further from
+    // the point its branch grew out of than its parent is.
+    preferred, grown, outward,
     refocus: () => aimCamera(page, parentLabel, BUILD_ZOOM),
     // The dashed lattice, held long enough to see what is being chosen from.
     onStage: () => rec.hold(480),
@@ -201,8 +180,18 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   lap('grow');
   // The release opens the label editor, and the camera flies in to 400%.
   await settle(page, 460);
-  await typeFilm(page, label);
+  await typeFilm(page, node.editFrom ? plain(node.editFrom) : label);
   lap('type');
+  if (node.editFrom) {
+    // The box that claims vi-style editing gets edited, in vi style.
+    await goTo(page, plain(node.editFrom));
+    await select(page);
+    await settle(page, 300);
+    rec.hold(600);
+    await vimEdit(page, label);
+    rec.hold(700);
+    lap('vim');
+  }
   await settleOn(label);
   lap('frame');
   previous = entries.find(entry => entry.node === node);
@@ -211,7 +200,6 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   const next = entries[at + 1];
   if (depth >= 1 && (!next || next.depth === 1)) {
     await showRecenter();
-    if (!next) await showForceLayout();
     await park(page);
   }
 

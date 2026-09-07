@@ -496,7 +496,7 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
  * spot rather than drawing an edge nobody asked for.
  */
 export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, outward, refocus,
-                                        onStage, onAim, onSpoiled, onResume} = {}) {
+                                        preferCell, onStage, onAim, onSpoiled, onResume} = {}) {
   const before = await graphShape(page);
   for (let round = 0; round < 3; round++) {
     if (round > 0 && refocus) await refocus();
@@ -504,7 +504,13 @@ export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, 
     await settle(page, 300);
     await page.keyboard.press('d');
     await settle(page, 300);
-    const ranked = await rankGrowCells(page, aim, preferred, grown, outward);
+    // A cell found by a rehearsal is walked to directly. Ranking again here
+    // would repeat the search on camera, and the search is a walk that tries
+    // one spot, finds a neighbour in the way, and backs out to try another —
+    // which is not how anyone would say they got there.
+    const ranked = round === 0 && preferCell
+      ? [preferCell]
+      : await rankGrowCells(page, aim, preferred, grown, outward);
     let landed = null;
     if (onAim) await onAim();
     for (const [attempt, want] of ranked.slice(0, 6).entries()) {
@@ -615,4 +621,36 @@ async function rollBackTo(page, before) {
     await settle(page, 120);
   }
   throw new Error('could not undo a failed placement');
+}
+
+/**
+ * Walk the aim to a spot without putting anything down.
+ *
+ * The search for a reachable cell is a search: it tries the best-scoring spot,
+ * finds a node in the way, backs out and tries the next. Worth doing, not
+ * worth filming — so it is done first with the camera off, and the walk that
+ * is filmed goes straight there.
+ */
+export async function findGrowCell(page, {aim = 0, preferred, grown, outward} = {}) {
+  await page.keyboard.down('a');
+  await settle(page, 300);
+  await page.keyboard.press('d');
+  await settle(page, 300);
+  const ranked = await rankGrowCells(page, aim, preferred, grown, outward);
+  let landed = null;
+  for (const [attempt, want] of ranked.slice(0, 6).entries()) {
+    if (await walkToCell(page, want, attempt % 2 === 1)) {
+      landed = want;
+      break;
+    }
+  }
+  // Out without committing: a release on a node draws an edge, and a release
+  // on the anchor makes a self-loop.
+  await keys(page, 'Escape');
+  await settle(page, 200);
+  await page.keyboard.up('a');
+  await settle(page, 250);
+  await keys(page, 'Escape Escape');
+  await settle(page, 220);
+  return landed;
 }

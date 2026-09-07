@@ -297,8 +297,21 @@ it.
 | `release` | Some submenu keys have an action on release | Add held with the dashed spots up and nothing made yet, then let go |
 | `routing` | Automatic edge routing | b dragged down until the arrow into it swings across c, and bends around it |
 | `layouts` | Node/edge layout on demand | an untidy graph, then Tree →, Tree ↓, Force |
+| `waypoints` | Waypoints for fine tuning | a waypoint put down on an arrow and dragged, so the arrow bends where it is told |
+| `coarsefine` | Coarse and fine movement | the same key held two ways, four big steps and six small ones |
 | `hop` | Navigate by hopping from node to node | along the row, down to the box nothing joins, and back — changing direction |
 | `links` | Navigate by following edges | four traversals of the arrows, there and back |
+| `styling` | Node and Edge Styling | a box turned red and round, then the arrow beside it dashed and green |
+| `edgelabels` | Edge labels | a word put on the arrow itself |
+
+The layouts demo needs a graph the aim can actually walk: every box is put down
+on a multiple of the *same* lattice step, measured with `latticeStep`, because
+held-Add can only reach a box that sits on the anchor's lattice. Laid out by
+eye, half its edges are unreachable — and a release that reaches nothing makes
+a self-loop rather than failing, so the graph comes out as a chain with a box
+hanging off the side and nothing complains. `connect` checks the edge it drew
+by label for exactly that reason, and refuses to start unless held Add has
+anchored on the box it was asked for.
 
 `hold` and `navkeys` are **lensed**: the frame is cropped towards the home row
 over about four tenths of a second, held there, and let back out at the end, so

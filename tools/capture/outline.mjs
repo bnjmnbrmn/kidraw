@@ -46,20 +46,24 @@ export const OUTLINE = n('kidraw', 'KiDraw', {kind: 'root'}, [
       {example: 'navkeys'}),
     n('action-on-release', 'Some submenu keys have an action on release', {example: 'release'}),
     n('escape', 'Press ESC or Ctrl-[ once or twice to get back to the main menu'),
-    n('modal-text', 'Vi-style modal text editing'),
+    // Typed as the heading it was, then edited into what it says now — which
+    // is the demonstration of modal text editing, done on the box that claims
+    // it.
+    n('modal-text', 'Text editing with vi(m) modes and bindings',
+      {editFrom: 'Vi-style modal text editing'}),
   ]),
 
   n('features', 'What are some important features?', {kind: 'q'}, [
     n('routing', 'Automatic edge routing', {example: 'routing'}, [
-      n('waypoints', 'Waypoints for fine tuning'),
+      n('waypoints', 'Waypoints for fine tuning', {example: 'waypoints'}),
     ]),
     n('layout', 'Node/edge layout on demand', {example: 'layouts'}),
-    n('coarse-fine', 'Coarse and fine movement'),
+    n('coarse-fine', 'Coarse and fine movement', {example: 'coarsefine'}),
     n('hop', 'Navigate by hopping from node to node', {example: 'hop'}),
     n('follow-edges', 'Navigate by following edges', {example: 'links'}),
     n('camera', 'Zoom, pan, and recenter'),
-    n('styling', 'Node and Edge Styling'),
-    n('edge-labels', 'Edge labels'),
+    n('styling', 'Node and Edge Styling', {example: 'styling'}),
+    n('edge-labels', 'Edge labels', {example: 'edgelabels'}),
     n('saving', 'Saving diagrams locally', {}, [
       n('chrome-only', 'currently Chrome only'),
     ]),
