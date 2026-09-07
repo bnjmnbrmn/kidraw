@@ -183,6 +183,7 @@ export async function park(page) {
  */
 export async function frameAbove(page) {
   let steppedBack = 0;
+  let centred = 0;
   for (let attempt = 0; attempt < 8; attempt++) {
     const view = await page.evaluate(() => {
       const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -208,7 +209,22 @@ export async function frameAbove(page) {
     const band = view.floor - view.ceiling;
     const high = view.top < view.ceiling - slack;
     const low = view.bottom > view.floor + slack;
-    if (!high && !low) return true;
+    if (!high && !low) {
+      // Inside the band, and there is room to spare: put it in the middle of
+      // the room rather than wherever the fit happened to leave it. The last
+      // shot of a branch is a diagram sitting in the top third of the frame
+      // otherwise, with nothing under it.
+      const height = view.bottom - view.top;
+      const middle = (view.ceiling + view.floor) / 2;
+      const centre = (view.top + view.bottom) / 2;
+      if (centred < 3 && height < band - 90 && Math.abs(centre - middle) > 45) {
+        centred++;
+        await keys(page, centre < middle ? '[r k]' : '[r j]');
+        await settle(page, 380);
+        continue;
+      }
+      return true;
+    }
     // A pan is a fixed step, so a diagram that nearly fills the band overshoots
     // one edge trying to clear the other — which is how the branch shot ended
     // up with the top box under the header one week and the root behind the
@@ -474,9 +490,14 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
         // Near a line is a preference; *on* one is disqualifying. A spot whose
         // box would cover an arrow (or another box) is taken only if the
         // lattice offers nothing else at all.
+        //
+        // "On" means within a margin, not strictly overlapping: an arrow has
+        // width, a box has a border and a glow, and a gap of a few units reads
+        // as a box sitting on a line. "Edge labels" was placed five units off
+        // the long arrow from the root and looked like it was on top of it.
         + (gapToEdge < 90 ? (90 - Math.max(gapToEdge, 0)) / 90 * 4 : 0)
-        + (gapToEdge < 0 ? 50 : 0)
-        + (gapToBox < 0 ? 50 : 0)
+        + (gapToEdge < 26 ? 50 : 0)
+        + (gapToBox < 18 ? 50 : 0)
         + (crosses({x: target.x, y: target.y}) ? 6 : 0)
         + (backwards ? 40 : 0)
         + blocked * 1.5;

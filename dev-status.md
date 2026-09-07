@@ -477,6 +477,10 @@ _Updated 2026-08-30. Branch: `main`._
     - **The film ends with a layout**: Force, then a top-to-bottom tree, each fitted afterwards. Force comes out as a readable organic layout rather than the tangle it used to be, and the tree is the shape a diagram built as a tree should finish in.
     - Known rough edge: both final shots sit high in the frame with space below. `frameAbove` only puts the diagram *inside* the band; centring it would want a pass of its own, and that is a capture-time change, so it needs another refilm.
 
+92. **A box on a line, and shots that sat high (2026-09-07).** Ben: "In video 4, at 2:26, you have the edge labels node on top of an edge."
+    - Covering an arrow was already disqualifying, but only on a strict overlap: "Edge labels" was placed a few units clear of the long arrow from the root and read as sitting on it, because an arrow has width and a box has a border and a glow. A spot now needs 26 units from any arrow and 18 from any box before it is acceptable. Two placements in the run had to fall through to a second ranking round as a result — which happens during the off-camera rehearsal, so the film does not show it.
+    - And, since it needed the same refilm: `frameAbove` only ensured the diagram was *inside* the visible band, which is why every branch shot and the ending sat in the top third with nothing under them. When there is room to spare it now centres them.
+
 ## Routing-eval harness
 
 The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + metrics + geometry per cell. Routers are called as pure functions via an esbuild alias for `./da-node` and `./da-edge` (the Konva-bound DA layer) → harness-local fakes; no runtime modification of the routers themselves.
