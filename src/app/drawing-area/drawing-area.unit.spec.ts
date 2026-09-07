@@ -465,6 +465,40 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.labelEditGhost).toBeNull();
     });
 
+    it('leaves a zoomed-in box alone, and stands in only where it cannot be read', () => {
+      const component = Object.create(DrawingAreaComponent.prototype) as any;
+      const drawingLayer = new DrawingLayer();
+      const node = new DANode(0, 0, 'one\ntwo\nthree\nfour');
+      drawingLayer.addRawNode(node);
+      component.drawingLayer = drawingLayer;
+      component.stage = {width: () => 820, height: () => 700};
+      // The header over the top of the stage and the keymenu over the bottom:
+      // the band the reader can see is 72..423.
+      component.viewportInset = {left: 0, right: 0, top: 72, bottom: 277};
+      const band = {top: 72, bottom: 423};
+
+      // Zoomed in past natural size, and taller than that band, so some of it
+      // is behind the header. It is still perfectly readable, and a stand-in
+      // at natural size would be *smaller* than it.
+      drawingLayer.scale({x: 4, y: 4});
+      const tall = node.NODE_HEIGHT * 4;
+      expect(tall).withContext('the box is taller than the visible band').toBeGreaterThan(
+        band.bottom - band.top);
+      drawingLayer.position({x: 100, y: band.top + (band.bottom - band.top - tall) / 2});
+      expect(component.navigationGhostReasons(node)).toEqual([]);
+
+      // Zoomed out until the label is too small to read: that is what the
+      // stand-in is for.
+      drawingLayer.scale({x: 0.25, y: 0.25});
+      drawingLayer.position({x: 300, y: 200});
+      expect(component.navigationGhostReasons(node)).toContain('too-small');
+
+      // At natural size, but mostly behind the keymenu.
+      drawingLayer.scale({x: 1, y: 1});
+      drawingLayer.position({x: 300, y: band.bottom - node.NODE_HEIGHT * 0.25});
+      expect(component.navigationGhostReasons(node)).toContain('offscreen');
+    });
+
     it('pans the viewport to keep the active edit caret and line context visible', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
       const drawingLayer = new DrawingLayer();

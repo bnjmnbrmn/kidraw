@@ -3266,18 +3266,41 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** How much of a node's box the reader can actually see, 0 to 1. The header
+   *  and the keymenu are drawn over the stage, so being inside the window is
+   *  not the same as being in view. */
+  private visibleShare(rect: {x: number; y: number; width: number; height: number}): number {
+    const across = Math.max(0, Math.min(rect.x + rect.width, this.viewMaxX()) -
+      Math.max(rect.x, this.viewMinX()));
+    const down = Math.max(0, Math.min(rect.y + rect.height, this.viewMaxY()) -
+      Math.max(rect.y, this.viewMinY()));
+    return (across * down) / Math.max(rect.width * rect.height, 1);
+  }
+
   /** Why the real navigation target needs a readable screen-space copy. */
   private navigationGhostReasons(node: DANode): string[] {
     if (!this.stage || node.nodeShape === 'junction' || node.nodeShape === 'invisible') return [];
     const rect = this.nodeStageRect(node);
-    const pad = 8;
     const reasons: string[] = [];
-    if (rect.x < this.viewMinX() + pad || rect.y < this.viewMinY() + pad ||
+    // The ghost is a copy of the node at its *natural* size, so it is only
+    // worth drawing when the real node is harder to read than that copy would
+    // be.
+    const drawnScale = node.group.scaleY() * this.drawingLayer.scaleY();
+    const pad = 8;
+    if (drawnScale > 1) {
+      // Zoomed in past natural size, a box is easily taller than the band
+      // between the header and the keymenu — and clipping any of it used to
+      // count as off screen, which laid a little dashed 100% copy over the
+      // middle of a 400% box you could read perfectly well. Here the stand-in
+      // is smaller than the thing it stands in for, so it takes more than
+      // half the box being out of view before it is an improvement.
+      if (this.visibleShare(rect) < 0.5) reasons.push('offscreen');
+    } else if (rect.x < this.viewMinX() + pad || rect.y < this.viewMinY() + pad ||
         rect.x + rect.width > this.viewMaxX() - pad ||
         rect.y + rect.height > this.viewMaxY() - pad) {
       reasons.push('offscreen');
     }
-    if (node.FONT_SIZE * node.group.scaleY() * this.drawingLayer.scaleY() < 12) {
+    if (node.FONT_SIZE * drawnScale < 12) {
       reasons.push('too-small');
     }
     const overlaps = (a: typeof rect, b: typeof rect) =>
