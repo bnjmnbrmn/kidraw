@@ -573,6 +573,25 @@ export const newBoxIsClear = page => page.evaluate(() => {
   return true;
 });
 
+/**
+ * Half the box a label will end up in, once it is typed and fitted.
+ *
+ * Mirrors `fit` in da-node: the base width is a maximum a long label wraps at,
+ * and the box grows downward from there. Rough is fine — it is used to keep
+ * clear of arrows, not to lay anything out.
+ */
+export function grownHalfExtents(text) {
+  const CHAR = 8.5;
+  const PADDING = 16;
+  const LINE = 19;
+  const MAX = 120;
+  const natural = text.length * CHAR + PADDING;
+  const width = Math.min(MAX, Math.max(50, natural));
+  const lines = Math.max(1, Math.ceil(natural / (MAX - PADDING)));
+  const height = Math.max(50, lines * LINE + PADDING);
+  return {w: width / 2, h: height / 2};
+}
+
 /** The centre of a node, in drawing-layer coordinates. */
 export const nodeCentre = (page, label) => page.evaluate(text => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -606,7 +625,8 @@ export const growAim = page => page.evaluate(() => {
  * how much clear space it leaves against the boxes and the arrows already
  * drawn. The lattice has already refused anything that would land on a node.
  */
-export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim, preferred]) => {
+export const rankGrowCells = (page, aim, preferred = 280, grown = null) =>
+  page.evaluate(([aim, preferred, grown]) => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
   const layer = component.drawingLayer;
   const anchor = component.growAnchor;
@@ -619,7 +639,6 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
   const others = layer.getDANodes().filter(node => node !== anchor);
   const boxes = others.map(node => node.group.getClientRect({relativeTo: layer}));
   const toLayer = layer.getAbsoluteTransform().copy().invert();
-  const edgePoints = [];
   const edgeSegments = [];
   for (const edge of layer.getDAEdges()) {
     const line = edge._line;
@@ -627,10 +646,8 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
     const points = line.points();
     const path = [];
     for (let at = 0; at + 1 < points.length; at += 2) {
-      const point = toLayer.point(
-        line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]}));
-      edgePoints.push(point);
-      path.push(point);
+      path.push(toLayer.point(
+        line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]})));
     }
     for (let at = 0; at + 1 < path.length; at++) {
       edgeSegments.push([path[at], path[at + 1], edge.srcNode, edge.destNode]);
@@ -644,7 +661,11 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
     return side(from, to, p) !== side(from, to, q) && side(p, q, from) !== side(p, q, to);
   });
   const turn = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-  const half = {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2};
+  // Judge the spot by the box that will *end up* there, not by the empty one
+  // that lands: a box is 50px when it is placed and grows with every character
+  // typed into it, which is how one came to sit across an arrow it cleared at
+  // the moment it was put down.
+  const half = grown ?? {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2};
   return component.growGhostTargets
     .map(target => {
       const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(target.id);
@@ -660,9 +681,20 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
         Math.max(box.x - (target.x + half.w), target.x - half.w - (box.x + box.width),
                  box.y - (target.y + half.h), target.y - half.h - (box.y + box.height))),
         Infinity);
-      const gapToEdge = edgePoints.reduce((worst, point) => Math.min(worst,
-        Math.max(Math.abs(point.x - target.x) - half.w, Math.abs(point.y - target.y) - half.h)),
-        Infinity);
+      // Along the arrows, not just at their corners: a straight arrow's only
+      // vertices are at the two boxes it joins, so measuring to those said a
+      // box sitting halfway along it was in the clear.
+      let gapToEdge = Infinity;
+      for (const [p, q] of edgeSegments) {
+        const steps = Math.max(2, Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) / 12));
+        for (let step = 0; step <= steps; step++) {
+          const t = step / steps;
+          const x = p.x + (q.x - p.x) * t;
+          const y = p.y + (q.y - p.y) * t;
+          gapToEdge = Math.min(gapToEdge,
+            Math.max(Math.abs(x - target.x) - half.w, Math.abs(y - target.y) - half.h));
+        }
+      }
       // Getting there matters as much as being there: the aim walks the
       // lattice cell by cell, and a box sitting on one of those cells takes
       // the aim (that is the connect-two-nodes gesture). A spot behind a
@@ -681,9 +713,12 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
       const cost = heading * 2.2
         + Math.abs(distance - preferred) / preferred
         + (gapToBox < 90 ? (90 - Math.max(gapToBox, 0)) / 90 * 2.5 : 0)
-        // Sitting on a line is worse than sitting near one, and an arrow that
-        // crosses another is worse than either.
+        // Near a line is a preference; *on* one is disqualifying. A spot whose
+        // box would cover an arrow (or another box) is taken only if the
+        // lattice offers nothing else at all.
         + (gapToEdge < 90 ? (90 - Math.max(gapToEdge, 0)) / 90 * 4 : 0)
+        + (gapToEdge < 0 ? 50 : 0)
+        + (gapToBox < 0 ? 50 : 0)
         + (crosses({x: target.x, y: target.y}) ? 6 : 0)
         + blocked * 1.5;
       return {ix, iy, cost};
@@ -691,7 +726,7 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
     .filter(Boolean)
     .sort((a, b) => a.cost - b.cost)
     .slice(0, 8);
-}, [aim, preferred]);
+}, [aim, preferred, grown]);
 
 /**
  * Grow a child onto a chosen cell of the placement lattice.
@@ -701,7 +736,7 @@ export const rankGrowCells = (page, aim, preferred = 280) => page.evaluate(([aim
  * connect-two-nodes gesture, so the walk steps back off it and tries the next
  * spot rather than drawing an edge nobody asked for.
  */
-export async function growAtCell(page, {parentIndex, aim = 0, preferred, refocus, onStage, onAim} = {}) {
+export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, refocus, onStage, onAim} = {}) {
   const before = await graphShape(page);
   for (let round = 0; round < 3; round++) {
     if (round > 0 && refocus) await refocus();
@@ -709,7 +744,7 @@ export async function growAtCell(page, {parentIndex, aim = 0, preferred, refocus
     await settle(page, 300);
     await page.keyboard.press('d');
     await settle(page, 300);
-    const ranked = await rankGrowCells(page, aim, preferred);
+    const ranked = await rankGrowCells(page, aim, preferred, grown);
     let landed = null;
     if (onAim) await onAim();
     for (const [attempt, want] of ranked.slice(0, 6).entries()) {

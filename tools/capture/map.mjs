@@ -23,7 +23,7 @@ import {writeFileSync, mkdirSync, rmSync, renameSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, shooter} from './driver.mjs';
-import {goTo, goToNewest, growAtCell, typeInto, nodeCentre, fit, focus,
+import {goTo, goToNewest, growAtCell, typeInto, nodeCentre, grownHalfExtents, fit, focus,
         park, select, centreInBand, frameAbove, zoomTo, settle, labels, edges,
         MS_PER_CHAR} from './build.mjs';
 import {OUTLINE, flatten} from './outline.mjs';
@@ -300,6 +300,9 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
     // A wide family needs a longer arc to sit on, or the last children have
     // nowhere left to go.
     preferred: 260 + 25 * Math.max(0, parent.c.length - 3),
+    // What the box will be once the label is in it, so the spot is judged on
+    // the box that ends up there rather than the empty one that lands.
+    grown: grownHalfExtents(label),
     refocus: () => focus(page, parentLabel, BUILD_ZOOM),
     onStage: provisional,
     onAim: () => provisional('aim'),
