@@ -11,12 +11,13 @@
  * One video per branch, from site/assets/film/film.json, under a breadcrumb
  * that says which box is being made. The breadcrumb replaced the section
  * headings: it names the branch the same way a heading did, and it goes on
- * saying where in the tree the video has got to.
+ * saying where in the tree the video has got to — and, between them, the four
+ * of them say every heading and bullet in the org file, which is why the page
+ * no longer prints the outline underneath as well.
  */
 import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {OUTLINE} from './outline.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const siteDir = process.env.GEN_SITE_DIR ?? join(here, '..', '..', 'site');
@@ -62,20 +63,6 @@ function actSection(act, first) {
   </section>`;
 }
 
-/** The org file's tree, as the org file's tree: headings, and the bullets that
- *  hang off them — which are boxes in the diagram now, and bullets here. */
-function outlineMarkup(node, depth) {
-  const pad = '  '.repeat(depth + 3);
-  const note = node.kind === 'note';
-  const attrs = [`data-id="${node.id}"`];
-  if (node.kind) attrs.push(`data-kind="${node.kind}"`);
-  const open = `${pad}<li ${attrs.join(' ')}${note ? ' class="outline-note-item"' : ''}>` +
-    `<span>${rich(node.t)}</span>`;
-  const children = node.c.flatMap(child => outlineMarkup(child, depth + 2));
-  if (!children.length) return [`${open}</li>`];
-  return [open, `${pad}  <ul>`, ...children, `${pad}  </ul>`, `${pad}</li>`];
-}
-
 const template = readFileSync(join(here, 'page.head.html'), 'utf8');
 const body = `${template}
 <main id="main">
@@ -85,22 +72,14 @@ ${film.acts.map((act, index) => actSection(act, index === 0)).join('\n')}
   <section class="wrap close">
     <p class="close-actions">
       <a class="button button-primary" href="https://alpha.kidraw.net">alpha.kidraw.net →</a>
-      <a class="button button-ghost" href="review/">Older captures</a>
     </p>
-
-    <details class="outline" id="outline" open>
-      <summary>index.org</summary>
-      <ul id="map-outline">
-${outlineMarkup(OUTLINE, 0).join('\n')}
-      </ul>
-    </details>
   </section>
 </main>
 
 <footer class="wrap">
   <div class="foot-row">
     <p><a href="https://bnjmnbrmn.com">Benjamin Berman</a></p>
-    <p><a href="https://alpha.kidraw.net">alpha.kidraw.net</a> · <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a> · <a href="review/">capture review</a></p>
+    <p><a href="https://alpha.kidraw.net">alpha.kidraw.net</a> · <a href="https://github.com/bnjmnbrmn">github.com/bnjmnbrmn</a></p>
   </div>
 </footer>
 

@@ -195,22 +195,6 @@
   .close { padding-block: clamp(2rem, 6vw, 4rem); }
   .close-actions { display: flex; flex-wrap: wrap; gap: .8rem 1rem; }
 
-  /* ---------- outline ---------- */
-  .outline { border-top: 1px solid var(--line-soft); margin-top: clamp(2rem, 5vw, 3.5rem); padding-top: 1.5rem; }
-  .outline summary {
-    color: var(--ink); cursor: pointer;
-    font: 600 .95rem/1.4 "JetBrains Mono", monospace; letter-spacing: -.02em;
-  }
-  .outline summary::marker { color: var(--cyan); }
-  .outline ul { list-style: none; margin: 0; padding-left: 0; }
-  .outline > ul { margin-top: 1.3rem; }
-  .outline ul ul { border-left: 1px solid var(--line-soft); margin-left: .3rem; padding-left: 1rem; }
-  .outline li { color: var(--ink-muted); font-size: .94rem; margin: .28rem 0; }
-  .outline > ul > li > span { color: var(--ink); font-family: "JetBrains Mono", monospace; font-weight: 700; }
-  .outline li[data-kind="q"] > span { color: var(--ink); font-weight: 600; }
-  .outline .outline-note-item { color: var(--ink-faint); font-size: .88rem; list-style: none; }
-  .outline .outline-note-item::before { color: var(--ink-faint); content: "– "; }
-
   footer {
     border-top: 1px solid var(--line-soft); color: var(--ink-faint);
     font-size: .9rem; padding-block: 2.4rem 4rem;

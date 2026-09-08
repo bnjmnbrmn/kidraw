@@ -165,8 +165,6 @@ const chrome = [
   'Connect your thoughts, at the speed you have them',
   "A work in progress. I'd love to hear your ideas about how to improve it.",
   'alpha.kidraw.net →',
-  'Older captures',
-  'index.org',
 ];
 
 try {
@@ -191,7 +189,6 @@ try {
   // headings and bullets, which are all boxes in the diagram now, and the
   // breadcrumbs are those same words again.
   const allowed = new Set([...orgWords, ...chrome]);
-  await page.locator('#outline').evaluate(element => { element.open = true; });
   const said = await page.evaluate(() => {
     // The breadcrumb is checked on its own: its steps are laid out in a row,
     // so they would come back run together.
@@ -204,11 +201,14 @@ try {
     return text;
   });
   const lines = said.split('\n').map(line => line.replace(/^[–-]\s*/, '').trim()).filter(Boolean);
-  await page.locator('#outline').evaluate(element => { element.open = false; });
   assert.deepEqual(lines.filter(line => !allowed.has(line)), [],
     'every word on the page comes from index.org');
-  assert.deepEqual(orgWords.filter(word => !lines.includes(word)), [],
-    'and every heading and bullet in index.org is on the page');
+  // The outline used to be printed at the foot of the page; the breadcrumbs
+  // say the same words now, so that is where every heading and bullet has to
+  // turn up.
+  const spoken = new Set(film.acts.flatMap(act => act.cues.flatMap(cue => cue.trail)));
+  assert.deepEqual(orgWords.filter(word => !spoken.has(word)), [],
+    'every heading and bullet in index.org is named by a breadcrumb');
   // "diagram", not "graph".
   assert.doesNotMatch(lines.join('\n'), /\bgraphs?\b/i, 'the page talks about diagrams, not graphs');
   assert.equal(await page.locator('footer').getByText('Benjamin Berman', {exact: false}).count(), 1);
@@ -265,13 +265,9 @@ try {
   }
   await seekTo(page, act.id, 0);
 
-  // The outline is the content of record, and the diagram was built from it.
-  assert.equal(await page.locator('#map-outline li[data-id]').count(), entries.length,
-    'the outline carries every box');
-  assert.equal(await page.locator('#map-outline .outline-note-item').count(), 6,
-    'and the bullets are boxes too');
-  assert.equal(await page.locator('#outline').evaluate(element => element.open), false,
-    'the outline collapses once the film is available');
+  // Nothing but the film and the two links: no outline, no older captures.
+  assert.equal(await page.locator('#outline, #map-outline').count(), 0);
+  assert.equal(await page.locator('a[href="review/"]').count(), 0);
 
   // The video plays itself where it is being looked at, and stops when it is
   // not — nothing else on the page moves.
@@ -328,10 +324,6 @@ try {
   const plainContext = await browser.newContext({viewport: {width: 1200, height: 900}, javaScriptEnabled: false});
   const still = await plainContext.newPage();
   await still.goto(url, {waitUntil: 'load'});
-  assert.equal(await still.locator('#outline').evaluate(element => element.open), true,
-    'the outline stays open when there is nothing to play it against');
-  assert.ok(await still.locator('#map-outline li').count() >= entries.length,
-    'the outline is real markup, not generated');
   assert.equal(await still.locator('video[controls]').count(), film.acts.length,
     'every video can still be played by hand');
   assert.deepEqual(await crumbsOf(still, 'what'), film.acts[0].cues[0].trail,

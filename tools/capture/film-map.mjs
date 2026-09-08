@@ -20,7 +20,7 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, overlaysSeen} from './driver.mjs';
 import {goTo, growAtCell, findGrowCell, nodeCentre, grownHalfExtents, park, select,
-        frameAbove, settle, labels, edges} from './build.mjs';
+        frameAbove, settle, labels, edges, boxesOnEdges} from './build.mjs';
 import {typeFilm, walkLinks, aimCamera, pullBackTo, vimEdit} from './gestures.mjs';
 import {startRecorder} from './record.mjs';
 import {OUTLINE, flatten, plain, trailTo} from './outline.mjs';
@@ -67,7 +67,11 @@ console.log(`filming ${Math.min(limit, entries.length)} boxes at ${VIEWPORT.widt
  *  take a quarter of the canvas each; everything below fans around the way its
  *  own branch is already heading. */
 const QUARTERS = [-Math.PI / 4, Math.PI / 4, (3 * Math.PI) / 4, (-3 * Math.PI) / 4];
-const FAN = Math.PI * 0.8;
+// Narrow enough that a branch keeps to its own part of the page. At 0.8π a
+// family of ten spread over 130°, which reaches well into the next quarter —
+// and a box that lands in another branch's territory lands among arrows that
+// were drawn before it and cannot be scored against arrows drawn after.
+const FAN = Math.PI * 0.5;
 async function aimFor(node, parent, grandparent) {
   const kin = parent.c;
   const index = kin.indexOf(node);
@@ -101,12 +105,12 @@ async function settleOn(label) {
 }
 
 /**
- * The last thing the film does: lay the whole diagram out.
+ * The last thing the film does: lay the whole diagram out as a tree.
  *
- * Force first, because that is the one that has to reckon with everything at
- * once, and then a tree — the diagram *is* a tree, and a tree layout is the
- * shape it should end in. Generations run top to bottom, which is the way
- * round that fits a frame wider than it is tall.
+ * The diagram *is* a tree, and a tree layout is the shape it should end in;
+ * generations run top to bottom, which is the way round that fits a frame
+ * wider than it is tall. Both stages report any box left with an arrow drawn
+ * through it, because that is the one thing this ending must not do.
  */
 async function showLayoutFinale() {
   const layout = async (key, settleFor) => {
@@ -126,11 +130,14 @@ async function showLayoutFinale() {
     await settle(page, 1200);
     await frameAbove(page);
   };
-  await layout('k', 1700);
-  await park(page);
-  rec.hold(1700);
+  // Force is not part of the ending any more. It is demonstrated on a graph of
+  // its own, where it has room to be interesting; run on the whole diagram it
+  // put a box on the long arrow from the root, which is exactly what the
+  // placement rules spend their time avoiding.
+  console.log(`  built: ${(await boxesOnEdges(page)).join('; ') || 'no box on an arrow'}`);
   await layout('j', 1700);
   await park(page);
+  console.log(`  laid out: ${(await boxesOnEdges(page)).join('; ') || 'no box on an arrow'}`);
   rec.hold(2600);
 }
 
@@ -193,7 +200,10 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   await aimCamera(page, parentLabel, BUILD_ZOOM);
   lap('aim');
   const aim = await aimFor(node, parent, grandparent);
-  const preferred = 260 + 25 * Math.max(0, parent.c.length - 3);
+  // The four questions go further out than anything else: they are the roots
+  // of the four branches, and how far apart they sit decides whether a branch
+  // has room to grow without reaching into the arrows of the one beside it.
+  const preferred = (depth === 1 ? 430 : 260) + 25 * Math.max(0, parent.c.length - 3);
   const grown = grownHalfExtents(label);
   const outward = await nodeCentre(page, plain((grandparent ?? parent).t));
   // Find a reachable spot with the camera off, so the walk that is filmed can

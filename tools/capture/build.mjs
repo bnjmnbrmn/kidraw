@@ -675,3 +675,97 @@ export async function findGrowCell(page, {aim = 0, preferred, grown, outward} = 
   await settle(page, 220);
   return landed;
 }
+
+/**
+ * Boxes with an arrow drawn through them.
+ *
+ * The placement scorer refuses a spot whose box would cover an arrow, but that
+ * is a judgement made when the box goes down: an arrow can be re-routed later,
+ * and a layout can move everything. So this asks the finished diagram, which
+ * is the only thing that settles it.
+ */
+export const boxesOnEdges = (page, margin = 6) => page.evaluate(pad => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  component.finishTweens();
+  const layer = component.drawingLayer;
+  const read = node => {
+    const value = node.label;
+    return typeof value === 'string' ? value : (value && value.text ? value.text() : '');
+  };
+  const toLayer = layer.getAbsoluteTransform().copy().invert();
+  const guilty = [];
+  for (const node of layer.getDANodes()) {
+    const box = node.group.getClientRect({relativeTo: layer});
+    const inside = point => point.x > box.x - pad && point.x < box.x + box.width + pad &&
+      point.y > box.y - pad && point.y < box.y + box.height + pad;
+    for (const edge of layer.getDAEdges()) {
+      // Its own arrows reach it by definition.
+      if (edge.srcNode === node || edge.destNode === node) continue;
+      const line = edge._line;
+      if (!line) continue;
+      const points = line.points();
+      let hit = false;
+      for (let at = 0; at + 3 < points.length && !hit; at += 2) {
+        const from = toLayer.point(line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]}));
+        const to = toLayer.point(line.getAbsoluteTransform().point({x: points[at + 2], y: points[at + 3]}));
+        const steps = Math.max(2, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 8));
+        for (let step = 0; step <= steps && !hit; step++) {
+          const t = step / steps;
+          hit = inside({x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t});
+        }
+      }
+      if (hit) {
+        guilty.push(`${read(node)} <- ${read(edge.srcNode)}->${read(edge.destNode)}`);
+        break;
+      }
+    }
+  }
+  return guilty;
+}, margin);
+
+/**
+ * The arrow drawn through a box, if there is one, as the direction it runs in.
+ *
+ * Which way to move the box off it: along the arrow is no use, so the caller
+ * wants the perpendicular — and which side of the arrow the box already sits
+ * on, so it carries on that way rather than crossing over.
+ */
+export const arrowThrough = (page, label, margin = 6) => page.evaluate(([text, pad]) => {
+  const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
+  component.finishTweens();
+  const layer = component.drawingLayer;
+  const read = node => {
+    const value = node.label;
+    return typeof value === 'string' ? value : (value && value.text ? value.text() : '');
+  };
+  const node = layer.getDANodes().find(candidate => read(candidate) === text);
+  if (!node) return null;
+  const box = node.group.getClientRect({relativeTo: layer});
+  const centre = {x: box.x + box.width / 2, y: box.y + box.height / 2};
+  const inside = point => point.x > box.x - pad && point.x < box.x + box.width + pad &&
+    point.y > box.y - pad && point.y < box.y + box.height + pad;
+  const toLayer = layer.getAbsoluteTransform().copy().invert();
+  for (const edge of layer.getDAEdges()) {
+    if (edge.srcNode === node || edge.destNode === node) continue;
+    const line = edge._line;
+    if (!line) continue;
+    const points = line.points();
+    for (let at = 0; at + 3 < points.length; at++) {
+      if (at % 2) continue;
+      const from = toLayer.point(line.getAbsoluteTransform().point({x: points[at], y: points[at + 1]}));
+      const to = toLayer.point(line.getAbsoluteTransform().point({x: points[at + 2], y: points[at + 3]}));
+      const steps = Math.max(2, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 8));
+      for (let step = 0; step <= steps; step++) {
+        const t = step / steps;
+        const point = {x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t};
+        if (!inside(point)) continue;
+        // Which side of the segment the box's middle is on, so the move
+        // carries on that way instead of crossing over it.
+        const along = {x: to.x - from.x, y: to.y - from.y};
+        const side = Math.sign(along.x * (centre.y - from.y) - along.y * (centre.x - from.x)) || 1;
+        return {along, side};
+      }
+    }
+  }
+  return null;
+}, [label, margin]);
