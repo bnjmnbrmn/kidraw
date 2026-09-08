@@ -120,7 +120,7 @@ export class ThemeService {
 
   constructor() {
     const stored = localStorage.getItem(STORAGE_KEY) as ThemeName | null;
-    this._theme = stored === 'light' || stored === 'dark' ? stored : 'light';
+    this._theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
     this.applyTheme();
   }
 

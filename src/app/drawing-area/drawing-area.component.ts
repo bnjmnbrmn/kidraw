@@ -2481,8 +2481,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log("case exit-label-edit-mode")
     this.clearLabelEditGhost();
     this.crosshairsLayer.showCrosshairs();
-    this.drawingLayer.getSelectedDANodes().forEach(n => n.hideCursor());
-    this.getSelectedLabels().forEach(l => l.hideCursor());
+    // Deliberately every node and label, not just the selected ones. A cursor
+    // is shown before selection settles -- a freshly created node awaiting its
+    // label gets one while unselected (beginNewNodeLabelEdit) -- so keying the
+    // teardown off selection left that node's blink timer running for the rest
+    // of the session, with a caret visible on a node nobody was editing.
+    // hideCursor on a node without one is a no-op.
+    this.drawingLayer.getDANodes().forEach(n => n.hideCursor());
+    this.getAllLabels().forEach(l => l.hideCursor());
     // A label left empty has no visible content — drop it rather than leave
     // an invisible hit-target on the edge.
     this.getSelectedLabels()
@@ -8221,6 +8227,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       });
     });
     return selectedLabels;
+  }
+
+  /** Every label on the graph, selected or not. Teardown that must not depend
+   *  on selection state uses this. */
+  private getAllLabels(): DALabel[] {
+    const labels: DALabel[] = [];
+    this.drawingLayer.getDAEdges().forEach(edge => {
+      edge.labels.forEach(label => labels.push(label));
+    });
+    return labels;
   }
 
   private getEdgeForLabel(label: DALabel): DAEdge | null {
