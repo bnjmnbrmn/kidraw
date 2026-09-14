@@ -16,8 +16,11 @@ type: idea
 - **Per-participant undo** (a.k.a. *local undo*; the research term for undoing specific earlier changes is *selective undo*): undo reverts **your own** most recent change, never someone else's. The alternative, *global undo* (revert the last change by anyone), is widely considered confusing and is not planned.
 - **Revert:** deliberately undoing a *specific* change, possibly someone else's, from a history or review list — distinct from pressing undo.
 - **Editing modes and change-set states** (revised 2026-09-14; avoid "shared" as an adjective for changes — the *document* is always shared, which makes "shared change" vs "shared mode" ambiguous):
-  - **Change:** one operation, or one keystroke's transaction.
-  - **Change set:** a named group of changes accepted or rejected as a unit (the atomic, git-like part).
+  - **Change** is the umbrella term (Ben, 2026-09-14): a change is an operation or a group of changes, nested like the composite pattern.
+    - **Operation:** the smallest, indivisible change (relabel a node, move a node, delete an edge).
+    - **Transaction:** the operations from one user action — one keystroke, one agent tool call — applied together; one undo step.
+    - **Change set:** a named, reviewable group of transactions, accepted or rejected as a unit (the git-like part); may span many actions.
+  - **"Atomic" means all-or-nothing** (as in databases), which is true at every level: an operation, a transaction, and a change set each apply entirely or not at all. So "operation" alone names the smallest unit; "atomic" describes how any change is applied.
   - **Live mode:** your changes are **published** to everyone as you make them (Docs-like, incremental).
   - **Draft mode:** your changes collect in a private change set until you **publish** it (or **propose** it for review) — like a branch or Docs' suggesting mode.
   - **Change-set states:** draft → proposed → accepted / rejected. Individual changes are **published** or **unpublished**.
