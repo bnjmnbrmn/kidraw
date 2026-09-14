@@ -71,6 +71,26 @@ A **companion app** is the general term for a small helper program installed alo
 - **Also available:** Tier 0's loop can run inside `kidraw-agent` instead of the tab, for local models without CORS setup or to keep API keys out of the browser.
 - **Optional, agent-specific integrations** (not the core): Claude Code channels (research preview) and Codex's app-server JSON-RPC, for attaching an already-running terminal session.
 
+## Tier 1 trade-offs (2026-09-14)
+
+**For:** uses subscriptions people already pay for instead of per-token API billing; the agent brings far more than canvas tools (shell, files next to the graph, web search, the user's own configured MCP servers, instructions, and skills); mature agent harnesses (planning, context management); API keys stay out of the browser; local models without CORS setup.
+
+**Against:** an install step and per-OS packaging (binary, login service, link handler, updates); a local server and an agent with shell access widen the security surface, so permission prompts matter; Chrome's local-network prompt; ACP adapters and research-preview features are still moving; agents differ in session and MCP support; Chromium-only rendezvous (FSA); nothing for phones, tablets, or visitors who won't install software.
+
+## Tier 2 (optional): a KiDraw agent on a remote machine
+
+The brain's location is swappable, because canvas tools always run in the tab and the tab sends graph state to whichever agent it's talking to:
+
+- **Tier 0:** the loop runs in the tab.
+- **Tier 1:** an installed agent, via `kidraw-agent`.
+- **Tier 2:** KiDraw's *own* agent loop runs on a server (Ben's VPS, or later a hosted service); the tab connects over HTTPS (WebSocket or SSE) with a login or token.
+
+Tier 2 is the textbook AG-UI case: a remote agent backend streaming events to a web frontend that defines and runs its own tools. The agent needs no vault access; the tab sends an outline or state snapshot plus deltas.
+
+**Makes sense for:** agent-side logic Ben controls (tour planning, memory of past tours and discussions), API keys kept server-side, heavier compute or a GPU box for local models, background work that outlives a tab, use from a phone with nothing installed, and eventually a hosted product (the deferred cloud vault's natural partner).
+
+**Costs:** graph content leaves the user's machine (privacy; conflicts with "everything local" as the default), auth and multi-user security, hosting costs, and reconnect/resume handling. Latency is not the issue: a network hop is small next to model time.
+
 ## MCP, ACP, AG-UI — which does what
 
 - **MCP (Model Context Protocol):** connects an agent to **tools and data**. The agent is the client; tool servers answer. KiDraw's canvas tools are exposed to agents this way.
