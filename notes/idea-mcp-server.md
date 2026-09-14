@@ -1,76 +1,90 @@
 ---
-title: KiDraw MCP server — AI proposes, you review from the keyboard
+title: KiDraw MCP server — agent-guided tours first, proposals later
 type: idea
 ---
 
-# KiDraw MCP server — AI proposes, you review from the keyboard
+# KiDraw MCP server — agent-guided tours first, proposals later
 
-**Status:** sketch (2026-09-14, Ben + Claude). Not scheduled.
+**Status:** sketch, revised 2026-09-14 (Ben + Claude). Not scheduled.
 
 ## Why
 
-- Makes KiDraw a human–AI interaction medium you can actually see working: an agent proposes graph changes, and the human reviews, accepts, or rejects them from the keyboard.
-- Job-search side benefit: a clear example of having *implemented* tool calling and agents (Omada's screening question), and a route to hands-on LiteLLM/Bedrock experience.
-- Formalizes a loop that already exists informally: agents already work "off Ben's live todo graph" via `tools/draft-mirror.json`.
+- Makes KiDraw a human–AI interaction medium you can actually see working.
+- **Tour first (read-only):** the agent walks the user through an existing graph — moving the view, highlighting, captioning — while the user controls the pace from the keyboard. This tests the core loop (shared attention, pacing, user control) without the hard problem of showing diffs.
+- **Proposals later:** agent-suggested edits need a real diff presentation (see "Phase 2"). The tour's live channel is the right foundation for that too.
+- Job-search side benefit: a concrete "implemented tool calling / agents" example, with an optional LiteLLM/Bedrock path.
 
-## What already exists (v0 needs no app changes)
+## Architecture
 
-- **Vault round-trip** ([decision-vault-model](decision-vault-model.md), shipped): KiDraw polls the open vault file's `lastModified` every 1.5 s and silently reloads external edits when the session is clean. If the session is dirty, local state wins and the external edit is ignored with a warning.
-- **Pure-TS file-format lib** (`src/app/lib/file-format/`: parser, resolver, snapshot mapping, YAML via js-yaml). It has no Angular imports, so the server can reuse it for validation instead of re-implementing the schema.
-- **Tags** on nodes and edges (`tags: string[]`), and `tagStyles` in style sets; the resolver folds matching tag styles into per-element rules on load.
-- **ID safety:** the in-app counter only observes `da-N` ids (`observeId` in `drawing.layer.ts`), so server-created ids with a different prefix (e.g. `ai-7f3k`) can never collide with ids the app mints later.
-- **Fuzzy matching** (`src/app/lib/fuzzy-match.ts`) for resolving labels.
+Three processes plus the model client. No polling anywhere on the live path.
 
-## Shape
+```
+ Ben's laptop                                   VPS (kidraw.dev.bnjmnbrmn.com)
+ ┌──────────────────────────┐                   ┌─────────────────────────────────────────────┐
+ │ Browser tab: KiDraw app  │   wss (push,      │ nginx  /agent-bridge ──► agent bridge        │
+ │  AgentBridgeService      │◄──both ways)─────►│                          127.0.0.1:9223      │
+ │  (dev-only, token-gated) │                   │                             ▲                │
+ └──────────────────────────┘                   │                             │ ws (localhost) │
+                                                │ Claude Code ──stdio──► kidraw-mcp (thin)     │
+ Ben's chat UI (terminal / phone / desktop) ───►│   (spawns the MCP server per session)        │
+                                                └─────────────────────────────────────────────┘
+```
 
-A stdio MCP server in TypeScript (`@modelcontextprotocol/sdk`) under `tools/mcp/`, importing the file-format lib and configured with a vault directory. Python/FastMCP would also work, but TypeScript reuses KiDraw's own parser.
+1. **KiDraw tab** (wherever Ben's browser is). A dev-only `AgentBridgeService`, gated on `DEBUG_CHANNEL` like the draft mirror, opens a WebSocket *out* to the bridge (browsers can't accept inbound connections). It sends a graph snapshot on connect and on every change, answers view queries, executes view commands, and forwards the user's tour keys.
+2. **Agent bridge** (VPS, long-lived; started by `npm start` next to `tools/log-server.js`). A small Node WebSocket hub on `127.0.0.1:9223` that pairs agent sessions with tabs and relays messages. nginx proxies `/agent-bridge` to it with WebSocket upgrade headers, the same pattern as the existing `/debug-log` route.
+3. **`kidraw-mcp`** (VPS, spawned over stdio by Claude Code for each session). A thin adapter: each MCP tool call becomes a request over a localhost WebSocket to the bridge, which routes it to the tab and returns the reply. It holds no state, so sessions and restarts don't collide on ports.
 
-**Label-first interface.** Tools take and return node *labels* (fuzzy-resolved, with an error listing candidates when ambiguous), never raw ids — the same rule the humans use.
+Why a separate bridge rather than having the MCP server listen directly: stdio MCP servers live and die with the chat session, and more than one session may be open. A stable daemon keeps the tab's connection alive across sessions and avoids port fights.
 
-### Read tools
+**Latency:** tool call → stdio (≈ms) → localhost ws (≈ms) → internet ws to the laptop (≈20–80 ms round trip) → the app's view tween (≈300 ms). The model's own thinking dominates (seconds). **Events from the user are pushed, not polled.**
 
-- `list_graphs()` — vault listing with node/edge counts and diagram `type`.
-- `read_graph(path)` — compact outline: nodes (label, status/tags, notes) and edges (`from → to`, edge labels), in a stable order.
-- `find_nodes(path, query)` — fuzzy label search.
-- `neighborhood(path, label, depth = 1)` — incoming and outgoing edges around a node.
+**The one "waiting" primitive** is a blocking tool, `wait_for_user(timeout)`. The agent calls it after showing a step, and it returns the moment Ben presses a tour key. Under the hood it's a pending request resolved by a push event, not a timer loop. Claude Code's MCP tool timeout applies: use a modest timeout that returns `{action: "still_waiting"}`, and have the agent simply call again.
 
-### Write tools (proposals only)
+**Security:** kidraw.dev is publicly reachable, and a bridge can read the graph and drive the view. Require a random token (generated at bridge start, pasted into the tab once or passed as a URL param) and bind to loopback behind nginx. Dev-only; never in production builds.
 
-- `propose(path, changes[])`, where each change is one of:
-  - `add_node { label, notes?, near?: label, status? }`
-  - `add_edge { from, to, label? }`
-  - `set_status { node, status }` (todo-graph `status/*` tags)
-  - `relabel { node, label }` and `add_note { node, text }`
-  - `suggest_delete { node | edge }`
-- `list_proposals(path)` and `withdraw(path, batch?)`
+## Phase 1 — tour tools (read-only)
 
-Every proposed element carries `ai/proposed` plus a batch tag `ai/batch-<id>`. Changes to *existing* elements are recorded as proposals, not applied (see open questions for how). New nodes get positions offset from their `near` anchor by the todo-graph card size, because a node with no `x`/`y` otherwise lands at the origin.
+All tools are label-first: fuzzy-resolved labels, with an error listing candidates when ambiguous, never raw ids.
 
-**Write discipline:** read → apply → validate with KiDraw's parser → staleness check (mtime/hash unchanged since the read) → write a `.bak` → atomic write (temp file + rename). The agent can add, but never silently change or delete the human's content.
+**Read the live graph** (from the tab, so it's the real current state, not a possibly stale file):
+- `get_outline()` — nodes (label, status/tags, notes), edges (`from → to`, labels), diagram type.
+- `find_nodes(query)` — fuzzy search (reuse `src/app/lib/fuzzy-match.ts`).
+- `neighborhood(label, depth = 1)` — incoming and outgoing edges.
+- `get_view()` — what the user is looking at: crosshairs node, selection, viewport. Lets the agent start "from here".
 
-## Review — the human–AI part
+**Guide the view** (no graph mutation, no undo entries, no dirty flag):
+- `focus(label)` — animate crosshairs and view to a node.
+- `frame(labels[])` — zoom to fit a set of nodes.
+- `highlight(labels[] | path)` — glow nodes and edges (reuse the `navFocused` edge band).
+- `caption(label, text)` / `clear_caption()` — narration shown beside the node, so Ben doesn't have to watch two windows.
+- `wait_for_user(timeout)` → `{ action: next | back | stop | ask, text?, focusedNode? }`.
 
-- **v0 (no app changes):** proposals render through a `tagStyles` rule (e.g. `ai/proposed` → dashed purple stroke). Accept = remove the tag; reject = delete the element. Both are already reachable from the keyboard.
-- **v1 (in-app review mode):** a keymenu "Review" submenu — next/previous proposal (reusing the nav popup), accept, reject, accept batch, reject batch — each an undoable step, with a status line like "3 of 7 proposals".
+**In the app:** a Tour mode in the keymenu — `n`/`b` next/back, `?` to ask (small text input), Esc to end — plus a caption renderer. Existing pieces to lean on: `RECENTER_VIEW*`, `SEARCH_GRAPH`, `TRAVERSE_SMART`, the nav popup's auto-zoom framing, and the `navFocused` glow. New app work is mostly: focus-by-node-id and frame-a-set commands, the caption layer, tour-mode keys, and the bridge service.
 
-## Deployment
+**Demo (60 s):** "Walk me through what's blocking the MVP" → the view glides to *Pre-MVP*, captions explain, `n` advances along dependency edges, `?` asks "why is this one blocked?", and the agent answers in-caption.
 
-- Ben's live vault is local to the laptop (FSA grant), so the full round-trip works when the server runs **on the laptop** (Claude Code or Claude Desktop over stdio), pointed at the vault directory.
-- On the VPS, the server can run **read-only** today against `tools/draft-mirror.json` and `meta-project/kdvault/*.kidraw.yaml`.
+## Phase 2 — proposals with a real diff view (later)
+
+Build on the same channel, not on files:
+- `propose(changes[])` sends a change set to the tab, which renders it as an **overlay layer** (ghost nodes and edges, strike-through for suggested deletions, before/after on relabels) without touching the graph.
+- Review in Tour-like steps: accept or reject per change or per batch. Acceptance runs the normal command path, so it's undoable and auto-saves like any edit.
+- Because proposals live in the app rather than in the file, there's no file polling and no "dirty session wins" clobber.
+- **The hard design problem to solve first:** how to show structural diffs legibly — layout shifts, many-edge changes, deletions with dependents.
+
+## Alternative kept on file: vault-file round trip
+
+KiDraw's shipped vault already polls the open file's `lastModified` every 1.5 s and reloads external edits when the session is clean ([decision-vault-model](decision-vault-model.md)). A file-editing MCP server could use that with no app changes, but it's slow-ish (up to ~1.5 s), can't drive the view, loses to a dirty session, and only works where the vault directory lives (Ben's laptop). Fine for batch or offline edits; wrong for tours or interactive review.
 
 ## Later: an agent loop Ben writes, through a gateway
 
-A small agent (TypeScript or Python) that calls the same tools through the Anthropic API — optionally via a local LiteLLM proxy, and Claude on Bedrock if an AWS account is available — adds model routing, usage and cost logging, and a real tool-calling loop Ben implemented himself.
-
-## 60-second demo script
-
-Open the Next todo graph → ask "break *Prepare for Omada interview* into steps with dependencies" → dashed proposals appear within ~2 s → review from the keyboard: accept three, reject one, fix a label → done.
+A small agent (TypeScript or Python) calling the same MCP tools through the Anthropic API — optionally via a local LiteLLM proxy, and Claude on Bedrock if an AWS account is available — adds model routing, usage and cost logging, and a real tool-calling loop Ben implemented himself.
 
 ## Open questions
 
-- Does `tagStyles` survive a KiDraw auto-save, or does saving flatten it into per-node style props (so the dashed look would stick after "accept")? Verify before relying on v0 styling; the v1 review mode can render proposals from the tag directly instead.
-- Proposed edits to existing elements: inline markers vs. a sidecar `*.kidraw.proposals.yaml` that KiDraw merges in. A sidecar would also avoid the dirty-session problem below.
-- Dirty-session clobber: if Ben is mid-edit, the external write is ignored, and the server can't see the app's dirty state from the laptop. A sidecar or the v1 review mode fixes this.
-- Whether YAML key order must be preserved on write for clean diffs, and whether the server stays in `tools/mcp/` or becomes its own package.
+- Tab pairing when several tabs are open: most recently focused tab wins, or explicit pairing via the token?
+- Should the tour restore the user's original view when it ends?
+- Caption placement and style: beside the node vs. a docked panel; how it coexists with the keymenu overlay.
+- Where the agent's chat lives: external (Claude Code, phone) for Phase 1; an in-app panel later?
+- Claude Code's MCP tool-timeout default, and how long `wait_for_user` should block before returning "still waiting".
 
-Related: [decision-vault-model](decision-vault-model.md), [idea-todo-graph-modeling](idea-todo-graph-modeling.md), [idea-diagram-types](idea-diagram-types.md).
+Related: [decision-vault-model](decision-vault-model.md), [idea-nav-popup](idea-nav-popup.md), [idea-todo-graph-modeling](idea-todo-graph-modeling.md), [idea-diagram-types](idea-diagram-types.md).
