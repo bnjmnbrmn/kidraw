@@ -99,7 +99,7 @@ A **companion app** is the general term for a small helper program installed alo
 - **Always visible:** a header indicator while connected ("Agent: *ben-vps*"), with one key to disconnect.
 - **Server side:** `kidraw-agent` refuses unauthenticated connections and only accepts the KiDraw origins its operator lists (e.g. `kidraw.net`, a self-hosted copy, or the dev site).
 - **Precedent:** the dev draft mirror is already compiled out of production builds (`DEBUG_CHANNEL`). Agent code differs in that it *does* ship, but it is inert until configured.
-- **Related dev-site gap:** `kidraw.dev.bnjmnbrmn.com` is publicly reachable without login, and its dev build mirrors every remote session's draft to the VPS (`/debug-log/draft`). A stranger who found the URL would send their drawing there. Consider HTTP basic auth or Tailscale on the dev site.
+- **Related dev-site gap (fixed 2026-09-14):** `kidraw.dev.bnjmnbrmn.com` was publicly reachable without login while its dev build mirrors every remote session's draft to the VPS (`/debug-log/draft`). The nginx site now requires HTTP basic auth (`/etc/nginx/kidraw-dev.htpasswd`, user `ben`); local tools that use `localhost:4200` are unaffected.
 
 This works because canvas tools always run in the tab and the tab supplies graph state; the agent never needs to reach the laptop.
 
