@@ -103,6 +103,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Infrastructure (deployment, analytics, CI/CD)](idea-infrastructure-deploy.md)
 - [In-app keystroke overlay (`?showKeys=true`)](idea-keystroke-overlay.md)
 - [Longer-term ambitions](idea-longer-term.md)
+- [MCP server — AI proposes, you review from the keyboard](idea-mcp-server.md) — label-first read/propose tools over the vault; proposals tagged `ai/proposed`; relies on the shipped vault polling round-trip; v1 in-app review mode.
 
 ## Bugs
 
