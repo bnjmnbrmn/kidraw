@@ -151,6 +151,16 @@ This works because canvas tools always run in the tab and the tab supplies graph
 
 **Read tools:** `get_outline`, `find_nodes`, `neighborhood`, `get_view`, `get_selection` — from the live tab, not the file.
 
+## Control of the view
+
+The user must always be able to take the view back, and hand it over again:
+- **Following:** the agent or tour drives the camera.
+- **Free:** the user drives; the agent's `focus`/`frame` requests become indicators (an edge-of-screen arrow, "Agent is showing *Pre-MVP* — press `F` to follow") instead of moving the view.
+- Any manual pan, zoom, or navigation key switches to Free immediately; tour next/back or the Follow key switches back. Agent view commands are ignored briefly after user input, so there's no camera fight.
+- The reverse — "look at what I'm looking at" — lets the agent follow the user's view.
+
+This is the same follow model multiplayer needs; see [idea-multiplayer-readiness](idea-multiplayer-readiness.md), which also covers why the agent should be treated as just another participant.
+
 ## Captions
 
 - **Anchored first:** beside the anchor (node, edge midpoint, label, or region centroid), on a side that avoids neighbors and other captions, with a short leader line when offset. Positioned from world coordinates, drawn at constant screen size.
