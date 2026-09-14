@@ -1,90 +1,131 @@
 ---
-title: KiDraw MCP server — agent-guided tours first, proposals later
+title: KiDraw agent mode — local MCP server, in-browser chat, tours, shared pointing
 type: idea
 ---
 
-# KiDraw MCP server — agent-guided tours first, proposals later
+# KiDraw agent mode — local MCP server, in-browser chat, tours, shared pointing
 
-**Status:** sketch, revised 2026-09-14 (Ben + Claude). Not scheduled.
+**Status:** sketch, revised 2026-09-14 (Ben + Claude), third pass. Not scheduled.
 
-## Why
+## Goals (Ben, 2026-09-14)
 
-- Makes KiDraw a human–AI interaction medium you can actually see working.
-- **Tour first (read-only):** the agent walks the user through an existing graph — moving the view, highlighting, captioning — while the user controls the pace from the keyboard. This tests the core loop (shared attention, pacing, user control) without the hard problem of showing diffs.
-- **Proposals later:** agent-suggested edits need a real diff presentation (see "Phase 2"). The tour's live channel is the right foundation for that too.
-- Job-search side benefit: a concrete "implemented tool calling / agents" example, with an optional LiteLLM/Bedrock path.
+- **Chat in the browser**, sooner rather than later.
+- **Everything local:** the MCP server and Claude Code/Codex run on the same machine as the browser. Ask users to start the agent in their vault directory.
+- **Tours first (read-only)**, with step forward/back. Proposed edits come later and need a real diff presentation.
+- **Shared pointing:** both the user and the AI can clearly point at things on the canvas and ask each other questions, especially to make suggestions.
+- **Captions sit next to the objects they annotate**; if that isn't possible, near the bottom of the window.
+- **Views, tours, transitions, and captions are defined in style sets** (`*.kd-style.yaml` / `.json`), which may also exist only in memory (unsaved).
 
-## Architecture
+## Can the page run the server itself?
 
-Three processes plus the model client. No polling anywhere on the live path.
+No. A web page can't listen on a port or create sockets or pipes. The server has to be a local process, and the natural one to start it is the agent the user already runs in the vault directory. Claude Code starts project-scoped MCP servers from `.mcp.json` in that directory, and a desktop wrap of KiDraw could embed the server later.
+
+## Architecture (all on the user's machine)
 
 ```
- Ben's laptop                                   VPS (kidraw.dev.bnjmnbrmn.com)
- ┌──────────────────────────┐                   ┌─────────────────────────────────────────────┐
- │ Browser tab: KiDraw app  │   wss (push,      │ nginx  /agent-bridge ──► agent bridge        │
- │  AgentBridgeService      │◄──both ways)─────►│                          127.0.0.1:9223      │
- │  (dev-only, token-gated) │                   │                             ▲                │
- └──────────────────────────┘                   │                             │ ws (localhost) │
-                                                │ Claude Code ──stdio──► kidraw-mcp (thin)     │
- Ben's chat UI (terminal / phone / desktop) ───►│   (spawns the MCP server per session)        │
-                                                └─────────────────────────────────────────────┘
+ ┌───────────────── user's machine ───────────────────────────────────────────┐
+ │                                                                            │
+ │  Browser: KiDraw tab ──── FSA grant ────► vault dir (~/kidraw/)            │
+ │    chat panel, captions,                   ├─ next.kidraw.yaml             │
+ │    tour + pointing UI                      ├─ *.kd-style.yaml              │
+ │        │                                   └─ .kidraw/agent.json  ◄─┐      │
+ │        │ ws://127.0.0.1:<port>  (push both ways, token from ────────┘│     │
+ │        ▼                         agent.json)                         │     │
+ │  kidraw-mcp  (Node; started from the vault dir) ─── writes rendezvous┘     │
+ │        │                                                                   │
+ │        ├── stdio MCP + channel ──► Claude Code (`claude`, channels on)     │
+ │        └── JSON-RPC client ──────► Codex (`codex app-server`)              │
+ └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **KiDraw tab** (wherever Ben's browser is). A dev-only `AgentBridgeService`, gated on `DEBUG_CHANNEL` like the draft mirror, opens a WebSocket *out* to the bridge (browsers can't accept inbound connections). It sends a graph snapshot on connect and on every change, answers view queries, executes view commands, and forwards the user's tour keys.
-2. **Agent bridge** (VPS, long-lived; started by `npm start` next to `tools/log-server.js`). A small Node WebSocket hub on `127.0.0.1:9223` that pairs agent sessions with tabs and relays messages. nginx proxies `/agent-bridge` to it with WebSocket upgrade headers, the same pattern as the existing `/debug-log` route.
-3. **`kidraw-mcp`** (VPS, spawned over stdio by Claude Code for each session). A thin adapter: each MCP tool call becomes a request over a localhost WebSocket to the bridge, which routes it to the tab and returns the reply. It holds no state, so sessions and restarts don't collide on ports.
+**Discovery through the vault directory (Ben's "pipe in the vault" idea, used for rendezvous).** On startup, `kidraw-mcp` listens on a random loopback port and writes `.kidraw/agent.json` (`{ port, token, pid, agent }`) into the vault. The tab already holds an FSA grant for that directory, so it reads the file and connects with the token. Only someone who can read the vault can connect.
 
-Why a separate bridge rather than having the MCP server listen directly: stdio MCP servers live and die with the chat session, and more than one session may be open. A stable daemon keeps the tab's connection alive across sessions and avoids port fights.
+**Transport: a loopback WebSocket, pushed both ways — no polling on the live path.** Chrome 147+ shows a one-time Local Network Access prompt before an HTTPS page can open a WebSocket to localhost; after that the connection is direct.
 
-**Latency:** tool call → stdio (≈ms) → localhost ws (≈ms) → internet ws to the laptop (≈20–80 ms round trip) → the app's view tween (≈300 ms). The model's own thinking dominates (seconds). **Events from the user are pushed, not polled.**
+**Fallback transport: a mailbox in the vault directory.** Append-only JSON-lines message files under `.kidraw/agent/`, written by each side with atomic renames. The server watches with `fs.watch`; the tab uses Chrome's `FileSystemObserver` (intent-to-ship for desktop Chrome 133 — confirm availability), falling back to polling (~150 ms, only while a session is active). This avoids the network permission prompt at the cost of more plumbing.
 
-**The one "waiting" primitive** is a blocking tool, `wait_for_user(timeout)`. The agent calls it after showing a step, and it returns the moment Ben presses a tour key. Under the hood it's a pending request resolved by a push event, not a timer loop. Claude Code's MCP tool timeout applies: use a modest timeout that returns `{action: "still_waiting"}`, and have the agent simply call again.
+**Finding the rendezvous file:** the tab checks for `.kidraw/agent.json` when the vault connects, on a "Connect agent" command, and via `FileSystemObserver` if available.
 
-**Security:** kidraw.dev is publicly reachable, and a bridge can read the graph and drive the view. Require a random token (generated at bridge start, pasted into the tab once or passed as a URL param) and bind to loopback behind nginx. Dev-only; never in production builds.
+### How chat reaches the agent
 
-## Phase 1 — tour tools (read-only)
+- **Claude Code:** the vault ships a `.mcp.json` registering `kidraw-mcp`, and the user runs `claude` in the vault directory with channels enabled. `kidraw-mcp` declares the channel capability (research preview; needs claude.ai or Console auth, not Bedrock). A message typed in KiDraw's chat panel goes tab → WebSocket → `kidraw-mcp` → a channel event in the running Claude Code session. Claude answers by calling KiDraw tools (`say`, `point`, `caption`, `ask`), which go back over the WebSocket. The terminal stays open but doesn't need attention.
+- **Codex:** Codex has no channels; instead `kidraw-mcp` (or a thin `kidraw-agent` wrapper) runs `codex app-server` and drives it over its JSON-RPC protocol (`initialize` → thread → `turn/start` → stream notifications), with KiDraw's tools registered as an MCP server in Codex's config. The user starts `npx kidraw-agent --codex` in the vault instead of `codex` itself.
+- Both sit behind one **agent adapter** interface in `kidraw-mcp`, so the tab doesn't care which agent is on the other end.
 
-All tools are label-first: fuzzy-resolved labels, with an error listing candidates when ambiguous, never raw ids.
+## Shared pointing and questions
 
-**Read the live graph** (from the tab, so it's the real current state, not a possibly stale file):
-- `get_outline()` — nodes (label, status/tags, notes), edges (`from → to`, labels), diagram type.
-- `find_nodes(query)` — fuzzy search (reuse `src/app/lib/fuzzy-match.ts`).
-- `neighborhood(label, depth = 1)` — incoming and outgoing edges.
-- `get_view()` — what the user is looking at: crosshairs node, selection, viewport. Lets the agent start "from here".
+**One reference model for both parties.** `Ref = { kind: node | edge | edge-label | waypoint | region | point, id, label, coords? }`. Files and the wire use ids; everything shown to people uses labels (the humans' rule).
 
-**Guide the view** (no graph mutation, no undo entries, no dirty flag):
-- `focus(label)` — animate crosshairs and view to a node.
-- `frame(labels[])` — zoom to fit a set of nodes.
-- `highlight(labels[] | path)` — glow nodes and edges (reuse the `navFocused` edge band).
-- `caption(label, text)` / `clear_caption()` — narration shown beside the node, so Ben doesn't have to watch two windows.
-- `wait_for_user(timeout)` → `{ action: next | back | stop | ask, text?, focusedNode? }`.
+**User → AI**
+- Point with what already exists: selection, area select, the crosshairs.
+- "Ask about this" key: opens the chat input with the selection as reference chips.
+- Type `@` in chat for a fuzzy finder (reuse the nav popup / `fuzzy-match.ts`) that inserts a reference chip.
+- Every chip anywhere in the chat history is focusable: Enter or click moves the view to it.
 
-**In the app:** a Tour mode in the keymenu — `n`/`b` next/back, `?` to ask (small text input), Esc to end — plus a caption renderer. Existing pieces to lean on: `RECENTER_VIEW*`, `SEARCH_GRAPH`, `TRAVERSE_SMART`, the nav popup's auto-zoom framing, and the `navFocused` glow. New app work is mostly: focus-by-node-id and frame-a-set commands, the caption layer, tour-mode keys, and the bridge service.
+**AI → user** (MCP tools)
+- `point(refs, note?)` — pulse or glow the targets, with an optional caption.
+- `ask(question, refs, options?)` — a caption beside the targets with keyboard-selectable answers; the answer returns to the agent.
+- `suggest(refs, text, change?)` — a suggestion annotation. Text-only at first; `change` renders as a diff overlay once Phase 2 exists.
+- The AI's chat replies can embed references (e.g. `[[ref:da-12]]`), rendered as chips that focus the object.
 
-**Demo (60 s):** "Walk me through what's blocking the MVP" → the view glides to *Pre-MVP*, captions explain, `n` advances along dependency edges, `?` asks "why is this one blocked?", and the agent answers in-caption.
+**Read tools:** `get_outline`, `find_nodes`, `neighborhood`, `get_view`, `get_selection` — read from the live tab, not the file.
+
+## Captions
+
+- **Anchored first:** placed beside the anchor (node, edge midpoint, label, or region centroid), choosing a side that avoids the anchor's neighbors and other captions, with a short leader line when offset. Positioned from world coordinates but drawn at a constant screen size, so pan/zoom keeps them attached and readable.
+- **Docked fallback:** when the anchor is off-screen, too crowded, or zoomed too far out, the caption moves to a bottom dock with a direction indicator and a "go there" key.
+- Captions are annotations, not graph content, so they never enter the graph document.
+
+## Tours: steps forward and back
+
+- A tour is data: `steps[]`, each `{ view, highlights, captions, transition }`. **Back re-applies the previous step exactly** — no AI call needed.
+- **Improvised tours:** as the AI guides, each step it shows is appended to an in-memory tour. So back and forward work even for a tour made up on the spot, and the user can save it afterwards.
+- **Detours:** a question mid-tour can insert side steps, then return to the main sequence.
+- Keys in Tour mode: next/back, "ask about this", jump to step list (nav popup), Esc to exit (optionally restoring the starting view).
+
+## Style sets hold views, tours, transitions, captions
+
+Suffixes: graph documents `*.kidraw.yaml` / `.json` (semantics only); style sets `*.kd-style.yaml` / `.json` (presentation; composable via `imports` and the cascade). Proposed additions to the style-set schema:
+
+```yaml
+kdStyle: 1
+imports: [base.kd-style.yaml]        # a tour layers on top of the normal look
+views:
+  mvp-blockers:
+    frame: [n1, n5, n6]               # fit these elements (ids, not labels)
+    dim: { notTagged: [status/blocked] }
+    highlight: [n6]
+captions:
+  why-blocked:
+    anchor: n6
+    text: "Blocked on the {{ref n12}} decision."
+    placement: { prefer: right, fallback: dock-bottom }
+tours:
+  mvp-walkthrough:
+    steps:
+      - { view: overview, captions: [intro], transition: { kind: pan-zoom, ms: 600 } }
+      - { view: mvp-blockers, captions: [why-blocked] }
+```
+
+- **In memory is first-class:** agent-made views, captions, and tours start as unsaved in-memory style sets (like an unsaved graph), shown with a dirty indicator, saved on request, and kept in the localStorage draft for crash recovery.
+- **Start inline:** multi-file save doesn't yet preserve style `imports` (dev-status), so start with inline style sets inside the graph doc (`styles: [{ name: …, … }]`), which already round-trip; move to separate `.kd-style` files once imports save correctly.
+- **Activation:** "one top-level style active at a time" still holds — starting a tour activates a style set that imports the normal appearance and adds the tour's views and captions.
 
 ## Phase 2 — proposals with a real diff view (later)
 
-Build on the same channel, not on files:
-- `propose(changes[])` sends a change set to the tab, which renders it as an **overlay layer** (ghost nodes and edges, strike-through for suggested deletions, before/after on relabels) without touching the graph.
-- Review in Tour-like steps: accept or reject per change or per batch. Acceptance runs the normal command path, so it's undoable and auto-saves like any edit.
-- Because proposals live in the app rather than in the file, there's no file polling and no "dirty session wins" clobber.
-- **The hard design problem to solve first:** how to show structural diffs legibly — layout shifts, many-edge changes, deletions with dependents.
+Over the same channel, `propose(changes[])` renders an **in-app overlay** — ghost additions, strike-through deletions, before/after relabels — reviewed step by step like a tour. Accepting runs the normal command path (undoable, auto-saved). The unsolved design problem to tackle first is showing structural diffs legibly.
 
-## Alternative kept on file: vault-file round trip
+## Alternatives kept on file
 
-KiDraw's shipped vault already polls the open file's `lastModified` every 1.5 s and reloads external edits when the session is clean ([decision-vault-model](decision-vault-model.md)). A file-editing MCP server could use that with no app changes, but it's slow-ish (up to ~1.5 s), can't drive the view, loses to a dirty session, and only works where the vault directory lives (Ben's laptop). Fine for batch or offline edits; wrong for tours or interactive review.
-
-## Later: an agent loop Ben writes, through a gateway
-
-A small agent (TypeScript or Python) calling the same MCP tools through the Anthropic API — optionally via a local LiteLLM proxy, and Claude on Bedrock if an AWS account is available — adds model routing, usage and cost logging, and a real tool-calling loop Ben implemented himself.
+- **VPS-hosted bridge** (earlier sketch): tab ↔ nginx-proxied bridge on the dev box ↔ stdio MCP server. Rejected in favor of everything-local.
+- **Vault-file edits with the shipped 1.5 s `lastModified` poll** ([decision-vault-model](decision-vault-model.md)): fine for batch or offline edits, wrong for interactive tours.
 
 ## Open questions
 
-- Tab pairing when several tabs are open: most recently focused tab wins, or explicit pairing via the token?
-- Should the tour restore the user's original view when it ends?
-- Caption placement and style: beside the node vs. a docked panel; how it coexists with the keymenu overlay.
-- Where the agent's chat lives: external (Claude Code, phone) for Phase 1; an in-app panel later?
-- Claude Code's MCP tool-timeout default, and how long `wait_for_user` should block before returning "still waiting".
+- Channels are a research preview: flag names and availability may change; confirm current setup before building.
+- Codex path: where Codex reads MCP config (user vs project), and whether to drive it via app-server or keep Codex terminal-only at first.
+- Whether captions and suggestions, if they grow into two-way discussions, deserve their own annotation file kind rather than living in style sets.
+- Should `views` frame by ids only, or also allow explicit viewports and saved layouts?
+- Tab pairing with several tabs open; whether a tour restores the starting view on exit.
 
-Related: [decision-vault-model](decision-vault-model.md), [idea-nav-popup](idea-nav-popup.md), [idea-todo-graph-modeling](idea-todo-graph-modeling.md), [idea-diagram-types](idea-diagram-types.md).
+Related: [decision-vault-model](decision-vault-model.md), [idea-nav-popup](idea-nav-popup.md), [idea-diagram-types](idea-diagram-types.md), [idea-todo-graph-modeling](idea-todo-graph-modeling.md); file format in [`../docs/file-format.md`](../docs/file-format.md).
