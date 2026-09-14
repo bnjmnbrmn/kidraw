@@ -19,6 +19,12 @@ type: idea
 - **Views are primarily explicit viewports.** Views, tours, transitions, and captions live in style sets (`*.kd-style.yaml` / `.json`), which may exist only in memory.
 - **Discussions** might become their own file type; play it by ear.
 
+## Build order (leaning, 2026-09-14)
+
+1. **Tier 2 first:** `kidraw-agent` on Ben's VPS, reached from the tab over authenticated `wss://`, driving subscription agents over ACP. Satisfies: chat in the browser, model-agnostic agents, subscription billing, no API keys, no agent on the laptop, works from any device.
+2. **Tier 1 later, if other users want it:** the same code with a loopback transport and vault rendezvous; the real cost is per-OS packaging, not logic.
+3. **Tier 0 deferred:** a separate code path (in-browser loop, provider adapters, key handling, CORS). Worth it only for zero-install users, and the MCP App route may serve casual users better.
+
 ## Two tiers
 
 **Tier 0 — nothing to install.** The agent loop runs *inside the KiDraw tab*. The user picks a provider in KiDraw's settings (Anthropic, OpenAI, OpenRouter, Google, … or a local Ollama / LM Studio URL), pastes an API key if one is needed, and the chat panel works immediately. Canvas tools are ordinary functions in the page.
@@ -77,19 +83,31 @@ A **companion app** is the general term for a small helper program installed alo
 
 **Against:** an install step and per-OS packaging (binary, login service, link handler, updates); a local server and an agent with shell access widen the security surface, so permission prompts matter; Chrome's local-network prompt; ACP adapters and research-preview features are still moving; agents differ in session and MCP support; Chromium-only rendezvous (FSA); nothing for phones, tablets, or visitors who won't install software.
 
-## Tier 2 (optional): a KiDraw agent on a remote machine
+## Tier 2 — remote `kidraw-agent` (first target, 2026-09-14)
 
-The brain's location is swappable, because canvas tools always run in the tab and the tab sends graph state to whichever agent it's talking to:
+**Ben's framing:** Tier 2 is Tier 1 moved to a server the user controls. Same `kidraw-agent`, same ACP to installed agents, same MCP tool routing back to the tab — the user just gives KiDraw an endpoint. The point is **not running an agent with shell access on the laptop**. Ben's instance runs on the Hetzner VPS.
 
-- **Tier 0:** the loop runs in the tab.
-- **Tier 1:** an installed agent, via `kidraw-agent`.
-- **Tier 2:** KiDraw's *own* agent loop runs on a server (Ben's VPS, or later a hosted service); the tab connects over HTTPS (WebSocket or SSE) with a login or token.
+This works because canvas tools always run in the tab and the tab supplies graph state; the agent never needs to reach the laptop.
 
-Tier 2 is the textbook AG-UI case: a remote agent backend streaming events to a web frontend that defines and runs its own tools. The agent needs no vault access; the tab sends an outline or state snapshot plus deltas.
+**What changes from Tier 1**
+- **Discovery:** the user enters an endpoint URL once; no vault rendezvous file.
+- **Transport:** `wss://` over TLS through nginx. For Ben, simplest is a path on the existing dev site (e.g. `kidraw.dev.bnjmnbrmn.com/agent/`, proxied to `127.0.0.1:<port>` like `/debug-log`): same origin as the app, so no CORS and no Chrome local-network prompt. Other users' endpoints are cross-origin and rely on tokens plus an Origin allowlist.
+- **Sessions:** still one per tab, but kept alive server-side for a while, so a tab reload or a flaky connection resumes the same conversation.
+- **Files:** the server can't see the laptop's vault. Tours don't need it (the tab sends state). If an agent needs files, sync the vault to the server (e.g. git; `meta-project/kdvault` already versions a copy), or route writes through Phase 2 proposals in the tab.
+- **Billing:** subscription agents logged in on the server (Claude Code with Ben's plan, Codex with a ChatGPT login). Caveat: Claude driven through the ACP adapter (built on the Agent SDK) may count against the capped Agent SDK credits rather than the main plan; a Claude Code channels adapter would use the main plan. Verify before relying on either.
 
-**Makes sense for:** agent-side logic Ben controls (tour planning, memory of past tours and discussions), API keys kept server-side, heavier compute or a GPU box for local models, background work that outlives a tab, use from a phone with nothing installed, and eventually a hosted product (the deferred cloud vault's natural partner).
+**Authentication (browser → remote `kidraw-agent`)**
+- **Pairing, then a device token.** `kidraw-agent pair` prints a short-lived code (or QR code). In KiDraw: Agent → Connect remote → enter URL + code → the server returns a long-lived, per-device, revocable token stored in the browser.
+- Browsers can't set custom headers on a WebSocket, so send the token in the first message (or via the `Sec-WebSocket-Protocol` trick), never in the URL, which lands in logs.
+- **Check the `Origin`** header against an allowlist (the KiDraw origins), rate-limit pairing attempts, and keep a revoke list per device.
+- **Defense in depth for Ben:** optionally expose the endpoint only on a Tailscale tailnet (works on phone and laptop), so it isn't reachable from the public internet at all.
+- Later, for a hosted product: proper OAuth 2.1 with `kidraw-agent` (or a hosted service) as the authorization server.
 
-**Costs:** graph content leaves the user's machine (privacy; conflicts with "everything local" as the default), auth and multi-user security, hosting costs, and reconnect/resume handling. Latency is not the issue: a network hop is small next to model time.
+**"Not on my laptop" isn't automatically safe.** The VPS also holds the meta-project, GitHub and Google credentials, and a `bypassPermissions` Claude Code service. Run `kidraw-agent` sessions as a **dedicated Unix user, ideally in a container**, with a per-session working directory, no access to other users' credentials, and permission requests routed to the tab. For read-only tours, allow only KiDraw's MCP tools (no shell) by default.
+
+**Costs:** graph content leaves the user's machine (to a server they control); someone has to run and maintain that server; a public endpoint needs real auth. Latency is not the issue: a network hop is small next to model time.
+
+**Relation to AG-UI:** a remote agent backend streaming events to a web frontend that defines and runs its own tools is the textbook AG-UI case.
 
 ## Other options, and subscription billing (checked 2026-09-14)
 
