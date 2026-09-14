@@ -18,9 +18,10 @@ type: idea
 - **Editing modes and change-set states** (revised 2026-09-14; avoid "shared" as an adjective for changes — the *document* is always shared, which makes "shared change" vs "shared mode" ambiguous):
   - **Change** is the umbrella term (Ben, 2026-09-14): a change is an operation or a group of changes, nested like the composite pattern.
     - **Operation:** the smallest, indivisible change (relabel a node, move a node, delete an edge).
-    - **Transaction:** the operations from one user action — one keystroke, one agent tool call — applied together; one undo step.
-    - **Change set:** a named, reviewable group of transactions, accepted or rejected as a unit (the git-like part); may span many actions.
-  - **"Atomic" means all-or-nothing** (as in databases), which is true at every level: an operation, a transaction, and a change set each apply entirely or not at all. So "operation" alone names the smallest unit; "atomic" describes how any change is applied.
+    - **Undo group** (Ben, 2026-09-14; the same term Apple's `NSUndoManager` uses): the operations from one user action — one keystroke, one agent tool call — grouped automatically and applied together; one undo step. It is also the natural unit for auto-save and for broadcasting to collaborators, even though it's named for undo.
+    - **Change set:** a named, reviewable group of undo groups, created deliberately and accepted or rejected as a unit (the git-like part); may span many actions.
+    - Undo groups and change sets are both groups applied together; the names distinguish their purpose (automatic per action vs. deliberate and reviewable). "Transaction" is avoided because it blurs the two.
+  - **"Atomic" means all-or-nothing** (as in databases), which is true at every level: an operation, an undo group, and a change set each apply entirely or not at all. So "operation" alone names the smallest unit; "atomic" describes how any change is applied.
   - **Live mode:** your changes are **published** to everyone as you make them (Docs-like, incremental).
   - **Draft mode:** your changes collect in a private change set until you **publish** it (or **propose** it for review) — like a branch or Docs' suggesting mode.
   - **Change-set states:** draft → proposed → accepted / rejected. Individual changes are **published** or **unpublished**.
@@ -44,7 +45,7 @@ New code should never mix these; e.g. panning must not touch the undo stack or t
 - **Operations, not snapshots.** All mutations — keyboard commands, agent tools, and later remote edits — become operations (`{ id, author, kind, target, fields, expect? }`) applied through **one apply path** to a graph model; the renderer reacts to model changes regardless of who caused them. This is the "separate graph model from rendering" item in [idea-drawing-area-refactor](idea-drawing-area-refactor.md). Today `DANode`/`DAEdge` are Konva objects mutated directly inside `DrawingAreaComponent` (~8,700 lines).
 - **Undo is per participant and operation-based.** Today `UndoRedoService` stores **whole-graph snapshots**; with several editors, undo would restore the whole graph and erase other people's work. Undo should instead apply inverse operations of *your own* changes. The same mechanism gives agent "tracked changes" per-change revert, so it pays off before multiplayer.
   - **How:** every operation records its inverse when applied — relabel `A→B` records relabel `B→A`; add node records delete node; delete node records re-adding the node *with* its edges, positions, and tags; move records the move back.
-  - **One keystroke, one undo step:** compound actions (e.g. insert node + connect edge + start label edit) are grouped into a transaction that undoes as a unit.
+  - **One keystroke, one undo step:** compound actions (e.g. insert node + connect edge + start label edit) are grouped into one undo group that undoes as a unit.
   - **When an inverse no longer applies** (someone else deleted or changed the item since), skip or adjust that part rather than failing — Yjs's undo manager handles this if adopted later.
   - **Migration:** keep snapshot undo working while commands move over one at a time; test each operation with "apply, then apply its inverse, gives back the original graph".
 - **Globally unique ids.** Today `nextId()` returns `da-${++counter}` per tab (reserving only `da-N` ids on load), so two participants would mint the same ids. New elements need collision-free ids (random, e.g. nanoid, or client-id-prefixed). Keep reading existing `da-N` / `n0` ids unchanged.
