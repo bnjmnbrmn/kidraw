@@ -91,6 +91,22 @@ Tier 2 is the textbook AG-UI case: a remote agent backend streaming events to a 
 
 **Costs:** graph content leaves the user's machine (privacy; conflicts with "everything local" as the default), auth and multi-user security, hosting costs, and reconnect/resume handling. Latency is not the issue: a network hop is small next to model time.
 
+## Other options, and subscription billing (checked 2026-09-14)
+
+**1. KiDraw as an MCP App inside Claude / ChatGPT** (how the Excalidraw connector works). KiDraw ships an MCP server whose tools return **interactive UI** that the chat client renders in a sandboxed iframe — the MCP Apps extension, official since 2026-01-26, co-authored by Anthropic and OpenAI, supported in Claude, VS Code, Goose, and rolling out in ChatGPT. Excalidraw offers both a cloud connector and a local server.
+- **Billing:** the user's Claude or ChatGPT subscription pays for the model. This is the sanctioned subscription path.
+- **OAuth direction:** the chat app signs in to *KiDraw's* server (MCP authorization), not KiDraw to the user's AI account.
+- **Trade-offs:** the chat lives in Claude or ChatGPT, not KiDraw; KiDraw becomes a widget in an iframe (keyboard-first UX and focus are constrained); a remote connector needs hosting and accounts, and graph data flows to KiDraw's server and the AI provider. A **local variant** — a local MCP server or extension for Claude Desktop — avoids hosting but is Claude-Desktop-only.
+
+**2. WebMCP.** The KiDraw page registers its canvas tools with `document.modelContext.registerTool({ name, description, inputSchema, execute })`, and any browser-integrated agent can call them with the user's own plan. Cheap for KiDraw, because the tools already live in the page. **Status:** Chrome origin trial (149–156); Edge behind a flag; as of July 2026 no mainstream agent consumes the tools yet (Google says Gemini in Chrome will). Worth adding once it's real, not worth waiting for.
+
+**3. Signing in to a model provider for billing.**
+- **Anthropic:** consumer (Free/Pro/Max) OAuth tokens are only for Claude Code and Claude.ai; server-side enforcement since January 2026. Since May 2026, subscriptions include separate, capped, non-rollover **Agent SDK credits** for third-party agents ($20 Pro, $100 Max 5×, $200 Max 20× per month). So a Tier 1 agent built on the Agent SDK (the Claude ACP adapter is) likely draws on those credits; a browser tab can't use the subscription directly. Confirm the mechanism before relying on it.
+- **OpenAI:** "Sign in with ChatGPT" (announced May 2025) only ships inside Codex tooling, and sign-in is identity, not API billing. A subscription-sharing scheme has been reported but not announced. Codex OAuth in third-party apps works unofficially — don't build on it.
+- **OpenRouter:** a real OAuth (PKCE) "Connect OpenRouter" flow that hands the app a user-controlled key across many models. Pay-per-use credits, not a subscription, but it removes key copy-pasting from Tier 0.
+
+**Summary:** subscription billing is available through MCP Apps (chat in Claude/ChatGPT), Tier 1 (official agents; Anthropic's capped Agent SDK credits), and eventually WebMCP. Tier 0 in the tab stays pay-per-use (bring your own key, or OpenRouter OAuth).
+
 ## MCP, ACP, AG-UI — which does what
 
 - **MCP (Model Context Protocol):** connects an agent to **tools and data**. The agent is the client; tool servers answer. KiDraw's canvas tools are exposed to agents this way.
