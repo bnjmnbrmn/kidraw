@@ -7,6 +7,16 @@ type: idea
 
 **Status:** principles, 2026-09-14 (Ben + Claude). Multiplayer itself is not scheduled. The goal is that code written now — especially agent mode ([idea-mcp-server](idea-mcp-server.md)) — doesn't have to be torn up when graphs become multi-player like Google Docs.
 
+## Terms
+
+- **Key profile:** which physical keys do what — KiDraw's vim (default) and ijkl profiles ([architecture-key-profiles](architecture-key-profiles.md)). A personal setting; collaborators keep their own.
+- **Presence** (Yjs calls it *awareness*): live "where is everyone and what are they doing right now" — crosshairs position, selection, viewport, whether they're typing in a label, who they're following. The colored cursors in Google Docs. Shared in real time, never saved to the file, never undoable.
+- **Command vs. operation:** a *command* is an intent that depends on local context ("drag the selection left", `DRAG_SELECTED_LEFT`). An *operation* is the concrete, context-free change it produces ("move `n6` to (120, 40)", with author). Commands produce operations; only operations change the document.
+- **The operation path:** the single pipeline every change goes through — `apply(op)` validates it, updates the graph model, records its inverse for undo, notifies the renderer, schedules auto-save, and later broadcasts to collaborators. Today each `DrawingAreaComponent` command case mutates Konva objects itself.
+- **Per-participant undo** (a.k.a. *local undo*; the research term for undoing specific earlier changes is *selective undo*): undo reverts **your own** most recent change, never someone else's. The alternative, *global undo* (revert the last change by anyone), is widely considered confusing and is not planned.
+- **Revert:** deliberately undoing a *specific* change, possibly someone else's, from a history or review list — distinct from pressing undo.
+- **Shared vs. draft changes:** *shared* changes are visible to everyone as soon as they're made (Docs' default). *Draft* changes stay private until published — like a branch, or Docs' suggesting mode. This is a different question from undo.
+
 ## Core idea: an agent is just another participant
 
 Agent mode *is* multiplayer with one AI participant. Presence (crosshairs, selection, viewport), pointing, captions, follow mode, and change attribution should be built **once, for any participant** — a person in another browser or an agent — not as agent-only features.
@@ -23,6 +33,10 @@ New code should never mix these; e.g. panning must not touch the undo stack or t
 
 - **Operations, not snapshots.** All mutations — keyboard commands, agent tools, and later remote edits — become operations (`{ id, author, kind, target, fields, expect? }`) applied through **one apply path** to a graph model; the renderer reacts to model changes regardless of who caused them. This is the "separate graph model from rendering" item in [idea-drawing-area-refactor](idea-drawing-area-refactor.md). Today `DANode`/`DAEdge` are Konva objects mutated directly inside `DrawingAreaComponent` (~8,700 lines).
 - **Undo is per participant and operation-based.** Today `UndoRedoService` stores **whole-graph snapshots**; with several editors, undo would restore the whole graph and erase other people's work. Undo should instead apply inverse operations of *your own* changes. The same mechanism gives agent "tracked changes" per-change revert, so it pays off before multiplayer.
+  - **How:** every operation records its inverse when applied — relabel `A→B` records relabel `B→A`; add node records delete node; delete node records re-adding the node *with* its edges, positions, and tags; move records the move back.
+  - **One keystroke, one undo step:** compound actions (e.g. insert node + connect edge + start label edit) are grouped into a transaction that undoes as a unit.
+  - **When an inverse no longer applies** (someone else deleted or changed the item since), skip or adjust that part rather than failing — Yjs's undo manager handles this if adopted later.
+  - **Migration:** keep snapshot undo working while commands move over one at a time; test each operation with "apply, then apply its inverse, gives back the original graph".
 - **Globally unique ids.** Today `nextId()` returns `da-${++counter}` per tab (reserving only `da-N` ids on load), so two participants would mint the same ids. New elements need collision-free ids (random, e.g. nanoid, or client-id-prefixed). Keep reading existing `da-N` / `n0` ids unchanged.
 - **Author on every operation**, so attribution ("added by Ben", "agent: tour-bot") and per-participant undo come for free.
 
@@ -39,6 +53,12 @@ One follow model for humans and agents:
 - **Free** — you drive. Others' "look here" requests appear as indicators (an edge-of-screen arrow, "Agent is showing *Pre-MVP* — press `F` to follow") instead of moving your view.
 - **Any manual view input** (pan, zoom, navigation keys) switches you to Free immediately; tour next/back or the Follow key switches you back. No camera fighting: others' view commands are ignored for a moment after your own input.
 - "Look at what I'm looking at" is the reverse: let others (or the agent) follow *you*.
+
+## Defaults (leaning, 2026-09-14)
+
+- **Undo:** per participant, always.
+- **Visibility:** human edits *shared* by default (Docs-like); *draft* mode (branch / suggesting) opt-in. For agents, drafts may be the better default — that's the open change-model question in [idea-mcp-server](idea-mcp-server.md).
+- **Presence and view state:** never operations on the document at all.
 
 ## Conflicts
 
