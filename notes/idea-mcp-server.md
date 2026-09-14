@@ -199,17 +199,31 @@ tours:
 
 The conversation, with its references and suggestions, stays in memory per tab for now. If saving and resuming proves useful, consider a separate discussion file type.
 
-## Phase 1.5 — agents add to the graph (soon; Ben, 2026-09-14)
+## Phase 1.5 — agents change the graph, with tracked changes (soon; Ben, 2026-09-14)
 
-Additions sidestep most of the diff problem: for new items, the "diff" is just *what's new*, which is easy to show. Modifications and deletions are the hard part, so they stay in Phase 2.
+Ben wants agents making *any* changes soon — edits, moves, and deletions, not just additions. To get there without first solving the full diff-view problem, **apply changes directly and track them**, like "track changes" in a word processor, rather than proposing first.
 
-- **Tools:** `add_nodes([{ tempId, label, notes?, tags?, near?: ref }])` and `add_edges([{ from, to, label? }])`, where `from`/`to` accept existing refs (labels) or `tempId`s from the same call. Returns the created refs. Probably also `set_status(ref, status)` early for todo graphs.
-- **Applied directly, as one undoable batch** through the normal command path in the tab. The tab is the source of truth, so there's no file clobbering and the user can keep editing while the agent works; the agent sees the result through state deltas.
-- **Made visible:** newly added items glow and carry an "added by agent" badge until reviewed, plus a review list (reuse the nav popup) to step through them: keep, remove, or edit. "Remove all from this batch" = undo. Items record their origin (e.g. an `ai/added` tag, cleared on keep).
-- **Placement is the app's job, not the agent's:** the agent says what an item relates to (`near`, or via its edges); KiDraw picks coordinates (next to the anchor using the diagram type's card size, then an optional local layout pass). Agents never supply pixel coordinates.
-- **Trust setting per tab:** "add directly (highlighted)" vs "suggest first" (the Phase 2 overlay, once it exists).
+**One tool:** `apply_changes(ops[])`, applied as one batch through the tab's normal command path (undoable, auto-saved). Op kinds:
+- `add_node { tempId, label, notes?, tags?, near? }`, `add_edge { from, to, label?, directed? }` (`from`/`to` take existing labels or `tempId`s from the same batch)
+- `update_node { ref, label?, notes?, tags?, status? }`, `update_edge { ref, from?, to?, label?, directed? }`
+- `move_node { ref, near? | relativeTo? }` — relational; KiDraw computes coordinates
+- `delete_node { ref }` (and its edges), `delete_edge { ref }`
 
-## Phase 2 — proposals with a real diff view (later)
+**Safe with a user editing at the same time:** every update, move, and delete carries the values the agent expects (e.g. `expect: { label: "Pre-MVP" }`). If the user already changed that item, the op is rejected as a conflict and reported back instead of overwriting. The tab is the source of truth; the agent sees results through state deltas.
+
+**Showing what changed** (until reviewed):
+- **Added:** glow plus an "agent" badge.
+- **Edited:** highlighted; the review shows before → after (old label struck through beside the new one, old → new status pill, old → new edge endpoints).
+- **Moved:** a faint ghost at the old position with an arrow to the new one.
+- **Deleted:** a translucent, struck-through ghost left in place (with its edges) until reviewed.
+
+**Review = a tour through the batch:** step through changes with the Tour UI (captions explain each one); per change **keep** or **revert**; per batch **keep all** or **revert all** (= undo). Per-change revert needs an op log with inverse ops, not just whole-batch undo.
+
+**Trust settings per tab:** e.g. apply adds and edits directly but require approval for deletions; or "suggest first" for everything, using the Phase 2 overlay once it exists. A snapshot before each batch backs up the tracked-changes model.
+
+**Placement is KiDraw's job:** agents describe relationships (`near`, edges); KiDraw picks coordinates (next to the anchor using the diagram type's card size, then an optional local layout pass).
+
+## Phase 2 — "suggest first" with a real diff view (later)
 
 `propose(changes[])` renders an **in-app overlay** — ghost additions, strike-through deletions, before/after relabels — reviewed step by step like a tour. Accepting runs the normal command path (undoable, auto-saved). Showing structural diffs legibly is the design problem to tackle first.
 
