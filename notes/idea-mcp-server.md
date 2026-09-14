@@ -21,7 +21,7 @@ type: idea
 
 ## Build order (leaning, 2026-09-14)
 
-1. **Tier 2 first:** `kidraw-agent` on Ben's VPS, reached from the tab over authenticated `wss://`, driving subscription agents over ACP. Satisfies: chat in the browser, model-agnostic agents, subscription billing, no API keys, no agent on the laptop, works from any device.
+1. **Tier 2 first:** a user-run `kidraw-agent` on a server *the user* controls (for Ben's own use, his VPS), which the user configures in KiDraw and reaches over authenticated `wss://`; it drives subscription agents over ACP. Satisfies: chat in the browser, model-agnostic agents, subscription billing, no API keys, no agent on the laptop, works from any device. **KiDraw ships with no agent endpoint configured and sends nothing anywhere until a user adds one** (see "Opt-in and configuration" under Tier 2).
 2. **Tier 1 later, if other users want it:** the same code with a loopback transport and vault rendezvous; the real cost is per-OS packaging, not logic.
 3. **Tier 0 deferred:** a separate code path (in-browser loop, provider adapters, key handling, CORS). Worth it only for zero-install users, and the MCP App route may serve casual users better.
 
@@ -86,6 +86,20 @@ A **companion app** is the general term for a small helper program installed alo
 ## Tier 2 — remote `kidraw-agent` (first target, 2026-09-14)
 
 **Ben's framing:** Tier 2 is Tier 1 moved to a server the user controls. Same `kidraw-agent`, same ACP to installed agents, same MCP tool routing back to the tab — the user just gives KiDraw an endpoint. The point is **not running an agent with shell access on the laptop**. Ben's instance runs on the Hetzner VPS.
+
+**Opt-in and configuration (Ben, 2026-09-14): never send a user's data to someone else's server.**
+- **No default endpoint.** No build of KiDraw — dev or production — has an agent endpoint baked in, and AI features stay off until the user configures one. Ben's VPS is just Ben's own configuration, never a default for other users.
+- **The user adds endpoints** in Settings → Agent → Add endpoint: a URL, a display name, and an authentication method:
+  - **pairing code → per-device token** (default; see Authentication below);
+  - **pasted bearer token** (scripts, headless setups);
+  - **network-level only** (e.g. tailnet-only endpoints), with an explicit "this endpoint has no app-level auth" warning;
+  - later, **OAuth/OIDC** for endpoints run by an organization or a hosted service.
+- **Stored per browser profile** (IndexedDB), removable, with tokens revocable on the server.
+- **Consent per graph.** The first time a graph would be sent to an endpoint, ask: "Share *Next* with *ben-vps*?" (once / always for this graph / no). The answer is stored with the endpoint configuration, not in the graph file, so opening a shared file never silently connects anywhere.
+- **Always visible:** a header indicator while connected ("Agent: *ben-vps*"), with one key to disconnect.
+- **Server side:** `kidraw-agent` refuses unauthenticated connections and only accepts the KiDraw origins its operator lists (e.g. `kidraw.net`, a self-hosted copy, or the dev site).
+- **Precedent:** the dev draft mirror is already compiled out of production builds (`DEBUG_CHANNEL`). Agent code differs in that it *does* ship, but it is inert until configured.
+- **Related dev-site gap:** `kidraw.dev.bnjmnbrmn.com` is publicly reachable without login, and its dev build mirrors every remote session's draft to the VPS (`/debug-log/draft`). A stranger who found the URL would send their drawing there. Consider HTTP basic auth or Tailscale on the dev site.
 
 This works because canvas tools always run in the tab and the tab supplies graph state; the agent never needs to reach the laptop.
 

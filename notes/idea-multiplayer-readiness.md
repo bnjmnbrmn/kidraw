@@ -25,6 +25,7 @@ type: idea
   - **Live mode:** your changes are **published** to everyone as you make them (Docs-like, incremental).
   - **Draft mode:** your changes collect in a private change set until you **publish** it (or **propose** it for review) — like a branch or Docs' suggesting mode.
   - **Change-set states:** draft → proposed → accepted / rejected. Individual changes are **published** or **unpublished**.
+  - **Naming (decided 2026-09-14):** code and the file model use one name, **change set**, for the whole lifecycle, so nothing is renamed as its state changes. User-facing text names the current state instead: "Your draft (7 changes)", "Agent's draft: MVP cleanup", "Proposal from Claude". An accepted change set simply becomes history.
   - "Incremental" and "atomic" describe granularity and are only needed when discussing that axis; live mode implies incremental publishing, draft mode implies atomic publishing.
   - This is a different question from undo.
 
