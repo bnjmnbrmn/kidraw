@@ -15,7 +15,14 @@ type: idea
 - **The operation path:** the single pipeline every change goes through — `apply(op)` validates it, updates the graph model, records its inverse for undo, notifies the renderer, schedules auto-save, and later broadcasts to collaborators. Today each `DrawingAreaComponent` command case mutates Konva objects itself.
 - **Per-participant undo** (a.k.a. *local undo*; the research term for undoing specific earlier changes is *selective undo*): undo reverts **your own** most recent change, never someone else's. The alternative, *global undo* (revert the last change by anyone), is widely considered confusing and is not planned.
 - **Revert:** deliberately undoing a *specific* change, possibly someone else's, from a history or review list — distinct from pressing undo.
-- **Shared vs. draft changes:** *shared* changes are visible to everyone as soon as they're made (Docs' default). *Draft* changes stay private until published — like a branch, or Docs' suggesting mode. This is a different question from undo.
+- **Editing modes and change-set states** (revised 2026-09-14; avoid "shared" as an adjective for changes — the *document* is always shared, which makes "shared change" vs "shared mode" ambiguous):
+  - **Change:** one operation, or one keystroke's transaction.
+  - **Change set:** a named group of changes accepted or rejected as a unit (the atomic, git-like part).
+  - **Live mode:** your changes are **published** to everyone as you make them (Docs-like, incremental).
+  - **Draft mode:** your changes collect in a private change set until you **publish** it (or **propose** it for review) — like a branch or Docs' suggesting mode.
+  - **Change-set states:** draft → proposed → accepted / rejected. Individual changes are **published** or **unpublished**.
+  - "Incremental" and "atomic" describe granularity and are only needed when discussing that axis; live mode implies incremental publishing, draft mode implies atomic publishing.
+  - This is a different question from undo.
 
 ## Core idea: an agent is just another participant
 
@@ -57,7 +64,7 @@ One follow model for humans and agents:
 ## Defaults (leaning, 2026-09-14)
 
 - **Undo:** per participant, always.
-- **Visibility:** human edits *shared* by default (Docs-like); *draft* mode (branch / suggesting) opt-in. For agents, drafts may be the better default — that's the open change-model question in [idea-mcp-server](idea-mcp-server.md).
+- **Editing mode:** people edit in **live mode** by default (Docs-like); **draft mode** (branch / suggesting) is opt-in. For agents, draft mode may be the better default — that's the open change-model question in [idea-mcp-server](idea-mcp-server.md).
 - **Presence and view state:** never operations on the document at all.
 
 ## Conflicts
