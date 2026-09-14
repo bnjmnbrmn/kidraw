@@ -199,6 +199,16 @@ tours:
 
 The conversation, with its references and suggestions, stays in memory per tab for now. If saving and resuming proves useful, consider a separate discussion file type.
 
+## Phase 1.5 — agents add to the graph (soon; Ben, 2026-09-14)
+
+Additions sidestep most of the diff problem: for new items, the "diff" is just *what's new*, which is easy to show. Modifications and deletions are the hard part, so they stay in Phase 2.
+
+- **Tools:** `add_nodes([{ tempId, label, notes?, tags?, near?: ref }])` and `add_edges([{ from, to, label? }])`, where `from`/`to` accept existing refs (labels) or `tempId`s from the same call. Returns the created refs. Probably also `set_status(ref, status)` early for todo graphs.
+- **Applied directly, as one undoable batch** through the normal command path in the tab. The tab is the source of truth, so there's no file clobbering and the user can keep editing while the agent works; the agent sees the result through state deltas.
+- **Made visible:** newly added items glow and carry an "added by agent" badge until reviewed, plus a review list (reuse the nav popup) to step through them: keep, remove, or edit. "Remove all from this batch" = undo. Items record their origin (e.g. an `ai/added` tag, cleared on keep).
+- **Placement is the app's job, not the agent's:** the agent says what an item relates to (`near`, or via its edges); KiDraw picks coordinates (next to the anchor using the diagram type's card size, then an optional local layout pass). Agents never supply pixel coordinates.
+- **Trust setting per tab:** "add directly (highlighted)" vs "suggest first" (the Phase 2 overlay, once it exists).
+
 ## Phase 2 — proposals with a real diff view (later)
 
 `propose(changes[])` renders an **in-app overlay** — ghost additions, strike-through deletions, before/after relabels — reviewed step by step like a tour. Accepting runs the normal command path (undoable, auto-saved). Showing structural diffs legibly is the design problem to tackle first.
