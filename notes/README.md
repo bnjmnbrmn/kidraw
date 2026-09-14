@@ -103,7 +103,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Infrastructure (deployment, analytics, CI/CD)](idea-infrastructure-deploy.md)
 - [In-app keystroke overlay (`?showKeys=true`)](idea-keystroke-overlay.md)
 - [Longer-term ambitions](idea-longer-term.md)
-- [Agent mode — local MCP server, in-browser chat, tours, shared pointing](idea-mcp-server.md) — everything on the user's machine: `kidraw-mcp` started from the vault dir writes `.kidraw/agent.json`, the tab connects over loopback WebSocket; chat via Claude Code channels or Codex app-server; two-way pointing with a shared reference model; anchored captions with a bottom-dock fallback; step-able tours; views/tours/transitions/captions in style sets (in-memory first).
+- [Agent mode — local companion, model-agnostic agents, tours, shared pointing](idea-mcp-server.md) — `kidraw-agent` started in the vault dir writes `.kidraw/agent.json`; each tab connects over loopback WebSocket and gets its own agent session; agents via ACP (any ACP agent) or a built-in OpenAI-compatible loop; reference pills and point/ask/suggest tools; anchored captions with a bottom-dock fallback; tours with separate definition and visit history (AI may revise mid-tour); views as explicit viewports in style sets (in-memory first).
 
 ## Bugs
 
