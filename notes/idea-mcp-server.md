@@ -201,7 +201,16 @@ The conversation, with its references and suggestions, stays in memory per tab f
 
 ## Phase 1.5 — agents change the graph, with tracked changes (soon; Ben, 2026-09-14)
 
-Ben wants agents making *any* changes soon — edits, moves, and deletions, not just additions. To get there without first solving the full diff-view problem, **apply changes directly and track them**, like "track changes" in a word processor, rather than proposing first.
+Ben wants agents making *any* changes soon — edits, moves, and deletions, not just additions.
+
+**Undecided — the change model (Ben, 2026-09-14: "best of both worlds", but not yet).** Three separate questions often get lumped together as "git vs Google Docs":
+1. **Granularity:** atomic change sets (commits) vs a continuous stream of small edits.
+2. **Timing:** review before applying (pull request / suggesting mode) vs apply, then review and revert (tracked changes).
+3. **Isolation:** the agent works on its own copy (a branch) vs directly in the shared live graph.
+
+A likely "best of both": the agent edits live in **its own layer** that the user watches update in real time (Docs' suggesting mode), grouped into **named change sets** accepted or rejected as a whole or per change (git's commits and review). None of the read-only tour or pointing work depends on this choice, as long as changes are represented as **operations** (below), which support any of these models.
+
+The sketch below is one option — **apply directly and track**:
 
 **One tool:** `apply_changes(ops[])`, applied as one batch through the tab's normal command path (undoable, auto-saved). Op kinds:
 - `add_node { tempId, label, notes?, tags?, near? }`, `add_edge { from, to, label?, directed? }` (`from`/`to` take existing labels or `tempId`s from the same batch)
