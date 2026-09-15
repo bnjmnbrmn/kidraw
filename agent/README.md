@@ -63,6 +63,8 @@ cat ~/.config/kidraw-agent/token                            # paste into KiDraw
 nginx, inside the KiDraw site's `server` block:
 
 ```nginx
+# Also add `location = /agent { ...same lines... }`: without it, nginx answers
+# /agent (no slash) with a 301, and browsers don't follow redirects for WebSockets.
 location /agent/ {
     proxy_pass http://127.0.0.1:9223/;
     proxy_http_version 1.1;
