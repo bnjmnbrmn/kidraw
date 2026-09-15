@@ -25,10 +25,16 @@ export interface HelloMessage {
   resume?: { sessionId: string; secret: string };
 }
 
+/** How much detail the user wants in explanations. */
+export type DetailLevel = 'brief' | 'standard' | 'thorough';
+export const DETAIL_LEVELS: readonly DetailLevel[] = ['brief', 'standard', 'thorough'];
+
 export interface PromptMessage {
   type: 'prompt';
   text: string;
   refs?: CanvasRef[];
+  /** The user's current setting, sent with every prompt. */
+  detail?: DetailLevel;
 }
 
 export interface CancelMessage {

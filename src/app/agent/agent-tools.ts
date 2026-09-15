@@ -135,6 +135,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
           edgeKinds: (identity.edgeKinds ?? []).map(kind => ({
             edgeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
           })),
+          tagGroups: (identity.tagGroups ?? []).map(group => ({
+            id: group.id, name: group.name, tags: group.choices.map(choice => ({tag: choice.tag, label: choice.label})),
+          })),
         },
         nodes: nodes.map(n => (n.tags.length ? {...brief(n), tags: n.tags} : brief(n))),
         edges: edges.map(e => ({

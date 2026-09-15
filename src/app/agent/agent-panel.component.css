@@ -27,6 +27,8 @@
 
 .spacer { flex: 1; }
 
+.composer-meta { display: flex; justify-content: flex-end; padding: 0 10px 6px; }
+
 .endpoint, .muted { color: var(--kd-panel-muted); }
 .endpoint { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
 

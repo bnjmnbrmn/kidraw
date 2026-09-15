@@ -14,20 +14,22 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      has blue Supports and green numbered Reading path edges.
 >   3. Agent edits through `apply_changes`: all-or-nothing batches, one change
 >      set per turn, "Undo the agent's last turn", no edits after Stop.
->   4. Reading mode: root `e` (vim) / `h` (ijkl); `n`/`p` steps, `w` why,
->      `d`/`t` send "doesn't follow" / "too detailed" feedback with the steps
->      attached.
+>   4. Reading mode: root `e` (vim) / `h` (ijkl); `n`/`p` steps, `w` why.
+>      `d`/`t` mark a step as "doesn't follow" / "too detailed" (a badge,
+>      saved with the graph); `s` sends the marks to the agent, which clears
+>      each one once it has addressed it.
 >   5. Markdown node labels for plugins that opt in (Explanation does):
 >      bold, italic and code rendered; monospace source with highlighted
 >      markers while editing. Other graphs are unchanged.
+>   6. Detail level (brief / standard / thorough): `:detail`, or the button
+>      under the chat input. The agent is told when it changes.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly
 >   numbered path, then inserted three steps where told "doesn't follow".
-> - **Next:** math in labels; persistent feedback marks; a detail-level
->   setting.
+> - **Next:** math in labels.
 > - **Verified:**
 >   - Unit specs for operations, applier, planner, undo, tools, agent
 >     service, reading, the markdown parser and DANode markdown.
->   - Playwright: agent mode 31/31, agent edits 7/7, reading 16/16,
+>   - Playwright: agent mode 31/31, agent edits 7/7, reading 19/19,
 >     markdown 10/10.
 >   - Build is 1.01 MB against the 1.1 MB budget Ben approved.
 

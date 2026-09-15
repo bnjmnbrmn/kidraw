@@ -4,6 +4,11 @@ import { KidrawExtension } from './extension.model';
 export const EXPLANATION_SUPPORTS_TAG = 'explanation/supports';
 /** The tag on reading-path edges, whose first label is the step number. */
 export const EXPLANATION_PATH_TAG = 'explanation/path';
+/** Reader feedback on a statement: set while reading, cleared by the agent
+ *  once it has addressed it. At most one per statement. */
+export const EXPLANATION_DOESNT_FOLLOW_TAG = 'feedback/doesnt-follow';
+export const EXPLANATION_TOO_DETAILED_TAG = 'feedback/too-detailed';
+export const EXPLANATION_FEEDBACK_TAGS: readonly string[] = [EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_TOO_DETAILED_TAG];
 
 /**
  * Identity extension for explanations and tutorials an agent builds and the
@@ -28,6 +33,16 @@ export const EXPLANATION_EXTENSION: KidrawExtension = {
     textOverflow: 'fit',
   },
   labelFormat: 'markdown',
+  tagGroups: [
+    {
+      id: 'feedback',
+      name: 'Feedback',
+      choices: [
+        { tag: EXPLANATION_DOESNT_FOLLOW_TAG, label: "DOESN'T FOLLOW", color: '#d97706' },
+        { tag: EXPLANATION_TOO_DETAILED_TAG, label: 'TOO DETAILED', color: '#7c3aed' },
+      ],
+    },
+  ],
   edgeKinds: [
     {
       tag: EXPLANATION_SUPPORTS_TAG,

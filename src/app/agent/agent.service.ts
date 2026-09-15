@@ -1,6 +1,8 @@
 import {inject, Injectable} from '@angular/core';
 import {AgentCanvasTarget, ClientRect} from './agent-canvas';
-import {AGENT_PROTOCOL_VERSION, CanvasRef, HistoryEntry, ReadyMessage, ServerToTab, TabToServer} from './agent-protocol';
+import {
+  AGENT_PROTOCOL_VERSION, CanvasRef, DetailLevel, HistoryEntry, ReadyMessage, ServerToTab, TabToServer,
+} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import {AGENT_SESSION_STORAGE_KEY, AgentStore, ChatMessage, GraphIdentity} from './agent-store';
 import type {AgentToolHost} from './agent-tools';
@@ -60,6 +62,7 @@ export class AgentService {
   readonly thinking = this.store.thinking;
   readonly agentEditTurn = this.store.agentEditTurn;
   readonly pendingDraft = this.store.pendingDraft;
+  readonly detailLevel = this.store.detailLevel;
 
   /** Each prompt starts a turn; everything the agent changes during it is one change set. */
   private turn = 0;
@@ -561,8 +564,12 @@ export class AgentService {
     this.turnChangeSetId = `agent-turn-${Date.now().toString(36)}-${this.turn}`;
     this.turnLabel = `Agent: ${trimmed.length > 40 ? `${trimmed.slice(0, 39)}…` : trimmed}`;
     this.editsStopped = false;
-    this.send({type: 'prompt', text: trimmed, refs});
+    this.send({type: 'prompt', text: trimmed, refs, detail: this.detailLevel()});
     return true;
+  }
+
+  setDetailLevel(level: DetailLevel): void {
+    this.store.setDetailLevel(level);
   }
 
   /** Stop the answer. The agent may still send a tool call or two before it

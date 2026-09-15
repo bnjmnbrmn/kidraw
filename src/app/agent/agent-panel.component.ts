@@ -3,6 +3,7 @@ import {FormsModule} from '@angular/forms';
 import {AgentService, ChatMessage} from './agent.service';
 import {hostOf} from './agent-settings.service';
 import {parseRefSegments, RefSegment} from './agent-refs';
+import {DETAIL_LEVELS, DetailLevel} from './agent-protocol';
 
 /** An absolute ws:// or wss:// address (http(s) is converted), or null. A
  *  relative string would otherwise resolve against this page's own server
@@ -153,6 +154,14 @@ export class AgentPanelComponent {
         this.agent.cancel();
       }
     }
+  }
+
+  get nextDetail(): DetailLevel {
+    return DETAIL_LEVELS[(DETAIL_LEVELS.indexOf(this.agent.detailLevel()) + 1) % DETAIL_LEVELS.length];
+  }
+
+  cycleDetail(): void {
+    this.agent.setDetailLevel(this.nextDetail);
   }
 
   submit(): void {

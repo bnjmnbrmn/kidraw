@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { DetailLevel } from './protocol.js';
 
 /**
  * KiDraw canvas tools offered to agents over MCP. Every tool runs in the
@@ -145,4 +146,17 @@ export const SESSION_PREAMBLE = [
   '  statements (with their supports and path edges) instead of rewording what is there.',
   '- When the user says a part is too detailed, merge those steps: delete the extra statements and reconnect',
   '  the supports and path edges.',
+  '- The reader marks statements with the tags feedback/doesnt-follow and feedback/too-detailed (they show in',
+  '  get_outline). Treat each mark as a request; when you have addressed it, remove that tag from the node',
+  '  (update_node with its other tags) in the same apply_changes call. A merged-away statement takes its mark',
+  '  with it.',
+  '- The user may set a level of detail: brief, standard or thorough. Follow the most recent one; when it',
+  '  changes, adjust explanations you write from then on, and existing ones only when asked.',
 ].join('\n');
+
+/** Sent ahead of a prompt when the user's detail level changes. */
+export const DETAIL_GUIDANCE: Record<DetailLevel, string> = {
+  brief: 'Requested level of detail: brief. Keep explanations to the key steps; leave out steps the reader can fill in.',
+  standard: 'Requested level of detail: standard. Include each step a careful reader needs, and no more.',
+  thorough: 'Requested level of detail: thorough. Spell out every inference, even ones that feel obvious, and define terms before using them.',
+};

@@ -1,4 +1,5 @@
 import {Injectable} from '@angular/core';
+import {DETAIL_LEVELS, DetailLevel} from './agent-protocol';
 
 /** A user-configured agent endpoint (notes/idea-mcp-server.md, "Opt-in and configuration"). */
 export interface AgentEndpointSettings {
@@ -12,6 +13,7 @@ export interface AgentEndpointSettings {
 
 const SETTINGS_KEY = 'kidraw_agent_endpoint_v1';
 const CONSENT_KEY = 'kidraw_agent_consent_v1';
+const DETAIL_KEY = 'kidraw_agent_detail_v1';
 
 /**
  * Agent endpoint configuration and per-graph sharing consent, kept in this
@@ -39,6 +41,16 @@ export class AgentSettingsService {
     } catch {
       // Storage unavailable — nothing to forget.
     }
+  }
+
+  /** How much detail explanations should have; 'standard' until the user picks. */
+  get detailLevel(): DetailLevel {
+    const raw = read(DETAIL_KEY);
+    return DETAIL_LEVELS.includes(raw as DetailLevel) ? raw as DetailLevel : 'standard';
+  }
+
+  saveDetailLevel(level: DetailLevel): void {
+    write(DETAIL_KEY, level);
   }
 
   /** Whether this graph may always be shared with the configured endpoint. */

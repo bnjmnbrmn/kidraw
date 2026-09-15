@@ -12,6 +12,10 @@ export interface CanvasRef {
   label: string;
 }
 
+/** How much detail the user wants in explanations. */
+export type DetailLevel = 'brief' | 'standard' | 'thorough';
+export const DETAIL_LEVELS: readonly DetailLevel[] = ['brief', 'standard', 'thorough'];
+
 /** One transcript entry, replayed to a tab that resumes its session. */
 export interface HistoryEntry {
   role: 'user' | 'agent' | 'activity' | 'error';
@@ -25,7 +29,8 @@ export type TabToServer =
       /** Continue the session this tab had before a reload or a dropped connection. */
       resume?: {sessionId: string; secret: string};
     }
-  | {type: 'prompt'; text: string; refs?: CanvasRef[]}
+  /** `detail` is the user's current setting, sent with every prompt. */
+  | {type: 'prompt'; text: string; refs?: CanvasRef[]; detail?: DetailLevel}
   | {type: 'cancel'}
   | {type: 'tool_result'; callId: string; ok: boolean; result?: unknown; error?: string}
   /** The user disconnected on purpose: end the session instead of keeping it for a resume. */

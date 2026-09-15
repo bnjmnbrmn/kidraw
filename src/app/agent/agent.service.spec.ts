@@ -245,6 +245,19 @@ describe('AgentService', () => {
     expect(canvas.agentSetHighlights).toHaveBeenCalledWith([]);
   });
 
+  it('sends the detail level with every prompt', () => {
+    const service = createService();
+    const socket = connect(service);
+    service.setDetailLevel('thorough');
+    try {
+      expect(service.sendPrompt('explain primes')).toBeTrue();
+      expect(socket.sent[socket.sent.length - 1])
+        .toEqual(jasmine.objectContaining({type: 'prompt', text: 'explain primes', detail: 'thorough'}));
+    } finally {
+      service.setDetailLevel('standard');
+    }
+  });
+
   it('gives up on a connection that never opens', () => {
     jasmine.clock().install();
     try {

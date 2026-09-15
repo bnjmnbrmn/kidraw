@@ -4,7 +4,8 @@
  * On `session/new` it connects to the KiDraw MCP endpoint it was given. Prompt
  * lines are run in order: `TOOL <name> <json-args>` calls that tool and replies
  * with the result, and `WAIT <ms>` pauses (so a test can act mid-turn). A line
- * reading `FAIL` makes the turn fail. Anything else is echoed back.
+ * reading `FAIL` makes the turn fail. A last line `SHOW PROMPT` echoes the whole
+ * prompt as the agent received it. Anything else is echoed back.
  */
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
@@ -60,7 +61,8 @@ acp.agent({ name: 'fake-agent' })
       await say(`${result.isError ? 'ERROR' : 'RESULT'} ${name}: ${text}\n`);
     }
     const last = promptText(ctx.params.prompt).trim().split('\n').pop() ?? '';
-    if (!last.startsWith('TOOL ')) await say(`echo: ${last}`);
+    if (last === 'SHOW PROMPT') await say(promptText(ctx.params.prompt));
+    else if (!last.startsWith('TOOL ')) await say(`echo: ${last}`);
     return { stopReason: 'end_turn' as const };
   })
   .connect(stream);

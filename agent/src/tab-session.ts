@@ -8,9 +8,12 @@ import type { WebSocket } from 'ws';
 import { tokensMatch, type AgentServerConfig } from './config.js';
 import type { McpBridge, McpEndpoint } from './mcp-bridge.js';
 import { decidePermission } from './permissions.js';
-import type { CanvasRef, HistoryEntry, PromptMessage, ServerToTab, TabToServer } from './protocol.js';
+import {
+  DETAIL_LEVELS, type CanvasRef, type DetailLevel, type HistoryEntry, type PromptMessage, type ServerToTab,
+  type TabToServer,
+} from './protocol.js';
 import { startAgent, type StartedAgent } from './runners.js';
-import { SESSION_PREAMBLE } from './tools.js';
+import { DETAIL_GUIDANCE, SESSION_PREAMBLE } from './tools.js';
 
 type Log = (message: string) => void;
 
@@ -47,6 +50,8 @@ export class TabSession {
   private session: acp.ActiveSession | null = null;
   private busy = false;
   private firstPrompt = true;
+  /** The detail level the agent was last told about. */
+  private lastDetail: DetailLevel | null = null;
   /** `open` marks an agent reply that is still streaming. */
   private readonly history: (HistoryEntry & { open?: boolean })[] = [];
   private readonly pending = new Map<string, PendingToolCall>();
@@ -278,7 +283,7 @@ export class TabSession {
     this.pushHistory(refs.length > 0 ? { role: 'user', text: message.text, refs } : { role: 'user', text: message.text });
     const session = this.session;
     try {
-      const text = this.buildPromptText(message.text, refs);
+      const text = this.buildPromptText(message.text, refs, message.detail);
       // A failed prompt never produces a `stop` update, so race the update
       // stream against the prompt's own rejection; otherwise the turn hangs.
       const failed = session.prompt(text).then(
@@ -301,11 +306,16 @@ export class TabSession {
     }
   }
 
-  private buildPromptText(text: string, refs: CanvasRef[]): string {
+  private buildPromptText(text: string, refs: CanvasRef[], detail: unknown): string {
     const parts: string[] = [];
     if (this.firstPrompt) {
       parts.push(SESSION_PREAMBLE, '');
       this.firstPrompt = false;
+    }
+    // Only when it changes: the agent follows the most recent one.
+    if (DETAIL_LEVELS.includes(detail as DetailLevel) && detail !== this.lastDetail) {
+      this.lastDetail = detail as DetailLevel;
+      parts.push(DETAIL_GUIDANCE[this.lastDetail], '');
     }
     if (refs.length > 0) {
       parts.push('The user is pointing at: ' + refs.map(r => `[[ref:${r.id}|${r.label}]] (${r.kind})`).join(', '), '');

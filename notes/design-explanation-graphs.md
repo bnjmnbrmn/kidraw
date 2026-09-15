@@ -71,9 +71,15 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      it is on the path, otherwise at step 1.
    - `n`/`p` move to the next and previous step, moving the view and marking
      the statement. `w` ("why?") marks and names the premises.
-   - `d` ("doesn't follow") and `t` ("too detailed") open the chat with the
-     current step and the one before it attached as reference pills, and a
-     ready-to-edit request.
+   - `d` ("doesn't follow") and `t` ("too detailed") mark the current
+     statement with a badge, as an undoable edit. A statement has at most one
+     mark, and the same key again clears it. `s` opens the chat with every
+     marked statement attached, in reading order, and a ready-to-edit
+     request.
+   - Marks are tags (`feedback/doesnt-follow`, `feedback/too-detailed`) in
+     the Explanation plugin's Feedback tag group, so they are saved with the
+     graph and the agent sees them in `get_outline`. It removes each one once
+     it has addressed it.
    - The path is re-read on every step, so steps the agent inserts while you
      read appear in place.
    - Esc stops reading. Esc in the chat goes back to reading.
@@ -94,6 +100,11 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      before. Decided so existing graphs don't change font whenever editing
      starts; easy to flip if markdown should be everywhere.
    - The agent is told node text supports bold, italic and code.
+6. **Detail level**: brief, standard or thorough, kept in this browser.
+   - `:detail` shows or sets it; so does the Detail button under the chat
+     input.
+   - Every prompt carries it. The server tells the agent on the first prompt
+     and whenever it changes, not with every message.
 
 ## Live check with Codex (2026-09-15)
 
@@ -112,8 +123,7 @@ A real Codex session, through the Docker runner, against a scripted tab:
 - **Math** in labels. A plan to evaluate: MathJax's SVG output (paths, no
   fonts), drawn as an image, fits the canvas and exports.
 - Markdown in **edge labels** (`DALabel`).
-- **Persistent feedback marks.** For now, feedback is a chat message with
-  pills; nothing stays on the canvas to show what is unresolved.
-- **Detail level**, a general setting the agent reads, as Ben suggested.
+- Marking statements outside reading mode (for example the selection).
+- A live Codex run of marks and detail levels.
 - **Draft mode** for agent edits.
 - **References inside labels**, gather views, nesting. Explore later.

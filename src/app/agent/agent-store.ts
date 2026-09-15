@@ -1,6 +1,6 @@
 import {computed, inject, Injectable, Injector, signal} from '@angular/core';
 import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
-import type {CanvasRef} from './agent-protocol';
+import type {CanvasRef, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
 
@@ -89,6 +89,8 @@ export class AgentStore {
   readonly agentEditTurn = signal<string | null>(null);
   /** Text to put in the chat input (e.g. reading-mode feedback); the panel takes it and clears this. */
   readonly pendingDraft = signal<string | null>(null);
+  /** How much detail explanations should have; sent with every prompt. */
+  readonly detailLevel = signal<DetailLevel>(this.settings.detailLevel);
 
   readonly endpoint = signal<AgentEndpointSettings | null>(this.settings.endpoint);
   readonly endpointName = computed(() => this.endpoint()?.name ?? '');
@@ -160,6 +162,12 @@ export class AgentStore {
     this.attachedRefs.set(refs);
     this.pendingDraft.set(text);
     this.openPanel();
+  }
+
+  /** Remembered in this browser; the agent hears about it with the next message. */
+  setDetailLevel(level: DetailLevel): void {
+    this.detailLevel.set(level);
+    this.settings.saveDetailLevel(level);
   }
 
   follow(): void {

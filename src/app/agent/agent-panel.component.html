@@ -166,6 +166,12 @@
             <button type="button" class="stop" (click)="agent.cancel()">Stop</button>
           }
         </div>
+        <div class="composer-meta">
+          <button type="button" class="link small" (click)="cycleDetail()"
+                  [title]="'How much detail the agent puts into explanations (also :detail). Click for ' + nextDetail + '.'">
+            Detail: {{ agent.detailLevel() }}
+          </button>
+        </div>
       }
     }
   </aside>

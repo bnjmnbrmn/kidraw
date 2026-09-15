@@ -104,6 +104,25 @@ test('relays a prompt, routes a tool call to the tab, and streams the reply', as
   tab.ws.close();
 });
 
+test('tells the agent the detail level on the first prompt and again only when it changes', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send({ type: 'hello', protocol: 1, token: TOKEN, agent: 'codex' });
+  await tab.next('ready');
+  const promptSeen = async (detail: string) => {
+    tab.send({ type: 'prompt', text: 'SHOW PROMPT', detail } as never);
+    const text = await tab.next('agent_text');
+    await tab.next('turn_end');
+    return text.delta as string;
+  };
+
+  assert.match(await promptSeen('thorough'), /Requested level of detail: thorough/);
+  assert.doesNotMatch(await promptSeen('thorough'), /Requested level of detail/);
+  assert.match(await promptSeen('brief'), /Requested level of detail: brief/);
+  assert.doesNotMatch(await promptSeen('loud'), /Requested level of detail/);
+  tab.ws.close();
+});
+
 test('ends the turn when the agent\'s prompt fails, and stays usable', async () => {
   const tab = connect();
   await tab.opened;

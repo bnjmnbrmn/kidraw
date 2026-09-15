@@ -1,5 +1,7 @@
 import type {AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
-import {EXPLANATION_PATH_TAG, EXPLANATION_SUPPORTS_TAG} from '../extensions/explanation.extension';
+import {
+  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_PATH_TAG, EXPLANATION_SUPPORTS_TAG, EXPLANATION_TOO_DETAILED_TAG,
+} from '../extensions/explanation.extension';
 import {ReadingModeService} from './reading-mode.service';
 
 const node = (id: string, label: string): AgentNodeInfo => ({id, label, tags: []});
@@ -21,7 +23,7 @@ describe('ReadingModeService', () => {
     edges = [path('p1', 'a', 'b', 1), path('p2', 'b', 'c', 2), supports('s1', 'a', 'c'), supports('s2', 'b', 'c')];
     selection = {nodeIds: [], edgeIds: [], underCrosshairsId: null};
     canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas',
-      ['agentNodes', 'agentEdges', 'agentSelection', 'agentFocusNode', 'agentSetHighlights']);
+      ['agentNodes', 'agentEdges', 'agentSelection', 'agentFocusNode', 'agentSetHighlights', 'agentApplyChanges']);
     canvas.agentNodes.and.callFake(() => nodes);
     canvas.agentEdges.and.callFake(() => edges);
     canvas.agentSelection.and.callFake(() => selection);
@@ -77,12 +79,43 @@ describe('ReadingModeService', () => {
     expect(said.pop()).toBe('Step 4 of 4: Socrates is mortal');
   });
 
-  it('refers to the current step and the one before it, for feedback', () => {
+  it('marks the current statement as an undoable user edit, one mark at a time', async () => {
+    canvas.agentApplyChanges.and.returnValue(Promise.resolve({ok: true, created: [], touchedNodeIds: []}));
     reading.enter();
     reading.next();
-    expect(reading.currentRefs()).toEqual([
+    nodes[1].tags = ['keep'];
+
+    expect(await reading.toggleMark('doesnt-follow')).toBeTrue();
+    let [changes, meta] = canvas.agentApplyChanges.calls.mostRecent().args;
+    expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep', EXPLANATION_DOESNT_FOLLOW_TAG]}]);
+    expect(meta.author).toBe('user');
+
+    nodes[1].tags = ['keep', EXPLANATION_DOESNT_FOLLOW_TAG];
+    expect(await reading.toggleMark('too-detailed')).toBeTrue();
+    [changes] = canvas.agentApplyChanges.calls.mostRecent().args;
+    expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep', EXPLANATION_TOO_DETAILED_TAG]}]);
+
+    nodes[1].tags = ['keep', EXPLANATION_DOESNT_FOLLOW_TAG];
+    expect(await reading.toggleMark('doesnt-follow')).toBeFalse();
+    [changes] = canvas.agentApplyChanges.calls.mostRecent().args;
+    expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep']}]);
+  });
+
+  it('does not mark anything when not reading, or when the edit is refused', async () => {
+    canvas.agentApplyChanges.and.returnValue(Promise.resolve({ok: false, error: 'conflict', created: [], touchedNodeIds: []}));
+    expect(await reading.toggleMark('doesnt-follow')).toBeNull();
+    reading.enter();
+    expect(await reading.toggleMark('doesnt-follow')).toBeNull();
+    expect(said.pop()).toBe('conflict');
+  });
+
+  it('lists marked statements in reading order, for sending', () => {
+    nodes[2].tags = [EXPLANATION_TOO_DETAILED_TAG];
+    nodes[0].tags = [EXPLANATION_DOESNT_FOLLOW_TAG];
+    reading.enter();
+    expect(reading.markedRefs()).toEqual([
       {kind: 'node', id: 'a', label: 'All men are mortal'},
-      {kind: 'node', id: 'b', label: 'Socrates is a man'},
+      {kind: 'node', id: 'c', label: 'Socrates is mortal'},
     ]);
   });
 

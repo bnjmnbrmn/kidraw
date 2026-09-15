@@ -1,7 +1,17 @@
 import {Injectable, signal} from '@angular/core';
 import type {AgentCanvasTarget} from '../agent/agent-canvas';
 import type {CanvasRef} from '../agent/agent-protocol';
+import {
+  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
+} from '../extensions/explanation.extension';
 import {premisesOf, readingPath} from './reading-path';
+
+export type FeedbackKind = 'doesnt-follow' | 'too-detailed';
+
+const FEEDBACK_TAG: Record<FeedbackKind, string> = {
+  'doesnt-follow': EXPLANATION_DOESNT_FOLLOW_TAG,
+  'too-detailed': EXPLANATION_TOO_DETAILED_TAG,
+};
 
 /**
  * Reading mode: step through an explanation along its numbered reading path.
@@ -84,11 +94,39 @@ export class ReadingModeService {
     this.say(`Follows from: ${premises.map(id => labels.get(id) || 'an unlabeled statement').join(' · ')}`);
   }
 
-  /** The current statement and the one before it on the path, for feedback. */
-  currentRefs(): CanvasRef[] {
-    const labels = this.labels();
-    const ids = [this.path[this.step() - 1], this.path[this.step()]].filter((id): id is string => !!id);
-    return [...new Set(ids)].map(id => ({kind: 'node', id, label: labels.get(id) || 'unlabeled statement'}));
+  /** Toggle a feedback mark on the current statement, as an undoable edit
+   *  (a statement carries at most one). Resolves to true when the mark is now
+   *  set, false when it was cleared, and null when nothing changed. */
+  async toggleMark(kind: FeedbackKind): Promise<boolean | null> {
+    const canvas = this.canvas;
+    const id = this.path[this.step()];
+    const node = canvas?.agentNodes().find(n => n.id === id);
+    if (!canvas || !this.active() || !node) return null;
+    const tag = FEEDBACK_TAG[kind];
+    const marked = !node.tags.includes(tag);
+    const tags = [...node.tags.filter(t => !EXPLANATION_FEEDBACK_TAGS.includes(t)), ...(marked ? [tag] : [])];
+    const result = await canvas.agentApplyChanges([{kind: 'update_node', node: node.id, tags}], {
+      author: 'user',
+      label: marked ? 'Mark a step' : 'Clear a mark',
+      changeSetId: `reading-mark-${Date.now().toString(36)}`,
+    });
+    if (!result.ok) {
+      this.say(result.error ?? 'The mark could not be changed');
+      return null;
+    }
+    return marked;
+  }
+
+  /** Every statement with a feedback mark, in reading order (any off the path last). */
+  markedRefs(): CanvasRef[] {
+    const position = (id: string) => {
+      const index = this.path.indexOf(id);
+      return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+    };
+    return (this.canvas?.agentNodes() ?? [])
+      .filter(node => node.tags.some(tag => EXPLANATION_FEEDBACK_TAGS.includes(tag)))
+      .sort((a, b) => position(a.id) - position(b.id))
+      .map(node => ({kind: 'node', id: node.id, label: node.label || 'unlabeled statement'}));
   }
 
   private goTo(index: number, note?: string): void {

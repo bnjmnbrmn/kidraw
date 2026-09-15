@@ -14,6 +14,7 @@ import {VisualConfigService} from './services/visual-config.service';
 import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
 import {AGENT_PANEL_WIDTH, AgentStore} from './agent/agent-store';
+import {DETAIL_LEVELS, DetailLevel} from './agent/agent-protocol';
 import {ReadingModeService} from './reading/reading-mode.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
@@ -153,10 +154,23 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.reading.previous();
     } else if (key === keys.why) {
       this.reading.why();
-    } else if (key === keys.doesntFollow) {
-      this.agent.prefillFeedback("This step doesn't follow for me. Please add what's missing.", this.reading.currentRefs());
-    } else if (key === keys.tooDetailed) {
-      this.agent.prefillFeedback('This part is too detailed. Please merge these steps.', this.reading.currentRefs());
+    } else if (key === keys.doesntFollow || key === keys.tooDetailed) {
+      const kind = key === keys.doesntFollow ? 'doesnt-follow' : 'too-detailed';
+      void this.reading.toggleMark(kind).then(marked => {
+        if (marked === null) return;
+        const name = kind === 'doesnt-follow' ? "doesn't follow" : 'too detailed';
+        this.headerComponent?.showStatusMessage(marked
+          ? `Marked "${name}". Keep reading; ${keys.send} sends your marks to the agent.`
+          : `Cleared "${name}".`, 4000);
+      });
+    } else if (key === keys.send) {
+      const refs = this.reading.markedRefs();
+      if (refs.length === 0) {
+        this.headerComponent?.showStatusMessage(
+          `Nothing marked: ${keys.doesntFollow} marks a step that doesn't follow, ${keys.tooDetailed} one that is too detailed.`, 4000);
+      } else {
+        this.agent.prefillFeedback(`Please address my feedback ${refs.length === 1 ? 'mark' : 'marks'}.`, refs);
+      }
     } else {
       return;
     }
@@ -300,10 +314,29 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   onExCommand(text: string): void {
     this.exLineOpen = false;
     this.exHistory.push(text);
+    if (this.runDetailCommand(text)) return;
     const replacesGraph = /^(e|edit|enew)\b/.test(text.trim());
     if (replacesGraph) this.nextUntitledGraph();
     this.commandsSubject.next({kind: DACommandType.EX_COMMAND, text});
     if (replacesGraph) this.agent.graphMayHaveChanged();
+  }
+
+  /** `:detail` shows how much detail the agent should put into explanations;
+   *  `:detail brief|standard|thorough` sets it. False for any other command. */
+  private runDetailCommand(text: string): boolean {
+    const [name, arg = ''] = text.trim().split(/\s+/);
+    if (name !== 'detail') return false;
+    const say = (message: string) => this.headerComponent?.showStatusMessage(message, 4000);
+    const levels = DETAIL_LEVELS.join(', ');
+    if (arg === '') {
+      say(`Detail: ${this.agent.detailLevel()}. :detail ${levels.replace(/, (?=[^,]*$)/, ' or ')} changes it.`);
+    } else if ((DETAIL_LEVELS as readonly string[]).includes(arg)) {
+      this.agent.setDetailLevel(arg as DetailLevel);
+      say(`Detail: ${arg}. The agent hears about it with your next message.`);
+    } else {
+      say(`Not a detail level: ${arg}. Choose ${levels}.`);
+    }
+    return true;
   }
 
   onExCancel(): void {
