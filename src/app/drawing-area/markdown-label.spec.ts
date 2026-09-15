@@ -1,4 +1,4 @@
-import {hasInlineMarkdown, InlineStyle, layoutSpans, parseInlineMarkdown} from './markdown-label';
+import {hasInlineMarkdown, InlineStyle, layoutSpans, parseInlineMarkdown, plainText} from './markdown-label';
 
 const rendered = (text: string) => parseInlineMarkdown(text).spans
   .map(s => `${s.bold ? 'B' : ''}${s.italic ? 'I' : ''}${s.code ? 'C' : ''}${s.math ? 'M' : ''}[${s.text}]`).join('');
@@ -46,6 +46,10 @@ describe('markdown labels', () => {
       expect(rendered('**$x$ wins**')).toBe('BM[x]B[ wins]');
       expect(rendered('$a*b$ and *c*')).toBe('M[a*b][ and ]I[c]');
       expect(roles('$x$!')).toEqual(['marker:$', 'math:x', 'marker:$', 'text:!']);
+    });
+
+    it('gives plain text for places that cannot render markup', () => {
+      expect(plainText('A **prime** has `2` divisors: $1$ and \\$itself')).toBe('A prime has 2 divisors: 1 and $itself');
     });
 
     it('classifies every source character for the editing view', () => {

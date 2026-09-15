@@ -4,6 +4,7 @@ import {AgentService, ChatMessage} from './agent.service';
 import {hostOf} from './agent-settings.service';
 import {parseRefSegments, RefSegment} from './agent-refs';
 import {DETAIL_LEVELS, DetailLevel} from './agent-protocol';
+import {plainText} from '../drawing-area/markdown-label';
 
 /** An absolute ws:// or wss:// address (http(s) is converted), or null. A
  *  relative string would otherwise resolve against this page's own server
@@ -104,6 +105,11 @@ export class AgentPanelComponent {
     if (this.agent.graphChange()) return 'Share the graph above to continue';
     if (this.agent.busy()) return 'Answering… (Ctrl+C to stop, Esc for the canvas)';
     return 'Ask the agent (Enter to send, Esc for the canvas)';
+  }
+
+  /** Labels can hold markdown and TeX; pills show them as plain text. */
+  plain(label: string): string {
+    return plainText(label);
   }
 
   segments(message: ChatMessage): RefSegment[] {

@@ -323,6 +323,12 @@ export function layoutSpans(
   });
 }
 
+/** The label as plain text, for places that can't render markup (status
+ *  messages, chat pills): markers dropped, TeX left as its source. */
+export function plainText(text: string): string {
+  return parseInlineMarkdown(text).spans.map(span => span.text).join('');
+}
+
 function sameStyle(a: InlineStyle, b: InlineStyle): boolean {
   return a.bold === b.bold && a.italic === b.italic && a.code === b.code && a.math === b.math;
 }

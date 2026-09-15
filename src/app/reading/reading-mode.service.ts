@@ -4,6 +4,7 @@ import type {CanvasRef} from '../agent/agent-protocol';
 import {
   EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
+import {plainText} from '../drawing-area/markdown-label';
 import {premisesOf, readingPath} from './reading-path';
 
 export type FeedbackKind = 'doesnt-follow' | 'too-detailed';
@@ -126,7 +127,7 @@ export class ReadingModeService {
     return (this.canvas?.agentNodes() ?? [])
       .filter(node => node.tags.some(tag => EXPLANATION_FEEDBACK_TAGS.includes(tag)))
       .sort((a, b) => position(a.id) - position(b.id))
-      .map(node => ({kind: 'node', id: node.id, label: node.label || 'unlabeled statement'}));
+      .map(node => ({kind: 'node', id: node.id, label: plainText(node.label) || 'unlabeled statement'}));
   }
 
   private goTo(index: number, note?: string): void {
@@ -153,6 +154,6 @@ export class ReadingModeService {
   }
 
   private labels(): Map<string, string> {
-    return new Map((this.canvas?.agentNodes() ?? []).map(node => [node.id, node.label]));
+    return new Map((this.canvas?.agentNodes() ?? []).map(node => [node.id, plainText(node.label)]));
   }
 }
