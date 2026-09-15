@@ -1,4 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_PACKAGE_ROOT, type AgentServerConfig } from './config.js';
 
@@ -34,11 +35,14 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
     return { child, agentCwd: localWorkDir, stop: () => child.kill('SIGTERM') };
   }
 
+  // Create it ourselves (mode 700); a missing bind-mount source would be created root-owned by Docker.
+  mkdirSync(config.codexHome, { recursive: true, mode: 0o700 });
+
   if (config.runner === 'local') {
     const child = spawn(process.execPath, [CODEX_ACP_ENTRY], {
       cwd: localWorkDir,
       stdio,
-      env: { ...process.env, ...CODEX_ENV },
+      env: { ...process.env, ...CODEX_ENV, CODEX_HOME: config.codexHome },
     });
     return { child, agentCwd: localWorkDir, stop: () => child.kill('SIGTERM') };
   }
@@ -52,7 +56,7 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '-e', `INITIAL_AGENT_MODE=${CODEX_ENV.INITIAL_AGENT_MODE}`,
     '-e', `NO_BROWSER=${CODEX_ENV.NO_BROWSER}`,
-    '-v', `${config.codexAuthFile}:/home/node/.codex/auth.json`,
+    '-v', `${config.codexHome}:/home/node/.codex`,
     config.dockerImage,
   ];
   const child = spawn('docker', args, { stdio });

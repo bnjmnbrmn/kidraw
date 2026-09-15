@@ -1,0 +1,31 @@
+# systemd unit for kidraw-agent on a single Linux host with Docker.
+# Paths are for Ben's VPS; adjust User, WorkingDirectory and the node path.
+#
+#   sudo cp agent/deploy/kidraw-agent.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now kidraw-agent
+#
+# The WebSocket listens on 127.0.0.1:9223; expose it through a reverse proxy
+# (nginx `location /agent/` with WebSocket upgrade) behind site auth.
+
+[Unit]
+Description=kidraw-agent (KiDraw agent mode: tab WebSockets, sandboxed Codex sessions)
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=bot
+Group=bot
+# Lets the server start session containers without being root.
+SupplementaryGroups=docker
+WorkingDirectory=/home/bot/projects/kidraw/agent
+Environment=KIDRAW_AGENT_RUNNER=docker
+# The MCP bridge listens on the Docker bridge so session containers can reach
+# it as host.docker.internal; it is not reachable from off the host.
+Environment=KIDRAW_AGENT_MCP_HOST=172.17.0.1
+ExecStart=/snap/node/current/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

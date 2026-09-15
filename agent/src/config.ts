@@ -21,8 +21,10 @@ export interface AgentServerConfig {
   tokenFile: string;
   runner: RunnerKind;
   dockerImage: string;
-  /** Codex login mounted into agent containers. */
-  codexAuthFile: string;
+  /** CODEX_HOME for agent sessions: kidraw-agent's own Codex login, separate
+   *  from the user's ~/.codex so token refreshes never fight over one file.
+   *  Mounted as ~/.codex in containers. */
+  codexHome: string;
   /** How long a canvas tool call may wait for the tab. */
   toolTimeoutMs: number;
 }
@@ -46,7 +48,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentServerCon
     tokenFile: env['KIDRAW_AGENT_TOKEN_FILE'] ?? join(homedir(), '.config', 'kidraw-agent', 'token'),
     runner,
     dockerImage: env['KIDRAW_AGENT_DOCKER_IMAGE'] ?? 'kidraw-agent-codex:latest',
-    codexAuthFile: env['KIDRAW_AGENT_CODEX_AUTH'] ?? join(homedir(), '.codex', 'auth.json'),
+    codexHome: env['KIDRAW_AGENT_CODEX_HOME'] ?? join(homedir(), '.config', 'kidraw-agent', 'codex'),
     toolTimeoutMs: Number(env['KIDRAW_AGENT_TOOL_TIMEOUT_MS'] ?? 30_000),
   };
 }
