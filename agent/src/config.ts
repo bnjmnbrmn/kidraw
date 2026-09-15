@@ -47,8 +47,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentServerCon
     mcpPort: Number(env['KIDRAW_AGENT_MCP_PORT'] ?? 9224),
     mcpAdvertisedHost: env['KIDRAW_AGENT_MCP_ADVERTISED_HOST']
       ?? (runner === 'docker' ? 'host.docker.internal' : mcpHost),
-    allowedOrigins: (env['KIDRAW_AGENT_ORIGINS']
-      ?? 'https://kidraw.dev.bnjmnbrmn.com,http://localhost:4200')
+    // Only a local dev server by default: an operator lists the KiDraw sites
+    // that may connect (e.g. https://kidraw.net) in KIDRAW_AGENT_ORIGINS.
+    allowedOrigins: (env['KIDRAW_AGENT_ORIGINS'] ?? 'http://localhost:4200')
       .split(',').map(s => s.trim()).filter(Boolean),
     tokenFile: env['KIDRAW_AGENT_TOKEN_FILE'] ?? join(homedir(), '.config', 'kidraw-agent', 'token'),
     runner,

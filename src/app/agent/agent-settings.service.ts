@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 
 /** A user-configured agent endpoint (notes/idea-mcp-server.md, "Opt-in and configuration"). */
 export interface AgentEndpointSettings {
-  /** e.g. wss://kidraw.dev.bnjmnbrmn.com/agent/ */
+  /** e.g. wss://kidraw.net/agent/ */
   url: string;
   token: string;
   /** Shown in the header and consent prompt. */

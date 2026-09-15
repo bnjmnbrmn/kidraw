@@ -74,7 +74,7 @@ location /agent/ {
 ```
 
 In KiDraw press `m` (Agent Chat), enter the endpoint (for example
-`wss://kidraw.dev.bnjmnbrmn.com/agent/`) and the token, then approve sharing
+`wss://kidraw.net/agent/`) and the token, then approve sharing
 the graph. `o` asks about the current selection; Shift+O follows the agent's view
 after you have moved away; Shift+M closes the chat, and Esc returns the
 keyboard to the canvas.
@@ -87,7 +87,7 @@ keyboard to the canvas.
 | `KIDRAW_AGENT_HOST` / `_PORT` | `127.0.0.1` / `9223` | tab WebSocket |
 | `KIDRAW_AGENT_MCP_HOST` / `_MCP_PORT` | `127.0.0.1` / `9224` | MCP bridge; use the docker0 address (e.g. `172.17.0.1`) for `docker` |
 | `KIDRAW_AGENT_MCP_ADVERTISED_HOST` | `host.docker.internal` for `docker`, else the MCP host | host name agents use |
-| `KIDRAW_AGENT_ORIGINS` | `https://kidraw.dev.bnjmnbrmn.com,http://localhost:4200` | allowed browser origins |
+| `KIDRAW_AGENT_ORIGINS` | `http://localhost:4200` | browser origins allowed to connect, comma-separated (e.g. `https://kidraw.net`) |
 | `KIDRAW_AGENT_TOKEN_FILE` | `~/.config/kidraw-agent/token` | created (mode 600) on first start |
 | `KIDRAW_AGENT_CODEX_HOME` | `~/.config/kidraw-agent/codex` | kidraw-agent's Codex login; sessions get private copies in the sibling `sessions/` |
 | `KIDRAW_AGENT_MAX_SESSIONS` | `3` | sessions held at once, including ones waiting for their tab |

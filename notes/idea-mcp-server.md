@@ -11,7 +11,7 @@ type: idea
 
 Tier 2 only, read-only "ask and point". Server, setup, and security model: [`agent/README.md`](../agent/README.md).
 
-- **Path:** tab ⇄ `wss://kidraw.dev.bnjmnbrmn.com/agent/` (site password, origin allowlist, token as the first message) ⇄ `kidraw-agent` ⇄ ACP ⇄ codex-acp in a per-tab Docker container ⇄ MCP over HTTP (per-session URL and bearer secret) ⇄ back to the tab, which runs the tool.
+- **Path:** tab ⇄ `wss://<KiDraw site>/agent/`, e.g. `wss://kidraw.net/agent/` if that ever runs one (origin allowlist, token as the first message; Ben's own instance also sits behind his dev site's password) ⇄ `kidraw-agent` ⇄ ACP ⇄ codex-acp in a per-tab Docker container ⇄ MCP over HTTP (per-session URL and bearer secret) ⇄ back to the tab, which runs the tool.
 - **Tools:** `get_outline`, `find_nodes`, `get_selection`, `get_view`, `focus`, `highlight`, `caption`, `clear_annotations`. References in replies use `[[ref:ID|Label]]` and render as pills.
 - **Keys:**
   - `m` opens or focuses Agent Chat, and Shift+M closes it.

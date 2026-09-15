@@ -20,6 +20,8 @@ Group=bot
 SupplementaryGroups=docker
 WorkingDirectory=/home/bot/projects/kidraw/agent
 Environment=KIDRAW_AGENT_RUNNER=docker
+# The KiDraw sites allowed to connect (comma-separated). Ben's dev site, plus a local dev server.
+Environment=KIDRAW_AGENT_ORIGINS=https://kidraw.dev.bnjmnbrmn.com,http://localhost:4200
 # The MCP bridge listens on the Docker bridge so session containers can reach
 # it as host.docker.internal; it is not reachable from off the host.
 Environment=KIDRAW_AGENT_MCP_HOST=172.17.0.1
