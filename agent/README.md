@@ -28,6 +28,11 @@ before anything leaves the browser.
   throwaway container (no repo, no host files, capabilities dropped, memory,
   CPU and process limits). The only host directory it sees is
   kidraw-agent's own Codex home.
+- **Reloads and dropped connections:** a session outlives its socket for
+  `KIDRAW_AGENT_RESUME_GRACE_MS` (10 minutes by default). The `ready` message
+  gives the tab a session id and secret, which it keeps in `sessionStorage`
+  (that tab only) and presents to pick the conversation back up. Disconnecting
+  on purpose ends the session at once.
 - **Agent → canvas:** tools go through a per-session MCP URL with a bearer
   secret. Codex starts in read-only mode; kidraw-agent auto-approves only
   read/search/think/fetch permission requests and refuses edits and commands.
@@ -78,6 +83,7 @@ after you have moved away.
 | `KIDRAW_AGENT_CODEX_HOME` | `~/.config/kidraw-agent/codex` | Codex login used by sessions |
 | `KIDRAW_AGENT_DOCKER_IMAGE` | `kidraw-agent-codex:latest` | |
 | `KIDRAW_AGENT_TOOL_TIMEOUT_MS` | `30000` | how long a tool waits for the tab |
+| `KIDRAW_AGENT_RESUME_GRACE_MS` | `600000` | how long a session waits for its tab to reconnect |
 
 ## Development
 

@@ -21,6 +21,8 @@ export interface HelloMessage {
   token: string;
   agent: string;
   graphTitle?: string;
+  /** Continue the session this tab had before a reload or a dropped connection. */
+  resume?: { sessionId: string; secret: string };
 }
 
 export interface PromptMessage {
@@ -41,13 +43,33 @@ export interface ToolResultMessage {
   error?: string;
 }
 
-export type TabToServer = HelloMessage | PromptMessage | CancelMessage | ToolResultMessage;
+/** The user disconnected on purpose: end the session now rather than keeping it for a resume. */
+export interface EndMessage {
+  type: 'end';
+}
+
+export type TabToServer = HelloMessage | PromptMessage | CancelMessage | ToolResultMessage | EndMessage;
 
 // ─── server → tab ─────────────────────────────────────────────────────────
+
+/** One transcript entry, replayed to a tab that resumes. */
+export interface HistoryEntry {
+  role: 'user' | 'agent' | 'activity' | 'error';
+  text: string;
+  refs?: CanvasRef[];
+}
 
 export interface ReadyMessage {
   type: 'ready';
   agent: string;
+  /** Send back in `hello.resume` to continue this session after a reload. */
+  session: { id: string; secret: string };
+  /** True when this connection picked up an existing session. */
+  resumed: boolean;
+  /** The agent is in the middle of a reply. */
+  busy: boolean;
+  /** The conversation so far; empty for a new session. */
+  history: HistoryEntry[];
 }
 
 export interface ErrorMessage {

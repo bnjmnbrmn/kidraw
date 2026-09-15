@@ -27,6 +27,9 @@ export interface AgentServerConfig {
   codexHome: string;
   /** How long a canvas tool call may wait for the tab. */
   toolTimeoutMs: number;
+  /** How long a session survives without a tab, so a reload or dropped
+   *  connection can pick it up again. */
+  resumeGraceMs: number;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +53,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentServerCon
     dockerImage: env['KIDRAW_AGENT_DOCKER_IMAGE'] ?? 'kidraw-agent-codex:latest',
     codexHome: env['KIDRAW_AGENT_CODEX_HOME'] ?? join(homedir(), '.config', 'kidraw-agent', 'codex'),
     toolTimeoutMs: Number(env['KIDRAW_AGENT_TOOL_TIMEOUT_MS'] ?? 30_000),
+    resumeGraceMs: Number(env['KIDRAW_AGENT_RESUME_GRACE_MS'] ?? 10 * 60_000),
   };
 }
 

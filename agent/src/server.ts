@@ -1,8 +1,10 @@
 import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { loadConfig, loadOrCreateToken, type AgentServerConfig } from './config.js';
+import { loadConfig, loadOrCreateToken, tokensMatch, type AgentServerConfig } from './config.js';
 import { McpBridge } from './mcp-bridge.js';
+import { PROTOCOL_VERSION, type TabToServer } from './protocol.js';
+import { SUPPORTED_AGENTS } from './runners.js';
 import { TabSession } from './tab-session.js';
 
 export interface RunningServer {
@@ -12,6 +14,7 @@ export interface RunningServer {
 }
 
 const HEARTBEAT_MS = 25_000;
+const HELLO_TIMEOUT_MS = 10_000;
 
 export async function startServer(
   config: AgentServerConfig,
@@ -32,14 +35,58 @@ export async function startServer(
     wss.once('error', reject);
   });
 
-  const sessions = new Set<TabSession>();
+  /** Sessions by id, including ones waiting for their tab to come back. */
+  const sessions = new Map<string, TabSession>();
   const alive = new WeakMap<WebSocket, boolean>();
+
+  const refuse = (ws: WebSocket, message: string, code = 4000) => {
+    if (ws.readyState !== ws.OPEN) return;
+    ws.send(JSON.stringify({ type: 'error', message, fatal: true }));
+    ws.close(code, message.slice(0, 100));
+  };
+
+  // The first message must be a valid hello; it either resumes a session this
+  // tab already has or begins a new one.
+  const onHello = (ws: WebSocket, raw: string) => {
+    let message: TabToServer;
+    try {
+      message = JSON.parse(raw) as TabToServer;
+    } catch {
+      refuse(ws, 'Malformed message');
+      return;
+    }
+    if (message.type !== 'hello' || !tokensMatch(token, message.token)) {
+      refuse(ws, 'Not authorized', 4401);
+      return;
+    }
+    if (message.protocol !== PROTOCOL_VERSION) {
+      refuse(ws, `Protocol ${message.protocol} not supported (server speaks ${PROTOCOL_VERSION})`);
+      return;
+    }
+    const agentName = config.runner === 'fake' ? 'codex' : message.agent;
+    if (!(SUPPORTED_AGENTS as readonly string[]).includes(agentName)) {
+      refuse(ws, `Unknown agent "${message.agent}"`);
+      return;
+    }
+    const existing = message.resume ? sessions.get(message.resume.sessionId) : undefined;
+    if (existing?.resumable && existing.secretMatches(message.resume?.secret)) {
+      existing.resume(ws);
+      return;
+    }
+    const session = new TabSession(config, bridge, log, closed => sessions.delete(closed.id));
+    sessions.set(session.id, session);
+    session.begin(ws, agentName);
+  };
+
   wss.on('connection', ws => {
     alive.set(ws, true);
     ws.on('pong', () => alive.set(ws, true));
-    const session = new TabSession(ws, config, bridge, token, log);
-    sessions.add(session);
-    ws.on('close', () => sessions.delete(session));
+    const helloTimer = setTimeout(() => refuse(ws, 'No hello received'), HELLO_TIMEOUT_MS);
+    ws.once('close', () => clearTimeout(helloTimer));
+    ws.once('message', data => {
+      clearTimeout(helloTimer);
+      onHello(ws, data.toString());
+    });
   });
 
   // Keep proxies from timing out idle sockets, and drop dead ones.
@@ -57,7 +104,7 @@ export async function startServer(
     mcpPort,
     close: async () => {
       clearInterval(heartbeat);
-      for (const session of sessions) session.close();
+      for (const session of [...sessions.values()]) session.close();
       await new Promise<void>(resolve => wss.close(() => resolve()));
       await bridge.stop();
     },

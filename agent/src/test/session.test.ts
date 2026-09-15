@@ -119,6 +119,73 @@ test('ends the turn when the agent\'s prompt fails, and stays usable', async () 
   tab.ws.close();
 });
 
+const closed = (ws: WebSocket) => new Promise(resolve => {
+  if (ws.readyState === ws.CLOSED) resolve(undefined);
+  else ws.once('close', resolve);
+});
+
+test('keeps the session when the socket drops and resumes it with the transcript', async () => {
+  const first = connect();
+  await first.opened;
+  first.send({ type: 'hello', protocol: 1, token: TOKEN, agent: 'codex' });
+  const ready = await first.next('ready');
+  assert.equal(ready.resumed, false);
+  assert.deepEqual(ready.history, []);
+  first.send({ type: 'prompt', text: 'remember me' });
+  await first.next('turn_end');
+  first.ws.close();
+  await closed(first.ws);
+
+  const second = connect();
+  await second.opened;
+  second.send({
+    type: 'hello', protocol: 1, token: TOKEN, agent: 'codex',
+    resume: { sessionId: ready.session.id, secret: ready.session.secret },
+  });
+  const resumed = await second.next('ready');
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.session.id, ready.session.id);
+  assert.equal(resumed.busy, false);
+  assert.deepEqual(resumed.history.map(e => [e.role, e.text]), [['user', 'remember me'], ['agent', 'echo: remember me']]);
+
+  // Tool calls now reach the new socket.
+  second.send({ type: 'prompt', text: 'TOOL get_selection {}' });
+  const call = await second.next('tool_call');
+  second.send({ type: 'tool_result', callId: call.callId, ok: true, result: { nodeIds: [] } });
+  await second.next('turn_end');
+
+  second.send({ type: 'end' });
+  await closed(second.ws);
+});
+
+test('a resume with a wrong secret or an unknown session starts a new session', async () => {
+  const owner = connect();
+  await owner.opened;
+  owner.send({ type: 'hello', protocol: 1, token: TOKEN, agent: 'codex' });
+  const ready = await owner.next('ready');
+
+  const intruder = connect();
+  await intruder.opened;
+  intruder.send({
+    type: 'hello', protocol: 1, token: TOKEN, agent: 'codex',
+    resume: { sessionId: ready.session.id, secret: 'guess' },
+  });
+  const fresh = await intruder.next('ready');
+  assert.equal(fresh.resumed, false);
+  assert.notEqual(fresh.session.id, ready.session.id);
+  assert.equal(owner.ws.readyState, owner.ws.OPEN, 'the real owner keeps its connection');
+
+  const stranger = connect();
+  await stranger.opened;
+  stranger.send({ type: 'hello', protocol: 1, token: TOKEN, agent: 'codex', resume: { sessionId: 'gone', secret: 'x' } });
+  assert.equal((await stranger.next('ready')).resumed, false);
+
+  for (const tab of [owner, intruder, stranger]) {
+    tab.send({ type: 'end' });
+    await closed(tab.ws);
+  }
+});
+
 test('reports a tool error from the tab back to the agent', async () => {
   const tab = connect();
   await tab.opened;
