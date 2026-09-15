@@ -73,6 +73,11 @@ export class ReadingModeService {
     return true;
   }
 
+  /** The statement being read, or null when not reading. */
+  currentNodeId(): string | null {
+    return this.active() ? this.path[this.step()] ?? null : null;
+  }
+
   exit(): void {
     if (!this.active()) return;
     this.active.set(false);

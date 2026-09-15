@@ -28,6 +28,15 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
 - Each statement carries its own assumptions ("where each $p_i$ is a
   prime…").
 - A reader can mark a link as not following, as well as a statement.
+- Assumptions are nodes linked to the statements that rely on them, so shared
+  assumptions are visible. Definitions are nodes too, linked to their uses and
+  read before them. Examples are encouraged, as nodes.
+- The one-column layout isn't helpful: the agent lays the graph out.
+- The chat shows markdown rendered by default, with the source a toggle away;
+  label text copies into the chat and back out.
+- Try non-math topics too (AI).
+- Next: have the agent write real explanations, and record where they go
+  wrong (`:note`).
 
 ## Vocabulary
 
@@ -132,6 +141,38 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      `$…$` rather than Unicode.
    - MathJax 3 (`mathjax-full`) was tried first and dropped: npm marks it
      deprecated, and it pulled in an `@xmldom/xmldom` with known issues.
+8. **Assumptions, definitions and examples** are node kinds
+   (`kind/assumption`, `kind/definition`, `kind/example`), drawn with a
+   coloured border and a name badge.
+   - Each has a link kind in the same colour. Like supports, links run from
+     what the reader needs first to what builds on it: assumption → statement,
+     definition → statement, statement → example.
+   - Reading mode warns when a step comes before something it depends on.
+     "Why?" names assumptions, definitions and examples along with premises,
+     and `l` walks all the links in.
+   - The agent sets kinds with `nodeKind`, and is told to give assumptions and
+     definitions their own nodes and to add examples.
+9. **Arrange.** An `arrange` change lays the graph out top-down
+   (`layered-layout.ts`):
+   - every node sits below what it depends on, and a definition or assumption
+     sits just above its first use;
+   - layers are ordered to cut crossings;
+   - the moves are operations in the agent's change set, so undoing the turn
+     puts nodes back, and pinned nodes stay put.
+
+   The agent is told to end a batch with it.
+10. **Chat markdown and copying.**
+    - Chat messages render bold, italic, code, math, bullets and headings.
+      "Show markdown" switches to the source.
+    - Each message has a Copy button (markdown, with pills as their labels).
+    - Copy on the canvas also puts a node's text on the system clipboard, and
+      pasting while editing a label inserts clipboard text. So labels go into
+      the chat and replies come back out.
+11. **`:note <text>`** records a problem while trying an explanation. Along
+    with the note it records the graph, reading step and statement,
+    selection, and the agent's last reply. It goes to the debug log
+    (`tools/debug.log` for the dev site) and this browser's storage. `:`
+    works while reading.
 
 ## Live check with Codex (2026-09-15)
 

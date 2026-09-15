@@ -15,6 +15,9 @@ import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
 import {AGENT_PANEL_WIDTH, AgentStore} from './agent/agent-store';
 import {DETAIL_LEVELS, DetailLevel} from './agent/agent-protocol';
+
+/** Problems noted with :note, kept in this browser as well as the debug log. */
+const NOTES_KEY = 'kidraw_notes_v1';
 import {ReadingModeService} from './reading/reading-mode.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
@@ -166,6 +169,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       });
     } else if (key === keys.link) {
       this.reading.nextLink();
+    } else if (event.key === ':') {
+      // The ex line (:note, :detail) works while reading, on the same key the keymenu uses.
+      this.openExLine();
     } else if (key === keys.send) {
       const refs = this.reading.markedRefs();
       if (refs.length === 0) {
@@ -317,11 +323,49 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   onExCommand(text: string): void {
     this.exLineOpen = false;
     this.exHistory.push(text);
-    if (this.runDetailCommand(text)) return;
+    if (this.runDetailCommand(text) || this.runNoteCommand(text)) return;
     const replacesGraph = /^(e|edit|enew)\b/.test(text.trim());
     if (replacesGraph) this.nextUntitledGraph();
     this.commandsSubject.next({kind: DACommandType.EX_COMMAND, text});
     if (replacesGraph) this.agent.graphMayHaveChanged();
+  }
+
+  /** `:note <text>`: record a problem noticed while trying an explanation,
+   *  with where you were, in the debug log (tools/debug.log on the dev server)
+   *  and in this browser. For collecting where explanations go wrong. */
+  private runNoteCommand(text: string): boolean {
+    const match = /^note\b\s*([\s\S]*)$/.exec(text.trim());
+    if (!match) return false;
+    const say = (message: string) => this.headerComponent?.showStatusMessage(message, 4000);
+    const note = match[1].trim();
+    if (!note) {
+      say('Say what went wrong, e.g. :note step 4 skips why scores become probabilities');
+      return true;
+    }
+    const nodes = this.drawingArea.agentNodes();
+    const label = (id: string | null | undefined) => nodes.find(node => node.id === id)?.label ?? null;
+    const selection = this.drawingArea.agentSelection();
+    const lastReply = [...this.agent.messages()].reverse().find(message => message.role === 'agent')?.text;
+    const record = {
+      at: new Date().toISOString(),
+      note,
+      graph: this.headerComponent?.fileIdentity?.path ?? 'Untitled',
+      diagramType: this.drawingArea.agentDiagramTypeId(),
+      readingStep: this.reading.active() ? this.reading.step() + 1 : null,
+      readingStatement: label(this.reading.currentNodeId()),
+      selected: selection.nodeIds.map(label),
+      underCrosshairs: label(selection.underCrosshairsId),
+      lastAgentReply: lastReply?.slice(0, 500) ?? null,
+    };
+    this.log.log('[NOTE]', record);
+    try {
+      const saved = JSON.parse(localStorage.getItem(NOTES_KEY) ?? '[]') as unknown[];
+      localStorage.setItem(NOTES_KEY, JSON.stringify([...saved, record].slice(-200)));
+    } catch {
+      // Storage unavailable: the debug log still has it.
+    }
+    say(`Noted: ${note}`);
+    return true;
   }
 
   /** `:detail` shows how much detail the agent should put into explanations;

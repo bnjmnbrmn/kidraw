@@ -250,6 +250,11 @@ export class DALabel {
     this.startCursorBlink();
   }
 
+  /** The caret is showing: this label is being edited. */
+  get isEditingText(): boolean {
+    return this._cursor.visible();
+  }
+
   hideCursor(): void {
     this.stopCursorBlink();
     this._cursor.visible(false);

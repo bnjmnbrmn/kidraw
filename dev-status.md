@@ -27,10 +27,15 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      under the chat input. The agent is told when it changes.
 >   7. Math in node labels: `$…$` TeX, rendered by MathJax 4 in a lazy
 >      chunk that loads the first time a label has math.
+>   8. Assumption, definition and example nodes with their own links; the
+>      agent's `arrange` lays the graph out top-down (layered layout).
+>   9. Chat renders markdown (toggle to source), Copy on messages, label
+>      text to and from the clipboard; `:note` records problems for review.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly
 >   numbered path, then inserted three steps where told "doesn't follow".
-> - **Next:** Ben's call on how statements combine under a rule (options in
->   the design note). Then marking outside reading mode, display math, and
+> - **Next:** have the agent write real explanations (math and non-math) and
+>   collect problems with `:note`. Open: how statements combine under a rule
+>   (options in the design note), marking outside reading mode, display math,
 >   draft mode for agent edits.
 > - **Verified:**
 >   - Unit specs for operations, applier, planner, undo, tools, agent

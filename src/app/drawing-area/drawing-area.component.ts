@@ -2613,6 +2613,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.clipboard = sub;
+    // The text goes on the system clipboard too, to paste into the agent chat
+    // or another label. Best effort: the browser may refuse.
+    const text = this.clipboardTargetNodes().map(node => node.label.text()).join('\n\n');
+    void navigator.clipboard?.writeText(text).catch(() => {});
     const n = sub.nodes.length;
     const e = sub.edges.length;
     this.emitStatus(`Copied ${n} node${n === 1 ? '' : 's'}` +
@@ -7536,6 +7540,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       // is exactly what you would have seen land on something (da-510).
       {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2},
     );
+  }
+
+  /** Paste text from the system clipboard into the label being edited, e.g.
+   *  markdown copied from the agent chat. Text fields handle their own pastes. */
+  @HostListener('document:paste', ['$event'])
+  onPasteText(event: ClipboardEvent): void {
+    const target = event.target;
+    if (target instanceof HTMLElement && target.closest('input, textarea, [contenteditable="true"]')) return;
+    const text = event.clipboardData?.getData('text/plain');
+    if (!text) return;
+    const editing = this.drawingLayer.getDANodes().some(node => node.isEditingText)
+      || this.getAllLabels().some(label => label.isEditingText);
+    if (!editing) return;
+    event.preventDefault();
+    this.insertChar(text);
   }
 
   @HostListener('document:keydown', ['$event'])

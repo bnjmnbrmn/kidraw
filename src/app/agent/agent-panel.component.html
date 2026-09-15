@@ -100,17 +100,42 @@
                   }
                 </div>
               }
-              @for (segment of segments(message); track $index) {
-                @if (segment.kind === 'ref') {
-                  @let current = agent.nodeLabel(segment.id);
-                  <button type="button" class="pill" [class.missing]="current === null"
-                          [title]="current === null ? 'Not in this graph' : ''"
-                          (click)="focusRef(segment.id)">{{ plain(current || segment.label) }}</button>
-                } @else {
-                  <span>{{ segment.text }}</span>
+              @if (rawMarkdown()) {
+                @for (segment of segments(message); track $index) {
+                  @if (segment.kind === 'ref') {
+                    @let current = agent.nodeLabel(segment.id);
+                    <button type="button" class="pill" [class.missing]="current === null"
+                            [title]="current === null ? 'Not in this graph' : ''"
+                            (click)="focusRef(segment.id)">{{ plain(current || segment.label) }}</button>
+                  } @else {
+                    <span>{{ segment.text }}</span>
+                  }
+                }
+              } @else {
+                @for (piece of pieces(message); track $index) {
+                  @if (piece.kind === 'ref') {
+                    @let current = agent.nodeLabel(piece.id);
+                    <button type="button" class="pill" [class.missing]="current === null"
+                            [title]="current === null ? 'Not in this graph' : ''"
+                            (click)="focusRef(piece.id)">{{ plain(current || piece.label) }}</button>
+                  } @else if (piece.kind === 'math') {
+                    @let math = mathFor(piece.tex);
+                    @if (math) {
+                      <img class="math" [src]="math.src" [alt]="piece.tex"
+                           [style.height.px]="math.height" [style.vertical-align.px]="math.offset">
+                    } @else {
+                      <code class="tex">{{ piece.tex }}</code>
+                    }
+                  } @else {
+                    <span [class.bold]="piece.bold" [class.italic]="piece.italic" [class.code]="piece.code">{{ piece.text }}</span>
+                  }
                 }
               }
               @if (message.streaming) { <span class="cursor">▍</span> }
+              @if (!message.streaming && (message.role === 'agent' || message.role === 'user')) {
+                <button type="button" class="link small copy" [title]="'Copy this message as markdown'"
+                        (click)="copyMessage(message)">{{ copiedId() === message.id ? 'Copied' : 'Copy' }}</button>
+              }
             </div>
           }
         </div>
@@ -167,6 +192,10 @@
           }
         </div>
         <div class="composer-meta">
+          <button type="button" class="link small" (click)="rawMarkdown.set(!rawMarkdown())"
+                  [title]="rawMarkdown() ? 'Show messages formatted' : 'Show messages as the markdown they were written in'">
+            {{ rawMarkdown() ? 'Show formatted' : 'Show markdown' }}
+          </button>
           <button type="button" class="link small" (click)="cycleDetail()"
                   [title]="'How much detail the agent puts into explanations (also :detail). Click for ' + nextDetail + '.'">
             Detail: {{ agent.detailLevel() }}

@@ -1094,6 +1094,11 @@ export class DANode {
     return this.setEditingText(false);
   }
 
+  /** The caret is showing: this node's text is being edited. */
+  get isEditingText(): boolean {
+    return this._editingText;
+  }
+
   get labelFormat(): LabelFormat {
     return this._labelFormat;
   }
