@@ -1,6 +1,7 @@
 import type {AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
 import {
-  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_SUPPORTS_TAG, EXPLANATION_TOO_DETAILED_TAG,
+  EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_SUPPORTS_TAG,
+  EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
 import {ReadingModeService} from './reading-mode.service';
 
@@ -75,6 +76,21 @@ describe('ReadingModeService', () => {
     reading.why();
     expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b']);
     expect(said.pop()).toBe('Follows from: All men are mortal · Socrates is a man');
+  });
+
+  it('names assumptions, definitions and examples along with premises, and says which kind a step is', () => {
+    nodes.push({id: 'as', label: 'Everyone here is Greek', tags: ['kind/assumption']},
+      {id: 'ex', label: 'Plato is mortal too', tags: ['kind/example', 'step/4']});
+    edges.push({id: 'a1', from: 'as', to: 'c', labels: [], tags: [EXPLANATION_ASSUMPTION_TAG]},
+      {id: 'x1', from: 'c', to: 'ex', labels: [], tags: [EXPLANATION_EXAMPLE_TAG]});
+    selection = {nodeIds: ['c'], edgeIds: [], underCrosshairsId: null};
+    reading.enter();
+    reading.why();
+    expect(said.pop()).toBe('Follows from: All men are mortal · Socrates is a man. Assumes: Everyone here is Greek. '
+      + 'Example: Plato is mortal too');
+    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b', 'as', 'ex']);
+    reading.next();
+    expect(said.pop()).toBe('Step 4 of 4 (example): Plato is mortal too');
   });
 
   it('keeps the reader in place when the agent inserts a step behind them', () => {

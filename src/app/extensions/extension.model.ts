@@ -47,6 +47,17 @@ export interface ExtensionEdgeKind {
   description: string;
 }
 
+/** A kind of node an extension contributes (e.g. a definition), marked by a
+ *  semantic tag: drawn with its colour on the border and its name in a badge. */
+export interface ExtensionNodeKind {
+  tag: string;
+  name: string;
+  /** Border and badge colour: a mid tone that reads on both themes. */
+  color: string;
+  /** What the kind is for, for help text and agents. */
+  description: string;
+}
+
 /** Numbered tags that put nodes in an order (e.g. the steps of an
  *  explanation), drawn as a number badge on each node. */
 export interface ExtensionReadingOrder {
@@ -88,5 +99,6 @@ export interface KidrawExtension {
   labelFormat?: LabelFormat;
   tagGroups?: ExtensionTagGroup[];
   edgeKinds?: ExtensionEdgeKind[];
+  nodeKinds?: ExtensionNodeKind[];
   readingOrder?: ExtensionReadingOrder;
 }

@@ -22,6 +22,7 @@ import type { GraphOperation, UndoGroup } from './graph-operations';
 import { EXTENSION_REGISTRY } from '../extensions/extension-registry';
 import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
+import { layeredLayout } from './layered-layout';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -4646,7 +4647,36 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   async agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult> {
     const planner = await import('./agent-change-planner');
     return planner.applyAgentChanges(
-      this.drawingLayer.serializeGraph(), changes, meta, nextId, group => this.applyOperations(group));
+      this.drawingLayer.serializeGraph(), changes, meta, nextId, group => this.applyOperations(group),
+      () => this.agentArrange(meta));
+  }
+
+  /** The agent's "arrange": lay the graph out top-down along its links
+   *  (layered-layout.ts), as moves in the agent's change set, so undoing its
+   *  turn puts the nodes back. Pinned nodes stay where they are. */
+  private async agentArrange(meta: AgentEditMeta): Promise<string | null> {
+    const nodes = this.drawingLayer.getDANodes();
+    const edges = this.drawingLayer.getDAEdges();
+    const positions = layeredLayout(
+      nodes.map(node => ({id: node.id, x: node.group.x(), y: node.group.y(), width: node.NODE_WIDTH, height: node.NODE_HEIGHT})),
+      edges.map(edge => ({from: edge.srcNode.id, to: edge.destNode.id})),
+    );
+    const ops: GraphOperation[] = [];
+    for (const node of nodes) {
+      const to = positions.get(node.id);
+      const from = {x: node.group.x(), y: node.group.y()};
+      if (!to || node.pinned || (Math.abs(to.x - from.x) < 0.5 && Math.abs(to.y - from.y) < 0.5)) continue;
+      ops.push({op: 'update_node', id: node.id, before: from, after: {x: to.x, y: to.y}});
+    }
+    if (ops.length === 0) return null;
+    const conflict = await this.applyOperations({
+      author: meta.author, label: `${meta.label} (arrange)`, ops, changeSetId: meta.changeSetId,
+    });
+    // Routes drawn around the old positions would loop around the new ones.
+    for (const edge of edges) edge.setControlPoints([]);
+    this.updateEdgesForResizedNodes(nodes);
+    this.drawingLayer.batchDraw();
+    return conflict;
   }
 
   agentRevertChangeSet(changeSetId: string): Promise<string | null> {

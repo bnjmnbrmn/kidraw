@@ -484,6 +484,8 @@ export class DrawingLayer extends Konva.Layer {
     for (const node of this.daNodes) {
       node.setStatusBadge(activeTagChoice(identity, node.tags));
       node.setStepBadge(order ? numberedTags(node.tags, order.tagPrefix) : [], order?.color ?? '');
+      const kind = identity.nodeKinds?.find(k => node.tags.includes(k.tag));
+      node.setNodeKind(kind ? {label: kind.name.toUpperCase(), color: kind.color} : null);
     }
     for (const edge of this.daEdges) {
       const color = activeTagChoice(identity, edge.tags)?.color

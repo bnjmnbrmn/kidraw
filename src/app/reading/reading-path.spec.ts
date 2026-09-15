@@ -1,7 +1,9 @@
 import type {AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
-import {EXPLANATION_SUPPORTS_TAG} from '../extensions/explanation.extension';
+import {
+  EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_SUPPORTS_TAG,
+} from '../extensions/explanation.extension';
 import {numberedTags} from '../extensions/tag-groups';
-import {premiseLinks, premisesOf, readingPath} from './reading-path';
+import {examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
 
 const node = (id: string, ...steps: number[]): AgentNodeInfo =>
   ({id, label: id.toUpperCase(), tags: ['other', ...steps.map(step => `step/${step}`)]});
@@ -22,14 +24,28 @@ describe('reading path', () => {
       .toEqual(['Step 2 is on two statements', 'The steps start at 2', 'The steps skip to 5']);
   });
 
-  it('finds premises, and the links to them, from supports edges only', () => {
+  it('finds premises, assumptions and examples, and the links from what a statement depends on', () => {
     const edges = [
+      edge('a1', 'as', 'c', [EXPLANATION_ASSUMPTION_TAG]),
       edge('s1', 'p1', 'c', [EXPLANATION_SUPPORTS_TAG]),
       edge('s2', 'p2', 'c', [EXPLANATION_SUPPORTS_TAG, 'feedback/doesnt-follow']),
       edge('e3', 'p3', 'c', []),
+      edge('x1', 'c', 'ex', [EXPLANATION_EXAMPLE_TAG]),
     ];
-    expect(premiseLinks('c', edges).map(link => link.id)).toEqual(['s1', 's2']);
+    expect(premiseLinks('c', edges).map(link => link.id)).toEqual(['s1', 's2', 'a1']);
     expect(premisesOf('c', edges)).toEqual(['p1', 'p2']);
+    expect(premisesOf('c', edges, EXPLANATION_ASSUMPTION_TAG)).toEqual(['as']);
     expect(premisesOf('p1', edges)).toEqual([]);
+    expect(examplesOf('c', edges)).toEqual(['ex']);
+  });
+
+  it('warns when something is read before what it builds on', () => {
+    const nodes = [node('def', 2), node('use', 1), node('ex', 3)];
+    const edges = [
+      edge('d1', 'def', 'use', [EXPLANATION_DEFINITION_TAG]),
+      edge('x1', 'use', 'ex', [EXPLANATION_EXAMPLE_TAG]),
+    ];
+    expect(readingPath(nodes, edges).warnings).toEqual(['Step 1 comes before step 2, which it depends on']);
+    expect(readingPath([node('def', 1), node('use', 2), node('ex', 3)], edges).warnings).toEqual([]);
   });
 });

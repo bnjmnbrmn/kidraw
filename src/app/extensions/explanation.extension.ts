@@ -5,6 +5,17 @@ export const EXPLANATION_SUPPORTS_TAG = 'explanation/supports';
 /** Reading order: a statement read at step 3 is tagged `step/3`, and also
  *  `step/7` if the reader comes back to it. */
 export const EXPLANATION_STEP_TAG_PREFIX = 'step/';
+/** Node kinds. A node without one is an ordinary statement. */
+export const EXPLANATION_ASSUMPTION_KIND_TAG = 'kind/assumption';
+export const EXPLANATION_DEFINITION_KIND_TAG = 'kind/definition';
+export const EXPLANATION_EXAMPLE_KIND_TAG = 'kind/example';
+/** Links to what an assumption, definition or example is for. Like supports,
+ *  they run from what the reader needs first to what builds on it: from an
+ *  assumption or definition to each statement relying on it, and from a
+ *  statement to its example. */
+export const EXPLANATION_ASSUMPTION_TAG = 'explanation/assumption';
+export const EXPLANATION_DEFINITION_TAG = 'explanation/definition';
+export const EXPLANATION_EXAMPLE_TAG = 'explanation/example';
 /** Reader feedback on a statement: set while reading, cleared by the agent
  *  once it has addressed it. At most one per statement. */
 export const EXPLANATION_DOESNT_FOLLOW_TAG = 'feedback/doesnt-follow';
@@ -21,6 +32,9 @@ export const EXPLANATION_FEEDBACK_TAGS: readonly string[] = [EXPLANATION_DOESNT_
  * - Reading order: the suggested order to read the statements in, as step
  *   numbers on the statements themselves. A statement the reader should come
  *   back to carries more than one number.
+ * - Assumptions, definitions and examples are nodes of their own kinds, linked
+ *   to the statements they serve, so a reader can see which statements share
+ *   an assumption or use a term.
  * - Feedback: a reader marks a statement, or a supports link, that doesn't
  *   follow for them (or a statement that is too detailed).
  */
@@ -52,6 +66,44 @@ export const EXPLANATION_EXTENSION: KidrawExtension = {
       name: 'Supports',
       color: '#60a5fa',
       description: 'Structure: the source statement is a premise of the target statement (one edge per premise).',
+    },
+    {
+      tag: EXPLANATION_ASSUMPTION_TAG,
+      name: 'Assumption',
+      color: '#f472b6',
+      description: 'From an assumption node to a statement that relies on it (one edge per statement).',
+    },
+    {
+      tag: EXPLANATION_DEFINITION_TAG,
+      name: 'Definition',
+      color: '#22d3ee',
+      description: 'From a definition node to a statement that uses the defined term (one edge per statement).',
+    },
+    {
+      tag: EXPLANATION_EXAMPLE_TAG,
+      name: 'Example',
+      color: '#facc15',
+      description: 'From a statement to an example node that illustrates it.',
+    },
+  ],
+  nodeKinds: [
+    {
+      tag: EXPLANATION_ASSUMPTION_KIND_TAG,
+      name: 'Assumption',
+      color: '#f472b6',
+      description: 'Something taken as given, stated once and linked to every statement that relies on it.',
+    },
+    {
+      tag: EXPLANATION_DEFINITION_KIND_TAG,
+      name: 'Definition',
+      color: '#22d3ee',
+      description: 'The meaning of a term, linked to every statement that uses it and read before them.',
+    },
+    {
+      tag: EXPLANATION_EXAMPLE_KIND_TAG,
+      name: 'Example',
+      color: '#facc15',
+      description: 'A concrete instance of a statement, linked from it and read right after it.',
     },
   ],
   readingOrder: {tagPrefix: EXPLANATION_STEP_TAG_PREFIX, color: '#34d399'},

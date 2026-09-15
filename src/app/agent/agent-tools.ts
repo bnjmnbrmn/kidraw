@@ -49,12 +49,18 @@ export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChang
           ...(handle !== undefined ? {handle} : {}),
           ...(change['near'] !== undefined ? {near: nodeRef('near')} : {}),
           ...tags,
+          ...text('nodeKind'),
         };
         if (handle !== undefined) handles.add(handle);
         return resolved;
       }
       case 'update_node':
-        return {kind: 'update_node', node: nodeRef('node'), ...text('text'), ...tags};
+        return {
+          kind: 'update_node', node: nodeRef('node'), ...text('text'), ...tags,
+          ...(change['nodeKind'] === null ? {nodeKind: null} : text('nodeKind')),
+        };
+      case 'arrange':
+        return {kind: 'arrange'};
       case 'delete_node':
         return {kind: 'delete_node', node: nodeRef('node')};
       case 'add_edge':
@@ -149,6 +155,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
           id: identity.id, name: identity.name,
           edgeKinds: (identity.edgeKinds ?? []).map(kind => ({
             edgeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
+          })),
+          nodeKinds: (identity.nodeKinds ?? []).map(kind => ({
+            nodeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
           })),
           tagGroups: (identity.tagGroups ?? []).map(group => ({
             id: group.id, name: group.name, tags: group.choices.map(choice => ({tag: choice.tag, label: choice.label})),

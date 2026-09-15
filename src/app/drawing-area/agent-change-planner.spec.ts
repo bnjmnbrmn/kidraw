@@ -102,6 +102,30 @@ describe('planAgentChanges', () => {
     });
   });
 
+  it('gives nodes a kind, and changes or clears it without losing other tags', () => {
+    const plan = planned(planAgentChanges(graph, [
+      {kind: 'add_node', handle: 'def', text: 'A **token** is a piece of text.', nodeKind: 'definition', tags: ['keep']},
+    ], idCounter()));
+    expect(plan.ops.flatMap(o => (o.op === 'add_node' ? [o.node.tags] : []))).toEqual([['keep', 'kind/definition']]);
+
+    const withKind: GraphSnapshot = {...graph, nodes: [{...node('da-1', 'All men are mortal'), tags: ['kind/assumption', 'step/1']}]};
+    const changed = planned(planAgentChanges(withKind, [{kind: 'update_node', node: 'da-1', nodeKind: 'Example'}], idCounter()));
+    expect(changed.ops[0]).toEqual(jasmine.objectContaining({op: 'update_node', after: {tags: ['step/1', 'kind/example']}}));
+    const cleared = planned(planAgentChanges(withKind, [{kind: 'update_node', node: 'da-1', nodeKind: null}], idCounter()));
+    expect(cleared.ops[0]).toEqual(jasmine.objectContaining({after: {tags: ['step/1']}}));
+
+    const bad = planAgentChanges(graph, [{kind: 'add_node', text: 'x', nodeKind: 'axiom'}], idCounter()) as {error: string};
+    expect(bad.error).toContain('unknown node kind "axiom"');
+    expect(bad.error).toContain('"definition"');
+  });
+
+  it('flags a batch for arranging without adding operations for it', () => {
+    const plan = planned(planAgentChanges(graph, [{kind: 'arrange'}], idCounter()));
+    expect(plan.ops).toEqual([]);
+    expect(plan.arrange).toBeTrue();
+    expect(planned(planAgentChanges(graph, [{kind: 'add_node', text: 'x'}], idCounter())).arrange).toBeFalse();
+  });
+
   it('sets the whole reading order as step tags, for statements read twice and ones added in the batch', () => {
     const three: GraphSnapshot = {
       ...graph,

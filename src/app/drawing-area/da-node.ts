@@ -69,6 +69,12 @@ export class DANode {
   private readonly _stepBadge: Konva.Group;
   private readonly _stepBadgeRect: Konva.Rect;
   private readonly _stepBadgeText: Konva.Text;
+  /** Node kind (e.g. definition): its colour on the border, its name in a pill above the top-left corner. */
+  private _kindColor: string | null = null;
+  private _themeStroke: string | undefined;
+  private readonly _kindBadge: Konva.Group;
+  private readonly _kindBadgeRect: Konva.Rect;
+  private readonly _kindBadgeText: Konva.Text;
 
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
@@ -232,6 +238,28 @@ export class DANode {
     this._stepBadge.add(this._stepBadgeText);
     this.group.add(this._stepBadge);
 
+    this._kindBadgeRect = new Konva.Rect({
+      height: this.STATUS_BADGE_HEIGHT,
+      cornerRadius: 3,
+    });
+    this._kindBadgeText = new Konva.Text({
+      text: '',
+      fontSize: 9,
+      fontStyle: 'bold',
+      fill: '#111827',
+      x: this.STATUS_BADGE_PAD_X,
+      y: (this.STATUS_BADGE_HEIGHT - 9) / 2,
+    });
+    this._kindBadge = new Konva.Group({
+      y: -this.STATUS_BADGE_HEIGHT - 2,
+      visible: false,
+      listening: false,
+    });
+    this._kindBadge.add(this._kindBadgeRect);
+    this._kindBadge.add(this._kindBadgeText);
+    this.group.add(this._kindBadge);
+    this._themeStroke = colors?.stroke;
+
     // Resize handle — glowing dot at bottom-right corner, hidden by default
     this._resizeHandle = new Konva.Circle({
       x: this._nodeWidth,
@@ -289,6 +317,7 @@ export class DANode {
   }
 
   applyColors(colors: { fill: string; stroke: string; text: string }): void {
+    this._themeStroke = colors.stroke;
     if (this.nodeShape === 'junction') {
       (this._shape as Konva.Circle).fill(colors.stroke);
     } else if (this.nodeShape === 'invisible') {
@@ -296,7 +325,7 @@ export class DANode {
       this._shape.stroke(colors.stroke);
     } else {
       this._shape.fill(colors.fill);
-      this._shape.stroke(colors.stroke);
+      this._shape.stroke(this._kindColor ?? colors.stroke);
       this._label.fill(colors.text);
     }
     this.renderLabelView();
@@ -338,6 +367,7 @@ export class DANode {
     this._shape = this.createShape(this._nodeWidth, this._nodeHeight, newShape, colors);
     this.group.add(this._shape);
     this._shape.moveToBottom();
+    if (this._kindColor && !isFixed) this._shape.stroke(this._kindColor);
 
     this._label.visible(!isFixed);
     if (!isFixed) {
@@ -558,6 +588,27 @@ export class DANode {
     this._stepBadgeRect.fill(color);
     this._stepBadgeRect.width(this._stepBadgeText.width() + this.STATUS_BADGE_PAD_X * 2);
     this.updateStepBadgePosition();
+  }
+
+  /** Show the node's kind (e.g. a definition) as a border colour and a name
+   *  badge; null for an ordinary node. */
+  setNodeKind(kind: { label: string; color: string } | null): void {
+    const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
+    this._kindColor = kind && eligible ? kind.color : null;
+    if (eligible) this._shape.stroke(this._kindColor ?? this._themeStroke ?? 'black');
+    const active = kind !== null && this._kindColor !== null;
+    this._kindBadge.visible(active);
+    if (active) {
+      this._kindBadgeText.text(kind.label);
+      this._kindBadgeRect.fill(kind.color);
+      this._kindBadgeRect.width(this._kindBadgeText.width() + this.STATUS_BADGE_PAD_X * 2);
+    }
+    // A status or feedback badge sits just right of the kind badge.
+    this._statusBadge.x(active ? this._kindBadgeRect.width() + 4 : 0);
+  }
+
+  get kindBadgeLabel(): string {
+    return this._kindBadge.visible() ? this._kindBadgeText.text() : '';
   }
 
   get stepBadgeLabel(): string {

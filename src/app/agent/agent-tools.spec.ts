@@ -136,6 +136,18 @@ describe('executeAgentTool', () => {
       .toBeRejectedWithError(/the graph changed/);
   });
 
+  it('passes node kinds and arrange through a change batch', () => {
+    expect(resolveChanges([
+      {kind: 'add_node', text: 'x', nodeKind: 'example'},
+      {kind: 'update_node', node: 'Next', nodeKind: null},
+      {kind: 'arrange'},
+    ], NODES)).toEqual([
+      {kind: 'add_node', text: 'x', nodeKind: 'example'},
+      {kind: 'update_node', node: 'n0', nodeKind: null},
+      {kind: 'arrange'},
+    ]);
+  });
+
   it('points at the bad entry in a change batch', () => {
     expect(() => resolveChanges([{kind: 'add_node', text: 'x'}, {kind: 'add_edge', from: 'zebra', to: 'Next'}], NODES))
       .toThrowError(/change 2 from: No node matches "zebra"/);

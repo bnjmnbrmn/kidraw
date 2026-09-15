@@ -9,6 +9,8 @@ export interface ChangePlan {
   ops: GraphOperation[];
   created: {kind: 'node' | 'edge'; id: string; handle?: string}[];
   touchedNodeIds: string[];
+  /** The batch asked for the graph to be laid out once it is applied. */
+  arrange: boolean;
 }
 
 /** Vertical gap below the node a new statement is placed near. */
@@ -60,6 +62,18 @@ export function planAgentChanges(
   const kindList = () => kinds.length
     ? kinds.map(k => `"${k.tag.split('/').pop()}" (${k.name})`).join(', ')
     : 'none: this diagram type has no edge kinds';
+  const nodeKinds = identity.nodeKinds ?? [];
+  const nodeKindTags = new Set(nodeKinds.map(k => k.tag));
+  const nodeKindTagFor = (name: string): string | null => {
+    const wanted = name.trim().toLowerCase();
+    const kind = nodeKinds.find(k => k.tag.toLowerCase() === wanted || k.name.toLowerCase() === wanted
+      || k.tag.split('/').pop()!.toLowerCase() === wanted);
+    return kind?.tag ?? null;
+  };
+  const nodeKindList = () => nodeKinds.length
+    ? nodeKinds.map(k => `"${k.tag.split('/').pop()}" (${k.name})`).join(', ')
+    : 'none: this diagram type has no node kinds';
+  let arrange = false;
 
   const overlaps = (x: number, y: number) => [...nodes.values()].some(n =>
     x < n.x + n.width + GAP_X && n.x < x + width + GAP_X
@@ -94,10 +108,16 @@ export function planAgentChanges(
           if (!nearId) return fail(`no node "${change.near}" to place it near`);
           near = nodes.get(nearId);
         }
+        let kindTag: string | null = null;
+        if (change.nodeKind !== undefined) {
+          kindTag = nodeKindTagFor(change.nodeKind);
+          if (!kindTag) return fail(`unknown node kind "${change.nodeKind}"; kinds: ${nodeKindList()}`);
+        }
+        const tags = [...new Set([...(change.tags ?? []).filter(t => !nodeKindTags.has(t)), ...(kindTag ? [kindTag] : [])])];
         const id = nextId();
         const node: DANodeSnapshot = {
           id, ...place(near), text, width, height, fontSize, isSelected: false, nodeShape, textOverflowMode,
-          ...(change.tags?.length ? {tags: [...change.tags]} : {}),
+          ...(tags.length ? {tags} : {}),
         };
         nodes.set(id, node);
         addedIds.add(id);
@@ -111,12 +131,17 @@ export function planAgentChanges(
         const id = nodeIdFor(change.node);
         if (!id) return fail(`no node "${change.node}"`);
         if (handles.get(change.node) === id) return fail('give a new node its final text in add_node instead');
-        const after = {
+        const node = nodes.get(id)!;
+        const after: {text?: string; tags?: string[]} = {
           ...(change.text !== undefined ? {text: change.text} : {}),
           ...(change.tags !== undefined ? {tags: [...change.tags]} : {}),
         };
+        if (change.nodeKind !== undefined) {
+          const tag = change.nodeKind === null ? null : nodeKindTagFor(change.nodeKind);
+          if (change.nodeKind !== null && !tag) return fail(`unknown node kind "${change.nodeKind}"; kinds: ${nodeKindList()}`);
+          after.tags = [...(after.tags ?? node.tags ?? []).filter(t => !nodeKindTags.has(t)), ...(tag ? [tag] : [])];
+        }
         if (Object.keys(after).length === 0) return fail('nothing to change');
-        const node = nodes.get(id)!;
         ops.push(updateNodeOperation({nodes: [node], edges: []}, id, after));
         nodes.set(id, {...node, ...after});
         touched.add(id);
@@ -187,6 +212,10 @@ export function planAgentChanges(
         edges.delete(edge.id);
         break;
       }
+      case 'arrange':
+        // Layout needs the live canvas, so it runs after the batch is applied.
+        arrange = true;
+        break;
       case 'set_reading_order': {
         // The whole order at once, so inserting a step can't leave the numbering broken.
         const order = identity.readingOrder;
@@ -217,7 +246,7 @@ export function planAgentChanges(
         return {error: `change ${index + 1}: unknown kind "${(change as {kind: unknown}).kind}"`};
     }
   }
-  return {ops, created, touchedNodeIds: [...touched].filter(id => nodes.has(id))};
+  return {ops, created, touchedNodeIds: [...touched].filter(id => nodes.has(id)), arrange};
 }
 
 /** Plan an agent's changes and apply them as one undo group through `apply`
@@ -229,15 +258,19 @@ export async function applyAgentChanges(
   meta: AgentEditMeta,
   nextId: () => string,
   apply: (group: UndoGroup) => Promise<string | null>,
+  arrange: () => Promise<unknown> = async () => {},
 ): Promise<AgentChangeResult> {
   const plan = planAgentChanges(graph, changes, nextId);
   if ('error' in plan) return {ok: false, error: plan.error, created: [], touchedNodeIds: []};
-  const conflict = await apply({author: meta.author, label: meta.label, ops: plan.ops, changeSetId: meta.changeSetId});
-  if (conflict) {
-    return {
-      ok: false, created: [], touchedNodeIds: [],
-      error: `Nothing was changed: the graph changed while you were working (${conflict}). Call get_outline and try again.`,
-    };
+  if (plan.ops.length > 0) {
+    const conflict = await apply({author: meta.author, label: meta.label, ops: plan.ops, changeSetId: meta.changeSetId});
+    if (conflict) {
+      return {
+        ok: false, created: [], touchedNodeIds: [],
+        error: `Nothing was changed: the graph changed while you were working (${conflict}). Call get_outline and try again.`,
+      };
+    }
   }
+  if (plan.arrange) await arrange();
   return {ok: true, created: plan.created, touchedNodeIds: plan.touchedNodeIds};
 }

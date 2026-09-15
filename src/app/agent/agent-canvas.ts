@@ -12,8 +12,10 @@
 /** One change an agent asks for. Node references are ids of existing nodes,
  *  or the handle of a node added earlier in the same batch. Edges are ids. */
 export type AgentChange =
-  | {kind: 'add_node'; text: string; handle?: string; near?: string; tags?: string[]}
-  | {kind: 'update_node'; node: string; text?: string; tags?: string[]}
+  /** `nodeKind` names one of the diagram type's node kinds (e.g. "definition"); omit for a plain node. */
+  | {kind: 'add_node'; text: string; handle?: string; near?: string; tags?: string[]; nodeKind?: string}
+  /** `nodeKind: null` makes it a plain node. */
+  | {kind: 'update_node'; node: string; text?: string; tags?: string[]; nodeKind?: string | null}
   | {kind: 'delete_node'; node: string}
   /** `edgeKind` names one of the diagram type's edge kinds (e.g. "supports", "path"). */
   | {kind: 'add_edge'; from: string; to: string; edgeKind?: string; label?: string}
@@ -21,7 +23,9 @@ export type AgentChange =
   | {kind: 'update_edge'; edge: string; label?: string; edgeKind?: string | null; tags?: string[]}
   | {kind: 'delete_edge'; edge: string}
   /** The whole reading order: every statement in order, listed again where it is read again. */
-  | {kind: 'set_reading_order'; nodes: string[]};
+  | {kind: 'set_reading_order'; nodes: string[]}
+  /** Lay the whole graph out top-down along its edges, after the rest of the batch. */
+  | {kind: 'arrange'};
 
 export interface AgentEditMeta {
   /** e.g. 'agent:codex' */

@@ -2,10 +2,19 @@ import {Injectable, signal} from '@angular/core';
 import type {AgentCanvasTarget, AgentChange, AgentEdgeInfo} from '../agent/agent-canvas';
 import type {CanvasRef} from '../agent/agent-protocol';
 import {
-  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
+  EXPLANATION_ASSUMPTION_KIND_TAG, EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_KIND_TAG,
+  EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_KIND_TAG,
+  EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
 import {plainText} from '../drawing-area/markdown-label';
-import {premiseLinks, premisesOf, readingPath} from './reading-path';
+import {examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
+
+/** A node kind's name, for step messages ("definition"); empty for a plain statement. */
+function kindOf(tags: readonly string[]): string {
+  const kind = [EXPLANATION_ASSUMPTION_KIND_TAG, EXPLANATION_DEFINITION_KIND_TAG, EXPLANATION_EXAMPLE_KIND_TAG]
+    .find(tag => tags.includes(tag));
+  return kind ? kind.split('/').pop()! : '';
+}
 
 export type FeedbackKind = 'doesnt-follow' | 'too-detailed';
 
@@ -50,7 +59,7 @@ export class ReadingModeService {
   enter(): boolean {
     const canvas = this.canvas;
     if (!canvas) return false;
-    const {nodeIds, warnings} = readingPath(canvas.agentNodes());
+    const {nodeIds, warnings} = readingPath(canvas.agentNodes(), canvas.agentEdges());
     if (nodeIds.length === 0) {
       this.say('No reading order here: an explanation numbers its statements 1, 2, 3…');
       return false;
@@ -91,20 +100,31 @@ export class ReadingModeService {
     return occurrences.reduce((best, i) => (Math.abs(i - step) < Math.abs(best - step) ? i : best));
   }
 
-  /** Highlight the statements the current one follows from, and name them. */
+  /** Highlight what the current statement follows from (and its assumptions,
+   *  definitions and examples), and name them. */
   why(): void {
     const canvas = this.canvas;
     const current = this.path[this.step()];
     if (!canvas || !current) return;
     this.linkIndex = null;
-    const premises = premisesOf(current, canvas.agentEdges());
-    if (premises.length === 0) {
+    const edges = canvas.agentEdges();
+    const groups: [string, string[]][] = [
+      ['Follows from', premisesOf(current, edges)],
+      ['Assumes', premisesOf(current, edges, EXPLANATION_ASSUMPTION_TAG)],
+      ['Uses', premisesOf(current, edges, EXPLANATION_DEFINITION_TAG)],
+      ['Example', examplesOf(current, edges)],
+    ];
+    const related = groups.flatMap(([, ids]) => ids);
+    if (related.length === 0) {
       this.say('Nothing supports this statement: it is a starting point');
       return;
     }
-    canvas.agentSetHighlights([current, ...premises]);
+    canvas.agentSetHighlights([current, ...related]);
     const labels = this.labels();
-    this.say(`Follows from: ${premises.map(id => labels.get(id) || 'an unlabeled statement').join(' · ')}`);
+    this.say(groups
+      .filter(([, ids]) => ids.length > 0)
+      .map(([name, ids]) => `${name}: ${ids.map(id => labels.get(id) || 'an unlabeled statement').join(' · ')}`)
+      .join('. '));
   }
 
   /** Point at the next link into the current statement; after the last one,
@@ -220,7 +240,8 @@ export class ReadingModeService {
     canvas.agentFocusNode(id);
     canvas.agentSetHighlights([id]);
     const label = this.labels().get(id) || 'an unlabeled statement';
-    this.say(`Step ${index + 1} of ${this.path.length}: ${label}${note ? ` (${note})` : ''}`);
+    const kind = kindOf(canvas.agentNodes().find(node => node.id === id)?.tags ?? []);
+    this.say(`Step ${index + 1} of ${this.path.length}${kind ? ` (${kind})` : ''}: ${label}${note ? ` (${note})` : ''}`);
   }
 
   private labels(): Map<string, string> {

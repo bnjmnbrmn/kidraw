@@ -24,11 +24,13 @@ const CHANGE = z.discriminatedUnion('kind', [
     text: z.string().min(1).describe('The node text. For explanations, one statement: a single sentence.'),
     handle: z.string().optional().describe('A name for the new node, to refer to it later in the same batch.'),
     near: z.string().optional().describe('Place it near this node: a label, id or handle.'),
+    nodeKind: z.string().optional().describe('One of the diagram type\'s node kinds from get_outline, e.g. "definition"; omit for a plain statement.'),
     tags: z.array(z.string()).optional(),
   }),
   z.object({
     kind: z.literal('update_node'),
     node: z.string().describe(NODE_REF),
+    nodeKind: z.string().nullable().optional().describe('New node kind; null makes it a plain statement.'),
     text: z.string().optional(),
     tags: z.array(z.string()).optional(),
   }),
@@ -55,6 +57,9 @@ const CHANGE = z.discriminatedUnion('kind', [
       + 'should reread it just before a later step that depends on it (not as a recap). Replaces the whole order '
       + 'and renumbers every statement.'),
   }),
+  z.object({ kind: z.literal('arrange') }).describe(
+    'Lay the whole graph out top-down along its edges, prerequisites above what builds on them, once the rest '
+    + 'of the batch is applied.'),
 ]);
 
 export const CANVAS_TOOLS: CanvasToolDefinition[] = [
@@ -144,9 +149,18 @@ export const SESSION_PREAMBLE = [
   '- They use the "explanation" diagram type. If get_outline shows a different type, ask the user to run',
   '  :type explanation first.',
   '- Work the explanation out yourself. Write one statement per node: a single sentence.',
-  '- Make each statement readable on its own terms: say what its symbols are and what is assumed about them,',
-  '  for example "where each $p_i$, for $i$ from $1$ to $k$, is a prime", rather than leaving the reader to',
-  '  find that in an earlier statement.',
+  '- Give assumptions their own nodes (nodeKind "assumption"), linked with an "assumption" edge to every',
+  '  statement that relies on them, so the reader can see which statements share assumptions. A statement',
+  '  still says briefly what its symbols or terms stand for.',
+  '- Give each term that needs defining a definition node (nodeKind "definition"), linked with a "definition"',
+  '  edge to every statement that uses the term. Definitions come before their uses in the reading order.',
+  '- Add example nodes (nodeKind "example") for statements that are abstract or surprising, linked from the',
+  '  statement with an "example" edge and read right after it.',
+  '- Every edge runs from what the reader needs first to what builds on it, and nothing in the reading order',
+  '  comes before something it depends on.',
+  '- Lay the graph out so it reads top-down, with prerequisites above what builds on them and statements that',
+  '  do not depend on each other side by side: after adding or restructuring nodes, end the batch with an',
+  '  "arrange" change. Do not leave everything in one column.',
   '- Node text supports **bold**, *italic*, `code` and math: TeX between single dollar signs, for example',
   '  $p_1 \\times p_2 \\times \\cdots \\times p_k + 1$ (inline only; no $$ display math). Write a literal dollar',
   '  sign as \\$. Use math for formulas and symbols rather than Unicode approximations.',

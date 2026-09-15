@@ -45,6 +45,22 @@ describe('extensions (identity slot)', () => {
     expect(stroke(marked)).not.toBe(mark.color);
   });
 
+  it('marks node kinds with a border colour and a badge, and clears them under an identity without them', () => {
+    const definition = new DANode(0, 0, 'A token is a piece of text');
+    definition.tags = ['kind/definition'];
+    const dl = layerWithNodes(definition);
+    const plainStroke = definition.shape.stroke();
+
+    dl.setDiagramType(EXPLANATION_EXTENSION);
+    const kind = EXPLANATION_EXTENSION.nodeKinds!.find(k => k.tag === 'kind/definition')!;
+    expect(definition.shape.stroke()).toBe(kind.color);
+    expect(definition.kindBadgeLabel).toBe('DEFINITION');
+
+    dl.setDiagramType(DEFAULT_EXTENSION);
+    expect(definition.shape.stroke()).toBe(plainStroke);
+    expect(definition.kindBadgeLabel).toBe('');
+  });
+
   it('shows the reading steps a statement is read at as a number badge', () => {
     const statement = new DANode(0, 0, 'Socrates is a man');
     statement.tags = ['step/3', 'step/1', 'other'];
