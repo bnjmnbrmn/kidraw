@@ -85,6 +85,8 @@ export class AgentStore {
   readonly keyLabels = signal<AgentKeyLabels>({chat: 'm', ask: 'o', follow: 'Shift+O', close: 'Shift+M'});
   /** A failure happened while the panel was closed; the header says so until it is opened. */
   readonly unseenFailure = signal(false);
+  /** The change set of the agent's most recent turn that changed the graph, for "undo its last turn". */
+  readonly agentEditTurn = signal<string | null>(null);
 
   readonly endpoint = signal<AgentEndpointSettings | null>(this.settings.endpoint);
   readonly endpointName = computed(() => this.endpoint()?.name ?? '');

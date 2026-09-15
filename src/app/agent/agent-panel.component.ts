@@ -192,7 +192,16 @@ export class AgentPanelComponent {
    *  button just disappeared (e.g. after answering consent) does not. */
   onFocusOut(event: FocusEvent): void {
     const next = event.relatedTarget as Node | null;
-    if (next && this.panel && !this.panel.nativeElement.contains(next)) this.agent.releaseKeyboard();
+    if (next && this.panel && !this.panel.nativeElement.contains(next)) {
+      this.agent.releaseKeyboard();
+    } else if (!next) {
+      // The focused button disappeared (e.g. "Undo the agent's last turn" after
+      // it ran) and focus fell to the page. The chat still has the keyboard, so
+      // put the cursor back; otherwise every key would go nowhere.
+      setTimeout(() => {
+        if (document.activeElement === document.body) this.focusBest();
+      }, 0);
+    }
   }
 
   private focusBest(): void {

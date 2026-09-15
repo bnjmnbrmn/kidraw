@@ -121,6 +121,11 @@
           <div class="status">{{ agent.statusText() }}</div>
         }
 
+        @if (agent.agentEditTurn() && agent.state() === 'ready' && !agent.busy()) {
+          <div class="actions reconnect">
+            <button type="button" class="link small" (click)="agent.revertLastTurn()">Undo the agent's last turn</button>
+          </div>
+        }
         @if (agent.reconnecting()) {
           <div class="actions reconnect">
             <button #retryButton type="button" (click)="agent.retryNow()">Retry now</button>

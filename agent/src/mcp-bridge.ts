@@ -116,8 +116,8 @@ function buildMcpServer(invoke: ToolInvoker): McpServer {
       {
         description: tool.description,
         inputSchema: tool.inputSchema,
-        // None of them change the graph or reach outside the tab.
-        annotations: { readOnlyHint: true, openWorldHint: false },
+        // None of them reach outside the tab; only apply_changes changes the graph.
+        annotations: { readOnlyHint: tool.readOnly !== false, openWorldHint: false },
       },
       async (args: Record<string, unknown>) => {
         try {

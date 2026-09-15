@@ -58,6 +58,17 @@ export class AgentService {
   readonly connected = this.store.connected;
   readonly providerName = this.store.providerName;
   readonly thinking = this.store.thinking;
+  readonly agentEditTurn = this.store.agentEditTurn;
+
+  /** Each prompt starts a turn; everything the agent changes during it is one change set. */
+  private turn = 0;
+  private turnChangeSetId: string | null = null;
+  private turnLabel = 'Agent edit';
+  /** Set when the user presses Stop: the agent may not change the graph again until the next prompt. */
+  private editsStopped = false;
+  /** Turns (change sets) that changed the graph, oldest first. */
+  private editedTurns: string[] = [];
+  private flashTimer: ReturnType<typeof setTimeout> | undefined;
 
   private socket: WebSocket | null = null;
   private canvas: AgentCanvasTarget | null = null;
@@ -545,12 +556,34 @@ export class AgentService {
     this.busy.set(true);
     // Asking is an invitation for the agent to show you something.
     this.followMode.set('following');
+    this.turn += 1;
+    this.turnChangeSetId = `agent-turn-${Date.now().toString(36)}-${this.turn}`;
+    this.turnLabel = `Agent: ${trimmed.length > 40 ? `${trimmed.slice(0, 39)}…` : trimmed}`;
+    this.editsStopped = false;
     this.send({type: 'prompt', text: trimmed, refs});
     return true;
   }
 
+  /** Stop the answer. The agent may still send a tool call or two before it
+   *  notices, so graph edits are refused from here until the next prompt. */
   cancel(): void {
-    if (this.busy()) this.send({type: 'cancel'});
+    if (!this.busy()) return;
+    this.editsStopped = true;
+    this.send({type: 'cancel'});
+  }
+
+  /** Undo everything the agent changed in its latest editing turn, as one step. */
+  async revertLastTurn(): Promise<void> {
+    const turn = this.agentEditTurn();
+    if (!turn || !this.canvas) return;
+    const conflict = await this.canvas.agentRevertChangeSet(turn);
+    if (conflict) {
+      this.push({role: 'error', text: `Couldn't undo the agent's turn: ${conflict}`});
+      return;
+    }
+    this.editedTurns = this.editedTurns.filter(id => id !== turn);
+    this.agentEditTurn.set(this.editedTurns[this.editedTurns.length - 1] ?? null);
+    this.push({role: 'activity', text: "Undid the agent's changes from its last turn"});
   }
 
   removeAttachedRef(id: string): void {
@@ -658,7 +691,7 @@ export class AgentService {
     try {
       // Loaded on first use, like the panel: tabs that never connect don't download it.
       const {executeAgentTool} = await import('./agent-tools');
-      const result = executeAgentTool(name, args ?? {}, this.toolHost(this.canvas));
+      const result = await executeAgentTool(name, args ?? {}, this.toolHost(this.canvas));
       this.send({type: 'tool_result', callId, ok: true, result});
     } catch (err) {
       this.send({type: 'tool_result', callId, ok: false, error: (err as Error).message});
@@ -680,7 +713,31 @@ export class AgentService {
         this.showHighlights();
       },
       clearAnnotations: () => this.clearAnnotations(),
+      editsRefused: () => (this.editsStopped
+        ? 'The user stopped you. Do not change the graph until they send another message.'
+        : null),
+      applyChanges: async changes => {
+        const changeSetId = this.turnChangeSetId ?? `agent-turn-${Date.now().toString(36)}-${++this.turn}`;
+        const result = await canvas.agentApplyChanges(changes, {
+          author: `agent:${this.endpoint()?.agent ?? 'agent'}`, label: this.turnLabel, changeSetId,
+        });
+        if (result.ok) {
+          if (!this.editedTurns.includes(changeSetId)) this.editedTurns.push(changeSetId);
+          this.agentEditTurn.set(changeSetId);
+          this.flashNodes(result.touchedNodeIds);
+        }
+        return result;
+      },
     };
+  }
+
+  /** Presence: the nodes the agent just changed glow for a moment. */
+  private flashNodes(ids: string[]): void {
+    if (!this.canvas || ids.length === 0) return;
+    const marked = new Set([...this.highlightIds, ...(this.focusedId ? [this.focusedId] : []), ...ids]);
+    this.canvas.agentSetHighlights([...marked]);
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => this.showHighlights(), 1_500);
   }
 
   private focusNode(id: string): void {

@@ -1,5 +1,6 @@
+import {resolveIdentity} from '../extensions/extension-registry';
 import {fuzzyMatch} from '../lib/fuzzy-match';
-import {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
+import type {AgentCanvasTarget, AgentChange, AgentChangeResult, AgentNodeInfo} from './agent-canvas';
 
 /** Hooks the tool executor needs from the agent session (view control, annotations). */
 export interface AgentToolHost {
@@ -13,6 +14,62 @@ export interface AgentToolHost {
   addCaption(node: AgentNodeInfo, text: string): void;
   setHighlights(nodes: AgentNodeInfo[]): void;
   clearAnnotations(): void;
+  /** Apply changes as one undo step of the current agent turn. */
+  applyChanges(changes: AgentChange[]): Promise<AgentChangeResult>;
+  /** Why the agent may not change the graph right now (e.g. the user pressed Stop), or null. */
+  editsRefused(): string | null;
+}
+
+/**
+ * Check an apply_changes batch and resolve its node references: a handle
+ * declared by an earlier add_node in the batch stays as it is; anything else
+ * is resolved like any node reference (id, label, fuzzy) to an id. Edges are
+ * referenced by id. Throws with the change number on the first bad entry.
+ */
+export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChange[] {
+  if (!Array.isArray(raw) || raw.length === 0) throw new Error('changes must be a non-empty array');
+  const handles = new Set<string>();
+  return raw.map((item, index): AgentChange => {
+    const change = (item ?? {}) as Record<string, unknown>;
+    const where = `change ${index + 1}`;
+    const nodeRef = (key: string): string => {
+      const value = String(change[key] ?? '');
+      if (handles.has(value)) return value;
+      const resolution = resolveNodeRef(value, nodes);
+      if ('error' in resolution) throw new Error(`${where} ${key}: ${resolution.error}`);
+      return resolution.node.id;
+    };
+    const text = (key: string) => (change[key] !== undefined ? {[key]: String(change[key])} : {});
+    const tags = Array.isArray(change['tags']) ? {tags: change['tags'].map(String)} : {};
+    switch (change['kind']) {
+      case 'add_node': {
+        const handle = typeof change['handle'] === 'string' ? change['handle'] : undefined;
+        const resolved: AgentChange = {
+          kind: 'add_node', text: String(change['text'] ?? ''),
+          ...(handle !== undefined ? {handle} : {}),
+          ...(change['near'] !== undefined ? {near: nodeRef('near')} : {}),
+          ...tags,
+        };
+        if (handle !== undefined) handles.add(handle);
+        return resolved;
+      }
+      case 'update_node':
+        return {kind: 'update_node', node: nodeRef('node'), ...text('text'), ...tags};
+      case 'delete_node':
+        return {kind: 'delete_node', node: nodeRef('node')};
+      case 'add_edge':
+        return {kind: 'add_edge', from: nodeRef('from'), to: nodeRef('to'), ...text('edgeKind'), ...text('label')};
+      case 'update_edge':
+        return {
+          kind: 'update_edge', edge: String(change['edge'] ?? ''), ...text('label'),
+          ...(change['edgeKind'] === null ? {edgeKind: null} : text('edgeKind')),
+        };
+      case 'delete_edge':
+        return {kind: 'delete_edge', edge: String(change['edge'] ?? '')};
+      default:
+        throw new Error(`${where}: unknown kind "${String(change['kind'])}"`);
+    }
+  });
 }
 
 export type NodeResolution = {node: AgentNodeInfo} | {error: string};
@@ -71,7 +128,14 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
     case 'get_outline': {
       const nodes = canvas.agentNodes();
       const edges = canvas.agentEdges();
+      const identity = resolveIdentity(canvas.agentDiagramTypeId());
       return {
+        diagramType: {
+          id: identity.id, name: identity.name,
+          edgeKinds: (identity.edgeKinds ?? []).map(kind => ({
+            edgeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
+          })),
+        },
         nodes: nodes.map(n => (n.tags.length ? {...brief(n), tags: n.tags} : brief(n))),
         edges: edges.map(e => ({
           id: e.id, from: e.from, to: e.to,
@@ -143,6 +207,15 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
     case 'clear_annotations':
       host.clearAnnotations();
       return {cleared: true};
+    case 'apply_changes': {
+      const refused = host.editsRefused();
+      if (refused) throw new Error(refused);
+      const changes = resolveChanges(args['changes'], canvas.agentNodes());
+      return host.applyChanges(changes).then(result => {
+        if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
+        return {applied: changes.length, created: result.created};
+      });
+    }
     default:
       throw new Error(`Unknown KiDraw tool "${name}"`);
   }

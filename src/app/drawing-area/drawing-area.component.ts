@@ -14,10 +14,13 @@ import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg }
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
-import { AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo, ClientRect } from '../agent/agent-canvas';
+import type {
+  AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
+} from '../agent/agent-canvas';
 import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
 import { EXTENSION_REGISTRY } from '../extensions/extension-registry';
+import { nextId } from './id-generator';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -4586,6 +4589,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
     this.drawingLayer.batchDraw();
     return true;
+  }
+
+  agentDiagramTypeId(): string {
+    return this.drawingLayer.diagramType;
+  }
+
+  async agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult> {
+    const planner = await import('./agent-change-planner');
+    return planner.applyAgentChanges(
+      this.drawingLayer.serializeGraph(), changes, meta, nextId, group => this.applyOperations(group));
+  }
+
+  agentRevertChangeSet(changeSetId: string): Promise<string | null> {
+    return this.revertChangeSet(changeSetId);
   }
 
   agentSetHighlights(ids: string[]): void {

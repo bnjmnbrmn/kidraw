@@ -52,7 +52,11 @@ function fakeCanvas(): jasmine.SpyObj<AgentCanvasTarget> {
   const canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas', [
     'agentNodes', 'agentEdges', 'agentSelection', 'agentVisibleNodeIds', 'agentZoomPercent',
     'agentFocusNode', 'agentSetHighlights', 'agentNodeClientRect', 'agentViewClientRect',
+    'agentDiagramTypeId', 'agentApplyChanges', 'agentRevertChangeSet',
   ]);
+  canvas.agentDiagramTypeId.and.returnValue('explanation');
+  canvas.agentApplyChanges.and.resolveTo({ok: true, created: [{kind: 'node', id: 'da-9'}], touchedNodeIds: ['da-9']});
+  canvas.agentRevertChangeSet.and.resolveTo(null);
   canvas.agentNodes.and.returnValue([{id: 'n1', label: 'Start', tags: []}, {id: 'n2', label: 'End', tags: []}]);
   canvas.agentEdges.and.returnValue([]);
   canvas.agentSelection.and.returnValue({nodeIds: ['n2'], edgeIds: [], underCrosshairsId: null});
@@ -268,6 +272,54 @@ describe('AgentService', () => {
     expect(canvas.agentFocusNode).not.toHaveBeenCalled();
     expect(service.lookHere()?.id).toBe('n2');
     expect(socket.sent.find(m => m['callId'] === 'f2')!['result']['viewMoved']).toBeFalse();
+  });
+
+  it('groups a turn\'s edits into one change set, and refuses edits after Stop until the next prompt', async () => {
+    const service = createService();
+    const socket = connect(service);
+    const edit = (callId: string) => socket.receive({
+      type: 'tool_call', callId, name: 'apply_changes', args: {changes: [{kind: 'add_node', text: 'A step'}]},
+    });
+
+    expect(service.sendPrompt('explain it')).toBeTrue();
+    edit('a1');
+    await settle();
+    edit('a2');
+    await settle();
+    const metas = canvas.agentApplyChanges.calls.allArgs().map(([, meta]) => meta);
+    expect(metas.length).toBe(2);
+    expect(metas[0]).toEqual(jasmine.objectContaining({author: 'agent:codex', label: 'Agent: explain it'}));
+    expect(metas[1].changeSetId).toBe(metas[0].changeSetId);
+    expect(service.agentEditTurn()).toBe(metas[0].changeSetId);
+
+    service.cancel();
+    edit('a3');
+    await settle();
+    const refused = socket.sent.find(m => m['callId'] === 'a3')!;
+    expect(refused['ok']).toBeFalse();
+    expect(refused['error']).toMatch(/stopped you/);
+    expect(canvas.agentApplyChanges).toHaveBeenCalledTimes(2);
+
+    socket.receive({type: 'turn_end', stopReason: 'cancelled'});
+    expect(service.sendPrompt('carry on')).toBeTrue();
+    edit('a4');
+    await settle();
+    expect(canvas.agentApplyChanges).toHaveBeenCalledTimes(3);
+    expect(canvas.agentApplyChanges.calls.mostRecent().args[1].changeSetId).not.toBe(metas[0].changeSetId);
+  });
+
+  it('undoes the agent\'s last editing turn as a change set', async () => {
+    const service = createService();
+    const socket = connect(service);
+    service.sendPrompt('explain it');
+    socket.receive({type: 'tool_call', callId: 'a1', name: 'apply_changes', args: {changes: [{kind: 'add_node', text: 'x'}]}});
+    await settle();
+    const turn = service.agentEditTurn();
+    expect(turn).not.toBeNull();
+
+    await service.revertLastTurn();
+    expect(canvas.agentRevertChangeSet).toHaveBeenCalledWith(turn!);
+    expect(service.agentEditTurn()).toBeNull();
   });
 
   it('asking with nothing selected or under the crosshairs does not open the chat', () => {

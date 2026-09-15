@@ -3,11 +3,42 @@
  * this; the agent tools and caption overlay use only this surface, so the
  * canvas internals stay behind it.
  *
- * Everything here reads the graph or guides the view. When agents get to change
- * the graph, those changes go through a single operation path shared with the
- * undo stack and (later) multiplayer, e.g. `applyOperations(ops, author)`, never
- * through new agent-specific setters on this interface.
+ * Most of it reads the graph or guides the view. Agent edits come in through
+ * `agentApplyChanges` only, which plans graph operations and applies them
+ * through the same path as undo (DrawingAreaComponent.applyOperations); add no
+ * other agent-specific setters.
  */
+
+/** One change an agent asks for. Node references are ids of existing nodes,
+ *  or the handle of a node added earlier in the same batch. Edges are ids. */
+export type AgentChange =
+  | {kind: 'add_node'; text: string; handle?: string; near?: string; tags?: string[]}
+  | {kind: 'update_node'; node: string; text?: string; tags?: string[]}
+  | {kind: 'delete_node'; node: string}
+  /** `edgeKind` names one of the diagram type's edge kinds (e.g. "supports", "path"). */
+  | {kind: 'add_edge'; from: string; to: string; edgeKind?: string; label?: string}
+  /** `edgeKind: null` makes it a plain edge; `label: ''` removes its label. */
+  | {kind: 'update_edge'; edge: string; label?: string; edgeKind?: string | null}
+  | {kind: 'delete_edge'; edge: string};
+
+export interface AgentEditMeta {
+  /** e.g. 'agent:codex' */
+  author: string;
+  /** Short description for undo and status, e.g. "Agent: explain recursion". */
+  label: string;
+  /** The change set this batch belongs to: one per agent turn. */
+  changeSetId: string;
+}
+
+export interface AgentChangeResult {
+  ok: boolean;
+  /** Why nothing was applied (a bad reference, or a conflict with newer edits). */
+  error?: string;
+  created: {kind: 'node' | 'edge'; id: string; handle?: string}[];
+  /** Nodes added or changed, and the ends of added edges. */
+  touchedNodeIds: string[];
+}
+
 
 export interface AgentNodeInfo {
   id: string;
@@ -45,4 +76,10 @@ export interface AgentCanvasTarget {
   agentNodeClientRect(id: string): ClientRect | null;
   /** The usable viewport (inside header, keymenu, and panel insets). */
   agentViewClientRect(): ClientRect;
+  /** The bound diagram type's id (see the extension registry). */
+  agentDiagramTypeId(): string;
+  /** Apply a batch as one undo group, all-or-nothing. */
+  agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult>;
+  /** Revert a change set (e.g. an agent turn). Resolves to a conflict message, or null. */
+  agentRevertChangeSet(changeSetId: string): Promise<string | null>;
 }

@@ -1,5 +1,6 @@
 import {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
-import {AgentToolHost, executeAgentTool, resolveNodeRef} from './agent-tools';
+import {AgentChange, AgentChangeResult} from './agent-canvas';
+import {AgentToolHost, executeAgentTool, resolveChanges, resolveNodeRef} from './agent-tools';
 
 const NODES: AgentNodeInfo[] = [
   {id: 'n0', label: 'Next', tags: []},
@@ -40,19 +41,32 @@ describe('executeAgentTool', () => {
   let mode: 'following' | 'free';
   let lookHere: AgentNodeInfo | null;
   let captions: {node: AgentNodeInfo; text: string}[];
+  let applied: AgentChange[][];
+  let refused: string | null;
+  let applyResult: AgentChangeResult;
 
   beforeEach(() => {
     canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas', [
       'agentNodes', 'agentEdges', 'agentSelection', 'agentVisibleNodeIds', 'agentZoomPercent',
       'agentFocusNode', 'agentSetHighlights', 'agentNodeClientRect', 'agentViewClientRect',
+      'agentDiagramTypeId', 'agentApplyChanges', 'agentRevertChangeSet',
     ]);
+    canvas.agentDiagramTypeId.and.returnValue('explanation');
     canvas.agentNodes.and.returnValue(NODES);
     canvas.agentEdges.and.returnValue([{id: 'e1', from: 'n0', to: 'n1', labels: [], tags: []}]);
     canvas.agentFocusNode.and.returnValue(true);
     mode = 'following';
     lookHere = null;
     captions = [];
+    applied = [];
+    refused = null;
+    applyResult = {ok: true, created: [{kind: 'node', id: 'da-9', handle: 'h'}], touchedNodeIds: ['da-9']};
     host = {
+      applyChanges: changes => {
+        applied.push(changes);
+        return Promise.resolve(applyResult);
+      },
+      editsRefused: () => refused,
       canvas,
       followMode: () => mode,
       focus: node => { canvas.agentFocusNode(node.id); },
@@ -94,6 +108,36 @@ describe('executeAgentTool', () => {
     const result = executeAgentTool('highlight', {nodes: ['Next', 'zebra']}, host) as {notFound?: string[]};
     expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['n0']);
     expect(result.notFound?.length).toBe(1);
+  });
+
+  it('resolves labels to ids in a change batch and keeps handles for new nodes', async () => {
+    const result = await executeAgentTool('apply_changes', {changes: [
+      {kind: 'add_node', handle: 'h', text: 'A new step', near: 'Next'},
+      {kind: 'add_edge', from: 'h', to: 'Pre-MVP', edgeKind: 'supports'},
+      {kind: 'update_edge', edge: 'e1', edgeKind: null},
+    ]}, host) as {applied: number};
+    expect(applied[0]).toEqual([
+      {kind: 'add_node', handle: 'h', text: 'A new step', near: 'n0'},
+      {kind: 'add_edge', from: 'h', to: 'n1', edgeKind: 'supports'},
+      {kind: 'update_edge', edge: 'e1', edgeKind: null},
+    ]);
+    expect(result.applied).toBe(3);
+  });
+
+  it('refuses edits when the host says so, and passes on the canvas error', async () => {
+    refused = 'The user stopped you.';
+    expect(() => executeAgentTool('apply_changes', {changes: [{kind: 'delete_node', node: 'Next'}]}, host))
+      .toThrowError(/stopped you/);
+    refused = null;
+    applyResult = {ok: false, error: 'the graph changed', created: [], touchedNodeIds: []};
+    await expectAsync(executeAgentTool('apply_changes', {changes: [{kind: 'delete_node', node: 'Next'}]}, host) as Promise<unknown>)
+      .toBeRejectedWithError(/the graph changed/);
+  });
+
+  it('points at the bad entry in a change batch', () => {
+    expect(() => resolveChanges([{kind: 'add_node', text: 'x'}, {kind: 'add_edge', from: 'zebra', to: 'Next'}], NODES))
+      .toThrowError(/change 2 from: No node matches "zebra"/);
+    expect(() => resolveChanges([], NODES)).toThrowError(/non-empty/);
   });
 
   it('rejects unknown tools', () => {
