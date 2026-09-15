@@ -37,6 +37,10 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
 - Try non-math topics too (AI).
 - Next: have the agent write real explanations, and record where they go
   wrong (`:note`).
+- Definition and assumption links are drawn faint, except where reading
+  first meets them, or when they otherwise need emphasis. (A live run linked
+  one assumption to 30 statements and definitions to 65; drawn at full
+  strength that was a tangle.)
 
 ## Vocabulary
 
@@ -152,6 +156,13 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      and `l` walks all the links in.
    - The agent sets kinds with `nodeKind`, and is told to give assumptions and
      definitions their own nodes and to add examples.
+   - Assumption and definition links are background links (`faint` on the edge
+     kind). They are drawn faint unless emphasized:
+     - on the reading step that first uses that assumption or definition;
+     - by "Why?", or when `l` points at them;
+     - when either end is selected;
+     - when the agent highlights them;
+     - when they carry a feedback mark.
 9. **Arrange.** An `arrange` change lays the graph out top-down
    (`layered-layout.ts`):
    - every node sits below what it depends on, and a definition or assumption

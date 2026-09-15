@@ -2,7 +2,7 @@ import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
 import { DAEdge } from '../drawing-area/da-edge';
 import {
-  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXTENSION, EXPLANATION_SUPPORTS_TAG,
+  EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXTENSION, EXPLANATION_SUPPORTS_TAG,
 } from './explanation.extension';
 import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
 import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
@@ -59,6 +59,40 @@ describe('extensions (identity slot)', () => {
     dl.setDiagramType(DEFAULT_EXTENSION);
     expect(definition.shape.stroke()).toBe(plainStroke);
     expect(definition.kindBadgeLabel).toBe('');
+  });
+
+  it('draws definition links faint unless an end is selected, the link is emphasized, or it is marked', () => {
+    const definition = new DANode(0, 0, 'A token is a piece of text');
+    const use = new DANode(300, 0, 'The model reads tokens');
+    const dl = layerWithNodes(definition, use);
+    const link = new DAEdge(definition, use, '');
+    link.tags = [EXPLANATION_DEFINITION_TAG];
+    const supports = new DAEdge(definition, use, '');
+    supports.tags = [EXPLANATION_SUPPORTS_TAG];
+    dl.addRawEdge(link);
+    dl.addRawEdge(supports);
+    const opacity = (edge: DAEdge) => edge.konvaGroup.opacity();
+
+    dl.setDiagramType(EXPLANATION_EXTENSION);
+    expect(opacity(link)).toBe(DAEdge.FAINT_OPACITY);
+    expect(opacity(supports)).toBe(1);
+
+    use.isSelected = true;
+    expect(opacity(link)).toBe(1);
+    use.isSelected = false;
+    expect(opacity(link)).toBe(DAEdge.FAINT_OPACITY);
+
+    link.setEmphasized(true);
+    expect(opacity(link)).toBe(1);
+    link.setEmphasized(false);
+
+    link.tags = [EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG];
+    dl.refreshTagBadges();
+    expect(opacity(link)).toBe(1);
+
+    link.tags = [EXPLANATION_DEFINITION_TAG];
+    dl.setDiagramType(DEFAULT_EXTENSION);
+    expect(opacity(link)).toBe(1);
   });
 
   it('shows the reading steps a statement is read at as a number badge', () => {

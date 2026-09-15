@@ -45,6 +45,9 @@ export interface ExtensionEdgeKind {
   color: string;
   /** What the kind means, for help text and agents. */
   description: string;
+  /** Background links (e.g. to a definition) are drawn faint unless
+   *  emphasized: an end selected, highlighted while reading, or marked. */
+  faint?: boolean;
 }
 
 /** A kind of node an extension contributes (e.g. a definition), marked by a

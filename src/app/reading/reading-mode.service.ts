@@ -7,7 +7,7 @@ import {
   EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
 import {plainText} from '../drawing-area/markdown-label';
-import {examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
+import {backgroundLinks, examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
 
 /** A node kind's name, for step messages ("definition"); empty for a plain statement. */
 function kindOf(tags: readonly string[]): string {
@@ -124,7 +124,8 @@ export class ReadingModeService {
       this.say('Nothing supports this statement: it is a starting point');
       return;
     }
-    canvas.agentSetHighlights([current, ...related]);
+    const background = backgroundLinks(edges).filter(link => link.to === current).map(link => link.id);
+    canvas.agentSetHighlights([current, ...related, ...background]);
     const labels = this.labels();
     this.say(groups
       .filter(([, ids]) => ids.length > 0)
@@ -153,7 +154,7 @@ export class ReadingModeService {
     }
     this.linkIndex = next;
     const link = links[next];
-    canvas.agentSetHighlights([current, link.from]);
+    canvas.agentSetHighlights([current, link.from, link.id]);
     this.say(`Link ${next + 1} of ${links.length}: from ${this.labels().get(link.from) || 'an unlabeled statement'}`);
   }
 
@@ -243,10 +244,32 @@ export class ReadingModeService {
     this.linkIndex = null;
     const id = this.path[index];
     canvas.agentFocusNode(id);
-    canvas.agentSetHighlights([id]);
+    canvas.agentSetHighlights([id, ...this.firstUseLinks(index)]);
     const label = this.labels().get(id) || 'an unlabeled statement';
     const kind = kindOf(canvas.agentNodes().find(node => node.id === id)?.tags ?? []);
     this.say(`Step ${index + 1} of ${this.path.length}${kind ? ` (${kind})` : ''}: ${label}${note ? ` (${note})` : ''}`);
+  }
+
+  /** The definition and assumption links into the statement at `index`, when
+   *  this is where the reader first meets them: its first visit comes before
+   *  every other use of that definition or assumption. Those are drawn at full
+   *  strength; the rest stay faint. */
+  private firstUseLinks(index: number): string[] {
+    const canvas = this.canvas;
+    const id = this.path[index];
+    if (!canvas || !id) return [];
+    const firstVisit = new Map<string, number>();
+    this.path.forEach((node, i) => {
+      if (!firstVisit.has(node)) firstVisit.set(node, i);
+    });
+    if (firstVisit.get(id) !== index) return [];
+    const background = backgroundLinks(canvas.agentEdges());
+    return background
+      .filter(link => link.to === id)
+      .filter(link => Math.min(...background
+        .filter(use => use.from === link.from)
+        .map(use => firstVisit.get(use.to) ?? Number.MAX_SAFE_INTEGER)) === index)
+      .map(link => link.id);
   }
 
   private labels(): Map<string, string> {

@@ -488,9 +488,11 @@ export class DrawingLayer extends Konva.Layer {
       node.setNodeKind(kind ? {label: kind.name.toUpperCase(), color: kind.color} : null);
     }
     for (const edge of this.daEdges) {
-      const color = activeTagChoice(identity, edge.tags)?.color
-        ?? identity.edgeKinds?.find(kind => edge.tags.includes(kind.tag))?.color;
-      edge.setKindColor(color ?? null);
+      const mark = activeTagChoice(identity, edge.tags);
+      const kind = identity.edgeKinds?.find(k => edge.tags.includes(k.tag));
+      edge.setKindColor(mark?.color ?? kind?.color ?? null);
+      // A marked link is always drawn at full strength.
+      edge.setFaintKind(kind?.faint === true && !mark);
     }
   }
 

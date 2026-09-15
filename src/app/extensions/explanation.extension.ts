@@ -72,12 +72,14 @@ export const EXPLANATION_EXTENSION: KidrawExtension = {
       name: 'Assumption',
       color: '#f472b6',
       description: 'From an assumption node to a statement that relies on it (one edge per statement).',
+      faint: true,
     },
     {
       tag: EXPLANATION_DEFINITION_TAG,
       name: 'Definition',
       color: '#22d3ee',
       description: 'From a definition node to a statement that uses the defined term (one edge per statement).',
+      faint: true,
     },
     {
       tag: EXPLANATION_EXAMPLE_TAG,

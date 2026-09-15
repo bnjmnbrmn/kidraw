@@ -1,6 +1,7 @@
 import type {AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
 import {
-  EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_SUPPORTS_TAG,
+  EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_TAG,
+  EXPLANATION_SUPPORTS_TAG,
   EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
 import {ReadingModeService} from './reading-mode.service';
@@ -88,9 +89,23 @@ describe('ReadingModeService', () => {
     reading.why();
     expect(said.pop()).toBe('Follows from: All men are mortal · Socrates is a man. Assumes: Everyone here is Greek. '
       + 'Example: Plato is mortal too');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b', 'as', 'ex']);
+    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b', 'as', 'ex', 'a1']);
     reading.next();
     expect(said.pop()).toBe('Step 4 of 4 (example): Plato is mortal too');
+  });
+
+  it('emphasizes a definition\'s link where the reader first meets it, and not at later uses', () => {
+    nodes = [node('def', 'A man is a human being', 1), node('a', 'All men are mortal', 2),
+      node('b', 'Socrates is a man', 3), node('c', 'Socrates is mortal', 4)];
+    edges = [...edges,
+      {id: 'd1', from: 'def', to: 'b', labels: [], tags: [EXPLANATION_DEFINITION_TAG]},
+      {id: 'd2', from: 'def', to: 'a', labels: [], tags: [EXPLANATION_DEFINITION_TAG]}];
+    reading.enter();
+    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['def']);
+    reading.next();
+    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['a', 'd2']);
+    reading.next();
+    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['b']);
   });
 
   it('keeps the reader in place when the agent inserts a step behind them', () => {
@@ -128,7 +143,7 @@ describe('ReadingModeService', () => {
 
     reading.nextLink();
     expect(said.pop()).toBe('Link 1 of 2: from All men are mortal');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a']);
+    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 's1']);
     reading.nextLink();
     expect(said.pop()).toBe('Link 2 of 2: from Socrates is a man');
 

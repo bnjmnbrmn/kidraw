@@ -4692,6 +4692,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     for (const node of this.drawingLayer.getDANodes()) {
       if (wanted.has(node.id) || node.agentHighlighted) node.setAgentHighlight(wanted.has(node.id));
     }
+    for (const edge of this.drawingLayer.getDAEdges()) edge.setEmphasized(wanted.has(edge.id));
     this.drawingLayer.batchDraw();
   }
 

@@ -419,6 +419,8 @@ export class DANode {
       this._shape.shadowEnabled(false);
       this.stopSelectionBlink();
     }
+    // Faint background links to a selected node are drawn at full strength.
+    for (const edge of this.connectedEdges) edge.updateFaintness();
   }
 
   private _agentHighlight: Konva.Rect | null = null;

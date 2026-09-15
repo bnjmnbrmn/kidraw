@@ -155,6 +155,32 @@ export class DAEdge {
     this.applyEdgeStroke();
   }
 
+  /** Opacity of a background link that nothing is emphasizing. */
+  static readonly FAINT_OPACITY = 0.22;
+  private _faintKind = false;
+  private _emphasized = false;
+
+  /** This edge's kind is a background link (e.g. to a definition), drawn
+   *  faint unless emphasized or one of its ends is selected. */
+  setFaintKind(faint: boolean): void {
+    if (faint === this._faintKind) return;
+    this._faintKind = faint;
+    this.updateFaintness();
+  }
+
+  /** Draw a background link at full strength, e.g. while reading reaches it. */
+  setEmphasized(emphasized: boolean): void {
+    if (emphasized === this._emphasized) return;
+    this._emphasized = emphasized;
+    this.updateFaintness();
+  }
+
+  /** Re-derive faintness; its ends call this when their selection changes. */
+  updateFaintness(): void {
+    const faint = this._faintKind && !this._emphasized && !this.srcNode.isSelected && !this.destNode.isSelected;
+    this.konvaGroup.opacity(faint ? DAEdge.FAINT_OPACITY : 1);
+  }
+
   /** Set the directedness-aware color scheme. `gradient` fades source → dest
    *  for *directed* edges (readable flow at any zoom); `undirected` and
    *  `bidirectional` are flat hues used when there is no single direction —

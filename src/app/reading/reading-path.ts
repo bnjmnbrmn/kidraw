@@ -55,6 +55,11 @@ export function premisesOf(nodeId: string, edges: readonly AgentEdgeInfo[], tag 
   return edges.filter(edge => edge.to === nodeId && edge.tags.includes(tag)).map(edge => edge.from);
 }
 
+/** Background links, drawn faint unless emphasized: from definitions and assumptions. */
+export function backgroundLinks(edges: readonly AgentEdgeInfo[]): AgentEdgeInfo[] {
+  return edges.filter(edge => edge.tags.includes(EXPLANATION_ASSUMPTION_TAG) || edge.tags.includes(EXPLANATION_DEFINITION_TAG));
+}
+
 /** The example nodes a statement links to. */
 export function examplesOf(nodeId: string, edges: readonly AgentEdgeInfo[]): string[] {
   return edges.filter(edge => edge.from === nodeId && edge.tags.includes(EXPLANATION_EXAMPLE_TAG)).map(edge => edge.to);

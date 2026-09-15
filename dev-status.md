@@ -29,6 +29,8 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      chunk that loads the first time a label has math.
 >   8. Assumption, definition and example nodes with their own links; the
 >      agent's `arrange` lays the graph out top-down (layered layout).
+>      Assumption and definition links are drawn faint except where reading
+>      first meets them, on "Why?", when an end is selected, or when marked.
 >   9. Chat renders markdown (toggle to source), Copy on messages, label
 >      text to and from the clipboard; `:note` records problems for review.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly

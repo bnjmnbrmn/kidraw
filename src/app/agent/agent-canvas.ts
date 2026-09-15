@@ -77,7 +77,8 @@ export interface AgentCanvasTarget {
   agentZoomPercent(): number;
   /** Select the node and pan the view onto it. False if there is no such node. */
   agentFocusNode(id: string): boolean;
-  /** Replace the agent's highlight set. */
+  /** Replace the highlight set: node ids get a halo, edge ids are emphasized
+   *  (a faint background link drawn at full strength). */
   agentSetHighlights(ids: string[]): void;
   agentNodeClientRect(id: string): ClientRect | null;
   /** The usable viewport (inside header, keymenu, and panel insets). */
