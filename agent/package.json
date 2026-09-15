@@ -1,0 +1,24 @@
+{
+  "name": "kidraw-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KiDraw agent companion: connects KiDraw tabs to ACP agents and exposes canvas tools over MCP",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "@agentclientprotocol/codex-acp": "^1.11.0",
+    "@agentclientprotocol/sdk": "^1.4.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.21.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/ws": "^8.18.1",
+    "typescript": "^7.0.2"
+  }
+}
