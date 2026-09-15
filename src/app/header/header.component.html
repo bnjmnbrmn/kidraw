@@ -24,6 +24,12 @@
   }
 
   <div class="header-controls">
+    @if (agent.state() === 'ready' || agent.state() === 'connecting') {
+      <span class="agent-chip" [class.connecting]="agent.state() === 'connecting'"
+            [title]="'Sharing this graph with ' + agent.endpointName() + ' — m opens the chat'">
+        Agent: {{ agent.endpointName() }}
+      </span>
+    }
     <span class="zoom-indicator" title="Canvas zoom">{{ zoomLevel }}%</span>
 
     <label class="sample-graph-tools" [hidden]="!showSampleGraphs">

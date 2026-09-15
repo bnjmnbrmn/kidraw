@@ -1,0 +1,23 @@
+@for (item of placed; track item.caption.id) {
+  <div class="caption floating" [class.dark]="dark"
+       [style.left.px]="item.left" [style.top.px]="item.top">
+    <span class="text">{{ item.caption.text }}</span>
+  </div>
+}
+
+@if (docked.length || agent.lookHere()) {
+  <div class="dock" [class.dark]="dark"
+       [style.bottom.px]="bottomInset + 12" [style.right.px]="rightInset + 12">
+    @if (agent.lookHere(); as target) {
+      <div class="caption look-here">
+        Agent is pointing at <strong>{{ target.label || target.id }}</strong> — press <kbd>{{ followKey }}</kbd> to follow
+      </div>
+    }
+    @for (caption of docked; track caption.id) {
+      <div class="caption docked">
+        <strong class="about">{{ caption.label || caption.nodeId }}:</strong>
+        <span class="text">{{ caption.text }}</span>
+      </div>
+    }
+  </div>
+}

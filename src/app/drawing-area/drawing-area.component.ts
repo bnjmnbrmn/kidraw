@@ -14,6 +14,7 @@ import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg }
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
+import { AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo, ClientRect } from '../agent/agent-canvas';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -1136,6 +1137,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       case DACommandType.SET_DEFAULT_LINE_STYLE:
         this.log.log('[style] setDefaultLineStyle:', command.lineStyle);
         this._defaultLineStyle = command.lineStyle;
+        break;
+      case DACommandType.TOGGLE_AGENT_PANEL:
+      case DACommandType.ASK_AGENT_ABOUT_SELECTION:
+      case DACommandType.FOLLOW_AGENT:
+        // Agent mode commands are handled by AppComponent and never forwarded.
         break;
       default:
         this.assertNever(command);
@@ -4421,6 +4427,92 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
       y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
     });
+  }
+
+  // ─── Agent mode canvas surface (AgentCanvasTarget; notes/idea-mcp-server.md) ──
+  // Read-only inspection plus view guidance. Nothing here mutates the graph
+  // or touches the undo stack.
+
+  agentNodes(): AgentNodeInfo[] {
+    return this.drawingLayer.getDANodes().map(node => ({
+      id: node.id, label: node.label.text(), tags: [...node.tags],
+    }));
+  }
+
+  agentEdges(): AgentEdgeInfo[] {
+    return this.drawingLayer.getDAEdges().map(edge => ({
+      id: edge.id,
+      from: edge.srcNode.id,
+      to: edge.destNode.id,
+      labels: edge.labels.map(label => label.label),
+      tags: [...edge.tags],
+    }));
+  }
+
+  agentSelection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null} {
+    return {
+      nodeIds: this.drawingLayer.getSelectedDANodes().map(n => n.id),
+      edgeIds: this.drawingLayer.getSelectedDAEdges().map(e => e.id),
+      underCrosshairsId: this.getDANodesContainingCrosshairs()[0]?.id ?? null,
+    };
+  }
+
+  agentZoomPercent(): number {
+    return Math.round(this.drawingLayer.scaleX() * 100);
+  }
+
+  agentVisibleNodeIds(): string[] {
+    const scale = this.drawingLayer.scaleX();
+    const minX = this.viewMinX(), maxX = this.viewMaxX(), minY = this.viewMinY(), maxY = this.viewMaxY();
+    return this.drawingLayer.getDANodes().filter(node => {
+      const x = this.drawingLayer.x() + node.group.x() * scale;
+      const y = this.drawingLayer.y() + node.group.y() * scale;
+      return x + node.NODE_WIDTH * scale > minX && x < maxX && y + node.NODE_HEIGHT * scale > minY && y < maxY;
+    }).map(node => node.id);
+  }
+
+  agentFocusNode(id: string): boolean {
+    const node = this.drawingLayer.getDANodes().find(n => n.id === id);
+    if (!node) return false;
+    this.finishTweens();
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    node.isSelected = true;
+    this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
+    this.checkAndEmitEditState();
+    this.drawingLayer.batchDraw();
+    return true;
+  }
+
+  agentSetHighlights(ids: string[]): void {
+    const wanted = new Set(ids);
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (wanted.has(node.id) || node.agentHighlighted) node.setAgentHighlight(wanted.has(node.id));
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  agentNodeClientRect(id: string): ClientRect | null {
+    const node = this.drawingLayer.getDANodes().find(n => n.id === id);
+    if (!node) return null;
+    const scale = this.drawingLayer.scaleX();
+    const container = this.stage.container().getBoundingClientRect();
+    return {
+      left: container.left + this.drawingLayer.x() + node.group.x() * scale,
+      top: container.top + this.drawingLayer.y() + node.group.y() * scale,
+      width: node.NODE_WIDTH * scale,
+      height: node.NODE_HEIGHT * scale,
+    };
+  }
+
+  agentViewClientRect(): ClientRect {
+    const container = this.stage.container().getBoundingClientRect();
+    return {
+      left: container.left + this.viewMinX(),
+      top: container.top + this.viewMinY(),
+      width: this.viewWidth(),
+      height: this.viewHeight(),
+    };
   }
 
   private centerViewOnLayerPoint(

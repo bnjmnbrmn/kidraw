@@ -1,0 +1,54 @@
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: 28;
+  pointer-events: none;
+}
+
+.caption {
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #1f2937;
+  border: 1px solid #f59e0b;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.floating {
+  position: fixed;
+  width: 240px;
+}
+
+.dark .caption, .caption.dark {
+  background: #292218;
+  color: #fde68a;
+  border-color: #b45309;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+.dock {
+  position: fixed;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock .caption {
+  max-width: min(560px, 100%);
+}
+
+.about { margin-right: 4px; }
+
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 0 4px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}

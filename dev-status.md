@@ -1,6 +1,35 @@
 # dev-status
 
-_Updated 2026-08-30. Branch: `main`._
+_Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`._
+
+> ## 🤖 IN PROGRESS: agent mode v0, read-only "ask and point" (2026-09-15, branch `agent-mode-v0`)
+>
+> Design: [`notes/idea-mcp-server.md`](notes/idea-mcp-server.md). Server and
+> setup: [`agent/README.md`](agent/README.md).
+> - **Server (`agent/`):** `kidraw-agent` (Node/TS) accepts a tab WebSocket
+>   (origin allowlist + token), starts one Codex session per tab through
+>   codex-acp (ACP), and exposes canvas tools to it over a per-session MCP URL.
+>   Docker runner sandboxes each session; `fake` runner drives tests. Running
+>   on the VPS as `kidraw-agent.service`, proxied at `/agent/` behind the site
+>   password. Sessions use their own Codex login in
+>   `~/.config/kidraw-agent/codex`.
+> - **KiDraw (`src/app/agent/`):** `m` Agent Chat panel (setup, per-graph
+>   consent, transcript with reference pills), `o` Ask Agent about the
+>   selection, `t` Follow Agent. Tools: `get_outline`, `find_nodes`,
+>   `get_selection`, `get_view`, `focus`, `highlight`, `caption`,
+>   `clear_annotations`. Moving the view yourself switches to "You lead";
+>   agent `focus` then shows a look-here hint instead of moving. Panel and
+>   captions load lazily (`@defer`) to stay under the 1 MB initial budget.
+>   No default endpoint: nothing is sent until the user configures one and
+>   approves the graph.
+> - **Verified:** agent server tests (fake agent); Playwright end-to-end run
+>   against the fake agent (15 checks); container → MCP bridge reachability.
+> - **Open:** live Codex test (needs the kidraw-agent Codex login); reviewer
+>   passes; captions can cover neighbouring nodes (placement only avoids other
+>   captions).
+> - **Tests on this 4 GB VPS:** a full `ng test` run can starve Chrome and
+>   disconnect. Set `CHROME_BIN` to Playwright's Chromium and run in batches
+>   with `--include`, one at a time, with nothing else heavy running.
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >

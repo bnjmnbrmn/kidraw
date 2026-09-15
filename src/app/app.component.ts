@@ -1,4 +1,4 @@
-import {Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
@@ -13,6 +13,9 @@ import {ThemeService} from './services/theme.service';
 import {VisualConfigService} from './services/visual-config.service';
 import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
+import {AGENT_PANEL_WIDTH, AgentService} from './agent/agent.service';
+import {AgentPanelComponent} from './agent/agent-panel.component';
+import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
 /** How the keymenu presents itself: the classic keyboard overlay, the
  *  compact file-picker-style tree (da-200), or nothing. The toggle key
@@ -25,23 +28,42 @@ const COMPACT_MENU_GUTTER = 10;
 /** The floating header's top offset, height, and breathing room. */
 const HEADER_VIEWPORT_INSET = 72;
 
+/** Keymenu commands that move the view: using one while an agent is
+ *  connected means the user has taken control of the view. */
+const AGENT_VIEW_INPUT_COMMANDS: ReadonlySet<DACommandType> = new Set([
+  DACommandType.MOVE_CROSSHAIRS_UP, DACommandType.MOVE_CROSSHAIRS_DOWN,
+  DACommandType.MOVE_CROSSHAIRS_LEFT, DACommandType.MOVE_CROSSHAIRS_RIGHT,
+  DACommandType.STEER_FORWARD, DACommandType.STEER_BACKWARD,
+  DACommandType.STRAFE_LEFT, DACommandType.STRAFE_RIGHT,
+  DACommandType.PAN_UP, DACommandType.PAN_DOWN, DACommandType.PAN_LEFT, DACommandType.PAN_RIGHT,
+  DACommandType.ZOOM_IN, DACommandType.ZOOM_OUT,
+  DACommandType.RECENTER_VIEW, DACommandType.RECENTER_VIEW_ON_CROSSHAIRS, DACommandType.RECENTER_CROSSHAIRS,
+  DACommandType.TRAVERSE_SMART, DACommandType.ENTER_LINK_NAV,
+  DACommandType.NAV_HISTORY_BACK, DACommandType.NAV_HISTORY_FORWARD,
+  DACommandType.SEARCH_GRAPH, DACommandType.SEARCH_NEXT_MATCH, DACommandType.SEARCH_PREV_MATCH,
+  DACommandType.SNAP_TO_NODE_LEFT, DACommandType.SNAP_TO_NODE_RIGHT,
+  DACommandType.SNAP_TO_NODE_UP, DACommandType.SNAP_TO_NODE_DOWN,
+]);
+
 @Component({
   selector: 'app-root',
   imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent,
-            ExLineComponent],
+            ExLineComponent, AgentPanelComponent, AgentOverlayComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit, OnDestroy {
+export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly headerInset = HEADER_VIEWPORT_INSET;
   private log = inject(DebugLogService);
   private keyboardConfig = inject(KeyboardConfigService);
   private themeService = inject(ThemeService);
   private visualConfig = inject(VisualConfigService);
+  readonly agent = inject(AgentService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
+  @ViewChild(DrawingAreaComponent) drawingArea!: DrawingAreaComponent;
 
   movementSpeed = 50;
   exLineOpen = false;
@@ -100,6 +122,11 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.keymenuDisplay === 'keyboard' ? KeymenuComponent.occludedHeightPx() : 0;
   }
 
+  /** Width the open agent chat panel occludes on the right. */
+  get agentPanelInset(): number {
+    return this.agent.panelOpen() ? AGENT_PANEL_WIDTH : 0;
+  }
+
   private configSub?: Subscription;
   private visualSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
@@ -122,6 +149,14 @@ export class AppComponent implements OnInit, OnDestroy {
     this.visualSub?.unsubscribe();
   }
 
+  ngAfterViewInit() {
+    // Agent mode reaches the canvas only through the AgentCanvasTarget surface.
+    this.agent.attachCanvas(this.drawingArea, () => {
+      const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};
+      return {key: `${identity.vaultName ?? 'local'}:${identity.path}`, title: identity.path};
+    });
+  }
+
   private profileToAssignments(profile: string): KeymenuKeyAssignments {
     return profile === 'ijkl' ? IJKL_KEYMENU_KEY_ASSIGNMENTS : VIM_KEYMENU_KEY_ASSIGNMENTS;
   }
@@ -136,6 +171,19 @@ export class AppComponent implements OnInit, OnDestroy {
       this.openExLine();
       return;
     }
+    switch (kmCommand.kind) {
+      case DACommandType.TOGGLE_AGENT_PANEL:
+        this.agent.togglePanel();
+        return;
+      case DACommandType.ASK_AGENT_ABOUT_SELECTION:
+        this.agent.askAboutSelection();
+        return;
+      case DACommandType.FOLLOW_AGENT:
+        this.agent.follow();
+        return;
+    }
+    // Moving the view yourself takes it back from the agent.
+    if (AGENT_VIEW_INPUT_COMMANDS.has(kmCommand.kind)) this.agent.userTookViewControl();
     this.commandsSubject.next(kmCommand);
   }
 

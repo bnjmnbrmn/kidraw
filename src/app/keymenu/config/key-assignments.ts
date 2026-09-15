@@ -158,6 +158,14 @@ export interface KeymenuKeyAssignments {
     readonly treeRightClear: KeyString;
     readonly radial: KeyString;
   };
+  /** Agent mode root taps (notes/idea-mcp-server.md): open/close the chat,
+   *  ask about the selection, and hand the view back to the agent. Chosen
+   *  from keys free at root in both profiles so the pair stays the same. */
+  readonly agent: {
+    readonly chat: KeyString;
+    readonly askAboutSelection: KeyString;
+    readonly follow: KeyString;
+  };
 }
 
 // IJKL profile: movement on i/j/k/l (right hand, index-finger-centered),
@@ -260,6 +268,8 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
+  // m = message the agent, o = open a question about the selection, t = track the agent's view.
+  agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
 };
 
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
@@ -358,4 +368,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
+  // m = message the agent, o = open a question about the selection, t = track the agent's view.
+  agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
 };

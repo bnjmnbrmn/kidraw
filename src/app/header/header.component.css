@@ -170,3 +170,18 @@ h1 {
     display: none;
   }
 }
+
+/* Agent mode: always visible while a graph is shared with an agent endpoint. */
+.agent-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(22, 163, 74, 0.16);
+  border: 1px solid rgba(22, 163, 74, 0.6);
+}
+
+.agent-chip.connecting {
+  background: rgba(217, 119, 6, 0.16);
+  border-color: rgba(217, 119, 6, 0.6);
+}

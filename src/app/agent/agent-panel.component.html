@@ -1,0 +1,116 @@
+@if (agent.panelOpen()) {
+  <aside class="agent-panel" [class.dark]="dark" aria-label="Agent chat">
+    <header class="panel-header">
+      <span class="state-dot" [class]="'state-dot ' + agent.state()"></span>
+      <strong>Agent</strong>
+      @if (agent.endpointName()) {
+        <span class="endpoint" [title]="agent.endpoint()?.url ?? ''">{{ agent.endpointName() }}</span>
+      }
+      <span class="spacer"></span>
+      @if (agent.connected()) {
+        <span class="follow" [class.free]="agent.followMode() === 'free'"
+              [title]="agent.followMode() === 'free' ? 'You control the view. Press ' + followKey + ' to follow the agent.' : 'The agent can move your view.'">
+          {{ agent.followMode() === 'free' ? 'You lead' : 'Following' }}
+        </span>
+        <button type="button" class="link" (click)="agent.disconnect(); releaseKeyboard()">Disconnect</button>
+      }
+      <button type="button" class="close" aria-label="Close agent chat"
+              (click)="agent.togglePanel(); releaseKeyboard()">×</button>
+    </header>
+
+    @switch (agent.state()) {
+      @case ('setup') {
+        <form class="setup" (submit)="$event.preventDefault(); saveSetup()">
+          <p>Connect KiDraw to an agent server you run. Nothing is sent anywhere until you add one.</p>
+          <label>Endpoint
+            <input name="url" [(ngModel)]="setupUrl" [placeholder]="suggestedUrl" autocomplete="off">
+          </label>
+          <label>Access token
+            <input name="token" type="password" [(ngModel)]="setupToken" autocomplete="off"
+                   placeholder="From ~/.config/kidraw-agent/token">
+          </label>
+          <label>Name <span class="muted">(optional)</span>
+            <input name="name" [(ngModel)]="setupName" placeholder="e.g. my-server" autocomplete="off">
+          </label>
+          <div class="actions">
+            <button type="submit" [disabled]="!setupToken.trim()">Save and connect</button>
+          </div>
+        </form>
+      }
+      @case ('consent') {
+        <div class="consent">
+          <p>Share <strong>{{ agent.graphTitle() }}</strong> with <strong>{{ agent.endpointName() }}</strong>?</p>
+          <p class="muted">The agent will be able to read this graph and point at things in it. It cannot change it.</p>
+          <div class="actions">
+            <button type="button" (click)="agent.answerConsent('once'); releaseKeyboard()">Once</button>
+            <button type="button" (click)="agent.answerConsent('always'); releaseKeyboard()">Always for this graph</button>
+            <button type="button" class="link" (click)="agent.answerConsent('cancel'); releaseKeyboard()">Cancel</button>
+          </div>
+          <button type="button" class="link small" (click)="agent.forgetEndpoint(); releaseKeyboard()">Change endpoint…</button>
+        </div>
+      }
+      @default {
+        <div class="transcript" #transcript>
+          @if (agent.messages().length === 0) {
+            <p class="hint">
+              @if (agent.state() === 'connecting') { Connecting… }
+              @else if (agent.state() === 'ready') {
+                Ask about the graph. Select something and press <kbd>{{ askKey }}</kbd> to ask about it.
+              }
+            </p>
+          }
+          @for (message of agent.messages(); track message.id) {
+            <div class="message" [class]="'message ' + message.role">
+              @if (message.refs?.length) {
+                <div class="refs">
+                  @for (ref of message.refs; track ref.id) {
+                    <button type="button" class="pill" [class.edge]="ref.kind === 'edge'"
+                            (click)="focusRef(ref.id)">{{ ref.label }}</button>
+                  }
+                </div>
+              }
+              @for (segment of segments(message); track $index) {
+                @if (segment.kind === 'ref') {
+                  <button type="button" class="pill" (click)="focusRef(segment.id)">{{ segment.label }}</button>
+                } @else {
+                  <span>{{ segment.text }}</span>
+                }
+              }
+              @if (message.streaming) { <span class="cursor">▍</span> }
+            </div>
+          }
+        </div>
+
+        @if (agent.statusText()) {
+          <div class="status">{{ agent.statusText() }}</div>
+        }
+
+        @if (agent.state() === 'error') {
+          <div class="actions reconnect">
+            <button type="button" (click)="agent.beginConnect(); releaseKeyboard()">Reconnect</button>
+            <button type="button" class="link" (click)="agent.forgetEndpoint(); releaseKeyboard()">Change endpoint…</button>
+          </div>
+        }
+
+        <div class="composer">
+          @if (agent.attachedRefs().length) {
+            <div class="refs attached">
+              <span class="muted">About</span>
+              @for (ref of agent.attachedRefs(); track ref.id) {
+                <span class="pill static" [class.edge]="ref.kind === 'edge'">
+                  {{ ref.label }}
+                  <button type="button" class="remove" aria-label="Remove reference"
+                          (click)="agent.removeAttachedRef(ref.id)">×</button>
+                </span>
+              }
+            </div>
+          }
+          <textarea #promptInput rows="2" [(ngModel)]="draft"
+                    [disabled]="agent.state() !== 'ready'"
+                    [placeholder]="agent.busy() ? 'Answering… (Esc to stop)' : 'Ask the agent (Enter to send, Esc to return to the canvas)'"
+                    (keydown)="onPromptKeydown($event)"></textarea>
+        </div>
+      }
+    }
+  </aside>
+}

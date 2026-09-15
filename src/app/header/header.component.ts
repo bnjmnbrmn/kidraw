@@ -9,6 +9,7 @@ import { EdgeDirectedness, LineStyle, NodeShape } from '../drawing-area/command.
 import { GraphStorageService, SavedGraph } from '../services/graph-storage.service';
 import { GraphSnapshot } from '../drawing-area/graph-snapshot';
 import { DAFileState } from '../drawing-area/da-notification.model';
+import { AgentService } from '../agent/agent.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -134,6 +135,7 @@ export class HeaderComponent {
   vc = inject(VisualConfigService);
   demoData = inject(DemoDataService);
   graphStorage = inject(GraphStorageService);
+  agent = inject(AgentService);
 
   savedGraphs = computed(() => this.graphStorage.graphs());
   renamingId: string | null = null;

@@ -335,6 +335,41 @@ export class DANode {
     }
   }
 
+  private _agentHighlight: Konva.Rect | null = null;
+
+  /** Agent mode's "look at this" halo (notes/idea-mcp-server.md): amber and
+   *  drawn behind the shape, so it never reads as selection. Constant screen
+   *  width, like the selected outline. */
+  setAgentHighlight(on: boolean): void {
+    if (!on) {
+      this._agentHighlight?.destroy();
+      this._agentHighlight = null;
+      return;
+    }
+    const pad = 8;
+    if (!this._agentHighlight) {
+      this._agentHighlight = new Konva.Rect({
+        listening: false,
+        stroke: '#f59e0b',
+        strokeWidth: 3,
+        strokeScaleEnabled: false,
+        cornerRadius: 10,
+        shadowColor: '#f59e0b',
+        shadowBlur: 18,
+        shadowOpacity: 0.9,
+      });
+      this.group.add(this._agentHighlight);
+      this._agentHighlight.moveToBottom();
+    }
+    this._agentHighlight.setAttrs({
+      x: -pad, y: -pad, width: this.NODE_WIDTH + 2 * pad, height: this.NODE_HEIGHT + 2 * pad,
+    });
+  }
+
+  get agentHighlighted(): boolean {
+    return this._agentHighlight !== null;
+  }
+
   /** Toggle whether invisible-style nodes render as a small dot when not selected.
    *  No-op for non-invisible nodes. */
   setInvisibleVisibleForGrid(visible: boolean): void {

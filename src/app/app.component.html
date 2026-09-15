@@ -3,7 +3,7 @@
 <app-drawing-area [commands]="commandsSubject.asObservable()"
                   [viewportInset]="{
                     left: compactMenuSide === 'left' ? compactMenuInset : 0,
-                    right: compactMenuSide === 'right' ? compactMenuInset : 0,
+                    right: (compactMenuSide === 'right' ? compactMenuInset : 0) + agentPanelInset,
                     top: headerInset,
                     bottom: keymenuInset
                   }"
@@ -62,4 +62,19 @@
     [history]="exHistory"
     (submitCommand)="onExCommand($event)"
     (cancel)="onExCancel()"/>
+}
+
+<!-- Agent mode UI loads lazily: nothing is downloaded until it is first used. -->
+@defer (when agent.panelOpen()) {
+  <app-agent-panel [dark]="darkTheme"
+                   [chatKey]="keyAssignments.agent.chat"
+                   [askKey]="keyAssignments.agent.askAboutSelection"
+                   [followKey]="keyAssignments.agent.follow"/>
+}
+
+@defer (when agent.captions().length > 0 || agent.lookHere() !== null) {
+  <app-agent-overlay [dark]="darkTheme"
+                     [followKey]="keyAssignments.agent.follow"
+                     [bottomInset]="keymenuInset"
+                     [rightInset]="agentPanelInset"/>
 }

@@ -684,6 +684,12 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.clipboardSubmenu]: new LabeledAction('Copy',
         () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION}), false),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
+      [this.keyAssignments.agent.chat]: new LabeledAction('Agent Chat',
+        () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_AGENT_PANEL}), false),
+      [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
+        () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
+      [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent',
+        () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
       // Holding Shift shows what the shifted keys do, the same way every
       // other hub does. Redo lives here as U; Ctrl-R still works.
       ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
