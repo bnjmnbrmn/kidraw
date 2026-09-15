@@ -134,6 +134,17 @@ A real Codex session, through the Docker runner, against a scripted tab:
   the path to 1–14.
 - It wrote math as Unicode (p₁, ×, ⋯), so math rendering will be welcome.
 
+A second run, after marks, detail levels and math were in:
+
+- Asked the same question at detail "standard", it wrote 10 statements and
+  a path numbered 1–9. It used `$…$` TeX in 8 of them and bold for the key
+  terms.
+- One middle step was then marked "doesn't follow" and the mark sent with
+  detail "thorough". The agent added definitions (multiple, divides,
+  remainder) and intermediate steps, growing the explanation to 18
+  statements with the path renumbered 1–17. It cleared the mark in the same
+  batch.
+
 ## Not yet
 
 - Display math (`$$…$$`), and markdown and math in edge labels.
