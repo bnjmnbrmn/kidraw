@@ -25,8 +25,9 @@
         <form class="setup" (submit)="$event.preventDefault(); saveSetup()">
           <p>Connect KiDraw to an agent server you run. Nothing is sent anywhere until you add one and agree to share a graph.</p>
           <label>Endpoint
-            <input #setupUrlInput name="url" [(ngModel)]="setupUrl" [placeholder]="suggestedUrl" autocomplete="off">
-            <span class="muted small">Leave blank to use {{ suggestedUrl }}</span>
+            <input #setupUrlInput name="url" [(ngModel)]="setupUrl" autocomplete="off"
+                   placeholder="wss://your-agent-server.example/agent/">
+            <span class="muted small">The address of a kidraw-agent server you run or trust.</span>
           </label>
           @if (setupError) {
             <p class="setup-error">{{ setupError }}</p>
@@ -39,7 +40,7 @@
             <input name="name" [(ngModel)]="setupName" placeholder="e.g. my-server" autocomplete="off">
           </label>
           <div class="actions">
-            <button type="submit" [disabled]="!setupToken.trim()">Save and connect</button>
+            <button type="submit" [disabled]="!setupUrl.trim() || !setupToken.trim()">Save and connect</button>
             <button type="button" class="link" (click)="agent.closePanel()">Cancel</button>
             @if (agent.endpoint()) {
               <button type="button" class="link" (click)="agent.forgetEndpoint()">Forget this endpoint</button>

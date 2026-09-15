@@ -89,11 +89,6 @@ export class AgentPanelComponent {
     return this.agent.keyLabels();
   }
 
-  get suggestedUrl(): string {
-    const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${scheme}//${location.host}/agent/`;
-  }
-
   get placeholder(): string {
     if (this.agent.reconnecting()) return 'Offline — reconnecting…';
     if (this.agent.state() === 'connecting') return 'Connecting…';
@@ -157,10 +152,12 @@ export class AgentPanelComponent {
     if (this.draft.trim() && this.agent.sendPrompt(this.draft)) this.draft = '';
   }
 
+  /** There is deliberately no default endpoint, not even this site's own
+   *  address: nothing connects anywhere the user didn't type in. */
   saveSetup(): void {
-    const url = endpointUrl(this.setupUrl.trim() || this.suggestedUrl);
+    const url = endpointUrl(this.setupUrl.trim());
     const token = this.setupToken.trim();
-    if (!token) return;
+    if (!token || !this.setupUrl.trim()) return;
     if (!url) {
       this.setupError = 'Enter a full address starting with wss:// (or ws:// for a server on this machine).';
       return;
