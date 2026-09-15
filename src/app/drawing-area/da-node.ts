@@ -8,6 +8,7 @@ import {
   vimChangeRange,
 } from './text-cursor';
 import { hasInlineMarkdown, InlineStyle, LaidLine, layoutSpans, parseInlineMarkdown } from './markdown-label';
+import { mathImage, mathMetrics } from './math-images';
 import type { LabelFormat } from '../extensions/extension.model';
 
 /** Konva.Text's own default, named so markdown runs match plain labels. */
@@ -15,6 +16,13 @@ const LABEL_FONT = 'Arial';
 const MONO_FONT = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
 /** Code spans in the editing view: a mid tone that reads on both themes. */
 const CODE_SOURCE_COLOR = '#0ea5e9';
+/** TeX in the editing view. */
+const MATH_SOURCE_COLOR = '#a855f7';
+/** TeX that doesn't parse, shown as its source. */
+const MATH_ERROR_COLOR = '#dc2626';
+/** Konva.Text sets textBaseline 'middle' at the middle of each line box; for
+ *  Arial the baseline falls this many ems below that. */
+const BASELINE_BELOW_MIDDLE = 0.31;
 
 function fontStyleOf(style: {bold: boolean; italic: boolean}): string {
   if (style.bold && style.italic) return 'italic bold';
@@ -839,7 +847,7 @@ export class DANode {
 
   private measureTextHeight(text: string, width: number, fontSize: number): number {
     if (this.rendersRich(text)) {
-      return this.layoutRich(text, width, fontSize, true).length * fontSize * (this._label.lineHeight() ?? 1);
+      return this.layoutRich(text, width, fontSize, true).reduce((sum, line) => sum + line.ascent + line.descent, 0);
     }
     if (!DANode._measureText) {
       DANode._measureText = new Konva.Text({ visible: false });
@@ -1356,10 +1364,20 @@ export class DANode {
     const measure = DANode._runMeasure ??= new Konva.Text({ visible: false });
     measure.fontSize(fontSize);
     return layoutSpans(parseInlineMarkdown(text).spans, width, (run: string, style: InlineStyle) => {
-      measure.fontFamily(style.code ? MONO_FONT : LABEL_FONT);
-      measure.fontStyle(fontStyleOf(style));
+      const math = style.math ? mathMetrics(run, fontSize) : null;
+      if (math && !math.error) return math;
+      // Text, or TeX shown as its source (MathJax still loading, or bad TeX).
+      measure.fontFamily(style.code || style.math ? MONO_FONT : LABEL_FONT);
+      measure.fontStyle(style.math ? 'normal' : fontStyleOf(style));
       return measure.measureSize(run).width;
-    }, wrap);
+    }, wrap, this.textLineMetrics(fontSize));
+  }
+
+  /** How far a line of text reaches above and below its baseline. */
+  private textLineMetrics(fontSize: number): {ascent: number; descent: number} {
+    const lineHeight = fontSize * (this._label.lineHeight() ?? 1);
+    const ascent = lineHeight / 2 + fontSize * BASELINE_BELOW_MIDDLE;
+    return {ascent, descent: lineHeight - ascent};
   }
 
   /** Draw the label the way its format and edit state call for. Plain text,
@@ -1379,30 +1397,49 @@ export class DANode {
 
   private drawRichText(text: string): void {
     const fontSize = this._fontSize;
-    const lineHeight = fontSize * (this._label.lineHeight() ?? 1);
+    const textMetrics = this.textLineMetrics(fontSize);
+    const textLineHeight = textMetrics.ascent + textMetrics.descent;
     // Konva.Text drops lines that don't fit its height; do the same.
-    const maxLines = Math.max(1, Math.floor(this._label.height() / lineHeight + 0.01));
-    const lines = this.layoutRich(text, this._label.width(), fontSize, this._label.wrap() !== 'none').slice(0, maxLines);
-    const top = this._label.y() + (this._label.height() - lines.length * lineHeight) / 2;
+    const lines: LaidLine[] = [];
+    let height = 0;
+    for (const line of this.layoutRich(text, this._label.width(), fontSize, this._label.wrap() !== 'none')) {
+      if (lines.length > 0 && height + line.ascent + line.descent > this._label.height() + 0.5) break;
+      lines.push(line);
+      height += line.ascent + line.descent;
+    }
+    let top = this._label.y() + (this._label.height() - height) / 2;
     const fill = this._label.fill() as string;
-    lines.forEach((line, index) => {
+    for (const line of lines) {
       const left = this._label.x() + (this._label.width() - line.width) / 2;
-      const y = top + index * lineHeight;
+      const baseline = top + line.ascent;
       for (const run of line.runs) {
         const x = left + run.x;
+        const image = run.style.math ? mathImage(run.text, fontSize, fill) : null;
+        if (image) {
+          this._richLabel.add(new Konva.Image({
+            image, x, y: baseline - run.ascent, width: run.width, height: run.ascent + run.descent, listening: false,
+          }));
+          continue;
+        }
+        const y = baseline - textMetrics.ascent;
         if (run.style.code) {
           this._richLabel.add(new Konva.Rect({
-            x: x - 2, y: y - 1, width: run.width + 4, height: lineHeight + 2,
+            x: x - 2, y: y - 1, width: run.width + 4, height: textLineHeight + 2,
             cornerRadius: 3, fill, opacity: 0.12, listening: false,
           }));
         }
+        // Math without an image shows its TeX: faded while MathJax loads, red if it doesn't parse.
+        const badTex = run.style.math && mathMetrics(run.text, fontSize)?.error === true;
         this._richLabel.add(new Konva.Text({
-          x, y, text: run.text, fontSize, fill, listening: false,
-          fontFamily: run.style.code ? MONO_FONT : LABEL_FONT,
-          fontStyle: fontStyleOf(run.style),
+          x, y, text: run.text, fontSize, listening: false,
+          fill: badTex ? MATH_ERROR_COLOR : fill,
+          opacity: run.style.math && !badTex ? 0.6 : 1,
+          fontFamily: run.style.code || run.style.math ? MONO_FONT : LABEL_FONT,
+          fontStyle: run.style.math ? 'normal' : fontStyleOf(run.style),
         }));
       }
-    });
+      top += line.ascent + line.descent;
+    }
   }
 
   /** The raw text on `_label`'s own line breaks (so the caret lines up), in
@@ -1432,7 +1469,7 @@ export class DANode {
           fontSize,
           fontFamily: MONO_FONT,
           fontStyle: fontStyleOf(span),
-          fill: span.role === 'code' ? CODE_SOURCE_COLOR : fill,
+          fill: span.role === 'code' ? CODE_SOURCE_COLOR : span.role === 'math' ? MATH_SOURCE_COLOR : fill,
           opacity: span.role === 'marker' ? 0.45 : 1,
           listening: false,
         }));

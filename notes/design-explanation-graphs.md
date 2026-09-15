@@ -105,6 +105,22 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      input.
    - Every prompt carries it. The server tells the agent on the first prompt
      and whenever it changes, not with every message.
+7. **Math** in node labels: TeX between single dollar signs.
+   - MathJax 4 (`math-renderer.ts`) renders each formula as a self-contained
+     SVG, with glyphs as paths and no web fonts, drawn on the canvas as an
+     image.
+   - MathJax is a lazy chunk (2.8 MB, about 750 kB compressed) that loads the
+     first time a label has math. Until then the TeX shows as faded source,
+     and labels lay out again when it arrives. The only always-loaded part is
+     the small cache in `math-images.ts`.
+   - A line with a fraction on it is taller. Formulas never break across
+     lines.
+   - Prices stay text (`$5 or $6`, the same rule as pandoc), and `\$` is a
+     literal dollar. TeX that doesn't parse shows its source in red.
+   - While editing, the TeX is purple. The agent is told to write formulas as
+     `$…$` rather than Unicode.
+   - MathJax 3 (`mathjax-full`) was tried first and dropped: npm marks it
+     deprecated, and it pulled in an `@xmldom/xmldom` with known issues.
 
 ## Live check with Codex (2026-09-15)
 
@@ -120,8 +136,7 @@ A real Codex session, through the Docker runner, against a scripted tab:
 
 ## Not yet
 
-- **Math** in labels. A plan to evaluate: MathJax's SVG output (paths, no
-  fonts), drawn as an image, fits the canvas and exports.
+- Display math (`$$…$$`), and markdown and math in edge labels.
 - Markdown in **edge labels** (`DALabel`).
 - Marking statements outside reading mode (for example the selection).
 - A live Codex run of marks and detail levels.

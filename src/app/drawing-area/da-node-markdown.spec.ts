@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import {DANode} from './da-node';
+import {loadMath} from './math-images';
 
 /** The Konva.Text children of the node's markdown layer, in drawing order. */
 function richTexts(node: DANode): Konva.Text[] {
@@ -60,6 +61,30 @@ describe('DANode markdown labels', () => {
     expect(node.label.fontFamily()).toBe('Arial');
     expect(richTexts(node).map(t => t.text())).toEqual(['a ', 'b', ' c']);
   });
+
+  it('draws math as an image that makes its line taller, and colours the TeX while editing', async () => {
+    await loadMath();
+    // A larger font, so one line of text clears the node's minimum height.
+    const markdownNode = (text: string) => {
+      const node = makeNode(text);
+      node.restoreState(260, 60, 28, 'fit');
+      node.setLabelFormat('markdown');
+      return node;
+    };
+    // \dfrac, not \frac: an inline \frac is compact enough to fit an ordinary line.
+    const fraction = markdownNode('so $\\dfrac{a+b}{c+d}$ holds');
+    const inline = markdownNode('so $a$ holds');
+    const images = (node: DANode) => ((node as any)._richLabel as Konva.Group).getChildren().filter(c => c instanceof Konva.Image);
+    expect(images(fraction).length).toBe(1);
+    expect(richTexts(fraction).map(t => t.text())).toEqual(['so ', ' holds']);
+    expect(fraction.NODE_HEIGHT).toBeGreaterThan(inline.NODE_HEIGHT);
+
+    fraction.showCursor();
+    // The monospace source wraps, so the TeX can be split across lines.
+    const tex = richTexts(fraction).find(t => t.text().includes('dfrac'));
+    expect(tex?.fill()).toBe('#a855f7');
+    fraction.hideCursor();
+  }, 60000); // loading MathJax, a large lazy chunk, can take longer than the 5 s default
 
   it('reports a resize when editing switches fonts', () => {
     const node = makeNode('**a fairly long bold statement**');

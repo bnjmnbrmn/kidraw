@@ -23,15 +23,18 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      markers while editing. Other graphs are unchanged.
 >   6. Detail level (brief / standard / thorough): `:detail`, or the button
 >      under the chat input. The agent is told when it changes.
+>   7. Math in node labels: `$…$` TeX, rendered by MathJax 4 in a lazy
+>      chunk that loads the first time a label has math.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly
 >   numbered path, then inserted three steps where told "doesn't follow".
-> - **Next:** math in labels.
+> - **Next:** Ben tries it. Then marking outside reading mode, display math,
+>   and draft mode for agent edits.
 > - **Verified:**
 >   - Unit specs for operations, applier, planner, undo, tools, agent
 >     service, reading, the markdown parser and DANode markdown.
 >   - Playwright: agent mode 31/31, agent edits 7/7, reading 19/19,
->     markdown 10/10.
->   - Build is 1.01 MB against the 1.1 MB budget Ben approved.
+>     markdown 10/10, math 8/8.
+>   - Build is 1.02 MB against the 1.1 MB budget Ben approved.
 
 > ## 🤖 IN PROGRESS: agent mode v0, read-only "ask and point" (2026-09-15, branch `agent-mode-v0`)
 >

@@ -21,6 +21,7 @@ import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
 import { EXTENSION_REGISTRY } from '../extensions/extension-registry';
 import { nextId } from './id-generator';
+import { onMathImageLoaded, onMathReady } from './math-images';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -560,6 +561,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer = new DrawingLayer();
     this.drawingLayer.palette = effectivePalette();
     this.stage.add(this.drawingLayer);
+    // Math in labels lays out as TeX source until MathJax has loaded, then again at its real size.
+    this.mathUnsubscribes = [
+      onMathReady(() => this.relayoutMathLabels()),
+      onMathImageLoaded(() => {
+        this.drawingLayer.batchDraw();
+        this.crosshairsLayer?.batchDraw();
+      }),
+    ];
     this.watchUserViewChanges();
     this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
@@ -667,6 +676,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.clearNavigationLandingGhost(false);
     this.crosshairHoverHighlight?.destroy();
     this.areaSelectMarquee?.destroy();
+    this.mathUnsubscribes.forEach(unsubscribe => unsubscribe());
+  }
+
+  private mathUnsubscribes: (() => void)[] = [];
+
+  /** MathJax has loaded: labels with math take their real size. */
+  private relayoutMathLabels(): void {
+    const resized: DANode[] = [];
+    for (const node of this.drawingLayer.getDANodes()) {
+      if (node.labelFormat === 'markdown' && node.label.text().includes('$') && node.applyTextOverflow()) {
+        resized.push(node);
+      }
+    }
+    this.updateEdgesForResizedNodes(resized);
+    this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
   }
 
   private canEdit = false;
