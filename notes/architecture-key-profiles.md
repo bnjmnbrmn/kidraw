@@ -34,6 +34,23 @@ Same-hand chords are constrained by finger independence, not by key distance:
 middle+ring is the pair to design away from. See
 [design-chord-ergonomics](design-chord-ergonomics.md).
 
+## Shifted chords
+
+A few actions live on Shift + a root key, and each one reverses or mirrors that key:
+
+| Chord | Action | Base key |
+| :--- | :--- | :--- |
+| Shift+U | Redo | `u` Undo |
+| Shift+N | Prev Match | `n` Next Match |
+| Shift+O | Follow Agent (the agent shows you something) | `o` Ask Agent (you show the agent something) |
+| Shift+M | Close Agent Chat | `m` Agent Chat (open or focus) |
+
+The letters come from `KeymenuKeyAssignments`, but **Shift itself is hard-coded**:
+`KeymenuComponent.handleKeyDown` intercepts these chords, because a quick
+Shift+letter would otherwise fall through to the root binding before the Shift
+card's ~350ms hold opens. The Shift card lists them so they aren't folklore.
+Keep new Shift chords to this "reverse the base key" pattern.
+
 ## Open questions
 
 - Zoom key assignments are still being tuned per profile.

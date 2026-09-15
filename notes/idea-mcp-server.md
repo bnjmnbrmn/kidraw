@@ -17,7 +17,8 @@ Tier 2 only, read-only "ask and point". Server, setup, and security model: [`age
 - **Differences from the sketch above:**
   - A pasted token instead of pairing.
   - Consent and endpoint stored in localStorage, not IndexedDB.
-  - Permission requests are decided on the server (read, search, think and fetch allowed; everything else refused) instead of prompting in the tab.
+  - Permission requests are decided on the server instead of prompting in the tab. Read, search, think and calls to KiDraw's own tools are allowed; everything else is refused, including extra sandbox permissions and fetch.
+  - Each session runs with a private Codex home (a copy of the login; history, memories and web search off), so one graph's session can't read another's. Container network egress is not restricted yet.
   - Sessions outlive their socket for 10 minutes: a reload or a dropped connection resumes the same conversation (the tab keeps a session id and secret in `sessionStorage`). Disconnecting on purpose ends the session. Resuming doesn't ask for consent again, but only for the same endpoint and graph.
   - No tours, `point`/`ask`/`suggest`, or `neighborhood` yet.
   - Sessions use a separate Codex login (`~/.config/kidraw-agent/codex`) so token refreshes don't collide with the user's own Codex.

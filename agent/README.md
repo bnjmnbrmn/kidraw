@@ -26,16 +26,24 @@ before anything leaves the browser.
   behind the site password (nginx).
 - **Server → agent:** with the `docker` runner each session runs in a
   throwaway container (no repo, no host files, capabilities dropped, memory,
-  CPU and process limits). The only host directory it sees is
-  kidraw-agent's own Codex home.
+  CPU and process limits). The only host directory it sees is the session's
+  private Codex home: a copy of kidraw-agent's login plus a `config.toml` that
+  turns off history, memories and web search, so nothing from one graph's
+  session reaches another. When the session ends, a login it refreshed is
+  copied back and the home is deleted. At most `KIDRAW_AGENT_MAX_SESSIONS`
+  sessions run at once. Containers can still reach the network; limiting that
+  to the model provider is not done yet.
 - **Reloads and dropped connections:** a session outlives its socket for
   `KIDRAW_AGENT_RESUME_GRACE_MS` (10 minutes by default). The `ready` message
   gives the tab a session id and secret, which it keeps in `sessionStorage`
   (that tab only) and presents to pick the conversation back up. Disconnecting
   on purpose ends the session at once.
 - **Agent → canvas:** tools go through a per-session MCP URL with a bearer
-  secret. Codex starts in read-only mode; kidraw-agent auto-approves only
-  read/search/think/fetch permission requests and refuses edits and commands.
+  secret, and are marked read-only. Codex starts in read-only mode.
+  kidraw-agent approves only read, search and think requests and calls to
+  KiDraw's own tools. It refuses everything else: edits, commands, fetches,
+  requests for extra sandbox permissions, and anything it doesn't recognise
+  (`src/permissions.ts`).
 
 ## Setup (Linux host with Docker)
 
@@ -80,7 +88,8 @@ after you have moved away.
 | `KIDRAW_AGENT_MCP_ADVERTISED_HOST` | `host.docker.internal` for `docker`, else the MCP host | host name agents use |
 | `KIDRAW_AGENT_ORIGINS` | `https://kidraw.dev.bnjmnbrmn.com,http://localhost:4200` | allowed browser origins |
 | `KIDRAW_AGENT_TOKEN_FILE` | `~/.config/kidraw-agent/token` | created (mode 600) on first start |
-| `KIDRAW_AGENT_CODEX_HOME` | `~/.config/kidraw-agent/codex` | Codex login used by sessions |
+| `KIDRAW_AGENT_CODEX_HOME` | `~/.config/kidraw-agent/codex` | kidraw-agent's Codex login; sessions get private copies in the sibling `sessions/` |
+| `KIDRAW_AGENT_MAX_SESSIONS` | `3` | sessions held at once, including ones waiting for their tab |
 | `KIDRAW_AGENT_DOCKER_IMAGE` | `kidraw-agent-codex:latest` | |
 | `KIDRAW_AGENT_TOOL_TIMEOUT_MS` | `30000` | how long a tool waits for the tab |
 | `KIDRAW_AGENT_RESUME_GRACE_MS` | `600000` | how long a session waits for its tab to reconnect |

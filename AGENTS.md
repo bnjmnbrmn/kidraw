@@ -43,8 +43,12 @@ npx ng build                                          # production build / type-
 AppComponent                 # shell: routes commands between keymenu and drawing-area
 ├── HeaderComponent          # zoom level, mode badge, settings, status messages
 ├── DrawingAreaComponent     # Konva canvas (nodes, edges, waypoints, labels, crosshairs)
-└── KeymenuComponent         # keyboard overlay (separate Konva canvas on top)
+├── KeymenuComponent         # keyboard overlay (separate Konva canvas on top)
+├── AgentPanelComponent      # agent chat (lazy); AgentService holds the session
+└── AgentOverlayComponent    # agent captions and look-here hint (lazy)
 ```
+
+**Agent mode.** `src/app/agent/` is the tab side: `AgentService`, the panel and overlay, and the canvas tools, which reach the canvas only through `AgentCanvasTarget` (implemented by `DrawingAreaComponent`). It talks to `kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that the user runs and configures; nothing connects until they do. Design: [`notes/idea-mcp-server.md`](notes/idea-mcp-server.md).
 
 **Communication pattern.** `KeymenuComponent` emits `DACommand` → `AppComponent` → `DrawingAreaComponent` via an RxJS `Subject<DACommand>`. `DrawingAreaComponent` emits `DANotification` back; `AppComponent` calls keymenu methods directly for mode switches.
 
@@ -78,7 +82,7 @@ The project work is divided across specialist agents. Each has a canonical home 
 - [keymenu](notes/agents/keymenu.md) — `src/app/keymenu/**`, `src/app/lib/keymenu/**`, key assignments
 - [graph-auto-layout](notes/agents/graph-auto-layout.md) — `*-edges.ts`, `graph-layout.ts`, `edge-routing-metrics.ts`, tuning panel
 - [serialization](notes/agents/serialization.md) — `src/app/lib/file-format/**`, snapshot mapping, draft storage
-- [plumbing](notes/agents/plumbing.md) — `app.component.ts`, command/notification wiring, shared services
+- [plumbing](notes/agents/plumbing.md) — `app.component.ts`, command/notification wiring, shared services; for now also agent mode (`src/app/agent/**` and the `agent/` server)
 
 **Reviewers** (read-only across implementer worktrees; return written findings):
 
