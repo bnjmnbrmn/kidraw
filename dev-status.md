@@ -37,14 +37,26 @@ _Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`._
 >   - **Loading:** `AgentStore` (the signals, always loaded) loads
 >     `AgentService`, the panel, the overlay and the tools lazily, which keeps
 >     the initial bundle under the 1 MB budget.
-> - **Verified:** agent server tests (fake agent); Playwright end-to-end run
->   against the fake agent (15 checks); container → MCP bridge reachability.
-> - **Open:** live Codex test (needs the kidraw-agent Codex login); reviewer
->   passes; captions can cover neighbouring nodes (placement only avoids other
->   captions).
-> - **Tests on this 4 GB VPS:** a full `ng test` run can starve Chrome and
->   disconnect. Set `CHROME_BIN` to Playwright's Chromium and run in batches
->   with `--include`, one at a time, with nothing else heavy running.
+> - **Verified (2026-09-15):**
+>   - Agent server tests 20/20: fake agent, permission policy, session homes,
+>     hostile frames, session cap, takeover, protocol drift.
+>   - Playwright against the fake agent 31/31, in 3 consecutive runs.
+>   - Affected unit specs 82/82.
+>   - Full `ng test` 547/549 before the review fixes; both failures were
+>     agent key collisions, since fixed.
+>   - The Docker runner starts Codex and stops at "not logged in", with the
+>     login command.
+> - **Reviewed:** architectural, code, menu UX, overall UX and QA passes. Their
+>   findings are fixed, except the open items below.
+> - **Open:**
+>   - A live Codex test, which needs the kidraw-agent Codex login.
+>   - Container network egress isn't restricted to the model provider.
+>   - The agent isn't told its captions disappeared after a reload.
+>   - The protocol types still exist in two copies; a drift test guards them.
+>   - A full `ng test` rerun after the review fixes: the last attempt was
+>     killed for low memory while the dev server was running.
+> - **Tests on this 4 GB VPS:** stop OpenClaw, set `CHROME_BIN` to Playwright's
+>   Chromium, run one heavy thing at a time, and check `df -h /` first.
 
 > ## ⚡ IN PROGRESS / FEEL CHECK: graph-item navigation strategies (2026-07-22)
 >
