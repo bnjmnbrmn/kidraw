@@ -87,6 +87,8 @@ export class AgentStore {
   readonly unseenFailure = signal(false);
   /** The change set of the agent's most recent turn that changed the graph, for "undo its last turn". */
   readonly agentEditTurn = signal<string | null>(null);
+  /** Text to put in the chat input (e.g. reading-mode feedback); the panel takes it and clears this. */
+  readonly pendingDraft = signal<string | null>(null);
 
   readonly endpoint = signal<AgentEndpointSettings | null>(this.settings.endpoint);
   readonly endpointName = computed(() => this.endpoint()?.name ?? '');
@@ -150,6 +152,14 @@ export class AgentStore {
 
   askAboutSelection(): void {
     void this.load().then(service => service.askAboutSelection());
+  }
+
+  /** Open the chat with `refs` attached and `text` ready to edit and send:
+   *  the reader points at the step that bothers them instead of quoting it. */
+  prefillFeedback(text: string, refs: CanvasRef[]): void {
+    this.attachedRefs.set(refs);
+    this.pendingDraft.set(text);
+    this.openPanel();
   }
 
   follow(): void {

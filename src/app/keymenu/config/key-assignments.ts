@@ -169,12 +169,24 @@ export interface KeymenuKeyAssignments {
      *  lets the agent point you (notes/architecture-key-profiles.md). */
     readonly follow: KeyString;
   };
+  /** Reading mode for explanations (src/app/reading/). `enter` is a root tap;
+   *  the others are the keys while reading, when the keymenu is suspended. */
+  readonly reading: {
+    readonly enter: KeyString;
+    readonly next: KeyString;
+    readonly previous: KeyString;
+    readonly why: KeyString;
+    readonly doesntFollow: KeyString;
+    readonly tooDetailed: KeyString;
+  };
 }
 
 // IJKL profile: movement on i/j/k/l (right hand, index-finger-centered),
 // insert submenu on `a` (left hand). The original key layout, kept as a
 // secondary profile after Vim became the default.
 export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
+  // `e` is the Add hub here, so reading starts from `h`, which is free at root in this profile.
+  reading: {enter: 'h', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't'},
   movement: {up: 'i', left: 'j', down: 'k', right: 'l'},
   drag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   root: {
@@ -279,6 +291,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
 // f for move-by-graph traversal (best left-index hold + f/s/d tier chords).
 export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
+  // e = read an Explanation; while reading, n/p = next/previous step, w = why?,
+  // d = doesn't follow, t = too detailed.
+  reading: {enter: 'e', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't'},
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
   root: {

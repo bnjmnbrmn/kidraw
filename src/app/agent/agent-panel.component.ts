@@ -75,6 +75,13 @@ export class AgentPanelComponent {
         if (el) el.scrollTop = el.scrollHeight;
       }, 0);
     });
+    // Text another feature asked to put in the input (e.g. reading-mode feedback).
+    effect(() => {
+      const text = this.agent.pendingDraft();
+      if (text === null) return;
+      this.draft = text;
+      this.agent.pendingDraft.set(null);
+    });
     // Editing an endpoint starts from what is saved.
     effect(() => {
       if (this.agent.state() !== 'setup') return;

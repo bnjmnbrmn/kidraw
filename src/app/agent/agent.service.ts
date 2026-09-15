@@ -59,6 +59,7 @@ export class AgentService {
   readonly providerName = this.store.providerName;
   readonly thinking = this.store.thinking;
   readonly agentEditTurn = this.store.agentEditTurn;
+  readonly pendingDraft = this.store.pendingDraft;
 
   /** Each prompt starts a turn; everything the agent changes during it is one change set. */
   private turn = 0;

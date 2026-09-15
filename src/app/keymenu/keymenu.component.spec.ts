@@ -608,6 +608,9 @@ describe('KeymenuComponent', () => {
       ];
       expect(otherRootKeys).not.toContain(agent.chat);
       expect(otherRootKeys).not.toContain(agent.askAboutSelection);
+      const read = assignments.reading.enter;
+      expect([...otherRootKeys, agent.chat, agent.askAboutSelection]).not.toContain(read);
+      expect((root[read] as LabeledAction).actionLabel).toBe('Read');
 
       const shift = (component as any).buildNormalShiftSubmenuConfig();
       expect((shift[agent.follow] as LabeledAction).actionLabel).toBe('Follow Agent');

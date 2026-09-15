@@ -272,6 +272,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
+        surfaceReading: new USQwertyModeConfig(this.buildReadingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEdge: new USQwertyModeConfig(this.buildGrowEdgeSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
@@ -689,6 +690,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         () => this.keyMenuOut.emit({kind: DACommandType.OPEN_AGENT_CHAT}), false),
       [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
         () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
+      [this.keyAssignments.reading.enter]: new LabeledAction('Read',
+        () => this.keyMenuOut.emit({kind: DACommandType.ENTER_READING_MODE}), false),
       // Holding Shift shows what the shifted keys do, the same way every
       // other hub does. Redo lives here as U; Ctrl-R still works.
       ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
@@ -1240,6 +1243,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
+  /** Shown while reading an explanation (AppComponent handles these keys). */
+  private buildReadingSurfaceConfig(): SubmenuConfig {
+    const r = this.keyAssignments.reading;
+    return {
+      [r.next]: this.surfaceAction('Next step'),
+      [r.previous]: this.surfaceAction('Previous step'),
+      [r.why]: this.surfaceAction('Why?'),
+      [r.doesntFollow]: this.surfaceAction("Doesn't follow"),
+      [r.tooDetailed]: this.surfaceAction('Too detailed'),
+      '[': this.surfaceAction('Esc: Stop reading'),
+    } as SubmenuConfig;
+  }
+
   /** Shown while the agent chat owns the keyboard: what its keys do there. */
   private buildAgentPanelSurfaceConfig(): SubmenuConfig {
     return {
@@ -1321,6 +1337,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     'grow-type-popup': 'surfaceGrowTypePopup',
     'grow-placement': 'surfaceGrowPlacement',
     'agent-panel': 'surfaceAgentPanel',
+    'reading': 'surfaceReading',
   };
 
   /** While another interaction surface owns the keyboard, render that
@@ -1487,6 +1504,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     surfaceGrowTypePopup: '#9b59b6',
     surfaceGrowPlacement: '#00a6a6',
     surfaceAgentPanel: '#f59e0b',
+    surfaceReading: '#34d399',
   };
 
   private updateModeLabel() {
@@ -1525,6 +1543,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'add > place node';
     } else if (modeName === 'surfaceAgentPanel') {
       displayName = 'agent chat';
+    } else if (modeName === 'surfaceReading') {
+      displayName = 'reading';
     } else {
       displayName = modeName;
     }

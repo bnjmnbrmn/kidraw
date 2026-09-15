@@ -139,6 +139,7 @@ export enum DACommandType {
   // Agent mode (notes/idea-mcp-server.md). Handled by AppComponent, never
   // forwarded to the drawing area.
   OPEN_AGENT_CHAT = 'OPEN_AGENT_CHAT',
+  ENTER_READING_MODE = 'ENTER_READING_MODE',
   CLOSE_AGENT_CHAT = 'CLOSE_AGENT_CHAT',
   ASK_AGENT_ABOUT_SELECTION = 'ASK_AGENT_ABOUT_SELECTION',
   FOLLOW_AGENT = 'FOLLOW_AGENT',
@@ -273,6 +274,7 @@ export type DACommand =
   | {kind: DACommandType.OPEN_EX_LINE}
   | {kind: DACommandType.EX_COMMAND; text: string}
   | {kind: DACommandType.OPEN_AGENT_CHAT}
+  | {kind: DACommandType.ENTER_READING_MODE}
   | {kind: DACommandType.CLOSE_AGENT_CHAT}
   | {kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}
   | {kind: DACommandType.FOLLOW_AGENT}

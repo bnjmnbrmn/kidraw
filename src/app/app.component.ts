@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, effect, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, effect, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
@@ -14,6 +14,7 @@ import {VisualConfigService} from './services/visual-config.service';
 import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
 import {AGENT_PANEL_WIDTH, AgentStore} from './agent/agent-store';
+import {ReadingModeService} from './reading/reading-mode.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
@@ -43,6 +44,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private themeService = inject(ThemeService);
   private visualConfig = inject(VisualConfigService);
   readonly agent = inject(AgentStore);
+  readonly reading = inject(ReadingModeService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;
@@ -121,6 +123,44 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.keymenuComponent || chatHasKeyboard === this.agentSuspendedKeymenu) return;
     this.agentSuspendedKeymenu = chatHasKeyboard;
     this.keymenuComponent.setSuspended(chatHasKeyboard, chatHasKeyboard ? 'agent-panel' : undefined);
+    // Back from the chat into reading mode: reading keeps the keyboard.
+    if (!chatHasKeyboard && this.reading.active()) this.keymenuComponent.setSuspended(true, 'reading');
+  }
+
+  private enterReadingMode(): void {
+    if (this.reading.enter()) this.keymenuComponent.setSuspended(true, 'reading');
+  }
+
+  /** Reading mode's keys (see KeymenuKeyAssignments.reading). The keymenu is
+   *  suspended while reading, so these don't reach it; the chat and the ex line
+   *  keep their own keys. */
+  @HostListener('document:keydown', ['$event'])
+  onReadingKeydown(event: KeyboardEvent): void {
+    if (!this.reading.active() || this.agent.keyboardInPanel() || this.exLineOpen) return;
+    // The chat handles its own keys first; its Esc hands the keyboard back to
+    // reading and must not also stop reading as it bubbles up here.
+    if (event.target instanceof Element && event.target.closest('app-agent-panel')) return;
+    const escape = event.key === 'Escape' || (event.ctrlKey && event.key === '[');
+    if (!escape && (event.ctrlKey || event.altKey || event.metaKey)) return;
+    const keys = this.keyAssignments.reading;
+    const key = event.key.toLowerCase();
+    if (escape) {
+      this.reading.exit();
+      this.keymenuComponent.setSuspended(false);
+    } else if (key === keys.next) {
+      this.reading.next();
+    } else if (key === keys.previous) {
+      this.reading.previous();
+    } else if (key === keys.why) {
+      this.reading.why();
+    } else if (key === keys.doesntFollow) {
+      this.agent.prefillFeedback("This step doesn't follow for me. Please add what's missing.", this.reading.currentRefs());
+    } else if (key === keys.tooDetailed) {
+      this.agent.prefillFeedback('This part is too detailed. Please merge these steps.', this.reading.currentRefs());
+    } else {
+      return;
+    }
+    event.preventDefault();
   }
 
   /** Agent notices go to the header, which is visible with the panel closed. */
@@ -175,6 +215,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     this.agent.onKeyboardOwnerChange(chatHasKeyboard => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
+    this.reading.attach(this.drawingArea, text => this.headerComponent?.showStatusMessage(text, 4000));
     // Agent mode reaches the canvas only through the AgentCanvasTarget surface.
     this.agent.attachCanvas(this.drawingArea, () => {
       const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};
@@ -213,6 +254,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       case DACommandType.FOLLOW_AGENT:
         this.agent.follow();
+        return;
+      case DACommandType.ENTER_READING_MODE:
+        this.enterReadingMode();
         return;
     }
     const replacesGraph = kmCommand.kind === DACommandType.NEW_GRAPH

@@ -1146,6 +1146,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this._defaultLineStyle = command.lineStyle;
         break;
       case DACommandType.OPEN_AGENT_CHAT:
+      case DACommandType.ENTER_READING_MODE:
       case DACommandType.CLOSE_AGENT_CHAT:
       case DACommandType.ASK_AGENT_ABOUT_SELECTION:
       case DACommandType.FOLLOW_AGENT:
