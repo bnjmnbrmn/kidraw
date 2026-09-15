@@ -100,6 +100,25 @@ test('relays a prompt, routes a tool call to the tab, and streams the reply', as
   tab.ws.close();
 });
 
+test('ends the turn when the agent\'s prompt fails, and stays usable', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send({ type: 'hello', protocol: 1, token: TOKEN, agent: 'codex' });
+  await tab.next('ready');
+
+  tab.send({ type: 'prompt', text: 'FAIL please' });
+  const error = await tab.next('error');
+  assert.notEqual(error.fatal, true);
+  const end = await tab.next('turn_end');
+  assert.equal(end.stopReason, 'error');
+
+  tab.send({ type: 'prompt', text: 'still there?' });
+  const text = await tab.next('agent_text');
+  assert.match(text.delta, /echo: still there\?/);
+  await tab.next('turn_end');
+  tab.ws.close();
+});
+
 test('reports a tool error from the tab back to the agent', async () => {
   const tab = connect();
   await tab.opened;

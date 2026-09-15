@@ -42,6 +42,9 @@ acp.agent({ name: 'fake-agent' })
       sessionId: SESSION_ID,
       update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text } },
     });
+    if (/^FAIL\b/m.test(promptText(ctx.params.prompt))) {
+      throw new Error('fake agent was told to fail');
+    }
     for (const line of promptText(ctx.params.prompt).split('\n')) {
       const match = /^TOOL (\w+)\s*(.*)$/.exec(line.trim());
       if (!match) continue;

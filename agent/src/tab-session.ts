@@ -160,11 +160,17 @@ export class TabSession {
       return;
     }
     this.busy = true;
+    const session = this.session;
     try {
       const text = this.buildPromptText(message.text, message.refs ?? []);
-      void this.session.prompt(text).catch(() => {});
+      // A failed prompt never produces a `stop` update, so race the update
+      // stream against the prompt's own rejection; otherwise the turn hangs.
+      const failed = session.prompt(text).then(
+        () => new Promise<never>(() => {}),
+        (err: unknown) => { throw err; },
+      );
       for (;;) {
-        const update = await this.session.nextUpdate();
+        const update = await Promise.race([session.nextUpdate(), failed]);
         if (update.kind === 'stop') {
           this.send({ type: 'turn_end', stopReason: update.stopReason });
           break;
@@ -173,6 +179,7 @@ export class TabSession {
       }
     } catch (err) {
       this.send({ type: 'error', message: `Agent error: ${(err as Error).message}` });
+      this.send({ type: 'turn_end', stopReason: 'error' });
     } finally {
       this.busy = false;
     }
