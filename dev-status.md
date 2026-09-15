@@ -15,7 +15,7 @@ _Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`._
 >   `~/.config/kidraw-agent/codex`.
 > - **KiDraw (`src/app/agent/`):** `m` Agent Chat panel (setup, per-graph
 >   consent, transcript with reference pills), `o` Ask Agent about the
->   selection, `t` Follow Agent. Tools: `get_outline`, `find_nodes`,
+>   selection, Shift+T Follow Agent (root `t` stays free for Status). Tools: `get_outline`, `find_nodes`,
 >   `get_selection`, `get_view`, `focus`, `highlight`, `caption`,
 >   `clear_annotations`. Moving the view yourself switches to "You lead";
 >   agent `focus` then shows a look-here hint instead of moving. Panel and

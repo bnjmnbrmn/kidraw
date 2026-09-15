@@ -69,12 +69,14 @@
   <app-agent-panel [dark]="darkTheme"
                    [chatKey]="keyAssignments.agent.chat"
                    [askKey]="keyAssignments.agent.askAboutSelection"
-                   [followKey]="keyAssignments.agent.follow"/>
+                   [followKey]="agentFollowKeyLabel"
+                   [bottomInset]="keymenuInset"
+                   [rightOffset]="compactMenuSide === 'right' ? compactMenuInset : 0"/>
 }
 
 @defer (when agent.captions().length > 0 || agent.lookHere() !== null) {
   <app-agent-overlay [dark]="darkTheme"
-                     [followKey]="keyAssignments.agent.follow"
+                     [followKey]="agentFollowKeyLabel"
                      [bottomInset]="keymenuInset"
-                     [rightInset]="agentPanelInset"/>
+                     [rightInset]="agentPanelInset + (compactMenuSide === 'right' ? compactMenuInset : 0)"/>
 }

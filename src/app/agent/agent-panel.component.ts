@@ -22,6 +22,10 @@ export class AgentPanelComponent {
   @Input() chatKey = 'm';
   @Input() askKey = 'o';
   @Input() followKey = 't';
+  /** Height the keymenu occupies at the bottom; the panel stops above it so the keyboard stays in place. */
+  @Input() bottomInset = 0;
+  /** Extra right offset, e.g. a compact keymenu docked on the right. */
+  @Input() rightOffset = 0;
 
   @ViewChild('promptInput') promptInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('transcript') transcript?: ElementRef<HTMLElement>;

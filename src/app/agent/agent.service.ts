@@ -1,8 +1,8 @@
 import {computed, inject, Injectable, signal} from '@angular/core';
 import {AgentCanvasTarget, AgentNodeInfo, ClientRect} from './agent-canvas';
-import {AGENT_PROTOCOL_VERSION, CanvasRef, ServerToTab, TabToServer} from './agent-protocol';
+import {AGENT_PROTOCOL_VERSION, CanvasRef, HistoryEntry, ReadyMessage, ServerToTab, TabToServer} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
-import {AgentToolHost, executeAgentTool} from './agent-tools';
+import type {AgentToolHost} from './agent-tools';
 
 export type AgentState = 'off' | 'setup' | 'consent' | 'connecting' | 'ready' | 'error';
 
@@ -32,6 +32,21 @@ export interface GraphIdentity {
   key: string;
   title: string;
 }
+
+/** This tab's live session, so a reload can resume it. sessionStorage is per tab. */
+interface StoredSession {
+  url: string;
+  graphKey: string;
+  sessionId: string;
+  secret: string;
+  panelOpen: boolean;
+}
+
+const SESSION_STORAGE_KEY = 'kidraw_agent_session_v1';
+/** Waits between attempts to reconnect a dropped connection. */
+const RECONNECT_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 20_000, 30_000];
+/** After a reload the graph may still be loading; look for it this often before giving up on resuming. */
+const AUTO_RESUME_CHECKS_MS = [500, 1_500, 3_000, 5_000];
 
 /**
  * Agent mode session for this tab: connection, chat transcript, the agent's
@@ -64,10 +79,15 @@ export class AgentService {
   private graphIdentity: () => GraphIdentity = () => ({key: 'untitled', title: 'this graph'});
   private nextId = 1;
   private highlightIds: string[] = [];
+  private reconnectAttempt = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The current connection asked to resume a stored session. */
+  private resuming = false;
 
   attachCanvas(canvas: AgentCanvasTarget, graphIdentity: () => GraphIdentity): void {
     this.canvas = canvas;
     this.graphIdentity = graphIdentity;
+    this.tryAutoResume(0);
   }
 
   /** Canvas geometry for the caption overlay. */
@@ -79,11 +99,24 @@ export class AgentService {
     return this.canvas?.agentViewClientRect() ?? null;
   }
 
+  /** On-screen boxes of the nodes currently in view, so captions can avoid them. */
+  visibleNodeRects(): {id: string; rect: ClientRect}[] {
+    const canvas = this.canvas;
+    if (!canvas) return [];
+    const rects: {id: string; rect: ClientRect}[] = [];
+    for (const id of canvas.agentVisibleNodeIds()) {
+      const rect = canvas.agentNodeClientRect(id);
+      if (rect) rects.push({id, rect});
+    }
+    return rects;
+  }
+
   // ─── Panel and keys ─────────────────────────────────────────────────────
 
   togglePanel(): void {
     if (this.panelOpen()) {
       this.panelOpen.set(false);
+      this.rememberPanel();
       return;
     }
     this.openPanel();
@@ -91,6 +124,7 @@ export class AgentService {
 
   openPanel(): void {
     this.panelOpen.set(true);
+    this.rememberPanel();
     if (this.state() === 'off' || this.state() === 'error') this.beginConnect();
     this.focusInputTick.update(n => n + 1);
   }
@@ -131,7 +165,8 @@ export class AgentService {
     this.state.set('setup');
   }
 
-  /** Setup if unconfigured; ask before sharing this graph unless always allowed. */
+  /** Setup if unconfigured; ask before sharing this graph unless always allowed
+   *  or this tab already shared it in a session that can be resumed. */
   beginConnect(): void {
     if (!this.endpoint()) {
       this.state.set('setup');
@@ -139,7 +174,7 @@ export class AgentService {
     }
     const graph = this.graphIdentity();
     this.graphTitle.set(graph.title);
-    if (this.settings.alwaysShares(graph.key)) this.connect();
+    if (this.resumableSession() || this.settings.alwaysShares(graph.key)) this.connect();
     else this.state.set('consent');
   }
 
@@ -153,12 +188,34 @@ export class AgentService {
     this.connect();
   }
 
+  /** After a reload, pick this tab's conversation back up, but only for the
+   *  endpoint and graph it was already shared with. */
+  private tryAutoResume(check: number): void {
+    const stored = this.readStoredSession();
+    const endpoint = this.endpoint();
+    if (!stored || !endpoint || stored.url !== endpoint.url || this.state() !== 'off') return;
+    if (stored.graphKey !== this.graphIdentity().key) {
+      if (check < AUTO_RESUME_CHECKS_MS.length) {
+        setTimeout(() => this.tryAutoResume(check + 1), AUTO_RESUME_CHECKS_MS[check]);
+      } else {
+        this.clearStoredSession();
+      }
+      return;
+    }
+    this.graphTitle.set(this.graphIdentity().title);
+    if (stored.panelOpen) this.panelOpen.set(true);
+    this.connect();
+  }
+
   private connect(): void {
     const endpoint = this.endpoint();
     if (!endpoint) return;
+    this.cancelReconnect();
     this.closeSocket();
     this.state.set('connecting');
-    this.statusText.set(`Connecting to ${endpoint.name}…`);
+    if (this.reconnectAttempt === 0) this.statusText.set(`Connecting to ${endpoint.name}…`);
+    const stored = this.resumableSession();
+    const resume = stored ? {sessionId: stored.sessionId, secret: stored.secret} : undefined;
     let socket: WebSocket;
     try {
       socket = new WebSocket(endpoint.url);
@@ -167,22 +224,52 @@ export class AgentService {
       return;
     }
     this.socket = socket;
+    this.resuming = resume !== undefined;
     socket.onopen = () => this.send({
       type: 'hello', protocol: AGENT_PROTOCOL_VERSION, token: endpoint.token,
       agent: endpoint.agent, graphTitle: this.graphIdentity().title,
+      ...(resume ? {resume} : {}),
     });
     socket.onmessage = event => this.onServerMessage(event.data);
     socket.onclose = event => {
       if (this.socket !== socket) return;
       this.socket = null;
-      this.busy.set(false);
-      if (this.state() === 'ready' || this.state() === 'connecting') {
-        this.fail(event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from the agent');
+      const state = this.state();
+      if (state !== 'ready' && state !== 'connecting') return;
+      // Codes 4000–4999 are the server refusing or ending the session; anything
+      // else is a dropped connection, retried while the session can still resume.
+      const refused = event.code >= 4000 && event.code < 5000;
+      const retrying = state === 'ready' || this.reconnectAttempt > 0;
+      if (!refused && retrying && this.reconnectAttempt < RECONNECT_DELAYS_MS.length && this.readStoredSession()) {
+        this.scheduleReconnect();
+        return;
       }
+      this.busy.set(false);
+      this.fail(event.reason ? `Disconnected: ${event.reason}` : 'Disconnected from the agent');
     };
   }
 
+  private scheduleReconnect(): void {
+    const delay = RECONNECT_DELAYS_MS[this.reconnectAttempt++];
+    this.state.set('connecting');
+    this.statusText.set(`Connection lost — reconnecting in ${Math.round(delay / 1000)}s…`);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delay);
+  }
+
+  private cancelReconnect(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+  }
+
+  /** The user ends the session: the server drops it now instead of keeping it for a resume. */
   disconnect(): void {
+    this.send({type: 'end'});
+    this.cancelReconnect();
+    this.reconnectAttempt = 0;
+    this.clearStoredSession();
     this.closeSocket();
     this.clearAnnotations();
     this.busy.set(false);
@@ -198,6 +285,8 @@ export class AgentService {
   }
 
   private fail(message: string): void {
+    this.cancelReconnect();
+    this.reconnectAttempt = 0;
     this.state.set('error');
     this.statusText.set(message);
     this.push({role: 'error', text: message});
@@ -205,6 +294,82 @@ export class AgentService {
 
   private send(message: TabToServer): void {
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+  }
+
+  private onReady(message: ReadyMessage): void {
+    const endpoint = this.endpoint();
+    const askedToResume = this.resuming;
+    this.resuming = false;
+    this.reconnectAttempt = 0;
+    if (endpoint) {
+      this.writeStoredSession({
+        url: endpoint.url, graphKey: this.graphIdentity().key,
+        sessionId: message.session.id, secret: message.session.secret, panelOpen: this.panelOpen(),
+      });
+    }
+    if (message.resumed) {
+      this.messages.set(this.fromHistory(message.history, message.busy));
+      this.busy.set(message.busy);
+    } else {
+      this.busy.set(false);
+      this.followMode.set('following');
+      if (askedToResume && this.messages().length > 0) {
+        this.messages.update(list => list.map(m => (m.streaming ? {...m, streaming: false} : m)));
+        this.push({role: 'activity', text: 'The earlier conversation had ended on the server; this is a new session.'});
+      }
+    }
+    this.state.set('ready');
+    this.statusText.set('');
+  }
+
+  private fromHistory(history: HistoryEntry[], busy: boolean): ChatMessage[] {
+    return history.map((entry, index) => ({
+      id: this.nextId++,
+      role: entry.role,
+      text: entry.text,
+      ...(entry.refs ? {refs: entry.refs} : {}),
+      ...(busy && entry.role === 'agent' && index === history.length - 1 ? {streaming: true} : {}),
+    }));
+  }
+
+  // ─── Session storage (this tab only) ────────────────────────────────────
+
+  /** The stored session, if it belongs to the current endpoint and graph. */
+  private resumableSession(): StoredSession | null {
+    const stored = this.readStoredSession();
+    const endpoint = this.endpoint();
+    if (!stored || !endpoint) return null;
+    return stored.url === endpoint.url && stored.graphKey === this.graphIdentity().key ? stored : null;
+  }
+
+  private readStoredSession(): StoredSession | null {
+    try {
+      const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+      return raw ? JSON.parse(raw) as StoredSession : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private writeStoredSession(session: StoredSession): void {
+    try {
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    } catch {
+      // Private mode or storage disabled: reloads just start a new session.
+    }
+  }
+
+  private clearStoredSession(): void {
+    try {
+      sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {
+      // Nothing stored, nothing to clear.
+    }
+  }
+
+  private rememberPanel(): void {
+    const stored = this.readStoredSession();
+    if (stored) this.writeStoredSession({...stored, panelOpen: this.panelOpen()});
   }
 
   // ─── Chat ───────────────────────────────────────────────────────────────
@@ -242,9 +407,7 @@ export class AgentService {
     }
     switch (message.type) {
       case 'ready':
-        this.state.set('ready');
-        this.statusText.set('');
-        this.followMode.set('following');
+        this.onReady(message);
         break;
       case 'agent_text':
         this.appendAgentText(message.delta);
@@ -257,11 +420,12 @@ export class AgentService {
         this.messages.update(list => list.map(m => (m.streaming ? {...m, streaming: false} : m)));
         break;
       case 'tool_call':
-        this.runTool(message.callId, message.name, message.args);
+        void this.runTool(message.callId, message.name, message.args);
         break;
       case 'error':
         if (message.fatal) {
           this.closeSocket();
+          this.clearStoredSession();
           this.busy.set(false);
           this.fail(message.message);
         } else {
@@ -298,12 +462,14 @@ export class AgentService {
 
   // ─── Tools ──────────────────────────────────────────────────────────────
 
-  private runTool(callId: string, name: string, args: Record<string, unknown>): void {
+  private async runTool(callId: string, name: string, args: Record<string, unknown>): Promise<void> {
     if (!this.canvas) {
       this.send({type: 'tool_result', callId, ok: false, error: 'KiDraw canvas is not ready'});
       return;
     }
     try {
+      // Loaded on first use, like the panel: tabs that never connect don't download it.
+      const {executeAgentTool} = await import('./agent-tools');
       const result = executeAgentTool(name, args ?? {}, this.toolHost(this.canvas));
       this.send({type: 'tool_result', callId, ok: true, result});
     } catch (err) {

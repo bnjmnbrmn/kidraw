@@ -561,13 +561,15 @@ describe('KeymenuComponent', () => {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.root,
         editSubmenu: 'j',
         selectDragSubmenu: 'l',
-        // 'm' is free since File moved to 'q'.
+        // 'm' is Agent Chat in the shipped profiles; this profile moves the
+        // agent keys to h/k so 'm' can take the menu toggle.
         toggleVisibility: 'm',
       },
       shared: {
         ...IJKL_KEYMENU_KEY_ASSIGNMENTS.shared,
         undo: 'n',
       },
+      agent: {...IJKL_KEYMENU_KEY_ASSIGNMENTS.agent, chat: 'h', askAboutSelection: 'k'},
     };
 
     component.keyAssignments = customAssignments;
@@ -582,6 +584,33 @@ describe('KeymenuComponent', () => {
 
     const hints = component.activeProfileHints;
     expect(hints[0].key).toBe('u/y/o/p');
+  });
+
+  it('keeps agent keys clear of other root bindings, with Follow Agent on the Shift card', () => {
+    const fixture = TestBed.createComponent(KeymenuComponent);
+    const component = fixture.componentInstance;
+
+    for (const assignments of [component.keyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS]) {
+      component.keyAssignments = assignments;
+      const root = buildRootConfig(component);
+      const agent = assignments.agent;
+      expect((root[agent.chat] as LabeledAction).actionLabel).toBe('Agent Chat');
+      expect((root[agent.askAboutSelection] as LabeledAction).actionLabel).toBe('Ask Agent');
+
+      // A duplicate key in an object literal silently replaces the earlier
+      // binding, so check the assignments rather than the built config.
+      const otherRootKeys: string[] = [
+        ...Object.values(assignments.movement), ...Object.values(assignments.root),
+        ...Object.values(assignments.shared), assignments.search.open, assignments.search.next,
+        assignments.clipboard.paste, assignments.misc.submenu, assignments.panZoom.submenu,
+        assignments.moveByNode.submenu,
+      ];
+      expect(otherRootKeys).not.toContain(agent.chat);
+      expect(otherRootKeys).not.toContain(agent.askAboutSelection);
+
+      const shift = (component as any).buildNormalShiftSubmenuConfig();
+      expect((shift[agent.follow] as LabeledAction).actionLabel).toBe('Follow Agent');
+    }
   });
 
   describe('add hub (held a)', () => {

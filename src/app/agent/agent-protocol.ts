@@ -12,14 +12,40 @@ export interface CanvasRef {
   label: string;
 }
 
+/** One transcript entry, replayed to a tab that resumes its session. */
+export interface HistoryEntry {
+  role: 'user' | 'agent' | 'activity' | 'error';
+  text: string;
+  refs?: CanvasRef[];
+}
+
 export type TabToServer =
-  | {type: 'hello'; protocol: number; token: string; agent: string; graphTitle?: string}
+  | {
+      type: 'hello'; protocol: number; token: string; agent: string; graphTitle?: string;
+      /** Continue the session this tab had before a reload or a dropped connection. */
+      resume?: {sessionId: string; secret: string};
+    }
   | {type: 'prompt'; text: string; refs?: CanvasRef[]}
   | {type: 'cancel'}
-  | {type: 'tool_result'; callId: string; ok: boolean; result?: unknown; error?: string};
+  | {type: 'tool_result'; callId: string; ok: boolean; result?: unknown; error?: string}
+  /** The user disconnected on purpose: end the session instead of keeping it for a resume. */
+  | {type: 'end'};
+
+export interface ReadyMessage {
+  type: 'ready';
+  agent: string;
+  /** Sent back in `hello.resume` to continue this session after a reload. */
+  session: {id: string; secret: string};
+  /** True when this connection picked up an existing session. */
+  resumed: boolean;
+  /** The agent is in the middle of a reply. */
+  busy: boolean;
+  /** The conversation so far; empty for a new session. */
+  history: HistoryEntry[];
+}
 
 export type ServerToTab =
-  | {type: 'ready'; agent: string}
+  | ReadyMessage
   | {type: 'error'; message: string; fatal?: boolean}
   | {type: 'agent_text'; delta: string}
   | {type: 'agent_activity'; title: string; status: 'pending' | 'in_progress' | 'completed' | 'failed'}

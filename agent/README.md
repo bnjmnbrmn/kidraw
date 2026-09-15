@@ -67,7 +67,7 @@ location /agent/ {
 
 In KiDraw press `m` (Agent Chat), enter the endpoint (for example
 `wss://kidraw.dev.bnjmnbrmn.com/agent/`) and the token, then approve sharing
-the graph. `o` asks about the current selection; `t` follows the agent's view
+the graph. `o` asks about the current selection; Shift+T follows the agent's view
 after you have moved away.
 
 ## Configuration

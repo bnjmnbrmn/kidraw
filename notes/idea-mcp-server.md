@@ -13,12 +13,12 @@ Tier 2 only, read-only "ask and point". Server, setup, and security model: [`age
 
 - **Path:** tab ⇄ `wss://kidraw.dev.bnjmnbrmn.com/agent/` (site password, origin allowlist, token as the first message) ⇄ `kidraw-agent` ⇄ ACP ⇄ codex-acp in a per-tab Docker container ⇄ MCP over HTTP (per-session URL and bearer secret) ⇄ back to the tab, which runs the tool.
 - **Tools:** `get_outline`, `find_nodes`, `get_selection`, `get_view`, `focus`, `highlight`, `caption`, `clear_annotations`. References in replies use `[[ref:ID|Label]]` and render as pills.
-- **Keys:** `m` Agent Chat, `o` Ask Agent (selection attached as pills), `t` Follow Agent.
+- **Keys:** `m` Agent Chat, `o` Ask Agent (selection attached as pills), Shift+T Follow Agent (a chord like Redo, because root `t` is reserved for Status coming back, da-438).
 - **Differences from the sketch above:**
   - A pasted token instead of pairing.
   - Consent and endpoint stored in localStorage, not IndexedDB.
   - Permission requests are decided on the server (read, search, think and fetch allowed; everything else refused) instead of prompting in the tab.
-  - Sessions end when the tab disconnects; nothing resumes after a reload.
+  - Sessions outlive their socket for 10 minutes: a reload or a dropped connection resumes the same conversation (the tab keeps a session id and secret in `sessionStorage`). Disconnecting on purpose ends the session. Resuming doesn't ask for consent again, but only for the same endpoint and graph.
   - No tours, `point`/`ask`/`suggest`, or `neighborhood` yet.
   - Sessions use a separate Codex login (`~/.config/kidraw-agent/codex`) so token refreshes don't collide with the user's own Codex.
 - **Not yet verified:** a live Codex session, including whether codex-acp picks up client-supplied HTTP `mcpServers`. Everything else was tested with a scripted fake agent.

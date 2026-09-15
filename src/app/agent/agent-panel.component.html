@@ -1,5 +1,6 @@
 @if (agent.panelOpen()) {
-  <aside class="agent-panel" [class.dark]="dark" aria-label="Agent chat">
+  <aside class="agent-panel" [class.dark]="dark" aria-label="Agent chat"
+         [style.bottom.px]="bottomInset + 10" [style.right.px]="rightOffset + 10">
     <header class="panel-header">
       <span class="state-dot" [class]="'state-dot ' + agent.state()"></span>
       <strong>Agent</strong>

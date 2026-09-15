@@ -6,18 +6,47 @@ interface PlacedCaption {
   caption: AgentCaption;
   left: number;
   top: number;
+  height: number;
 }
 
 const CAPTION_WIDTH = 240;
 const CAPTION_GAP = 14;
-/** Rough height for placement decisions; captions are short by contract. */
-const CAPTION_EST_HEIGHT = 64;
+/** 12.5px text in a 240px box wraps at about this many characters per line. */
+const CHARS_PER_LINE = 28;
+const LINE_HEIGHT = 17.5;
+/** Vertical padding and borders. */
+const CAPTION_CHROME_HEIGHT = 16;
+/** A caption may cover up to this share of its own area in other nodes; past that it docks. */
+const MAX_COVERED_FRACTION = 0.1;
+
+/** Captions are placed before they render, so their height is estimated from the text. */
+export function estimateCaptionHeight(text: string): number {
+  const lines = Math.max(1, Math.ceil(text.length / CHARS_PER_LINE));
+  return lines * LINE_HEIGHT + CAPTION_CHROME_HEIGHT;
+}
+
+function intersects(a: ClientRect, b: ClientRect): boolean {
+  return a.left < b.left + b.width && b.left < a.left + a.width
+    && a.top < b.top + b.height && b.top < a.top + a.height;
+}
+
+function contains(outer: ClientRect, inner: ClientRect): boolean {
+  return inner.left >= outer.left && inner.left + inner.width <= outer.left + outer.width
+    && inner.top >= outer.top && inner.top + inner.height <= outer.top + outer.height;
+}
+
+function overlapArea(a: ClientRect, b: ClientRect): number {
+  const width = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left);
+  const height = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top);
+  return width > 0 && height > 0 ? width * height : 0;
+}
 
 /**
  * Agent annotations drawn over the canvas: captions beside the nodes they
- * describe, docked at the bottom when there's no room (or the node is off
- * screen), plus the "look here" hint while the user leads the view.
- * Positions follow the canvas every animation frame while captions are shown.
+ * describe, docked at the bottom when every nearby spot would hide other nodes
+ * (or the node is off screen), plus the "look here" hint while the user leads
+ * the view. Positions follow the canvas every animation frame while captions
+ * are shown.
  */
 @Component({
   selector: 'app-agent-overlay',
@@ -31,7 +60,7 @@ export class AgentOverlayComponent implements OnDestroy {
   @Input() followKey = 't';
   /** Space the keymenu occupies at the bottom, so the dock sits above it. */
   @Input() bottomInset = 0;
-  /** Right-hand space taken by the agent panel. */
+  /** Right-hand space taken by the agent panel (and a compact menu docked beside it). */
   @Input() rightInset = 0;
 
   placed: PlacedCaption[] = [];
@@ -76,38 +105,69 @@ export class AgentOverlayComponent implements OnDestroy {
       this.docked = captions;
       return;
     }
+    const nodes = this.agent.visibleNodeRects();
     const placed: PlacedCaption[] = [];
     const docked: AgentCaption[] = [];
     for (const caption of captions) {
-      const rect = this.agent.nodeClientRect(caption.nodeId);
-      const spot = rect ? this.placeBeside(rect, view, placed) : null;
-      if (spot) placed.push({caption, ...spot});
+      // Not among the visible nodes means off screen: dock it.
+      const rect = nodes.find(n => n.id === caption.nodeId)?.rect;
+      const height = estimateCaptionHeight(caption.text);
+      const spot = rect ? this.placeBeside(caption.nodeId, rect, height, view, placed, nodes) : null;
+      if (spot) placed.push({caption, height, ...spot});
       else docked.push(caption);
     }
     this.placed = placed;
     this.docked = docked;
   }
 
-  /** Right of the node, else left, else below, else above — inside the view and clear of other captions. */
-  private placeBeside(node: ClientRect, view: ClientRect, taken: PlacedCaption[]): {left: number; top: number} | null {
-    const visible = node.left + node.width > view.left && node.left < view.left + view.width
-      && node.top + node.height > view.top && node.top < view.top + view.height;
-    if (!visible) return null;
-    const midY = node.top + node.height / 2 - CAPTION_EST_HEIGHT / 2;
-    const midX = node.left + node.width / 2 - CAPTION_WIDTH / 2;
+  /**
+   * The clearest spot beside the node: centred on the right, left, below or
+   * above, then aligned with the node's edges on each side. A spot must lie in
+   * the view and clear of other captions; the first that hides no other node
+   * wins, otherwise the one hiding least, as long as that is a small share of
+   * the caption. Null means dock.
+   */
+  private placeBeside(
+    nodeId: string, node: ClientRect, height: number, view: ClientRect,
+    taken: PlacedCaption[], nodes: {id: string; rect: ClientRect}[],
+  ): {left: number; top: number} | null {
+    if (!intersects(node, view)) return null;
+    const width = CAPTION_WIDTH;
+    const right = node.left + node.width + CAPTION_GAP;
+    const left = node.left - CAPTION_GAP - width;
+    const below = node.top + node.height + CAPTION_GAP;
+    const above = node.top - CAPTION_GAP - height;
+    const middleTop = node.top + node.height / 2 - height / 2;
+    const centreLeft = node.left + node.width / 2 - width / 2;
+    const topAligned = node.top;
+    const bottomAligned = node.top + node.height - height;
+    const leftAligned = node.left;
+    const rightAligned = node.left + node.width - width;
     const candidates = [
-      {left: node.left + node.width + CAPTION_GAP, top: midY},
-      {left: node.left - CAPTION_GAP - CAPTION_WIDTH, top: midY},
-      {left: midX, top: node.top + node.height + CAPTION_GAP},
-      {left: midX, top: node.top - CAPTION_GAP - CAPTION_EST_HEIGHT},
+      {left: right, top: middleTop}, {left, top: middleTop},
+      {left: centreLeft, top: below}, {left: centreLeft, top: above},
+      {left: right, top: topAligned}, {left: right, top: bottomAligned},
+      {left, top: topAligned}, {left, top: bottomAligned},
+      {left: leftAligned, top: below}, {left: rightAligned, top: below},
+      {left: leftAligned, top: above}, {left: rightAligned, top: above},
     ];
-    for (const c of candidates) {
-      const inside = c.left >= view.left && c.left + CAPTION_WIDTH <= view.left + view.width
-        && c.top >= view.top && c.top + CAPTION_EST_HEIGHT <= view.top + view.height;
-      const clear = taken.every(t => c.left + CAPTION_WIDTH < t.left || t.left + CAPTION_WIDTH < c.left
-        || c.top + CAPTION_EST_HEIGHT < t.top || t.top + CAPTION_EST_HEIGHT < c.top);
-      if (inside && clear) return c;
+
+    let best: {left: number; top: number} | null = null;
+    let bestCovered = Infinity;
+    for (const spot of candidates) {
+      const box = {left: spot.left, top: spot.top, width, height};
+      if (!contains(view, box)) continue;
+      if (taken.some(t => intersects(box, {left: t.left, top: t.top, width, height: t.height}))) continue;
+      let covered = 0;
+      for (const other of nodes) {
+        if (other.id !== nodeId) covered += overlapArea(box, other.rect);
+      }
+      if (covered === 0) return spot;
+      if (covered < bestCovered) {
+        best = spot;
+        bestCovered = covered;
+      }
     }
-    return null;
+    return best && bestCovered <= MAX_COVERED_FRACTION * width * height ? best : null;
   }
 }

@@ -127,6 +127,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.agent.panelOpen() ? AGENT_PANEL_WIDTH : 0;
   }
 
+  /** Follow Agent is a Shift chord (see KeymenuKeyAssignments.agent). */
+  get agentFollowKeyLabel(): string {
+    return `Shift+${this.keyAssignments.agent.follow.toUpperCase()}`;
+  }
+
   private configSub?: Subscription;
   private visualSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();

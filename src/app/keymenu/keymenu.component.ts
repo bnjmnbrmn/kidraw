@@ -688,8 +688,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_AGENT_PANEL}), false),
       [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
         () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
-      [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent',
-        () => this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
       // Holding Shift shows what the shifted keys do, the same way every
       // other hub does. Redo lives here as U; Ctrl-R still works.
       ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
@@ -698,8 +696,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
-  /** The shifted layer of normal mode. Small on purpose: it names the two
-   *  shifted keys that already do something, so neither is folklore. */
+  /** The shifted layer of normal mode. Small on purpose: it names the
+   *  shifted keys that already do something, so none of them is folklore. */
   private buildNormalShiftSubmenuConfig(): SubmenuConfig {
     const shared = this.keyAssignments.shared;
     const search = this.keyAssignments.search;
@@ -711,6 +709,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // so this entry is the card telling you it exists.
       [search.next]: new LabeledAction('Prev Match', () =>
         this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH}), false),
+      // Also intercepted in handleKeyDown, like Redo.
+      [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent', () =>
+        this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
     } as SubmenuConfig;
   }
 
@@ -1806,6 +1807,17 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
             || this.keyMenu.currentMode.name === 'normalCaps')) {
       event.preventDefault();
       this.keyMenuOut.emit({kind: DACommandType.REDO});
+      return;
+    }
+
+    // Shift+T is Follow Agent, intercepted for the same reason as Redo: a
+    // quick chord would otherwise never reach the Shift card.
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+        && !event.repeat
+        && event.key.toLowerCase() === this.keyAssignments.agent.follow
+        && this.keyMenu.currentMode.name === 'normal') {
+      event.preventDefault();
+      this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT});
       return;
     }
 

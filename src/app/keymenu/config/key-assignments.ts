@@ -158,12 +158,13 @@ export interface KeymenuKeyAssignments {
     readonly treeRightClear: KeyString;
     readonly radial: KeyString;
   };
-  /** Agent mode root taps (notes/idea-mcp-server.md): open/close the chat,
-   *  ask about the selection, and hand the view back to the agent. Chosen
-   *  from keys free at root in both profiles so the pair stays the same. */
+  /** Agent mode (notes/idea-mcp-server.md). `chat` and `askAboutSelection`
+   *  are root taps, chosen from keys free at root in both profiles. */
   readonly agent: {
     readonly chat: KeyString;
     readonly askAboutSelection: KeyString;
+    /** Pressed with Shift, like Redo: root `t` is kept free for Status to
+     *  come back (da-438), and following is rare enough to take a chord. */
     readonly follow: KeyString;
   };
 }
@@ -268,7 +269,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
-  // m = message the agent, o = open a question about the selection, t = track the agent's view.
+  // m = message the agent, o = open a question about the selection, Shift+T = track the agent's view.
   agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
 };
 
@@ -368,6 +369,6 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
-  // m = message the agent, o = open a question about the selection, t = track the agent's view.
+  // m = message the agent, o = open a question about the selection, Shift+T = track the agent's view.
   agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
 };
