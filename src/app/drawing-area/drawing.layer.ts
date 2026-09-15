@@ -342,6 +342,69 @@ export class DrawingLayer extends Konva.Layer {
     this.daEdges.push(edge);
   }
 
+  /** Add one node rebuilt from its snapshot, keeping its id (as restoreGraph
+   *  does for a whole graph). It arrives unselected: selection isn't part of
+   *  the document. */
+  addNodeFromSnapshot(ns: DANodeSnapshot): DANode {
+    const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
+    node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+    node.applyTextOverflow();
+    node.pinned = ns.pinned ?? false;
+    node.tags = [...(ns.tags ?? [])];
+    this.daNodeGroup.add(node.konvaGroup);
+    this.daNodes.push(node);
+    return node;
+  }
+
+  /** Add one edge rebuilt from its snapshot, keeping its id, path and labels.
+   *  Null if either end is missing. */
+  addEdgeFromSnapshot(es: DAEdgeSnapshot): DAEdge | null {
+    const srcNode = this.daNodes.find(node => node.id === es.srcNodeId);
+    const destNode = this.daNodes.find(node => node.id === es.destNodeId);
+    if (!srcNode || !destNode) return null;
+    const selfLoopLane = srcNode === destNode ? this.nextSelfLoopLane(srcNode) : 0;
+    const edge = new DAEdge(srcNode, destNode, '', es.id, this.edgeColors(), selfLoopLane);
+    edge.setDirectionColors({gradient: this._palette?.edgeGradient ?? null,
+      undirected: this._palette?.edgeUndirected ?? null,
+      bidirectional: this._palette?.edgeBidirectional ?? null});
+    if (es.controlPoints && es.controlPoints.length > 0) edge.restoreControlPoints(es.controlPoints);
+    if (es.directedness) edge.directedness = es.directedness;
+    if (es.lineStyle) edge.lineStyle = es.lineStyle;
+    edge.tags = [...(es.tags ?? [])];
+    this.daEdgeGroup.add(edge.konvaGroup);
+    this.daEdges.push(edge);
+    for (const ls of es.labels) {
+      const label = new DALabel(ls.x, ls.y, ls.text, ls.id);
+      if (ls.fontSize !== label.DEFAULT_FONT_SIZE) label.adjustFontSizeBy(ls.fontSize - label.DEFAULT_FONT_SIZE);
+      if (ls.edgeT !== undefined) {
+        label.edgeT = ls.edgeT;
+        label.side = ls.side ?? 'on';
+      } else {
+        edge.adoptLabelPosition(label);
+      }
+      edge.addLabel(label);
+    }
+    edge.refreshGeometry();
+    return edge;
+  }
+
+  /** Replace an edge's labels with plain labels carrying these texts, spread
+   *  evenly along the edge. */
+  setEdgeLabelTexts(edge: DAEdge, texts: readonly string[]): void {
+    for (const label of [...edge.labels]) edge.removeLabel(label);
+    texts.forEach((text, index) => {
+      const label = new DALabel(0, 0, text);
+      label.edgeT = (index + 1) / (texts.length + 1);
+      edge.addLabel(label);
+    });
+    edge.refreshGeometry();
+  }
+
+  /** Re-apply the current theme, e.g. after adding items outside restoreGraph. */
+  reapplyTheme(): void {
+    if (this._palette) this.applyThemeColors(this._palette);
+  }
+
   getDaEdgesIntersectingGroup(group: Konva.Group) {
     return this.daEdges.filter(daEdge => lineIntersectsGroupBoundingRect(daEdge.line, group));
   }

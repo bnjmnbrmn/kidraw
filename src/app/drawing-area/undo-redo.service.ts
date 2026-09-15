@@ -1,30 +1,76 @@
 import { GraphSnapshot } from './graph-snapshot';
+import { UndoGroup } from './graph-operations';
+
+/**
+ * One step of history.
+ *
+ * - `snapshot`: the whole graph as it was before a keymenu edit. Undoing it
+ *   restores that graph (and so rewinds everything after it).
+ * - `group`: an undo group of operations. Undoing it applies their inverse,
+ *   which leaves unrelated later changes alone; this is how agent edits are
+ *   recorded, and where user edits are headed
+ *   (notes/idea-multiplayer-readiness.md).
+ */
+export type UndoEntry =
+  | { kind: 'snapshot'; snapshot: GraphSnapshot }
+  | { kind: 'group'; group: UndoGroup };
 
 export class UndoRedoService {
-  private undoStack: GraphSnapshot[] = [];
-  private redoStack: GraphSnapshot[] = [];
+  private undoStack: UndoEntry[] = [];
+  private redoStack: UndoEntry[] = [];
   private readonly maxEntries = 100;
 
   pushSnapshot(snapshot: GraphSnapshot): void {
-    this.undoStack.push(snapshot);
+    this.push({ kind: 'snapshot', snapshot });
+  }
+
+  pushGroup(group: UndoGroup): void {
+    this.push({ kind: 'group', group });
+  }
+
+  private push(entry: UndoEntry): void {
+    this.undoStack.push(entry);
     if (this.undoStack.length > this.maxEntries) {
       this.undoStack.shift();
     }
     this.redoStack = [];
   }
 
-  undo(currentState: GraphSnapshot): GraphSnapshot | null {
-    const previous = this.undoStack.pop();
-    if (!previous) return null;
-    this.redoStack.push(currentState);
-    return previous;
+  /** Take the latest step off the undo stack. A snapshot step is replaced on
+   *  the redo stack by `currentState`; a group moves across unchanged (the
+   *  caller applies its inverse). */
+  undo(currentState: GraphSnapshot): UndoEntry | null {
+    const entry = this.undoStack.pop();
+    if (!entry) return null;
+    this.redoStack.push(entry.kind === 'snapshot' ? { kind: 'snapshot', snapshot: currentState } : entry);
+    return entry;
   }
 
-  redo(currentState: GraphSnapshot): GraphSnapshot | null {
-    const next = this.redoStack.pop();
-    if (!next) return null;
-    this.undoStack.push(currentState);
-    return next;
+  redo(currentState: GraphSnapshot): UndoEntry | null {
+    const entry = this.redoStack.pop();
+    if (!entry) return null;
+    this.undoStack.push(entry.kind === 'snapshot' ? { kind: 'snapshot', snapshot: currentState } : entry);
+    return entry;
+  }
+
+  /** The last undo couldn't be applied (a conflict): put the group back. */
+  cancelUndo(): void {
+    const entry = this.redoStack.pop();
+    if (entry) this.undoStack.push(entry);
+  }
+
+  /** The last redo couldn't be applied: put the group back. */
+  cancelRedo(): void {
+    const entry = this.undoStack.pop();
+    if (entry) this.redoStack.push(entry);
+  }
+
+  /** The groups of a change set still in history, oldest first. */
+  changeSetGroups(changeSetId: string): UndoGroup[] {
+    return this.undoStack
+      .filter((entry): entry is { kind: 'group'; group: UndoGroup } =>
+        entry.kind === 'group' && entry.group.changeSetId === changeSetId)
+      .map(entry => entry.group);
   }
 
   get canUndo(): boolean {

@@ -15,6 +15,8 @@ import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo, ClientRect } from '../agent/agent-canvas';
+import type { GraphOperationApplier } from './graph-operation-applier';
+import type { GraphOperation, UndoGroup } from './graph-operations';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -4431,6 +4433,60 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
+  // ─── Operations: the write path for changes that aren't keymenu commands ──
+
+  private operationsRuntime: Promise<{
+    applier: GraphOperationApplier;
+    invert: (ops: readonly GraphOperation[]) => GraphOperation[];
+  }> | null = null;
+
+  /** The operations code loads on first use; so far only agent edits need it,
+   *  and it keeps the initial bundle inside its budget. */
+  private loadOperations() {
+    return this.operationsRuntime ??= Promise.all([import('./graph-operation-applier'), import('./graph-operations')])
+      .then(([applierModule, operations]) => ({
+        applier: new applierModule.GraphOperationApplier(this.drawingLayer, {
+          nodesChanged: nodes => this.updateEdgesForResizedNodes(nodes),
+          edgeAdded: edge => this.autoRouteNewEdge(edge),
+        }),
+        invert: operations.invertOperations,
+      }));
+  }
+
+  /**
+   * Apply an undo group (today: agent edits) all-or-nothing, record it for
+   * undo, and save. Resolves to a conflict message instead, having changed
+   * nothing, when the graph no longer matches what the operations expect.
+   */
+  async applyOperations(group: UndoGroup): Promise<string | null> {
+    const {applier} = await this.loadOperations();
+    this.finishTweens();
+    const conflict = applier.apply(group.ops);
+    if (conflict) return conflict;
+    this.undoRedoService.pushGroup(group);
+    this.afterOperations();
+    return null;
+  }
+
+  /** Undo every group of a change set (e.g. one agent turn) as one new undo
+   *  group, even if other changes came after it. */
+  async revertChangeSet(changeSetId: string, author = 'user'): Promise<string | null> {
+    const groups = this.undoRedoService.changeSetGroups(changeSetId);
+    if (groups.length === 0) return `Nothing left to revert in ${changeSetId}`;
+    const {invert} = await this.loadOperations();
+    return this.applyOperations({
+      author,
+      label: `Revert ${groups[0].label}`,
+      ops: invert(groups.flatMap(group => group.ops)),
+    });
+  }
+
+  private afterOperations(): void {
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.scheduleVaultAutoSave();
+  }
+
   // ─── Agent mode canvas surface (AgentCanvasTarget; notes/idea-mcp-server.md) ──
   // Read-only inspection plus view guidance. Nothing here mutates the graph
   // or touches the undo stack.
@@ -8397,32 +8453,49 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private handleUndo(): void {
     this.finishTweens();
-    const currentState = this.drawingLayer.serializeGraph();
-    const snapshot = this.undoRedoService.undo(currentState);
-    if (snapshot) {
-      this.clearLabelEditGhost();
-      this.drawingLayer.restoreGraph(snapshot);
-      this.drawingLayer.batchDraw();
-      this.checkAndEmitEditState();
-      this.daOut.emit({kind: "exit-label-editing-mode"});
-      this.crosshairsLayer.showCrosshairs();
-      this.crosshairsLayer.batchDraw();
+    const entry = this.undoRedoService.undo(this.drawingLayer.serializeGraph());
+    if (!entry) return;
+    if (entry.kind === 'group') {
+      void this.applyHistoryGroup(entry.group, 'undo');
+      return;
     }
+    this.restoreHistorySnapshot(entry.snapshot);
   }
 
   private handleRedo(): void {
     this.finishTweens();
-    const currentState = this.drawingLayer.serializeGraph();
-    const snapshot = this.undoRedoService.redo(currentState);
-    if (snapshot) {
-      this.clearLabelEditGhost();
-      this.drawingLayer.restoreGraph(snapshot);
-      this.drawingLayer.batchDraw();
-      this.checkAndEmitEditState();
-      this.daOut.emit({kind: "exit-label-editing-mode"});
-      this.crosshairsLayer.showCrosshairs();
-      this.crosshairsLayer.batchDraw();
+    const entry = this.undoRedoService.redo(this.drawingLayer.serializeGraph());
+    if (!entry) return;
+    if (entry.kind === 'group') {
+      void this.applyHistoryGroup(entry.group, 'redo');
+      return;
     }
+    this.restoreHistorySnapshot(entry.snapshot);
+  }
+
+  /** Undo a group from history (apply its inverse) or redo it, putting it
+   *  back on its stack if the graph has changed in a way that conflicts. */
+  private async applyHistoryGroup(group: UndoGroup, direction: 'undo' | 'redo'): Promise<void> {
+    const {applier, invert} = await this.loadOperations();
+    const conflict = applier.apply(direction === 'undo' ? invert(group.ops) : group.ops);
+    if (conflict) {
+      if (direction === 'undo') this.undoRedoService.cancelUndo();
+      else this.undoRedoService.cancelRedo();
+      this.emitStatus(`Can't ${direction} "${group.label}": ${conflict}`);
+      return;
+    }
+    this.afterOperations();
+    this.emitStatus(`${direction === 'undo' ? 'Undid' : 'Redid'}: ${group.label}`);
+  }
+
+  private restoreHistorySnapshot(snapshot: GraphSnapshot): void {
+    this.clearLabelEditGhost();
+    this.drawingLayer.restoreGraph(snapshot);
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    this.daOut.emit({kind: "exit-label-editing-mode"});
+    this.crosshairsLayer.showCrosshairs();
+    this.crosshairsLayer.batchDraw();
   }
 
   private deleteSelected(): void {
