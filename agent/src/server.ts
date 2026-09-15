@@ -4,7 +4,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { loadConfig, loadOrCreateToken, tokensMatch, type AgentServerConfig } from './config.js';
 import { McpBridge } from './mcp-bridge.js';
 import { PROTOCOL_VERSION, type TabToServer } from './protocol.js';
-import { SUPPORTED_AGENTS } from './runners.js';
+import { removeStaleSessionHomes, SUPPORTED_AGENTS } from './runners.js';
 import { TabSession } from './tab-session.js';
 
 export interface RunningServer {
@@ -55,6 +55,10 @@ export async function startServer(
       refuse(ws, 'Malformed message');
       return;
     }
+    if (typeof message !== 'object' || message === null) {
+      refuse(ws, 'Malformed message');
+      return;
+    }
     if (message.type !== 'hello' || !tokensMatch(token, message.token)) {
       refuse(ws, 'Not authorized', 4401);
       return;
@@ -73,6 +77,12 @@ export async function startServer(
       existing.resume(ws);
       return;
     }
+    // Every session can hold a 1 GB container; count waiting ones too.
+    if (sessions.size >= config.maxSessions) {
+      refuse(ws, `This agent server already has ${sessions.size} sessions (the limit). `
+        + 'Close another KiDraw tab, or wait a few minutes for an idle one to end.', 4029);
+      return;
+    }
     const session = new TabSession(config, bridge, log, closed => sessions.delete(closed.id));
     sessions.set(session.id, session);
     session.begin(ws, agentName);
@@ -85,7 +95,13 @@ export async function startServer(
     ws.once('close', () => clearTimeout(helloTimer));
     ws.once('message', data => {
       clearTimeout(helloTimer);
-      onHello(ws, data.toString());
+      try {
+        onHello(ws, data.toString());
+      } catch (err) {
+        // A throw here would escape the socket's event handler and take down every session.
+        log(`hello failed: ${(err as Error).stack ?? String(err)}`);
+        refuse(ws, 'Internal error');
+      }
     });
   });
 
@@ -114,6 +130,8 @@ export async function startServer(
 async function main(): Promise<void> {
   const config = loadConfig();
   const { token, created } = loadOrCreateToken(config.tokenFile);
+  // Session homes hold copies of the Codex login; don't leave old ones lying around.
+  if (config.runner !== 'fake') removeStaleSessionHomes(config);
   const server = await startServer(config, token);
   console.log(`kidraw-agent listening on ws://${config.host}:${server.port} (MCP on ${config.mcpHost}:${server.mcpPort}, runner=${config.runner})`);
   console.log(`allowed origins: ${config.allowedOrigins.join(', ')}`);

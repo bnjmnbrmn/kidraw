@@ -7,6 +7,7 @@ import * as acp from '@agentclientprotocol/sdk';
 import type { WebSocket } from 'ws';
 import { tokensMatch, type AgentServerConfig } from './config.js';
 import type { McpBridge, McpEndpoint } from './mcp-bridge.js';
+import { decidePermission } from './permissions.js';
 import type { CanvasRef, HistoryEntry, PromptMessage, ServerToTab, TabToServer } from './protocol.js';
 import { startAgent, type StartedAgent } from './runners.js';
 import { SESSION_PREAMBLE } from './tools.js';
@@ -18,9 +19,6 @@ interface PendingToolCall {
   reject(err: Error): void;
   timer: NodeJS.Timeout;
 }
-
-/** Tool-call kinds a read-only KiDraw session may approve without asking. */
-const AUTO_APPROVED_KINDS = new Set(['read', 'search', 'think', 'fetch', 'other']);
 
 /** Transcript entries kept for a tab that resumes. */
 const MAX_HISTORY = 300;
@@ -52,6 +50,8 @@ export class TabSession {
   /** `open` marks an agent reply that is still streaming. */
   private readonly history: (HistoryEntry & { open?: boolean })[] = [];
   private readonly pending = new Map<string, PendingToolCall>();
+  /** Agent tool-call titles by id: updates often omit the title. */
+  private readonly toolTitles = new Map<string, string>();
   private releaseConnection: () => void = () => {};
 
   constructor(
@@ -91,7 +91,11 @@ export class TabSession {
     }
     const previous = this.ws;
     this.ws = ws;
-    if (previous && previous !== ws) previous.close(4001, 'Session continued in another connection');
+    if (previous && previous !== ws) {
+      // Tool calls sent to the old socket will never be answered.
+      this.rejectPending('KiDraw tab reconnected');
+      previous.close(4001, 'Session continued in another connection');
+    }
     ws.on('message', data => {
       if (this.ws === ws) this.onMessage(data.toString());
     });
@@ -186,6 +190,9 @@ export class TabSession {
     try {
       message = JSON.parse(raw) as TabToServer;
     } catch {
+      message = null as unknown as TabToServer;
+    }
+    if (typeof message !== 'object' || message === null || typeof message.type !== 'string') {
       this.send({ type: 'error', message: 'Malformed message' });
       return;
     }
@@ -216,6 +223,10 @@ export class TabSession {
     child.on('exit', code => {
       if (this.state !== 'closed') this.fail(`Agent exited (code ${code})`);
     });
+    // Without a listener, a failed spawn (e.g. docker missing) would crash the whole server.
+    child.on('error', err => {
+      if (this.state !== 'closed') this.fail(`Agent could not start: ${err.message}`);
+    });
 
     const stream = acp.ndJsonStream(
       Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
@@ -225,7 +236,7 @@ export class TabSession {
 
     await new Promise<void>((ready, failed) => {
       acp.client({ name: 'kidraw-agent' })
-        .onRequest(acp.methods.client.session.requestPermission, ctx => this.decidePermission(ctx.params))
+        .onRequest(acp.methods.client.session.requestPermission, ctx => this.onPermissionRequest(ctx.params))
         .connectWith(stream, async ctx => {
           await ctx.request(acp.methods.agent.initialize, {
             protocolVersion: acp.PROTOCOL_VERSION,
@@ -309,13 +320,15 @@ export class TabSession {
         if (update.content.type === 'text') this.emit({ type: 'agent_text', delta: update.content.text });
         break;
       case 'tool_call':
+        this.toolTitles.set(update.toolCallId, update.title);
         this.emit({ type: 'agent_activity', title: update.title, status: update.status ?? 'pending' });
         break;
-      case 'tool_call_update':
-        if (update.status) {
-          this.emit({ type: 'agent_activity', title: update.title ?? update.toolCallId, status: update.status });
-        }
+      case 'tool_call_update': {
+        if (update.title) this.toolTitles.set(update.toolCallId, update.title);
+        const title = update.title ?? this.toolTitles.get(update.toolCallId) ?? 'Tool call';
+        if (update.status) this.emit({ type: 'agent_activity', title, status: update.status });
         break;
+      }
       default:
         break;
     }
@@ -326,20 +339,10 @@ export class TabSession {
     await this.context.notify(acp.methods.agent.session.cancel, { sessionId: this.session.sessionId });
   }
 
-  private decidePermission(params: acp.RequestPermissionRequest): acp.RequestPermissionResponse {
-    const kind = params.toolCall.kind ?? 'other';
-    const allow = AUTO_APPROVED_KINDS.has(kind)
-      ? params.options.find(o => o.kind === 'allow_once') ?? params.options.find(o => o.kind === 'allow_always')
-      : undefined;
-    if (allow) {
-      return { outcome: { outcome: 'selected', optionId: allow.optionId } };
-    }
-    const title = params.toolCall.title ?? kind;
-    this.emit({ type: 'agent_activity', title: `Blocked: ${title}`, status: 'failed' });
-    const reject = params.options.find(o => o.kind === 'reject_once') ?? params.options.find(o => o.kind === 'reject_always');
-    return reject
-      ? { outcome: { outcome: 'selected', optionId: reject.optionId } }
-      : { outcome: { outcome: 'cancelled' } };
+  private onPermissionRequest(params: acp.RequestPermissionRequest): acp.RequestPermissionResponse {
+    const { response, refused } = decidePermission(params, id => this.toolTitles.get(id));
+    if (refused) this.emit({ type: 'agent_activity', title: `Blocked: ${refused}`, status: 'failed' });
+    return response;
   }
 
   private invokeTool(name: string, args: Record<string, unknown>): Promise<unknown> {

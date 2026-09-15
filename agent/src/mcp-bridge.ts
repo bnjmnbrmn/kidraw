@@ -113,7 +113,12 @@ function buildMcpServer(invoke: ToolInvoker): McpServer {
   for (const tool of CANVAS_TOOLS) {
     server.registerTool(
       tool.name,
-      { description: tool.description, inputSchema: tool.inputSchema },
+      {
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        // None of them change the graph or reach outside the tab.
+        annotations: { readOnlyHint: true, openWorldHint: false },
+      },
       async (args: Record<string, unknown>) => {
         try {
           const result = await invoke(tool.name, args ?? {});
@@ -133,7 +138,10 @@ function readJson(req: IncomingMessage): Promise<unknown> {
     req.setEncoding('utf8');
     req.on('data', chunk => {
       raw += chunk;
-      if (raw.length > 1_000_000) reject(new Error('MCP request too large'));
+      if (raw.length > 1_000_000) {
+        reject(new Error('MCP request too large'));
+        req.destroy();
+      }
     });
     req.on('end', () => {
       try { resolve(raw ? JSON.parse(raw) : undefined); } catch (err) { reject(err); }

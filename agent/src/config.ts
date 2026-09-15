@@ -21,15 +21,17 @@ export interface AgentServerConfig {
   tokenFile: string;
   runner: RunnerKind;
   dockerImage: string;
-  /** CODEX_HOME for agent sessions: kidraw-agent's own Codex login, separate
-   *  from the user's ~/.codex so token refreshes never fight over one file.
-   *  Mounted as ~/.codex in containers. */
+  /** kidraw-agent's own Codex login (`auth.json`), separate from the user's
+   *  ~/.codex. Each session gets a private copy in a sibling `sessions/`
+   *  directory (runners.ts), mounted as ~/.codex in its container. */
   codexHome: string;
   /** How long a canvas tool call may wait for the tab. */
   toolTimeoutMs: number;
   /** How long a session survives without a tab, so a reload or dropped
    *  connection can pick it up again. */
   resumeGraceMs: number;
+  /** Most sessions (connected or waiting for their tab) this server will hold. */
+  maxSessions: number;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +56,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentServerCon
     codexHome: env['KIDRAW_AGENT_CODEX_HOME'] ?? join(homedir(), '.config', 'kidraw-agent', 'codex'),
     toolTimeoutMs: Number(env['KIDRAW_AGENT_TOOL_TIMEOUT_MS'] ?? 30_000),
     resumeGraceMs: Number(env['KIDRAW_AGENT_RESUME_GRACE_MS'] ?? 10 * 60_000),
+    maxSessions: Number(env['KIDRAW_AGENT_MAX_SESSIONS'] ?? 3),
   };
 }
 

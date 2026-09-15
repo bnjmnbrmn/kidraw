@@ -4,18 +4,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import WebSocket from 'ws';
-import { loadConfig } from '../config.js';
+import { loadConfig, type AgentServerConfig } from '../config.js';
 import type { ServerToTab } from '../protocol.js';
 import { startServer, type RunningServer } from '../server.js';
 
 const ORIGIN = 'http://localhost:4200';
 const TOKEN = 'test-token-0123456789';
+const HELLO = { type: 'hello', protocol: 1, token: TOKEN, agent: 'codex' };
 let server: RunningServer;
+let config: AgentServerConfig;
 let dir: string;
 
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'kidraw-agent-test-'));
-  const config = {
+  config = {
     ...loadConfig({}),
     port: 0,
     mcpPort: 0,
@@ -23,6 +25,8 @@ before(async () => {
     allowedOrigins: [ORIGIN],
     tokenFile: join(dir, 'token'),
     toolTimeoutMs: 5_000,
+    // Tests leave detached sessions waiting for a resume; don't let them hit the cap.
+    maxSessions: 100,
   };
   server = await startServer(config, TOKEN, () => {});
 });
@@ -33,8 +37,8 @@ after(async () => {
 });
 
 /** A tab-side test client that records messages and can wait for one. */
-function connect(origin = ORIGIN) {
-  const ws = new WebSocket(`ws://127.0.0.1:${server.port}/`, { origin });
+function connect(origin = ORIGIN, port = server.port) {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/`, { origin });
   const received: ServerToTab[] = [];
   const waiters: { predicate: (m: ServerToTab) => boolean; resolve: (m: ServerToTab) => void }[] = [];
   ws.on('message', data => {
@@ -184,6 +188,78 @@ test('a resume with a wrong secret or an unknown session starts a new session', 
     tab.send({ type: 'end' });
     await closed(tab.ws);
   }
+});
+
+test('survives malformed first frames, and a bad frame mid-session', async () => {
+  for (const frame of ['null', '42', '"hello"', '[]', '{}', 'not json']) {
+    const tab = connect();
+    await tab.opened;
+    tab.ws.send(frame);
+    const error = await tab.next('error');
+    assert.equal(error.fatal, true, `first frame ${frame}`);
+    await closed(tab.ws);
+  }
+  const tab = connect();
+  await tab.opened;
+  tab.send(HELLO);
+  await tab.next('ready');
+  tab.ws.send('null');
+  const error = await tab.next('error');
+  assert.notEqual(error.fatal, true);
+  tab.send({ type: 'prompt', text: 'still fine' });
+  assert.match((await tab.next('agent_text')).delta, /echo: still fine/);
+  await tab.next('turn_end');
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('refuses sessions beyond the cap, but a tab can still resume its own', async () => {
+  const small = await startServer({ ...config, maxSessions: 1 }, TOKEN, () => {});
+  try {
+    const first = connect(ORIGIN, small.port);
+    await first.opened;
+    first.send(HELLO);
+    const ready = await first.next('ready');
+
+    const second = connect(ORIGIN, small.port);
+    await second.opened;
+    second.send(HELLO);
+    const refused = await second.next('error');
+    assert.equal(refused.fatal, true);
+    assert.match(refused.message, /sessions/);
+
+    first.ws.close();
+    await closed(first.ws);
+    const again = connect(ORIGIN, small.port);
+    await again.opened;
+    again.send({ ...HELLO, resume: { sessionId: ready.session.id, secret: ready.session.secret } });
+    assert.equal((await again.next('ready')).resumed, true);
+    again.send({ type: 'end' });
+    await closed(again.ws);
+  } finally {
+    await small.close();
+  }
+});
+
+test('a takeover fails a tool call still waiting on the old socket at once', async () => {
+  const first = connect();
+  await first.opened;
+  first.send(HELLO);
+  const ready = await first.next('ready');
+  first.send({ type: 'prompt', text: 'TOOL get_selection {}' });
+  await first.next('tool_call'); // never answered by the old socket
+
+  const second = connect();
+  await second.opened;
+  const started = Date.now();
+  second.send({ ...HELLO, resume: { sessionId: ready.session.id, secret: ready.session.secret } });
+  await second.next('ready');
+  const text = await second.next('agent_text');
+  assert.match(text.delta, /ERROR get_selection: KiDraw tab reconnected/);
+  assert.ok(Date.now() - started < 3_000, 'failed without waiting for the tool timeout');
+  await second.next('turn_end');
+  second.send({ type: 'end' });
+  await closed(second.ws);
 });
 
 test('reports a tool error from the tab back to the agent', async () => {
