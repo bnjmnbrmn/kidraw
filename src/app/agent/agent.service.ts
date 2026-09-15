@@ -132,17 +132,17 @@ export class AgentService {
   }
 
   takeKeyboard(): void {
-    this.keyboardInPanel.set(true);
+    this.store.setKeyboardInPanel(true);
     this.focusInputTick.update(n => n + 1);
   }
 
   releaseKeyboard(): void {
-    this.keyboardInPanel.set(false);
+    this.store.setKeyboardInPanel(false);
   }
 
   /** Focus landed in the panel some other way (a click). */
   panelFocused(): void {
-    if (!this.keyboardInPanel()) this.keyboardInPanel.set(true);
+    if (!this.keyboardInPanel()) this.store.setKeyboardInPanel(true);
   }
 
   /** "Ask about this": open the chat with the current selection attached. */

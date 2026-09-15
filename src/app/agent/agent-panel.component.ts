@@ -112,7 +112,7 @@ export class AgentPanelComponent {
       event.preventDefault();
       if (this.agent.state() === 'consent') this.agent.answerConsent('cancel');
       else if (this.agent.state() === 'setup') this.agent.closePanel();
-      else this.agent.releaseKeyboard();
+      else this.handBackKeyboard();
       return;
     }
     const inTextField = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
@@ -172,7 +172,15 @@ export class AgentPanelComponent {
   /** A pill takes you to its node on the canvas, keyboard included. */
   focusRef(id: string): void {
     this.agent.focusRef(id);
+    this.handBackKeyboard();
+  }
+
+  /** Give the keyboard back now rather than on the next render: the very
+   *  next key must reach the canvas, not the text box that still has focus. */
+  private handBackKeyboard(): void {
     this.agent.releaseKeyboard();
+    const active = document.activeElement as HTMLElement | null;
+    if (active && this.panel?.nativeElement.contains(active)) active.blur();
   }
 
   /** A click outside the panel hands the keyboard back to the canvas. */

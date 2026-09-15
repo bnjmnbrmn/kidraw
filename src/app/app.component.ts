@@ -115,13 +115,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private agentSuspendedKeymenu = false;
 
   /** The agent chat takes the keyboard the way the nav popup does: the keymenu
-   *  is suspended (held keys flushed, the chat's keys shown) until it lets go. */
-  private readonly agentKeyboard = effect(() => {
-    const chatHasKeyboard = this.agent.panelOpen() && this.agent.keyboardInPanel();
+   *  is suspended (held keys flushed, the chat's keys shown) until it lets go.
+   *  Called synchronously by AgentStore, so no keystroke falls in between. */
+  private syncKeymenuToAgentKeyboard(chatHasKeyboard: boolean): void {
     if (!this.keymenuComponent || chatHasKeyboard === this.agentSuspendedKeymenu) return;
     this.agentSuspendedKeymenu = chatHasKeyboard;
     this.keymenuComponent.setSuspended(chatHasKeyboard, chatHasKeyboard ? 'agent-panel' : undefined);
-  });
+  }
 
   /** Agent notices go to the header, which is visible with the panel closed. */
   private readonly agentNotices = effect(() => {
@@ -174,6 +174,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit() {
+    this.agent.onKeyboardOwnerChange(chatHasKeyboard => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
     // Agent mode reaches the canvas only through the AgentCanvasTarget surface.
     this.agent.attachCanvas(this.drawingArea, () => {
       const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};

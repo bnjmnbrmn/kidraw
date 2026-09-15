@@ -103,6 +103,7 @@ export class AgentStore {
 
   private service: AgentService | null = null;
   private loading: Promise<AgentService> | null = null;
+  private keyboardListener: ((chatHasKeyboard: boolean) => void) | null = null;
   private attachment: {
     canvas: AgentCanvasTarget;
     graph: () => GraphIdentity;
@@ -116,10 +117,23 @@ export class AgentStore {
     else if (hasStoredSession()) void this.load();
   }
 
+  /** The shell's hook for suspending the keymenu while the chat has the keyboard. */
+  onKeyboardOwnerChange(listener: (chatHasKeyboard: boolean) => void): void {
+    this.keyboardListener = listener;
+  }
+
+  /** Give the keyboard to the chat or back to the canvas. Synchronous on
+   *  purpose, not an effect: effects run on the next frame, and a key pressed
+   *  right after Esc must already reach the keymenu. */
+  setKeyboardInPanel(inPanel: boolean): void {
+    this.keyboardInPanel.set(inPanel);
+    this.keyboardListener?.(inPanel && this.panelOpen());
+  }
+
   openPanel(): void {
     // Take the keyboard now, so nothing typed while the chat loads reaches the canvas.
     this.panelOpen.set(true);
-    this.keyboardInPanel.set(true);
+    this.setKeyboardInPanel(true);
     void this.load().then(service => service.openPanel());
   }
 
@@ -128,7 +142,7 @@ export class AgentStore {
       this.service.closePanel();
     } else {
       this.panelOpen.set(false);
-      this.keyboardInPanel.set(false);
+      this.setKeyboardInPanel(false);
     }
   }
 
