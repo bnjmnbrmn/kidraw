@@ -144,6 +144,17 @@ export class DAEdge {
     this.applyNavFocus();
   }
 
+  private _kindColor: string | null = null;
+
+  /** The colour of this edge's kind in the bound diagram type (e.g. a
+   *  reading-path edge). It outranks directedness and theme colours. Null
+   *  for a plain edge. */
+  setKindColor(color: string | null): void {
+    if (color === this._kindColor) return;
+    this._kindColor = color;
+    this.applyEdgeStroke();
+  }
+
   /** Set the directedness-aware color scheme. `gradient` fades source → dest
    *  for *directed* edges (readable flow at any zoom); `undirected` and
    *  `bidirectional` are flat hues used when there is no single direction —
@@ -171,6 +182,10 @@ export class DAEdge {
       this._line.stroke(color);
       this._line.fill(color);
     };
+    if (this._kindColor) {
+      flat(this._kindColor);
+      return;
+    }
     if (this._directedness === 'undirected') {
       flat(this._undirectedColor ?? this._strokeColor);
       return;

@@ -331,6 +331,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           this.headerComponent.defaultLineStyle = daNotification.defaultLineStyle;
           this.headerComponent.canUndo = daNotification.canUndo;
           this.headerComponent.canRedo = daNotification.canRedo;
+          this.headerComponent.diagramTypeName = daNotification.diagramTypeName;
         }
         break;
       case "status-message":

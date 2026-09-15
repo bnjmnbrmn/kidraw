@@ -474,12 +474,15 @@ export class DrawingLayer extends Konva.Layer {
     this.refreshTagBadges();
   }
 
-  /** Re-derive every node's tag badge (e.g. task status) from its tags and
-   *  the bound identity's tag groups. */
+  /** Re-derive what the bound identity draws from tags: every node's badge
+   *  (e.g. task status) and every edge's kind colour (e.g. reading path). */
   refreshTagBadges(): void {
     const identity = resolveIdentity(this._diagramType);
     for (const node of this.daNodes) {
       node.setStatusBadge(activeTagChoice(identity, node.tags));
+    }
+    for (const edge of this.daEdges) {
+      edge.setKindColor(identity.edgeKinds?.find(kind => edge.tags.includes(kind.tag))?.color ?? null);
     }
   }
 

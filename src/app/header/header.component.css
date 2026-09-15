@@ -171,6 +171,16 @@ h1 {
   }
 }
 
+/* The graph's plugin (diagram type), next to the file it belongs to. */
+.type-chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(52, 211, 153, 0.14);
+  border: 1px solid rgba(52, 211, 153, 0.55);
+}
+
 /* Agent mode: always visible while a graph is shared with an agent endpoint. */
 .agent-chip {
   font-size: 12px;

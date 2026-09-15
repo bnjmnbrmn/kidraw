@@ -9,6 +9,11 @@
       <span class="file-label file-chip" title="Working file path">
         {{ fileIdentity.path }}
       </span>
+      @if (diagramTypeName) {
+        <span class="type-chip" title="Plugin (diagram type) for this graph — :type lists and switches them">
+          {{ diagramTypeName }}
+        </span>
+      }
     </div>
   </div>
 

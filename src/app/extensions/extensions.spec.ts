@@ -1,5 +1,7 @@
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
+import { DAEdge } from '../drawing-area/da-edge';
+import { EXPLANATION_EXTENSION, EXPLANATION_PATH_TAG } from './explanation.extension';
 import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
 import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
 import { activeTagChoice, applyExclusiveTag } from './tag-groups';
@@ -13,6 +15,27 @@ describe('extensions (identity slot)', () => {
     }
     return dl;
   }
+
+  it('colours edges by kind under an identity that defines edge kinds, and clears it under one that does not', () => {
+    const premise = new DANode(0, 0, 'All men are mortal');
+    const conclusion = new DANode(300, 0, 'Socrates is mortal');
+    const dl = layerWithNodes(premise, conclusion);
+    const path = new DAEdge(premise, conclusion, '');
+    path.tags = [EXPLANATION_PATH_TAG];
+    const plain = new DAEdge(conclusion, premise, '');
+    dl.addRawEdge(path);
+    dl.addRawEdge(plain);
+    const stroke = (edge: DAEdge) => (edge as unknown as {_line: {stroke(): string}})._line.stroke();
+    const plainStroke = stroke(plain);
+
+    dl.setDiagramType(EXPLANATION_EXTENSION);
+    const pathKind = EXPLANATION_EXTENSION.edgeKinds!.find(k => k.tag === EXPLANATION_PATH_TAG)!;
+    expect(stroke(path)).toBe(pathKind.color);
+    expect(stroke(plain)).toBe(plainStroke);
+
+    dl.setDiagramType(DEFAULT_EXTENSION);
+    expect(stroke(path)).not.toBe(pathKind.color);
+  });
 
   it('setDiagramType restyles existing nodes to the identity defaults', () => {
     const circle = new DANode(0, 0, 'todo A', undefined, undefined, 'circle');

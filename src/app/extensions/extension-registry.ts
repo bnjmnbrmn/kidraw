@@ -1,5 +1,6 @@
 import { KidrawExtension } from './extension.model';
 import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
+import { EXPLANATION_EXTENSION } from './explanation.extension';
 
 /** The implicit identity of every graph that doesn't declare a `type`.
  *  Its (empty) defaults resolve to the app defaults, so binding it is
@@ -11,7 +12,7 @@ export const DEFAULT_EXTENSION: KidrawExtension = {
 };
 
 export const EXTENSION_REGISTRY: ReadonlyMap<string, KidrawExtension> = new Map(
-  [DEFAULT_EXTENSION, TODO_GRAPH_EXTENSION].map(e => [e.id, e] as const),
+  [DEFAULT_EXTENSION, TODO_GRAPH_EXTENSION, EXPLANATION_EXTENSION].map(e => [e.id, e] as const),
 );
 
 export function getExtension(id: string): KidrawExtension | undefined {

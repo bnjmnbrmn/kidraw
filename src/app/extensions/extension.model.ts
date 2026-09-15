@@ -33,6 +33,18 @@ export interface ExtensionTagGroup {
   choices: ExtensionTagChoice[];
 }
 
+/** A kind of edge an extension contributes, marked by a semantic tag and
+ *  drawn in its own colour (outranking directedness and theme colours). */
+export interface ExtensionEdgeKind {
+  /** The semantic tag edges of this kind carry (e.g. `explanation/supports`). */
+  tag: string;
+  name: string;
+  /** Stroke colour: a mid tone that reads on both themes. */
+  color: string;
+  /** What the kind means, for help text and agents. */
+  description: string;
+}
+
 /**
  * A kidraw extension (see notes/idea-diagram-types.md).
  *
@@ -56,6 +68,9 @@ export interface ExtensionTagGroup {
 export interface KidrawExtension {
   id: string;
   name: string;
+  /** One line on what the diagram type is for, for the plugin picker. */
+  description?: string;
   nodeDefaults: ExtensionNodeDefaults;
   tagGroups?: ExtensionTagGroup[];
+  edgeKinds?: ExtensionEdgeKind[];
 }

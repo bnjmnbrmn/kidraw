@@ -85,6 +85,8 @@ export class HeaderComponent {
   defaultLineStyle: LineStyle = 'solid';
   canUndo: boolean = false;
   canRedo: boolean = false;
+  /** The graph's plugin (diagram type) by name; '' for the default type. */
+  diagramTypeName = '';
   /** Structured backing location for the graph, or null for a new document. */
   fileState: DAFileState = null;
 

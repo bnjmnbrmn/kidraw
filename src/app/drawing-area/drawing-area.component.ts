@@ -17,6 +17,7 @@ import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo, ClientRect } from '../agent/agent-canvas';
 import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
+import { EXTENSION_REGISTRY } from '../extensions/extension-registry';
 import { planGather, GatherNeighbor, GatherPlacement } from './gather-fisheye';
 import {
   bandIndexAtCoordinate,
@@ -1724,9 +1725,33 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.newGraph();
         this.emitStatus('New graph.');
         return;
+      case 'type':
+      case 'plugin':
+        this.exType(arg);
+        return;
       default:
         this.emitStatus(`Not an editor command: ${name}`);
     }
+  }
+
+  /** `:type` lists the plugins (diagram types); `:type <id>` binds one to
+   *  this graph, restyling it undoably. */
+  private exType(arg: string): void {
+    const current = this.drawingLayer.diagramType;
+    if (arg === '') {
+      const list = [...EXTENSION_REGISTRY.values()]
+        .map(extension => extension.id === current ? `${extension.id} (current)` : extension.id)
+        .join(', ');
+      this.emitStatus(`Plugins: ${list}. :type <name> switches.`);
+      return;
+    }
+    if (arg === current) {
+      this.emitStatus(`Already ${resolveIdentity(current).name}.`);
+      return;
+    }
+    this.setDiagramType(arg);
+    this.emitContextState();
+    this.scheduleVaultAutoSave();
   }
 
   /** `:w` saves to the open vault file; `:w <name>` saves as that name and
@@ -3624,6 +3649,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       defaultLineStyle: this._defaultLineStyle,
       canUndo: this.undoRedoService.canUndo,
       canRedo: this.undoRedoService.canRedo,
+      diagramTypeName: this.drawingLayer.diagramType === 'default'
+        ? '' : resolveIdentity(this.drawingLayer.diagramType).name,
     });
   }
 
