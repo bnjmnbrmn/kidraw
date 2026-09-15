@@ -143,7 +143,7 @@ export const SESSION_PREAMBLE = [
   '- Change the graph when the user asks you to, or when it is clearly what they want. Put related changes in',
   '  one apply_changes call: the user undoes each call as one step, and can undo your whole turn.',
   '- If the user stops you, stop changing the graph.',
-  '- Keep replies short. Do not run shell commands or read files; everything you need comes from the tools.',
+  '- Keep replies short. Everything you need about the graph comes from the tools. Never change files.',
   '',
   'Explanations and tutorials:',
   '- They use the "explanation" diagram type. If get_outline shows a different type, ask the user to run',
@@ -182,6 +182,16 @@ export const SESSION_PREAMBLE = [
   '  edge takes its mark with it.',
   '- The user may set a level of detail: brief, standard or thorough. Follow the most recent one; when it',
   '  changes, adjust explanations you write from then on, and existing ones only when asked.',
+].join('\n');
+
+/** Added to the preamble when the server shares KiDraw's own source code
+ *  with sessions (KIDRAW_AGENT_SOURCE_DIR). */
+export const SOURCE_GUIDANCE = [
+  'KiDraw source code:',
+  '- Your working directory holds KiDraw\'s own source code, read-only. When the user asks about KiDraw',
+  '  itself (how something works, what changed recently, why it was designed that way), read the relevant',
+  '  files to answer. dev-status.md and notes/ (see notes/README.md) describe recent work and design',
+  '  decisions. You cannot change or run anything there.',
 ].join('\n');
 
 /** Sent ahead of a prompt when the user's detail level changes. */

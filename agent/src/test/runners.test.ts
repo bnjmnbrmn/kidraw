@@ -4,7 +4,30 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { loadConfig } from '../config.js';
-import { prepareSessionCodexHome } from '../runners.js';
+import { dockerRunArgs, prepareSessionCodexHome, SOURCE_MOUNT } from '../runners.js';
+
+test('a session container sees the source read-only, with activity logs and bulk covered up', () => {
+  const source = mkdtempSync(join(tmpdir(), 'kidraw-source-'));
+  try {
+    mkdirSync(join(source, 'node_modules'));
+    mkdirSync(join(source, 'tools'));
+    writeFileSync(join(source, 'tools', 'debug.log'), 'keystrokes');
+    const shared = dockerRunArgs(
+      loadConfig({ KIDRAW_AGENT_RUNNER: 'docker', KIDRAW_AGENT_SOURCE_DIR: source }), 'c1', '/tmp/home');
+    const joined = shared.join(' ');
+    assert.ok(joined.includes(`-v ${source}:${SOURCE_MOUNT}:ro`), joined);
+    assert.ok(joined.includes(`-v /dev/null:${SOURCE_MOUNT}/tools/debug.log:ro`), joined);
+    assert.ok(joined.includes(`--mount type=tmpfs,destination=${SOURCE_MOUNT}/node_modules`), joined);
+    // Nothing is mounted for paths that don't exist (e.g. no draft mirror here).
+    assert.ok(!joined.includes('draft-mirror.json'), joined);
+    assert.equal(shared[shared.length - 1], 'kidraw-agent-codex:latest');
+
+    const unshared = dockerRunArgs(loadConfig({ KIDRAW_AGENT_RUNNER: 'docker' }), 'c2', '/tmp/home').join(' ');
+    assert.ok(!unshared.includes(SOURCE_MOUNT), unshared);
+  } finally {
+    rmSync(source, { recursive: true, force: true });
+  }
+});
 
 function codexHomeWithLogin(login: string) {
   const root = mkdtempSync(join(tmpdir(), 'kidraw-codex-home-'));

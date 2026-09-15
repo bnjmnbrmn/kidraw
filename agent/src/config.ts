@@ -32,6 +32,9 @@ export interface AgentServerConfig {
   resumeGraceMs: number;
   /** Most sessions (connected or waiting for their tab) this server will hold. */
   maxSessions: number;
+  /** KiDraw's own source code, shared read-only with sessions so the agent can
+   *  answer questions about KiDraw itself. Null (the default) shares nothing. */
+  sourceDir: string | null;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -58,6 +61,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AgentServerCon
     toolTimeoutMs: Number(env['KIDRAW_AGENT_TOOL_TIMEOUT_MS'] ?? 30_000),
     resumeGraceMs: Number(env['KIDRAW_AGENT_RESUME_GRACE_MS'] ?? 10 * 60_000),
     maxSessions: Number(env['KIDRAW_AGENT_MAX_SESSIONS'] ?? 3),
+    sourceDir: env['KIDRAW_AGENT_SOURCE_DIR'] ? resolve(env['KIDRAW_AGENT_SOURCE_DIR']) : null,
   };
 }
 

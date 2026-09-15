@@ -15,7 +15,9 @@ export interface PermissionDecision {
 /**
  * Answer an agent's permission request. KiDraw sessions are read-only: reading,
  * searching and thinking are allowed, and so are calls to KiDraw's own canvas
- * tools. Everything else is refused, including edits, commands, network access,
+ * tools and shell commands that only read files in the workspace (see
+ * isReadOnlyCommand). Everything else is refused, including edits, other
+ * commands, network access,
  * requests for extra sandbox permissions (codex-acp sends those as kind
  * "other"), and any kind this policy doesn't recognise.
  *
@@ -28,7 +30,8 @@ export function decidePermission(
 ): PermissionDecision {
   const { toolCall, options } = params;
   const kind = toolCall.kind ?? undefined;
-  if ((kind !== undefined && SAFE_KINDS.has(kind)) || isKidrawToolApproval(params, titleOf)) {
+  const readOnlyCommand = kind === 'execute' && isReadOnlyCommandRequest(toolCall.rawInput);
+  if ((kind !== undefined && SAFE_KINDS.has(kind)) || readOnlyCommand || isKidrawToolApproval(params, titleOf)) {
     const allow = options.find(o => o.kind === 'allow_once') ?? options.find(o => o.kind === 'allow_always');
     if (allow) return { response: { outcome: { outcome: 'selected', optionId: allow.optionId } } };
   }
@@ -39,6 +42,57 @@ export function decidePermission(
       : { outcome: { outcome: 'cancelled' } },
     refused: toolCall.title ?? titleOf(toolCall.toolCallId) ?? kind ?? 'an unknown request',
   };
+}
+
+/** Programs that only read. `sed` and `find` are further restricted below. */
+const READ_PROGRAMS = new Set([
+  'cat', 'head', 'tail', 'sed', 'grep', 'rg', 'ls', 'find', 'wc', 'nl', 'echo', 'printf', 'pwd', 'sort', 'uniq',
+  'cut', 'tree', 'git',
+]);
+const GIT_READ_COMMANDS = new Set(['log', 'show', 'diff', 'status', 'blame', 'ls-files', 'grep', 'rev-parse']);
+const FIND_WRITES = /^-(exec|execdir|ok|okdir|delete|fprint|fprint0|fprintf|fls)$/;
+
+/**
+ * A shell command an agent asks to run outside its own sandbox, which inside
+ * a session container fails to start. Approved only when every part of it
+ * just reads files under the workspace: read-only programs, no redirection,
+ * substitution or backgrounding, and no paths outside /workspace (so not the
+ * session's Codex login either).
+ */
+export function isReadOnlyCommandRequest(rawInput: unknown): boolean {
+  if (!rawInput || typeof rawInput !== 'object') return false;
+  const { command, cwd } = rawInput as { command?: unknown; cwd?: unknown };
+  if (typeof cwd === 'string' && !cwd.startsWith('/workspace')) return false;
+  const text = Array.isArray(command) ? command.join(' ') : command;
+  return typeof text === 'string' && isReadOnlyCommand(text);
+}
+
+export function isReadOnlyCommand(command: string): boolean {
+  let text = command.trim();
+  // codex-acp sends the command quoted as one shell word.
+  if (text.length >= 2 && text.startsWith('"') && text.endsWith('"')) text = text.slice(1, -1).replace(/\\"/g, '"');
+  if (/[<>`]|\$\(|(^|[^&])&($|[^&])/.test(text)) return false;
+  const segments = text.split(/&&|\|\||[;|\n]/).map(s => s.trim()).filter(Boolean);
+  if (segments.length === 0) return false;
+  return segments.every(segment => {
+    const words = segment.match(/'[^']*'|"[^"]*"|\S+/g) ?? [];
+    const unquoted = words.map(w => (/^(['"]).*\1$/.test(w) ? w.slice(1, -1) : w));
+    const program = unquoted[0]?.split('/').pop() ?? '';
+    if (!READ_PROGRAMS.has(program)) return false;
+    const args = unquoted.slice(1);
+    if (args.some(arg => arg.includes('..') || arg.startsWith('~') || (arg.startsWith('/') && !arg.startsWith('/workspace')))) {
+      return false;
+    }
+    if (program === 'sed') return args.includes('-n') && !args.some(arg => /^-i|--in-place/.test(arg) || /[we]\s*$|\bw\s/.test(arg));
+    if (program === 'find') return !args.some(arg => FIND_WRITES.test(arg));
+    if (program === 'rg') return !args.some(arg => arg.startsWith('--pre'));
+    if (program === 'git') {
+      const sub = args.find(arg => !arg.startsWith('-'));
+      return !args.some(arg => arg === '-c' || arg.startsWith('--output') || arg === '--ext-diff' || arg.startsWith('--exec'))
+        && sub !== undefined && GIT_READ_COMMANDS.has(sub) && args.indexOf(sub) === args.findIndex(a => !a.startsWith('-'));
+    }
+    return true;
+  });
 }
 
 function isKidrawToolApproval(

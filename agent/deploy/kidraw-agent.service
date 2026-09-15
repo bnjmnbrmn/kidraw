@@ -25,6 +25,9 @@ Environment=KIDRAW_AGENT_ORIGINS=https://kidraw.dev.bnjmnbrmn.com,http://localho
 # The MCP bridge listens on the Docker bridge so session containers can reach
 # it as host.docker.internal; it is not reachable from off the host.
 Environment=KIDRAW_AGENT_MCP_HOST=172.17.0.1
+# Share KiDraw's own source with sessions, read-only, so the agent can explain
+# KiDraw itself. Activity logs and build output under it stay hidden.
+Environment=KIDRAW_AGENT_SOURCE_DIR=/home/bot/projects/kidraw
 ExecStart=/snap/node/current/bin/node dist/server.js
 Restart=on-failure
 RestartSec=5

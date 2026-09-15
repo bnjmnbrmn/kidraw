@@ -92,7 +92,8 @@ export function removeStaleSessionHomes(config: AgentServerConfig): void {
  *
  * - `local`: codex-acp as a child process of this server (development).
  * - `docker`: codex-acp inside a throwaway container that can see only the
- *   session's own Codex home and an empty workspace.
+ *   session's own Codex home and an empty workspace, or KiDraw's source
+ *   read-only when the server shares it (see dockerRunArgs).
  * - `fake`: a scripted ACP agent used by tests.
  */
 export function startAgent(config: AgentServerConfig, sessionName: string, localWorkDir: string): StartedAgent {
@@ -116,7 +117,49 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
   }
 
   const containerName = `kidraw-agent-${sessionName}`;
-  const args = [
+  const child = spawn('docker', dockerRunArgs(config, containerName, home.dir), { stdio });
+  finishHomeWhenDone(child, home);
+  return {
+    child,
+    agentCwd: config.sourceDir ? SOURCE_MOUNT : '/workspace',
+    stop: () => {
+      // Fire and forget: waiting here would stall every other tab's traffic.
+      spawn('docker', ['kill', containerName], { stdio: 'ignore' }).on('error', () => {}).unref();
+      child.kill('SIGTERM');
+    },
+  };
+}
+
+/** Where a session container sees KiDraw's source, when the server shares it. */
+export const SOURCE_MOUNT = '/workspace/source';
+
+/** Under the source directory but not source: the dev site's activity log and
+ *  draft mirror (the user's own graphs and keystrokes), and bulky build output. */
+const HIDDEN_SOURCE_FILES = ['tools/debug.log', 'tools/draft-mirror.json'];
+const HIDDEN_SOURCE_DIRS = [
+  'node_modules', 'agent/node_modules', 'dist', 'agent/dist', 'site/dist', '.angular', '.capture',
+  'tools/routing-eval/.cache',
+];
+
+/**
+ * `docker run` arguments for one session: a throwaway, capability-less
+ * container that sees only its own Codex home, plus KiDraw's source read-only
+ * when `config.sourceDir` is set (with the files above covered up).
+ */
+export function dockerRunArgs(config: AgentServerConfig, containerName: string, codexHomeDir: string): string[] {
+  const source: string[] = [];
+  if (config.sourceDir) {
+    const dir = config.sourceDir;
+    source.push('-v', `${dir}:${SOURCE_MOUNT}:ro`);
+    // Only paths that exist: Docker can't create a mount point inside a read-only mount.
+    for (const file of HIDDEN_SOURCE_FILES) {
+      if (existsSync(join(dir, file))) source.push('-v', `/dev/null:${SOURCE_MOUNT}/${file}:ro`);
+    }
+    for (const sub of HIDDEN_SOURCE_DIRS) {
+      if (existsSync(join(dir, sub))) source.push('--mount', `type=tmpfs,destination=${SOURCE_MOUNT}/${sub},tmpfs-size=1m`);
+    }
+  }
+  return [
     'run', '-i', '--rm', '--init',
     '--name', containerName,
     '--add-host', 'host.docker.internal:host-gateway',
@@ -124,20 +167,10 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '-e', `INITIAL_AGENT_MODE=${CODEX_ENV.INITIAL_AGENT_MODE}`,
     '-e', `NO_BROWSER=${CODEX_ENV.NO_BROWSER}`,
-    '-v', `${home.dir}:/home/node/.codex`,
+    '-v', `${codexHomeDir}:/home/node/.codex`,
+    ...source,
     config.dockerImage,
   ];
-  const child = spawn('docker', args, { stdio });
-  finishHomeWhenDone(child, home);
-  return {
-    child,
-    agentCwd: '/workspace',
-    stop: () => {
-      // Fire and forget: waiting here would stall every other tab's traffic.
-      spawn('docker', ['kill', containerName], { stdio: 'ignore' }).on('error', () => {}).unref();
-      child.kill('SIGTERM');
-    },
-  };
 }
 
 function finishHomeWhenDone(child: ChildProcess, home: SessionCodexHome): void {

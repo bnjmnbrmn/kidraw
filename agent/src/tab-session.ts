@@ -13,7 +13,7 @@ import {
   type TabToServer,
 } from './protocol.js';
 import { startAgent, type StartedAgent } from './runners.js';
-import { DETAIL_GUIDANCE, SESSION_PREAMBLE } from './tools.js';
+import { DETAIL_GUIDANCE, SESSION_PREAMBLE, SOURCE_GUIDANCE } from './tools.js';
 
 type Log = (message: string) => void;
 
@@ -310,6 +310,7 @@ export class TabSession {
     const parts: string[] = [];
     if (this.firstPrompt) {
       parts.push(SESSION_PREAMBLE, '');
+      if (this.config.sourceDir) parts.push(SOURCE_GUIDANCE, '');
       this.firstPrompt = false;
     }
     // Only when it changes: the agent follows the most recent one.
@@ -351,7 +352,12 @@ export class TabSession {
 
   private onPermissionRequest(params: acp.RequestPermissionRequest): acp.RequestPermissionResponse {
     const { response, refused } = decidePermission(params, id => this.toolTitles.get(id));
-    if (refused) this.emit({ type: 'agent_activity', title: `Blocked: ${refused}`, status: 'failed' });
+    if (refused) {
+      this.emit({ type: 'agent_activity', title: `Blocked: ${refused}`, status: 'failed' });
+      // What exactly was refused, for tuning the policy.
+      const detail = JSON.stringify({ kind: params.toolCall.kind, rawInput: params.toolCall.rawInput, meta: params._meta });
+      this.log(`[${this.name}] refused ${refused}: ${detail.slice(0, 600)}`);
+    }
     return response;
   }
 
