@@ -1,6 +1,28 @@
 # dev-status
 
-_Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`._
+_Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`;
+explanation graphs on `explanation-graphs` (built on agent mode)._
+
+> ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
+>
+> The agent builds an explanation as a graph and edits it live; the reader
+> steps through it and points at what doesn't follow. Design and status:
+> [`notes/design-explanation-graphs.md`](notes/design-explanation-graphs.md).
+> - **Done:**
+>   1. Graph operations with authored undo groups.
+>   2. Plugins (`:type`, header chip) with edge kinds; the Explanation plugin
+>      has blue Supports and green numbered Reading path edges.
+>   3. Agent edits through `apply_changes`: all-or-nothing batches, one change
+>      set per turn, "Undo the agent's last turn", no edits after Stop.
+>   4. Reading mode: root `e` (vim) / `h` (ijkl); `n`/`p` steps, `w` why,
+>      `d`/`t` send "doesn't follow" / "too detailed" feedback with the steps
+>      attached.
+> - **Next:** markdown labels (bold, italic, code; math later).
+> - **Verified:**
+>   - Unit specs for operations, applier, planner, undo, tools, agent
+>     service and reading.
+>   - Playwright: agent mode 31/31, agent edits 7/7, reading 16/16.
+>   - Build is 1.01 MB against the 1.1 MB budget Ben approved.
 
 > ## 🤖 IN PROGRESS: agent mode v0, read-only "ask and point" (2026-09-15, branch `agent-mode-v0`)
 >

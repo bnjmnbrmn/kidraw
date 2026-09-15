@@ -104,6 +104,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [In-app keystroke overlay (`?showKeys=true`)](idea-keystroke-overlay.md)
 - [Longer-term ambitions](idea-longer-term.md)
 - [Multiplayer readiness](idea-multiplayer-readiness.md) — agents are just participants; separate document, presence, and local state; operations through one apply path; per-participant inverse-op undo (today's snapshot undo would erase others' work); collision-free ids (today's `da-N` counter collides); one follow model for taking and retaking the view; CRDT (Yjs) later, not now.
+- [Explanation graphs](design-explanation-graphs.md) — the agent builds an explanation live (one statement per node, blue supports edges, green numbered reading path); reading mode steps through it and sends "doesn't follow" / "too detailed" feedback pointing at the steps.
 - [Agent mode — local companion, model-agnostic agents, tours, shared pointing](idea-mcp-server.md) — `kidraw-agent` started in the vault dir writes `.kidraw/agent.json`; each tab connects over loopback WebSocket and gets its own agent session; agents via ACP (any ACP agent) or a built-in OpenAI-compatible loop; reference pills and point/ask/suggest tools; anchored captions with a bottom-dock fallback; tours with separate definition and visit history (AI may revise mid-tour); views as explicit viewports in style sets (in-memory first).
 
 ## Bugs
