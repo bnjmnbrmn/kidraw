@@ -178,8 +178,10 @@ export interface KeymenuKeyAssignments {
     readonly why: KeyString;
     readonly doesntFollow: KeyString;
     readonly tooDetailed: KeyString;
-    /** Open the agent chat with every marked statement attached. */
+    /** Open the agent chat with every marked statement and link attached. */
     readonly send: KeyString;
+    /** Point at the links into the current statement one at a time, so a mark applies to the link. */
+    readonly link: KeyString;
   };
 }
 
@@ -188,7 +190,7 @@ export interface KeymenuKeyAssignments {
 // secondary profile after Vim became the default.
 export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // `e` is the Add hub here, so reading starts from `h`, which is free at root in this profile.
-  reading: {enter: 'h', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't', send: 's'},
+  reading: {enter: 'h', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't', send: 's', link: 'l'},
   movement: {up: 'i', left: 'j', down: 'k', right: 'l'},
   drag: {up: 'i', left: 'j', down: 'k', right: 'l'},
   root: {
@@ -294,8 +296,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
 // f for move-by-graph traversal (best left-index hold + f/s/d tier chords).
 export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // e = read an Explanation; while reading, n/p = next/previous step, w = why?,
-  // d/t = mark a step as doesn't follow / too detailed, s = send the marks.
-  reading: {enter: 'e', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't', send: 's'},
+  // d/t = mark a step as doesn't follow / too detailed, l = point at the links
+  // into it (d then marks the link), s = send the marks.
+  reading: {enter: 'e', next: 'n', previous: 'p', why: 'w', doesntFollow: 'd', tooDetailed: 't', send: 's', link: 'l'},
   movement: {up: 'k', left: 'h', down: 'j', right: 'l'},
   drag: {up: 'k', left: 'h', down: 'j', right: 'l'},
   root: {

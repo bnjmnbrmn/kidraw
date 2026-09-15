@@ -23,23 +23,21 @@ describe('planAgentChanges', () => {
     edges: [],
   };
 
-  it('adds statements with handles, and supports and numbered path edges between them', () => {
+  it('adds statements with handles, and supports edges between them', () => {
     const plan = planned(planAgentChanges(graph, [
       {kind: 'add_node', handle: 'socrates', text: 'Socrates is a man', near: 'da-1'},
       {kind: 'add_node', handle: 'mortal', text: 'Socrates is mortal', near: 'socrates'},
       {kind: 'add_edge', from: 'da-1', to: 'mortal', edgeKind: 'supports'},
-      {kind: 'add_edge', from: 'socrates', to: 'mortal', edgeKind: 'Supports'},
-      {kind: 'add_edge', from: 'socrates', to: 'mortal', edgeKind: 'path', label: '1'},
+      {kind: 'add_edge', from: 'socrates', to: 'mortal', edgeKind: 'Supports', label: 'because'},
     ], idCounter()));
 
-    expect(plan.ops.map(o => o.op)).toEqual(['add_node', 'add_node', 'add_edge', 'add_edge', 'add_edge']);
+    expect(plan.ops.map(o => o.op)).toEqual(['add_node', 'add_node', 'add_edge', 'add_edge']);
     expect(plan.created.filter(c => c.kind === 'node')).toEqual([
       {kind: 'node', id: 'da-101', handle: 'socrates'}, {kind: 'node', id: 'da-102', handle: 'mortal'},
     ]);
     const edges = plan.ops.flatMap(o => (o.op === 'add_edge' ? [o.edge] : []));
     expect(edges[0]).toEqual(jasmine.objectContaining({srcNodeId: 'da-1', destNodeId: 'da-102', tags: ['explanation/supports']}));
-    expect(edges[2].tags).toEqual(['explanation/path']);
-    expect(edges[2].labels.map(l => l.text)).toEqual(['1']);
+    expect(edges[1].labels.map(l => l.text)).toEqual(['because']);
     // The batch applies cleanly to the graph it was planned against.
     expect(findConflict(graph, plan.ops)).toBeNull();
   });
@@ -78,20 +76,61 @@ describe('planAgentChanges', () => {
     expect(findConflict(withEdge, plan.ops)).toBeNull();
   });
 
-  it('renumbers a path edge and swaps an edge kind without losing other tags', () => {
-    const withPath: GraphSnapshot = {
+  it('relabels an edge and drops its kind without losing other tags, or replaces its tags outright', () => {
+    const withEdge: GraphSnapshot = {
       ...graph,
       nodes: [...graph.nodes, node('da-2', 'B', 0, 200)],
-      edges: [{id: 'da-3', srcNodeId: 'da-1', destNodeId: 'da-2', isSelected: false, tags: ['explanation/path', 'keep-me'],
+      edges: [{id: 'da-3', srcNodeId: 'da-1', destNodeId: 'da-2', isSelected: false, tags: ['explanation/supports', 'keep-me'],
         labels: [{id: 'da-4', x: 0, y: 0, text: '2', fontSize: 12, isSelected: false}]}],
     };
-    const plan = planned(planAgentChanges(withPath, [
-      {kind: 'update_edge', edge: 'da-3', label: '3', edgeKind: 'supports'},
+    const plan = planned(planAgentChanges(withEdge, [
+      {kind: 'update_edge', edge: 'da-3', label: '3', edgeKind: null},
     ], idCounter()));
     expect(plan.ops[0]).toEqual({
       op: 'update_edge', id: 'da-3',
-      before: {labels: ['2'], tags: ['explanation/path', 'keep-me']},
-      after: {labels: ['3'], tags: ['keep-me', 'explanation/supports']},
+      before: {labels: ['2'], tags: ['explanation/supports', 'keep-me']},
+      after: {labels: ['3'], tags: ['keep-me']},
     });
+
+    const cleared = planned(planAgentChanges(withEdge, [
+      {kind: 'update_edge', edge: 'da-3', tags: ['explanation/supports']},
+    ], idCounter()));
+    expect(cleared.ops[0]).toEqual({
+      op: 'update_edge', id: 'da-3',
+      before: {tags: ['explanation/supports', 'keep-me']},
+      after: {tags: ['explanation/supports']},
+    });
+  });
+
+  it('sets the whole reading order as step tags, for statements read twice and ones added in the batch', () => {
+    const three: GraphSnapshot = {
+      ...graph,
+      nodes: [
+        {...node('da-1', 'All men are mortal'), tags: ['step/1']},
+        {...node('da-2', 'Socrates is a man', 0, 200), tags: ['step/2', 'feedback/doesnt-follow']},
+        node('da-3', 'Socrates is mortal', 0, 400),
+      ],
+    };
+    const plan = planned(planAgentChanges(three, [
+      {kind: 'add_node', handle: 'between', text: 'Socrates is one of all men', near: 'da-1'},
+      {kind: 'set_reading_order', nodes: ['da-1', 'between', 'da-2', 'da-3', 'da-1']},
+    ], idCounter()));
+
+    const added = plan.ops.flatMap(o => (o.op === 'add_node' ? [o.node] : []));
+    expect(added.map(n => n.tags)).toEqual([['step/2']]);
+    const updates = plan.ops.flatMap(o => (o.op === 'update_node' ? [[o.id, o.after.tags]] : []));
+    expect(updates).toEqual([
+      ['da-1', ['step/1', 'step/5']],
+      ['da-2', ['feedback/doesnt-follow', 'step/3']],
+      ['da-3', ['step/4']],
+    ]);
+    expect(findConflict(three, plan.ops)).toBeNull();
+  });
+
+  it('refuses a reading order for a diagram type without one, or naming an unknown statement', () => {
+    expect(planAgentChanges({...graph, diagramType: 'default'}, [{kind: 'set_reading_order', nodes: ['da-1']}], idCounter()))
+      .toEqual({error: 'change 1 (set_reading_order): this diagram type has no reading order'});
+    expect(planAgentChanges(graph, [{kind: 'set_reading_order', nodes: ['da-1', 'nope']}], idCounter()))
+      .toEqual({error: 'change 1 (set_reading_order): no node "nope"'});
   });
 });

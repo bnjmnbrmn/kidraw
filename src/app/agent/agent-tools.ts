@@ -63,9 +63,24 @@ export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChang
         return {
           kind: 'update_edge', edge: String(change['edge'] ?? ''), ...text('label'),
           ...(change['edgeKind'] === null ? {edgeKind: null} : text('edgeKind')),
+          ...tags,
         };
       case 'delete_edge':
         return {kind: 'delete_edge', edge: String(change['edge'] ?? '')};
+      case 'set_reading_order': {
+        const refs = change['nodes'];
+        if (!Array.isArray(refs) || refs.length === 0) throw new Error(`${where} nodes: list the statements in reading order`);
+        return {
+          kind: 'set_reading_order',
+          nodes: refs.map((ref, position) => {
+            const value = String(ref ?? '');
+            if (handles.has(value)) return value;
+            const resolution = resolveNodeRef(value, nodes);
+            if ('error' in resolution) throw new Error(`${where} nodes[${position}]: ${resolution.error}`);
+            return resolution.node.id;
+          }),
+        };
+      }
       default:
         throw new Error(`${where}: unknown kind "${String(change['kind'])}"`);
     }
@@ -138,6 +153,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
           tagGroups: (identity.tagGroups ?? []).map(group => ({
             id: group.id, name: group.name, tags: group.choices.map(choice => ({tag: choice.tag, label: choice.label})),
           })),
+          ...(identity.readingOrder ? {
+            readingOrder: `Nodes carry ${identity.readingOrder.tagPrefix}N tags; set them all with a set_reading_order change.`,
+          } : {}),
         },
         nodes: nodes.map(n => (n.tags.length ? {...brief(n), tags: n.tags} : brief(n))),
         edges: edges.map(e => ({

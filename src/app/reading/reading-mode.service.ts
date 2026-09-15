@@ -1,11 +1,11 @@
 import {Injectable, signal} from '@angular/core';
-import type {AgentCanvasTarget} from '../agent/agent-canvas';
+import type {AgentCanvasTarget, AgentChange, AgentEdgeInfo} from '../agent/agent-canvas';
 import type {CanvasRef} from '../agent/agent-protocol';
 import {
   EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
 } from '../extensions/explanation.extension';
 import {plainText} from '../drawing-area/markdown-label';
-import {premisesOf, readingPath} from './reading-path';
+import {premiseLinks, premisesOf, readingPath} from './reading-path';
 
 export type FeedbackKind = 'doesnt-follow' | 'too-detailed';
 
@@ -14,11 +14,18 @@ const FEEDBACK_TAG: Record<FeedbackKind, string> = {
   'too-detailed': EXPLANATION_TOO_DETAILED_TAG,
 };
 
+/** What a mark key did: set or cleared a mark, on the statement or on a link into it. */
+export interface MarkResult {
+  marked: boolean;
+  target: 'statement' | 'link';
+}
+
 /**
- * Reading mode: step through an explanation along its numbered reading path.
- * Each step moves the view onto the statement and marks it; "why" marks what
- * it follows from. The keys live in AppComponent (the keymenu is suspended
- * while reading, the way it is for the nav popup).
+ * Reading mode: step through an explanation in the order of its step numbers.
+ * Each step moves the view onto the statement and highlights it; "why"
+ * highlights what it follows from, and "link" points at the links into it one
+ * at a time, so a single link can be marked. The keys live in AppComponent
+ * (the keymenu is suspended while reading, as it is for the nav popup).
  */
 @Injectable({providedIn: 'root'})
 export class ReadingModeService {
@@ -29,6 +36,9 @@ export class ReadingModeService {
   private canvas: AgentCanvasTarget | null = null;
   private say: (text: string) => void = () => {};
   private path: string[] = [];
+  /** The link being pointed at, as an index into the current statement's
+   *  premise links; null when pointing at the statement itself. */
+  private linkIndex: number | null = null;
 
   attach(canvas: AgentCanvasTarget, say: (text: string) => void): void {
     this.canvas = canvas;
@@ -36,13 +46,13 @@ export class ReadingModeService {
   }
 
   /** Start at the selected statement (or the one under the crosshairs) if it is
-   *  on the path, else at the beginning. False when there is no path to read. */
+   *  in the reading order, else at the beginning. False when there is nothing to read. */
   enter(): boolean {
     const canvas = this.canvas;
     if (!canvas) return false;
-    const {nodeIds, warnings} = readingPath(canvas.agentEdges());
+    const {nodeIds, warnings} = readingPath(canvas.agentNodes());
     if (nodeIds.length === 0) {
-      this.say('No reading path here: mark one with path edges numbered 1, 2, 3…');
+      this.say('No reading order here: an explanation numbers its statements 1, 2, 3…');
       return false;
     }
     this.path = nodeIds;
@@ -57,6 +67,7 @@ export class ReadingModeService {
   exit(): void {
     if (!this.active()) return;
     this.active.set(false);
+    this.linkIndex = null;
     this.canvas?.agentSetHighlights([]);
     this.say('Left reading mode');
   }
@@ -69,22 +80,23 @@ export class ReadingModeService {
     this.goTo(this.refreshedStep() - 1);
   }
 
-  /** Re-read the path (the agent may have inserted or renumbered steps since
-   *  the last one) and find where the reader is on it now. */
+  /** Re-read the order (the agent may have inserted or renumbered steps since
+   *  the last one) and find where the reader is in it now. */
   private refreshedStep(): number {
     const current = this.path[this.step()];
     const step = this.step();
-    this.path = readingPath(this.canvas?.agentEdges() ?? []).nodeIds;
+    this.path = readingPath(this.canvas?.agentNodes() ?? []).nodeIds;
     const occurrences = this.path.flatMap((id, i) => (id === current ? [i] : []));
     if (occurrences.length === 0) return Math.min(step, this.path.length - 1);
     return occurrences.reduce((best, i) => (Math.abs(i - step) < Math.abs(best - step) ? i : best));
   }
 
-  /** Mark the statements the current one follows from, and name them. */
+  /** Highlight the statements the current one follows from, and name them. */
   why(): void {
     const canvas = this.canvas;
     const current = this.path[this.step()];
     if (!canvas || !current) return;
+    this.linkIndex = null;
     const premises = premisesOf(current, canvas.agentEdges());
     if (premises.length === 0) {
       this.say('Nothing supports this statement: it is a starting point');
@@ -95,46 +107,103 @@ export class ReadingModeService {
     this.say(`Follows from: ${premises.map(id => labels.get(id) || 'an unlabeled statement').join(' · ')}`);
   }
 
-  /** Toggle a feedback mark on the current statement, as an undoable edit
-   *  (a statement carries at most one). Resolves to true when the mark is now
-   *  set, false when it was cleared, and null when nothing changed. */
-  async toggleMark(kind: FeedbackKind): Promise<boolean | null> {
+  /** Point at the next link into the current statement; after the last one,
+   *  back at the statement itself. Marks then apply to what is pointed at. */
+  nextLink(): void {
+    const canvas = this.canvas;
+    const current = this.path[this.step()];
+    if (!canvas || !current) return;
+    const links = premiseLinks(current, canvas.agentEdges());
+    if (links.length === 0) {
+      this.linkIndex = null;
+      this.say('Nothing supports this statement: it has no links to point at');
+      return;
+    }
+    const next = this.linkIndex === null ? 0 : this.linkIndex + 1;
+    if (next >= links.length) {
+      this.linkIndex = null;
+      canvas.agentSetHighlights([current]);
+      this.say('Back to the statement');
+      return;
+    }
+    this.linkIndex = next;
+    const link = links[next];
+    canvas.agentSetHighlights([current, link.from]);
+    this.say(`Link ${next + 1} of ${links.length}: from ${this.labels().get(link.from) || 'an unlabeled statement'}`);
+  }
+
+  /** Toggle a feedback mark, as an undoable edit, on the link being pointed at
+   *  or else the current statement. Each carries at most one mark. Null when
+   *  nothing changed. */
+  async toggleMark(kind: FeedbackKind): Promise<MarkResult | null> {
     const canvas = this.canvas;
     const id = this.path[this.step()];
-    const node = canvas?.agentNodes().find(n => n.id === id);
-    if (!canvas || !this.active() || !node) return null;
+    if (!canvas || !this.active() || !id) return null;
     const tag = FEEDBACK_TAG[kind];
+    const withMark = (tags: string[], marked: boolean) =>
+      [...tags.filter(t => !EXPLANATION_FEEDBACK_TAGS.includes(t)), ...(marked ? [tag] : [])];
+
+    const link = this.pointedLink();
+    if (link) {
+      if (kind !== 'doesnt-follow') {
+        this.say('Too detailed is for statements; a link can be marked as not following');
+        return null;
+      }
+      const marked = !link.tags.includes(tag);
+      return this.applyMark({kind: 'update_edge', edge: link.id, tags: withMark(link.tags, marked)}, marked, 'link');
+    }
+    const node = canvas.agentNodes().find(n => n.id === id);
+    if (!node) return null;
     const marked = !node.tags.includes(tag);
-    const tags = [...node.tags.filter(t => !EXPLANATION_FEEDBACK_TAGS.includes(t)), ...(marked ? [tag] : [])];
-    const result = await canvas.agentApplyChanges([{kind: 'update_node', node: node.id, tags}], {
+    return this.applyMark({kind: 'update_node', node: node.id, tags: withMark(node.tags, marked)}, marked, 'statement');
+  }
+
+  /** Every marked statement and link, in reading order (a link just before the
+   *  statement it leads to; anything not in the order last). */
+  markedRefs(): CanvasRef[] {
+    const canvas = this.canvas;
+    if (!canvas) return [];
+    const labels = this.labels();
+    const position = (id: string) => {
+      const index = this.path.indexOf(id);
+      return index < 0 ? Number.MAX_SAFE_INTEGER / 2 : index;
+    };
+    const isMarked = (tags: string[]) => tags.some(tag => EXPLANATION_FEEDBACK_TAGS.includes(tag));
+    const statements = canvas.agentNodes().filter(node => isMarked(node.tags)).map(node => ({
+      at: position(node.id),
+      ref: {kind: 'node' as const, id: node.id, label: labels.get(node.id) || 'unlabeled statement'},
+    }));
+    const links = canvas.agentEdges().filter(edge => isMarked(edge.tags)).map(edge => ({
+      at: position(edge.to) - 0.5,
+      ref: {kind: 'edge' as const, id: edge.id, label: `${short(labels.get(edge.from))} → ${short(labels.get(edge.to))}`},
+    }));
+    return [...statements, ...links].sort((a, b) => a.at - b.at).map(entry => entry.ref);
+  }
+
+  private pointedLink(): AgentEdgeInfo | null {
+    const current = this.path[this.step()];
+    if (this.linkIndex === null || !this.canvas || !current) return null;
+    return premiseLinks(current, this.canvas.agentEdges())[this.linkIndex] ?? null;
+  }
+
+  private async applyMark(change: AgentChange, marked: boolean, target: MarkResult['target']): Promise<MarkResult | null> {
+    const result = await this.canvas!.agentApplyChanges([change], {
       author: 'user',
-      label: marked ? 'Mark a step' : 'Clear a mark',
+      label: marked ? `Mark a ${target}` : 'Clear a mark',
       changeSetId: `reading-mark-${Date.now().toString(36)}`,
     });
     if (!result.ok) {
       this.say(result.error ?? 'The mark could not be changed');
       return null;
     }
-    return marked;
-  }
-
-  /** Every statement with a feedback mark, in reading order (any off the path last). */
-  markedRefs(): CanvasRef[] {
-    const position = (id: string) => {
-      const index = this.path.indexOf(id);
-      return index < 0 ? Number.MAX_SAFE_INTEGER : index;
-    };
-    return (this.canvas?.agentNodes() ?? [])
-      .filter(node => node.tags.some(tag => EXPLANATION_FEEDBACK_TAGS.includes(tag)))
-      .sort((a, b) => position(a.id) - position(b.id))
-      .map(node => ({kind: 'node', id: node.id, label: plainText(node.label) || 'unlabeled statement'}));
+    return {marked, target};
   }
 
   private goTo(index: number, note?: string): void {
     const canvas = this.canvas;
     if (!canvas) return;
     if (this.path.length === 0) {
-      this.say('The reading path is gone (Esc to stop reading)');
+      this.say('The reading order is gone (Esc to stop reading)');
       return;
     }
     if (index < 0) {
@@ -146,6 +215,7 @@ export class ReadingModeService {
       return;
     }
     this.step.set(index);
+    this.linkIndex = null;
     const id = this.path[index];
     canvas.agentFocusNode(id);
     canvas.agentSetHighlights([id]);
@@ -156,4 +226,9 @@ export class ReadingModeService {
   private labels(): Map<string, string> {
     return new Map((this.canvas?.agentNodes() ?? []).map(node => [node.id, plainText(node.label)]));
   }
+}
+
+function short(label: string | undefined): string {
+  const text = label || 'unlabeled statement';
+  return text.length > 40 ? `${text.slice(0, 39)}…` : text;
 }

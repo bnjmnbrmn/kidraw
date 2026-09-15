@@ -10,7 +10,7 @@ import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
 import {KidrawExtension} from '../extensions/extension.model';
 import {resolveIdentity} from '../extensions/extension-registry';
-import {activeTagChoice} from '../extensions/tag-groups';
+import {activeTagChoice, numberedTags} from '../extensions/tag-groups';
 
 export class DrawingLayer extends Konva.Layer {
   private readonly gridGroup: Konva.Group;
@@ -475,15 +475,20 @@ export class DrawingLayer extends Konva.Layer {
     this.refreshTagBadges();
   }
 
-  /** Re-derive what the bound identity draws from tags: every node's badge
-   *  (e.g. task status) and every edge's kind colour (e.g. reading path). */
+  /** Re-derive what the bound identity draws from tags: every node's badges
+   *  (task status, feedback marks, reading steps) and every edge's colour
+   *  (a mark on it, else its kind). */
   refreshTagBadges(): void {
     const identity = resolveIdentity(this._diagramType);
+    const order = identity.readingOrder;
     for (const node of this.daNodes) {
       node.setStatusBadge(activeTagChoice(identity, node.tags));
+      node.setStepBadge(order ? numberedTags(node.tags, order.tagPrefix) : [], order?.color ?? '');
     }
     for (const edge of this.daEdges) {
-      edge.setKindColor(identity.edgeKinds?.find(kind => edge.tags.includes(kind.tag))?.color ?? null);
+      const color = activeTagChoice(identity, edge.tags)?.color
+        ?? identity.edgeKinds?.find(kind => edge.tags.includes(kind.tag))?.color;
+      edge.setKindColor(color ?? null);
     }
   }
 

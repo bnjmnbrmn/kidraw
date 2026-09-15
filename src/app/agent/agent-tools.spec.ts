@@ -114,14 +114,16 @@ describe('executeAgentTool', () => {
     const result = await executeAgentTool('apply_changes', {changes: [
       {kind: 'add_node', handle: 'h', text: 'A new step', near: 'Next'},
       {kind: 'add_edge', from: 'h', to: 'Pre-MVP', edgeKind: 'supports'},
-      {kind: 'update_edge', edge: 'e1', edgeKind: null},
+      {kind: 'update_edge', edge: 'e1', edgeKind: null, tags: ['keep']},
+      {kind: 'set_reading_order', nodes: ['Next', 'h', 'Pre-MVP']},
     ]}, host) as {applied: number};
     expect(applied[0]).toEqual([
       {kind: 'add_node', handle: 'h', text: 'A new step', near: 'n0'},
       {kind: 'add_edge', from: 'h', to: 'n1', edgeKind: 'supports'},
-      {kind: 'update_edge', edge: 'e1', edgeKind: null},
+      {kind: 'update_edge', edge: 'e1', edgeKind: null, tags: ['keep']},
+      {kind: 'set_reading_order', nodes: ['n0', 'h', 'n1']},
     ]);
-    expect(result.applied).toBe(3);
+    expect(result.applied).toBe(4);
   });
 
   it('refuses edits when the host says so, and passes on the canvas error', async () => {

@@ -37,16 +37,24 @@ const CHANGE = z.discriminatedUnion('kind', [
     kind: z.literal('add_edge'),
     from: z.string().describe('Source node: a label, id or handle.'),
     to: z.string().describe('Target node: a label, id or handle.'),
-    edgeKind: z.string().optional().describe('One of the diagram type\'s edge kinds from get_outline, e.g. "supports" or "path".'),
-    label: z.string().optional().describe('Edge label. For path edges, the step number, e.g. "3".'),
+    edgeKind: z.string().optional().describe('One of the diagram type\'s edge kinds from get_outline, e.g. "supports".'),
+    label: z.string().optional().describe('Edge label.'),
   }),
   z.object({
     kind: z.literal('update_edge'),
     edge: z.string().describe('Edge id from get_outline.'),
     label: z.string().optional().describe('New label; "" removes it.'),
     edgeKind: z.string().nullable().optional().describe('New edge kind; null makes it a plain edge.'),
+    tags: z.array(z.string()).optional().describe('Replaces the edge\'s tags, e.g. to remove a feedback mark (keep its kind tag).'),
   }),
   z.object({ kind: z.literal('delete_edge'), edge: z.string().describe('Edge id from get_outline.') }),
+  z.object({
+    kind: z.literal('set_reading_order'),
+    nodes: z.array(z.string()).min(1).describe(
+      'Every statement in reading order, by label, id or handle. List a statement again only where the reader '
+      + 'should reread it just before a later step that depends on it (not as a recap). Replaces the whole order '
+      + 'and renumbers every statement.'),
+  }),
 ]);
 
 export const CANVAS_TOOLS: CanvasToolDefinition[] = [
@@ -106,7 +114,7 @@ export const CANVAS_TOOLS: CanvasToolDefinition[] = [
     name: 'apply_changes',
     readOnly: false,
     description:
-      'Change the graph: add, update or delete nodes and edges in one batch, applied in order and ' +
+      'Change the graph: add, update or delete nodes and edges, or set the reading order, in one batch, applied in order and ' +
       'all-or-nothing. The user can undo the batch as one step. If the graph changed in a way that ' +
       'conflicts, nothing is applied and you get an error: call get_outline and try again.',
     inputSchema: {
@@ -136,21 +144,28 @@ export const SESSION_PREAMBLE = [
   '- They use the "explanation" diagram type. If get_outline shows a different type, ask the user to run',
   '  :type explanation first.',
   '- Work the explanation out yourself. Write one statement per node: a single sentence.',
+  '- Make each statement readable on its own terms: say what its symbols are and what is assumed about them,',
+  '  for example "where each $p_i$, for $i$ from $1$ to $k$, is a prime", rather than leaving the reader to',
+  '  find that in an earlier statement.',
   '- Node text supports **bold**, *italic*, `code` and math: TeX between single dollar signs, for example',
   '  $p_1 \\times p_2 \\times \\cdots \\times p_k + 1$ (inline only; no $$ display math). Write a literal dollar',
   '  sign as \\$. Use math for formulas and symbols rather than Unicode approximations.',
   '- For every statement, add a "supports" edge from each statement it follows from, even when that premise',
   '  came much earlier.',
-  '- Add "path" edges for the suggested reading order, labelled with step numbers 1, 2, 3, ... When you insert',
-  '  or remove a step, renumber the later path edges in the same apply_changes call.',
-  '- When the user points at a statement or edge that does not follow for them, add the missing intermediate',
-  '  statements (with their supports and path edges) instead of rewording what is there.',
-  '- When the user says a part is too detailed, merge those steps: delete the extra statements and reconnect',
-  '  the supports and path edges.',
-  '- The reader marks statements with the tags feedback/doesnt-follow and feedback/too-detailed (they show in',
-  '  get_outline). Treat each mark as a request; when you have addressed it, remove that tag from the node',
-  '  (update_node with its other tags) in the same apply_changes call. A merged-away statement takes its mark',
-  '  with it.',
+  '- Give the suggested reading order with a set_reading_order change listing every statement in order; it',
+  '  numbers the statements (tags step/1, step/2, ...). List a statement again only where the reader should',
+  '  reread it just before a later step that depends on it, typically one from much earlier; never just to',
+  '  recap at the end. Whenever you add, remove or reorder statements, send the complete new order in the same',
+  '  apply_changes call.',
+  '- When the user points at a statement or a link that does not follow for them, add the missing intermediate',
+  '  statements (with their supports edges, and the new reading order) instead of rewording what is there.',
+  '- When the user says a part is too detailed, merge those steps: delete the extra statements, reconnect the',
+  '  supports edges and send the new reading order.',
+  '- The reader marks statements with the tags feedback/doesnt-follow and feedback/too-detailed, and marks',
+  '  supports edges with feedback/doesnt-follow (the premise does not support the conclusion, or not on its',
+  '  own). They show in get_outline. Treat each mark as a request; when you have addressed it, remove the tag',
+  '  in the same apply_changes call (update_node or update_edge with the other tags). Deleting a statement or',
+  '  edge takes its mark with it.',
   '- The user may set a level of detail: brief, standard or thorough. Follow the most recent one; when it',
   '  changes, adjust explanations you write from then on, and existing ones only when asked.',
 ].join('\n');

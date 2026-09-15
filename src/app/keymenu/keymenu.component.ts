@@ -1253,6 +1253,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [r.doesntFollow]: this.surfaceAction("Mark: doesn't follow"),
       [r.tooDetailed]: this.surfaceAction('Mark: too detailed'),
       [r.send]: this.surfaceAction('Send marks'),
+      [r.link]: this.surfaceAction('Next link'),
       '[': this.surfaceAction('Esc: Stop reading'),
     } as SubmenuConfig;
   }

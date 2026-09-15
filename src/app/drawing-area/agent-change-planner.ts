@@ -45,6 +45,7 @@ export function planAgentChanges(
   const ops: GraphOperation[] = [];
   const created: ChangePlan['created'] = [];
   const touched = new Set<string>();
+  const addedIds = new Set<string>();
 
   const nodeIdFor = (ref: string): string | null => {
     const id = handles.get(ref) ?? ref;
@@ -99,6 +100,7 @@ export function planAgentChanges(
           ...(change.tags?.length ? {tags: [...change.tags]} : {}),
         };
         nodes.set(id, node);
+        addedIds.add(id);
         if (change.handle !== undefined) handles.set(change.handle, id);
         ops.push({op: 'add_node', node});
         created.push({kind: 'node', id, ...(change.handle !== undefined ? {handle: change.handle} : {})});
@@ -162,11 +164,12 @@ export function planAgentChanges(
         if (!edge) return fail(`no edge "${change.edge}" (edges are referenced by id; see get_outline)`);
         const after: {labels?: string[]; tags?: string[]} = {};
         if (change.label !== undefined) after.labels = change.label === '' ? [] : [change.label];
+        if (change.tags !== undefined) after.tags = [...change.tags];
         if (change.edgeKind !== undefined) {
           const tag = change.edgeKind === null ? null : kindTagFor(change.edgeKind);
           if (change.edgeKind !== null && !tag) return fail(`unknown edge kind "${change.edgeKind}"; kinds: ${kindList()}`);
           const kindTags = new Set(kinds.map(k => k.tag));
-          after.tags = [...(edge.tags ?? []).filter(t => !kindTags.has(t)), ...(tag ? [tag] : [])];
+          after.tags = [...(after.tags ?? edge.tags ?? []).filter(t => !kindTags.has(t)), ...(tag ? [tag] : [])];
         }
         if (Object.keys(after).length === 0) return fail('nothing to change');
         ops.push(updateEdgeOperation({nodes: [], edges: [edge]}, edge.id, after));
@@ -182,6 +185,32 @@ export function planAgentChanges(
         if (!edge) return fail(`no edge "${change.edge}" (edges are referenced by id; see get_outline)`);
         ops.push({op: 'remove_edge', edge});
         edges.delete(edge.id);
+        break;
+      }
+      case 'set_reading_order': {
+        // The whole order at once, so inserting a step can't leave the numbering broken.
+        const order = identity.readingOrder;
+        if (!order) return fail('this diagram type has no reading order');
+        if (!Array.isArray(change.nodes) || change.nodes.length === 0) return fail('list the statements in reading order');
+        const steps = new Map<string, number[]>();
+        for (const [position, ref] of change.nodes.entries()) {
+          const id = nodeIdFor(ref);
+          if (!id) return fail(`no node "${ref}"`);
+          steps.set(id, [...(steps.get(id) ?? []), position + 1]);
+        }
+        const isStepTag = (tag: string) => tag.startsWith(order.tagPrefix) && /^\d+$/.test(tag.slice(order.tagPrefix.length));
+        for (const node of [...nodes.values()]) {
+          const before = node.tags ?? [];
+          const after = [...before.filter(tag => !isStepTag(tag)), ...(steps.get(node.id) ?? []).map(step => `${order.tagPrefix}${step}`)];
+          if (after.length === before.length && after.every((tag, i) => tag === before[i])) continue;
+          if (addedIds.has(node.id)) {
+            // Added in this batch: its add_node operation still holds this snapshot.
+            node.tags = after;
+          } else {
+            ops.push(updateNodeOperation({nodes: [node], edges: []}, node.id, {tags: after}));
+            nodes.set(node.id, {...node, tags: after});
+          }
+        }
         break;
       }
       default:

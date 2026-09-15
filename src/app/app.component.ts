@@ -156,13 +156,16 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.reading.why();
     } else if (key === keys.doesntFollow || key === keys.tooDetailed) {
       const kind = key === keys.doesntFollow ? 'doesnt-follow' : 'too-detailed';
-      void this.reading.toggleMark(kind).then(marked => {
-        if (marked === null) return;
+      void this.reading.toggleMark(kind).then(result => {
+        if (!result) return;
         const name = kind === 'doesnt-follow' ? "doesn't follow" : 'too detailed';
-        this.headerComponent?.showStatusMessage(marked
-          ? `Marked "${name}". Keep reading; ${keys.send} sends your marks to the agent.`
-          : `Cleared "${name}".`, 4000);
+        const what = result.target === 'link' ? 'this link' : 'this statement';
+        this.headerComponent?.showStatusMessage(result.marked
+          ? `Marked ${what} "${name}". Keep reading; ${keys.send} sends your marks to the agent.`
+          : `Cleared "${name}" on ${what}.`, 4000);
       });
+    } else if (key === keys.link) {
+      this.reading.nextLink();
     } else if (key === keys.send) {
       const refs = this.reading.markedRefs();
       if (refs.length === 0) {

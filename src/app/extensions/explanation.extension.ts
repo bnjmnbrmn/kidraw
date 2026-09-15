@@ -2,8 +2,9 @@ import { KidrawExtension } from './extension.model';
 
 /** The tag on structure edges: premise → the statement that follows from it. */
 export const EXPLANATION_SUPPORTS_TAG = 'explanation/supports';
-/** The tag on reading-path edges, whose first label is the step number. */
-export const EXPLANATION_PATH_TAG = 'explanation/path';
+/** Reading order: a statement read at step 3 is tagged `step/3`, and also
+ *  `step/7` if the reader comes back to it. */
+export const EXPLANATION_STEP_TAG_PREFIX = 'step/';
 /** Reader feedback on a statement: set while reading, cleared by the agent
  *  once it has addressed it. At most one per statement. */
 export const EXPLANATION_DOESNT_FOLLOW_TAG = 'feedback/doesnt-follow';
@@ -17,9 +18,11 @@ export const EXPLANATION_FEEDBACK_TAGS: readonly string[] = [EXPLANATION_DOESNT_
  * - Supports (structure): an edge from each premise to the statement that
  *   follows from it, so a reader can see what any step rests on, however far
  *   back.
- * - Reading path (traversal): the suggested order to read the statements in.
- *   Each path edge's label starts with its step number; "next" follows the
- *   edge numbered one higher. A statement can be visited more than once.
+ * - Reading order: the suggested order to read the statements in, as step
+ *   numbers on the statements themselves. A statement the reader should come
+ *   back to carries more than one number.
+ * - Feedback: a reader marks a statement, or a supports link, that doesn't
+ *   follow for them (or a statement that is too detailed).
  */
 export const EXPLANATION_EXTENSION: KidrawExtension = {
   id: 'explanation',
@@ -50,11 +53,6 @@ export const EXPLANATION_EXTENSION: KidrawExtension = {
       color: '#60a5fa',
       description: 'Structure: the source statement is a premise of the target statement (one edge per premise).',
     },
-    {
-      tag: EXPLANATION_PATH_TAG,
-      name: 'Reading path',
-      color: '#34d399',
-      description: 'Traversal: the suggested reading order. Each path edge is labelled with its step number (1, 2, 3, …).',
-    },
   ],
+  readingOrder: {tagPrefix: EXPLANATION_STEP_TAG_PREFIX, color: '#34d399'},
 };

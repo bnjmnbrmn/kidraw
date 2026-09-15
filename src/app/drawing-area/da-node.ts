@@ -65,6 +65,10 @@ export class DANode {
   private readonly _statusBadgeText: Konva.Text;
   private _statusDims = false;
   private _statusBadgeSpec: { label: string; color: string; dims?: boolean } | null = null;
+  /** Reading-order step numbers ("3", or "3 · 7"), in a pill above the top-right corner. */
+  private readonly _stepBadge: Konva.Group;
+  private readonly _stepBadgeRect: Konva.Rect;
+  private readonly _stepBadgeText: Konva.Text;
 
   // Edge references with cache validation
   public incomingEdges: DAEdge[] = [];
@@ -88,6 +92,7 @@ export class DANode {
   public readonly SELECTION_SHADOW_BLUR = 22;
   public readonly STATUS_BADGE_HEIGHT = 14;
   public readonly STATUS_BADGE_PAD_X = 6;
+  public readonly STEP_BADGE_HEIGHT = 18;
   /** Opacity of the whole node when its status dims it (e.g. done tasks). */
   public readonly STATUS_DIM_OPACITY = 0.55;
   private _selectionBlinkFrame: number | null = null;
@@ -205,6 +210,27 @@ export class DANode {
     this._statusBadge.add(this._statusBadgeRect);
     this._statusBadge.add(this._statusBadgeText);
     this.group.add(this._statusBadge);
+
+    this._stepBadgeRect = new Konva.Rect({
+      height: this.STEP_BADGE_HEIGHT,
+      cornerRadius: this.STEP_BADGE_HEIGHT / 2,
+    });
+    this._stepBadgeText = new Konva.Text({
+      text: '',
+      fontSize: 12,
+      fontStyle: 'bold',
+      fill: '#052e16',
+      x: this.STATUS_BADGE_PAD_X,
+      y: (this.STEP_BADGE_HEIGHT - 12) / 2,
+    });
+    this._stepBadge = new Konva.Group({
+      y: -this.STEP_BADGE_HEIGHT - 2,
+      visible: false,
+      listening: false,
+    });
+    this._stepBadge.add(this._stepBadgeRect);
+    this._stepBadge.add(this._stepBadgeText);
+    this.group.add(this._stepBadge);
 
     // Resize handle — glowing dot at bottom-right corner, hidden by default
     this._resizeHandle = new Konva.Circle({
@@ -520,6 +546,26 @@ export class DANode {
 
   get statusBadgeLabel(): string {
     return this._statusBadgeText.text();
+  }
+
+  /** Show the reading steps this node is read at, or nothing for no steps. */
+  setStepBadge(steps: readonly number[], color: string): void {
+    const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
+    const active = steps.length > 0 && eligible;
+    this._stepBadge.visible(active);
+    if (!active) return;
+    this._stepBadgeText.text(steps.join(' · '));
+    this._stepBadgeRect.fill(color);
+    this._stepBadgeRect.width(this._stepBadgeText.width() + this.STATUS_BADGE_PAD_X * 2);
+    this.updateStepBadgePosition();
+  }
+
+  get stepBadgeLabel(): string {
+    return this._stepBadge.visible() ? this._stepBadgeText.text() : '';
+  }
+
+  private updateStepBadgePosition(): void {
+    this._stepBadge.x(this._nodeWidth - this._stepBadgeRect.width());
   }
 
   setPinIndicatorVisible(show: boolean): void {
@@ -974,6 +1020,7 @@ export class DANode {
     this._label.x((w - lw) / 2);
     this._label.y((h - lh) / 2);
     this.updatePinIndicatorPosition();
+    this.updateStepBadgePosition();
     this.updateResizeHandlePosition();
   }
 

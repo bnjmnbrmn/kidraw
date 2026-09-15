@@ -11,13 +11,15 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 > - **Done:**
 >   1. Graph operations with authored undo groups.
 >   2. Plugins (`:type`, header chip) with edge kinds; the Explanation plugin
->      has blue Supports and green numbered Reading path edges.
+>      has blue Supports edges and a reading order shown as green step
+>      numbers on statements (several on a statement read again).
 >   3. Agent edits through `apply_changes`: all-or-nothing batches, one change
 >      set per turn, "Undo the agent's last turn", no edits after Stop.
 >   4. Reading mode: root `e` (vim) / `h` (ijkl); `n`/`p` steps, `w` why.
 >      `d`/`t` mark a step as "doesn't follow" / "too detailed" (a badge,
->      saved with the graph); `s` sends the marks to the agent, which clears
->      each one once it has addressed it.
+>      saved with the graph); `l` points at one link into the step so `d`
+>      marks the link. `s` sends the marks to the agent, which clears each one
+>      once it has addressed it.
 >   5. Markdown node labels for plugins that opt in (Explanation does):
 >      bold, italic and code rendered; monospace source with highlighted
 >      markers while editing. Other graphs are unchanged.
@@ -27,12 +29,13 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      chunk that loads the first time a label has math.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly
 >   numbered path, then inserted three steps where told "doesn't follow".
-> - **Next:** Ben tries it. Then marking outside reading mode, display math,
->   and draft mode for agent edits.
+> - **Next:** Ben's call on how statements combine under a rule (options in
+>   the design note). Then marking outside reading mode, display math, and
+>   draft mode for agent edits.
 > - **Verified:**
 >   - Unit specs for operations, applier, planner, undo, tools, agent
 >     service, reading, the markdown parser and DANode markdown.
->   - Playwright: agent mode 31/31, agent edits 7/7, reading 19/19,
+>   - Playwright: agent mode 31/31, agent edits 7/7, reading 22/22,
 >     markdown 10/10, math 8/8.
 >   - Build is 1.02 MB against the 1.1 MB budget Ben approved.
 

@@ -17,9 +17,11 @@ export type AgentChange =
   | {kind: 'delete_node'; node: string}
   /** `edgeKind` names one of the diagram type's edge kinds (e.g. "supports", "path"). */
   | {kind: 'add_edge'; from: string; to: string; edgeKind?: string; label?: string}
-  /** `edgeKind: null` makes it a plain edge; `label: ''` removes its label. */
-  | {kind: 'update_edge'; edge: string; label?: string; edgeKind?: string | null}
-  | {kind: 'delete_edge'; edge: string};
+  /** `edgeKind: null` makes it a plain edge; `label: ''` removes its label; `tags` replaces its tags. */
+  | {kind: 'update_edge'; edge: string; label?: string; edgeKind?: string | null; tags?: string[]}
+  | {kind: 'delete_edge'; edge: string}
+  /** The whole reading order: every statement in order, listed again where it is read again. */
+  | {kind: 'set_reading_order'; nodes: string[]};
 
 export interface AgentEditMeta {
   /** e.g. 'agent:codex' */

@@ -47,6 +47,16 @@ export interface ExtensionEdgeKind {
   description: string;
 }
 
+/** Numbered tags that put nodes in an order (e.g. the steps of an
+ *  explanation), drawn as a number badge on each node. */
+export interface ExtensionReadingOrder {
+  /** A step's tag is this prefix and its number: `step/` gives `step/1`,
+   *  `step/2`… A node read more than once carries several. */
+  tagPrefix: string;
+  /** Badge fill: a mid tone that reads on both themes. */
+  color: string;
+}
+
 /**
  * A kidraw extension (see notes/idea-diagram-types.md).
  *
@@ -78,4 +88,5 @@ export interface KidrawExtension {
   labelFormat?: LabelFormat;
   tagGroups?: ExtensionTagGroup[];
   edgeKinds?: ExtensionEdgeKind[];
+  readingOrder?: ExtensionReadingOrder;
 }

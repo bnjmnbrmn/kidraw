@@ -22,15 +22,23 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
 - Labels: bold, italic and code first; math after.
 - Gather-style views need a lot of iteration, so not in the first pass.
 - "Extension" in the code is "plugin" in the UI and in conversation.
+- The reading order is numbers on the statements, not edges. A statement
+  read twice shows two numbers. (This replaced numbered path edges the same
+  day.)
+- Each statement carries its own assumptions ("where each $p_i$ is a
+  prime…").
+- A reader can mark a link as not following, as well as a statement.
 
 ## Vocabulary
 
 - **Supports edge** (`explanation/supports`, blue): from a premise to the
   statement it helps establish. A statement can rest on premises from much
   earlier.
-- **Reading path** (`explanation/path`, green): the order to read in. The
-  label starts with the step number (`1`, `2`, …). A statement can appear on
-  the path more than once.
+- **Reading order**: step numbers on the statements, as `step/N` tags drawn
+  as a green badge. A statement the reader comes back to carries several
+  (`1 · 5`). The agent sets the whole order at once with a
+  `set_reading_order` change, so an inserted step can't leave the numbers
+  broken.
 - **Operation / undo group / change set**: as in
   [idea-multiplayer-readiness.md](idea-multiplayer-readiness.md). Each
   `apply_changes` call is one undo group with an author (`agent:codex`); each
@@ -63,19 +71,22 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      turn's change set; keymenu undo steps back one batch at a time.
    - Stop (or Ctrl+C) refuses further edits until the user's next message.
    - The session preamble describes explanation style: one statement per
-     node, supports edges from every premise, numbered path edges renumbered
-     on insert, add steps where something doesn't follow, merge where too
-     detailed.
+     node, carrying its own assumptions; supports edges from every premise;
+     the full reading order sent again after any change; add steps where
+     something doesn't follow, merge where too detailed.
 4. **Reading mode** (`src/app/reading/`).
    - Root `e` (vim) or `h` (ijkl) starts reading at the selected statement if
      it is on the path, otherwise at step 1.
    - `n`/`p` move to the next and previous step, moving the view and marking
      the statement. `w` ("why?") marks and names the premises.
+   - `l` points at the supports links into the statement one at a time, then
+     back at the statement. A mark key then applies to that link.
    - `d` ("doesn't follow") and `t` ("too detailed") mark the current
-     statement with a badge, as an undoable edit. A statement has at most one
+     statement with a badge, as an undoable edit. On a link, `d` marks the
+     link, which is then drawn in the mark's colour. Each has at most one
      mark, and the same key again clears it. `s` opens the chat with every
-     marked statement attached, in reading order, and a ready-to-edit
-     request.
+     marked statement and link attached, in reading order, and a
+     ready-to-edit request.
    - Marks are tags (`feedback/doesnt-follow`, `feedback/too-detailed`) in
      the Explanation plugin's Feedback tag group, so they are saved with the
      graph and the agent sees them in `get_outline`. It removes each one once
@@ -144,6 +155,47 @@ A second run, after marks, detail levels and math were in:
   remainder) and intermediate steps, growing the explanation to 18
   statements with the path renumbered 1–17. It cleared the mark in the same
   batch.
+
+## Open design: statements that combine under a rule
+
+Ben (2026-09-15) wants to show sets of statements joining to draw a
+conclusion by a particular rule. This is natural-deduction territory (his
+grad school work), but in English rather than symbolic logic. Statements
+should carry their own assumptions, and context may later be shown with
+links and nodes.
+
+Today a conclusion has one supports edge per premise. So the graph can't say
+which premises are used together, or by what rule.
+
+1. **Inference node** (recommended). A small node sits between the premises
+   and the conclusion: an edge from each premise into it, and one edge out to
+   the conclusion. Its label is the rule in English ("by the definition of a
+   prime", "combining the two", "by contradiction"). A conclusion reached in
+   two independent ways has two inference nodes.
+   - Marks get sharper meanings:
+     - on a statement: "this isn't clear, or isn't justified";
+     - on a link into the inference: "this premise isn't used, or doesn't
+       apply";
+     - on the inference node: "these don't give that" (wrong rule, or a
+       missing premise).
+   - It needs nothing new on the canvas: nodes and two-ended edges. The node
+     could be a junction, or a small pill showing the rule.
+   - The reading order stays on statements. "Why?" shows the rule and its
+     premises together.
+2. **Labelled edge bundle.** Keep one edge per premise, and group a
+   conclusion's edges with a shared tag and a rule label where they meet.
+   Lighter on the canvas, but there is nothing to point at for "the step as a
+   whole", and a conclusion reached two ways gets confusing.
+3. **Rule on the conclusion.** Put the rule in the conclusion's text or in a
+   badge. Simplest, but it allows only one set of premises per conclusion and
+   leaves nowhere to mark the inference itself.
+
+Questions for Ben:
+- Is option 1 close to what you had in mind?
+- Should rules be free English, or come from a small vocabulary that the
+  agent extends by defining new rules as statements?
+- Should assumptions become nodes that steps depend on (like hypotheses that
+  are later discharged), or stay in each statement's text as they do now?
 
 ## Not yet
 

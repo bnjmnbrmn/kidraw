@@ -1,7 +1,9 @@
 import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
 import { DAEdge } from '../drawing-area/da-edge';
-import { EXPLANATION_EXTENSION, EXPLANATION_PATH_TAG } from './explanation.extension';
+import {
+  EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXTENSION, EXPLANATION_SUPPORTS_TAG,
+} from './explanation.extension';
 import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
 import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
 import { activeTagChoice, applyExclusiveTag } from './tag-groups';
@@ -16,25 +18,43 @@ describe('extensions (identity slot)', () => {
     return dl;
   }
 
-  it('colours edges by kind under an identity that defines edge kinds, and clears it under one that does not', () => {
+  it('colours edges by kind, a marked edge by its mark, and clears both under an identity without them', () => {
     const premise = new DANode(0, 0, 'All men are mortal');
     const conclusion = new DANode(300, 0, 'Socrates is mortal');
     const dl = layerWithNodes(premise, conclusion);
-    const path = new DAEdge(premise, conclusion, '');
-    path.tags = [EXPLANATION_PATH_TAG];
+    const supports = new DAEdge(premise, conclusion, '');
+    supports.tags = [EXPLANATION_SUPPORTS_TAG];
+    const marked = new DAEdge(premise, conclusion, '');
+    marked.tags = [EXPLANATION_SUPPORTS_TAG, EXPLANATION_DOESNT_FOLLOW_TAG];
     const plain = new DAEdge(conclusion, premise, '');
-    dl.addRawEdge(path);
+    dl.addRawEdge(supports);
+    dl.addRawEdge(marked);
     dl.addRawEdge(plain);
     const stroke = (edge: DAEdge) => (edge as unknown as {_line: {stroke(): string}})._line.stroke();
     const plainStroke = stroke(plain);
 
     dl.setDiagramType(EXPLANATION_EXTENSION);
-    const pathKind = EXPLANATION_EXTENSION.edgeKinds!.find(k => k.tag === EXPLANATION_PATH_TAG)!;
-    expect(stroke(path)).toBe(pathKind.color);
+    const supportsKind = EXPLANATION_EXTENSION.edgeKinds!.find(k => k.tag === EXPLANATION_SUPPORTS_TAG)!;
+    const mark = activeTagChoice(EXPLANATION_EXTENSION, [EXPLANATION_DOESNT_FOLLOW_TAG])!;
+    expect(stroke(supports)).toBe(supportsKind.color);
+    expect(stroke(marked)).toBe(mark.color);
     expect(stroke(plain)).toBe(plainStroke);
 
     dl.setDiagramType(DEFAULT_EXTENSION);
-    expect(stroke(path)).not.toBe(pathKind.color);
+    expect(stroke(supports)).not.toBe(supportsKind.color);
+    expect(stroke(marked)).not.toBe(mark.color);
+  });
+
+  it('shows the reading steps a statement is read at as a number badge', () => {
+    const statement = new DANode(0, 0, 'Socrates is a man');
+    statement.tags = ['step/3', 'step/1', 'other'];
+    const dl = layerWithNodes(statement);
+
+    dl.setDiagramType(EXPLANATION_EXTENSION);
+    expect(statement.stepBadgeLabel).toBe('1 · 3');
+
+    dl.setDiagramType(DEFAULT_EXTENSION);
+    expect(statement.stepBadgeLabel).toBe('');
   });
 
   it('setDiagramType restyles existing nodes to the identity defaults', () => {
