@@ -24,10 +24,19 @@
   }
 
   <div class="header-controls">
-    @if (agent.state() === 'ready' || agent.state() === 'connecting') {
-      <span class="agent-chip" [class.connecting]="agent.state() === 'connecting'"
-            [title]="'Sharing this graph with ' + agent.endpointName() + ' — m opens the chat'">
-        Agent: {{ agent.endpointName() }}
+    @if (agent.state() === 'ready' || agent.state() === 'connecting' || agent.unseenFailure()) {
+      <span class="agent-chip"
+            [class.connecting]="agent.state() === 'connecting'"
+            [class.failed]="agent.state() === 'error'"
+            [class.busy]="agent.busy()"
+            [title]="agentChipTitle">
+        @if (agent.state() === 'error') {
+          Agent: disconnected
+        } @else if (agent.state() === 'connecting') {
+          Agent: {{ agent.endpointName() }} · {{ agent.reconnecting() ? 'reconnecting…' : 'connecting…' }}
+        } @else {
+          Agent: {{ agent.endpointName() }} · {{ agent.followMode() === 'free' ? 'you lead' : 'following' }}
+        }
       </span>
     }
     <span class="zoom-indicator" title="Canvas zoom">{{ zoomLevel }}%</span>

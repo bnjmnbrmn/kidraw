@@ -13,9 +13,16 @@ Tier 2 only, read-only "ask and point". Server, setup, and security model: [`age
 
 - **Path:** tab ⇄ `wss://kidraw.dev.bnjmnbrmn.com/agent/` (site password, origin allowlist, token as the first message) ⇄ `kidraw-agent` ⇄ ACP ⇄ codex-acp in a per-tab Docker container ⇄ MCP over HTTP (per-session URL and bearer secret) ⇄ back to the tab, which runs the tool.
 - **Tools:** `get_outline`, `find_nodes`, `get_selection`, `get_view`, `focus`, `highlight`, `caption`, `clear_annotations`. References in replies use `[[ref:ID|Label]]` and render as pills.
-- **Keys:** `m` Agent Chat, `o` Ask Agent (selection attached as pills), Shift+T Follow Agent (a chord like Redo, because root `t` is reserved for Status coming back, da-438).
+- **Keys:**
+  - `m` opens or focuses Agent Chat, and Shift+M closes it.
+  - `o` Ask Agent attaches the selection as pills.
+  - Shift+O Follow Agent is the reverse of `o`: the agent shows you something.
+  - Chords follow the pattern in [architecture-key-profiles](architecture-key-profiles.md). Root `t` stays reserved for Status.
+- **Keyboard handoff:** the chat takes the keyboard the way the nav popup does. The keymenu is suspended and shows the chat's keys, and Esc gives the keyboard back.
+- **View:** the agent's `focus` pans the view and marks the node with the halo; it never changes the selection. Only a real pan or zoom by the user counts as taking the view.
 - **Differences from the sketch above:**
   - A pasted token instead of pairing.
+  - Consent follows the graph. Opening a different graph pauses the agent (tools refuse, annotations clear) until the user shares it too. Unsaved graphs never get "always", and each one loaded into a tab counts as a separate graph.
   - Consent and endpoint stored in localStorage, not IndexedDB.
   - Permission requests are decided on the server instead of prompting in the tab. Read, search, think and calls to KiDraw's own tools are allowed; everything else is refused, including extra sandbox permissions and fetch.
   - Each session runs with a private Codex home (a copy of the login; history, memories and web search off), so one graph's session can't read another's. Container network egress is not restricted yet.

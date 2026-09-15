@@ -128,5 +128,35 @@ kbd {
 .status { padding: 4px 10px; font-size: 12px; color: var(--kd-panel-muted); }
 
 .composer { border-top: 1px solid var(--kd-panel-border); padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.stop { align-self: flex-end; }
+
+.agent-panel:focus { outline: none; }
+.setup-error { margin: 0; font-size: 12px; color: #dc2626; }
+.agent-panel.dark .setup-error { color: #f87171; }
+.pill.missing { opacity: 0.6; text-decoration: line-through; }
+.small { font-size: 11px; }
+button kbd { margin-right: 3px; }
+.link kbd { margin: 0 0 0 3px; }
+.agent-panel.dark .message.error { color: #f87171; }
+
+.graph-change, .disconnected {
+  margin: 8px 10px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  gap: 6px;
+}
+.graph-change {
+  flex-direction: column;
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid rgba(217, 119, 6, 0.45);
+}
+.graph-change p { margin: 0; }
+.disconnected {
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--kd-panel-border);
+}
 .attached { align-items: center; margin: 0; }
 .composer textarea { resize: none; width: 100%; box-sizing: border-box; }

@@ -1,8 +1,9 @@
 @if (agent.panelOpen()) {
-  <aside class="agent-panel" [class.dark]="dark" aria-label="Agent chat"
-         [style.bottom.px]="bottomInset + 10" [style.right.px]="rightOffset + 10">
+  <aside #panel class="agent-panel" [class.dark]="dark" role="dialog" aria-label="Agent chat" tabindex="-1"
+         [style.bottom.px]="bottomInset + 10" [style.right.px]="rightOffset + 10"
+         (keydown)="onPanelKeydown($event)" (focusin)="agent.panelFocused()" (focusout)="onFocusOut($event)">
     <header class="panel-header">
-      <span class="state-dot" [class]="'state-dot ' + agent.state()"></span>
+      <span [class]="'state-dot ' + agent.state()"></span>
       <strong>Agent</strong>
       @if (agent.endpointName()) {
         <span class="endpoint" [title]="agent.endpoint()?.url ?? ''">{{ agent.endpointName() }}</span>
@@ -10,22 +11,26 @@
       <span class="spacer"></span>
       @if (agent.connected()) {
         <span class="follow" [class.free]="agent.followMode() === 'free'"
-              [title]="agent.followMode() === 'free' ? 'You control the view. Press ' + followKey + ' to follow the agent.' : 'The agent can move your view.'">
+              [title]="agent.followMode() === 'free' ? 'You lead the view. ' + keys.follow + ' follows the agent.' : 'The agent can move your view. Panning or zooming takes it back.'">
           {{ agent.followMode() === 'free' ? 'You lead' : 'Following' }}
         </span>
-        <button type="button" class="link" (click)="agent.disconnect(); releaseKeyboard()">Disconnect</button>
+        <button type="button" class="link" (click)="agent.disconnect()">Disconnect</button>
       }
-      <button type="button" class="close" aria-label="Close agent chat"
-              (click)="agent.togglePanel(); releaseKeyboard()">×</button>
+      <button type="button" class="close" [attr.aria-label]="'Close agent chat (' + keys.close + ')'"
+              [title]="'Close (' + keys.close + ')'" (click)="agent.closePanel()">×</button>
     </header>
 
     @switch (agent.state()) {
       @case ('setup') {
         <form class="setup" (submit)="$event.preventDefault(); saveSetup()">
-          <p>Connect KiDraw to an agent server you run. Nothing is sent anywhere until you add one.</p>
+          <p>Connect KiDraw to an agent server you run. Nothing is sent anywhere until you add one and agree to share a graph.</p>
           <label>Endpoint
-            <input name="url" [(ngModel)]="setupUrl" [placeholder]="suggestedUrl" autocomplete="off">
+            <input #setupUrlInput name="url" [(ngModel)]="setupUrl" [placeholder]="suggestedUrl" autocomplete="off">
+            <span class="muted small">Leave blank to use {{ suggestedUrl }}</span>
           </label>
+          @if (setupError) {
+            <p class="setup-error">{{ setupError }}</p>
+          }
           <label>Access token
             <input name="token" type="password" [(ngModel)]="setupToken" autocomplete="off"
                    placeholder="From ~/.config/kidraw-agent/token">
@@ -35,33 +40,57 @@
           </label>
           <div class="actions">
             <button type="submit" [disabled]="!setupToken.trim()">Save and connect</button>
+            <button type="button" class="link" (click)="agent.closePanel()">Cancel</button>
+            @if (agent.endpoint()) {
+              <button type="button" class="link" (click)="agent.forgetEndpoint()">Forget this endpoint</button>
+            }
           </div>
         </form>
       }
       @case ('consent') {
         <div class="consent">
           <p>Share <strong>{{ agent.graphTitle() }}</strong> with <strong>{{ agent.endpointName() }}</strong>?</p>
-          <p class="muted">The agent will be able to read this graph and point at things in it. It cannot change it.</p>
+          <p class="muted">The server sends this graph to {{ agent.providerName() }} so the agent can read it and point at things in it. It can't change the graph.</p>
           <div class="actions">
-            <button type="button" (click)="agent.answerConsent('once'); releaseKeyboard()">Once</button>
-            <button type="button" (click)="agent.answerConsent('always'); releaseKeyboard()">Always for this graph</button>
-            <button type="button" class="link" (click)="agent.answerConsent('cancel'); releaseKeyboard()">Cancel</button>
+            <button #consentFirst type="button" (click)="agent.answerConsent('session')"><kbd>1</kbd> This session</button>
+            @if (agent.currentGraph().stable) {
+              <button type="button" (click)="agent.answerConsent('always')"><kbd>2</kbd> Always for this file</button>
+            }
+            <button type="button" class="link" (click)="agent.answerConsent('cancel')">Not now <kbd>Esc</kbd></button>
           </div>
-          <button type="button" class="link small" (click)="agent.forgetEndpoint(); releaseKeyboard()">Change endpoint…</button>
+          @if (!agent.currentGraph().stable) {
+            <p class="muted small">Save the graph to a file to be able to share it without asking each time.</p>
+          }
+          <button type="button" class="link small" (click)="agent.editEndpoint()">Edit endpoint…</button>
         </div>
       }
       @default {
+        @if (agent.graphChange(); as graph) {
+          <div class="graph-change">
+            <p>You opened <strong>{{ graph.title }}</strong>. Share it with {{ agent.endpointName() }}? The agent is paused until you choose.</p>
+            <div class="actions">
+              <button #graphChangeFirst type="button" (click)="agent.answerGraphChange('session')"><kbd>1</kbd> This session</button>
+              @if (graph.stable) {
+                <button type="button" (click)="agent.answerGraphChange('always')"><kbd>2</kbd> Always for this file</button>
+              }
+              <button type="button" class="link" (click)="agent.answerGraphChange('disconnect')">Disconnect</button>
+            </div>
+          </div>
+        }
+
         <div class="transcript" #transcript>
           @if (agent.messages().length === 0) {
             <p class="hint">
               @if (agent.state() === 'connecting') { Connecting… }
               @else if (agent.state() === 'ready') {
-                Ask about the graph. Select something and press <kbd>{{ askKey }}</kbd> to ask about it.
+                The agent can read this graph and point at nodes; it can't edit it.
+                Select something and press <kbd>{{ keys.ask }}</kbd> to ask about it.
+                When the agent points somewhere else, <kbd>{{ keys.follow }}</kbd> follows it.
               }
             </p>
           }
           @for (message of agent.messages(); track message.id) {
-            <div class="message" [class]="'message ' + message.role">
+            <div [class]="'message ' + message.role">
               @if (message.refs?.length) {
                 <div class="refs">
                   @for (ref of message.refs; track ref.id) {
@@ -72,7 +101,10 @@
               }
               @for (segment of segments(message); track $index) {
                 @if (segment.kind === 'ref') {
-                  <button type="button" class="pill" (click)="focusRef(segment.id)">{{ segment.label }}</button>
+                  @let current = agent.nodeLabel(segment.id);
+                  <button type="button" class="pill" [class.missing]="current === null"
+                          [title]="current === null ? 'Not in this graph' : ''"
+                          (click)="focusRef(segment.id)">{{ current || segment.label }}</button>
                 } @else {
                   <span>{{ segment.text }}</span>
                 }
@@ -82,14 +114,28 @@
           }
         </div>
 
-        @if (agent.statusText()) {
+        @if (agent.thinking()) {
+          <div class="status">Thinking…</div>
+        } @else if (agent.statusText()) {
           <div class="status">{{ agent.statusText() }}</div>
         }
 
+        @if (agent.reconnecting()) {
+          <div class="actions reconnect">
+            <button #retryButton type="button" (click)="agent.retryNow()">Retry now</button>
+            <button type="button" class="link" (click)="agent.disconnect()">Stop trying</button>
+          </div>
+        }
         @if (agent.state() === 'error') {
           <div class="actions reconnect">
-            <button type="button" (click)="agent.beginConnect(); releaseKeyboard()">Reconnect</button>
-            <button type="button" class="link" (click)="agent.forgetEndpoint(); releaseKeyboard()">Change endpoint…</button>
+            <button #retryButton type="button" (click)="agent.retryNow()">Reconnect</button>
+            <button type="button" class="link" (click)="agent.editEndpoint()">Edit endpoint…</button>
+          </div>
+        }
+        @if (agent.state() === 'off' && agent.messages().length > 0) {
+          <div class="disconnected">
+            <span>Disconnected from {{ agent.endpointName() }}.</span>
+            <button #retryButton type="button" (click)="agent.retryNow()">Connect</button>
           </div>
         }
 
@@ -107,9 +153,12 @@
             </div>
           }
           <textarea #promptInput rows="2" [(ngModel)]="draft"
-                    [disabled]="agent.state() !== 'ready'"
-                    [placeholder]="agent.busy() ? 'Answering… (Esc to stop)' : 'Ask the agent (Enter to send, Esc to return to the canvas)'"
+                    [readonly]="agent.state() !== 'ready' || agent.graphChange() !== null"
+                    [placeholder]="placeholder"
                     (keydown)="onPromptKeydown($event)"></textarea>
+          @if (agent.busy()) {
+            <button type="button" class="stop" (click)="agent.cancel()">Stop</button>
+          }
         </div>
       }
     }

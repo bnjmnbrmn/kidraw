@@ -1,0 +1,174 @@
+import {computed, inject, Injectable, Injector, signal} from '@angular/core';
+import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
+import type {CanvasRef} from './agent-protocol';
+import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
+import type {AgentService} from './agent.service';
+
+export type AgentState = 'off' | 'setup' | 'consent' | 'connecting' | 'ready' | 'error';
+
+export interface ChatMessage {
+  id: number;
+  role: 'user' | 'agent' | 'activity' | 'error';
+  text: string;
+  refs?: CanvasRef[];
+  /** True while an agent reply is still streaming. */
+  streaming?: boolean;
+}
+
+export interface AgentCaption {
+  id: number;
+  nodeId: string;
+  label: string;
+  text: string;
+}
+
+/** Width the open chat panel occupies on the right, counted into the drawing
+ *  area's viewport inset. */
+export const AGENT_PANEL_WIDTH = 340;
+
+export interface GraphIdentity {
+  /** Stable key for consent, e.g. vault + path. */
+  key: string;
+  title: string;
+  /** False for a graph with no lasting identity (Untitled), so "always share"
+   *  can't be remembered for it. */
+  stable: boolean;
+}
+
+/** Key labels for hints, set by the shell from the active key profile. */
+export interface AgentKeyLabels {
+  chat: string;
+  ask: string;
+  follow: string;
+  close: string;
+}
+
+/** Where AgentService keeps this tab's live session, so a reload can resume it. */
+export const AGENT_SESSION_STORAGE_KEY = 'kidraw_agent_session_v1';
+
+/** Who ends up processing the graph, per agent, for the consent prompt. */
+const AGENT_PROVIDERS: Record<string, string> = {codex: 'Codex (OpenAI)'};
+
+/**
+ * Agent mode's always-loaded half: the state the header and shell render, and
+ * entry points that load the rest (AgentService: connection, consent, chat,
+ * tools) the first time they're needed. A tab that never uses agent mode
+ * downloads only this, which keeps the initial bundle inside its budget.
+ */
+@Injectable({providedIn: 'root'})
+export class AgentStore {
+  private readonly settings = inject(AgentSettingsService);
+  private readonly injector = inject(Injector);
+
+  readonly state = signal<AgentState>('off');
+  readonly panelOpen = signal(false);
+  readonly messages = signal<ChatMessage[]>([]);
+  readonly busy = signal(false);
+  /** 'free' once the user moves the view themselves. */
+  readonly followMode = signal<'following' | 'free'>('following');
+  readonly captions = signal<AgentCaption[]>([]);
+  readonly lookHere = signal<AgentNodeInfo | null>(null);
+  readonly attachedRefs = signal<CanvasRef[]>([]);
+  /** Progress under the transcript (connecting, reconnecting). Errors go in the transcript. */
+  readonly statusText = signal('');
+  /** Incremented to ask the panel to put the cursor somewhere useful. */
+  readonly focusInputTick = signal(0);
+  readonly graphTitle = signal('');
+  /** The user opened a graph this session wasn't given; tools are paused until they answer. */
+  readonly graphChange = signal<GraphIdentity | null>(null);
+  /** Set while retrying a dropped connection. */
+  readonly reconnecting = signal<{attempt: number; of: number} | null>(null);
+  /** The chat, not the canvas, has the keyboard; the shell suspends the keymenu. */
+  readonly keyboardInPanel = signal(false);
+  /** Short messages for the header, which is visible even with the panel closed. */
+  readonly notice = signal<{text: string; seq: number} | null>(null);
+  readonly keyLabels = signal<AgentKeyLabels>({chat: 'm', ask: 'o', follow: 'Shift+O', close: 'Shift+M'});
+  /** A failure happened while the panel was closed; the header says so until it is opened. */
+  readonly unseenFailure = signal(false);
+
+  readonly endpoint = signal<AgentEndpointSettings | null>(this.settings.endpoint);
+  readonly endpointName = computed(() => this.endpoint()?.name ?? '');
+  readonly connected = computed(() => this.state() === 'ready');
+  readonly providerName = computed(() => {
+    const agent = this.endpoint()?.agent ?? '';
+    return AGENT_PROVIDERS[agent] ?? (agent || 'the agent');
+  });
+  /** Working, but nothing has streamed yet. */
+  readonly thinking = computed(() => {
+    if (!this.busy()) return false;
+    const list = this.messages();
+    const last = list[list.length - 1];
+    return !(last?.role === 'agent' && last.streaming);
+  });
+
+  private service: AgentService | null = null;
+  private loading: Promise<AgentService> | null = null;
+  private attachment: {
+    canvas: AgentCanvasTarget;
+    graph: () => GraphIdentity;
+    userIsEditing: () => boolean;
+  } | null = null;
+
+  /** See AgentService.attachCanvas. Loads agent mode now only if this tab has a session to resume. */
+  attachCanvas(canvas: AgentCanvasTarget, graph: () => GraphIdentity, userIsEditing: () => boolean): void {
+    this.attachment = {canvas, graph, userIsEditing};
+    if (this.service) this.service.attachCanvas(canvas, graph, userIsEditing);
+    else if (hasStoredSession()) void this.load();
+  }
+
+  openPanel(): void {
+    // Take the keyboard now, so nothing typed while the chat loads reaches the canvas.
+    this.panelOpen.set(true);
+    this.keyboardInPanel.set(true);
+    void this.load().then(service => service.openPanel());
+  }
+
+  closePanel(): void {
+    if (this.service) {
+      this.service.closePanel();
+    } else {
+      this.panelOpen.set(false);
+      this.keyboardInPanel.set(false);
+    }
+  }
+
+  askAboutSelection(): void {
+    void this.load().then(service => service.askAboutSelection());
+  }
+
+  follow(): void {
+    if (this.service) this.service.follow();
+    else this.say('No agent is connected');
+  }
+
+  userTookViewControl(): void {
+    this.service?.userTookViewControl();
+  }
+
+  graphMayHaveChanged(): void {
+    this.service?.graphMayHaveChanged();
+  }
+
+  say(text: string): void {
+    this.notice.set({text, seq: (this.notice()?.seq ?? 0) + 1});
+  }
+
+  private load(): Promise<AgentService> {
+    this.loading ??= import('./agent.service').then(({AgentService}) => {
+      const service = this.injector.get(AgentService);
+      this.service = service;
+      const attachment = this.attachment;
+      if (attachment) service.attachCanvas(attachment.canvas, attachment.graph, attachment.userIsEditing);
+      return service;
+    });
+    return this.loading;
+  }
+}
+
+function hasStoredSession(): boolean {
+  try {
+    return sessionStorage.getItem(AGENT_SESSION_STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}

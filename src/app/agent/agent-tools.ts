@@ -4,8 +4,10 @@ import {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
 /** Hooks the tool executor needs from the agent session (view control, annotations). */
 export interface AgentToolHost {
   canvas: AgentCanvasTarget;
-  /** 'free' means the user has taken control of the view. */
+  /** 'free' means the user has taken control of the view, or is busy editing. */
   followMode(): 'following' | 'free';
+  /** Move the view onto the node and mark it; never touches the selection. */
+  focus(node: AgentNodeInfo): void;
   /** Shown instead of moving the view while the user has control. */
   showLookHere(node: AgentNodeInfo): void;
   addCaption(node: AgentNodeInfo, text: string): void;
@@ -54,6 +56,8 @@ function ambiguous(query: string, nodes: AgentNodeInfo[]): string {
 
 const brief = (n: AgentNodeInfo) => ({id: n.id, label: n.label});
 
+const isPresent = <T>(value: T | undefined): value is T => value !== undefined;
+
 function requireNode(host: AgentToolHost, ref: unknown): AgentNodeInfo {
   const resolution = resolveNodeRef(String(ref ?? ''), host.canvas.agentNodes());
   if ('error' in resolution) throw new Error(resolution.error);
@@ -93,9 +97,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
       const selection = canvas.agentSelection();
       const under = selection.underCrosshairsId ? nodes.get(selection.underCrosshairsId) : undefined;
       return {
-        selectedNodes: selection.nodeIds.map(id => nodes.get(id)).filter(Boolean).map(n => brief(n!)),
-        selectedEdges: selection.edgeIds.map(id => edges.get(id)).filter(Boolean)
-          .map(e => ({id: e!.id, from: e!.from, to: e!.to})),
+        selectedNodes: selection.nodeIds.map(id => nodes.get(id)).filter(isPresent).map(brief),
+        selectedEdges: selection.edgeIds.map(id => edges.get(id)).filter(isPresent)
+          .map(e => ({id: e.id, from: e.from, to: e.to})),
         underCrosshairs: under ? brief(under) : null,
       };
     }
@@ -104,7 +108,7 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
       return {
         zoomPercent: canvas.agentZoomPercent(),
         userHasControl: host.followMode() === 'free',
-        visibleNodes: canvas.agentVisibleNodeIds().map(id => nodes.get(id)).filter(Boolean).map(n => brief(n!)),
+        visibleNodes: canvas.agentVisibleNodeIds().map(id => nodes.get(id)).filter(isPresent).map(brief),
       };
     }
     case 'focus': {
@@ -112,9 +116,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
       if (host.followMode() === 'free') {
         host.showLookHere(node);
         return {focused: brief(node), viewMoved: false,
-          note: 'The user has taken control of the view; they were shown a "look here" hint instead.'};
+          note: 'The user is leading the view or busy editing; they were shown a "look here" hint instead.'};
       }
-      canvas.agentFocusNode(node.id);
+      host.focus(node);
       return {focused: brief(node), viewMoved: true};
     }
     case 'highlight': {

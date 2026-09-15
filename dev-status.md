@@ -13,15 +13,30 @@ _Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`._
 >   on the VPS as `kidraw-agent.service`, proxied at `/agent/` behind the site
 >   password. Sessions use their own Codex login in
 >   `~/.config/kidraw-agent/codex`.
-> - **KiDraw (`src/app/agent/`):** `m` Agent Chat panel (setup, per-graph
->   consent, transcript with reference pills), `o` Ask Agent about the
->   selection, Shift+T Follow Agent (root `t` stays free for Status). Tools: `get_outline`, `find_nodes`,
->   `get_selection`, `get_view`, `focus`, `highlight`, `caption`,
->   `clear_annotations`. Moving the view yourself switches to "You lead";
->   agent `focus` then shows a look-here hint instead of moving. Panel and
->   captions load lazily (`@defer`) to stay under the 1 MB initial budget.
->   No default endpoint: nothing is sent until the user configures one and
->   approves the graph.
+> - **KiDraw (`src/app/agent/`):**
+>   - **Keys:** `m` opens or focuses the Agent Chat, Shift+M closes it; `o`
+>     asks about the selection; Shift+O follows the agent. Root `t` stays free
+>     for Status.
+>   - **Keyboard:** while the chat has the keyboard, the keymenu is suspended
+>     and shows the chat's keys (Enter, Esc). Esc or Ctrl-[ always returns to
+>     the canvas, and Ctrl+C stops an answer.
+>   - **Tools:** `get_outline`, `find_nodes`, `get_selection`, `get_view`,
+>     `focus`, `highlight`, `caption`, `clear_annotations`.
+>   - **Focus:** moves the view and puts the halo on the node, never the
+>     selection. Only a real pan or zoom by the user switches to "You lead"
+>     (the drawing area emits `view-changed-by-user`). While the user leads or
+>     is editing, focus becomes a look-here hint instead.
+>   - **Consent:** no default endpoint, and consent is asked per graph
+>     (Codex (OpenAI) is named). It follows the graph: opening another one
+>     pauses the agent and asks again. Unsaved graphs get a per-tab revision,
+>     so each sample or new graph counts as its own, and "Always" is only
+>     offered for saved files.
+>   - **Sessions:** a reload resumes the session, and a dropped connection
+>     reconnects with backoff (Retry now / Stop trying). Disconnect ends the
+>     session.
+>   - **Loading:** `AgentStore` (the signals, always loaded) loads
+>     `AgentService`, the panel, the overlay and the tools lazily, which keeps
+>     the initial bundle under the 1 MB budget.
 > - **Verified:** agent server tests (fake agent); Playwright end-to-end run
 >   against the fake agent (15 checks); container → MCP bridge reachability.
 > - **Open:** live Codex test (needs the kidraw-agent Codex login); reviewer

@@ -601,7 +601,8 @@ describe('KeymenuComponent', () => {
       // binding, so check the assignments rather than the built config.
       const otherRootKeys: string[] = [
         ...Object.values(assignments.movement), ...Object.values(assignments.root),
-        ...Object.values(assignments.shared), assignments.search.open, assignments.search.next,
+        ...Object.values(assignments.shared), ...Object.values(assignments.moveSpeed),
+        assignments.search.open, assignments.search.next,
         assignments.clipboard.paste, assignments.misc.submenu, assignments.panZoom.submenu,
         assignments.moveByNode.submenu,
       ];
@@ -610,6 +611,7 @@ describe('KeymenuComponent', () => {
 
       const shift = (component as any).buildNormalShiftSubmenuConfig();
       expect((shift[agent.follow] as LabeledAction).actionLabel).toBe('Follow Agent');
+      expect((shift[agent.chat] as LabeledAction).actionLabel).toBe('Close Chat');
     }
   });
 

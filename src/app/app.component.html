@@ -46,7 +46,7 @@
 }
 
 @if (keymenuDisplay === 'hidden') {
-  <div class="menu-hidden-hint">
+  <div class="menu-hidden-hint" [style.right.px]="10 + agentPanelInset">
     @if (keymenuTyping) {
       <kbd>Ctrl-[</kbd> or <kbd>Esc</kbd>, then <kbd>{{ keyAssignments.root.toggleVisibility }}</kbd> shows the menu
     } @else {
@@ -67,16 +67,13 @@
 <!-- Agent mode UI loads lazily: nothing is downloaded until it is first used. -->
 @defer (when agent.panelOpen()) {
   <app-agent-panel [dark]="darkTheme"
-                   [chatKey]="keyAssignments.agent.chat"
-                   [askKey]="keyAssignments.agent.askAboutSelection"
-                   [followKey]="agentFollowKeyLabel"
                    [bottomInset]="keymenuInset"
                    [rightOffset]="compactMenuSide === 'right' ? compactMenuInset : 0"/>
 }
 
 @defer (when agent.captions().length > 0 || agent.lookHere() !== null) {
   <app-agent-overlay [dark]="darkTheme"
-                     [followKey]="agentFollowKeyLabel"
                      [bottomInset]="keymenuInset"
+                     [leftInset]="compactMenuSide === 'left' ? compactMenuInset : 0"
                      [rightInset]="agentPanelInset + (compactMenuSide === 'right' ? compactMenuInset : 0)"/>
 }

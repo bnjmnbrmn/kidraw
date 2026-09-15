@@ -9,6 +9,13 @@ interface PlacedCaption {
   height: number;
 }
 
+interface Layout {
+  placed: PlacedCaption[];
+  docked: AgentCaption[];
+  /** Changes only when something on screen would move. */
+  signature: string;
+}
+
 const CAPTION_WIDTH = 240;
 const CAPTION_GAP = 14;
 /** 12.5px text in a 240px box wraps at about this many characters per line. */
@@ -18,6 +25,14 @@ const LINE_HEIGHT = 17.5;
 const CAPTION_CHROME_HEIGHT = 16;
 /** A caption may cover up to this share of its own area in other nodes; past that it docks. */
 const MAX_COVERED_FRACTION = 0.1;
+/** Docked captions shown at once; the rest are summarised. */
+const MAX_DOCKED = 3;
+/** Docked captions are wider (up to 560px), so more text fits per line. */
+const DOCKED_CHARS_PER_LINE = 75;
+const DOCK_GAP = 6;
+const DOCK_MARGIN = 12;
+/** The look-here hint is one line. */
+const LOOK_HERE_HEIGHT = 34;
 
 /** Captions are placed before they render, so their height is estimated from the text. */
 export function estimateCaptionHeight(text: string): number {
@@ -45,8 +60,8 @@ function overlapArea(a: ClientRect, b: ClientRect): number {
  * Agent annotations drawn over the canvas: captions beside the nodes they
  * describe, docked at the bottom when every nearby spot would hide other nodes
  * (or the node is off screen), plus the "look here" hint while the user leads
- * the view. Positions follow the canvas every animation frame while captions
- * are shown.
+ * the view. Placement is recomputed every animation frame outside Angular, and
+ * only re-renders when a caption actually moves.
  */
 @Component({
   selector: 'app-agent-overlay',
@@ -57,14 +72,19 @@ export class AgentOverlayComponent implements OnDestroy {
   readonly agent = inject(AgentService);
   private readonly zone = inject(NgZone);
   @Input() dark = false;
-  @Input() followKey = 't';
   /** Space the keymenu occupies at the bottom, so the dock sits above it. */
   @Input() bottomInset = 0;
   /** Right-hand space taken by the agent panel (and a compact menu docked beside it). */
   @Input() rightInset = 0;
+  /** Left-hand space taken by a compact menu docked on the left. */
+  @Input() leftInset = 0;
 
   placed: PlacedCaption[] = [];
+  /** Docked captions on screen (at most MAX_DOCKED). */
   docked: AgentCaption[] = [];
+  /** Docked captions left out for space. */
+  moreDocked = 0;
+  private signature = '';
   private frame: number | null = null;
 
   constructor() {
@@ -83,7 +103,15 @@ export class AgentOverlayComponent implements OnDestroy {
     if (this.frame !== null) return;
     this.zone.runOutsideAngular(() => {
       const tick = () => {
-        this.zone.run(() => this.layout());
+        const layout = this.computeLayout();
+        if (layout.signature !== this.signature) {
+          this.signature = layout.signature;
+          this.zone.run(() => {
+            this.placed = layout.placed;
+            this.docked = layout.docked.slice(0, MAX_DOCKED);
+            this.moreDocked = Math.max(0, layout.docked.length - MAX_DOCKED);
+          });
+        }
         this.frame = this.agent.captions().length > 0 ? requestAnimationFrame(tick) : null;
       };
       this.frame = requestAnimationFrame(tick);
@@ -93,19 +121,33 @@ export class AgentOverlayComponent implements OnDestroy {
   private stopLoop(): void {
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.frame = null;
+    this.signature = '';
     this.placed = [];
     this.docked = [];
+    this.moreDocked = 0;
   }
 
-  private layout(): void {
+  private computeLayout(): Layout {
     const captions = this.agent.captions();
     const view = this.agent.viewClientRect();
     if (!view) {
-      this.placed = [];
-      this.docked = captions;
-      return;
+      return {placed: [], docked: captions, signature: `docked:${captions.map(c => c.id).join(',')}`};
     }
     const nodes = this.agent.visibleNodeRects();
+    let layout = this.placeAll(captions, view, nodes);
+    // The dock sits at the bottom of the view; place floating captions above it.
+    const dockHeight = this.estimateDockHeight(layout.docked);
+    if (dockHeight > 0) {
+      layout = this.placeAll(captions, {...view, height: Math.max(0, view.height - dockHeight)}, nodes);
+    }
+    const signature = layout.placed.map(p => `${p.caption.id}@${Math.round(p.left)},${Math.round(p.top)}`).join(';')
+      + '|' + layout.docked.map(c => c.id).join(',');
+    return {...layout, signature};
+  }
+
+  private placeAll(
+    captions: AgentCaption[], view: ClientRect, nodes: {id: string; rect: ClientRect}[],
+  ): {placed: PlacedCaption[]; docked: AgentCaption[]} {
     const placed: PlacedCaption[] = [];
     const docked: AgentCaption[] = [];
     for (const caption of captions) {
@@ -116,8 +158,19 @@ export class AgentOverlayComponent implements OnDestroy {
       if (spot) placed.push({caption, height, ...spot});
       else docked.push(caption);
     }
-    this.placed = placed;
-    this.docked = docked;
+    return {placed, docked};
+  }
+
+  private estimateDockHeight(docked: AgentCaption[]): number {
+    const shown = docked.slice(0, MAX_DOCKED);
+    const rows = shown.map(c => {
+      const lines = Math.max(1, Math.ceil((c.label.length + c.text.length + 2) / DOCKED_CHARS_PER_LINE));
+      return lines * LINE_HEIGHT + CAPTION_CHROME_HEIGHT;
+    });
+    if (docked.length > MAX_DOCKED) rows.push(LOOK_HERE_HEIGHT);
+    if (this.agent.lookHere()) rows.push(LOOK_HERE_HEIGHT);
+    if (rows.length === 0) return 0;
+    return rows.reduce((sum, h) => sum + h, 0) + DOCK_GAP * (rows.length - 1) + DOCK_MARGIN * 2;
   }
 
   /**

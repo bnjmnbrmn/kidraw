@@ -10,7 +10,8 @@ export type KeyboardSurface =
   | 'grow-empty'
   | 'grow-target-popup'
   | 'grow-type-popup'
-  | 'grow-placement';
+  | 'grow-placement'
+  | 'agent-panel';
 
 /** The backing location of the graph currently on the canvas. Vault identity
  * stays structured so a directory name is never guessed by splitting a path. */
@@ -29,3 +30,5 @@ export type DANotification =
   | {kind: "file-state-update", fileState: DAFileState}
   | {kind: "popup-state", open: true, surface: KeyboardSurface}
   | {kind: "popup-state", open: false}
+  /** The user (not the agent) panned or zoomed the view, by any means. */
+  | {kind: "view-changed-by-user"}

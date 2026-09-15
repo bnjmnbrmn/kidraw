@@ -138,7 +138,8 @@ export enum DACommandType {
   EX_COMMAND = 'EX_COMMAND',
   // Agent mode (notes/idea-mcp-server.md). Handled by AppComponent, never
   // forwarded to the drawing area.
-  TOGGLE_AGENT_PANEL = 'TOGGLE_AGENT_PANEL',
+  OPEN_AGENT_CHAT = 'OPEN_AGENT_CHAT',
+  CLOSE_AGENT_CHAT = 'CLOSE_AGENT_CHAT',
   ASK_AGENT_ABOUT_SELECTION = 'ASK_AGENT_ABOUT_SELECTION',
   FOLLOW_AGENT = 'FOLLOW_AGENT',
   COPY_SELECTION = 'COPY_SELECTION',
@@ -271,7 +272,8 @@ export type DACommand =
   | {kind: DACommandType.RELEASE_CROSSHAIRS}
   | {kind: DACommandType.OPEN_EX_LINE}
   | {kind: DACommandType.EX_COMMAND; text: string}
-  | {kind: DACommandType.TOGGLE_AGENT_PANEL}
+  | {kind: DACommandType.OPEN_AGENT_CHAT}
+  | {kind: DACommandType.CLOSE_AGENT_CHAT}
   | {kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}
   | {kind: DACommandType.FOLLOW_AGENT}
   | {kind: DACommandType.COPY_SELECTION}

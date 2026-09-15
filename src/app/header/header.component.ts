@@ -9,7 +9,7 @@ import { EdgeDirectedness, LineStyle, NodeShape } from '../drawing-area/command.
 import { GraphStorageService, SavedGraph } from '../services/graph-storage.service';
 import { GraphSnapshot } from '../drawing-area/graph-snapshot';
 import { DAFileState } from '../drawing-area/da-notification.model';
-import { AgentService } from '../agent/agent.service';
+import { AgentStore } from '../agent/agent-store';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -135,7 +135,14 @@ export class HeaderComponent {
   vc = inject(VisualConfigService);
   demoData = inject(DemoDataService);
   graphStorage = inject(GraphStorageService);
-  agent = inject(AgentService);
+  agent = inject(AgentStore);
+
+  get agentChipTitle(): string {
+    const keys = this.agent.keyLabels();
+    if (this.agent.state() === 'error') return `The agent connection failed; ${keys.chat} opens the chat to see why`;
+    return `Sharing ${this.agent.graphTitle() || 'this graph'} with ${this.agent.endpointName()}. `
+      + `${keys.chat} opens the chat, ${keys.follow} follows the agent.`;
+  }
 
   savedGraphs = computed(() => this.graphStorage.graphs());
   renamingId: string | null = null;

@@ -55,6 +55,7 @@ describe('executeAgentTool', () => {
     host = {
       canvas,
       followMode: () => mode,
+      focus: node => { canvas.agentFocusNode(node.id); },
       showLookHere: node => { lookHere = node; },
       addCaption: (node, text) => captions.push({node, text}),
       setHighlights: nodes => canvas.agentSetHighlights(nodes.map(n => n.id)),

@@ -158,13 +158,15 @@ export interface KeymenuKeyAssignments {
     readonly treeRightClear: KeyString;
     readonly radial: KeyString;
   };
-  /** Agent mode (notes/idea-mcp-server.md). `chat` and `askAboutSelection`
-   *  are root taps, chosen from keys free at root in both profiles. */
+  /** Agent mode (notes/idea-mcp-server.md). `chat` (open or focus the chat)
+   *  and `askAboutSelection` are root taps, chosen from keys free at root in
+   *  both profiles. Shift+`chat` closes the chat. */
   readonly agent: {
     readonly chat: KeyString;
     readonly askAboutSelection: KeyString;
-    /** Pressed with Shift, like Redo: root `t` is kept free for Status to
-     *  come back (da-438), and following is rare enough to take a chord. */
+    /** Pressed with Shift, like Redo, and by convention the same letter as
+     *  `askAboutSelection`: asking points the agent at something, following
+     *  lets the agent point you (notes/architecture-key-profiles.md). */
     readonly follow: KeyString;
   };
 }
@@ -269,8 +271,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
-  // m = message the agent, o = open a question about the selection, Shift+T = track the agent's view.
-  agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
+  // m = message the agent, o = open a question about the selection;
+  // Shift+O = the reverse (the agent shows you something), Shift+M = close the chat.
+  agent: {chat: 'm', askAboutSelection: 'o', follow: 'o'},
 };
 
 // Vim profile (the default): hjkl movement, a for insert ("add"), i for edit,
@@ -369,6 +372,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
   layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
-  // m = message the agent, o = open a question about the selection, Shift+T = track the agent's view.
-  agent: {chat: 'm', askAboutSelection: 'o', follow: 't'},
+  // m = message the agent, o = open a question about the selection;
+  // Shift+O = the reverse (the agent shows you something), Shift+M = close the chat.
+  agent: {chat: 'm', askAboutSelection: 'o', follow: 'o'},
 };

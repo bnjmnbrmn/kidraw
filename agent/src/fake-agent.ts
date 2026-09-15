@@ -1,9 +1,10 @@
 /**
  * A scripted ACP agent for tests: no model, no credits.
  *
- * On `session/new` it connects to the KiDraw MCP endpoint it was given. Each
- * prompt line of the form `TOOL <name> <json-args>` calls that tool and replies
- * with the result; any other text is echoed back.
+ * On `session/new` it connects to the KiDraw MCP endpoint it was given. Prompt
+ * lines are run in order: `TOOL <name> <json-args>` calls that tool and replies
+ * with the result, and `WAIT <ms>` pauses (so a test can act mid-turn). A line
+ * reading `FAIL` makes the turn fail. Anything else is echoed back.
  */
 import { Readable, Writable } from 'node:stream';
 import * as acp from '@agentclientprotocol/sdk';
@@ -46,6 +47,11 @@ acp.agent({ name: 'fake-agent' })
       throw new Error('fake agent was told to fail');
     }
     for (const line of promptText(ctx.params.prompt).split('\n')) {
+      const wait = /^WAIT (\d+)$/.exec(line.trim());
+      if (wait) {
+        await new Promise(resolve => setTimeout(resolve, Number(wait[1])));
+        continue;
+      }
       const match = /^TOOL (\w+)\s*(.*)$/.exec(line.trim());
       if (!match) continue;
       const [, name, json] = match;

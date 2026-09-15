@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, effect, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
@@ -13,7 +13,7 @@ import {ThemeService} from './services/theme.service';
 import {VisualConfigService} from './services/visual-config.service';
 import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
-import {AGENT_PANEL_WIDTH, AgentService} from './agent/agent.service';
+import {AGENT_PANEL_WIDTH, AgentStore} from './agent/agent-store';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
@@ -27,23 +27,7 @@ export type KeymenuDisplay = 'keyboard' | 'compact' | 'hidden';
 const COMPACT_MENU_GUTTER = 10;
 /** The floating header's top offset, height, and breathing room. */
 const HEADER_VIEWPORT_INSET = 72;
-
-/** Keymenu commands that move the view: using one while an agent is
- *  connected means the user has taken control of the view. */
-const AGENT_VIEW_INPUT_COMMANDS: ReadonlySet<DACommandType> = new Set([
-  DACommandType.MOVE_CROSSHAIRS_UP, DACommandType.MOVE_CROSSHAIRS_DOWN,
-  DACommandType.MOVE_CROSSHAIRS_LEFT, DACommandType.MOVE_CROSSHAIRS_RIGHT,
-  DACommandType.STEER_FORWARD, DACommandType.STEER_BACKWARD,
-  DACommandType.STRAFE_LEFT, DACommandType.STRAFE_RIGHT,
-  DACommandType.PAN_UP, DACommandType.PAN_DOWN, DACommandType.PAN_LEFT, DACommandType.PAN_RIGHT,
-  DACommandType.ZOOM_IN, DACommandType.ZOOM_OUT,
-  DACommandType.RECENTER_VIEW, DACommandType.RECENTER_VIEW_ON_CROSSHAIRS, DACommandType.RECENTER_CROSSHAIRS,
-  DACommandType.TRAVERSE_SMART, DACommandType.ENTER_LINK_NAV,
-  DACommandType.NAV_HISTORY_BACK, DACommandType.NAV_HISTORY_FORWARD,
-  DACommandType.SEARCH_GRAPH, DACommandType.SEARCH_NEXT_MATCH, DACommandType.SEARCH_PREV_MATCH,
-  DACommandType.SNAP_TO_NODE_LEFT, DACommandType.SNAP_TO_NODE_RIGHT,
-  DACommandType.SNAP_TO_NODE_UP, DACommandType.SNAP_TO_NODE_DOWN,
-]);
+const UNTITLED_GRAPH_REVISION_KEY = 'kidraw_untitled_graph_revision_v1';
 
 @Component({
   selector: 'app-root',
@@ -58,7 +42,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private keyboardConfig = inject(KeyboardConfigService);
   private themeService = inject(ThemeService);
   private visualConfig = inject(VisualConfigService);
-  readonly agent = inject(AgentService);
+  readonly agent = inject(AgentStore);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;
@@ -127,9 +111,42 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.agent.panelOpen() ? AGENT_PANEL_WIDTH : 0;
   }
 
-  /** Follow Agent is a Shift chord (see KeymenuKeyAssignments.agent). */
-  get agentFollowKeyLabel(): string {
-    return `Shift+${this.keyAssignments.agent.follow.toUpperCase()}`;
+  /** Set while the agent chat holds the keyboard and the keymenu is suspended for it. */
+  private agentSuspendedKeymenu = false;
+
+  /** The agent chat takes the keyboard the way the nav popup does: the keymenu
+   *  is suspended (held keys flushed, the chat's keys shown) until it lets go. */
+  private readonly agentKeyboard = effect(() => {
+    const chatHasKeyboard = this.agent.panelOpen() && this.agent.keyboardInPanel();
+    if (!this.keymenuComponent || chatHasKeyboard === this.agentSuspendedKeymenu) return;
+    this.agentSuspendedKeymenu = chatHasKeyboard;
+    this.keymenuComponent.setSuspended(chatHasKeyboard, chatHasKeyboard ? 'agent-panel' : undefined);
+  });
+
+  /** Agent notices go to the header, which is visible with the panel closed. */
+  private readonly agentNotices = effect(() => {
+    const notice = this.agent.notice();
+    if (notice && this.headerComponent) this.headerComponent.showStatusMessage(notice.text, 3500);
+  });
+
+  /** Hints name the agent keys of the active profile; the Shift chords are fixed (architecture-key-profiles). */
+  private updateAgentKeyLabels(): void {
+    const keys = this.keyAssignments.agent;
+    this.agent.keyLabels.set({
+      chat: keys.chat,
+      ask: keys.askAboutSelection,
+      follow: `Shift+${keys.follow.toUpperCase()}`,
+      close: `Shift+${keys.chat.toUpperCase()}`,
+    });
+  }
+
+  /** The user is in the middle of something (typing, a popup, a non-normal
+   *  mode): the agent points with a hint instead of moving the view. */
+  private userIsEditing(): boolean {
+    if (this.keymenuTyping) return true;
+    const mode = this.modeLabelText;
+    return !(mode === '' || mode.startsWith('normal') || mode.startsWith('capslock / normal')
+      || mode.startsWith('agent chat'));
   }
 
   private configSub?: Subscription;
@@ -137,8 +154,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
   ngOnInit() {
+    this.updateAgentKeyLabels();
     this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
       this.keyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
+      this.updateAgentKeyLabels();
     });
     // Mirror the compact-menu settings into fields: the drawing area's
     // viewport inset is derived from them, so a Settings change has to
@@ -158,8 +177,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     // Agent mode reaches the canvas only through the AgentCanvasTarget surface.
     this.agent.attachCanvas(this.drawingArea, () => {
       const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};
-      return {key: `${identity.vaultName ?? 'local'}:${identity.path}`, title: identity.path};
-    });
+      const stable = identity.path !== 'Untitled';
+      return {
+        key: stable ? `${identity.vaultName ?? 'local'}:${identity.path}` : `local:Untitled#${this.untitledGraphRevision}`,
+        title: identity.path,
+        stable,
+      };
+    }, () => this.userIsEditing());
   }
 
   private profileToAssignments(profile: string): KeymenuKeyAssignments {
@@ -177,8 +201,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     switch (kmCommand.kind) {
-      case DACommandType.TOGGLE_AGENT_PANEL:
-        this.agent.togglePanel();
+      case DACommandType.OPEN_AGENT_CHAT:
+        this.agent.openPanel();
+        return;
+      case DACommandType.CLOSE_AGENT_CHAT:
+        this.agent.closePanel();
         return;
       case DACommandType.ASK_AGENT_ABOUT_SELECTION:
         this.agent.askAboutSelection();
@@ -187,9 +214,34 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.agent.follow();
         return;
     }
-    // Moving the view yourself takes it back from the agent.
-    if (AGENT_VIEW_INPUT_COMMANDS.has(kmCommand.kind)) this.agent.userTookViewControl();
+    const replacesGraph = kmCommand.kind === DACommandType.NEW_GRAPH
+      || kmCommand.kind === DACommandType.LOAD_SAMPLE_GRAPH
+      || kmCommand.kind === DACommandType.LOAD_NAMED_GRAPH;
+    if (replacesGraph) this.nextUntitledGraph();
     this.commandsSubject.next(kmCommand);
+    if (replacesGraph) this.agent.graphMayHaveChanged();
+  }
+
+  /** Every unsaved graph is "Untitled", so each one loaded into this tab gets
+   *  its own revision: sharing one with an agent never shares the next. Kept
+   *  in sessionStorage so a reload still counts as the same graph. */
+  private untitledGraphRevision = AppComponent.readUntitledGraphRevision();
+
+  private static readUntitledGraphRevision(): number {
+    try {
+      return Number(sessionStorage.getItem(UNTITLED_GRAPH_REVISION_KEY)) || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private nextUntitledGraph(): void {
+    this.untitledGraphRevision += 1;
+    try {
+      sessionStorage.setItem(UNTITLED_GRAPH_REVISION_KEY, String(this.untitledGraphRevision));
+    } catch {
+      // Storage unavailable: a reload just counts as a different graph.
+    }
   }
 
   /** Show the ex line and hand it the keyboard. The keymenu keeps its own
@@ -203,7 +255,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   onExCommand(text: string): void {
     this.exLineOpen = false;
     this.exHistory.push(text);
+    const replacesGraph = /^(e|edit|enew)\b/.test(text.trim());
+    if (replacesGraph) this.nextUntitledGraph();
     this.commandsSubject.next({kind: DACommandType.EX_COMMAND, text});
+    if (replacesGraph) this.agent.graphMayHaveChanged();
   }
 
   onExCancel(): void {
@@ -286,6 +341,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         if (this.headerComponent) {
           this.headerComponent.fileState = daNotification.fileState;
         }
+        this.agent.graphMayHaveChanged();
         break;
       case "popup-state":
         // A DOM popup (nav popup) owns the keyboard while open.
@@ -293,6 +349,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           daNotification.open,
           daNotification.open ? daNotification.surface : undefined,
         );
+        // The agent chat may still hold the keyboard underneath the popup.
+        if (!daNotification.open && this.agentSuspendedKeymenu) {
+          this.keymenuComponent.setSuspended(true, 'agent-panel');
+        }
+        break;
+      case "view-changed-by-user":
+        this.agent.userTookViewControl();
         break;
     }
   }
@@ -308,6 +371,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   onLoadSampleGraph(graphId: string) {
+    this.nextUntitledGraph();
     this.commandsSubject.next({kind: DACommandType.LOAD_SAMPLE_GRAPH, graphId});
+    this.agent.graphMayHaveChanged();
   }
 }

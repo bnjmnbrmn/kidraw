@@ -554,6 +554,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer = new DrawingLayer();
     this.drawingLayer.palette = effectivePalette();
     this.stage.add(this.drawingLayer);
+    this.watchUserViewChanges();
     this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
@@ -1138,7 +1139,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.log.log('[style] setDefaultLineStyle:', command.lineStyle);
         this._defaultLineStyle = command.lineStyle;
         break;
-      case DACommandType.TOGGLE_AGENT_PANEL:
+      case DACommandType.OPEN_AGENT_CHAT:
+      case DACommandType.CLOSE_AGENT_CHAT:
       case DACommandType.ASK_AGENT_ABOUT_SELECTION:
       case DACommandType.FOLLOW_AGENT:
         // Agent mode commands are handled by AppComponent and never forwarded.
@@ -4471,15 +4473,34 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }).map(node => node.id);
   }
 
+  /** Until this time (performance.now()), view changes are the agent's own focus animation. */
+  private agentViewMoveUntil = 0;
+  private lastUserViewChangeEmit = 0;
+
+  /**
+   * Tell the shell whenever the user, not the agent, pans or zooms the view,
+   * however it happened: pan and zoom keys, crosshairs pushing at the edge,
+   * a jump, the mouse. Agent mode uses this to switch to "You lead"; a plain
+   * crosshairs move that leaves the view where it is doesn't count.
+   */
+  private watchUserViewChanges(): void {
+    this.drawingLayer.on('xChange.agentView yChange.agentView scaleXChange.agentView', () => {
+      const now = performance.now();
+      // A tween changes the view every frame; one notification per burst is plenty.
+      if (now < this.agentViewMoveUntil || now - this.lastUserViewChangeEmit < 250) return;
+      this.lastUserViewChangeEmit = now;
+      this.daOut.emit({kind: 'view-changed-by-user'});
+    });
+  }
+
+  /** Pan the view onto the node. The agent only points: it never changes the
+   *  user's selection, so nothing the user is doing gets redirected. */
   agentFocusNode(id: string): boolean {
     const node = this.drawingLayer.getDANodes().find(n => n.id === id);
     if (!node) return false;
+    this.agentViewMoveUntil = performance.now() + this.RECENTER_DURATION * 1000 + 150;
     this.finishTweens();
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-    node.isSelected = true;
     this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
-    this.checkAndEmitEditState();
     this.drawingLayer.batchDraw();
     return true;
   }

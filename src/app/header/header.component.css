@@ -177,6 +177,9 @@ h1 {
   padding: 2px 8px;
   border-radius: 999px;
   white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: rgba(22, 163, 74, 0.16);
   border: 1px solid rgba(22, 163, 74, 0.6);
 }
@@ -184,4 +187,26 @@ h1 {
 .agent-chip.connecting {
   background: rgba(217, 119, 6, 0.16);
   border-color: rgba(217, 119, 6, 0.6);
+}
+
+.agent-chip.failed {
+  background: rgba(220, 38, 38, 0.14);
+  border-color: rgba(220, 38, 38, 0.6);
+}
+
+/* The agent is working: a small pulsing dot, visible with the panel closed. */
+.agent-chip.busy::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: currentColor;
+  animation: agent-chip-pulse 1s ease-in-out infinite;
+}
+
+@keyframes agent-chip-pulse {
+  50% { opacity: 0.25; }
 }

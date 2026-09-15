@@ -7,17 +7,20 @@
 
 @if (docked.length || agent.lookHere()) {
   <div class="dock" [class.dark]="dark"
-       [style.bottom.px]="bottomInset + 12" [style.right.px]="rightInset + 12">
+       [style.bottom.px]="bottomInset + 12" [style.left.px]="leftInset + 12" [style.right.px]="rightInset + 12">
     @if (agent.lookHere(); as target) {
       <div class="caption look-here">
-        Agent is pointing at <strong>{{ target.label || target.id }}</strong> — press <kbd>{{ followKey }}</kbd> to follow
+        Agent is pointing at <strong>{{ target.label || 'an unlabeled node' }}</strong> — press <kbd>{{ agent.keyLabels().follow }}</kbd> to follow
       </div>
     }
     @for (caption of docked; track caption.id) {
       <div class="caption docked">
-        <strong class="about">{{ caption.label || caption.nodeId }}:</strong>
+        <strong class="about">{{ caption.label || 'Unlabeled node' }}:</strong>
         <span class="text">{{ caption.text }}</span>
       </div>
+    }
+    @if (moreDocked > 0) {
+      <div class="caption docked more">+{{ moreDocked }} more {{ moreDocked === 1 ? 'caption' : 'captions' }} on nodes out of view</div>
     }
   </div>
 }

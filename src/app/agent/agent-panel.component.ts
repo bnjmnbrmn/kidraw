@@ -1,14 +1,29 @@
-import {Component, effect, ElementRef, inject, Input, ViewChild} from '@angular/core';
+import {Component, effect, ElementRef, HostListener, inject, Input, ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {AgentService, ChatMessage} from './agent.service';
 import {hostOf} from './agent-settings.service';
 import {parseRefSegments, RefSegment} from './agent-refs';
 
+/** An absolute ws:// or wss:// address (http(s) is converted), or null. A
+ *  relative string would otherwise resolve against this page's own server
+ *  and hang instead of failing. */
+export function endpointUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'https:') url.protocol = 'wss:';
+    else if (url.protocol === 'http:') url.protocol = 'ws:';
+    return url.protocol === 'wss:' || url.protocol === 'ws:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The agent chat panel: setup, per-graph consent, transcript with reference
- * pills, and the prompt input. Keys typed in its fields never reach the
- * keymenu (KeymenuComponent.isTypingInField); Escape hands the keyboard back
- * to the canvas.
+ * pills, and the prompt input. While it has the keyboard, AppComponent
+ * suspends the keymenu (which then shows the chat's own keys), so nothing
+ * typed here can reach the canvas. Escape, or Ctrl-[, always gives the
+ * keyboard back.
  */
 @Component({
   selector: 'app-agent-panel',
@@ -19,26 +34,39 @@ import {parseRefSegments, RefSegment} from './agent-refs';
 export class AgentPanelComponent {
   readonly agent = inject(AgentService);
   @Input() dark = false;
-  @Input() chatKey = 'm';
-  @Input() askKey = 'o';
-  @Input() followKey = 't';
   /** Height the keymenu occupies at the bottom; the panel stops above it so the keyboard stays in place. */
   @Input() bottomInset = 0;
   /** Extra right offset, e.g. a compact keymenu docked on the right. */
   @Input() rightOffset = 0;
 
+  @ViewChild('panel') panel?: ElementRef<HTMLElement>;
   @ViewChild('promptInput') promptInput?: ElementRef<HTMLTextAreaElement>;
   @ViewChild('transcript') transcript?: ElementRef<HTMLElement>;
+  @ViewChild('setupUrlInput') setupUrlInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('consentFirst') consentFirst?: ElementRef<HTMLButtonElement>;
+  @ViewChild('graphChangeFirst') graphChangeFirst?: ElementRef<HTMLButtonElement>;
+  @ViewChild('retryButton') retryButton?: ElementRef<HTMLButtonElement>;
 
   draft = '';
+  setupError = '';
   setupUrl = '';
   setupToken = '';
   setupName = '';
 
   constructor() {
+    // Put the cursor where the next keystroke belongs when the chat takes the
+    // keyboard or its content changes underneath it.
     effect(() => {
       this.agent.focusInputTick();
-      setTimeout(() => this.promptInput?.nativeElement.focus(), 0);
+      this.agent.state();
+      this.agent.graphChange();
+      this.agent.reconnecting();
+      setTimeout(() => this.focusBest(), 0);
+    });
+    effect(() => {
+      if (this.agent.keyboardInPanel()) return;
+      const active = document.activeElement as HTMLElement | null;
+      if (active && this.panel?.nativeElement.contains(active)) active.blur();
     });
     effect(() => {
       this.agent.messages();
@@ -47,6 +75,18 @@ export class AgentPanelComponent {
         if (el) el.scrollTop = el.scrollHeight;
       }, 0);
     });
+    // Editing an endpoint starts from what is saved.
+    effect(() => {
+      if (this.agent.state() !== 'setup') return;
+      const saved = this.agent.endpoint();
+      this.setupUrl = saved?.url ?? '';
+      this.setupToken = saved?.token ?? '';
+      this.setupName = saved?.name ?? '';
+    });
+  }
+
+  get keys() {
+    return this.agent.keyLabels();
   }
 
   get suggestedUrl(): string {
@@ -54,43 +94,110 @@ export class AgentPanelComponent {
     return `${scheme}//${location.host}/agent/`;
   }
 
+  get placeholder(): string {
+    if (this.agent.reconnecting()) return 'Offline — reconnecting…';
+    if (this.agent.state() === 'connecting') return 'Connecting…';
+    if (this.agent.state() !== 'ready') return '';
+    if (this.agent.graphChange()) return 'Share the graph above to continue';
+    if (this.agent.busy()) return 'Answering… (Ctrl+C to stop, Esc for the canvas)';
+    return 'Ask the agent (Enter to send, Esc for the canvas)';
+  }
+
   segments(message: ChatMessage): RefSegment[] {
     return parseRefSegments(message.text);
+  }
+
+  onPanelKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' || (event.ctrlKey && event.key === '[')) {
+      event.preventDefault();
+      if (this.agent.state() === 'consent') this.agent.answerConsent('cancel');
+      else if (this.agent.state() === 'setup') this.agent.closePanel();
+      else this.agent.releaseKeyboard();
+      return;
+    }
+    const inTextField = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+    if (inTextField || event.ctrlKey || event.altKey || event.metaKey) return;
+    const graphChange = this.agent.graphChange();
+    if (this.agent.state() === 'consent') {
+      if (event.key === '1') {
+        event.preventDefault();
+        this.agent.answerConsent('session');
+      } else if (event.key === '2' && this.agent.currentGraph().stable) {
+        event.preventDefault();
+        this.agent.answerConsent('always');
+      }
+    } else if (graphChange) {
+      if (event.key === '1') {
+        event.preventDefault();
+        this.agent.answerGraphChange('session');
+      } else if (event.key === '2' && graphChange.stable) {
+        event.preventDefault();
+        this.agent.answerGraphChange('always');
+      }
+    }
   }
 
   onPromptKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       this.submit();
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      if (this.agent.busy()) this.agent.cancel();
-      else this.releaseKeyboard();
+      return;
+    }
+    // Ctrl+C stops the answer, unless there is text selected to copy.
+    if (event.ctrlKey && event.key.toLowerCase() === 'c' && this.agent.busy()) {
+      const field = event.target as HTMLTextAreaElement;
+      if (field.selectionStart === field.selectionEnd) {
+        event.preventDefault();
+        this.agent.cancel();
+      }
     }
   }
 
   submit(): void {
-    if (!this.draft.trim() || this.agent.busy()) return;
-    this.agent.sendPrompt(this.draft);
-    this.draft = '';
+    if (this.draft.trim() && this.agent.sendPrompt(this.draft)) this.draft = '';
   }
 
   saveSetup(): void {
-    const url = this.setupUrl.trim() || this.suggestedUrl;
+    const url = endpointUrl(this.setupUrl.trim() || this.suggestedUrl);
     const token = this.setupToken.trim();
     if (!token) return;
+    if (!url) {
+      this.setupError = 'Enter a full address starting with wss:// (or ws:// for a server on this machine).';
+      return;
+    }
+    this.setupError = '';
     this.agent.saveEndpoint({url, token, name: this.setupName.trim() || hostOf(url), agent: 'codex'});
-    this.setupToken = '';
-    this.releaseKeyboard();
   }
 
-  /** Clicked buttons keep focus, and focused buttons swallow keymenu keys; give the keyboard back. */
-  releaseKeyboard(): void {
-    (document.activeElement as HTMLElement | null)?.blur();
-  }
-
+  /** A pill takes you to its node on the canvas, keyboard included. */
   focusRef(id: string): void {
     this.agent.focusRef(id);
-    this.releaseKeyboard();
+    this.agent.releaseKeyboard();
+  }
+
+  /** A click outside the panel hands the keyboard back to the canvas. */
+  @HostListener('document:mousedown', ['$event'])
+  onDocumentMouseDown(event: MouseEvent): void {
+    if (!this.agent.keyboardInPanel()) return;
+    const panel = this.panel?.nativeElement;
+    if (panel && !panel.contains(event.target as Node)) this.agent.releaseKeyboard();
+  }
+
+  /** Tabbing out releases the keyboard. Focus dropping to the page because a
+   *  button just disappeared (e.g. after answering consent) does not. */
+  onFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget as Node | null;
+    if (next && this.panel && !this.panel.nativeElement.contains(next)) this.agent.releaseKeyboard();
+  }
+
+  private focusBest(): void {
+    if (!this.agent.keyboardInPanel() || !this.agent.panelOpen()) return;
+    const panel = this.panel?.nativeElement;
+    const active = document.activeElement;
+    // Leave the cursor alone if it is already on something in the panel.
+    if (panel && active && active !== panel && panel.contains(active)) return;
+    const target = this.setupUrlInput ?? this.consentFirst ?? this.graphChangeFirst
+      ?? this.retryButton ?? this.promptInput ?? this.panel;
+    target?.nativeElement.focus();
   }
 }

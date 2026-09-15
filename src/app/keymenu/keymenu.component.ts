@@ -271,6 +271,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditVimVisual: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
+        surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEdge: new USQwertyModeConfig(this.buildGrowEdgeSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
@@ -685,7 +686,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION}), false),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
       [this.keyAssignments.agent.chat]: new LabeledAction('Agent Chat',
-        () => this.keyMenuOut.emit({kind: DACommandType.TOGGLE_AGENT_PANEL}), false),
+        () => this.keyMenuOut.emit({kind: DACommandType.OPEN_AGENT_CHAT}), false),
       [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
         () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
       // Holding Shift shows what the shifted keys do, the same way every
@@ -709,9 +710,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // so this entry is the card telling you it exists.
       [search.next]: new LabeledAction('Prev Match', () =>
         this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH}), false),
-      // Also intercepted in handleKeyDown, like Redo.
+      // The agent chords are intercepted in handleKeyDown too, like Redo.
       [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent', () =>
         this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
+      [this.keyAssignments.agent.chat]: new LabeledAction('Close Chat', () =>
+        this.keyMenuOut.emit({kind: DACommandType.CLOSE_AGENT_CHAT}), false),
     } as SubmenuConfig;
   }
 
@@ -1237,6 +1240,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
   }
 
+  /** Shown while the agent chat owns the keyboard: what its keys do there. */
+  private buildAgentPanelSurfaceConfig(): SubmenuConfig {
+    return {
+      'Enter': this.surfaceAction('Send'),
+      '[': this.surfaceAction('Esc: Back to canvas'),
+    } as SubmenuConfig;
+  }
+
   private buildGrowTargetingSurfaceConfig(): SubmenuConfig {
     const m = this.keyAssignments.movement;
     return {
@@ -1309,6 +1320,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     'grow-target-popup': 'surfaceGrowTargetPopup',
     'grow-type-popup': 'surfaceGrowTypePopup',
     'grow-placement': 'surfaceGrowPlacement',
+    'agent-panel': 'surfaceAgentPanel',
   };
 
   /** While another interaction surface owns the keyboard, render that
@@ -1474,6 +1486,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     surfaceGrowTargetPopup: '#9b59b6',
     surfaceGrowTypePopup: '#9b59b6',
     surfaceGrowPlacement: '#00a6a6',
+    surfaceAgentPanel: '#f59e0b',
   };
 
   private updateModeLabel() {
@@ -1510,6 +1523,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'add > choose node type';
     } else if (modeName === 'surfaceGrowPlacement') {
       displayName = 'add > place node';
+    } else if (modeName === 'surfaceAgentPanel') {
+      displayName = 'agent chat';
     } else {
       displayName = modeName;
     }
@@ -1810,15 +1825,19 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       return;
     }
 
-    // Shift+T is Follow Agent, intercepted for the same reason as Redo: a
-    // quick chord would otherwise never reach the Shift card.
-    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
-        && !event.repeat
-        && event.key.toLowerCase() === this.keyAssignments.agent.follow
-        && this.keyMenu.currentMode.name === 'normal') {
-      event.preventDefault();
-      this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT});
-      return;
+    // Shift+O (Follow Agent) and Shift+M (Close Chat) are intercepted for the
+    // same reason as Redo: a quick chord would otherwise never reach the Shift card.
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.repeat
+        && (this.keyMenu.currentMode.name === 'normal' || this.keyMenu.currentMode.name === 'normalCaps')) {
+      const key = event.key.toLowerCase();
+      const agentChord = key === this.keyAssignments.agent.follow ? DACommandType.FOLLOW_AGENT
+        : key === this.keyAssignments.agent.chat ? DACommandType.CLOSE_AGENT_CHAT
+        : null;
+      if (agentChord !== null) {
+        event.preventDefault();
+        this.keyMenuOut.emit({kind: agentChord});
+        return;
+      }
     }
 
     // Vim search cycling: n next, N previous. N is Shift+n, a chord rather

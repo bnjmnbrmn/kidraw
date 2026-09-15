@@ -2,6 +2,11 @@
  * What agent mode needs from the drawing area. DrawingAreaComponent implements
  * this; the agent tools and caption overlay use only this surface, so the
  * canvas internals stay behind it.
+ *
+ * Everything here reads the graph or guides the view. When agents get to change
+ * the graph, those changes go through a single operation path shared with the
+ * undo stack and (later) multiplayer, e.g. `applyOperations(ops, author)`, never
+ * through new agent-specific setters on this interface.
  */
 
 export interface AgentNodeInfo {
