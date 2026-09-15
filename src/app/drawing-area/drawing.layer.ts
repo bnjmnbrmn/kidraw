@@ -348,6 +348,7 @@ export class DrawingLayer extends Konva.Layer {
   addNodeFromSnapshot(ns: DANodeSnapshot): DANode {
     const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
     node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+    node.setLabelFormat(this.identityLabelFormat());
     node.applyTextOverflow();
     node.pinned = ns.pinned ?? false;
     node.tags = [...(ns.tags ?? [])];
@@ -490,6 +491,11 @@ export class DrawingLayer extends Konva.Layer {
     return this._diagramType;
   }
 
+  /** How node labels are written under the bound plugin (markdown or plain). */
+  private identityLabelFormat() {
+    return resolveIdentity(this._diagramType).labelFormat ?? 'plain';
+  }
+
   private applyIdentityDefaultsToNode(node: DANode, extension: KidrawExtension, keepShape: boolean): void {
     const d = extension.nodeDefaults;
     if (!keepShape && d.shape && node.nodeShape !== d.shape
@@ -503,6 +509,7 @@ export class DrawingLayer extends Konva.Layer {
       d.fontSize ?? node.FONT_SIZE,
       d.textOverflow ?? node.textOverflowMode,
     );
+    node.setLabelFormat(extension.labelFormat ?? 'plain');
     node.applyTextOverflow();
   }
 
@@ -548,6 +555,7 @@ export class DrawingLayer extends Konva.Layer {
       const node = new DANode(ns.x + dx, ns.y + dy, ns.text, undefined, undefined, ns.nodeShape);
       node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode,
         ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+      node.setLabelFormat(this.identityLabelFormat());
       node.applyTextOverflow();
       node.isSelected = true;
       node.pinned = ns.pinned ?? false;
@@ -637,6 +645,7 @@ export class DrawingLayer extends Konva.Layer {
     for (const ns of snapshot.nodes) {
       const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
       node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
+      node.setLabelFormat(this.identityLabelFormat());
       node.applyTextOverflow();
       node.isSelected = ns.isSelected;
       node.pinned = ns.pinned ?? false;

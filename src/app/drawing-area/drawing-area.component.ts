@@ -2526,7 +2526,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // teardown off selection left that node's blink timer running for the rest
     // of the session, with a caret visible on a node nobody was editing.
     // hideCursor on a node without one is a no-op.
-    this.drawingLayer.getDANodes().forEach(n => n.hideCursor());
+    const resized = new Map<DANode, {x: number; y: number}>();
+    this.drawingLayer.getDANodes().forEach(n => this.toggleNodeCaret(n, () => n.hideCursor(), resized));
+    this.settleCaretResizes(resized);
     this.getAllLabels().forEach(l => l.hideCursor());
     // A label left empty has no visible content — drop it rather than leave
     // an invisible hit-target on the edge.
@@ -2640,6 +2642,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
     this.drawingLayer.batchDraw();
     this.refreshLabelEditGhost();
+  }
+
+  /** Show or hide a node's caret. A markdown label resizes as it switches
+   *  between its rendered and source views; record where its centre was.
+   *  Showing or hiding the caret never moves the node, so the size read
+   *  beforehand gives that centre. */
+  private toggleNodeCaret(node: DANode, toggle: () => boolean,
+                          resized: Map<DANode, {x: number; y: number}>): void {
+    const width = node.NODE_WIDTH;
+    const height = node.NODE_HEIGHT;
+    if (toggle()) resized.set(node, {x: node.group.x() + width / 2, y: node.group.y() + height / 2});
+  }
+
+  /** Keep caret-resized nodes on their centres and their edges attached,
+   *  the same as when typing grows a node. */
+  private settleCaretResizes(resized: Map<DANode, {x: number; y: number}>): void {
+    if (resized.size === 0) return;
+    const nodes = [...resized.keys()];
+    this.settleGrowingNodes(nodes, resized);
+    this.updateEdgesForResizedNodes(nodes);
   }
 
   /** Box centres of the nodes being edited, read before their text changes. */
@@ -7148,6 +7170,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  the caret spatially for the single target under `i`; selection-driven
    *  editing retains the established end-of-text behavior. */
   private showEditCarets(point?: {x: number; y: number}): void {
+    const resized = new Map<DANode, {x: number; y: number}>();
     this.drawingLayer.getSelectedDANodes().forEach(n => {
       if (point) {
         n.setCursorFromLocalPoint({
@@ -7157,8 +7180,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       } else {
         n.setCursorToEnd();
       }
-      n.showCursor();
+      this.toggleNodeCaret(n, () => n.showCursor(), resized);
     });
+    this.settleCaretResizes(resized);
     this.getSelectedLabels().forEach(l => {
       if (point) {
         l.setCursorFromLocalPoint({x: point.x - l.x, y: point.y - l.y});

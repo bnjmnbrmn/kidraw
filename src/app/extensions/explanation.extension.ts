@@ -27,6 +27,7 @@ export const EXPLANATION_EXTENSION: KidrawExtension = {
     fontSize: 14,
     textOverflow: 'fit',
   },
+  labelFormat: 'markdown',
   edgeKinds: [
     {
       tag: EXPLANATION_SUPPORTS_TAG,

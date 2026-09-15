@@ -17,11 +17,18 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >   4. Reading mode: root `e` (vim) / `h` (ijkl); `n`/`p` steps, `w` why,
 >      `d`/`t` send "doesn't follow" / "too detailed" feedback with the steps
 >      attached.
-> - **Next:** markdown labels (bold, italic, code; math later).
+>   5. Markdown node labels for plugins that opt in (Explanation does):
+>      bold, italic and code rendered; monospace source with highlighted
+>      markers while editing. Other graphs are unchanged.
+> - **Live Codex check:** it built a 12-statement explanation with a correctly
+>   numbered path, then inserted three steps where told "doesn't follow".
+> - **Next:** math in labels; persistent feedback marks; a detail-level
+>   setting.
 > - **Verified:**
 >   - Unit specs for operations, applier, planner, undo, tools, agent
->     service and reading.
->   - Playwright: agent mode 31/31, agent edits 7/7, reading 16/16.
+>     service, reading, the markdown parser and DANode markdown.
+>   - Playwright: agent mode 31/31, agent edits 7/7, reading 16/16,
+>     markdown 10/10.
 >   - Build is 1.01 MB against the 1.1 MB budget Ben approved.
 
 > ## 🤖 IN PROGRESS: agent mode v0, read-only "ask and point" (2026-09-15, branch `agent-mode-v0`)

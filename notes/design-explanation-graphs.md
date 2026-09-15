@@ -79,15 +79,41 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
    - Esc stops reading. Esc in the chat goes back to reading.
    - The keymenu is suspended while reading and shows the reading keys (the
      same pattern as the chat).
+5. **Markdown labels** (`markdown-label.ts`, DANode).
+   - Node labels render `**bold**`, `*italic*` / `_italic_` and `` `code` ``,
+     with backslash escapes. Anything that isn't a closed pair stays literal,
+     so `2 * 3` and `snake_case` read as typed.
+   - While editing, the label is its source: monospace, markers faded, code
+     in blue, bold and italic shown. The caret and vim motions work on the raw
+     text as before, since the raw `Konva.Text` still does the layout.
+   - Fit sizing measures what is drawn: markers don't widen a box. A node can
+     change size as editing starts or ends; it keeps its centre and its edges
+     follow, the same as when typing grows it.
+   - **Plugins opt in** (`labelFormat: 'markdown'`); Explanation does.
+     Other graphs, including todo graphs, draw and edit labels exactly as
+     before. Decided so existing graphs don't change font whenever editing
+     starts; easy to flip if markdown should be everywhere.
+   - The agent is told node text supports bold, italic and code.
+
+## Live check with Codex (2026-09-15)
+
+A real Codex session, through the Docker runner, against a scripted tab:
+
+- Asked to explain why there are infinitely many primes, it read the outline
+  and made one `apply_changes` batch of 42 changes: 12 statements, 19
+  supports edges, and a reading path numbered 1–11 without gaps.
+- Told "this step doesn't follow" about step 6, with both statements
+  attached, it inserted three intermediate steps in one batch and renumbered
+  the path to 1–14.
+- It wrote math as Unicode (p₁, ×, ⋯), so math rendering will be welcome.
 
 ## Not yet
 
-- **Markdown labels** (step 5): rendered bold, italic and code when not
-  editing; monospace with syntax highlighting while editing. Then math.
+- **Math** in labels. A plan to evaluate: MathJax's SVG output (paths, no
+  fonts), drawn as an image, fits the canvas and exports.
+- Markdown in **edge labels** (`DALabel`).
 - **Persistent feedback marks.** For now, feedback is a chat message with
   pills; nothing stays on the canvas to show what is unresolved.
 - **Detail level**, a general setting the agent reads, as Ben suggested.
 - **Draft mode** for agent edits.
 - **References inside labels**, gather views, nesting. Explore later.
-- A live Codex run that writes an explanation end to end (tests so far use a
-  fake agent).

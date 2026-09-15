@@ -7,6 +7,19 @@ import {
   logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordEnd, wordForward,
   vimChangeRange,
 } from './text-cursor';
+import { hasInlineMarkdown, InlineStyle, LaidLine, layoutSpans, parseInlineMarkdown } from './markdown-label';
+import type { LabelFormat } from '../extensions/extension.model';
+
+/** Konva.Text's own default, named so markdown runs match plain labels. */
+const LABEL_FONT = 'Arial';
+const MONO_FONT = 'Menlo, Consolas, "DejaVu Sans Mono", monospace';
+/** Code spans in the editing view: a mid tone that reads on both themes. */
+const CODE_SOURCE_COLOR = '#0ea5e9';
+
+function fontStyleOf(style: {bold: boolean; italic: boolean}): string {
+  if (style.bold && style.italic) return 'italic bold';
+  return style.bold ? 'bold' : style.italic ? 'italic' : 'normal';
+}
 
 // Use the un-patched requestAnimationFrame so Zone.js doesn't track the blink
 // loop as a pending task (which would prevent Angular test zones from stabilizing).
@@ -26,6 +39,11 @@ export class DANode {
   readonly group: Konva.Group;
   private _shape: Konva.Shape;
   private readonly _label: Konva.Text;
+  /** Markdown labels: the rendered runs, or the highlighted source while editing.
+   *  `_label` stays the text of record (and the caret's layout) underneath. */
+  private readonly _richLabel: Konva.Group;
+  private _labelFormat: LabelFormat = 'plain';
+  private _editingText = false;
   private readonly _cursor: Konva.Line;
   private readonly _visualSelection: Konva.Group;
   private _isSelected: boolean = false;
@@ -127,6 +145,8 @@ export class DANode {
       visible: !labelless,
     });
     this.group.add(this._label);
+    this._richLabel = new Konva.Group({ listening: false, visible: false });
+    this.group.add(this._richLabel);
 
     this._visualSelection = new Konva.Group({listening: false, visible: false});
     this.group.add(this._visualSelection);
@@ -245,6 +265,7 @@ export class DANode {
       this._shape.stroke(colors.stroke);
       this._label.fill(colors.text);
     }
+    this.renderLabelView();
     this._cursor.stroke(colors.text);
     this._visualSelection.getChildren().forEach(child => child.setAttr('fill', colors.text));
     this._pinIndicator.fill(colors.stroke);
@@ -289,6 +310,7 @@ export class DANode {
       this.applySize(this._nodeWidth, this._nodeHeight);
       this._label.fontSize(this._fontSize);
     }
+    this.renderLabelView();
 
     if (isInvisible) {
       this.applyInvisibleVisibility();
@@ -628,6 +650,15 @@ export class DANode {
 
   /** Apply overflow logic. Returns true if node dimensions changed (caller must update edges). */
   applyTextOverflow(): boolean {
+    if (this.nodeShape !== 'junction' && this.nodeShape !== 'invisible') {
+      this._label.fontFamily(this.sourceView ? MONO_FONT : LABEL_FONT);
+    }
+    const changed = this.sizeToText();
+    this.renderLabelView();
+    return changed;
+  }
+
+  private sizeToText(): boolean {
     if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
 
     // Every mode below sizes a rectangle around the text. For a circle that
@@ -807,9 +838,13 @@ export class DANode {
   }
 
   private measureTextHeight(text: string, width: number, fontSize: number): number {
+    if (this.rendersRich(text)) {
+      return this.layoutRich(text, width, fontSize, true).length * fontSize * (this._label.lineHeight() ?? 1);
+    }
     if (!DANode._measureText) {
       DANode._measureText = new Konva.Text({ visible: false });
     }
+    DANode._measureText.fontFamily(this._label.fontFamily());
     DANode._measureText.text(text);
     DANode._measureText.fontSize(fontSize);
     DANode._measureText.width(width);
@@ -818,9 +853,13 @@ export class DANode {
   }
 
   private measureNaturalWidth(text: string, fontSize: number): number {
+    if (this.rendersRich(text)) {
+      return Math.max(0, ...this.layoutRich(text, Infinity, fontSize, false).map(line => line.width));
+    }
     if (!DANode._measureText) {
       DANode._measureText = new Konva.Text({ visible: false });
     }
+    DANode._measureText.fontFamily(this._label.fontFamily());
     DANode._measureText.text(text);
     DANode._measureText.fontSize(fontSize);
     DANode._measureText.width('auto' as any);
@@ -893,6 +932,7 @@ export class DANode {
     if (this.nodeShape !== 'junction' && this.nodeShape !== 'invisible') {
       this._label.fontSize(fontSize);
     }
+    this.renderLabelView();
   }
 
   private applySize(w: number, h: number): void {
@@ -929,17 +969,50 @@ export class DANode {
     this.updateResizeHandlePosition();
   }
 
-  showCursor(): void {
-    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return;
+  /** Show the caret: editing starts. Returns whether the node resized, which a
+   *  markdown label does as it switches to its monospace source. */
+  showCursor(): boolean {
+    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
+    const resized = this.setEditingText(true);
     this.updateCursorPosition();
     this._cursor.visible(true);
     this._cursor.opacity(1);
     this.startCursorBlink();
+    return resized;
   }
 
-  hideCursor(): void {
+  /** Hide the caret: editing ends. Returns whether the node resized. */
+  hideCursor(): boolean {
     this.stopCursorBlink();
     this._cursor.visible(false);
+    return this.setEditingText(false);
+  }
+
+  get labelFormat(): LabelFormat {
+    return this._labelFormat;
+  }
+
+  /** Set by the graph's plugin. Returns whether the node resized. */
+  setLabelFormat(format: LabelFormat): boolean {
+    if (format === this._labelFormat) return false;
+    this._labelFormat = format;
+    return this.applyTextOverflow();
+  }
+
+  private setEditingText(editing: boolean): boolean {
+    if (editing === this._editingText) return false;
+    this._editingText = editing;
+    return this._labelFormat === 'markdown' ? this.applyTextOverflow() : false;
+  }
+
+  /** Editing a markdown label: monospace source with its markers coloured. */
+  private get sourceView(): boolean {
+    return this._labelFormat === 'markdown' && this._editingText;
+  }
+
+  /** Not editing, and the text has markup to render. */
+  private rendersRich(text: string): boolean {
+    return this._labelFormat === 'markdown' && !this._editingText && hasInlineMarkdown(text);
   }
 
   setCursorMode(mode: TextCursorMode): void {
@@ -1147,6 +1220,7 @@ export class DANode {
       DANode._measureText = new Konva.Text({ visible: false });
     }
     DANode._measureText.text(this._label.text());
+    DANode._measureText.fontFamily(this._label.fontFamily());
     DANode._measureText.fontSize(this._fontSize);
     DANode._measureText.width(this._label.width());
     DANode._measureText.wrap('word');
@@ -1272,6 +1346,98 @@ export class DANode {
       }));
     });
     this._visualSelection.visible(true);
+  }
+
+  // --- Markdown labels ---
+
+  private static _runMeasure: Konva.Text | null = null;
+
+  private layoutRich(text: string, width: number, fontSize: number, wrap: boolean): LaidLine[] {
+    const measure = DANode._runMeasure ??= new Konva.Text({ visible: false });
+    measure.fontSize(fontSize);
+    return layoutSpans(parseInlineMarkdown(text).spans, width, (run: string, style: InlineStyle) => {
+      measure.fontFamily(style.code ? MONO_FONT : LABEL_FONT);
+      measure.fontStyle(fontStyleOf(style));
+      return measure.measureSize(run).width;
+    }, wrap);
+  }
+
+  /** Draw the label the way its format and edit state call for. Plain text,
+   *  and markdown without markup, is `_label` itself; otherwise `_label` keeps
+   *  its layout (the caret uses it) but isn't painted, and `_richLabel` is. */
+  private renderLabelView(): void {
+    this._richLabel.destroyChildren();
+    const labelless = this.nodeShape === 'junction' || this.nodeShape === 'invisible';
+    const text = this._label.text();
+    const rich = !labelless && this.rendersRich(text);
+    const source = !labelless && this.sourceView && hasInlineMarkdown(text);
+    this._label.fillEnabled(!rich && !source);
+    this._richLabel.visible(rich || source);
+    if (rich) this.drawRichText(text);
+    else if (source) this.drawSourceText(text);
+  }
+
+  private drawRichText(text: string): void {
+    const fontSize = this._fontSize;
+    const lineHeight = fontSize * (this._label.lineHeight() ?? 1);
+    // Konva.Text drops lines that don't fit its height; do the same.
+    const maxLines = Math.max(1, Math.floor(this._label.height() / lineHeight + 0.01));
+    const lines = this.layoutRich(text, this._label.width(), fontSize, this._label.wrap() !== 'none').slice(0, maxLines);
+    const top = this._label.y() + (this._label.height() - lines.length * lineHeight) / 2;
+    const fill = this._label.fill() as string;
+    lines.forEach((line, index) => {
+      const left = this._label.x() + (this._label.width() - line.width) / 2;
+      const y = top + index * lineHeight;
+      for (const run of line.runs) {
+        const x = left + run.x;
+        if (run.style.code) {
+          this._richLabel.add(new Konva.Rect({
+            x: x - 2, y: y - 1, width: run.width + 4, height: lineHeight + 2,
+            cornerRadius: 3, fill, opacity: 0.12, listening: false,
+          }));
+        }
+        this._richLabel.add(new Konva.Text({
+          x, y, text: run.text, fontSize, fill, listening: false,
+          fontFamily: run.style.code ? MONO_FONT : LABEL_FONT,
+          fontStyle: fontStyleOf(run.style),
+        }));
+      }
+    });
+  }
+
+  /** The raw text on `_label`'s own line breaks (so the caret lines up), in
+   *  monospace, with markers faded, code coloured and bold/italic shown. */
+  private drawSourceText(text: string): void {
+    const measure = this.configuredMeasureText();
+    const textArr: { text: string; width: number; lastInParagraph: boolean }[] =
+      (measure as any).textArr ?? [];
+    const ranges = lineRangesFromWrapped(text, textArr);
+    const {source} = parseInlineMarkdown(text);
+    const fontSize = this._fontSize;
+    const lineHeight = fontSize * (this._label.lineHeight() ?? 1);
+    const top = this._label.y() + (this._label.height() - measure.height()) / 2;
+    const fill = this._label.fill() as string;
+    ranges.forEach((line, index) => {
+      const lineX = this._label.x() + (this._label.width() - (textArr[index]?.width ?? 0)) / 2;
+      const lineEnd = line.start + line.length;
+      for (const span of source) {
+        const from = Math.max(span.start, line.start);
+        const to = Math.min(span.end, lineEnd);
+        if (from >= to) continue;
+        const prefix = text.slice(line.start, from);
+        this._richLabel.add(new Konva.Text({
+          x: lineX + (prefix ? measure.measureSize(prefix).width : 0),
+          y: top + index * lineHeight,
+          text: text.slice(from, to),
+          fontSize,
+          fontFamily: MONO_FONT,
+          fontStyle: fontStyleOf(span),
+          fill: span.role === 'code' ? CODE_SOURCE_COLOR : fill,
+          opacity: span.role === 'marker' ? 0.45 : 1,
+          listening: false,
+        }));
+      }
+    });
   }
 
   private clamp(value: number, minValue: number, maxValue: number): number {

@@ -135,6 +135,8 @@ export const SESSION_PREAMBLE = [
   '- They use the "explanation" diagram type. If get_outline shows a different type, ask the user to run',
   '  :type explanation first.',
   '- Work the explanation out yourself. Write one statement per node: a single sentence.',
+  '- Node text supports **bold**, *italic* and `code` (for names, symbols and short formulas). There is no',
+  '  math rendering yet, so write formulas in plain text or code.',
   '- For every statement, add a "supports" edge from each statement it follows from, even when that premise',
   '  came much earlier.',
   '- Add "path" edges for the suggested reading order, labelled with step numbers 1, 2, 3, ... When you insert',

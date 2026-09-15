@@ -1,5 +1,7 @@
 import { NodeShape, TextOverflowMode } from '../drawing-area/command.model';
 
+export type LabelFormat = 'plain' | 'markdown';
+
 /** Node style defaults an extension contributes. All fields optional so an
  *  extension overrides only what it cares about; anything unset falls through
  *  to the app defaults (see APP_NODE_DEFAULTS in snapshot-mapping). */
@@ -71,6 +73,9 @@ export interface KidrawExtension {
   /** One line on what the diagram type is for, for the plugin picker. */
   description?: string;
   nodeDefaults: ExtensionNodeDefaults;
+  /** 'markdown' renders **bold**, *italic* and `code` in node labels and edits
+   *  them as highlighted monospace source. Default 'plain'. */
+  labelFormat?: LabelFormat;
   tagGroups?: ExtensionTagGroup[];
   edgeKinds?: ExtensionEdgeKind[];
 }
