@@ -3,6 +3,7 @@ import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
 import type {CanvasRef, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
+import {ChatDraft} from './chat-draft';
 
 export type AgentState = 'off' | 'setup' | 'consent' | 'connecting' | 'ready' | 'error';
 
@@ -87,14 +88,16 @@ export class AgentStore {
   readonly unseenFailure = signal(false);
   /** The change set of the agent's most recent turn that changed the graph, for "undo its last turn". */
   readonly agentEditTurn = signal<string | null>(null);
-  /** Text to put in the chat input (e.g. reading-mode feedback); the panel takes it and clears this. */
-  readonly pendingDraft = signal<string | null>(null);
+  /** The message being written in the chat, edited through the keymenu's label-editing modes. */
+  readonly draft = new ChatDraft();
   /** How much detail explanations should have; sent with every prompt. */
   readonly detailLevel = signal<DetailLevel>(this.settings.detailLevel);
 
   readonly endpoint = signal<AgentEndpointSettings | null>(this.settings.endpoint);
   readonly endpointName = computed(() => this.endpoint()?.name ?? '');
   readonly connected = computed(() => this.state() === 'ready');
+  /** The chat can take a message now: what is typed goes to the draft. */
+  readonly composable = computed(() => this.state() === 'ready' && this.graphChange() === null && this.reconnecting() === null);
   readonly providerName = computed(() => {
     const agent = this.endpoint()?.agent ?? '';
     return AGENT_PROVIDERS[agent] ?? (agent || 'the agent');
@@ -160,7 +163,7 @@ export class AgentStore {
    *  the reader points at the step that bothers them instead of quoting it. */
   prefillFeedback(text: string, refs: CanvasRef[]): void {
     this.attachedRefs.set(refs);
-    this.pendingDraft.set(text);
+    this.draft.set(text);
     this.openPanel();
   }
 

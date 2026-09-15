@@ -74,7 +74,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 20));
 describe('AgentService', () => {
   // Load the lazily imported tools once up front: on a slow host the first load
   // of that chunk can outlast settle(), which failed whichever tool test ran first.
-  beforeAll(() => import('./agent-tools'));
+  beforeAll(() => import('./agent-tools'), 60000);
 
   const realWebSocket = window.WebSocket;
   let graph: GraphIdentity;

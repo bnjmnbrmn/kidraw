@@ -67,7 +67,7 @@
 <!-- Agent mode UI loads lazily: nothing is downloaded until it is first used. -->
 @defer (when agent.panelOpen()) {
   <app-agent-panel [dark]="darkTheme"
-                   [bottomInset]="keymenuInset"
+                   [bottomInset]="agentPanelBottomInset"
                    [rightOffset]="compactMenuSide === 'right' ? compactMenuInset : 0"/>
 }
 

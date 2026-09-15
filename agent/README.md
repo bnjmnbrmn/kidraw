@@ -25,9 +25,13 @@ before anything leaves the browser.
   requires the access token as its first message. On the VPS it also sits
   behind the site password (nginx).
 - **Server → agent:** with the `docker` runner each session runs in a
-  throwaway container (no repo, no host files, capabilities dropped, memory,
-  CPU and process limits). The only host directory it sees is the session's
-  private Codex home: a copy of kidraw-agent's login plus a `config.toml` that
+  throwaway container (capabilities dropped, memory, CPU and process limits).
+  The host directories it sees are the session's private Codex home and, only
+  when `KIDRAW_AGENT_SOURCE_DIR` is set, that source tree read-only at
+  `/workspace/source`. Hidden inside the source mount: the dev debug log and
+  graph mirror (`tools/debug.log`, `tools/draft-mirror.json`, which hold the
+  user's activity) and build and dependency directories. The Codex home is a
+  copy of kidraw-agent's login plus a `config.toml` that
   turns off history, memories and web search, so nothing from one graph's
   session reaches another. When the session ends, a login it refreshed is
   copied back and the home is deleted. At most `KIDRAW_AGENT_MAX_SESSIONS`
@@ -40,10 +44,13 @@ before anything leaves the browser.
   on purpose ends the session at once.
 - **Agent → canvas:** tools go through a per-session MCP URL with a bearer
   secret, and are marked read-only. Codex starts in read-only mode.
-  kidraw-agent approves only read, search and think requests and calls to
-  KiDraw's own tools. It refuses everything else: edits, commands, fetches,
-  requests for extra sandbox permissions, and anything it doesn't recognise
-  (`src/permissions.ts`).
+  kidraw-agent approves only read, search and think requests, calls to
+  KiDraw's own tools, and shell commands that only read files under
+  `/workspace` (`cat`, `sed -n`, `grep`, `rg`, `find` without actions, `git
+  log`/`show`/`diff` and the like, with no redirection, substitution or paths
+  outside `/workspace`). It refuses everything else: edits, other commands,
+  fetches, requests for extra sandbox permissions, and anything it doesn't
+  recognise (`src/permissions.ts`).
 
 ## Setup (Linux host with Docker)
 
@@ -78,8 +85,9 @@ location /agent/ {
 In KiDraw press `m` (Agent Chat), enter the endpoint (for example
 `wss://kidraw.net/agent/`) and the token, then approve sharing
 the graph. `o` asks about the current selection; Shift+O follows the agent's view
-after you have moved away; Shift+M closes the chat, and Esc returns the
-keyboard to the canvas.
+after you have moved away; Shift+M closes the chat. The message box types like
+a node label, vim keys included: Enter sends, Ctrl+C stops the agent, and Esc
+twice (insert → normal → canvas) returns the keyboard to the canvas.
 
 ## Configuration
 
@@ -94,6 +102,7 @@ keyboard to the canvas.
 | `KIDRAW_AGENT_CODEX_HOME` | `~/.config/kidraw-agent/codex` | kidraw-agent's Codex login; sessions get private copies in the sibling `sessions/` |
 | `KIDRAW_AGENT_MAX_SESSIONS` | `3` | sessions held at once, including ones waiting for their tab |
 | `KIDRAW_AGENT_DOCKER_IMAGE` | `kidraw-agent-codex:latest` | |
+| `KIDRAW_AGENT_SOURCE_DIR` | unset | a source tree the agent may read (mounted read-only at `/workspace/source`), e.g. so it can explain the code |
 | `KIDRAW_AGENT_TOOL_TIMEOUT_MS` | `30000` | how long a tool waits for the tab |
 | `KIDRAW_AGENT_RESUME_GRACE_MS` | `600000` | how long a session waits for its tab to reconnect |
 

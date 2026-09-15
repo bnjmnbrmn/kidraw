@@ -184,6 +184,17 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
     selection, and the agent's last reply. It goes to the debug log
     (`tools/debug.log` for the dev site) and this browser's storage. `:`
     works while reading.
+12. **The chat message box types like a node label** (Ben asked for his vim
+    keys there). The keymenu goes into label editing, so the keyboard hides
+    while typing and there is no second stacked card.
+    - Insert mode to start; Esc gives vim normal mode, and Esc again returns
+      the keyboard to the canvas (or to reading).
+    - Enter sends, Ctrl+C stops the agent, and paste inserts at the caret.
+    - The draft lives in `ChatDraft` (`src/app/agent/chat-draft.ts`), which
+      applies the same text commands a node label does.
+13. **Source sharing for the agent.** With `KIDRAW_AGENT_SOURCE_DIR` set,
+    the agent can read that source tree (read-only) to explain the code. See
+    `agent/README.md` for what is hidden and which commands are allowed.
 
 ## Live check with Codex (2026-09-15)
 

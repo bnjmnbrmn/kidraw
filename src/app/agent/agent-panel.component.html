@@ -183,10 +183,9 @@
               }
             </div>
           }
-          <textarea #promptInput rows="2" [(ngModel)]="draft"
-                    [readonly]="agent.state() !== 'ready' || agent.graphChange() !== null"
-                    [placeholder]="placeholder"
-                    (keydown)="onPromptKeydown($event)"></textarea>
+          <div #promptInput class="composer-input" tabindex="0" data-keymenu-text-target role="textbox"
+               aria-multiline="true" [attr.aria-label]="placeholder" [class.readonly]="!agent.composable()"
+               (keydown)="onComposerKeydown($event)" (paste)="onComposerPaste($event)">@for (piece of draftPieces(); track $index) {<span [class.caret]="piece.caret" [class.block]="piece.block" [class.selected]="piece.selected">{{ piece.text }}</span>}@if (agent.draft.state().text.length === 0) {<span class="placeholder">{{ placeholder }}</span>}</div>
           @if (agent.busy()) {
             <button type="button" class="stop" (click)="agent.cancel()">Stop</button>
           }

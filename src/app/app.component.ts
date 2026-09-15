@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, effect, HostListener, inject, OnDestroy, OnInit, ViewChild} from '@angular/core';
+import {AfterViewInit, Component, effect, HostListener, inject, OnDestroy, OnInit, untracked, ViewChild} from '@angular/core';
 import {HeaderComponent} from './header/header.component';
 import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
@@ -112,24 +112,54 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.keymenuDisplay === 'keyboard' ? KeymenuComponent.occludedHeightPx() : 0;
   }
 
+  /** Where the agent chat stops above the keymenu. In the vim label modes (the
+   *  chat's own message box included) the exit chip sits above the keyboard
+   *  card, so the chat stops above the chip too. */
+  get agentPanelBottomInset(): number {
+    if (this.keymenuDisplay === 'keyboard' && !this.keymenuTyping && this.keymenuComponent?.vimLabelExitHint) {
+      return KeymenuComponent.cornerHintOccludedHeightPx();
+    }
+    return this.keymenuInset;
+  }
+
   /** Width the open agent chat panel occludes on the right. */
   get agentPanelInset(): number {
     return this.agent.panelOpen() ? AGENT_PANEL_WIDTH : 0;
   }
 
-  /** Set while the agent chat holds the keyboard and the keymenu is suspended for it. */
-  private agentSuspendedKeymenu = false;
+  /** What the agent chat's hold on the keyboard means for the keymenu: nothing
+   *  (canvas), its setup and consent screens (keymenu suspended), or its message
+   *  box (label editing, typed into like a node). */
+  private chatKeyboard: 'canvas' | 'panel' | 'compose' = 'canvas';
 
   /** The agent chat takes the keyboard the way the nav popup does: the keymenu
    *  is suspended (held keys flushed, the chat's keys shown) until it lets go.
    *  Called synchronously by AgentStore, so no keystroke falls in between. */
   private syncKeymenuToAgentKeyboard(chatHasKeyboard: boolean): void {
-    if (!this.keymenuComponent || chatHasKeyboard === this.agentSuspendedKeymenu) return;
-    this.agentSuspendedKeymenu = chatHasKeyboard;
-    this.keymenuComponent.setSuspended(chatHasKeyboard, chatHasKeyboard ? 'agent-panel' : undefined);
+    if (!this.keymenuComponent) return;
+    const next = !chatHasKeyboard ? 'canvas' : this.agent.composable() ? 'compose' : 'panel';
+    if (next === this.chatKeyboard) return;
+    const previous = this.chatKeyboard;
+    this.chatKeyboard = next;
+    if (previous === 'panel' || (previous === 'canvas' && this.reading.active())) this.keymenuComponent.setSuspended(false);
+    if (previous === 'compose') this.keymenuComponent.exitToNormalMode();
+    // The chat's screens take keys of their own; its message box types like a node label.
+    if (next === 'panel') this.keymenuComponent.setSuspended(true, 'agent-panel');
+    if (next === 'compose') {
+      this.keymenuComponent.enterLabelEditMode('insert');
+      this.agent.draft.apply({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'});
+    }
     // Back from the chat into reading mode: reading keeps the keyboard.
-    if (!chatHasKeyboard && this.reading.active()) this.keymenuComponent.setSuspended(true, 'reading');
+    if (next === 'canvas' && this.reading.active()) this.keymenuComponent.setSuspended(true, 'reading');
   }
+
+  /** The chat can become ready to type into, or stop being, while it has the
+   *  keyboard (it connects, or another graph needs sharing): follow along. */
+  private readonly chatKeyboardSync = effect(() => {
+    const chatHasKeyboard = this.agent.keyboardInPanel() && this.agent.panelOpen();
+    this.agent.composable();
+    untracked(() => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
+  });
 
   private enterReadingMode(): void {
     if (this.reading.enter()) this.keymenuComponent.setSuspended(true, 'reading');
@@ -206,6 +236,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   /** The user is in the middle of something (typing, a popup, a non-normal
    *  mode): the agent points with a hint instead of moving the view. */
   private userIsEditing(): boolean {
+    // Writing to the agent isn't editing the canvas, though it uses label editing's keys.
+    if (this.chatKeyboard === 'compose') return false;
     if (this.keymenuTyping) return true;
     const mode = this.modeLabelText;
     return !(mode === '' || mode.startsWith('normal') || mode.startsWith('capslock / normal')
@@ -261,6 +293,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   relayKeymenuCommand(kmCommand: DACommand) {
     this.log.log("app component kmCommand: " + JSON.stringify(kmCommand))
+    // Typing in the chat's message box: label-editing commands edit the draft,
+    // and leaving label editing gives the keyboard back to the canvas.
+    if (this.chatKeyboard === 'compose') {
+      if (kmCommand.kind === DACommandType.EXIT_LABEL_EDIT_MODE) {
+        this.agent.setKeyboardInPanel(false);
+        return;
+      }
+      if (this.agent.draft.apply(kmCommand)) return;
+    }
     if (kmCommand.kind === DACommandType.OPEN_EX_LINE) {
       this.openExLine();
       return;
@@ -415,6 +456,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   handleLabelEditModeChange(subMode: TextCursorMode) {
+    if (this.chatKeyboard === 'compose') {
+      this.agent.draft.apply({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: subMode});
+      return;
+    }
     this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: subMode});
     if (this.headerComponent) {
       this.headerComponent.mode = subMode === 'vimNormal'
@@ -476,7 +521,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           daNotification.open ? daNotification.surface : undefined,
         );
         // The agent chat may still hold the keyboard underneath the popup.
-        if (!daNotification.open && this.agentSuspendedKeymenu) {
+        if (!daNotification.open && this.chatKeyboard === 'panel') {
           this.keymenuComponent.setSuspended(true, 'agent-panel');
         }
         break;

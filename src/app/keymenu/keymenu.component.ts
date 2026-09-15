@@ -271,8 +271,10 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditVimVisual: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
-        surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
-        surfaceReading: new USQwertyModeConfig(this.buildReadingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
+        // The chat's screens and reading take the whole keyboard rather than
+        // opening over the menu you were in, so no card shows underneath.
+        surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceReading: new USQwertyModeConfig(this.buildReadingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEdge: new USQwertyModeConfig(this.buildGrowEdgeSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
@@ -1412,6 +1414,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return KeymenuComponent.HOST_BOTTOM_GAP_PX + CHIP_BAND_PX + HINT_HEIGHT_PX;
   }
 
+  /** Height of the keyboard card plus the strip above it, where the vim label
+   *  modes put their exit chip. Panels that float over the canvas stop above
+   *  this so they don't cover the chip. */
+  static cornerHintOccludedHeightPx(): number {
+    return KeymenuComponent.HOST_BOTTOM_GAP_PX + KeymenuComponent.HOST_HEIGHT_PX;
+  }
+
   /** Plain-text twin of the typing hint in keymenu.component.html, for the
    *  compact panel. Keep the two in step. */
   static readonly TYPING_HINT = 'Go ahead and type. Press Ctrl-[ or Esc to exit.';
@@ -1767,6 +1776,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static isTypingInField(event: KeyboardEvent): boolean {
     const target = event.target as HTMLElement | null;
     if (!(target instanceof HTMLElement)) return false;
+    // A text box edited through the keymenu's label-editing modes (the agent chat's message box).
+    if (target.closest('[data-keymenu-text-target]')) return false;
     if (target.isContentEditable) return true;
     return target.closest(
       'input, textarea, select, button, summary, a[href], [contenteditable="true"], ' +

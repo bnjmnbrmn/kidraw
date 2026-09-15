@@ -33,6 +33,9 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >      first meets them, on "Why?", when an end is selected, or when marked.
 >   9. Chat renders markdown (toggle to source), Copy on messages, label
 >      text to and from the clipboard; `:note` records problems for review.
+>   10. The chat message box types like a node label (vim keys; Esc twice to
+>      leave; Enter sends). The agent can read the source when
+>      `KIDRAW_AGENT_SOURCE_DIR` is set.
 > - **Live Codex check:** it built a 12-statement explanation with a correctly
 >   numbered path, then inserted three steps where told "doesn't follow".
 > - **Next:** have the agent write real explanations (math and non-math) and
