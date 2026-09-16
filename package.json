@@ -8,6 +8,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "qa": "node tools/qa/run.mjs",
     "site:build": "node site/build.mjs",
     "site:test": "node site/smoke.mjs",
     "screenshot": "node tools/playwright-screenshot.js",
