@@ -12,22 +12,14 @@
  *   4. The held-key overlay is made of spreadsheet bands/boundaries and
  *      replaces the ordinary drawing grid.
  */
-const { chromium } = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, overlay: waitForOverlay, checker} =
+  require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN || undefined });
-  const page = await (await browser.newContext({ viewport: { width: 1400, height: 900 } })).newPage();
-  page.on('pageerror', e => console.error('[page error]', e.message));
-
-  await page.goto('http://localhost:4200', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('#mainDrawingArea canvas', { timeout: 15000 });
-  await page.waitForTimeout(400);
+  const browser = await launch();
+  const page = await openApp(browser);
 
   // 3×3 grid at rows y=200,400,600 and cols x=300,650,1000, minus the centre
   // (r1c1) so the middle column has a gap.
@@ -61,16 +53,17 @@ async function main() {
     return bd < 12 ? best : '(none)';
   });
   const press = async (k) => {
-    await page.keyboard.down('g'); await page.waitForTimeout(150);
-    await page.keyboard.press(k); await page.waitForTimeout(230);
-    await page.keyboard.up('g'); await page.waitForTimeout(180);
+    await page.keyboard.down('g'); await waitForOverlay(page, true);
+    const before = await crosshairsOf(page);
+    await page.keyboard.press(k); await movedAndSettled(page, before);
+    await page.keyboard.up('g'); await waitForOverlay(page, false);
   };
 
   // 0. The overlay is a shaded spreadsheet, not centerlines over the normal
   //    movement grid. The synthetic graph has three row and column bands.
   await park('r0c0');
-  await page.keyboard.down('g'); await page.waitForTimeout(200);
-  await page.keyboard.press('e'); await page.waitForTimeout(120);
+  await page.keyboard.down('g'); await waitForOverlay(page, true);
+  await page.keyboard.press('e'); await settled(page);
   const selectedStrategy = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return da.graphItemNavigationStrategy;
@@ -104,7 +97,7 @@ async function main() {
       new Set(overlay.rowArmOpacities).size === 2 &&
       new Set(overlay.columnArmOpacities).size === 2,
     `${overlay.membershipMarkers}/${overlay.visibleStops} markers; rows=${overlay.rowArmOpacities}; columns=${overlay.columnArmOpacities}`);
-  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await page.keyboard.up('g'); await waitForOverlay(page, false);
 
   // 1. step right along the top row, then down the right column
   await park('r0c0');
@@ -126,8 +119,8 @@ async function main() {
   // 2b. While sitting off-column in the gap row, the overlay shows the
   //     remembered column that the following vertical step will re-acquire.
   await park('r0c1');
-  await page.keyboard.down('g'); await page.waitForTimeout(120);
-  await page.keyboard.press('j'); await page.waitForTimeout(230);
+  await page.keyboard.down('g'); await waitForOverlay(page, true);
+  await page.keyboard.press('j'); await settled(page);
   const goalGuide = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const guide = da.nodeGridGroup?.findOne('.node-grid-goal-guide');
@@ -149,7 +142,7 @@ async function main() {
       Math.abs(goalGuide.points[0] - columnC1) < 3 &&
       Math.abs(goalGuide.crosshairX - goalGuide.points[0]) > 100,
     `${JSON.stringify(goalGuide)} vs column ${columnC1}`);
-  await page.keyboard.press('j'); await page.waitForTimeout(230);
+  await page.keyboard.press('j'); await settled(page);
   const reacquired = await at();
   const guideAfterReacquire = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -165,7 +158,7 @@ async function main() {
   check('return guide clears after its column is re-acquired',
     reacquired === 'r2c1' && !guideAfterReacquire.present,
     `at=${reacquired}, ${JSON.stringify(guideAfterReacquire)}`);
-  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await page.keyboard.up('g'); await waitForOverlay(page, false);
 
   // 3. up from the bottom-left returns up the column
   await park('r2c0');
@@ -174,8 +167,8 @@ async function main() {
   check('up steps row-by-row keeping the column (c0)', u1 === 'r1c0' && u2 === 'r0c0', `${u1}, ${u2}`);
 
   await browser.close();
-  console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
-  process.exit(failures === 0 ? 0 : 1);
+  console.log(check.failures === 0 ? 'ALL CHECKS PASSED' : `${check.failures} CHECK(S) FAILED`);
+  process.exit(check.failures === 0 ? 0 : 1);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
