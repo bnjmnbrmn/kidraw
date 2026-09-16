@@ -147,12 +147,15 @@ async function main() {
     for (const n of dl.getDANodes()) nodes[n.id] = center(n);
     const hiddenEdges = dl.getDAEdges().filter(e => !e.group.visible())
       .map(e => `${e.srcNode.id}->${e.destNode.id}`);
-    const overlays = da.gatherIndicators;
+    // Gather's state moved onto its own controller (gather-controller.ts);
+    // nothing outside it reads this in production, only these checks.
+    const g = da.gather;
+    const overlays = g.gatherIndicators;
     const indicators = overlays.filter(n => n.className === 'Text').map(t => t.text());
     return {
       nodes,
-      gathered: da.gatheredNodePositions.size,
-      anchor: da.gatherAnchor ? da.gatherAnchor.id : null,
+      gathered: g.gatheredNodePositions.size,
+      anchor: g.gatherAnchor ? g.gatherAnchor.id : null,
       hiddenEdges, indicators,
       containers: overlays.filter(n => n.className === 'Rect').length,
       metaArrows: overlays.filter(n => n.className === 'Arrow' && n.strokeWidth() === 5).length,
