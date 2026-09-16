@@ -16,7 +16,8 @@ curl -s -o /dev/null -w '%{http_code}' http://localhost:4200   # poll for 200
 
 ## Drive (Playwright, repo already has @playwright/test)
 
-Follow the pattern in `tools/playwright-screenshot.js` and `tools/repro-*.js`:
+Follow the pattern in `tools/playwright-screenshot.js` and `tools/qa/<region>/*.js`
+(run them with `npm run qa`; see `tools/qa/README.md`):
 
 - Real key events via `page.keyboard.down/up` against `document.body` — the
   keymenu listens on document-level HostListeners. Vim profile is the default

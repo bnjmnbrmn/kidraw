@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /*
- * The QA runner: turns the repro scripts into a regression suite.
+ * The QA runner: turns the browser scripts into a regression suite.
  *
- * Each `tools/repro-*.js` already drives the real app in Playwright and prints
- * `PASS:` / `FAIL:` lines, but each is a standalone script someone ran by
- * hand. This runs a chosen set of them, aggregates the results, and exits
+ * Each script under `tools/qa/<region>/` drives the real app in Playwright and
+ * prints `PASS:` / `FAIL:` lines, but each began life as a standalone script
+ * someone ran by hand. This runs a chosen set of them, aggregates the results, and exits
  * non-zero — which is what makes them a safety net you can refactor against.
  *
  * Sixteen of them were already failing when the runner was written, because
@@ -14,7 +14,7 @@
  * says how many checks are still owed. Fixing one means deleting its baseline.
  *
  *   npm run qa                 # the regression suite
- *   npm run qa -- --all        # every repro script, quarantined ones included
+ *   npm run qa -- --all        # everything, dated snapshots included
  *   npm run qa -- --region grid-overlay
  *   npm run qa -- --only nav-popup
  *   npm run qa -- --list
@@ -76,7 +76,7 @@ if (flag('list')) {
 
 /** One script: run it, and read its own PASS/FAIL lines back. */
 function runScript(entry) {
-  const path = join(REPO, 'tools', entry.script);
+  const path = join(QA_DIR, entry.script);
   if (!existsSync(path)) {
     return Promise.resolve({ ...entry, ok: false, passed: 0, failed: 0, ms: 0, error: 'script not found' });
   }

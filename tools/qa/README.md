@@ -51,13 +51,13 @@ that is the only way the number goes down.
 The failures are a mix, and the mix matters:
 
 - *Stale* — the app changed on purpose and the script was never updated.
-  `repro-nav-popup.js` (30 checks) looks like this: the key it presses does
+  `nav-popup/nav-popup.js` (30 checks) looks like this: the key it presses does
   nothing at all now.
-- *Intended change, untold test* — `repro-search-recenter.js` expects a match
+- *Intended change, untold test* — `search/search-recenter.js` expects a match
   to land at the stage centre; it now lands 102px high, consistently, which
   looks deliberate.
-- *Real regression* — `repro-coarse-drag.js` finds that Increase Node Size no
-  longer resizes anything, and `repro-grow-mode.js` finds held-Add wiring a
+- *Real regression* — `drag-and-grow/coarse-drag.js` finds that Increase Node Size no
+  longer resizes anything, and `drag-and-grow/grow-mode.js` finds held-Add wiring a
   node to itself.
 
 Only the third kind is a bug, but all three read identically in the output,
@@ -68,6 +68,15 @@ so none can be waved away without looking.
 - **suite** — in the regression suite.
 - **oneoff** — a snapshot of one day's work, kept for the record. Not a
   statement about how the app should behave now.
+
+## Where these came from
+
+Until 2026-09-16 these lived in `tools/` as 50 flat `repro-*.js` files —
+"repro" for *reproduction*, the throwaway script you write to watch a bug fail.
+They had outgrown the name: nearly all of them assert behaviour that is
+supposed to hold, so they are tests, and the `da-161`-style ids in their old
+filenames referred to issue numbers you cannot see from the app. The headers
+inside each file still carry those ids, so the trail back is intact.
 
 ## Why these are scripts, not a test framework
 
