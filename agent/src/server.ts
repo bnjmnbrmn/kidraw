@@ -85,7 +85,7 @@ export async function startServer(
     }
     const session = new TabSession(config, bridge, log, closed => sessions.delete(closed.id));
     sessions.set(session.id, session);
-    session.begin(ws, agentName);
+    session.begin(ws, agentName, Array.isArray(message.options) ? message.options : []);
   };
 
   wss.on('connection', ws => {

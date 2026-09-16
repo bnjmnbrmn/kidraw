@@ -295,3 +295,101 @@ test('reports a tool error from the tab back to the agent', async () => {
   await tab.next('turn_end');
   tab.ws.close();
 });
+
+test('offers the model and effort settings, but never the sandbox mode', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send(HELLO);
+  const ready = await tab.next('ready');
+  assert.deepEqual(ready.options.map(o => o.id), ['model', 'reasoning_effort']);
+  assert.equal(ready.canSignIn, true);
+  const model = ready.options[0];
+  assert.equal(model.current, 'fake-small');
+  assert.deepEqual(model.choices.map(c => c.value), ['fake-small', 'fake-large']);
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('switches model when the tab asks, and says so in the transcript', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send(HELLO);
+  await tab.next('ready');
+
+  tab.send({ type: 'set_option', id: 'model', value: 'fake-large' });
+  const activity = await tab.next('agent_activity');
+  assert.equal(activity.title, 'Model: Large');
+  const options = await tab.next('options');
+  assert.equal(options.options.find(o => o.id === 'model')?.current, 'fake-large');
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('refuses a setting the agent does not offer the tab', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send(HELLO);
+  await tab.next('ready');
+
+  tab.send({ type: 'set_option', id: 'agent_mode', value: 'full-access' });
+  const error = await tab.next('error');
+  assert.match(error.message, /no "agent_mode" setting/);
+  assert.notEqual(error.fatal, true);
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('starts the session on the model the tab last chose', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send({ ...HELLO, options: [{ id: 'model', value: 'fake-large' }] });
+  const ready = await tab.next('ready');
+  assert.equal(ready.options.find(o => o.id === 'model')?.current, 'fake-large');
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('shows the sign-in page and code, and reports success', async () => {
+  const tab = connect();
+  await tab.opened;
+  tab.send(HELLO);
+  await tab.next('ready');
+
+  tab.send({ type: 'sign_in' });
+  const prompt = await tab.next('sign_in_prompt');
+  assert.equal(prompt.url, 'https://example.invalid/device');
+  assert.equal(prompt.code, 'FAKE-CODE');
+  const done = await tab.next('sign_in_done');
+  assert.equal(done.ok, true);
+  tab.send({ type: 'end' });
+  await closed(tab.ws);
+});
+
+test('a tab that reloads mid sign-in gets the page and code back', async () => {
+  process.env['FAKE_AGENT_SIGNIN'] = 'wait';
+  try {
+    const first = connect();
+    await first.opened;
+    first.send(HELLO);
+    const ready = await first.next('ready');
+    first.send({ type: 'sign_in' });
+    await first.next('sign_in_prompt');
+    first.ws.close();
+    await closed(first.ws);
+
+    const second = connect();
+    await second.opened;
+    second.send({ ...HELLO, resume: { sessionId: ready.session.id, secret: ready.session.secret } });
+    assert.equal((await second.next('ready')).resumed, true);
+    assert.equal((await second.next('sign_in_prompt')).code, 'FAKE-CODE');
+
+    second.send({ type: 'cancel_sign_in' });
+    const done = await second.next('sign_in_done');
+    assert.equal(done.ok, false);
+    assert.match(done.message, /Sign-in/);
+    second.send({ type: 'end' });
+    await closed(second.ws);
+  } finally {
+    delete process.env['FAKE_AGENT_SIGNIN'];
+  }
+});

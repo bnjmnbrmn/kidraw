@@ -190,3 +190,27 @@ button kbd { margin-right: 3px; }
 .composer-input .block { background: currentColor; color: var(--kd-panel-solid); }
 .composer-input .selected { background: rgba(59, 130, 246, 0.35); }
 .composer-input .placeholder { color: var(--kd-panel-muted); }
+
+/* Which model answers, and how hard it thinks: a row above the message box. */
+.agent-options { display: flex; flex-wrap: wrap; gap: 10px; padding: 0 10px 6px; font-size: 12px; }
+.agent-options .option { display: flex; align-items: center; gap: 4px; }
+.agent-options select {
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: var(--kd-control-bg);
+  border: 1px solid var(--kd-panel-border);
+  border-radius: 6px;
+  padding: 2px 4px;
+  max-width: 120px;
+}
+.agent-options select:disabled { opacity: 0.5; }
+
+/* Signing the server's agent in to its provider, from here. */
+.sign-in { padding: 10px; margin: 0 10px 8px; display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--kd-panel-border); border-radius: 8px; background: var(--kd-panel-bg); }
+.sign-in p { margin: 0; }
+.sign-in a { color: inherit; overflow-wrap: anywhere; }
+.code-row { display: flex; align-items: center; gap: 8px; }
+.sign-in-code { font-family: Menlo, Consolas, monospace; font-size: 15px; letter-spacing: 1px;
+  padding: 3px 8px; border-radius: 6px; background: rgba(127, 127, 127, 0.18); user-select: all; }

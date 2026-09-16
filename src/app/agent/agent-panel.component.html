@@ -170,6 +170,37 @@
           </div>
         }
 
+        @if (agent.signInPrompt(); as signIn) {
+          <div class="sign-in">
+            <p>{{ signIn.message }}</p>
+            @if (signIn.code) {
+              <p class="code-row">
+                <code class="sign-in-code">{{ signIn.code }}</code>
+                <button type="button" class="link small" (click)="copyCode(signIn.code)">
+                  {{ codeCopied() ? 'Copied' : 'Copy' }}
+                </button>
+              </p>
+            }
+            <p><a [href]="signIn.url" target="_blank" rel="noopener noreferrer">{{ signIn.url }}</a></p>
+            <p class="muted small">Waiting for you to finish signing in…</p>
+            <div class="actions">
+              <button type="button" class="link" (click)="agent.cancelSignIn()">Cancel</button>
+            </div>
+          </div>
+        } @else if (signInChoices()) {
+          <div class="sign-in">
+            <p>Sign <strong>{{ agent.endpointName() }}</strong>'s agent in to its model provider. It gives you a
+              page to open and a code to type; the account is the server's, not this browser's.</p>
+            <div class="actions">
+              <button #signInFirst type="button" (click)="startSignIn(false)">Sign in</button>
+              <button type="button" (click)="startSignIn(true)">Use a different account</button>
+              <button type="button" class="link" (click)="signInChoices.set(false)">Cancel</button>
+            </div>
+            <p class="muted small">"Use a different account" signs the server out first, so finish the sign-in
+              or it stays signed out.</p>
+          </div>
+        }
+
         <div class="composer">
           @if (agent.attachedRefs().length) {
             <div class="refs attached">
@@ -190,7 +221,30 @@
             <button type="button" class="stop" (click)="agent.cancel()">Stop</button>
           }
         </div>
+        @if (agent.agentOptions().length && agent.state() === 'ready') {
+          <div class="agent-options">
+            @for (option of agent.agentOptions(); track option.id) {
+              <label class="option">
+                <span class="muted">{{ option.name }}</span>
+                <select [value]="option.current" [disabled]="agent.busy()"
+                        [title]="option.name + ' the agent uses for this chat'"
+                        (change)="chooseOption(option.id, $event)">
+                  @for (choice of option.choices; track choice.value) {
+                    <option [value]="choice.value" [title]="choice.description ?? ''">{{ choice.name }}</option>
+                  }
+                </select>
+              </label>
+            }
+          </div>
+        }
+
         <div class="composer-meta">
+          @if (agent.canSignIn() && agent.state() === 'ready' && !agent.signingIn()) {
+            <button type="button" class="link small" (click)="signInChoices.set(!signInChoices())"
+                    title="Sign the agent server in to its model provider, or move it to another account">
+              Account…
+            </button>
+          }
           <button type="button" class="link small" (click)="rawMarkdown.set(!rawMarkdown())"
                   [title]="rawMarkdown() ? 'Show messages formatted' : 'Show messages as the markdown they were written in'">
             {{ rawMarkdown() ? 'Show formatted' : 'Show markdown' }}

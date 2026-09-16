@@ -1,6 +1,6 @@
 import {computed, inject, Injectable, Injector, signal} from '@angular/core';
 import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
-import type {CanvasRef, DetailLevel} from './agent-protocol';
+import type {AgentOption, CanvasRef, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
 import {ChatDraft} from './chat-draft';
@@ -88,6 +88,14 @@ export class AgentStore {
   readonly unseenFailure = signal(false);
   /** The change set of the agent's most recent turn that changed the graph, for "undo its last turn". */
   readonly agentEditTurn = signal<string | null>(null);
+  /** The agent settings this chat can change (model, reasoning effort). */
+  readonly agentOptions = signal<AgentOption[]>([]);
+  /** The server's agent can be signed in to its provider from this chat. */
+  readonly canSignIn = signal(false);
+  /** A sign-in waiting for the user to open a page and enter a code. */
+  readonly signInPrompt = signal<{url: string; code: string | null; message: string} | null>(null);
+  /** A sign-in the user started that hasn't finished or failed yet. */
+  readonly signingIn = signal(false);
   /** The message being written in the chat, edited through the keymenu's label-editing modes. */
   readonly draft = new ChatDraft();
   /** How much detail explanations should have; sent with every prompt. */

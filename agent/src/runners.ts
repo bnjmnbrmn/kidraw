@@ -12,6 +12,8 @@ export interface StartedAgent {
   child: ChildProcess;
   /** Working directory as the agent sees it (ACP `cwd`). */
   agentCwd: string;
+  /** Keep a login the session just made, without waiting for the session to end. */
+  saveLogin(): void;
   stop(): void;
 }
 
@@ -37,6 +39,8 @@ memories = false
 
 export interface SessionCodexHome {
   dir: string;
+  /** Copy back a login the session made or refreshed, keeping the directory. Safe to call any time. */
+  save(): void;
   /** Copy back a login Codex refreshed during the session, then delete the directory. Safe to call twice. */
   finish(): void;
 }
@@ -58,23 +62,28 @@ export function prepareSessionCodexHome(config: AgentServerConfig, sessionName: 
   if (existsSync(baseAuth)) copyFileSync(baseAuth, sessionAuth);
   writeFileSync(join(dir, 'config.toml'), SESSION_CODEX_CONFIG, { mode: 0o600 });
 
+  /** Keep the session's login as kidraw-agent's, if it is the newer of the two. */
+  const save = (): void => {
+    if (!existsSync(sessionAuth)) return;
+    const refreshed = readFileSync(sessionAuth);
+    const base = existsSync(baseAuth) ? readFileSync(baseAuth) : null;
+    const newer = base === null || statSync(sessionAuth).mtimeMs > statSync(baseAuth).mtimeMs;
+    if (!newer || (base !== null && refreshed.equals(base))) return;
+    // Write then rename, so a session starting now never copies half a file.
+    const temp = `${baseAuth}.${sessionName}.tmp`;
+    writeFileSync(temp, refreshed, { mode: 0o600 });
+    renameSync(temp, baseAuth);
+  };
+
   let finished = false;
   return {
     dir,
+    save,
     finish: () => {
       if (finished) return;
       finished = true;
       try {
-        if (!existsSync(sessionAuth)) return;
-        const refreshed = readFileSync(sessionAuth);
-        const base = existsSync(baseAuth) ? readFileSync(baseAuth) : null;
-        const newer = base === null || statSync(sessionAuth).mtimeMs > statSync(baseAuth).mtimeMs;
-        if (newer && (base === null || !refreshed.equals(base))) {
-          // Write then rename, so a session starting now never copies half a file.
-          const temp = `${baseAuth}.${sessionName}.tmp`;
-          writeFileSync(temp, refreshed, { mode: 0o600 });
-          renameSync(temp, baseAuth);
-        }
+        save();
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
@@ -101,7 +110,7 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
 
   if (config.runner === 'fake') {
     const child = spawn(process.execPath, [FAKE_AGENT_ENTRY], { cwd: localWorkDir, stdio });
-    return { child, agentCwd: localWorkDir, stop: () => child.kill('SIGTERM') };
+    return { child, agentCwd: localWorkDir, saveLogin: () => {}, stop: () => child.kill('SIGTERM') };
   }
 
   const home = prepareSessionCodexHome(config, sessionName);
@@ -113,7 +122,7 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
       env: { ...process.env, ...CODEX_ENV, CODEX_HOME: home.dir },
     });
     finishHomeWhenDone(child, home);
-    return { child, agentCwd: localWorkDir, stop: () => child.kill('SIGTERM') };
+    return { child, agentCwd: localWorkDir, saveLogin: () => home.save(), stop: () => child.kill('SIGTERM') };
   }
 
   const containerName = `kidraw-agent-${sessionName}`;
@@ -122,6 +131,7 @@ export function startAgent(config: AgentServerConfig, sessionName: string, local
   return {
     child,
     agentCwd: config.sourceDir ? SOURCE_MOUNT : '/workspace',
+    saveLogin: () => home.save(),
     stop: () => {
       // Fire and forget: waiting here would stall every other tab's traffic.
       spawn('docker', ['kill', containerName], { stdio: 'ignore' }).on('error', () => {}).unref();

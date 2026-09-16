@@ -23,6 +23,40 @@ export interface HelloMessage {
   graphTitle?: string;
   /** Continue the session this tab had before a reload or a dropped connection. */
   resume?: { sessionId: string; secret: string };
+  /** Agent settings the user last chose, applied before the session is announced. */
+  options?: OptionChoice[];
+}
+
+/** One of the agent's settings the tab may change: which model, how hard it thinks. */
+export interface AgentOption {
+  id: string;
+  /** e.g. "Model". */
+  name: string;
+  /** The value now in force, one of `choices`. */
+  current: string;
+  choices: { value: string; name: string; description?: string }[];
+}
+
+export interface OptionChoice {
+  id: string;
+  value: string;
+}
+
+export interface SetOptionMessage {
+  type: 'set_option';
+  id: string;
+  value: string;
+}
+
+/** Sign the server's agent in to its model provider from the chat.
+ *  `switchAccount` signs out first, so a different account can be used. */
+export interface SignInMessage {
+  type: 'sign_in';
+  switchAccount?: boolean;
+}
+
+export interface CancelSignInMessage {
+  type: 'cancel_sign_in';
 }
 
 /** How much detail the user wants in explanations. */
@@ -54,7 +88,9 @@ export interface EndMessage {
   type: 'end';
 }
 
-export type TabToServer = HelloMessage | PromptMessage | CancelMessage | ToolResultMessage | EndMessage;
+export type TabToServer =
+  | HelloMessage | PromptMessage | CancelMessage | ToolResultMessage | EndMessage
+  | SetOptionMessage | SignInMessage | CancelSignInMessage;
 
 // ─── server → tab ─────────────────────────────────────────────────────────
 
@@ -76,6 +112,10 @@ export interface ReadyMessage {
   busy: boolean;
   /** The conversation so far; empty for a new session. */
   history: HistoryEntry[];
+  /** The agent's settings the tab may change; empty when it offers none. */
+  options: AgentOption[];
+  /** The agent can be signed in to its provider from the chat. */
+  canSignIn: boolean;
 }
 
 export interface ErrorMessage {
@@ -103,6 +143,26 @@ export interface TurnEndMessage {
   stopReason: string;
 }
 
+/** The agent's settings changed (the tab asked, or the agent moved them itself). */
+export interface OptionsMessage {
+  type: 'options';
+  options: AgentOption[];
+}
+
+/** Sign-in is waiting for the user to open `url` and enter `code`. */
+export interface SignInPromptMessage {
+  type: 'sign_in_prompt';
+  url: string;
+  code: string | null;
+  message: string;
+}
+
+export interface SignInDoneMessage {
+  type: 'sign_in_done';
+  ok: boolean;
+  message: string;
+}
+
 export interface ToolCallMessage {
   type: 'tool_call';
   callId: string;
@@ -111,4 +171,5 @@ export interface ToolCallMessage {
 }
 
 export type ServerToTab =
-  | ReadyMessage | ErrorMessage | AgentTextMessage | AgentActivityMessage | TurnEndMessage | ToolCallMessage;
+  | ReadyMessage | ErrorMessage | AgentTextMessage | AgentActivityMessage | TurnEndMessage | ToolCallMessage
+  | OptionsMessage | SignInPromptMessage | SignInDoneMessage;

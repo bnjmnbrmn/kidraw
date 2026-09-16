@@ -1,5 +1,5 @@
 import {Injectable} from '@angular/core';
-import {DETAIL_LEVELS, DetailLevel} from './agent-protocol';
+import {DETAIL_LEVELS, DetailLevel, OptionChoice} from './agent-protocol';
 
 /** A user-configured agent endpoint (notes/idea-mcp-server.md, "Opt-in and configuration"). */
 export interface AgentEndpointSettings {
@@ -14,6 +14,7 @@ export interface AgentEndpointSettings {
 const SETTINGS_KEY = 'kidraw_agent_endpoint_v1';
 const CONSENT_KEY = 'kidraw_agent_consent_v1';
 const DETAIL_KEY = 'kidraw_agent_detail_v1';
+const OPTIONS_KEY = 'kidraw_agent_options_v1';
 
 /**
  * Agent endpoint configuration and per-graph sharing consent, kept in this
@@ -38,6 +39,7 @@ export class AgentSettingsService {
     try {
       localStorage.removeItem(SETTINGS_KEY);
       localStorage.removeItem(CONSENT_KEY);
+      localStorage.removeItem(OPTIONS_KEY);
     } catch {
       // Storage unavailable — nothing to forget.
     }
@@ -51,6 +53,22 @@ export class AgentSettingsService {
 
   saveDetailLevel(level: DetailLevel): void {
     write(DETAIL_KEY, level);
+  }
+
+  /** The agent settings (model, reasoning effort) the user last chose, so a new
+   *  session starts on them instead of the server's default. */
+  get agentOptions(): OptionChoice[] {
+    const raw = read(OPTIONS_KEY) as Record<string, unknown> | null;
+    if (!raw || typeof raw !== 'object') return [];
+    return Object.entries(raw)
+      .filter(([, value]) => typeof value === 'string')
+      .map(([id, value]) => ({id, value: value as string}));
+  }
+
+  rememberAgentOption(id: string, value: string): void {
+    const chosen = (read(OPTIONS_KEY) as Record<string, string> | null) ?? {};
+    chosen[id] = value;
+    write(OPTIONS_KEY, chosen);
   }
 
   /** Whether this graph may always be shared with the configured endpoint. */

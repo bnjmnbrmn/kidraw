@@ -33,8 +33,8 @@ before anything leaves the browser.
   user's activity) and build and dependency directories. The Codex home is a
   copy of kidraw-agent's login plus a `config.toml` that
   turns off history, memories and web search, so nothing from one graph's
-  session reaches another. When the session ends, a login it refreshed is
-  copied back and the home is deleted. At most `KIDRAW_AGENT_MAX_SESSIONS`
+  session reaches another. A login the session refreshes or makes is copied
+  back, and the home is deleted when the session ends. At most `KIDRAW_AGENT_MAX_SESSIONS`
   sessions run at once. Containers can still reach the network; limiting that
   to the model provider is not done yet.
 - **Reloads and dropped connections:** a session outlives its socket for
@@ -42,6 +42,11 @@ before anything leaves the browser.
   gives the tab a session id and secret, which it keeps in `sessionStorage`
   (that tab only) and presents to pick the conversation back up. Disconnecting
   on purpose ends the session at once.
+- **Tab → agent settings:** the chat can change only the settings listed in
+  `TUNABLE_OPTIONS` (`tab-session.ts`): the model and its reasoning effort. The
+  agent offers its sandbox mode the same way, and that is never passed on, so
+  no tab can take a session out of read-only. The chat can also sign the server
+  in to its provider — see below.
 - **Agent → canvas:** tools go through a per-session MCP URL with a bearer
   secret, and are marked read-only. Codex starts in read-only mode.
   kidraw-agent approves only read, search and think requests, calls to
@@ -88,6 +93,26 @@ the graph. `o` asks about the current selection; Shift+O follows the agent's vie
 after you have moved away; Shift+M closes the chat. The message box types like
 a node label, vim keys included: Enter sends, Ctrl+C stops the agent, and Esc
 twice (insert → normal → canvas) returns the keyboard to the canvas.
+
+## Model, and signing in from the chat
+
+Under the message box the panel shows the settings the agent offers — which
+model answers, and how hard it thinks. Changing one applies to this session and
+is remembered for the next.
+
+"Account…" signs this server's agent in to its provider without a browser on
+the server: the agent gives a page to open and a one-time code, the chat shows
+both, and the login finishes once the code is entered. "Use a different
+account" signs out first, which is the only way to reach another account —
+cancelling after that leaves the server signed out until a sign-in finishes. A
+login made this way is kept in `KIDRAW_AGENT_CODEX_HOME` for later sessions.
+
+Anyone holding the access token can do this, and it moves which account the
+server spends. The equivalent from a shell is still there:
+
+```bash
+CODEX_HOME=~/.config/kidraw-agent/codex codex login --device-auth
+```
 
 ## Configuration
 

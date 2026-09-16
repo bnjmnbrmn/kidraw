@@ -64,6 +64,10 @@ export class AgentService {
   readonly draft = this.store.draft;
   readonly composable = this.store.composable;
   readonly detailLevel = this.store.detailLevel;
+  readonly agentOptions = this.store.agentOptions;
+  readonly canSignIn = this.store.canSignIn;
+  readonly signInPrompt = this.store.signInPrompt;
+  readonly signingIn = this.store.signingIn;
 
   /** Each prompt starts a turn; everything the agent changes during it is one change set. */
   private turn = 0;
@@ -304,10 +308,12 @@ export class AgentService {
     let opened = false;
     socket.onopen = () => {
       opened = true;
+      const options = this.settings.agentOptions;
       this.send({
         type: 'hello', protocol: AGENT_PROTOCOL_VERSION, token: endpoint.token,
         agent: endpoint.agent, graphTitle: this.graphIdentity().title,
         ...(resume ? {resume} : {}),
+        ...(options.length > 0 ? {options} : {}),
       });
     };
     socket.onmessage = event => this.onServerMessage(event.data);
@@ -448,6 +454,12 @@ export class AgentService {
         this.push({role: 'activity', text: 'New session'});
       }
     }
+    this.agentOptions.set(message.options ?? []);
+    this.canSignIn.set(message.canSignIn === true);
+    // A sign-in that was still waiting when the socket dropped is re-sent by
+    // the server; anything older belongs to a session that is gone.
+    this.signInPrompt.set(null);
+    this.signingIn.set(false);
     this.state.set('ready');
     this.statusText.set('');
   }
@@ -573,6 +585,48 @@ export class AgentService {
     this.store.setDetailLevel(level);
   }
 
+  // ─── Model and sign-in ──────────────────────────────────────────────────
+
+  /** Put the session on another model (or reasoning effort), and start the
+   *  next session on it too. The server answers with the settings as they
+   *  ended up, which is what the picker then shows. */
+  setOption(id: string, value: string): void {
+    const option = this.agentOptions().find(o => o.id === id);
+    if (!option || option.current === value) return;
+    if (!option.choices.some(choice => choice.value === value)) return;
+    if (this.state() !== 'ready') {
+      this.say('Connect to the agent before changing its settings');
+      return;
+    }
+    this.settings.rememberAgentOption(id, value);
+    // Show the new value at once; the server's `options` reply confirms it.
+    this.agentOptions.update(list => list.map(o => (o.id === id ? {...o, current: value} : o)));
+    this.send({type: 'set_option', id, value});
+  }
+
+  /** Sign the server's agent in to its provider from here: it answers with a
+   *  page to open and a code to type. `switchAccount` signs out first, which
+   *  is the only way to reach a different account. */
+  signIn(switchAccount = false): void {
+    if (this.state() !== 'ready') {
+      this.say('Connect to the agent before signing it in');
+      return;
+    }
+    if (!this.canSignIn()) {
+      this.push({role: 'error', text: 'This agent server cannot be signed in from the chat.'});
+      return;
+    }
+    if (this.signingIn()) return;
+    this.signingIn.set(true);
+    this.send({type: 'sign_in', ...(switchAccount ? {switchAccount: true} : {})});
+  }
+
+  cancelSignIn(): void {
+    if (!this.signingIn()) return;
+    this.send({type: 'cancel_sign_in'});
+    this.signInPrompt.set(null);
+  }
+
   /** Stop the answer. The agent may still send a tool call or two before it
    *  notices, so graph edits are refused from here until the next prompt. */
   cancel(): void {
@@ -642,6 +696,19 @@ export class AgentService {
         break;
       case 'tool_call':
         void this.runTool(message.callId, message.name, message.args);
+        break;
+      case 'options':
+        this.agentOptions.set(message.options);
+        break;
+      case 'sign_in_prompt':
+        // A tab that reloaded mid sign-in is told again, and is signing in too.
+        this.signingIn.set(true);
+        this.signInPrompt.set({url: message.url, code: message.code, message: message.message});
+        break;
+      case 'sign_in_done':
+        this.signingIn.set(false);
+        this.signInPrompt.set(null);
+        this.push({role: message.ok ? 'activity' : 'error', text: message.message});
         break;
       case 'error':
         if (message.fatal) {

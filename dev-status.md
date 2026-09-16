@@ -84,6 +84,15 @@ explanation graphs on `explanation-graphs` (built on agent mode)._
 >   - **Loading:** `AgentStore` (the signals, always loaded) loads
 >     `AgentService`, the panel, the overlay and the tools lazily, which keeps
 >     the initial bundle under the 1 MB budget.
+>   - **Model and account (2026-09-16):** pickers under the message box change
+>     the agent's model and reasoning effort (remembered, and applied to the
+>     next session); "Account…" signs the server's agent in to its provider
+>     from the chat — it shows the page and one-time code the agent hands back
+>     — and can move it to a different account. Both go over plain ACP
+>     (`session/set_config_option`, `authenticate` + URL elicitation); the
+>     agent's sandbox mode is deliberately not exposed to the tab.
+> - **Verified (2026-09-16):** agent server tests 31/31, full `ng test`
+>   658/658, `npx ng build` clean.
 > - **Verified (2026-09-15):**
 >   - Agent server tests 20/20: fake agent, permission policy, session homes,
 >     hostile frames, session cap, takeover, protocol drift.

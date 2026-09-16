@@ -44,8 +44,13 @@ class FakeSocket {
 }
 
 const ENDPOINT = {url: 'wss://agent.example/agent/', token: 't0ken', name: 'test-server', agent: 'codex'};
+const MODEL_OPTION = {
+  id: 'model', name: 'Model', current: 'fake-small',
+  choices: [{value: 'fake-small', name: 'Small'}, {value: 'fake-large', name: 'Large'}],
+};
 const READY = {
   type: 'ready', agent: 'codex', session: {id: 'sess-1', secret: 'shh'}, resumed: false, busy: false, history: [],
+  options: [MODEL_OPTION], canSignIn: true,
 };
 
 function fakeCanvas(): jasmine.SpyObj<AgentCanvasTarget> {
@@ -101,6 +106,7 @@ describe('AgentService', () => {
     FakeSocket.instances = [];
     (window as any).WebSocket = FakeSocket;
     localStorage.removeItem('kidraw_agent_consent_v1');
+    localStorage.removeItem('kidraw_agent_options_v1');
     localStorage.setItem('kidraw_agent_endpoint_v1', JSON.stringify(ENDPOINT));
     sessionStorage.removeItem('kidraw_agent_session_v1');
     graph = {key: 'vault:next.kidraw.yaml', title: 'next.kidraw.yaml', stable: true};
@@ -113,6 +119,7 @@ describe('AgentService', () => {
     (window as any).WebSocket = realWebSocket;
     localStorage.removeItem('kidraw_agent_endpoint_v1');
     localStorage.removeItem('kidraw_agent_consent_v1');
+    localStorage.removeItem('kidraw_agent_options_v1');
     sessionStorage.removeItem('kidraw_agent_session_v1');
   });
 
@@ -344,5 +351,58 @@ describe('AgentService', () => {
     const service = createService();
     expect(service.askAboutSelection()).toBeFalse();
     expect(service.panelOpen()).toBeFalse();
+  });
+
+  it('switches model, shows it at once, and starts the next session on it', () => {
+    const service = createService();
+    const socket = connect(service);
+    expect(service.agentOptions()[0].current).toBe('fake-small');
+
+    service.setOption('model', 'fake-large');
+    expect(socket.sent.pop()).toEqual({type: 'set_option', id: 'model', value: 'fake-large'});
+    // Shown before the server confirms, so the picker doesn't snap back.
+    expect(service.agentOptions()[0].current).toBe('fake-large');
+
+    service.disconnect();
+    service.openPanel();
+    service.answerConsent('session');
+    const next = FakeSocket.latest();
+    next.open();
+    expect(next.sent[0]['options']).toEqual([{id: 'model', value: 'fake-large'}]);
+  });
+
+  it('ignores a model the agent does not offer', () => {
+    const service = createService();
+    const socket = connect(service);
+    const before = socket.sent.length;
+    service.setOption('model', 'not-a-model');
+    expect(socket.sent.length).toBe(before);
+    expect(service.agentOptions()[0].current).toBe('fake-small');
+  });
+
+  it('shows the sign-in page and code, and can cancel it', () => {
+    const service = createService();
+    const socket = connect(service);
+    expect(service.canSignIn()).toBe(true);
+
+    service.signIn(true);
+    expect(socket.sent.pop()).toEqual({type: 'sign_in', switchAccount: true});
+    socket.receive({type: 'sign_in_prompt', url: 'https://example.invalid/d', code: 'AB-CD', message: 'Enter this code: AB-CD'});
+    expect(service.signInPrompt()).toEqual({url: 'https://example.invalid/d', code: 'AB-CD', message: 'Enter this code: AB-CD'});
+
+    service.cancelSignIn();
+    expect(socket.sent.pop()).toEqual({type: 'cancel_sign_in'});
+    expect(service.signInPrompt()).toBeNull();
+  });
+
+  it('reports a sign-in that failed in the transcript', () => {
+    const service = createService();
+    const socket = connect(service);
+    service.signIn();
+    socket.receive({type: 'sign_in_done', ok: false, message: 'Sign-in failed: no code entered'});
+    expect(service.signingIn()).toBe(false);
+    const last = service.messages()[service.messages().length - 1];
+    expect(last.role).toBe('error');
+    expect(last.text).toContain('Sign-in failed');
   });
 });
