@@ -55,6 +55,7 @@ function selected() {
   const region = value('region');
   let entries = SUITE;
   if (!flag('all')) entries = entries.filter(e => e.status === 'suite');
+  if (flag('all')) entries = entries.filter(e => e.status !== 'diagnostic');
   if (region) entries = entries.filter(e => e.region === region);
   if (only) entries = entries.filter(e => e.script.includes(only));
   return entries;
@@ -68,9 +69,13 @@ if (flag('list')) {
   }
   for (const [region, entries] of [...byRegion].sort()) {
     console.log(`\n${region}`);
-    for (const e of entries) console.log(`  ${e.status === 'suite' ? ' ' : '~'} ${e.script}${e.note ? `  — ${e.note}` : ''}`);
+    for (const e of entries) {
+      const mark = { suite: ' ', oneoff: '~', diagnostic: '?' }[e.status] ?? '~';
+      console.log(`  ${mark} ${e.script}${e.note ? `  — ${e.note}` : ''}`);
+    }
   }
-  console.log('\n~ = not in the regression suite (--all includes them)');
+  console.log('\n~ = dated snapshot, not in the suite (--all includes them)');
+  console.log('? = diagnostic: prints observations, asserts nothing, so it can never fail');
   process.exit(0);
 }
 
@@ -96,8 +101,9 @@ function runScript(entry) {
     }, SCRIPT_TIMEOUT_MS);
     child.on('close', code => {
       clearTimeout(timer);
-      const passed = (out.match(/^PASS:/gm) ?? []).length;
-      const failed = (out.match(/^FAIL:/gm) ?? []).length;
+      // Two conventions grew up here: most scripts print PASS:/FAIL:, one uses ✓/✗.
+      const passed = (out.match(/^(?:PASS:|✓ )/gm) ?? []).length;
+      const failed = (out.match(/^(?:FAIL:|✗ )/gm) ?? []).length;
       // A script with a baseline is already failing; it passes here by not
       // getting worse. Without one, it must be clean.
       const base = entry.baseline;
@@ -112,7 +118,7 @@ function runScript(entry) {
         failed,
         ms: Date.now() - started,
         // Only the interesting lines; a full log per script would bury the summary.
-        detail: out.split('\n').filter(l => /^FAIL:|^\[qa\]|error|Error/.test(l)).slice(0, 6).join('\n'),
+        detail: out.split('\n').filter(l => /^FAIL:|^✗ |^\[qa\]|error|Error/.test(l)).slice(0, 6).join('\n'),
         code,
       });
     });

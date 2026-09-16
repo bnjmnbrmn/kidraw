@@ -6,7 +6,10 @@
  * region's code, run its region here and get it green first.
  *
  * `status`:
- *   'suite'  — in the regression suite.
+ *   'suite'      — in the regression suite.
+ *   'diagnostic' — prints observations and asserts nothing, so it can never
+ *                  fail. Useful while chasing a bug; worthless as a net, and
+ *                  excluded so it cannot be mistaken for cover.
  *   'oneoff' — a snapshot of one day's work, kept for its record but not a
  *              statement about how the app should behave now.
  *
@@ -24,7 +27,7 @@ export const SUITE = [
   { script: 'grid-overlay/quadrant-ring-nav.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 4, failed: 1, code: 1 } },
   { script: 'grid-overlay/gather-fisheye.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/nav-tiers.js', region: 'grid-overlay', status: 'suite' },
-  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 0, failed: 0, code: 1 } },
+  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 13, failed: 3, code: 1 } },
 
   // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
   { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },
@@ -43,8 +46,8 @@ export const SUITE = [
   { script: 'drag-and-grow/area-select.js', region: 'drag-and-grow', status: 'suite' },
 
   // ── Edges, waypoints, routing ──
-  { script: 'edges/second-waypoint.js', region: 'edges', status: 'suite' },
-  { script: 'edges/waypoint-select.js', region: 'edges', status: 'suite' },
+  { script: 'edges/second-waypoint.js', region: 'edges', status: 'diagnostic' },
+  { script: 'edges/waypoint-select.js', region: 'edges', status: 'diagnostic' },
   { script: 'edges/edge-label-anchors.js', region: 'edges', status: 'suite', baseline: { passed: 12, failed: 3, code: 1 } },
   { script: 'edges/edge-direction-colors.js', region: 'edges', status: 'suite' },
   { script: 'edges/arrowhead-placement.js', region: 'edges', status: 'suite' },
@@ -57,7 +60,7 @@ export const SUITE = [
   { script: 'keys/compact-viewport.js', region: 'keys', status: 'suite' },
   { script: 'keys/clipboard-yank-paste.js', region: 'keys', status: 'suite', baseline: { passed: 2, failed: 0, code: 1 } },
   { script: 'keys/quote-key.js', region: 'keys', status: 'suite' },
-  { script: 'keys/quote-key-shift-release.js', region: 'keys', status: 'suite' },
+  { script: 'keys/quote-key-shift-release.js', region: 'keys', status: 'diagnostic' },
   { script: 'keys/ex-line.js', region: 'keys', status: 'suite' },
   { script: 'keys/speed-while-held.js', region: 'keys', status: 'suite' },
   { script: 'keys/vim-bindings.js', region: 'keys', status: 'suite' },
