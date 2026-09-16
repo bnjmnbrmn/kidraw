@@ -9,22 +9,15 @@
  * Layout: A on top, B below, edge A→B carrying a label (near) and a pinned
  * waypoint (mid). Straight down, so all three are stops on the down axis.
  */
-const { chromium } = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, overlay, waitForDA, checker} =
+  require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_BIN || undefined });
-  const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
-  page.on('pageerror', e => console.error('[page error]', e.message));
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1600, height: 1000});
 
-  await page.goto('http://localhost:4200', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('#mainDrawingArea canvas', { timeout: 15000 });
-  await page.waitForTimeout(400);
 
   const setup = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -59,25 +52,28 @@ async function main() {
   });
 
   const down = async (mod) => {
-    await page.keyboard.down('g'); await page.waitForTimeout(200);
-    if (mod) { await page.keyboard.down(mod); await page.waitForTimeout(120); }
-    await page.keyboard.press('j'); await page.waitForTimeout(260);
+    await page.keyboard.down('g'); await overlay(page, true);
+    if (mod) { await page.keyboard.down(mod); await settled(page); }
+    const before = await crosshairsOf(page);
+    await page.keyboard.press('j'); await movedAndSettled(page, before);
     if (mod) await page.keyboard.up(mod);
-    await page.keyboard.up('g'); await page.waitForTimeout(220);
+    await page.keyboard.up('g'); await overlay(page, false);
   };
 
   // The visible spreadsheet must track the same tier as the movement keys.
   await setup();
-  await page.keyboard.down('g'); await page.waitForTimeout(120);
+  await page.keyboard.down('g'); await overlay(page, true);
   const defaultOverlayTier = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
-  await page.keyboard.down('d'); await page.waitForTimeout(120);
+  await page.keyboard.down('d');
+  await waitForDA(page, `da.nodeGridTargets !== ${JSON.stringify(defaultOverlayTier)}`);
   const fineOverlayTier = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
-  await page.keyboard.up('d'); await page.waitForTimeout(120);
+  await page.keyboard.up('d');
+  await waitForDA(page, `da.nodeGridTargets !== ${JSON.stringify(fineOverlayTier)}`);
   const restoredOverlayTier = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
-  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await page.keyboard.up('g'); await overlay(page, false);
   check('overlay follows the active tier and returns to default on modifier release',
     defaultOverlayTier === 'labels' && fineOverlayTier === 'all' && restoredOverlayTier === 'labels',
     `${defaultOverlayTier} → ${fineOverlayTier} → ${restoredOverlayTier}`);
@@ -104,8 +100,8 @@ async function main() {
   check('fine down a third time steps to B', await at() === 'node:B', `at ${await at()}`);
 
   await browser.close();
-  console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
-  process.exit(failures === 0 ? 0 : 1);
+  console.log(check.failures === 0 ? 'ALL CHECKS PASSED' : `${check.failures} CHECK(S) FAILED`);
+  process.exit(check.failures === 0 ? 0 : 1);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

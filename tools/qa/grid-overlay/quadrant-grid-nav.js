@@ -6,21 +6,14 @@
  *   N/S/E/W region; changing hjkl direction re-origins before moving; n/p
  *   tilt the origin's goal ray south/north.
  */
-const { chromium } = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame, overlay: waitForOverlay, waitForDA, checker} =
+  require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({headless: true, executablePath: process.env.CHROME_BIN || undefined});
-  const page = await (await browser.newContext({viewport: {width: 1400, height: 900}})).newPage();
-  page.on('pageerror', error => console.error('[page error]', error.message));
-  await page.goto('http://localhost:4200', {waitUntil: 'networkidle', timeout: 30000});
-  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
-  await page.waitForTimeout(400);
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1400, height: 900});
 
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -72,7 +65,7 @@ async function main() {
   });
   const press = async key => {
     await page.keyboard.press(key);
-    await page.waitForTimeout(220);
+    await afterFrame(page); await settled(page);
   };
   const park = async id => page.evaluate(nodeId => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -84,7 +77,7 @@ async function main() {
     da.crosshairsLayer.batchDraw();
   }, id);
 
-  await page.keyboard.down('g'); await page.waitForTimeout(120);
+  await page.keyboard.down('g'); await waitForOverlay(page, true);
   await press('o');
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -142,6 +135,7 @@ async function main() {
       Math.sin(northAgainAngle) < Math.sin(southAngle) &&
       rayAfterN === 1 && rayAfterP === 1,
     `${initialAngle.toFixed(3)} → ${southAngle.toFixed(3)} → ${northAgainAngle.toFixed(3)}`);
+  // Stays: the goal ray's fade is the thing under test, not a guess about scheduling.
   await page.waitForTimeout(1700);
   const fadedRay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -222,9 +216,9 @@ async function main() {
     inward === 'east-1' && farther === 'origin',
     `${inward} → ${farther}`);
 
-  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await page.keyboard.up('g'); await waitForOverlay(page, false);
   await park('origin');
-  await page.keyboard.down('g'); await page.waitForTimeout(120);
+  await page.keyboard.down('g'); await waitForOverlay(page, true);
   await press('h');
   const left1 = await at();
   await press('h');
@@ -277,14 +271,14 @@ async function main() {
       Math.abs(afterPan.origin.y - afterPan.crosshairs.y) < 2,
     JSON.stringify({beforePan, afterPan}));
 
-  await page.keyboard.up('g'); await page.waitForTimeout(120);
+  await page.keyboard.up('g'); await waitForOverlay(page, false);
   const releasedOrigin = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginLayer);
   check('releasing g clears the quadrant origin', releasedOrigin === null, JSON.stringify(releasedOrigin));
 
   await browser.close();
-  console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
-  process.exit(failures === 0 ? 0 : 1);
+  console.log(check.failures === 0 ? 'ALL CHECKS PASSED' : `${check.failures} CHECK(S) FAILED`);
+  process.exit(check.failures === 0 ? 0 : 1);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

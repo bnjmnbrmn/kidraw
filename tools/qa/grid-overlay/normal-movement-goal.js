@@ -7,6 +7,7 @@
  *   5. the dashed goal line, grid, and crosshairs time out together.
  */
 const {chromium} = require('@playwright/test');
+const {movedAndSettled, crosshairsOf, LOW_MEMORY_ARGS} = require('../harness');
 
 function check(label, ok, detail = '') {
   console.log(`${ok ? '✓' : '✗'} ${label}${detail ? ` — ${detail}` : ''}`);
@@ -14,7 +15,8 @@ function check(label, ok, detail = '') {
 }
 
 async function main() {
-  const browser = await chromium.launch({headless: true});
+  const browser = await chromium.launch({headless: true,
+    executablePath: process.env.CHROME_BIN || undefined, args: LOW_MEMORY_ARGS});
   const page = await browser.newPage({viewport: {width: 1400, height: 900}});
   await page.goto('http://localhost:4200', {waitUntil: 'networkidle'});
   await page.waitForSelector('#mainDrawingArea canvas');
@@ -50,9 +52,16 @@ async function main() {
     };
   });
   const near = (a, b) => Math.abs(a - b) <= 3;
+  // A plain movement step: press, then wait for the crosshairs to move and
+  // come to rest rather than guessing at 180ms.
+  const moveRight = async () => {
+    const before = await crosshairsOf(page);
+    await page.keyboard.press('l');
+    await movedAndSettled(page, before);
+  };
 
-  await page.keyboard.press('l');
-  await page.waitForTimeout(180);
+
+  await moveRight();
   const firstStep = await state();
   check('normal movement takes its full configured step through a node boundary',
     near(firstStep.x, 350) && near(firstStep.y, 300) &&
@@ -61,8 +70,7 @@ async function main() {
   check('goal line appears with the movement grid',
     firstStep.goalLine === 1 && firstStep.grid);
 
-  await page.keyboard.press('l');
-  await page.waitForTimeout(180);
+  await moveRight();
   const secondStep = await state();
   check('the next normal step remains the same full distance',
     near(secondStep.x, 400) && near(secondStep.y, 300),
@@ -84,15 +92,13 @@ async function main() {
     c.crosshairsLayer.crosshairs.y = 200;
     c.clearNormalMovementGoal();
   });
-  await page.keyboard.press('l');
-  await page.waitForTimeout(180);
+  await moveRight();
   const nearby = await state();
   check('a nearby off-line node does not pull normal movement off-axis',
     near(nearby.x, 350) && near(nearby.y, 200) &&
       !near(nearby.x, nearby.nodeCenter.x),
     JSON.stringify(nearby));
-  await page.keyboard.press('l');
-  await page.waitForTimeout(180);
+  await moveRight();
   const nearbySecond = await state();
   check('there is no perpendicular return step after passing a nearby item',
     near(nearbySecond.x, 400) && near(nearbySecond.y, 200),
@@ -128,6 +134,7 @@ async function main() {
   check('held movement pauses before its first repeat', near(repeatedX, 350), `x=${repeatedX}`);
   // Leave room for the app's synchronous canvas work between nominal 100 ms
   // repeat timers; slower CI hosts can otherwise stop after only two samples.
+  // Stays: this is the key-repeat cadence being measured.
   await page.waitForTimeout(650);
   await page.keyboard.up('l');
   const repeatTiming = await page.evaluate(() => {
@@ -276,14 +283,14 @@ async function main() {
       JSON.stringify(trace));
   }
 
+  // Stays: the idle fade-out is the subject of the next check.
   await page.waitForTimeout(5200);
   const faded = await state();
   check('goal line, grid, and crosshairs time out together',
     faded.goalLine === 0 && !faded.grid && !faded.crosshairsVisible,
     JSON.stringify(faded));
 
-  await page.keyboard.press('l');
-  await page.waitForTimeout(180);
+  await moveRight();
   const awakened = await state();
   check('the next movement restores the crosshairs',
     awakened.crosshairsVisible, JSON.stringify(awakened));

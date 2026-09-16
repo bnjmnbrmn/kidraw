@@ -5,29 +5,14 @@
  *   Repeating one direction walks outward through that quadrant one item at
  *   a time; changing direction re-origins before starting the new run.
  */
-const {chromium} = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame, overlay, waitForDA, checker} =
+  require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.CHROME_BIN || undefined,
-  });
-  const page = await (await browser.newContext({
-    viewport: {width: 1400, height: 900},
-  })).newPage();
-  page.on('pageerror', error => console.error('[page error]', error.message));
-  await page.goto('http://localhost:4200', {
-    waitUntil: 'networkidle',
-    timeout: 30000,
-  });
-  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
-  await page.waitForTimeout(400);
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1400, height: 900});
 
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -75,7 +60,7 @@ async function main() {
 
   const press = async key => {
     await page.keyboard.press(key);
-    await page.waitForTimeout(220);
+    await afterFrame(page); await settled(page);
   };
   const at = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -194,7 +179,7 @@ async function main() {
     JSON.stringify(released));
 
   await browser.close();
-  if (failures) process.exitCode = 1;
+  if (check.failures) process.exitCode = 1;
 }
 
 main().catch(error => {

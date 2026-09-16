@@ -113,6 +113,19 @@ function movedAndSettled(page, before, {timeout = 8000, stableReads = 2} = {}) {
   })()`, undefined, {timeout, polling: 20});
 }
 
+/**
+ * Let the browser process a dispatched event and paint once. Two frames,
+ * because the handler runs in the first and its render lands in the second.
+ *
+ * Use this before settled() for an action that may legitimately change
+ * nothing — a press that selects rather than moves, say. settled() alone can
+ * return in the gap before the app reacts, and movedAndSettled() would time
+ * out waiting for a movement that was never going to happen.
+ */
+function afterFrame(page) {
+  return page.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+}
+
 /** Wait for the held-key navigation overlay to appear or disappear. */
 function overlay(page, visible, {timeout = 5000} = {}) {
   return page.waitForFunction(
@@ -142,4 +155,4 @@ function checker() {
 }
 
 module.exports = {APP_URL, LOW_MEMORY_ARGS, launch, openApp, settled, movedAndSettled, crosshairsOf,
-  overlay, waitForDA, checker, DA};
+  afterFrame, overlay, waitForDA, checker, DA};
