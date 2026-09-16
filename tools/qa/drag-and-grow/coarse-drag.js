@@ -1,23 +1,14 @@
 /* Repro for da-193 "Fix coarse dragging": drag a node at each tier and zoom,
  * measuring actual node movement. Ben's live log (2026-08-14 11:47) shows
  * three coarse drags at scale 0.567 with zero movement. */
-const {chromium} = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
+  overlay: waitForOverlay, waitForDA, checker} = require('../harness');
 
-let failures = 0;
-function check(name, ok, detail = '') {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.CHROME_BIN || undefined,
-  });
-  const page = await (await browser.newContext({viewport: {width: 1600, height: 1000}})).newPage();
-  page.on('pageerror', error => console.error('[page error]', error.message));
-  await page.goto('http://localhost:4200', {waitUntil: 'networkidle', timeout: 30000});
-  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1600, height: 1000});
 
   const keys = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
@@ -208,8 +199,8 @@ async function main() {
   }
 
   await browser.close();
-  console.log(failures === 0 ? 'ALL PASS' : `${failures} FAILURES`);
-  process.exit(failures === 0 ? 0 : 1);
+  console.log(check.failures === 0 ? 'ALL PASS' : `${check.failures} FAILURES`);
+  process.exit(check.failures === 0 ? 0 : 1);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });

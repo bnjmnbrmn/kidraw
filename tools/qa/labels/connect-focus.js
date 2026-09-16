@@ -8,24 +8,14 @@
  * hold-v + cycle work without navigating back. This drives the whole flow
  * with real keys and checks the direction actually changes.
  */
-const {chromium} = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
+  overlay: waitForOverlay, waitForDA, checker} = require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({
-    headless: true, executablePath: process.env.CHROME_BIN || undefined,
-  });
-  const page = await (await browser.newContext({viewport: {width: 1400, height: 900}})).newPage();
-  page.on('pageerror', e => console.error('[page error]', e.message));
-
-  await page.goto('http://localhost:4200', {waitUntil: 'networkidle', timeout: 30000});
-  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
-  await page.waitForTimeout(400);
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1400, height: 900});
   await page.evaluate(() => {
     const sel = document.querySelector('select.sample-graph-select');
     if (sel) { sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true})); }
@@ -232,9 +222,9 @@ async function main() {
   check('and at the destination end', n.found && n.distToDest < n.distToSrc,
     `dest ${n.distToDest}px vs src ${n.distToSrc}px`);
 
-  console.log(failures ? `\n${failures} FAILURE(S)` : '\nall checks passed');
+  console.log(check.failures ? `\n${check.failures} FAILURE(S)` : '\nall checks passed');
   await browser.close();
-  process.exit(failures ? 1 : 0);
+  process.exit(check.failures ? 1 : 0);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

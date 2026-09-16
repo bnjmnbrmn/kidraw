@@ -9,23 +9,14 @@
  *   - the same augmented navigation can continue through ghosts to a real
  *     node and release creates only the edge.
  */
-const {chromium} = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
+  overlay: waitForOverlay, waitForDA, checker} = require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.CHROME_BIN || undefined,
-  });
-  const page = await (await browser.newContext({viewport: {width: 1600, height: 1000}})).newPage();
-  page.on('pageerror', error => console.error('[page error]', error.message));
-  await page.goto('http://localhost:4200', {waitUntil: 'networkidle', timeout: 30000});
-  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1600, height: 1000});
 
   const resetGraph = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -223,7 +214,7 @@ async function main() {
     JSON.stringify({nodes: current.nodes.length, edges: current.edges, mode: current.mode}));
 
   await browser.close();
-  if (failures) process.exitCode = 1;
+  if (check.failures) process.exitCode = 1;
 }
 
 main().catch(error => {

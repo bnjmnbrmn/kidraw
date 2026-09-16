@@ -10,25 +10,14 @@
  *   3. Bidirectional gets its own distinct flat color.
  *   4. Reverting to directed restores the gradient.
  */
-const { chromium } = require('@playwright/test');
+const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
+  overlay: waitForOverlay, waitForDA, checker} = require('../harness');
 
-let failures = 0;
-function check(name, ok, detail) {
-  console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
-  if (!ok) failures++;
-}
+const check = checker();
 
 async function main() {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.CHROME_BIN || undefined,
-  });
-  const page = await (await browser.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
-  page.on('pageerror', e => console.error('[page error]', e.message));
-
-  await page.goto('http://localhost:4200', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('#mainDrawingArea canvas', { timeout: 15000 });
-  await page.waitForTimeout(400);
+  const browser = await launch();
+  const page = await openApp(browser, {width: 1600, height: 1000});
 
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -111,8 +100,8 @@ async function main() {
     JSON.stringify({dir: p.dir, stops: p.stops.length}));
 
   await browser.close();
-  console.log(failures === 0 ? 'ALL CHECKS PASSED' : `${failures} CHECK(S) FAILED`);
-  process.exit(failures === 0 ? 0 : 1);
+  console.log(check.failures === 0 ? 'ALL CHECKS PASSED' : `${check.failures} CHECK(S) FAILED`);
+  process.exit(check.failures === 0 ? 0 : 1);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
