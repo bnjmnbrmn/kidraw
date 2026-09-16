@@ -13,6 +13,62 @@ KiDraw tab ──wss /agent/ (site auth + token)──▶ kidraw-agent ──ACP
      └──────────── tool_call / tool_result ─────────┘  └──── MCP over HTTP ───────┘
 ```
 
+## Two protocols, and why
+
+The interesting part of this server is that it speaks both halves of the
+agent-tooling stack, in opposite directions.
+
+**ACP (Agent Client Protocol)** — `kidraw-agent` is the *client*; codex-acp is
+the *agent*. ACP is how a host application drives an agent process: start a
+session, send a prompt, stream updates back, arbitrate permission requests,
+change settings, sign in. It runs over stdio to a process in a container.
+
+**MCP (Model Context Protocol)** — `kidraw-agent` is the *server*. MCP is how
+the model gets tools. The twist: the tools are not implemented here. Each
+session gets its own MCP endpoint (`/mcp/<uuid>`, bearer secret), and a call
+arriving there is forwarded over the WebSocket to **the browser tab**, which
+runs it against a live Konva canvas and sends the result back. The model calls
+`focus`, and the view moves on someone's screen.
+
+So a tool call travels: model → codex-acp → MCP over HTTP → `McpBridge` →
+`TabSession.invokeTool` → WebSocket → tab → canvas, and the result comes back
+along the same path. `toolTimeoutMs` bounds the wait, and if the tab goes away
+mid-call the pending call is rejected rather than left hanging.
+
+### One turn, end to end
+
+1. Tab sends `{type: "prompt"}`. `TabSession.prompt` records it in the
+   `Transcript` and builds the text the agent sees — a preamble on the first
+   turn, the detail level when it changes, then any nodes the user attached.
+2. `session/prompt` goes out over ACP. The reply arrives as a stream of
+   `session/update` notifications, relayed to the tab as `agent_text` deltas
+   and `agent_activity` lines.
+3. When the agent calls a canvas tool, codex-acp first asks permission
+   (`session/request_permission`). `permissions.ts` decides, without asking
+   the user — read, search, think, KiDraw's own tools and a narrow set of
+   read-only shell commands are allowed; everything else is refused.
+4. An allowed KiDraw tool goes out over MCP and comes back through the tab.
+5. The turn ends with a `stop`, relayed as `turn_end`.
+
+A failed prompt never produces a `stop`, so the update loop races the prompt's
+own rejection — otherwise the turn would hang forever.
+
+## Reading the source
+
+| File | What it owns |
+|---|---|
+| `server.ts` | WebSocket server; origin, token and protocol checks; new vs resumed sessions; the session cap |
+| `tab-session.ts` | One session: socket lifecycle and resume, the ACP connection, the prompt turn, the tool bridge |
+| `transcript.ts` | What a session would have to say again if its tab came back |
+| `agent-controls.ts` | The model picker and the device-code sign-in, both over stock ACP |
+| `mcp-bridge.ts` | Per-session MCP endpoints; routes a tool call to exactly one tab |
+| `tools.ts` | The canvas tool schemas and the prompt preamble — the agent's whole view of KiDraw |
+| `permissions.ts` | What the agent is allowed to do, decided server-side |
+| `runners.ts` | How an agent process is started: `docker` (sandboxed), `local`, `fake`; per-session Codex homes |
+| `protocol.ts` | The tab ⇄ server wire format. Mirrored in `src/app/agent/agent-protocol.ts`; a test fails if they drift |
+| `config.ts` | Environment configuration and the shared token |
+| `fake-agent.ts` | A scripted ACP agent, so the tests need no model and no credits |
+
 ## Nothing is sent anywhere by default
 
 KiDraw has no built-in endpoint. A user must add an endpoint and token in the

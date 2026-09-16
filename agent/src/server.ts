@@ -1,3 +1,18 @@
+/**
+ * The tab-facing half of kidraw-agent: one WebSocket server, one `TabSession`
+ * per KiDraw tab.
+ *
+ * Everything a tab is trusted with is decided here, before a session exists:
+ * the browser origin must be allowlisted, the first message must be a `hello`
+ * carrying the shared token, and the protocol version must match. Only then
+ * does a session start an agent (`runners.ts`) and get canvas tools
+ * (`mcp-bridge.ts`).
+ *
+ * A session outlives its socket, so `hello` may instead resume one: the tab
+ * presents the session id and secret it was given, and picks the conversation
+ * back up. That is also why the session cap counts sessions waiting for a tab
+ * — each one can still be holding a container.
+ */
 import type { AddressInfo } from 'node:net';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
