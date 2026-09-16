@@ -27,8 +27,7 @@ export const SUITE = [
   { script: 'grid-overlay/quadrant-ring-nav.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/gather-fisheye.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/nav-tiers.js', region: 'grid-overlay', status: 'suite' },
-  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 15, failed: 2, code: 1 },
-    note: 'hover highlight absent at 0.25 zoom (real?); repeat-cadence check is timing-flaky' },
+  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite' },
 
   // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
   { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },
