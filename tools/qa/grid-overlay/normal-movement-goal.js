@@ -195,8 +195,11 @@ async function main() {
       x: (path[0].x + path[1].x) / 2,
       y: (path[0].y + path[1].y) / 2,
     };
+    // Hover the node where it actually renders. The old fixed (160,160) drifted
+    // onto an edge once nodes started auto-sizing to their labels.
+    const nodeCentre = c.getNodeCenterInStageCoordinates(dl.getDANodes()[0]);
     return {
-      node: place({x: 160, y: 160}),
+      node: place(nodeCentre),
       edge: place(edgePoint),
       waypoint: place({x: waypoint.x, y: waypoint.y}),
       label: place({x: label.x, y: label.y}),
@@ -213,18 +216,26 @@ async function main() {
     const dl = c.drawingLayer;
     const node = dl.getDANodes()[0];
     const xh = c.crosshairsLayer.crosshairs;
-    xh.x = node.group.x() + node.NODE_WIDTH / 2;
-    xh.y = node.group.y() + node.NODE_HEIGHT / 2;
+    // Ask for the centre after each rescale rather than deriving it from the
+    // NODE_WIDTH/HEIGHT constants: nodes auto-size, and at 0.25 zoom the
+    // resulting offset used to drop the crosshairs off the node entirely, so
+    // there was no hover trace left to measure.
     const inspectAt = (scale) => {
       dl.scale({x: scale, y: scale});
-      xh.x = dl.x() + (node.group.x() + node.NODE_WIDTH / 2) * scale;
-      xh.y = dl.y() + (node.group.y() + node.NODE_HEIGHT / 2) * scale;
+      const centre = c.getNodeCenterInStageCoordinates(node);
+      xh.x = centre.x;
+      xh.y = centre.y;
       c.refreshCrosshairHoverHighlight();
       const trace = dl.findOne('.crosshair-hover-highlight');
       return {
         dash: trace?.dash(),
         strokeWidth: trace?.strokeWidth(),
         strokeScaleEnabled: trace?.strokeScaleEnabled(),
+        // Kept in the failure output: the open question is whether the hover
+        // highlight *should* appear at 0.25 zoom. The crosshairs sit dead
+        // centre on the node and are visible, and nothing is drawn.
+        nodeRect: node.group.getClientRect(),
+        scale: dl.scaleX(),
       };
     };
     return {

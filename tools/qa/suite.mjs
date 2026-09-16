@@ -22,12 +22,13 @@
  */
 export const SUITE = [
   // ── Move-by-node grid overlay (drawing-area.component.ts ~5342-7417) ──
-  { script: 'grid-overlay/grid-nav.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 7, failed: 3, code: 1 } },
-  { script: 'grid-overlay/quadrant-grid-nav.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 9, failed: 2, code: 1 } },
-  { script: 'grid-overlay/quadrant-ring-nav.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 4, failed: 1, code: 1 } },
+  { script: 'grid-overlay/grid-nav.js', region: 'grid-overlay', status: 'suite' },
+  { script: 'grid-overlay/quadrant-grid-nav.js', region: 'grid-overlay', status: 'suite' },
+  { script: 'grid-overlay/quadrant-ring-nav.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/gather-fisheye.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/nav-tiers.js', region: 'grid-overlay', status: 'suite' },
-  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 13, failed: 3, code: 1 } },
+  { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite', baseline: { passed: 15, failed: 2, code: 1 },
+    note: 'hover highlight absent at 0.25 zoom (real?); repeat-cadence check is timing-flaky' },
 
   // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
   { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },

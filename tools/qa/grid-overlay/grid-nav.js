@@ -45,9 +45,13 @@ async function main() {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.tweens.forEach(x => x.finish()); da.tweens = [];
     da.navGridLast = null; da.navGoalX = null; da.navGoalY = null;
-    const n = da.drawingLayer.getDANodes().find(n => n.id === t); const p = n.group.position();
-    da.crosshairsLayer.crosshairs.x = (p.x + 50) * da.drawingLayer.scaleX() + da.drawingLayer.x();
-    da.crosshairsLayer.crosshairs.y = (p.y + 25) * da.drawingLayer.scaleY() + da.drawingLayer.y();
+    // Nodes auto-size to their label, so the fixture's declared 100x50 is not
+    // what renders. Park on the real center — the same one at() measures
+    // against — or the remembered goal column lands beside every stop.
+    const n = da.drawingLayer.getDANodes().find(n => n.id === t);
+    const center = da.getNodeCenterInStageCoordinates(n);
+    da.crosshairsLayer.crosshairs.x = center.x;
+    da.crosshairsLayer.crosshairs.y = center.y;
   }, id);
   const at = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -66,6 +70,16 @@ async function main() {
   //    movement grid. The synthetic graph has three row and column bands.
   await park('r0c0');
   await page.keyboard.down('g'); await page.waitForTimeout(200);
+  await page.keyboard.press('e'); await page.waitForTimeout(120);
+  const selectedStrategy = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    return da.graphItemNavigationStrategy;
+  });
+  check('g→e explicitly selects the adaptive band-grid strategy',
+    selectedStrategy === 'adaptive-band-grid', String(selectedStrategy));
+  // The spreadsheet overlay belongs to the band-grid strategy, so this has to
+  // come after g→e selects it: the app now starts on adaptive-quadrant-rings,
+  // which draws a different overlay entirely.
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const children = da.nodeGridGroup ? [...da.nodeGridGroup.getChildren()] : [];
@@ -90,13 +104,6 @@ async function main() {
       new Set(overlay.rowArmOpacities).size === 2 &&
       new Set(overlay.columnArmOpacities).size === 2,
     `${overlay.membershipMarkers}/${overlay.visibleStops} markers; rows=${overlay.rowArmOpacities}; columns=${overlay.columnArmOpacities}`);
-  await page.keyboard.press('e'); await page.waitForTimeout(120);
-  const selectedStrategy = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.graphItemNavigationStrategy;
-  });
-  check('g→e explicitly selects the adaptive band-grid strategy',
-    selectedStrategy === 'adaptive-band-grid', String(selectedStrategy));
   await page.keyboard.up('g'); await page.waitForTimeout(120);
 
   // 1. step right along the top row, then down the right column
@@ -130,20 +137,34 @@ async function main() {
       crosshairX: da.crosshairsLayer.crosshairsX(),
     } : null;
   });
+  // The column to return to is wherever c1's stops actually sit, not the
+  // fixture's nominal 650: nodes auto-size to their labels.
+  const columnC1 = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const n = da.drawingLayer.getDANodes().find(n => n.id === 'r0c1');
+    return da.getNodeCenterInStageCoordinates(n).x;
+  });
   check('gap row shows the remembered return column as a dashed guide',
     !!goalGuide && goalGuide.dash.length > 0 &&
-      Math.abs(goalGuide.points[0] - 650) < 3 &&
+      Math.abs(goalGuide.points[0] - columnC1) < 3 &&
       Math.abs(goalGuide.crosshairX - goalGuide.points[0]) > 100,
-    JSON.stringify(goalGuide));
+    `${JSON.stringify(goalGuide)} vs column ${columnC1}`);
   await page.keyboard.press('j'); await page.waitForTimeout(230);
   const reacquired = await at();
   const guideAfterReacquire = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return !!da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+    const guide = da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+    return {
+      present: !!guide,
+      guideX: guide ? guide.points()[0] : null,
+      crosshairX: da.crosshairsLayer.crosshairsX(),
+      goalX: da.navGoalX,
+      axis: da.navGoalAxis,
+    };
   });
   check('return guide clears after its column is re-acquired',
-    reacquired === 'r2c1' && !guideAfterReacquire,
-    `at=${reacquired}, guide=${guideAfterReacquire}`);
+    reacquired === 'r2c1' && !guideAfterReacquire.present,
+    `at=${reacquired}, ${JSON.stringify(guideAfterReacquire)}`);
   await page.keyboard.up('g'); await page.waitForTimeout(120);
 
   // 3. up from the bottom-left returns up the column

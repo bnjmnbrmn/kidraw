@@ -48,8 +48,14 @@ async function main() {
     da.drawingLayer.restoreGraph({nodes, edges: []});
     da.drawingLayer.position({x: 0, y: 0});
     da.drawingLayer.scale({x: 1, y: 1});
-    da.crosshairsLayer.crosshairs.x = 700;
-    da.crosshairsLayer.crosshairs.y = 200;
+    // Start on where the origin node actually renders, not the fixture's
+    // nominal centre: nodes auto-size to their labels, so parking on the
+    // nominal coordinate captures a quadrant origin a few pixels off every
+    // real stop.
+    const originNode = da.drawingLayer.getDANodes().find(n => n.id === 'origin');
+    const originCentre = da.getNodeCenterInStageCoordinates(originNode);
+    da.crosshairsLayer.crosshairs.x = originCentre.x;
+    da.crosshairsLayer.crosshairs.y = originCentre.y;
     da.drawingLayer.batchDraw();
   });
 
@@ -178,12 +184,20 @@ async function main() {
     `${first} → ${second}`);
   const allStartAt = (starts, x, y) => starts.length === 4 &&
     starts.every(([sx, sy]) => Math.abs(sx - x) < 2 && Math.abs(sy - y) < 2);
+  const ghostCentres = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const centre = id => {
+      const n = da.drawingLayer.getDANodes().find(n => n.id === id);
+      return n ? da.getNodeCenterInStageCoordinates(n) : null;
+    };
+    return {east1: centre('east-1'), east2: centre('east-2')};
+  });
   check('only the pronounced ghost diagonals follow the crosshairs',
-    allStartAt(firstFrames.ghost, 800, 200) &&
-      allStartAt(secondFrames.ghost, 940, 220) &&
+    allStartAt(firstFrames.ghost, ghostCentres.east1.x, ghostCentres.east1.y) &&
+      allStartAt(secondFrames.ghost, ghostCentres.east2.x, ghostCentres.east2.y) &&
       firstFrames.activeBoundaries.length === 0 &&
       secondFrames.activeBoundaries.length === 0,
-    JSON.stringify({firstFrames, secondFrames}));
+    JSON.stringify({firstFrames, secondFrames, ghostCentres}));
   check('the active quadrant wash remains above the faint movement grid',
     firstFrames.activeQuadrants.length === 1 &&
       secondFrames.activeQuadrants.length === 1 &&
@@ -223,14 +237,23 @@ async function main() {
   const downAfterTurn = await at();
   const originAfterTurn = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginInStage());
+  // Compare against where those nodes actually render, not the fixture's
+  // nominal centres — they auto-size to their labels.
+  const originCentres = await page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const centre = id => {
+      const n = da.drawingLayer.getDANodes().find(n => n.id === id);
+      return n ? da.getNodeCenterInStageCoordinates(n) : null;
+    };
+    return {origin: centre('origin'), west3: centre('west-3')};
+  });
+  const nearCentre = (a, b) => a && b && Math.abs(a.x - b.x) < 2 && Math.abs(a.y - b.y) < 2;
   check('h h h j re-origins at the third landing, then moves down',
     left1 === 'west-1' && left2 === 'west-2' && left3 === 'west-3' &&
       downAfterTurn === 'turn-down' &&
-      Math.abs(originBeforeTurn.x - 700) < 2 &&
-      Math.abs(originBeforeTurn.y - 200) < 2 &&
-      Math.abs(originAfterTurn.x - 460) < 2 &&
-      Math.abs(originAfterTurn.y - 200) < 2,
-    JSON.stringify({left1, left2, left3, downAfterTurn, originBeforeTurn, originAfterTurn}));
+      nearCentre(originBeforeTurn, originCentres.origin) &&
+      nearCentre(originAfterTurn, originCentres.west3),
+    JSON.stringify({left1, left2, left3, downAfterTurn, originBeforeTurn, originAfterTurn, originCentres}));
 
   const beforePan = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
