@@ -37,7 +37,7 @@ import {
   showsMovementIndicators,
 } from './command-policy';
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
-import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
+import { clamp, lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -60,6 +60,15 @@ import {
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
+
+/** The grid a movement step measures itself against, at the current zoom. */
+interface MovementGrid {
+  scale: number;
+  /** Major grid spacing, in layer units. */
+  major: number;
+  /** Sub-grid spacing, in layer units. */
+  minor: number;
+}
 
 /** One way out of the nav popup's source node. */
 interface NavCandidate {
@@ -2849,6 +2858,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /**
+   * Move the crosshairs, panning the drawing when they reach the margin.
+   *
+   * Three ways to pick the destination — a goal-line step, a grid snap, or raw
+   * pixels — and then one shared landing: clamp to the usable viewport, tween
+   * the crosshairs that far, and give whatever is left over to the layer
+   * beneath them.
+   */
   private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier,
                            showMovementGrid = true) {
     this.finishTweens();
@@ -2856,126 +2873,148 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.showCrosshairs();
     this.crosshairsLayer.batchDraw();
 
-    const currentX = this.crosshairsLayer.crosshairs.x;
-    const currentY = this.crosshairsLayer.crosshairs.y;
+    const current = {
+      x: this.crosshairsLayer.crosshairs.x,
+      y: this.crosshairsLayer.crosshairs.y,
+    };
+    const target = this.crosshairsMoveTarget(current, deltaX, deltaY, tier);
 
-    let targetX: number;
-    let targetY: number;
+    const margin = this.crosshairsEdgeMargin(target);
+    const clamped = {
+      x: clamp(target.x, this.viewMinX() + margin.x, this.viewMaxX() - margin.x),
+      y: clamp(target.y, this.viewMinY() + margin.y, this.viewMaxY() - margin.y),
+    };
+    // What the crosshairs could not travel, the drawing travels instead.
+    const overflow = {x: target.x - clamped.x, y: target.y - clamped.y};
 
-    if (tier) {
-      // Grid-snapped movement: deltaX/Y are direction signs (-1, 0, +1)
-      this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
-      this.gridInitialized = true;
-
-      const scale = this.drawingLayer.scaleX();
-      const majorSpacing = this.drawingLayer.getGridSpacing();
-      const minorSpacing = this.drawingLayer.getSubGridSpacing();
-      const currentDlX = (currentX - this.drawingLayer.x()) / scale;
-      const currentDlY = (currentY - this.drawingLayer.y()) / scale;
-      const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
-
-      // Normal movement follows a visible goal line in fixed, configured
-      // steps. Item-aware travel belongs to Move by Node and Move by Link.
-      // Fine/coarse retain direct grid movement and start a fresh goal on the
-      // next normal key.
-      if (tier === 'normal' && axis) {
-        const current = {x: currentDlX, y: currentDlY};
-        if (!this.normalMovementGoal || this.normalMovementGoal.axis !== axis) {
-          this.normalMovementGoal = startNormalMovementGoal(axis, current);
-        }
-        const sign = (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1;
-        const stepDistance = this.movementDistanceForTier(
-          'normal', minorSpacing, majorSpacing,
-        );
-        const step = nextNormalMovementStep(
-          this.normalMovementGoal,
-          sign,
-          stepDistance,
-        );
-        this.normalMovementGoal = step.state;
-        this.redrawNormalMovementGoalLine();
-        this.updateCrosshairsProbeShape(
-          tier, minorSpacing, majorSpacing, stepDistance, scale,
-        );
-        targetX = step.target.x * scale + this.drawingLayer.x();
-        targetY = step.target.y * scale + this.drawingLayer.y();
-      } else {
-        this.clearNormalMovementGoal();
-        const spacing = this.movementDistanceForTier(tier, minorSpacing, majorSpacing);
-        this.updateCrosshairsProbeShape(
-          tier, minorSpacing, majorSpacing, spacing, scale,
-        );
-        const snappedDlX = deltaX !== 0
-          ? Math.round(currentDlX / spacing) * spacing + spacing * Math.sign(deltaX)
-          : currentDlX;
-        const snappedDlY = deltaY !== 0
-          ? Math.round(currentDlY / spacing) * spacing + spacing * Math.sign(deltaY)
-          : currentDlY;
-        targetX = snappedDlX * scale + this.drawingLayer.x();
-        targetY = snappedDlY * scale + this.drawingLayer.y();
-      }
-    } else {
-      // Raw pixel movement (focusNode, moveByNode, zoom, etc.)
-      this.clearNormalMovementGoal();
-      targetX = currentX + deltaX;
-      targetY = currentY + deltaY;
+    if (clamped.x !== current.x || clamped.y !== current.y) {
+      this.tweenCrosshairsTo(clamped);
     }
-
-    const margin = this.crosshairsEdgeMargin({x: targetX, y: targetY});
-    const minX = this.viewMinX() + margin.x;
-    const maxX = this.viewMaxX() - margin.x;
-    const minY = this.viewMinY() + margin.y;
-    const maxY = this.viewMaxY() - margin.y;
-
-    const clampedX = Math.min(Math.max(targetX, minX), maxX);
-    const clampedY = Math.min(Math.max(targetY, minY), maxY);
-
-    const overflowX = targetX - clampedX;
-    const overflowY = targetY - clampedY;
-
-    if (clampedX !== currentX || clampedY !== currentY) {
-      this.tweens.push(new Konva.Tween({
-        node: this.crosshairsLayer.crosshairs.konvaGroup,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: clampedX,
-        y: clampedY,
-        easing: Konva.Easings.Linear,
-        onFinish: () => {
-          // Konva can finish a short tween one frame shy of its requested
-          // endpoint. Snapping must be exact or the following goal-line step
-          // slowly accumulates screen-pixel drift.
-          this.crosshairsLayer.crosshairs.konvaGroup.position({
-            x: clampedX,
-            y: clampedY,
-          });
-          this.checkResizeHandleProximity();
-          if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-          this.scheduleCrosshairHoverRefresh(20);
-        },
-      }).play());
-    }
-
-    if (overflowX !== 0 || overflowY !== 0) {
-      const layerTarget = {
-        x: this.drawingLayer.x() - overflowX,
-        y: this.drawingLayer.y() - overflowY,
-      };
-      this.tweens.push(new Konva.Tween({
-        node: this.drawingLayer,
-        duration: this.CROSSHAIR_MOVEMENT_DURATION,
-        x: layerTarget.x,
-        y: layerTarget.y,
-        easing: Konva.Easings.Linear,
-        onFinish: () => {
-          this.drawingLayer.position(layerTarget);
-          if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-          this.scheduleCrosshairHoverRefresh(20);
-        },
-      }).play());
+    if (overflow.x !== 0 || overflow.y !== 0) {
+      this.panLayerByOverflow(overflow);
     }
 
     // Show grid and indicators on movement, then fade after 5s
     if (showMovementGrid) this.showMovementIndicators();
+  }
+
+  /** Where one movement press lands the crosshairs, in stage pixels. */
+  private crosshairsMoveTarget(
+    current: {x: number; y: number},
+    deltaX: number,
+    deltaY: number,
+    tier?: GridTier,
+  ): {x: number; y: number} {
+    if (!tier) {
+      // Raw pixel movement (focusNode, moveByNode, zoom, etc.)
+      this.clearNormalMovementGoal();
+      return {x: current.x + deltaX, y: current.y + deltaY};
+    }
+
+    // Grid-snapped movement: deltaX/Y are direction signs (-1, 0, +1)
+    this.drawingLayer.rebuildGrid(this.stage.width(), this.stage.height());
+    this.gridInitialized = true;
+
+    const grid: MovementGrid = {
+      scale: this.drawingLayer.scaleX(),
+      major: this.drawingLayer.getGridSpacing(),
+      minor: this.drawingLayer.getSubGridSpacing(),
+    };
+    const inLayer = {
+      x: (current.x - this.drawingLayer.x()) / grid.scale,
+      y: (current.y - this.drawingLayer.y()) / grid.scale,
+    };
+    const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
+
+    const landing = tier === 'normal' && axis
+      ? this.goalLineStep(axis, (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1, inLayer, grid)
+      : this.gridSnapStep(tier, deltaX, deltaY, inLayer, grid);
+
+    return {
+      x: landing.x * grid.scale + this.drawingLayer.x(),
+      y: landing.y * grid.scale + this.drawingLayer.y(),
+    };
+  }
+
+  /** Normal movement follows a visible goal line in fixed, configured steps.
+   *  Item-aware travel belongs to Move by Node and Move by Link. */
+  private goalLineStep(
+    axis: 'x' | 'y',
+    sign: -1 | 1,
+    inLayer: {x: number; y: number},
+    grid: MovementGrid,
+  ): {x: number; y: number} {
+    if (!this.normalMovementGoal || this.normalMovementGoal.axis !== axis) {
+      this.normalMovementGoal = startNormalMovementGoal(axis, inLayer);
+    }
+    const stepDistance = this.movementDistanceForTier('normal', grid.minor, grid.major);
+    const step = nextNormalMovementStep(this.normalMovementGoal, sign, stepDistance);
+    this.normalMovementGoal = step.state;
+    this.redrawNormalMovementGoalLine();
+    this.updateCrosshairsProbeShape('normal', grid.minor, grid.major, stepDistance, grid.scale);
+    return step.target;
+  }
+
+  /** Fine and coarse keep direct grid movement: snap to the nearest line, then
+   *  step one cell off it. The next normal key starts a fresh goal. */
+  private gridSnapStep(
+    tier: GridTier,
+    deltaX: number,
+    deltaY: number,
+    inLayer: {x: number; y: number},
+    grid: MovementGrid,
+  ): {x: number; y: number} {
+    this.clearNormalMovementGoal();
+    const spacing = this.movementDistanceForTier(tier, grid.minor, grid.major);
+    this.updateCrosshairsProbeShape(tier, grid.minor, grid.major, spacing, grid.scale);
+    const step = (position: number, delta: number) => delta === 0
+      ? position
+      : Math.round(position / spacing) * spacing + spacing * Math.sign(delta);
+    return {x: step(inLayer.x, deltaX), y: step(inLayer.y, deltaY)};
+  }
+
+  private tweenCrosshairsTo(to: {x: number; y: number}): void {
+    this.tweens.push(new Konva.Tween({
+      node: this.crosshairsLayer.crosshairs.konvaGroup,
+      duration: this.CROSSHAIR_MOVEMENT_DURATION,
+      x: to.x,
+      y: to.y,
+      easing: Konva.Easings.Linear,
+      onFinish: () => {
+        // Konva can finish a short tween one frame shy of its requested
+        // endpoint. Snapping must be exact or the following goal-line step
+        // slowly accumulates screen-pixel drift.
+        this.crosshairsLayer.crosshairs.konvaGroup.position(to);
+        this.checkResizeHandleProximity();
+        this.afterMovementTween();
+      },
+    }).play());
+  }
+
+  /** Slide the drawing the distance the crosshairs could not travel, so the
+   *  gesture continues past the edge of the viewport. */
+  private panLayerByOverflow(overflow: {x: number; y: number}): void {
+    const to = {
+      x: this.drawingLayer.x() - overflow.x,
+      y: this.drawingLayer.y() - overflow.y,
+    };
+    this.tweens.push(new Konva.Tween({
+      node: this.drawingLayer,
+      duration: this.CROSSHAIR_MOVEMENT_DURATION,
+      x: to.x,
+      y: to.y,
+      easing: Konva.Easings.Linear,
+      onFinish: () => {
+        this.drawingLayer.position(to);
+        this.afterMovementTween();
+      },
+    }).play());
+  }
+
+  /** Whatever moved, the overlay that tracks it has to catch up. */
+  private afterMovementTween(): void {
+    if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
+    this.scheduleCrosshairHoverRefresh(20);
   }
 
   /** Draw the current goal in drawing-layer space, just above the ordinary
