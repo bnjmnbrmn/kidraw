@@ -36,6 +36,7 @@ import {
   mutatesGraph,
   showsMovementIndicators,
 } from './command-policy';
+import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -255,56 +256,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public CROSSHAIRS_MOVEMENT_DISTANCE = 50; // one grid cell
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
-  /** Placement used fixed slots — 300 across, 150 down — which read as a
-   *  chasm next to a small box and as a squeeze next to a wide one. The gap
-   *  is now a fraction of the box you are growing from, so a graph of 60px
-   *  nodes places them 60px apart and a graph of big ones spreads out
-   *  (2026-08-29). Horizontal gaps run wider because labels run across.
-   *  Bounds keep tiny boxes from touching and huge ones from throwing the
-   *  new node off screen. */
-  private static readonly QUICK_ADD_GAP_H_RATIO = 0.5;
-  /** Vertical gaps are much tighter than horizontal ones (da-559): a stack
-   *  reads as a stack when the boxes nearly touch, while the same gap
-   *  sideways reads as two things that missed each other. Cut ~60% from the
-   *  first pass at this. */
-  private static readonly QUICK_ADD_GAP_V_RATIO = 0.14;
-  private static readonly QUICK_ADD_GAP_MIN = 24;
-  private static readonly QUICK_ADD_GAP_MIN_V = 10;
-  private static readonly QUICK_ADD_GAP_MAX_H = 120;
-  private static readonly QUICK_ADD_GAP_MAX_V = 90;
-  /** Fallback box when there is no anchor to measure — DANode's default. */
-  private static readonly QUICK_ADD_FALLBACK_BOX = 120;
-
-  /** Centre-to-centre distance for a node placed beside `anchor`: the box it
-   *  has to clear, plus a gap proportional to that box. */
-  /** The cell of the held-Add lattice: the placement slot on each axis, rounded
-   *  up to a whole major grid cell so every candidate spot sits a whole number
-   *  of coarse squares from the anchor. */
-  private growLatticeStep(anchor: DANode | null = this.growAnchor): {x: number; y: number} {
-    const cell = Math.max(1, this.drawingLayer.getGridSpacing());
-    const onGrid = (slot: number) => Math.max(cell, Math.ceil(slot / cell) * cell);
-    return {
-      x: onGrid(this.quickAddSlot(false, anchor)),
-      y: onGrid(this.quickAddSlot(true, anchor)),
-    };
-  }
-
-  private quickAddSlot(vertical: boolean, anchor: DANode | null = this.growAnchor): number {
-    const D = DrawingAreaComponent;
-    const fresh = this.drawingLayer?.newNodeDefaultSize?.()
-      ?? {w: D.QUICK_ADD_FALLBACK_BOX, h: D.QUICK_ADD_FALLBACK_BOX};
-    const anchorBox = vertical
-      ? (anchor?.NODE_HEIGHT ?? D.QUICK_ADD_FALLBACK_BOX)
-      : (anchor?.NODE_WIDTH ?? D.QUICK_ADD_FALLBACK_BOX);
-    // Half of each box, not one box twice: growing a small node next to the
-    // default-sized one that is about to land there used to overlap them.
-    const box = (anchorBox + (vertical ? fresh.h : fresh.w)) / 2;
-    const ratio = vertical ? D.QUICK_ADD_GAP_V_RATIO : D.QUICK_ADD_GAP_H_RATIO;
-    const maxGap = vertical ? D.QUICK_ADD_GAP_MAX_V : D.QUICK_ADD_GAP_MAX_H;
-    const minGap = vertical ? D.QUICK_ADD_GAP_MIN_V : D.QUICK_ADD_GAP_MIN;
-    const gap = Math.min(maxGap, Math.max(minGap, box * ratio));
-    return Math.round(box + gap);
-  }
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
   public readonly STEERING_SPEED_STEP = 10;
@@ -5713,7 +5664,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growShape: NodeShape | undefined = undefined;
   /** Ghost position in drawing-layer coordinates (node center). */
   private growPlacePos: {x: number; y: number} | null = null;
-  /** First directional press = rough slot throw; later presses = grid steps. */
+  /** First directional press throws the node a full spacing in that
+   *  direction; later presses step it by the grid. */
   private growPlacedRough = false;
   private growMods = new Set<string>();
   private growGhost: Konva.Group | null = null;
@@ -6210,10 +6162,34 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-type-popup'});
   }
 
+  /** The cell of the held-Add lattice: the placement spacing on each axis,
+   *  rounded up to a whole major grid cell so every candidate spot sits a whole
+   *  number of coarse squares from the anchor. */
+  private growLatticeStep(anchor: DANode | null = this.growAnchor): {x: number; y: number} {
+    const cell = Math.max(1, this.drawingLayer.getGridSpacing());
+    const onGrid = (spacing: number) => Math.max(cell, Math.ceil(spacing / cell) * cell);
+    return {
+      x: onGrid(this.quickAddSpacingFrom('x', anchor)),
+      y: onGrid(this.quickAddSpacingFrom('y', anchor)),
+    };
+  }
+
+  /** Centre-to-centre distance for a node placed beside `anchor` along `axis`.
+   *  Measures the two boxes involved and hands them to the spacing rule. */
+  private quickAddSpacingFrom(axis: PlacementAxis, anchor: DANode | null = this.growAnchor): number {
+    const fresh = this.drawingLayer?.newNodeDefaultSize?.()
+      ?? {w: DEFAULT_BOX_SIZE, h: DEFAULT_BOX_SIZE};
+    const anchorBox = {
+      w: anchor?.NODE_WIDTH ?? DEFAULT_BOX_SIZE,
+      h: anchor?.NODE_HEIGHT ?? DEFAULT_BOX_SIZE,
+    };
+    return quickAddSpacing(axis, anchorBox, fresh);
+  }
+
   /** Type picked: enter the placement sub-mode — ghost node of that shape
    *  at the right-of-anchor default (or at the crosshairs on empty canvas);
-   *  hjkl places (first press = rough slot
-   *  throw, then grid steps, coarse/fine tier keys held). Release of the
+   *  hjkl places (first press = rough throw of one full spacing,
+   *  then grid steps, coarse/fine tier keys held). Release of the
    *  still-held add key commits; Enter commits the sticky variant. */
   private enterGrowPlacement(shapeId: string): void {
     this.navPopupOpen = false;
@@ -6225,15 +6201,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growPlacedRough = false;
     const c = this.growOrigin!;
     this.growPlacePos = this.growAnchor
-      ? {x: c.x + this.quickAddSlot(false), y: c.y}
+      ? {x: c.x + this.quickAddSpacingFrom('x'), y: c.y}
       : {...c};
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
     this.redrawGrowGhost();
   }
 
-  /** Placement steering. Rough first (slot throw in the pressed direction,
-   *  replacing the below default), grid steps after; `s`/`d` tier chords
-   *  scale the step (coarse = a full slot, fine = a tenth-grid). */
+  /** Placement steering. Rough first (a full spacing thrown in the pressed
+   *  direction, replacing the below default), grid steps after; `s`/`d` tier
+   *  chords scale the step (coarse = a full spacing, fine = a tenth-grid). */
   private growPlaceMove(direction: 'left' | 'right' | 'up' | 'down'): void {
     const k = this.growKeys!;
     const c = this.growOrigin!;
@@ -6241,13 +6217,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
     if (!this.growPlacedRough) {
       this.growPlacedRough = true;
-      const slot = this.quickAddSlot(dy !== 0);
-      this.growPlacePos = {x: c.x + dx * slot, y: c.y + dy * slot};
+      const throwDistance = this.quickAddSpacingFrom(dy !== 0 ? 'y' : 'x');
+      this.growPlacePos = {x: c.x + dx * throwDistance, y: c.y + dy * throwDistance};
     } else {
-      // A coarse step is "one more slot in this direction", so it follows the
-      // same axis split as the rough throw above.
+      // A coarse step is "one more node over in this direction", so it
+      // follows the same axis split as the rough throw above.
       const step = this.growMods.has(k.coarse)
-          ? this.quickAddSlot(dy !== 0)
+        ? this.quickAddSpacingFrom(dy !== 0 ? 'y' : 'x')
         : this.growMods.has(k.fine) ? 10 : 50;
       this.growPlacePos = {
         x: this.growPlacePos!.x + dx * step,
