@@ -257,6 +257,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly TEXT_SIZE_STEP = 2;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
   public readonly RESIZE_REFLOW_GAP = 16;
+  /** Screen-space margin the crosshairs keep from the viewport edge during a
+   *  node drag; reaching it pans the view instead of letting them leave. */
+  private static readonly DRAG_PAN_MARGIN = 60;
   /** Preserve closer views, but never label a new node below natural scale. */
   private static readonly NODE_EDIT_MIN_ZOOM = 1;
   /** Where the camera goes when a label is opened for editing: close enough
@@ -5188,89 +5191,114 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  /**
+   * Move whatever is selected one step along `axis`.
+   *
+   * Four different drags share this key: the selection decides which. Labels
+   * slide along their edge, waypoints nudge pointwise, nodes tween and pan the
+   * view with them, and an edge on its own first grows a waypoint to drag.
+   */
   private dragSelected(axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
 
-    // If only labels are selected, movement remains screen-directional even
-    // when the owning edge is reversed or nearly perpendicular to the key.
-    const selectedLabels = this.getSelectedLabels();
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    let selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
+    const labels = this.getSelectedLabels();
+    const nodes = this.drawingLayer.getSelectedDANodes();
+    const edges = this.drawingLayer.getSelectedDAEdges();
+    let waypoints = this.drawingLayer.getSelectedDAWaypoints();
 
-    // Holding v over an edge selects it. The first movement key turns the
-    // point under the crosshairs into a waypoint and immediately applies
-    // that same drag step, so the gesture is v+hjkl rather than v, add, v.
-    // Restrict the insertion to the selected edge under the crosshairs:
-    // crossing/parallel edges must not steal the waypoint.
-    if (selectedEdges.length > 0 && selectedLabels.length === 0 &&
-        selectedNodes.length === 0 && selectedWaypoints.length === 0) {
-      const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()
-        .filter(edge => edge.isSelected)
-        .reduce<DAEdge | null>(
-          (top, edge) => !top || edge.zIndex() > top.zIndex() ? edge : top,
-          null,
-        );
-      const edge = edgeUnderCrosshairs ?? selectedEdges[0];
-      const snap = this.findSnapOnEdge(edge, this.crosshairsInLayerCoords());
-      if (snap) {
-        this.drawingLayer.unselectAll();
-        this.unselectAllLabels();
-        const waypoint = edge.insertWaypointAt(snap.point, snap.segmentIndex);
-        waypoint.isSelected = true;
-        selectedWaypoints = [waypoint];
-      }
+    if (edges.length > 0 && labels.length === 0 &&
+        nodes.length === 0 && waypoints.length === 0) {
+      waypoints = this.growWaypointToDrag(edges);
     }
 
-    if (selectedLabels.length > 0 && selectedNodes.length === 0 && selectedWaypoints.length === 0) {
-      const effectiveTier = tier ?? 'normal';
-      selectedLabels.forEach(label => {
-        const edge = this.getEdgeForLabel(label);
-        if (!edge) return;
-        const distance = effectiveTier === 'fine'
-          ? this.drawingLayer.getSubGridSpacing()
-          : this.drawingLayer.getGridSpacing();
-        edge.dragLabelToward(
-          label,
-          axis === 'x' ? {x: sign, y: 0} : {x: 0, y: sign},
-          distance,
-          effectiveTier === 'coarse',
-        );
-      });
-      this.drawingLayer.batchDraw();
+    if (labels.length > 0 && nodes.length === 0 && waypoints.length === 0) {
+      this.dragLabelsAlongEdges(labels, axis, sign, tier);
       return;
     }
-
-    // Waypoint-only drag: nudge each selected waypoint by one grid step.
-    // No tween/crosshair-pan; waypoint moves are pointwise and snappy.
-    if (selectedWaypoints.length > 0 && selectedNodes.length === 0) {
-      const majorSpacing = this.drawingLayer.getGridSpacing();
-      const minorSpacing = this.drawingLayer.getSubGridSpacing();
-      const effectiveTier = tier ?? 'normal';
-      const gridSpacing = effectiveTier === 'fine' ? minorSpacing : majorSpacing;
-      const steps = effectiveTier === 'coarse' ? 10 : 1;
-      const delta = sign * steps * gridSpacing;
-      const dx = axis === 'x' ? delta : 0;
-      const dy = axis === 'y' ? delta : 0;
-      selectedWaypoints.forEach(wp => {
-        const edge = this.drawingLayer.findEdgeForWaypoint(wp);
-        edge?.moveWaypoint(wp, dx, dy);
-      });
-      this.drawingLayer.batchDraw();
+    if (waypoints.length > 0 && nodes.length === 0) {
+      this.dragWaypoints(waypoints, axis, sign, tier);
       return;
     }
-    const dragEdgeMargin = 60;
+    this.dragNodesAndFollow(nodes, axis, sign, tier);
+  }
+
+  /** One press of a drag key: the grid spacing it moves by, and how many of
+   *  those cells it covers. Fine drops to the sub-grid, coarse covers ten. */
+  private dragStep(tier?: GridTier): {spacing: number; steps: number} {
     const effectiveTier = tier ?? 'normal';
+    return {
+      spacing: effectiveTier === 'fine'
+        ? this.drawingLayer.getSubGridSpacing()
+        : this.drawingLayer.getGridSpacing(),
+      steps: effectiveTier === 'coarse' ? 10 : 1,
+    };
+  }
 
-    // Collect all connected edges to move
-    const edgesToMove = new Set<DAEdge>();
-    selectedNodes.forEach(node => {
-      node.connectedEdges.forEach(edge => edgesToMove.add(edge));
+  /**
+   * Holding v over an edge selects it. The first movement key turns the point
+   * under the crosshairs into a waypoint and immediately applies that same drag
+   * step, so the gesture is v+hjkl rather than v, add, v.
+   *
+   * The insertion is restricted to the selected edge under the crosshairs:
+   * crossing or parallel edges must not steal the waypoint. Returns the new
+   * waypoint selection, or none if the crosshairs found no point to snap to.
+   */
+  private growWaypointToDrag(selectedEdges: DAEdge[]): DAWaypoint[] {
+    const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()
+      .filter(edge => edge.isSelected)
+      .reduce<DAEdge | null>(
+        (top, edge) => !top || edge.zIndex() > top.zIndex() ? edge : top,
+        null,
+      );
+    const edge = edgeUnderCrosshairs ?? selectedEdges[0];
+    const snap = this.findSnapOnEdge(edge, this.crosshairsInLayerCoords());
+    if (!snap) return [];
+
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    const waypoint = edge.insertWaypointAt(snap.point, snap.segmentIndex);
+    waypoint.isSelected = true;
+    return [waypoint];
+  }
+
+  /** Labels ride their own edge, so movement stays screen-directional even
+   *  when that edge is reversed or nearly perpendicular to the key. */
+  private dragLabelsAlongEdges(labels: DALabel[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+    const {spacing} = this.dragStep(tier);
+    const direction = axis === 'x' ? {x: sign, y: 0} : {x: 0, y: sign};
+    labels.forEach(label => {
+      const edge = this.getEdgeForLabel(label);
+      edge?.dragLabelToward(label, direction, spacing, tier === 'coarse');
     });
+    this.drawingLayer.batchDraw();
+  }
 
-    // Store initial crosshairs position
+  /** Waypoint moves are pointwise and snappy — no tween, no crosshair pan. */
+  private dragWaypoints(waypoints: DAWaypoint[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+    const {spacing, steps} = this.dragStep(tier);
+    const delta = sign * steps * spacing;
+    const dx = axis === 'x' ? delta : 0;
+    const dy = axis === 'y' ? delta : 0;
+    waypoints.forEach(wp => {
+      const edge = this.drawingLayer.findEdgeForWaypoint(wp);
+      edge?.moveWaypoint(wp, dx, dy);
+    });
+    this.drawingLayer.batchDraw();
+  }
+
+  /**
+   * Tween the selected nodes to their next grid cell, carrying their edges and
+   * the crosshairs along, and panning the view once the crosshairs reach the
+   * margin. Called with no nodes selected, this walks the crosshairs alone.
+   */
+  private dragNodesAndFollow(nodes: DANode[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+    const {spacing, steps} = this.dragStep(tier);
+
+    const edgesToMove = new Set<DAEdge>();
+    nodes.forEach(node => node.connectedEdges.forEach(edge => edgesToMove.add(edge)));
+
     const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
     const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
 
@@ -5282,49 +5310,42 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dragViewHi = axis === 'x' ? this.viewMaxX() : this.viewMaxY();
     const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
     const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
-
-    // Snap target positions to grid based on tier
-    const majorSpacing = this.drawingLayer.getGridSpacing();
-    const minorSpacing = this.drawingLayer.getSubGridSpacing();
-    const gridSpacing = effectiveTier === 'fine' ? minorSpacing : majorSpacing;
-    const steps = effectiveTier === 'coarse' ? 10 : 1;
-    const snapToGrid = (pos: number) => Math.round(pos / gridSpacing) * gridSpacing;
     const getNodeCenterOffset = (node: DANode) =>
       axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;
 
-    // Store initial positions for all nodes
-    const initialNodePositions = selectedNodes.map(node => {
+    // Each node's centre snaps to the grid, then advances one step from there.
+    const snapToGrid = (pos: number) => Math.round(pos / spacing) * spacing;
+    const nodeTargets = nodes.map(node => {
       const initial = getNodePos(node);
       const centerOffset = getNodeCenterOffset(node);
-      const currentCenter = initial + centerOffset;
-      const snappedCenter = snapToGrid(currentCenter) + sign * steps * gridSpacing;
-      return { node, initial, target: snappedCenter - centerOffset };
+      const snappedCenter = snapToGrid(initial + centerOffset) + sign * steps * spacing;
+      return {node, initial, target: snappedCenter - centerOffset};
     });
 
-    // Compute effective distance for crosshairs (use first node, else nominal step)
-    const snappedDistance = initialNodePositions.length > 0
-      ? Math.abs(initialNodePositions[0].target - initialNodePositions[0].initial)
-      : steps * gridSpacing;
+    // The crosshairs travel as far as the first node does, so they stay over
+    // the thing being dragged. With nothing selected, they take a nominal step.
+    const snappedDistance = nodeTargets.length > 0
+      ? Math.abs(nodeTargets[0].target - nodeTargets[0].initial)
+      : steps * spacing;
 
     const duration = this.TWEEN_DURATION * 1000;
     const startTime = Date.now();
     let prevOverflow = 0;
 
     const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+      const progress = Math.min((Date.now() - startTime) / duration, 1);
 
-      initialNodePositions.forEach(({ node, initial, target }) => {
+      nodeTargets.forEach(({node, initial, target}) => {
         setNodePos(node, initial + (target - initial) * progress);
       });
       edgesToMove.forEach(edge => this.updateEdgePoints(edge));
 
-      // Update crosshairs, panning the drawing layer if crosshairs hit the edge margin
+      // Push the view instead of letting the crosshairs leave the margin.
       const scale = this.drawingLayer.scaleX();
       const targetCrosshairs = initialCrosshairs + sign * snappedDistance * scale * progress;
       const clamped = Math.min(
-        Math.max(targetCrosshairs, dragViewLo + dragEdgeMargin),
-        dragViewHi - dragEdgeMargin,
+        Math.max(targetCrosshairs, dragViewLo + DrawingAreaComponent.DRAG_PAN_MARGIN),
+        dragViewHi - DrawingAreaComponent.DRAG_PAN_MARGIN,
       );
       const overflow = targetCrosshairs - clamped;
       this.crosshairsLayer.crosshairs.x = axis === 'x' ? clamped : initialCrosshairsX;
@@ -5341,7 +5362,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.currentDragRafId = null;
         // Node(s) landed on their new grid cell: re-route their edges around
         // the changed geometry (same pipeline as adding a new edge).
-        this.rerouteIncidentEdges(selectedNodes);
+        this.rerouteIncidentEdges(nodes);
       }
     };
 
