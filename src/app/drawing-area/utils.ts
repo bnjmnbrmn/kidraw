@@ -259,3 +259,22 @@ export function lineIntersectsGroupBoundingRect(line: Konva.Line, group: Konva.G
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
+
+/**
+ * The item drawn last — the one the user means when several overlap.
+ *
+ * Null for an empty list, so callers need no separate length check. Ties keep
+ * the earlier item, matching the order the layer hands them back.
+ */
+export function topmost<T extends {zIndex(): number}>(items: readonly T[]): T | null {
+  return items.reduce<T | null>(
+    (top, item) => top === null || item.zIndex() > top.zIndex() ? item : top,
+    null,
+  );
+}
+
+/** `topmost` as a selection: the top item on its own, or nothing at all. */
+export function topmostSelection<T extends {zIndex(): number}>(items: readonly T[]): T[] {
+  const top = topmost(items);
+  return top ? [top] : [];
+}

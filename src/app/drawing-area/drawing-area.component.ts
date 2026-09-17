@@ -37,7 +37,7 @@ import {
   showsMovementIndicators,
 } from './command-policy';
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
-import { clamp, lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
+import { clamp, lineSegmentIntersectsRect, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -1017,17 +1017,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const wp = this.getWaypointUnderCrosshairs();
     if (wp) return wp.isSelected;
 
-    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
-    if (daNodesContainingCrosshairs.length > 0) {
-      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
-      return topNode.isSelected;
-    }
+    const topNode = topmost(this.getDANodesContainingCrosshairs());
+    if (topNode) return topNode.isSelected;
 
-    const daEdgesContainingCrosshairs = this.getDAEdgesContainingCrosshairs();
-    if (daEdgesContainingCrosshairs.length > 0) {
-      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
-      return topEdge.isSelected;
-    }
+    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
+    if (topEdge) return topEdge.isSelected;
 
     return false;
   }
@@ -1046,19 +1040,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-
-    if (daNodesContainingCrosshairs.length > 0) {
-      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+    const topNode = topmost(this.getDANodesContainingCrosshairs());
+    if (topNode) {
       topNode.isSelected = true;
       return;
     }
 
-    const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
-    if (daEdgesContainingCrosshairs.length > 0) {
-      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
+    if (topEdge) {
       topEdge.isSelected = true;
-      return;
     }
   }
 
@@ -1266,8 +1256,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const selected = this.drawingLayer.getSelectedDANodes();
     const hovered = this.getDANodesContainingCrosshairs();
-    const targets = (selected.length > 0 ? selected
-        : hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [])
+    const targets = (selected.length > 0 ? selected : topmostSelection(hovered))
       .filter(n => n.nodeShape !== 'junction' && n.nodeShape !== 'invisible');
     if (targets.length === 0) {
       this.emitStatus('⚠ Select or hover a node to set its status');
@@ -2116,7 +2105,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const selected = this.drawingLayer.getSelectedDANodes();
     const hovered = selected.length > 0 ? selected : this.getDANodesContainingCrosshairs();
-    const targets = hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+    const targets = topmostSelection(hovered);
     targets.forEach(n => { n.pinned = !n.pinned; });
     this.drawingLayer.batchDraw();
   }
@@ -2639,10 +2628,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private setTextOverflowMode(mode: TextOverflowMode) {
     const selected = this.drawingLayer.getSelectedDANodes().filter(n => n.nodeShape !== 'junction');
-    const targets = selected.length > 0 ? selected : (() => {
-      const hovered = this.getDANodesContainingCrosshairs().filter(n => n.nodeShape !== 'junction');
-      return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
-    })();
+    const targets = selected.length > 0 ? selected : topmostSelection(
+      this.getDANodesContainingCrosshairs().filter(n => n.nodeShape !== 'junction'));
 
     const resized: DANode[] = [];
     targets.forEach(node => {
@@ -2659,8 +2646,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private nodeShapeTargets(): DANode[] {
     const selected = this.drawingLayer.getSelectedDANodes();
     if (selected.length > 0) return selected;
-    const hovered = this.getDANodesContainingCrosshairs();
-    return hovered.length > 0 ? [hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)] : [];
+    return topmostSelection(this.getDANodesContainingCrosshairs());
   }
 
   /** Flip between the two shapes that carry a label, leaving diamond and the
@@ -3137,10 +3123,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           radius: waypoint.RADIUS + pad,
         });
       } else {
-        const nodes = this.getDANodesContainingCrosshairs();
-        if (nodes.length > 0) {
-          const node = nodes.reduce((a, b) =>
-            a.zIndex() > b.zIndex() ? a : b);
+        const node = topmost(this.getDANodesContainingCrosshairs());
+        if (node) {
           targetNode = node;
           targetKind = 'node';
           targetId = node.id;
@@ -3168,10 +3152,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
               cornerRadius: 7 / scale,
             });
         } else {
-          const edges = this.getDAEdgesContainingCrosshairs();
-          if (edges.length > 0) {
-            const edge = edges.reduce((a, b) =>
-              a.zIndex() > b.zIndex() ? a : b);
+          const edge = topmost(this.getDAEdgesContainingCrosshairs());
+          if (edge) {
             targetKind = 'edge';
             targetId = edge.id;
             highlight = new Konva.Line({
@@ -3620,10 +3602,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Begin a held Move by Link session at the node under the crosshairs. */
   private enterLinkNav(): void {
     this.finishTweens();
-    const underCrosshairs = this.getDANodesContainingCrosshairs();
-    const source = underCrosshairs.length > 0
-      ? underCrosshairs.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
-      : this.nearestNodeToCrosshairs();
+    const underCrosshairs = topmost(this.getDANodesContainingCrosshairs());
+    const source = underCrosshairs ?? this.nearestNodeToCrosshairs();
     this.linkNavSource = source;
     this.linkNavDirectionalFocus = false;
     this.setGraphNavEdge(null);
@@ -3631,7 +3611,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('Move the crosshairs onto a node to navigate.');
       return;
     }
-    const snappedToNearest = underCrosshairs.length === 0;
+    const snappedToNearest = underCrosshairs === null;
     if (snappedToNearest) {
       this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
     }
@@ -5288,13 +5268,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * waypoint selection, or none if the crosshairs found no point to snap to.
    */
   private growWaypointToDrag(selectedEdges: DAEdge[]): DAWaypoint[] {
-    const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()
-      .filter(edge => edge.isSelected)
-      .reduce<DAEdge | null>(
-        (top, edge) => !top || edge.zIndex() > top.zIndex() ? edge : top,
-        null,
-      );
-    const edge = edgeUnderCrosshairs ?? selectedEdges[0];
+    const edge = topmost(this.getDAEdgesContainingCrosshairs().filter(e => e.isSelected))
+      ?? selectedEdges[0];
     const snap = this.findSnapOnEdge(edge, this.crosshairsInLayerCoords());
     if (!snap) return [];
 
@@ -5620,9 +5595,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.daOut.emit({kind: 'status-message', message: 'Label under crosshairs — tap the edit-text key to edit it.'});
       return;
     }
-    const nodes = this.getDANodesContainingCrosshairs();
-    if (nodes.length > 0) {
-      const anchor = nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b);
+    const anchor = topmost(this.getDANodesContainingCrosshairs());
+    if (anchor) {
       this.quickAddSelfLoop(anchor);
       return;
     }
@@ -5697,9 +5671,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (hasLabel || (nodes.length === 0 && (hasEdge || hasWaypoint))) return;
     this.finishTweens();
     this.growActive = true;
-    this.growAnchor = nodes.length > 0
-      ? nodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
-      : null;
+    this.growAnchor = topmost(nodes);
     this.growOrigin = this.growAnchor
       ? this.getNodeCenterInLayerCoordinates(this.growAnchor)
       : this.crosshairsInLayerCoords();
@@ -6423,9 +6395,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const hovered = this.getDANodesContainingCrosshairs();
     const selected = this.drawingLayer.getSelectedDANodes();
     const anchor = explicitAnchor
-      ?? (hovered.length > 0
-        ? hovered.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)
-        : (selected.length === 1 ? selected[0] : null));
+      ?? topmost(hovered)
+      ?? (selected.length === 1 ? selected[0] : null);
     if (!anchor) {
       this.emitStatus('⚠ Self Loop needs one node under the crosshairs or selected');
       return null;
@@ -7235,18 +7206,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
-    if (daNodesContainingCrosshairs.length > 0) {
-      const topNode = daNodesContainingCrosshairs.reduce((n0, n1) => n0.zIndex() > n1.zIndex() ? n0 : n1);
+    const topNode = topmost(this.getDANodesContainingCrosshairs());
+    if (topNode) {
       topNode.isSelected = !topNode.isSelected;
       return;
     }
 
-    const daEdgesContainingCrosshairs = this.getDAEdgesContainingCrosshairs();
-    if (daEdgesContainingCrosshairs.length > 0) {
-      const topEdge = daEdgesContainingCrosshairs.reduce((e0, e1) => e0.zIndex() > e1.zIndex() ? e0 : e1);
+    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
+    if (topEdge) {
       topEdge.isSelected = !topEdge.isSelected;
-      return;
     }
   }
 
@@ -7322,10 +7290,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     let edges = this.drawingLayer.getSelectedDAEdges();
 
     if (nodes.length === 0 && edges.length === 0) {
-      const hoveredNodes = this.getDANodesContainingCrosshairs();
-      if (hoveredNodes.length > 0) {
-        nodes = [hoveredNodes.reduce((a, b) => a.zIndex() > b.zIndex() ? a : b)];
-      } else {
+      nodes = topmostSelection(this.getDANodesContainingCrosshairs());
+      if (nodes.length === 0) {
         edges = this.getDAEdgesContainingCrosshairs();
       }
     }
