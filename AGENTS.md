@@ -118,3 +118,30 @@ Reviewers have read access across sibling implementer worktrees and their own sc
 ## Memory policy
 
 This repo *is* the memory. Anything that should outlive a single session goes into [`notes/`](notes/) as an atomic markdown file. Per-tool memory directories (e.g. `~/.claude/projects/.../memory/`) are kept thin and point back here.
+
+### Provenance: mark what Ben decided vs what an agent inferred
+
+Most of `notes/` was committed by an agent, and agents have committed under
+both identities, so **`git blame` cannot tell you whose judgement a line
+records.** That matters: a design note is used as the source of truth for what
+the code *should* do, and an agent's plausible inference reads exactly like a
+decision Ben made.
+
+So every claim that could settle a later argument carries its source:
+
+- `(Ben, YYYY-MM-DD)` — Ben said this. Already used in ~13 places; keep it.
+- `(inferred, YYYY-MM-DD)` — an agent concluded this from the code, from
+  observed behaviour, or from reasoning. Not authority. Say what it was
+  inferred *from* when it is not obvious.
+
+Unmarked older text stays unmarked: relabelling it now would be one more
+inference. Mark what you add or change.
+
+**Never record observed behaviour as intent.** "The app does X" is evidence;
+"X is correct" is a decision, and it is Ben's. When a note and the code
+disagree, say so and ask — that disagreement is the interesting part, and
+resolving it by writing down whatever the code happens to do destroys the only
+record of what was wanted. This rule exists because ledger row 6b in
+[`notes/design-add-insert-model.md`](notes/design-add-insert-model.md) drifted
+into contradicting its own prose, and the tests had been failing against it for
+five weeks.

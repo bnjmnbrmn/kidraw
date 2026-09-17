@@ -151,6 +151,13 @@ The tracking table for every context × gesture case. **Status:** ✓ decided /
 → build stage / ? open. Update this as decisions land — it is the canonical
 list Ben asked to keep track of.
 
+**Provenance.** Rows written before 2026-09-17 are unattributed: most of this
+repo's notes were committed by an agent, so neither the file nor `git blame`
+says which rows are Ben's decisions and which are an agent's inference. Rows
+added or changed from now on carry `(Ben, date)` or `(inferred, date)`. Row 6b
+is the reason: it had drifted to contradict the prose in "The split", and the
+built behaviour followed the prose.
+
 | # | Case | Behavior | Status |
 |---|------|----------|--------|
 | 1 | tap `i` over node | edit node text (vim insert) | ✅ built 2026-07-19 |
@@ -159,7 +166,7 @@ list Ben asked to keep track of.
 | 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
 | 5 | tap `a` over nothing | quick-add node at crosshairs → center + zoom to ≥100% → labelEdit | ✅ built 2026-07-19; focus added 2026-07-27 |
 | 6 | tap `a` over node | self-loop using current edge defaults | ✅ revised 2026-08-09 |
-| 6b | tap `a` over edge/label | no-op + hint | ✅ built 2026-07-19 |
+| 6b | tap `a` over bare edge | new label on the edge → Insert mode; a label already under the crosshairs stays an edit target rather than receiving another | ✅ corrected (Ben, 2026-09-17) — this row said "no-op + hint", contradicting the prose above and the built behaviour |
 | 7 | hold `a` over node: real or ghost target | hjkl Move-by-Node navigation; real release connects, ghost release inserts linked default node + labelEdit | ✅ revised 2026-08-09 |
 | 8 | hold `a` over node: `o` cycles 4 states | ghost arrowheads track | ✅ built 2026-07-19 |
 | 9 | hold `a` over node: `/` search target | fuzzy popup by label (big graphs) | ✅ built 2026-07-19 (sticky: Enter commits, Esc cancels) |
