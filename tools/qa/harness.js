@@ -129,7 +129,7 @@ function afterFrame(page) {
 /** Wait for the held-key navigation overlay to appear or disappear. */
 function overlay(page, visible, {timeout = 5000} = {}) {
   return page.waitForFunction(
-    `(() => { const da = ${DA}; return !!da && da.nodeGridVisible === ${visible ? 'true' : 'false'}; })()`,
+    `(() => { const da = ${DA}; return !!da && da.navGrid.nodeGridVisible === ${visible ? 'true' : 'false'}; })()`,
     undefined, {timeout, polling: 16});
 }
 

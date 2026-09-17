@@ -82,24 +82,24 @@ async function main() {
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return {
-      strategy: da.graphItemNavigationStrategy,
-      origin: da.quadrantOriginInStage(),
-      originMarkers: da.nodeGridGroup?.find('.quadrant-grid-origin').length ?? 0,
-      diagonals: da.nodeGridGroup?.find('.quadrant-grid-diagonal-boundary').length ?? 0,
-      ghostDiagonals: da.nodeGridGroup?.find('.quadrant-grid-ghost-diagonal').length ?? 0,
-      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant').length ?? 0,
-      goalRays: da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0,
-      rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
-      columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
-      rowFills: da.nodeGridGroup?.find('.quadrant-grid-row-band').length ?? 0,
-      columnFills: da.nodeGridGroup?.find('.quadrant-grid-column-band').length ?? 0,
+      strategy: da.navGrid.graphItemNavigationStrategy,
+      origin: da.navGrid.quadrantOriginInStage(),
+      originMarkers: da.navGrid.nodeGridGroup?.find('.quadrant-grid-origin').length ?? 0,
+      diagonals: da.navGrid.nodeGridGroup?.find('.quadrant-grid-diagonal-boundary').length ?? 0,
+      ghostDiagonals: da.navGrid.nodeGridGroup?.find('.quadrant-grid-ghost-diagonal').length ?? 0,
+      activeQuadrants: da.navGrid.nodeGridGroup?.find('.quadrant-grid-active-quadrant').length ?? 0,
+      goalRays: da.navGrid.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0,
+      rows: da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
+      columns: da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
+      rowFills: da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-band').length ?? 0,
+      columnFills: da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-band').length ?? 0,
       boundaryOpacities: [
-        ...(da.nodeGridGroup?.find('.quadrant-grid-row-boundary') ?? []),
-        ...(da.nodeGridGroup?.find('.quadrant-grid-column-boundary') ?? []),
+        ...(da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-boundary') ?? []),
+        ...(da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-boundary') ?? []),
       ].map(line => line.opacity()),
       fillOpacities: [
-        ...(da.nodeGridGroup?.find('.quadrant-grid-row-band') ?? []),
-        ...(da.nodeGridGroup?.find('.quadrant-grid-column-band') ?? []),
+        ...(da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-band') ?? []),
+        ...(da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-band') ?? []),
       ].map(fill => fill.opacity()),
       stops: da.navStops('labels').map(stop => ({id: stop.id, x: stop.cx, y: stop.cy})),
     };
@@ -115,20 +115,20 @@ async function main() {
     JSON.stringify(overlay));
 
   const initialAngle = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantGoalAngle);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantGoalAngle);
   await press('n');
   const southAngle = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantGoalAngle);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantGoalAngle);
   const rayAfterN = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+    return da.navGrid.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
   });
   await press('p');
   const northAgainAngle = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantGoalAngle);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantGoalAngle);
   const rayAfterP = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+    return da.navGrid.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
   });
   check('n tilts the goal ray south and p tilts it north',
     Math.sin(southAngle) > Math.sin(initialAngle) &&
@@ -139,7 +139,7 @@ async function main() {
   await page.waitForTimeout(1700);
   const fadedRay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
+    return da.navGrid.nodeGridGroup?.find('.quadrant-grid-goal-ray').length ?? 0;
   });
   check('the n/p goal ray fades away', fadedRay === 0, `${fadedRay} rays remain`);
 
@@ -147,30 +147,30 @@ async function main() {
   const first = await at();
   const firstFrames = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const starts = name => da.nodeGridGroup?.find(`.${name}`)
+    const starts = name => da.navGrid.nodeGridGroup?.find(`.${name}`)
       .map(line => line.points().slice(0, 2)) ?? [];
     return {
       ghost: starts('quadrant-grid-ghost-diagonal'),
       activeBoundaries: starts('quadrant-grid-diagonal-boundary'),
-      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
+      activeQuadrants: da.navGrid.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
         .map(shape => shape.points()) ?? [],
-      rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
-      columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
+      rows: da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
+      columns: da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
     };
   });
   await press('l');
   const second = await at();
   const secondFrames = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const starts = name => da.nodeGridGroup?.find(`.${name}`)
+    const starts = name => da.navGrid.nodeGridGroup?.find(`.${name}`)
       .map(line => line.points().slice(0, 2)) ?? [];
     return {
       ghost: starts('quadrant-grid-ghost-diagonal'),
       activeBoundaries: starts('quadrant-grid-diagonal-boundary'),
-      activeQuadrants: da.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
+      activeQuadrants: da.navGrid.nodeGridGroup?.find('.quadrant-grid-active-quadrant')
         .map(shape => shape.points()) ?? [],
-      rows: da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
-      columns: da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
+      rows: da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0,
+      columns: da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0,
     };
   });
   check('rightward travel in east skips a north-quadrant column',
@@ -226,11 +226,11 @@ async function main() {
   await press('h');
   const left3 = await at();
   const originBeforeTurn = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginInStage());
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantOriginInStage());
   await press('j');
   const downAfterTurn = await at();
   const originAfterTurn = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginInStage());
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantOriginInStage());
   // Compare against where those nodes actually render, not the fixture's
   // nominal centres — they auto-size to their labels.
   const originCentres = await page.evaluate(() => {
@@ -251,7 +251,7 @@ async function main() {
 
   const beforePan = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return {origin: da.quadrantOriginInStage(), crosshairs: {
+    return {origin: da.navGrid.quadrantOriginInStage(), crosshairs: {
       x: da.crosshairsLayer.crosshairsX(),
       y: da.crosshairsLayer.crosshairsY(),
     }};
@@ -259,8 +259,8 @@ async function main() {
   const afterPan = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.drawingLayer.x(da.drawingLayer.x() - 40);
-    da.redrawNodeGrid();
-    return {origin: da.quadrantOriginInStage(), crosshairs: {
+    da.navGrid.redrawNodeGrid();
+    return {origin: da.navGrid.quadrantOriginInStage(), crosshairs: {
       x: da.crosshairsLayer.crosshairsX(),
       y: da.crosshairsLayer.crosshairsY(),
     }};
@@ -273,7 +273,7 @@ async function main() {
 
   await page.keyboard.up('g'); await waitForOverlay(page, false);
   const releasedOrigin = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).quadrantOriginLayer);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantOriginLayer);
   check('releasing g clears the quadrant origin', releasedOrigin === null, JSON.stringify(releasedOrigin));
 
   await browser.close();

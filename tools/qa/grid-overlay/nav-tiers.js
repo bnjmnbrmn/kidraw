@@ -64,15 +64,15 @@ async function main() {
   await setup();
   await page.keyboard.down('g'); await overlay(page, true);
   const defaultOverlayTier = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.nodeGridTargets);
   await page.keyboard.down('d');
-  await waitForDA(page, `da.nodeGridTargets !== ${JSON.stringify(defaultOverlayTier)}`);
+  await waitForDA(page, `da.navGrid.nodeGridTargets !== ${JSON.stringify(defaultOverlayTier)}`);
   const fineOverlayTier = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.nodeGridTargets);
   await page.keyboard.up('d');
-  await waitForDA(page, `da.nodeGridTargets !== ${JSON.stringify(fineOverlayTier)}`);
+  await waitForDA(page, `da.navGrid.nodeGridTargets !== ${JSON.stringify(fineOverlayTier)}`);
   const restoredOverlayTier = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-drawing-area')).nodeGridTargets);
+    window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.nodeGridTargets);
   await page.keyboard.up('g'); await overlay(page, false);
   check('overlay follows the active tier and returns to default on modifier release',
     defaultOverlayTier === 'labels' && fineOverlayTier === 'all' && restoredOverlayTier === 'labels',

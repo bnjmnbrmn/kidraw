@@ -118,7 +118,7 @@ async function main() {
     da.drawingLayer.x(0); da.drawingLayer.y(0);
     da.crosshairsLayer.crosshairs.x = 160;
     da.crosshairsLayer.crosshairs.y = 180;
-    da.navGridLast = null; da.navGoalX = null; da.navGoalY = null;
+    da.navGrid.navGridLast = null; da.navGrid.navGoalX = null; da.navGrid.navGoalY = null;
     da.drawingLayer.batchDraw();
   });
   await jumpRight();

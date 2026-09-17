@@ -24,6 +24,7 @@ import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
 import { layeredLayout } from './layered-layout';
 import { GatherController, GatherHost } from './gather-controller';
+import { NavigationGridController, NavigationGridHost } from './navigation-grid-controller';
 import {
   bandIndexAtCoordinate,
   bandIndexForStop,
@@ -221,6 +222,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The fisheye gather view (gather-controller.ts). Its state lives with it;
    *  the drawing area only lends it the layer, the tweens and the nav context. */
   private readonly gather = new GatherController(this.gatherHost());
+  /** Move-by-node and its overlay (navigation-grid-controller.ts). */
+  private readonly navGrid = new NavigationGridController(this.navigationGridHost());
   /** Labelable node created by the held insert hub. It is focused only when
    *  the hold ends, after the optional drag phase has established its final
    *  position. */
@@ -596,7 +599,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.resizeObserver = new ResizeObserver(entries => {
       this.stage.width(this.componentNE.offsetWidth);
       this.stage.height(this.componentNE.offsetHeight);
-      if (this.nodeGridVisible) this.redrawNodeGrid();
+      if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
       if (this.linkNavSource) this.redrawLinkNavQuadrantLines(this.linkNavSource);
     });
     this.resizeObserver.observe(this.componentNE);
@@ -636,7 +639,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   ngOnDestroy(): void {
     this.stopRouting();
-    this.cancelQuadrantGoalRayFade();
+    this.navGrid.cancelQuadrantGoalRayFade();
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
     if (this._beforeUnloadHandler) {
@@ -831,31 +834,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.snapToNearestNode();
         break;
       case DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY:
-        this.setGraphItemNavigationStrategy(command.strategy);
+        this.navGrid.setGraphItemNavigationStrategy(command.strategy);
         break;
       case DACommandType.SHOW_NODE_GRID:
-        this.showNodeGrid(command.targets ?? 'labels');
+        this.navGrid.showNodeGrid(command.targets ?? 'labels');
         break;
       case DACommandType.HIDE_NODE_GRID:
-        this.hideNodeGrid();
+        this.navGrid.hideNodeGrid();
         break;
       case DACommandType.SNAP_TO_NODE_LEFT:
-        this.snapToNodeInDirection('left', command.targets ?? 'labels');
+        this.navGrid.snapToNodeInDirection('left', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_RIGHT:
-        this.snapToNodeInDirection('right', command.targets ?? 'labels');
+        this.navGrid.snapToNodeInDirection('right', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_UP:
-        this.snapToNodeInDirection('up', command.targets ?? 'labels');
+        this.navGrid.snapToNodeInDirection('up', command.targets ?? 'labels');
         break;
       case DACommandType.SNAP_TO_NODE_DOWN:
-        this.snapToNodeInDirection('down', command.targets ?? 'labels');
+        this.navGrid.snapToNodeInDirection('down', command.targets ?? 'labels');
         break;
       case DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH:
-        this.adjustQuadrantGoalAngle('south', command.targets ?? 'labels');
+        this.navGrid.adjustQuadrantGoalAngle('south', command.targets ?? 'labels');
         break;
       case DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH:
-        this.adjustQuadrantGoalAngle('north', command.targets ?? 'labels');
+        this.navGrid.adjustQuadrantGoalAngle('north', command.targets ?? 'labels');
         break;
       case DACommandType.INCREASE_SELECTED_NODE_SIZE:
         this.increaseSelectedNodeSize();
@@ -1649,6 +1652,25 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Lends the gather view what it needs, without widening this component's
    *  own surface: everything here stays private, reached through getters so
    *  the layer can still be assigned later in ngAfterViewInit. */
+  /** Lends move-by-node what it needs, through getters so the layers can
+   *  still be assigned later in ngAfterViewInit. */
+  private navigationGridHost(): NavigationGridHost {
+    const da = this;
+    return {
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get drawingLayer() { return da.drawingLayer; },
+      get stage() { return da.stage; },
+      get themeService() { return da.themeService; },
+      get visualConfigService() { return da.visualConfigService; },
+      get growActive() { return da.growActive; },
+      emitStatus: message => da.emitStatus(message),
+      finishTweens: () => da.finishTweens(),
+      moveCrosshairsBy: (dx, dy, tier, showGrid) => da.moveCrosshairsBy(dx, dy, tier, showGrid),
+      navStops: targets => da.navStops(targets),
+      navStopCenter: (id, kind) => da.navStopCenter(id, kind),
+    };
+  }
+
   private gatherHost(): GatherHost {
     const da = this;
     return {
@@ -2923,7 +2945,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
       onFinish: () => {
         this.emitZoomLevel();
-        if (this.nodeGridVisible) this.redrawNodeGrid();
+        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
         this.scheduleCrosshairHoverRefresh(20);
       }
 
@@ -2953,7 +2975,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
       onFinish: () => {
         this.emitZoomLevel();
-        if (this.nodeGridVisible) this.redrawNodeGrid();
+        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
         this.scheduleCrosshairHoverRefresh(20);
       }
     }).play());
@@ -3118,7 +3140,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
             y: clampedY,
           });
           this.checkResizeHandleProximity();
-          if (this.nodeGridVisible) this.redrawNodeGrid();
+          if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
           this.scheduleCrosshairHoverRefresh(20);
         },
       }).play());
@@ -3137,7 +3159,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         easing: Konva.Easings.Linear,
         onFinish: () => {
           this.drawingLayer.position(layerTarget);
-          if (this.nodeGridVisible) this.redrawNodeGrid();
+          if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
           this.scheduleCrosshairHoverRefresh(20);
         },
       }).play());
@@ -3617,7 +3639,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.drawingLayer.y() + deltaY,
       easing: Konva.Easings.Linear,
       onFinish: () => {
-        if (this.nodeGridVisible) this.redrawNodeGrid();
+        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
         this.scheduleCrosshairHoverRefresh(20);
       },
     }).play());
@@ -3764,7 +3786,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const snappedToNearest = underCrosshairs.length === 0;
     if (snappedToNearest) {
-      this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
+      this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
     }
     const continuingJourney = source === this.validGraphNavLastNode();
     this.graphNavLastNode = source;
@@ -3875,7 +3897,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.linkNavSource = dest;
     this.focusLinkNavEntry(dest, this.graphNavMomentum);
-    this.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
+    this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
     this.redrawLinkNavQuadrantLines(dest);
     this.scheduleLinkNavQuadrantRefresh(dest);
     const label = (dest.label?.text() ?? '').trim() || '(unlabeled)';
@@ -3933,7 +3955,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       Math.PI * 5 / 4,
       Math.PI * 7 / 4,
     ]) {
-      const end = this.navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
+      const end = this.navGrid.navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
       if (!end) continue;
       group.add(new Konva.Line({
         name: 'move-by-link-diagonal',
@@ -4859,1021 +4881,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.nodesInDirection(direction, fromPoint)[0] ?? null;
   }
 
-  // ── Grid navigation (move-by-node): notes/design-grid-navigation.md ──
-  // Purely spatial (no edges). Visible stops form a fixed spreadsheet-like
-  // grid; navigation and the overlay share the same band model. A press steps
-  // one row/column and snaps to the goal position on the perpendicular axis.
-  // Goals live in drawing-layer coordinates so viewport pans cannot stale them.
-  private navGoalX: number | null = null;
-  private navGoalY: number | null = null;
-  /** Explicit so the known-good Cartesian grid remains available beside
-   *  navigation experiments. */
-  private graphItemNavigationStrategy: GraphItemNavigationStrategy = 'adaptive-quadrant-rings';
-  /** Fixed for one run of the same hjkl direction, unless the viewport changes. */
-  private quadrantOriginLayer: {x: number; y: number} | null = null;
-  private quadrantOriginViewport: NavigationViewport | null = null;
-  /** The direction of the current run. A different hjkl key re-origins at
-   *  the current stop before that move is evaluated. */
-  private quadrantLastDirection: CardinalDirection | null = null;
-  /** Screen-space bearing of the goal ray from the origin. */
-  private quadrantGoalAngle = 0;
-  private quadrantGoalAdjusted = false;
-  /** The goal ray is normally absent. n/p reveal it briefly, then a
-   *  dedicated tween fades it without changing navigation state. */
-  private quadrantGoalRayVisible = false;
-  private quadrantGoalRayFadeDelay: number | null = null;
-  private quadrantGoalRayFadeTween: Konva.Tween | null = null;
-  private quadrantNavLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
-  /** Which remembered perpendicular coordinate the next same-axis step will
-   *  try to return to: x for vertical travel, y for horizontal travel. */
-  private navGoalAxis: 'x' | 'y' | null = null;
-  /** The stop the last grid step landed on. Reset detection recomputes its
-   *  center (pan-safe): if the crosshairs are no longer on it, a fresh
-   *  navigation started and the goal position is reset. */
-  private navGridLast: {id: string; kind: 'node'|'label'|'waypoint'} | null = null;
 
-  /** Maximum stage-pixel span of one row/column band. Smaller when more stops
-   *  are visible (finer grid); tunable by feel. */
-  private navGridTolerance(visibleCount: number): number {
-    return Math.max(12, Math.min(60, 180 / Math.sqrt(Math.max(1, visibleCount))));
-  }
 
-  private usesQuadrantOrigin(strategy = this.graphItemNavigationStrategy): boolean {
-    return strategy === 'adaptive-quadrant-grid' ||
-      strategy === 'adaptive-quadrant-rings';
-  }
 
-  private setGraphItemNavigationStrategy(strategy: GraphItemNavigationStrategy): void {
-    this.graphItemNavigationStrategy = strategy;
-    this.navGoalX = null;
-    this.navGoalY = null;
-    this.navGoalAxis = null;
-    this.navGridLast = null;
-    this.resetQuadrantNavigation();
-    if (this.usesQuadrantOrigin(strategy) && this.nodeGridVisible) {
-      this.captureQuadrantOrigin();
-    }
-    if (this.nodeGridVisible) this.redrawNodeGrid();
-    this.emitStatus(({
-      'adaptive-band-grid': 'Graph-item navigation: Adaptive band grid',
-      'adaptive-quadrant-grid': 'Graph-item navigation: Adaptive quadrant grid',
-      'adaptive-quadrant-rings': 'Graph-item navigation: Adaptive quadrant rings',
-    } as const)[strategy]);
-  }
 
-  private snapToNodeInDirection(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind = 'labels') {
-    switch (this.graphItemNavigationStrategy) {
-      case 'adaptive-band-grid':
-        this.snapWithAdaptiveBandGrid(direction, targets);
-        return;
-      case 'adaptive-quadrant-grid':
-        this.snapWithQuadrantGrid(direction, targets);
-        return;
-      case 'adaptive-quadrant-rings':
-        this.snapWithQuadrantRings(direction, targets);
-        return;
-    }
-  }
-
-  private resetQuadrantNavigation(): void {
-    this.quadrantOriginLayer = null;
-    this.quadrantOriginViewport = null;
-    this.quadrantLastDirection = null;
-    this.quadrantGoalAngle = 0;
-    this.quadrantGoalAdjusted = false;
-    this.hideQuadrantGoalRay();
-    this.quadrantNavLast = null;
-  }
-
-  private cancelQuadrantGoalRayFade(): void {
-    if (this.quadrantGoalRayFadeDelay !== null) {
-      window.clearTimeout(this.quadrantGoalRayFadeDelay);
-      this.quadrantGoalRayFadeDelay = null;
-    }
-    this.quadrantGoalRayFadeTween?.destroy();
-    this.quadrantGoalRayFadeTween = null;
-  }
-
-  private hideQuadrantGoalRay(): void {
-    this.cancelQuadrantGoalRayFade();
-    this.quadrantGoalRayVisible = false;
-  }
-
-  private scheduleQuadrantGoalRayFade(): void {
-    this.cancelQuadrantGoalRayFade();
-    if (!this.quadrantGoalRayVisible) return;
-    const ray = this.nodeGridGroup
-      ?.findOne<Konva.Line>('.quadrant-grid-goal-ray');
-    if (!ray) return;
-
-    this.quadrantGoalRayFadeDelay = window.setTimeout(() => {
-      this.quadrantGoalRayFadeDelay = null;
-      const tween = new Konva.Tween({
-        node: ray,
-        duration: 0.8,
-        opacity: 0,
-        onFinish: () => {
-          if (this.quadrantGoalRayFadeTween !== tween) return;
-          this.quadrantGoalRayFadeTween = null;
-          this.quadrantGoalRayVisible = false;
-          ray.destroy();
-          this.crosshairsLayer.batchDraw();
-        },
-      });
-      this.quadrantGoalRayFadeTween = tween;
-      tween.play();
-    }, 650);
-  }
-
-  private currentNavigationViewport(): NavigationViewport {
-    return {
-      x: this.drawingLayer.x(),
-      y: this.drawingLayer.y(),
-      scale: this.drawingLayer.scaleX(),
-      width: this.stage.width(),
-      height: this.stage.height(),
-    };
-  }
-
-  private navigationViewportMatches(snapshot: NavigationViewport | null): boolean {
-    if (!snapshot) return false;
-    const current = this.currentNavigationViewport();
-    return Math.abs(current.x - snapshot.x) < 0.01 &&
-      Math.abs(current.y - snapshot.y) < 0.01 &&
-      Math.abs(current.scale - snapshot.scale) < 0.0001 &&
-      current.width === snapshot.width &&
-      current.height === snapshot.height;
-  }
-
-  private captureQuadrantOrigin(): void {
-    const scale = this.drawingLayer.scaleX();
-    this.quadrantOriginLayer = {
-      x: (this.crosshairsLayer.crosshairs.x - this.drawingLayer.x()) / scale,
-      y: (this.crosshairsLayer.crosshairs.y - this.drawingLayer.y()) / scale,
-    };
-    this.quadrantOriginViewport = this.currentNavigationViewport();
-    this.quadrantLastDirection = null;
-    this.quadrantGoalAngle = 0;
-    this.quadrantGoalAdjusted = false;
-    this.hideQuadrantGoalRay();
-    this.quadrantNavLast = null;
-  }
-
-  private ensureQuadrantOrigin(): void {
-    if (!this.quadrantOriginLayer ||
-        !this.navigationViewportMatches(this.quadrantOriginViewport)) {
-      this.captureQuadrantOrigin();
-    }
-  }
-
-  private quadrantOriginInStage(): {x: number; y: number} | null {
-    if (!this.quadrantOriginLayer) return null;
-    const scale = this.drawingLayer.scaleX();
-    return {
-      x: this.drawingLayer.x() + this.quadrantOriginLayer.x * scale,
-      y: this.drawingLayer.y() + this.quadrantOriginLayer.y * scale,
-    };
-  }
-
-  private adjustQuadrantGoalAngle(
-    direction: GoalVerticalDirection,
-    targets: NavTargetKind,
-  ): void {
-    if (this.graphItemNavigationStrategy !== 'adaptive-quadrant-grid') {
-      this.emitStatus('Select Adaptive quadrant grid with g → o first.');
-      return;
-    }
-    this.finishTweens();
-    this.ensureQuadrantOrigin();
-    const visibleCount = this.navStops(targets).filter(stop =>
-      stop.cx >= 0 && stop.cx <= this.stage.width() &&
-      stop.cy >= 0 && stop.cy <= this.stage.height()).length;
-    const step = adaptiveGoalAngleStep(visibleCount);
-    const adjusted = adjustAngleTowardScreenVertical(
-      this.quadrantGoalAngle,
-      direction,
-      step,
-    );
-    const changed = adjusted !== this.quadrantGoalAngle;
-    this.quadrantGoalAngle = adjusted;
-    this.quadrantGoalAdjusted = true;
-    this.quadrantGoalRayVisible = true;
-    this.nodeGridTargets = targets;
-    if (this.nodeGridVisible) this.redrawNodeGrid();
-    const degrees = Math.round(step * 180 / Math.PI);
-    this.emitStatus(changed
-      ? `Goal ray: ${direction} (${degrees}° step)`
-      : `Goal ray is already due ${direction}`);
-  }
-
-  private snapWithQuadrantGrid(direction: CardinalDirection, targets: NavTargetKind): void {
-    this.finishTweens();
-    this.ensureQuadrantOrigin();
-    if (this.quadrantLastDirection !== null &&
-        this.quadrantLastDirection !== direction) {
-      this.captureQuadrantOrigin();
-    }
-    this.quadrantLastDirection = direction;
-    const origin = this.quadrantOriginInStage();
-    if (!origin) return;
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-    const vertical = direction === 'up' || direction === 'down';
-    const positive = direction === 'right' || direction === 'down';
-    const allStops = this.navStops(targets);
-    const inView = (stop: NavigationGridStop) =>
-      stop.cx >= 0 && stop.cx <= this.stage.width() &&
-      stop.cy >= 0 && stop.cy <= this.stage.height();
-    const visible = allStops.filter(inView);
-    if (visible.length === 0) return;
-    const tolerance = this.navGridTolerance(visible.length);
-    const grid = buildNavigationGrid(
-      visible,
-      this.stage.width(),
-      this.stage.height(),
-      tolerance,
-    );
-    const bands = vertical ? grid.rows : grid.columns;
-    const primary = (stop: NavigationGridStop) => vertical ? stop.cy : stop.cx;
-    const here = vertical ? cy : cx;
-    const currentStop = visible.find(stop =>
-      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
-    const atOrigin = Math.max(Math.abs(cx - origin.x), Math.abs(cy - origin.y)) < 4;
-    const currentQuadrant = navigationQuadrant(cx - origin.x, cy - origin.y)
-      ?? quadrantForDirection(direction);
-
-    const lastCenter = this.quadrantNavLast
-      ? this.navStopCenter(this.quadrantNavLast.id, this.quadrantNavLast.kind)
-      : null;
-    const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (this.quadrantNavLast && !onLast) {
-      this.quadrantGoalAngle = Math.atan2(cy - origin.y, cx - origin.x);
-      this.quadrantGoalAdjusted = false;
-    } else if (atOrigin && !this.quadrantGoalAdjusted) {
-      this.quadrantGoalAngle = cardinalAngle(direction);
-    }
-
-    const constrainToQuadrant = moveUsesQuadrantConstraint(currentQuadrant, direction);
-    const candidatesFor = (stops: NavigationGridStop[]) => constrainToQuadrant
-      ? stops.filter(stop => {
-          const stopQuadrant = navigationQuadrant(stop.cx - origin.x, stop.cy - origin.y);
-          return stopQuadrant === null || stopQuadrant === currentQuadrant;
-        })
-      : stops;
-
-    let startIndex: number;
-    if (currentStop) {
-      startIndex = bandIndexForStop(bands, currentStop) + (positive ? 1 : -1);
-    } else if (positive) {
-      startIndex = bands.findIndex(band => band.center > here);
-    } else {
-      startIndex = -1;
-      for (let i = bands.length - 1; i >= 0; i--) {
-        if (bands[i].center < here) {
-          startIndex = i;
-          break;
-        }
-      }
-    }
-
-    let candidates: NavigationGridStop[] | null = null;
-    for (let index = startIndex;
-         index >= 0 && index < bands.length;
-         index += positive ? 1 : -1) {
-      const inBand = candidatesFor(bands[index].stops);
-      if (inBand.length > 0) {
-        candidates = inBand;
-        break;
-      }
-    }
-
-    // If the constrained region has no visible destination, bring the nearest
-    // matching off-screen band into view. That pan deliberately re-origins the
-    // quadrant grid when it finishes.
-    if (!candidates) {
-      const offscreenAhead = candidatesFor(allStops.filter(stop =>
-        !inView(stop) &&
-        (positive
-          ? primary(stop) > here + tolerance
-          : primary(stop) < here - tolerance)));
-      if (offscreenAhead.length === 0) {
-        if (this.nodeGridVisible) this.redrawNodeGrid();
-        return;
-      }
-      const bandEdge = positive
-        ? Math.min(...offscreenAhead.map(primary))
-        : Math.max(...offscreenAhead.map(primary));
-      candidates = offscreenAhead.filter(stop =>
-        Math.abs(primary(stop) - bandEdge) <= tolerance);
-    }
-
-    this.nodeGridTargets = targets;
-    const perpendicular = (stop: NavigationGridStop) => vertical ? stop.cx : stop.cy;
-    const currentPerpendicular = vertical ? cx : cy;
-    const target = candidates.reduce((a, b) => {
-      const aRay = distanceToGoalRay(origin, this.quadrantGoalAngle, a);
-      const bRay = distanceToGoalRay(origin, this.quadrantGoalAngle, b);
-      if (Math.abs(aRay - bRay) >= 0.01) return aRay < bRay ? a : b;
-      return Math.abs(perpendicular(a) - currentPerpendicular) <=
-        Math.abs(perpendicular(b) - currentPerpendicular) ? a : b;
-    });
-    this.quadrantNavLast = {id: target.id, kind: target.kind};
-    this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
-  }
-
-  /**
-   * Each same-direction run walks outward through the one-stop rings in that
-   * direction's quadrant. A turn captures the current stop as a fresh origin,
-   * preserving the existing h h h j turn-sensitive interaction.
-   */
-  private snapWithQuadrantRings(
-    direction: CardinalDirection,
-    targets: NavTargetKind,
-  ): void {
-    this.finishTweens();
-    this.ensureQuadrantOrigin();
-    if (this.quadrantLastDirection !== null &&
-        this.quadrantLastDirection !== direction) {
-      this.captureQuadrantOrigin();
-    }
-    this.quadrantLastDirection = direction;
-
-    const origin = this.quadrantOriginInStage();
-    if (!origin) return;
-    const grid = buildQuadrantRingGrid(this.navStops(targets), origin);
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-    const lastCenter = this.quadrantNavLast
-      ? this.navStopCenter(
-          this.quadrantNavLast.id,
-          this.quadrantNavLast.kind,
-        )
-      : null;
-    const onLast = !!lastCenter &&
-      Math.abs(lastCenter.x - cx) < 4 &&
-      Math.abs(lastCenter.y - cy) < 4;
-    const current = (onLast
-      ? grid.stops.find(stop =>
-          stop.source.id === this.quadrantNavLast?.id &&
-          stop.source.kind === this.quadrantNavLast?.kind)
-      : grid.stops.find(stop =>
-          Math.abs(stop.source.cx - cx) < 4 &&
-          Math.abs(stop.source.cy - cy) < 4)) ?? null;
-    const target = nextQuadrantRingStop(
-      grid,
-      quadrantForDirection(direction),
-      current,
-    );
-    if (!target) {
-      if (this.nodeGridVisible) this.redrawNodeGrid();
-      return;
-    }
-
-    this.nodeGridTargets = targets;
-    this.quadrantNavLast = {
-      id: target.source.id,
-      kind: target.source.kind,
-    };
-    this.jumpCrosshairsToStopCenter({
-      x: target.source.cx,
-      y: target.source.cy,
-    });
-  }
-
-  private snapWithAdaptiveBandGrid(direction: 'left' | 'right' | 'up' | 'down', targets: NavTargetKind) {
-    this.finishTweens();
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-    const scale = this.drawingLayer.scaleX();
-    const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
-    const currentLayerX = (cx - lx) / scale;
-    const currentLayerY = (cy - ly) / scale;
-    const vertical = direction === 'up' || direction === 'down';
-    const positive = direction === 'down' || direction === 'right';
-
-    // Fresh navigation? The goal position resets unless we're still standing
-    // on the stop the last grid step landed on.
-    const lastCenter = this.navGridLast ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind) : null;
-    const onLast = !!lastCenter && Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (!onLast) {
-      this.navGoalX = currentLayerX;
-      this.navGoalY = currentLayerY;
-      this.navGoalAxis = null;
-    }
-
-    this.nodeGridTargets = targets;
-
-    const allStops = this.navStops(targets);
-    const inView = (s: NavigationGridStop) =>
-      s.cx >= 0 && s.cx <= this.stage.width() && s.cy >= 0 && s.cy <= this.stage.height();
-    const visible = allStops.filter(inView);
-    const T = this.navGridTolerance(visible.length);
-    const grid = buildNavigationGrid(visible, this.stage.width(), this.stage.height(), T);
-    const bands = vertical ? grid.rows : grid.columns;
-    const prim = (s: NavigationGridStop) => vertical ? s.cy : s.cx;
-    const perp = (s: NavigationGridStop) => vertical ? s.cx : s.cy;
-    const goal = vertical
-      ? lx + (this.navGoalX ?? currentLayerX) * scale
-      : ly + (this.navGoalY ?? currentLayerY) * scale;
-    const here = vertical ? cy : cx;
-    const currentStop = visible.find(stop =>
-      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
-
-    let targetBandIndex: number;
-    if (currentStop) {
-      const currentBandIndex = bandIndexForStop(bands, currentStop);
-      targetBandIndex = currentBandIndex + (positive ? 1 : -1);
-    } else if (positive) {
-      targetBandIndex = bands.findIndex(band => band.center > here);
-    } else {
-      targetBandIndex = -1;
-      for (let i = bands.length - 1; i >= 0; i--) {
-        if (bands[i].center < here) { targetBandIndex = i; break; }
-      }
-    }
-
-    let targetBand: NavigationGridStop[] | null =
-      targetBandIndex >= 0 && targetBandIndex < bands.length
-        ? bands[targetBandIndex].stops
-        : null;
-
-    // Past the visible spreadsheet edge, choose the nearest off-screen band
-    // and let moveCrosshairsBy pan it into view. It will be part of the fixed
-    // visible grid rebuilt after the pan completes.
-    if (!targetBand) {
-      const offscreenAhead = allStops.filter(stop => !inView(stop) &&
-        (positive ? prim(stop) > here + T : prim(stop) < here - T));
-      if (offscreenAhead.length === 0) {
-        if (this.nodeGridVisible) this.redrawNodeGrid();
-        return;
-      }
-      const bandEdge = positive
-        ? Math.min(...offscreenAhead.map(prim))
-        : Math.max(...offscreenAhead.map(prim));
-      targetBand = offscreenAhead.filter(stop => Math.abs(prim(stop) - bandEdge) <= T);
-    }
-
-    const target = targetBand.reduce((a, b) =>
-      Math.abs(perp(a) - goal) <= Math.abs(perp(b) - goal) ? a : b);
-
-    this.jumpCrosshairsToStopCenter({x: target.cx, y: target.cy});
-    const targetLayerX = (target.cx - lx) / scale;
-    const targetLayerY = (target.cy - ly) / scale;
-    if (vertical) {
-      this.navGoalY = targetLayerY; // moved along y; keep goalX (the column)
-      this.navGoalAxis = 'x';
-    } else {
-      this.navGoalX = targetLayerX; // moved along x; keep goalY (the row)
-      this.navGoalAxis = 'y';
-    }
-    this.navGridLast = {id: target.id, kind: target.kind};
-  }
-
-  private jumpCrosshairsToStopCenter(c: {x: number; y: number}): void {
-    this.moveCrosshairsBy(c.x - this.crosshairsLayer.crosshairs.x,
-                          c.y - this.crosshairsLayer.crosshairs.y,
-                          undefined, false);
-  }
-
-  // ── Move-by-node grid overlay (design-grid-navigation.md, stage 2) ──
-  // While the move-by-node key is held, the row/column bands the navigation
-  // uses are drawn over the viewport so the grid is visible; the band the
-  // crosshairs sit in is emphasised. Redrawn on every step (the view pans).
-  private nodeGridVisible = false;
-  private nodeGridGroup: Konva.Group | null = null;
-  private nodeGridTargets: NavTargetKind = 'labels';
-
-  private showNodeGrid(targets: NavTargetKind = 'labels'): void {
-    const opening = !this.nodeGridVisible;
-    this.nodeGridVisible = true;
-    this.nodeGridTargets = targets;
-    if (opening && this.usesQuadrantOrigin()) {
-      this.captureQuadrantOrigin();
-    }
-    // Move-by-node's band grid replaces the ordinary drawing grid while held.
-    this.drawingLayer.hideGrid();
-    this.drawingLayer.batchDraw();
-    this.redrawNodeGrid();
-  }
-
-  private hideNodeGrid(): void {
-    this.nodeGridVisible = false;
-    this.resetQuadrantNavigation();
-    this.nodeGridGroup?.destroy();
-    this.nodeGridGroup = null;
-    this.crosshairsLayer.batchDraw();
-  }
-
-  private redrawNodeGrid(): void {
-    if (!this.nodeGridVisible) return;
-    this.nodeGridGroup?.destroy();
-    const group = new Konva.Group({listening: false});
-    this.nodeGridGroup = group;
-
-    if (this.graphItemNavigationStrategy === 'adaptive-quadrant-grid') {
-      this.drawQuadrantNodeGrid(group);
-      this.crosshairsLayer.add(group);
-      group.moveToBottom();
-      this.scheduleQuadrantGoalRayFade();
-      this.crosshairsLayer.batchDraw();
-      return;
-    }
-    if (this.graphItemNavigationStrategy === 'adaptive-quadrant-rings') {
-      this.drawQuadrantRingGrid(group);
-      this.crosshairsLayer.add(group);
-      group.moveToBottom();
-      this.crosshairsLayer.batchDraw();
-      return;
-    }
-
-    const W = this.stage.width(), H = this.stage.height();
-    const stops = this.navStops(this.nodeGridTargets)
-      .filter(s => s.cx >= 0 && s.cx <= W && s.cy >= 0 && s.cy <= H);
-    const T = this.navGridTolerance(stops.length);
-    const grid = buildNavigationGrid(stops, W, H, T);
-    const cx = this.crosshairsLayer.crosshairs.x, cy = this.crosshairsLayer.crosshairs.y;
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const stroke = palette.crosshairsStroke;
-
-    const stopUnderCrosshairs = stops.find(stop =>
-      Math.abs(stop.cx - cx) < 4 && Math.abs(stop.cy - cy) < 4);
-    const activeColumn = stopUnderCrosshairs
-      ? bandIndexForStop(grid.columns, stopUnderCrosshairs)
-      : bandIndexAtCoordinate(grid.columns, cx);
-    const activeRow = stopUnderCrosshairs
-      ? bandIndexForStop(grid.rows, stopUnderCrosshairs)
-      : bandIndexAtCoordinate(grid.rows, cy);
-
-    // Alternating low-opacity fills make rows and columns read as areas rather
-    // than centerlines. The active row/column, then their cell intersection,
-    // are layered on top like a spreadsheet selection.
-    const fillBand = (band: NavigationAxisBand, vertical: boolean, opacity: number) =>
-      new Konva.Rect({
-        x: vertical ? band.start : 0,
-        y: vertical ? 0 : band.start,
-        width: vertical ? band.end - band.start : W,
-        height: vertical ? H : band.end - band.start,
-        fill: stroke,
-        opacity,
-        listening: false,
-      });
-    grid.columns.forEach((band, index) => {
-      if (index % 2 === 1) group.add(fillBand(band, true, 0.035));
-    });
-    grid.rows.forEach((band, index) => {
-      if (index % 2 === 1) group.add(fillBand(band, false, 0.035));
-    });
-    if (activeColumn >= 0) group.add(fillBand(grid.columns[activeColumn], true, 0.075));
-    if (activeRow >= 0) group.add(fillBand(grid.rows[activeRow], false, 0.075));
-    if (activeColumn >= 0 && activeRow >= 0) {
-      const column = grid.columns[activeColumn], row = grid.rows[activeRow];
-      group.add(new Konva.Rect({
-        x: column.start, y: row.start,
-        width: column.end - column.start, height: row.end - row.start,
-        fill: stroke, opacity: 0.1, listening: false,
-      }));
-    }
-
-    const boundary = (points: number[]) => new Konva.Line({
-      points, stroke, strokeWidth: 1, opacity: 0.3, listening: false,
-    });
-    for (let i = 1; i < grid.columns.length; i++) {
-      group.add(boundary([grid.columns[i].start, 0, grid.columns[i].start, H]));
-    }
-    for (let i = 1; i < grid.rows.length; i++) {
-      group.add(boundary([0, grid.rows[i].start, W, grid.rows[i].start]));
-    }
-
-    // Boundaries are inferred from centers and can legitimately cross a wide
-    // item. Give every stop its own compact membership legend: the horizontal
-    // arm carries its row's light/dark cadence, and the vertical arm carries
-    // its column's. A node remains readable even when the distant boundary is
-    // visually ambiguous.
-    const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
-    for (const stop of stops) {
-      const rowIndex = bandIndexForStop(grid.rows, stop);
-      const columnIndex = bandIndexForStop(grid.columns, stop);
-      const marker = new Konva.Group({
-        name: 'node-grid-membership-marker',
-        x: stop.cx,
-        y: stop.cy,
-        listening: false,
-      });
-      const arm = (points: number[], name: string, opacity: number) => {
-        marker.add(new Konva.Line({
-          points,
-          stroke: palette.nodeFill,
-          strokeWidth: 5,
-          opacity: 0.9,
-          lineCap: 'round',
-          listening: false,
-        }));
-        marker.add(new Konva.Line({
-          name,
-          points,
-          stroke,
-          strokeWidth: 2,
-          opacity,
-          lineCap: 'round',
-          listening: false,
-        }));
-      };
-      arm([-9, 0, 9, 0], 'node-grid-row-arm', markerOpacity(rowIndex));
-      arm([0, -9, 0, 9], 'node-grid-column-arm', markerOpacity(columnIndex));
-      group.add(marker);
-    }
-
-    // A text-editor-style goal column/row survives a gap: the current stop
-    // may sit off it temporarily, then a later step re-acquires it. Paint that
-    // remembered coordinate more strongly than the cell boundaries so the
-    // snap-back behavior is visible rather than surprising.
-    const lastCenter = this.navGridLast
-      ? this.navStopCenter(this.navGridLast.id, this.navGridLast.kind)
-      : null;
-    const stillInSequence = !!lastCenter &&
-      Math.abs(lastCenter.x - cx) < 4 && Math.abs(lastCenter.y - cy) < 4;
-    if (stillInSequence && this.navGoalAxis) {
-      const scale = this.drawingLayer.scaleX();
-      const guideCoordinate = this.navGoalAxis === 'x'
-        ? this.drawingLayer.x() + (this.navGoalX ?? 0) * scale
-        : this.drawingLayer.y() + (this.navGoalY ?? 0) * scale;
-      const currentCoordinate = this.navGoalAxis === 'x' ? cx : cy;
-      const points = this.navGoalAxis === 'x'
-        ? [guideCoordinate, 0, guideCoordinate, H]
-        : [0, guideCoordinate, W, guideCoordinate];
-      // The highlighted active row/column is enough while we are already on
-      // the goal. Reveal the extra guide only when a gap has displaced us.
-      if (Math.abs(currentCoordinate - guideCoordinate) >= 4) {
-        group.add(new Konva.Line({
-          name: 'node-grid-goal-guide',
-          points,
-          stroke,
-          strokeWidth: 2,
-          opacity: 0.75,
-          dash: [8, 6],
-          listening: false,
-        }));
-      }
-    }
-
-    this.crosshairsLayer.add(group);
-    group.moveToBottom();
-    this.crosshairsLayer.batchDraw();
-  }
-
-  private drawQuadrantRingGrid(group: Konva.Group): void {
-    this.ensureQuadrantOrigin();
-    const origin = this.quadrantOriginInStage();
-    if (!origin) return;
-
-    const W = this.stage.width(), H = this.stage.height();
-    const grid = buildQuadrantRingGrid(
-      this.navStops(this.nodeGridTargets),
-      origin,
-    );
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const stroke = palette.crosshairsStroke;
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-    const activeStop = grid.stops.find(stop =>
-      Math.abs(stop.source.cx - cx) < 4 &&
-      Math.abs(stop.source.cy - cy) < 4) ?? null;
-    const activeQuadrant = activeStop?.quadrant ??
-      (this.quadrantLastDirection
-        ? quadrantForDirection(this.quadrantLastDirection)
-        : null);
-    const maxReach = Math.max(
-      Math.hypot(origin.x, origin.y),
-      Math.hypot(W - origin.x, origin.y),
-      Math.hypot(origin.x, H - origin.y),
-      Math.hypot(W - origin.x, H - origin.y),
-    );
-    const toDegrees = 180 / Math.PI;
-    const quadrants = ['north', 'south', 'east', 'west'] as const;
-
-    // A low-opacity wash makes the active radial region legible without
-    // overwhelming the independently alternating ring bands.
-    if (activeQuadrant) {
-      const angles = quadrantArcAngles(activeQuadrant);
-      group.add(new Konva.Arc({
-        name: 'quadrant-ring-active-quadrant',
-        x: origin.x,
-        y: origin.y,
-        innerRadius: 0,
-        outerRadius: maxReach,
-        angle: 90,
-        rotation: angles.start * toDegrees,
-        fill: stroke,
-        opacity: 0.035,
-        listening: false,
-      }));
-    }
-
-    // While a node is being placed, the rings are not the thing to look at:
-    // the ghost slots are, and every stop in the graph contributes a ring, so
-    // the anchor ends up inside a dozen concentric arcs (da-499). Keep the
-    // quadrant wash and the band you are actually on; drop the rest of the
-    // lattice until the gesture is over.
-    const placing = this.growActive;
-    for (const quadrant of quadrants) {
-      const angles = quadrantArcAngles(quadrant);
-      const rings = grid.rings[quadrant];
-      rings.forEach((ring, index) => {
-        const innerRadius = Math.min(ring.innerRadius, maxReach);
-        const outerRadius = Math.min(ring.outerRadius, maxReach);
-        const active = ring.stop === activeStop;
-        if (outerRadius > innerRadius && ((index % 2 === 1 && !placing) || active)) {
-          group.add(new Konva.Arc({
-            name: active
-              ? 'quadrant-ring-active-band'
-              : 'quadrant-ring-band',
-            x: origin.x,
-            y: origin.y,
-            innerRadius,
-            outerRadius,
-            angle: 90,
-            rotation: angles.start * toDegrees,
-            fill: stroke,
-            opacity: active ? 0.105 : 0.025,
-            listening: false,
-          }));
-        }
-
-        if (!placing &&
-            Number.isFinite(ring.outerRadius) &&
-            ring.outerRadius > 0 &&
-            ring.outerRadius <= maxReach) {
-          group.add(new Konva.Line({
-            name: 'quadrant-ring-boundary',
-            points: quarterArcPoints(
-              origin,
-              ring.outerRadius,
-              quadrant,
-            ),
-            stroke,
-            strokeWidth: 1,
-            opacity: 0.34,
-            listening: false,
-          }));
-        }
-      });
-    }
-
-    // Unlike the moving ghost frame in the rectangular experiment, these
-    // diagonals are the actual edges of the four independently spaced ring
-    // systems, so they stay attached to the active origin.
-    for (const angle of [
-      Math.PI / 4,
-      Math.PI * 3 / 4,
-      Math.PI * 5 / 4,
-      Math.PI * 7 / 4,
-    ]) {
-      const end = this.navigationRayEnd(origin, angle, W, H);
-      if (!end) continue;
-      group.add(new Konva.Line({
-        name: 'quadrant-ring-diagonal',
-        points: [origin.x, origin.y, end.x, end.y],
-        stroke,
-        strokeWidth: 1.5,
-        opacity: 0.46,
-        dash: [7, 5],
-        listening: false,
-      }));
-    }
-
-    group.add(new Konva.Circle({
-      name: 'quadrant-ring-origin',
-      x: origin.x,
-      y: origin.y,
-      radius: 6,
-      fill: palette.nodeFill,
-      stroke,
-      strokeWidth: 2,
-      opacity: 0.9,
-      listening: false,
-    }));
-  }
-
-  private drawQuadrantNodeGrid(group: Konva.Group): void {
-    this.ensureQuadrantOrigin();
-    const origin = this.quadrantOriginInStage();
-    if (!origin) return;
-
-    const W = this.stage.width(), H = this.stage.height();
-    const stops = this.navStops(this.nodeGridTargets)
-      .filter(stop => stop.cx >= 0 && stop.cx <= W && stop.cy >= 0 && stop.cy <= H);
-    const grid = buildNavigationGrid(
-      stops,
-      W,
-      H,
-      this.navGridTolerance(stops.length),
-    );
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const stroke = palette.crosshairsStroke;
-    const cx = this.crosshairsLayer.crosshairs.x;
-    const cy = this.crosshairsLayer.crosshairs.y;
-
-    // The adaptive rows/columns remain visible as a deliberately subordinate
-    // movement grid. These are roughly one third of the former fill/boundary
-    // opacity, with no active row, column, or cell highlight.
-    const fillBand = (
-      band: NavigationAxisBand,
-      vertical: boolean,
-      name: string,
-    ) => new Konva.Rect({
-      name,
-      x: vertical ? band.start : 0,
-      y: vertical ? 0 : band.start,
-      width: vertical ? band.end - band.start : W,
-      height: vertical ? H : band.end - band.start,
-      fill: stroke,
-      opacity: 0.012,
-      listening: false,
-    });
-    grid.columns.forEach((band, index) => {
-      if (index % 2 === 1) {
-        group.add(fillBand(band, true, 'quadrant-grid-column-band'));
-      }
-    });
-    grid.rows.forEach((band, index) => {
-      if (index % 2 === 1) {
-        group.add(fillBand(band, false, 'quadrant-grid-row-band'));
-      }
-    });
-    for (let index = 1; index < grid.columns.length; index++) {
-      group.add(new Konva.Line({
-        name: 'quadrant-grid-column-boundary',
-        points: [grid.columns[index].start, 0, grid.columns[index].start, H],
-        stroke,
-        strokeWidth: 1,
-        opacity: 0.1,
-        listening: false,
-      }));
-    }
-    for (let index = 1; index < grid.rows.length; index++) {
-      group.add(new Konva.Line({
-        name: 'quadrant-grid-row-boundary',
-        points: [0, grid.rows[index].start, W, grid.rows[index].start],
-        stroke,
-        strokeWidth: 1,
-        opacity: 0.1,
-        listening: false,
-      }));
-    }
-
-    // The darker diagonal wash remains the primary region cue.
-    const activeQuadrant = navigationQuadrant(cx - origin.x, cy - origin.y) ??
-      (this.quadrantLastDirection
-        ? quadrantForDirection(this.quadrantLastDirection)
-        : null);
-    if (activeQuadrant) {
-      const reach = W + H;
-      const quadrantPoints = {
-        north: [
-          origin.x, origin.y,
-          origin.x - reach, origin.y - reach,
-          origin.x + reach, origin.y - reach,
-        ],
-        south: [
-          origin.x, origin.y,
-          origin.x - reach, origin.y + reach,
-          origin.x + reach, origin.y + reach,
-        ],
-        east: [
-          origin.x, origin.y,
-          origin.x + reach, origin.y - reach,
-          origin.x + reach, origin.y + reach,
-        ],
-        west: [
-          origin.x, origin.y,
-          origin.x - reach, origin.y - reach,
-          origin.x - reach, origin.y + reach,
-        ],
-      }[activeQuadrant];
-      group.add(new Konva.Line({
-        name: 'quadrant-grid-active-quadrant',
-        points: quadrantPoints,
-        closed: true,
-        fill: stroke,
-        opacity: 0.1,
-        listening: false,
-      }));
-    }
-
-    const diagonalAngles = [
-      Math.PI / 4,
-      Math.PI * 3 / 4,
-      Math.PI * 5 / 4,
-      Math.PI * 7 / 4,
-    ];
-    const addGhostDiagonalRays = (center: {x: number; y: number}) => {
-      for (const angle of diagonalAngles) {
-        const end = this.navigationRayEnd(center, angle, W, H);
-        if (end) {
-          group.add(new Konva.Line({
-            name: 'quadrant-grid-ghost-diagonal',
-            points: [center.x, center.y, end.x, end.y],
-            stroke,
-            strokeWidth: 1.5,
-            opacity: 0.42,
-            dash: [7, 5],
-            listening: false,
-          }));
-        }
-      }
-    };
-
-    // Preview the diagonal frame that would become active on the next
-    // direction change. It follows the crosshairs; the quadrant wash now
-    // communicates the active frame without a second, darker set of lines.
-    addGhostDiagonalRays({x: cx, y: cy});
-
-    const markerOpacity = (bandIndex: number) => bandIndex % 2 === 1 ? 0.9 : 0.48;
-    for (const stop of stops) {
-      const rowIndex = bandIndexForStop(grid.rows, stop);
-      const columnIndex = bandIndexForStop(grid.columns, stop);
-      const marker = new Konva.Group({
-        name: 'quadrant-grid-membership-marker',
-        x: stop.cx,
-        y: stop.cy,
-        listening: false,
-      });
-      const arm = (points: number[], name: string, opacity: number) => {
-        marker.add(new Konva.Line({
-          points,
-          stroke: palette.nodeFill,
-          strokeWidth: 5,
-          opacity: 0.9,
-          lineCap: 'round',
-          listening: false,
-        }));
-        marker.add(new Konva.Line({
-          name,
-          points,
-          stroke,
-          strokeWidth: 2,
-          opacity,
-          lineCap: 'round',
-          listening: false,
-        }));
-      };
-      arm([-9, 0, 9, 0], 'quadrant-grid-row-arm', markerOpacity(rowIndex));
-      arm([0, -9, 0, 9], 'quadrant-grid-column-arm', markerOpacity(columnIndex));
-      group.add(marker);
-    }
-
-    const goalEnd = this.quadrantGoalRayVisible
-      ? this.navigationRayEnd(origin, this.quadrantGoalAngle, W, H)
-      : null;
-    if (goalEnd) {
-      group.add(new Konva.Line({
-        name: 'quadrant-grid-goal-ray',
-        points: [origin.x, origin.y, goalEnd.x, goalEnd.y],
-        stroke,
-        strokeWidth: 2,
-        opacity: 0.8,
-        dash: [8, 6],
-        listening: false,
-      }));
-    }
-
-    group.add(new Konva.Circle({
-      name: 'quadrant-grid-origin',
-      x: origin.x,
-      y: origin.y,
-      radius: 6,
-      fill: palette.nodeFill,
-      stroke,
-      strokeWidth: 2,
-      opacity: 0.9,
-      listening: false,
-    }));
-  }
-
-  private navigationRayEnd(
-    origin: {x: number; y: number},
-    angle: number,
-    width: number,
-    height: number,
-  ): {x: number; y: number} | null {
-    const dx = Math.cos(angle), dy = Math.sin(angle);
-    const candidates: number[] = [];
-    if (dx > 1e-9) candidates.push((width - origin.x) / dx);
-    else if (dx < -1e-9) candidates.push((0 - origin.x) / dx);
-    if (dy > 1e-9) candidates.push((height - origin.y) / dy);
-    else if (dy < -1e-9) candidates.push((0 - origin.y) / dy);
-    const positive = candidates.filter(value => value > 0);
-    if (positive.length === 0) return null;
-    const distance = Math.min(...positive);
-    return {x: origin.x + dx * distance, y: origin.y + dy * distance};
-  }
-
-
-
-
-  /** Explicit Gather (the `Gather` key): a persistent toggle. Pressing it
-   *  over the gathered anchor (or with no anchor at all) restores; over a
-   *  different node it re-gathers there. */
+  /** The node a traversal or gather should treat as its centre: under the
+   *  crosshairs, else the single selected node. */
   private getTraversalAnchorNode(): DANode | null {
     const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
     if (nodesUnderCrosshairs.length > 0) {
@@ -6882,7 +5895,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       open: true,
       surface: this.growAnchor ? 'grow-targeting' : 'grow-empty',
     });
-    if (this.growAnchor) this.showNodeGrid('nodes');
+    if (this.growAnchor) this.navGrid.showNodeGrid('nodes');
     this.redrawGrowGhost();
   }
 
@@ -6967,7 +5980,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.growEdgeMenuActive = false;
         this.growSelfLoopPending = false;
         this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-targeting'});
-        this.showNodeGrid('nodes');
+        this.navGrid.showNodeGrid('nodes');
         this.redrawGrowGhost();
       }
       return;
@@ -7070,7 +6083,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growSelfLoopPending = this.growPressedKeys.has(this.growKeys.selfLoop);
     this.growGhost?.destroy();
     this.growGhost = null;
-    this.hideNodeGrid();
+    this.navGrid.hideNodeGrid();
     this.drawingLayer.batchDraw();
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
   }
@@ -7087,10 +6100,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // the anchor instead (da-448) made the pin itself the problem — "it seems
     // to bounce back to the originating node" — so da-551 puts them back on
     // the selection.
-    this.snapToNodeInDirection(direction, 'nodes');
-    const last = this.graphItemNavigationStrategy === 'adaptive-band-grid'
-      ? this.navGridLast
-      : this.quadrantNavLast;
+    this.navGrid.snapToNodeInDirection(direction, 'nodes');
+    const last = this.navGrid.lastStop;
     if (!last || last.kind !== 'node') return;
     const target = this.drawingLayer.getDANodes().find(node => node.id === last.id) ?? null;
     const insertion = this.growGhostTargets.find(item => item.id === last.id) ?? null;
@@ -7251,17 +6262,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growInsertionTarget = ghost;
     // The lattice of spots *is* the overlay while the aim is on it; the bands
     // and rings the engine draws describe a decision that is not being made.
-    this.hideNodeGrid();
-    this.hideQuadrantGoalRay();
+    this.navGrid.hideNodeGrid();
+    this.navGrid.hideQuadrantGoalRay();
     const id = ghost ? ghost.id : node!.id;
-    this.navGridLast = {id, kind: 'node'};
-    this.quadrantNavLast = {id, kind: 'node'};
-    this.quadrantLastDirection = null;
+    this.navGrid.adoptStop({id, kind: 'node'});
     const centre = ghost
       ? {x: ghost.x, y: ghost.y}
       : this.getNodeCenterInLayerCoordinates(node!);
     const scale = this.drawingLayer.scaleX();
-    this.jumpCrosshairsToStopCenter({
+    this.navGrid.jumpCrosshairsToStopCenter({
       x: this.drawingLayer.x() + centre.x * scale,
       y: this.drawingLayer.y() + centre.y * scale,
     });
@@ -7284,7 +6293,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus('⚠ No other nodes to connect to');
       return;
     }
-    this.hideNodeGrid();
+    this.navGrid.hideNodeGrid();
     this.navPopupPurpose = 'grow-target';
     this.navPopupStartFilter = true;
     this.navPopupHoldKey = null;
@@ -7323,7 +6332,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  with j/k while f is down, releasing f selects (the popup's holdKey
    *  machinery); Enter also selects. */
   private openGrowTypePopup(): void {
-    this.hideNodeGrid();
+    this.navGrid.hideNodeGrid();
     this.navPopupRows = [
       {id: 'box',       title: 'Box'},
       {id: 'circle',    title: 'Circle'},
@@ -7639,7 +6648,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growTarget = null;
     this.growInsertionTarget = null;
     this.growGhostTargets = [];
-    this.hideNodeGrid();
+    this.navGrid.hideNodeGrid();
     this.daOut.emit({kind: 'popup-state', open: false});
     this.drawingLayer.batchDraw();
   }

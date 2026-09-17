@@ -81,7 +81,7 @@ async function main() {
 
   const defaultStrategy = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.graphItemNavigationStrategy;
+    return da.navGrid.graphItemNavigationStrategy;
   });
   check('adaptive quadrant rings are the session default',
     defaultStrategy === 'adaptive-quadrant-rings',
@@ -96,17 +96,17 @@ async function main() {
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return {
-      strategy: da.graphItemNavigationStrategy,
+      strategy: da.navGrid.graphItemNavigationStrategy,
       stage: {width: da.stage.width(), height: da.stage.height()},
-      origin: da.quadrantOriginInStage(),
-      origins: da.nodeGridGroup?.find('.quadrant-ring-origin').length ?? 0,
-      diagonals: da.nodeGridGroup?.find('.quadrant-ring-diagonal').length ?? 0,
-      boundaries: da.nodeGridGroup?.find('.quadrant-ring-boundary').length ?? 0,
-      bands: da.nodeGridGroup?.find('.quadrant-ring-band').length ?? 0,
-      activeBands: da.nodeGridGroup?.find('.quadrant-ring-active-band').length ?? 0,
+      origin: da.navGrid.quadrantOriginInStage(),
+      origins: da.navGrid.nodeGridGroup?.find('.quadrant-ring-origin').length ?? 0,
+      diagonals: da.navGrid.nodeGridGroup?.find('.quadrant-ring-diagonal').length ?? 0,
+      boundaries: da.navGrid.nodeGridGroup?.find('.quadrant-ring-boundary').length ?? 0,
+      bands: da.navGrid.nodeGridGroup?.find('.quadrant-ring-band').length ?? 0,
+      activeBands: da.navGrid.nodeGridGroup?.find('.quadrant-ring-active-band').length ?? 0,
       rectangularBoundaries:
-        (da.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0) +
-        (da.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0),
+        (da.navGrid.nodeGridGroup?.find('.quadrant-grid-row-boundary').length ?? 0) +
+        (da.navGrid.nodeGridGroup?.find('.quadrant-grid-column-boundary').length ?? 0),
     };
   });
   check('g→r selects quarter rings without replacing the rectangular option',
@@ -123,7 +123,7 @@ async function main() {
   const first = await at();
   const firstActiveBands = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.nodeGridGroup?.find('.quadrant-ring-active-band').length ?? 0;
+    return da.navGrid.nodeGridGroup?.find('.quadrant-ring-active-band').length ?? 0;
   });
   await press('l');
   const second = await at();
@@ -138,13 +138,13 @@ async function main() {
 
   const originBeforeTurn = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.quadrantOriginInStage();
+    return da.navGrid.quadrantOriginInStage();
   });
   await press('j');
   const afterTurn = await at();
   const originAfterTurn = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.quadrantOriginInStage();
+    return da.navGrid.quadrantOriginInStage();
   });
   // The origin re-anchors on the stop you turned at, so compare against where
   // those nodes actually render: they auto-size to their labels, and the
@@ -169,9 +169,9 @@ async function main() {
   const released = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return {
-      visible: da.nodeGridVisible,
-      origin: da.quadrantOriginLayer,
-      overlay: da.nodeGridGroup,
+      visible: da.navGrid.nodeGridVisible,
+      origin: da.navGrid.quadrantOriginLayer,
+      overlay: da.navGrid.nodeGridGroup,
     };
   });
   check('releasing g clears the ring frame and its origin',

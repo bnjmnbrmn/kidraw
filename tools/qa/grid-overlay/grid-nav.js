@@ -36,7 +36,7 @@ async function main() {
   const park = (id) => page.evaluate((t) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.tweens.forEach(x => x.finish()); da.tweens = [];
-    da.navGridLast = null; da.navGoalX = null; da.navGoalY = null;
+    da.navGrid.navGridLast = null; da.navGrid.navGoalX = null; da.navGrid.navGoalY = null;
     // Nodes auto-size to their label, so the fixture's declared 100x50 is not
     // what renders. Park on the real center — the same one at() measures
     // against — or the remembered goal column lands beside every stop.
@@ -66,7 +66,7 @@ async function main() {
   await page.keyboard.press('e'); await settled(page);
   const selectedStrategy = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.graphItemNavigationStrategy;
+    return da.navGrid.graphItemNavigationStrategy;
   });
   check('g→e explicitly selects the adaptive band-grid strategy',
     selectedStrategy === 'adaptive-band-grid', String(selectedStrategy));
@@ -75,13 +75,13 @@ async function main() {
   // which draws a different overlay entirely.
   const overlay = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const children = da.nodeGridGroup ? [...da.nodeGridGroup.getChildren()] : [];
+    const children = da.navGrid.nodeGridGroup ? [...da.navGrid.nodeGridGroup.getChildren()] : [];
     return {
       rects: children.filter(shape => shape.getClassName() === 'Rect').length,
       lines: children.filter(shape => shape.getClassName() === 'Line').length,
-      membershipMarkers: da.nodeGridGroup?.find('.node-grid-membership-marker').length ?? 0,
-      rowArmOpacities: da.nodeGridGroup?.find('.node-grid-row-arm').map(line => line.opacity()) ?? [],
-      columnArmOpacities: da.nodeGridGroup?.find('.node-grid-column-arm').map(line => line.opacity()) ?? [],
+      membershipMarkers: da.navGrid.nodeGridGroup?.find('.node-grid-membership-marker').length ?? 0,
+      rowArmOpacities: da.navGrid.nodeGridGroup?.find('.node-grid-row-arm').map(line => line.opacity()) ?? [],
+      columnArmOpacities: da.navGrid.nodeGridGroup?.find('.node-grid-column-arm').map(line => line.opacity()) ?? [],
       visibleStops: da.navStops('labels').filter(stop =>
         stop.cx >= 0 && stop.cx <= da.stage.width() && stop.cy >= 0 && stop.cy <= da.stage.height()).length,
       ordinaryGridVisible: da.drawingLayer.gridVisible,
@@ -123,7 +123,7 @@ async function main() {
   await page.keyboard.press('j'); await settled(page);
   const goalGuide = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const guide = da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+    const guide = da.navGrid.nodeGridGroup?.findOne('.node-grid-goal-guide');
     return guide ? {
       points: guide.points(),
       dash: guide.dash(),
@@ -146,13 +146,13 @@ async function main() {
   const reacquired = await at();
   const guideAfterReacquire = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const guide = da.nodeGridGroup?.findOne('.node-grid-goal-guide');
+    const guide = da.navGrid.nodeGridGroup?.findOne('.node-grid-goal-guide');
     return {
       present: !!guide,
       guideX: guide ? guide.points()[0] : null,
       crosshairX: da.crosshairsLayer.crosshairsX(),
-      goalX: da.navGoalX,
-      axis: da.navGoalAxis,
+      goalX: da.navGrid.navGoalX,
+      axis: da.navGrid.navGoalAxis,
     };
   });
   check('return guide clears after its column is re-acquired',

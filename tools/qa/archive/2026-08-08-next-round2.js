@@ -62,15 +62,15 @@ async function main() {
   await putCrosshairsOn('da-48');
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.setGraphItemNavigationStrategy('adaptive-quadrant-rings');
-    da.showNodeGrid('nodes');
+    da.navGrid.setGraphItemNavigationStrategy('adaptive-quadrant-rings');
+    da.navGrid.showNodeGrid('nodes');
   });
   const moveByNodeTargets = [];
   const directions = ['left', 'left', 'down'];
   for (const direction of directions) {
     await page.evaluate(nextDirection => {
       const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-      da.snapToNodeInDirection(nextDirection, 'nodes');
+      da.navGrid.snapToNodeInDirection(nextDirection, 'nodes');
     }, direction);
     await page.waitForTimeout(140);
     moveByNodeTargets.push(await page.evaluate(() => {
@@ -88,7 +88,7 @@ async function main() {
   }
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.hideNodeGrid();
+    da.navGrid.hideNodeGrid();
     const select = document.querySelector('select.sample-graph-select');
     select.value = 'next-working';
     select.dispatchEvent(new Event('change', {bubbles: true}));
