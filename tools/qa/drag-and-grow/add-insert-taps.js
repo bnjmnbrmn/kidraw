@@ -74,6 +74,43 @@ async function main() {
     da.crosshairsLayer.crosshairs.y = (pos.y + node.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
   }, text);
 
+  /** A known graph and a known viewport, so each case starts from the same
+   *  place. These cases used to run as a chain — case 2 built the node and
+   *  edge that 3, 4 and 5 relied on — so changing any one of them broke the
+   *  rest for reasons unrelated to what was being tested. */
+  const twoNodes = () => ({
+    nodes: [
+      {id: 'n1', x: 700, y: 300, text: 'alpha', width: 120, height: 60, fontSize: 14, isSelected: false},
+      {id: 'n2', x: 700, y: 700, text: 'beta', width: 120, height: 60, fontSize: 14, isSelected: false},
+    ],
+    edges: [{id: 'e1', srcNodeId: 'n1', destNodeId: 'n2', isSelected: false, labels: []}],
+  });
+  const oneNode = () => ({nodes: [twoNodes().nodes[0]], edges: []});
+
+  const reset = (graph) => page.evaluate(g => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    const dl = da.drawingLayer;
+    dl.clearAll();
+    dl.scale({x: 1, y: 1});
+    dl.position({x: 0, y: 0});
+    if (g) dl.restoreGraph(g);
+    dl.batchDraw();
+    window.__statuses = [];
+  }, graph);
+
+  /** Park on the chord midpoint of the first edge — clear of both node boxes. */
+  const parkOnEdge = () => page.evaluate(() => {
+    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    const dl = da.drawingLayer;
+    const pts = dl.getDAEdges()[0].getPathPoints();
+    const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2,
+                 y: (pts[0].y + pts[pts.length - 1].y) / 2};
+    da.crosshairsLayer.crosshairs.x = mid.x * dl.scaleX() + dl.x();
+    da.crosshairsLayer.crosshairs.y = mid.y * dl.scaleY() + dl.y();
+  });
+
   const escapeToNormal = async () => {
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
@@ -100,75 +137,56 @@ async function main() {
   await page.keyboard.type('alpha', { delay: 25 });
   await escapeToNormal();
 
-  // --- 2. tap a over a node: connected quick-add right ---
+  // --- 2. tap a over a node: self-loop (ledger case 6, revised 2026-08-09) ---
+  // Used to add a connected node one slot right; the revision made the tap
+  // create a self-loop with the current edge defaults. Growing to a *new*
+  // node is the held-`a` flow now (grow-mode.js).
+  await reset(oneNode());
   await parkOnNode('alpha');
   await page.keyboard.press('a');
-  await page.waitForTimeout(420);
+  await afterFrame(page); await settled(page);
   s = await state();
-  const alpha = s.nodes.find(n => n.text === 'alpha');
-  const fresh = s.nodes.find(n => n.text === '');
-  check('tap a over a node adds a connected node', s.nodes.length === 2 && s.edges.length === 1
-    && s.edges[0].from === 'alpha', JSON.stringify(s.edges));
-  check('new node sits right of the anchor', fresh && alpha && fresh.x > alpha.x + 100,
-    `anchor x=${alpha?.x}, new x=${fresh?.x}`);
-  check('labelEdit after quick-add right', s.mode === 'labelEdit', s.mode);
-  check('connected quick-add centers its new editable node',
-    fresh &&
-      Math.abs(fresh.stageX - s.stageCenter.x) < 4 &&
-      Math.abs(fresh.stageY - s.stageCenter.y) < 4,
-    JSON.stringify({
-      node: fresh && {x: fresh.stageX, y: fresh.stageY},
-      center: s.stageCenter,
-    }));
-  await page.keyboard.type('beta', { delay: 25 });
-  await escapeToNormal();
+  check('tap a over a node adds a self-loop and no new node',
+    s.nodes.length === 1 && s.edges.length === 1
+      && s.edges[0].from === 'alpha' && s.edges[0].to === 'alpha',
+    JSON.stringify({nodes: s.nodes.length, edges: s.edges}));
+  check('the self-loop tap leaves normal mode', s.mode === 'normal', s.mode);
 
-  // --- 3. tap a over an edge: hint only ---
-  await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
-    const dl = da.drawingLayer;
-    const edge = dl.getDAEdges()[0];
-    const pts = edge.getPathPoints();
-    // geometric midpoint of the chord — clear of both node boxes on this
-    // vertical edge
-    const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2,
-                 y: (pts[0].y + pts[pts.length - 1].y) / 2};
-    da.crosshairsLayer.crosshairs.x = mid.x * dl.scaleX() + dl.x();
-    da.crosshairsLayer.crosshairs.y = mid.y * dl.scaleY() + dl.y();
-  });
-  const beforeCount = (await state()).nodes.length;
+  // --- 3. tap a over a bare edge: new label, straight into Insert ---
+  // Ledger row 6b said "no-op + hint" until 2026-09-17; it contradicted the
+  // prose in the same design note, and the built behaviour followed the prose.
+  await reset(twoNodes());
+  await parkOnEdge();
+  const before3 = (await state()).nodes.length;
   await page.keyboard.press('a');
-  await page.waitForTimeout(200);
+  await afterFrame(page); await settled(page);
   s = await state();
-  check('tap a over an edge adds nothing and hints', s.nodes.length === beforeCount
-    && s.mode === 'normal' && s.statuses.some(m => m.includes('Edge under crosshairs')),
-    JSON.stringify({n: s.nodes.length, mode: s.mode, statuses: s.statuses.slice(-1)}));
+  check('tap a over a bare edge adds a label and no node',
+    s.nodes.length === before3 && s.edges[0]?.labels?.length === 1,
+    JSON.stringify({nodes: s.nodes.length, labels: s.edges[0]?.labels}));
+  check('the new edge label opens for editing', s.mode === 'labelEdit', s.mode);
+  await page.keyboard.type('mid', {delay: 25});
+  await escapeToNormal();
+  s = await state();
+  check('typed text lands on the new edge label', s.edges[0]?.labels?.join() === 'mid',
+    JSON.stringify(s.edges[0]?.labels));
 
   // --- 4. tap i over a node: edit its text ---
+  await reset(twoNodes());
   await parkOnNode('beta');
   await page.keyboard.press('i');
-  await page.waitForTimeout(200);
+  await afterFrame(page); await settled(page);
   s = await state();
   check('tap i over a node enters labelEdit', s.mode === 'labelEdit', s.mode);
-  await page.keyboard.type('x', { delay: 25 });
+  await page.keyboard.type('x', {delay: 25});
   await escapeToNormal();
   s = await state();
   check('typed text appended to the node label', s.nodes.some(n => n.text === 'betax'),
     JSON.stringify(s.nodes.map(n => n.text)));
 
   // --- 5. tap i over the (label-less) edge: creates + edits an empty label ---
-  await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
-    const dl = da.drawingLayer;
-    const edge = dl.getDAEdges()[0];
-    const pts = edge.getPathPoints();
-    const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2,
-                 y: (pts[0].y + pts[pts.length - 1].y) / 2};
-    da.crosshairsLayer.crosshairs.x = mid.x * dl.scaleX() + dl.x();
-    da.crosshairsLayer.crosshairs.y = mid.y * dl.scaleY() + dl.y();
-  });
+  await reset(twoNodes());
+  await parkOnEdge();
   await page.keyboard.press('i');
   await page.waitForTimeout(200);
   s = await state();
