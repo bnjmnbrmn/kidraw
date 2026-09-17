@@ -1,3 +1,10 @@
+/**
+ * The Konva layer holding the graph itself — nodes and edges — and the
+ * authority on what is in it.
+ *
+ * Pans and zooms with the view, so anything that must keep a constant on-screen
+ * size belongs on the crosshairs layer instead, not here.
+ */
 import Konva from 'konva';
 import {DANode} from './da-node';
 import {DAEdge} from './da-edge';

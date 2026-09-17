@@ -1,3 +1,22 @@
+/**
+ * The canvas: everything you see and every command that changes it.
+ *
+ * This is the orchestrator, not the whole drawing area. It owns the Angular
+ * lifecycle, the two Konva layers, command dispatch, selection and mode state,
+ * and crosshairs movement. The work itself lives beside it — the shapes in
+ * `da-*.ts`, routing and layout in their own pure modules, and subsystems that
+ * have earned their own file (`navigation-grid-controller.ts`,
+ * `gather-controller.ts`) behind narrow host interfaces.
+ *
+ * It receives `DACommand`s from the keymenu through AppComponent and answers
+ * with `DANotification`s. It never reads a key code: bindings resolve upstream,
+ * so the vim and ijkl profiles are the same code with different tables.
+ *
+ * Still large. When taking something out of it, follow the two controllers
+ * above: lend the collaborator a host object with getters, keep this class's
+ * own members private, and move the state that belongs to the feature rather
+ * than leaving it behind. See ARCHITECTURE.md.
+ */
 import {AfterViewInit, Component, ElementRef, EventEmitter, HostListener, inject, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DemoDataService } from '../services/demo-data.service';

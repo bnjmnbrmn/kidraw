@@ -1,3 +1,12 @@
+/**
+ * The vocabulary the whole app speaks.
+ *
+ * `DACommand` is an *intent* — MOVE_CROSSHAIRS, CREATE_NEW_NODE — never a key.
+ * The keymenu resolves physical keys into these, the drawing area executes
+ * them, and nothing in between needs to know which keyboard profile is active.
+ * Read this file before the drawing area: it is the shorter half of the same
+ * story.
+ */
 import { GraphSnapshot } from './graph-snapshot';
 
 export type NodeShape = 'box' | 'circle' | 'diamond' | 'junction' | 'invisible';

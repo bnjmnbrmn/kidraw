@@ -1,3 +1,11 @@
+/**
+ * The Konva layer that sits above the graph: the crosshairs themselves and the
+ * overlays that explain what a keystroke will do.
+ *
+ * Deliberately *not* transformed with the drawing layer. Anything here is in
+ * stage coordinates and keeps its size at any zoom, which is what makes the
+ * navigation overlays and landing ghosts readable when the graph is small.
+ */
 import Konva from 'konva';
 import {DACrosshairs} from './da-crosshairs.group';
 

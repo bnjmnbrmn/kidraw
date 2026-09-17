@@ -1,3 +1,11 @@
+/**
+ * Automatic layout: where nodes go when the user asks for an arrangement
+ * rather than placing them by hand.
+ *
+ * Pure functions over node geometry — no Konva, no component. `applyLayout`
+ * dispatches on `LayoutType`; the "-clear" variants additionally try to leave
+ * no straight edge passing through an unrelated node.
+ */
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { LayoutType } from './command.model';

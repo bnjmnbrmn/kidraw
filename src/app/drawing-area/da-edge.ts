@@ -1,3 +1,12 @@
+/**
+ * One edge: its path, control points, arrowheads, labels and waypoints.
+ *
+ * The painted curve is derived, not stored. Control points come from the
+ * routing algorithms (`*-route-edges.ts`), and `refreshGeometry()` re-derives
+ * the rendered polyline from them — which is why labels and waypoints are
+ * anchored by arc-length fraction along that polyline rather than by absolute
+ * position: they then follow node moves and re-routing for free.
+ */
 import Konva from 'konva';
 import {DANode} from './da-node';
 import {DALabel} from './da-label';

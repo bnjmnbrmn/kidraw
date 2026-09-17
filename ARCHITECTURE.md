@@ -1,0 +1,152 @@
+# KiDraw architecture — the whole system on one page
+
+Start here when opening the repo cold. For *where development stands*, read
+[`dev-status.md`](dev-status.md); for project conventions,
+[`AGENTS.md`](AGENTS.md); for design history, [`notes/README.md`](notes/README.md).
+
+KiDraw is a keyboard-first diagramming tool: Angular 19 for the shell, Konva
+for the canvas, and a keyboard overlay ("the keymenu") that maps physical keys
+to actions. The mouse is secondary throughout. You navigate a crosshairs cursor
+around the canvas and build a directed graph of nodes and edges without
+reaching for it.
+
+## The pieces, by weight
+
+| Directory | Lines | What lives there |
+|---|---:|---|
+| `drawing-area/` | ~23,000 | The canvas and everything on it: nodes, edges, labels, waypoints, crosshairs, layout, edge routing, navigation |
+| `lib/` | ~3,200 | Logic with no Angular in it: the keymenu state machine, the file format, fuzzy matching |
+| `keymenu/` | ~2,600 | The on-screen keyboard overlay (its own Konva canvas) |
+| `agent/` | ~2,400 | Agent mode's tab side — see [`agent/README.md`](agent/README.md) for the server |
+| `services/` | ~1,900 | Storage, theming, vault, config, logging |
+| `extensions/` | ~300 | Diagram types (explanation, todo) that add node kinds and edge kinds |
+| `nav-popup/`, `reading/`, `header/`, `ex-line/` | ~1,000 | Go-to popup, reading mode, header chips, the vim `:` line |
+
+## How a keystroke becomes a change
+
+This is the spine. Almost everything follows it.
+
+```
+  keyboard
+     │
+     ▼
+  KeymenuComponent ──DACommand──▶ AppComponent ──Subject<DACommand>──▶ DrawingAreaComponent
+                                       ▲                                      │
+                                       └──────────── DANotification ──────────┘
+```
+
+1. **`KeymenuComponent`** owns the keyboard. It knows which mode you are in and
+   which physical key means what, and emits a `DACommand` — an intent like
+   `MOVE_CROSSHAIRS` or `CREATE_NEW_NODE`, never a key code.
+2. **`AppComponent`** is the shell. It routes commands to the drawing area over
+   an RxJS `Subject<DACommand>`, and calls keymenu methods directly for mode
+   switches.
+3. **`DrawingAreaComponent`** executes them against the Konva canvas and emits
+   `DANotification`s back — "a node was inserted", "the view changed", "edit
+   state changed" — which the shell and header react to.
+
+**The rule that keeps this honest:** no key literals in action logic. Every
+binding flows through `KeymenuKeyAssignments`, so the vim and ijkl profiles are
+the same code with different tables.
+
+## Inside the drawing area
+
+`drawing-area.component.ts` is still ~7,500 lines and is the part of the
+codebase most worth knowing your way around. It is the orchestrator: Angular
+lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
+movement.
+
+Around it, in the same directory:
+
+**The things on the canvas** — `da-node.ts` (1,588), `da-edge.ts` (926),
+`da-label.ts`, `da-waypoint.ts`. Each wraps a Konva group and knows how to draw
+and measure itself.
+
+**Two Konva layers** — `drawing.layer.ts` holds nodes and edges;
+`crosshairs.layer.ts` is always on top. Overlays that must not scale with the
+graph live on the crosshairs layer; that distinction matters more often than
+you would expect.
+
+**Edge routing**, the largest body of pure algorithm here:
+`bezier-fit-weighted-chain-edges.ts`, `desiderata-route-edges.ts`,
+`routing-local-score.ts`, `incremental-desiderata-v3-route-edges.ts`. These are
+pure functions over geometry; the component only orchestrates them.
+
+**Layout** — `graph-layout.ts` (1,116) and `layered-layout.ts`.
+
+**Extracted subsystems**, each with a narrow host interface back to the
+component:
+- `navigation-grid-controller.ts` (1,100) — move-by-node: three strategies for
+  stepping the crosshairs between graph items, and the overlay that explains
+  the rule being applied.
+- `gather-controller.ts` (697) — the fisheye "gather", which pulls a node's
+  neighbourhood onto a ring and can put it back exactly.
+
+These two are the pattern to follow when more comes out: the component lends a
+collaborator only what it needs, through getters, and keeps its own members
+private.
+
+## State that outlives a keystroke
+
+**Undo/redo** is whole-graph snapshot serialisation — `graph-snapshot.ts` plus
+`undo-redo.service.ts`. Coarse, and deliberately so. Agent edits get authored
+undo groups so one agent turn undoes as one step.
+
+**Files** live in `lib/file-format/` — a parser, a resolver, snapshot mapping,
+and a zip bundle format. The vault (`services/vault.service.ts`) watches files
+on disk; drafts persist to localStorage through `draft-storage.service.ts`.
+
+**Diagram types** are extensions (`extensions/`), registered in
+`extension-registry.ts`. An extension contributes node kinds, edge kinds and
+behaviour — `explanation.extension.ts` adds Supports edges and reading order,
+`todo-graph.extension.ts` adds task statuses. `:type explanation` switches.
+
+## Agent mode
+
+`src/app/agent/` is the tab side: `AgentService` holds the session, the panel
+and overlay render it, and canvas tools reach the canvas only through
+`AgentCanvasTarget` (implemented by `DrawingAreaComponent`). It talks to
+`kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that you
+run yourself. Nothing connects anywhere until you configure an endpoint.
+
+That server's README is the best-documented corner of the repo and explains the
+part people find surprising: the model's tools execute **in the browser tab**,
+not on the server.
+
+## Testing
+
+Three tiers, and they catch different things:
+
+- **Unit specs** (`*.spec.ts`, 658 of them) — `npx ng test --watch=false
+  --browsers=ChromeHeadless`. Fast: the suite executes in about 7 seconds; the
+  Angular build around it is the slow part.
+- **Browser tests** (`tools/qa/`) — real keys against the real app in Chrome.
+  `npm run qa`. See [`tools/qa/README.md`](tools/qa/README.md), which also
+  records which checks are currently owed and why.
+- **`npx ng build`** — must be clean before committing.
+
+Many unit specs build the component with
+`Object.create(DrawingAreaComponent.prototype)`, which skips field
+initialisers. That is worth knowing before you move anything onto a
+collaborator field: prototype methods survive it, fields do not.
+
+## A reading order
+
+If you want to understand the whole thing, roughly this order:
+
+1. [`AGENTS.md`](AGENTS.md) — conventions, and the architecture notes index.
+2. [`notes/philosophy-keyboard-first.md`](notes/philosophy-keyboard-first.md) —
+   why any of this is shaped the way it is.
+3. [`notes/architecture-keymenu-model.md`](notes/architecture-keymenu-model.md)
+   and [`architecture-mode-hierarchy.md`](notes/architecture-mode-hierarchy.md)
+   — the state machine and the four modes.
+4. `src/app/app.component.ts` — small, and the whole command flow is visible.
+5. `src/app/drawing-area/command.model.ts` — the vocabulary everything speaks.
+6. `src/app/drawing-area/drawing.layer.ts` — how the graph is actually held.
+7. One extracted subsystem end to end, `gather-controller.ts` for preference:
+   it is self-contained and shows the host-interface pattern.
+8. [`agent/README.md`](agent/README.md) — if agent mode interests you.
+
+Then pick a behaviour you know from using the app, find its `DACommand`, and
+follow it through. That is faster than reading `drawing-area.component.ts` top
+to bottom, which nobody should do.

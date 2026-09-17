@@ -8,9 +8,10 @@ Canonical, tool-agnostic project instructions. Both Claude Code (via `CLAUDE.md`
 
 ## Where to start
 
-1. Read [`dev-status.md`](dev-status.md) for **where development currently stands**: recent commits, current focus, known blockers. It is intentionally short.
-2. Read [`notes/README.md`](notes/README.md) for the **Map of Content** into the project zettelkasten — design decisions, architecture, ideas, bugs, research.
-3. For the **agent roster** (who does what), see the "Agents" section below and [`notes/agents/`](notes/agents/) for the per-agent home files.
+1. Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for **the whole system on one page**: what each directory holds, how a keystroke becomes a change, and a reading order for the code. Start here when opening the repo cold.
+2. Read [`dev-status.md`](dev-status.md) for **where development currently stands**: recent commits, current focus, known blockers. It is intentionally short.
+3. Read [`notes/README.md`](notes/README.md) for the **Map of Content** into the project zettelkasten — design decisions, architecture, ideas, bugs, research.
+4. For the **agent roster** (who does what), see the "Agents" section below and [`notes/agents/`](notes/agents/) for the per-agent home files.
 
 ## Git discipline
 

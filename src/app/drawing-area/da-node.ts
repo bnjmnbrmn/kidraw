@@ -1,3 +1,13 @@
+/**
+ * One node on the canvas: its Konva group, its label, and everything about how
+ * it is drawn and measured.
+ *
+ * Nodes auto-size to their text, so a node's rendered box is not whatever was
+ * asked for — the overflow mode decides whether long text clips, shrinks the
+ * font, or widens the box. Anything positioning against a node must ask it for
+ * its real geometry rather than assuming the nominal size; several test
+ * fixtures learned this the hard way.
+ */
 import Konva from 'konva';
 import { DAEdge } from './da-edge';
 import { nextId } from './id-generator';

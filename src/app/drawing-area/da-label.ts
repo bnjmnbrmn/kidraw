@@ -1,3 +1,11 @@
+/**
+ * A label: on a node, or anchored to a point along an edge.
+ *
+ * Edge labels store an anchor — arc-length fraction `t` plus a side — rather
+ * than a position, so they travel with the edge when it re-routes. Text may be
+ * markdown and TeX for diagram types that opt in; see `markdown-label.ts` and
+ * `math-images.ts`.
+ */
 import Konva from 'konva';
 import {nextId} from './id-generator';
 import {EdgeLabelSide} from './edge-label-anchor';
