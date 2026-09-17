@@ -38,6 +38,8 @@ npx ng build                                          # production build / type-
 
 **Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`.
 
+**Inspection note (running inside IntelliJ):** the IDE's inspections are reachable over MCP and catch what `npx ng build` cannot — unused imports, dead privates and unused parameters are warnings, not type errors, so the build stays green with hundreds of them. But on a file of a few thousand lines the analysis quietly gives up and returns *no problems*, which is indistinguishable from a clean file. Pass an explicit long `timeout`, treat an empty result on a big file as "ask again", and probe with a deliberate fault when it matters. See [`notes/process-ide-inspections.md`](notes/process-ide-inspections.md).
+
 ## Architecture (one-page summary)
 
 ```
