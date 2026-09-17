@@ -870,6 +870,16 @@ describe('DrawingArea Unit Tests', () => {
       component.linkNavQuadrantLines = null;
       component.graphNavEdge = edge;
 
+      // Object.create skips field initialisers; a spy keeps this a unit test.
+      component.navGrid = (() => {
+      const spy: any = jasmine.createSpyObj('navGrid',
+        ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+         'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+         'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+      spy.visible = false;   // plain properties: specs set lastStop from their fakes
+      spy.lastStop = null;
+      return spy;
+    })();
       component.redrawLinkNavQuadrantLines(source);
 
       const group = component.linkNavQuadrantLines as Konva.Group;
@@ -901,9 +911,28 @@ describe('DrawingArea Unit Tests', () => {
       component.finishTweens = () => undefined;
       component.getDANodesContainingCrosshairs = () => [];
       component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
-      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.navGrid = (() => {
+        const spy: any = jasmine.createSpyObj('navGrid',
+          ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+           'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+           'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+        spy.visible = false;   // plain properties: specs set lastStop from their fakes
+        spy.lastStop = null;
+        return spy;
+    })();
+      component.navGrid.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
       component.validGraphNavLastNode = () => null;
       component.redrawLinkNavQuadrantLines = jasmine.createSpy('redrawLinkNavQuadrantLines');
+      // Object.create skips field initialisers; a spy keeps this a unit test.
+      component.navGrid = (() => {
+      const spy: any = jasmine.createSpyObj('navGrid',
+        ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+         'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+         'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+      spy.visible = false;   // plain properties: specs set lastStop from their fakes
+      spy.lastStop = null;
+      return spy;
+    })();
       component.scheduleLinkNavQuadrantRefresh = jasmine.createSpy('scheduleLinkNavQuadrantRefresh');
       component.emitStatus = () => undefined;
       component.graphNavMomentum = null;
@@ -913,7 +942,7 @@ describe('DrawingArea Unit Tests', () => {
       expect(component.linkNavSource).toBe(nearest);
       expect(component.graphNavEdge).toBe(edge);
       expect(component.linkNavDirectionalFocus).toBeTrue();
-      expect(component.jumpCrosshairsToStopCenter).toHaveBeenCalledWith({x: 160, y: 160});
+      expect(component.navGrid.jumpCrosshairsToStopCenter).toHaveBeenCalledWith({x: 160, y: 160});
       expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(nearest);
     });
 
@@ -952,8 +981,27 @@ describe('DrawingArea Unit Tests', () => {
       component.recordNavVisit = () => undefined;
       component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
       component.getNodeCenterInStageCoordinates = () => ({x: 360, y: 60});
-      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.navGrid = (() => {
+        const spy: any = jasmine.createSpyObj('navGrid',
+          ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+           'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+           'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+        spy.visible = false;   // plain properties: specs set lastStop from their fakes
+        spy.lastStop = null;
+        return spy;
+    })();
+      component.navGrid.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
       component.redrawLinkNavQuadrantLines = jasmine.createSpy('redrawLinkNavQuadrantLines');
+      // Object.create skips field initialisers; a spy keeps this a unit test.
+      component.navGrid = (() => {
+      const spy: any = jasmine.createSpyObj('navGrid',
+        ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+         'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+         'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+      spy.visible = false;   // plain properties: specs set lastStop from their fakes
+      spy.lastStop = null;
+      return spy;
+    })();
       component.scheduleLinkNavQuadrantRefresh = () => undefined;
       component.emitStatus = () => undefined;
 

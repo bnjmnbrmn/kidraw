@@ -62,6 +62,18 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.growPressedKeys = new Set<string>();
     component.growGhostTargets = [];
     component.growInsertionTarget = null;
+    // Object.create skips field initialisers, so this collaborator is absent.
+    // A spy, not the real controller: these are unit tests of the component,
+    // and the real one would drag in layers this spec never set up.
+    component.navGrid = (() => {
+      const spy: any = jasmine.createSpyObj('navGrid',
+        ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
+         'jumpCrosshairsToStopCenter', 'setGraphItemNavigationStrategy', 'adoptStop',
+         'adjustQuadrantGoalAngle', 'hideQuadrantGoalRay', 'cancelQuadrantGoalRayFade']);
+      spy.visible = false;   // plain properties: specs set lastStop from their fakes
+      spy.lastStop = null;
+      return spy;
+    })();
     return component;
   }
 
@@ -309,16 +321,15 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       });
       component.growAnchor = anchor;
       component.growTarget = null;
-      component.graphItemNavigationStrategy = 'adaptive-quadrant-rings';
-      component.quadrantNavLast = null;
-      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
+      component.navGrid.lastStop = null;
+      component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
         .and.callFake(() => {
-          component.quadrantNavLast = {id: 'target', kind: 'node'};
+          component.navGrid.lastStop = {id: 'target', kind: 'node'};
         });
       component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
       component.growHop('right');
 
-      expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
+      expect(component.navGrid.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
       expect(component.growTarget).toBe(target);
       expect(component.redrawGrowGhost).toHaveBeenCalled();
     });
@@ -334,11 +345,11 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.drawingLayer.x = () => 0;
       component.drawingLayer.y = () => 0;
       component.drawingLayer.scaleX = () => 1;
-      component.hideNodeGrid = jasmine.createSpy('hideNodeGrid');
+      component.navGrid.hideNodeGrid = jasmine.createSpy('hideNodeGrid');
       component.hideQuadrantGoalRay = jasmine.createSpy('hideQuadrantGoalRay');
-      component.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
+      component.navGrid.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
       component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
-      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection');
+      component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection');
       return component;
     };
     const box = (id: string, cx: number, cy: number) =>
@@ -358,8 +369,8 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       // A turn from there is the neighbouring cell, not a rethink of the field.
       component.growHop('up');
       expect(component.growInsertionTarget).toBe(northEast);
-      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
-      expect(component.jumpCrosshairsToStopCenter).toHaveBeenCalledTimes(2);
+      expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
+      expect(component.navGrid.jumpCrosshairsToStopCenter).toHaveBeenCalledTimes(2);
       expect(component.redrawGrowGhost).toHaveBeenCalledTimes(2);
     });
 
@@ -372,11 +383,10 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = withLattice(
         buildComponent({allNodes: [anchor, target]}), [east]);
       component.growAnchor = anchor;
-      component.graphItemNavigationStrategy = 'adaptive-quadrant-rings';
-      component.quadrantNavLast = null;
-      component.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
+      component.navGrid.lastStop = null;
+      component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
         .and.callFake(() => {
-          component.quadrantNavLast = {id: 'target', kind: 'node'};
+          component.navGrid.lastStop = {id: 'target', kind: 'node'};
         });
 
       component.growHop('right');
@@ -385,7 +395,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       // Nothing further east on the lattice: the engine takes the next hop and
       // the real node beyond it stays reachable.
       component.growHop('right');
-      expect(component.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
+      expect(component.navGrid.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
       expect(component.growTarget).toBe(target);
       expect(component.growInsertionTarget).toBeNull();
     });
@@ -403,7 +413,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
 
       expect(component.growTarget).toBe(between);
       expect(component.growInsertionTarget).toBeNull();
-      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
+      expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
     });
 
     it('takes the node a withheld cell is standing on', () => {
@@ -417,7 +427,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.growHop('right');
 
       expect(component.growTarget).toBe(sitting);
-      expect(component.snapToNodeInDirection).not.toHaveBeenCalled();
+      expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
     });
 
     it('turns a pristine release over a node into a self-loop', () => {

@@ -24,7 +24,7 @@ import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
 import { layeredLayout } from './layered-layout';
 import { GatherController, GatherHost } from './gather-controller';
-import { NavigationGridController, NavigationGridHost } from './navigation-grid-controller';
+import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
 import {
   bandIndexAtCoordinate,
   bandIndexForStop,
@@ -3955,7 +3955,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       Math.PI * 5 / 4,
       Math.PI * 7 / 4,
     ]) {
-      const end = this.navGrid.navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
+      const end = navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
       if (!end) continue;
       group.add(new Konva.Line({
         name: 'move-by-link-diagonal',

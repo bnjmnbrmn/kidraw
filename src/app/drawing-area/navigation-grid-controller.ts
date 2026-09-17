@@ -831,7 +831,7 @@ export class NavigationGridController {
       Math.PI * 5 / 4,
       Math.PI * 7 / 4,
     ]) {
-      const end = this.navigationRayEnd(origin, angle, W, H);
+      const end = navigationRayEnd(origin, angle, W, H);
       if (!end) continue;
       group.add(new Konva.Line({
         name: 'quadrant-ring-diagonal',
@@ -971,7 +971,7 @@ export class NavigationGridController {
     ];
     const addGhostDiagonalRays = (center: {x: number; y: number}) => {
       for (const angle of diagonalAngles) {
-        const end = this.navigationRayEnd(center, angle, W, H);
+        const end = navigationRayEnd(center, angle, W, H);
         if (end) {
           group.add(new Konva.Line({
             name: 'quadrant-grid-ghost-diagonal',
@@ -1026,7 +1026,7 @@ export class NavigationGridController {
     }
 
     const goalEnd = this.quadrantGoalRayVisible
-      ? this.navigationRayEnd(origin, this.quadrantGoalAngle, W, H)
+      ? navigationRayEnd(origin, this.quadrantGoalAngle, W, H)
       : null;
     if (goalEnd) {
       group.add(new Konva.Line({
@@ -1053,23 +1053,6 @@ export class NavigationGridController {
     }));
   }
 
-  navigationRayEnd(
-    origin: {x: number; y: number},
-    angle: number,
-    width: number,
-    height: number,
-  ): {x: number; y: number} | null {
-    const dx = Math.cos(angle), dy = Math.sin(angle);
-    const candidates: number[] = [];
-    if (dx > 1e-9) candidates.push((width - origin.x) / dx);
-    else if (dx < -1e-9) candidates.push((0 - origin.x) / dx);
-    if (dy > 1e-9) candidates.push((height - origin.y) / dy);
-    else if (dy < -1e-9) candidates.push((0 - origin.y) / dy);
-    const positive = candidates.filter(value => value > 0);
-    if (positive.length === 0) return null;
-    const distance = Math.min(...positive);
-    return {x: origin.x + dx * distance, y: origin.y + dy * distance};
-  }
   /** The stop the last step landed on, whichever strategy made it. */
   get lastStop(): NavStopRef | null {
     return this.graphItemNavigationStrategy === 'adaptive-band-grid'
@@ -1091,4 +1074,27 @@ export class NavigationGridController {
     this.quadrantNavLast = stop;
     this.quadrantLastDirection = null;
   }
+}
+
+/**
+ * Where a ray from `origin` at `angle` leaves a `width` x `height` viewport.
+ * Pure geometry — no component state — so it lives outside the class and the
+ * drawing area can use it without going through the controller.
+ */
+export function navigationRayEnd(
+    origin: {x: number; y: number},
+  angle: number,
+  width: number,
+  height: number,
+): {x: number; y: number} | null {
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const candidates: number[] = [];
+  if (dx > 1e-9) candidates.push((width - origin.x) / dx);
+  else if (dx < -1e-9) candidates.push((0 - origin.x) / dx);
+  if (dy > 1e-9) candidates.push((height - origin.y) / dy);
+  else if (dy < -1e-9) candidates.push((0 - origin.y) / dy);
+  const positive = candidates.filter(value => value > 0);
+  if (positive.length === 0) return null;
+  const distance = Math.min(...positive);
+  return {x: origin.x + dx * distance, y: origin.y + dy * distance};
 }
