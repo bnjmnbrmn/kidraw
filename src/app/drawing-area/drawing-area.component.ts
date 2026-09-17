@@ -61,6 +61,23 @@ import {
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
 
+/** What the crosshairs are resting on, and the trace drawn around it.
+ *  `trace` is null when the item is shown by a navigation landing ghost. */
+interface CrosshairHover {
+  kind: 'label' | 'waypoint' | 'node' | 'edge';
+  id: string;
+  trace: Konva.Shape | null;
+  node?: DANode;
+  ghostReasons?: string[];
+}
+
+/** The look every hover trace shares, resolved for the current zoom. */
+interface HoverTraceStyle {
+  scale: number;
+  pad: number;
+  common: Konva.ShapeConfig;
+}
+
 /** The grid a movement step measures itself against, at the current zoom. */
 interface MovementGrid {
   scale: number;
@@ -3071,116 +3088,136 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer?.batchDraw();
       return;
     }
-    const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
-    const palette = this.visualConfigService
-      .getEffectivePalette(this.themeService.theme);
-    const color = palette.crosshairsStroke;
-    const pad = 6 / scale;
-    const common = {
-      name: 'crosshair-hover-highlight',
-      stroke: color,
-      strokeWidth: 2,
-      strokeScaleEnabled: false,
-      // With stroke scaling disabled, Konva applies dash lengths in screen
-      // pixels too. Dividing by zoom here would compensate a second time.
-      dash: [7, 5],
-      opacity: 0.9,
-      lineCap: 'round' as const,
-      lineJoin: 'round' as const,
-      listening: false,
-      shadowColor: color,
-      shadowBlur: 5,
-      shadowOpacity: 0.3,
-    };
 
-    let highlight: Konva.Shape | null = null;
-    let targetKind = '';
-    let targetId = '';
-    let targetNode: DANode | null = null;
-    let ghostReasons: string[] = [];
+    const hover = this.crosshairHoverTarget();
+    if (hover?.trace) {
+      hover.trace.setAttr('targetKind', hover.kind);
+      hover.trace.setAttr('targetId', hover.id);
+      this.drawingLayer.add(hover.trace);
+      hover.trace.moveToTop();
+      this.crosshairHoverHighlight = hover.trace;
+    }
+    if (hover?.node) {
+      this.refreshNavigationLandingGhost(hover.node, hover.ghostReasons);
+    }
+    this.drawingLayer.batchDraw();
+  }
+
+  /** The one item the crosshairs are on, in selection's priority order, with
+   *  the trace to draw around it. Null when they are over empty canvas. */
+  private crosshairHoverTarget(): CrosshairHover | null {
+    const style = this.hoverTraceStyle();
 
     const label = this.getLabelUnderCrosshairs();
     if (label) {
-      targetKind = 'label';
-      targetId = label.id;
-      highlight = new Konva.Rect({
-        ...common,
-        x: label.x - label.width / 2 - pad,
-        y: label.y - label.height / 2 - pad,
-        width: label.width + pad * 2,
-        height: label.height + pad * 2,
-        cornerRadius: 5 / scale,
-      });
-    } else {
-      const waypoint = this.getWaypointUnderCrosshairs();
-      if (waypoint) {
-        targetKind = 'waypoint';
-        targetId = waypoint.id;
-        highlight = new Konva.Circle({
-          ...common,
-          x: waypoint.x,
-          y: waypoint.y,
-          radius: waypoint.RADIUS + pad,
-        });
-      } else {
-        const node = topmost(this.getDANodesContainingCrosshairs());
-        if (node) {
-          targetNode = node;
-          targetKind = 'node';
-          targetId = node.id;
-          // A node that earns a landing ghost gets its dashed trace on the
-          // ghost instead. Ringing the real node as well put two dashed
-          // outlines of the same node on screen at once (da-434).
-          ghostReasons = this.navigationGhostReasons(node);
-          highlight = ghostReasons.length > 0 ? null
-            // A circle node is an ellipse once its label stretches it, and a
-            // rounded rectangle around one reads as a different shape than
-            // the thing it is tracing (da-442).
-            : node.nodeShape === 'circle' ? new Konva.Ellipse({
-              ...common,
-              x: node.group.x() + node.NODE_WIDTH / 2,
-              y: node.group.y() + node.NODE_HEIGHT / 2,
-              radiusX: node.NODE_WIDTH / 2 + pad,
-              radiusY: node.NODE_HEIGHT / 2 + pad,
-            })
-            : new Konva.Rect({
-              ...common,
-              x: node.group.x() - pad,
-              y: node.group.y() - pad,
-              width: node.NODE_WIDTH + pad * 2,
-              height: node.NODE_HEIGHT + pad * 2,
-              cornerRadius: 7 / scale,
-            });
-        } else {
-          const edge = topmost(this.getDAEdgesContainingCrosshairs());
-          if (edge) {
-            targetKind = 'edge';
-            targetId = edge.id;
-            highlight = new Konva.Line({
-              ...common,
-              // Trace the exact polyline Konva paints, including the
-              // render-only endpoint stubs used by smooth edges. Applying
-              // tension to the raw control points produced a similar, but
-              // visibly different, dotted curve.
-              points: edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]),
-              tension: 0,
-              strokeWidth: 5,
-              opacity: 0.72,
-            });
-          }
-        }
-      }
+      return {kind: 'label', id: label.id, trace: this.labelHoverTrace(label, style)};
     }
 
-    if (highlight) {
-      highlight.setAttr('targetKind', targetKind);
-      highlight.setAttr('targetId', targetId);
-      this.drawingLayer.add(highlight);
-      highlight.moveToTop();
-      this.crosshairHoverHighlight = highlight;
+    const waypoint = this.getWaypointUnderCrosshairs();
+    if (waypoint) {
+      return {kind: 'waypoint', id: waypoint.id, trace: this.waypointHoverTrace(waypoint, style)};
     }
-    if (targetNode) this.refreshNavigationLandingGhost(targetNode, ghostReasons);
-    this.drawingLayer.batchDraw();
+
+    const node = topmost(this.getDANodesContainingCrosshairs());
+    if (node) {
+      // A node that earns a landing ghost gets its dashed trace on the ghost
+      // instead. Ringing the real node as well put two dashed outlines of the
+      // same node on screen at once (da-434).
+      const ghostReasons = this.navigationGhostReasons(node);
+      return {
+        kind: 'node',
+        id: node.id,
+        node,
+        ghostReasons,
+        trace: ghostReasons.length > 0 ? null : this.nodeHoverTrace(node, style),
+      };
+    }
+
+    const edge = topmost(this.getDAEdgesContainingCrosshairs());
+    if (edge) {
+      return {kind: 'edge', id: edge.id, trace: this.edgeHoverTrace(edge, style)};
+    }
+
+    return null;
+  }
+
+  /** Dash, colour and glow shared by every hover trace, plus the zoom-corrected
+   *  padding that keeps the trace clear of the thing it traces. */
+  private hoverTraceStyle(): HoverTraceStyle {
+    const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
+    const color = this.visualConfigService
+      .getEffectivePalette(this.themeService.theme).crosshairsStroke;
+    return {
+      scale,
+      pad: 6 / scale,
+      common: {
+        name: 'crosshair-hover-highlight',
+        stroke: color,
+        strokeWidth: 2,
+        strokeScaleEnabled: false,
+        // With stroke scaling disabled, Konva applies dash lengths in screen
+        // pixels too. Dividing by zoom here would compensate a second time.
+        dash: [7, 5],
+        opacity: 0.9,
+        lineCap: 'round' as const,
+        lineJoin: 'round' as const,
+        listening: false,
+        shadowColor: color,
+        shadowBlur: 5,
+        shadowOpacity: 0.3,
+      },
+    };
+  }
+
+  private labelHoverTrace(label: DALabel, {common, pad, scale}: HoverTraceStyle): Konva.Shape {
+    return new Konva.Rect({
+      ...common,
+      x: label.x - label.width / 2 - pad,
+      y: label.y - label.height / 2 - pad,
+      width: label.width + pad * 2,
+      height: label.height + pad * 2,
+      cornerRadius: 5 / scale,
+    });
+  }
+
+  private waypointHoverTrace(waypoint: DAWaypoint, {common, pad}: HoverTraceStyle): Konva.Shape {
+    return new Konva.Circle({...common, x: waypoint.x, y: waypoint.y, radius: waypoint.RADIUS + pad});
+  }
+
+  private nodeHoverTrace(node: DANode, {common, pad, scale}: HoverTraceStyle): Konva.Shape {
+    // A circle node is an ellipse once its label stretches it, and a rounded
+    // rectangle around one reads as a different shape than the thing it is
+    // tracing (da-442).
+    if (node.nodeShape === 'circle') {
+      return new Konva.Ellipse({
+        ...common,
+        x: node.group.x() + node.NODE_WIDTH / 2,
+        y: node.group.y() + node.NODE_HEIGHT / 2,
+        radiusX: node.NODE_WIDTH / 2 + pad,
+        radiusY: node.NODE_HEIGHT / 2 + pad,
+      });
+    }
+    return new Konva.Rect({
+      ...common,
+      x: node.group.x() - pad,
+      y: node.group.y() - pad,
+      width: node.NODE_WIDTH + pad * 2,
+      height: node.NODE_HEIGHT + pad * 2,
+      cornerRadius: 7 / scale,
+    });
+  }
+
+  private edgeHoverTrace(edge: DAEdge, {common}: HoverTraceStyle): Konva.Shape {
+    return new Konva.Line({
+      ...common,
+      // Trace the exact polyline Konva paints, including the render-only
+      // endpoint stubs used by smooth edges. Applying tension to the raw
+      // control points produced a similar, but visibly different, dotted curve.
+      points: edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]),
+      tension: 0,
+      strokeWidth: 5,
+      opacity: 0.72,
+    });
   }
 
   private clearCrosshairHoverHighlight(draw = true): void {
