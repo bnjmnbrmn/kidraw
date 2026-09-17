@@ -42,7 +42,7 @@ import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import type {
-  AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
+  AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
 } from '../agent/agent-canvas';
 import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
@@ -66,14 +66,6 @@ interface NavCandidate {
   edge: DAEdge;
   direction: 'out' | 'in';
   other: DANode;
-}
-
-interface NavigationViewport {
-  x: number;
-  y: number;
-  scale: number;
-  width: number;
-  height: number;
 }
 import { DAFileState, DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
@@ -413,7 +405,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitContextState();
     this.refreshCrosshairHoverHighlight();
 
-    this.resizeObserver = new ResizeObserver(entries => {
+    this.resizeObserver = new ResizeObserver(() => {
       this.stage.width(this.componentNE.offsetWidth);
       this.stage.height(this.componentNE.offsetHeight);
       if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
@@ -2897,7 +2889,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.normalMovementGoal = step.state;
         this.redrawNormalMovementGoalLine();
         this.updateCrosshairsProbeShape(
-          axis, tier, minorSpacing, majorSpacing, stepDistance, scale,
+          tier, minorSpacing, majorSpacing, stepDistance, scale,
         );
         targetX = step.target.x * scale + this.drawingLayer.x();
         targetY = step.target.y * scale + this.drawingLayer.y();
@@ -2905,7 +2897,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.clearNormalMovementGoal();
         const spacing = this.movementDistanceForTier(tier, minorSpacing, majorSpacing);
         this.updateCrosshairsProbeShape(
-          axis, tier, minorSpacing, majorSpacing, spacing, scale,
+          tier, minorSpacing, majorSpacing, spacing, scale,
         );
         const snappedDlX = deltaX !== 0
           ? Math.round(currentDlX / spacing) * spacing + spacing * Math.sign(deltaX)
@@ -3313,7 +3305,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private updateCrosshairsProbeShape(
-    axis: 'x' | 'y' | null,
     tier: GridTier,
     minorSpacing: number,
     majorSpacing: number,
@@ -4667,35 +4658,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
   }
 
-  /** All nodes inside the direction's 45° cone from `fromPoint`, nearest
-   *  first (grow-mode target hop; node-only). */
-  private nodesInDirection(direction: 'left' | 'right' | 'up' | 'down',
-                           fromPoint?: {x: number; y: number}): DANode[] {
-    const origin = fromPoint ?? {x: this.crosshairsLayer.crosshairsX(), y: this.crosshairsLayer.crosshairsY()};
-    const MIN_OFFSET = 5;
-    const isHorizontal = direction === 'left' || direction === 'right';
-    const scored: {node: DANode; score: number}[] = [];
-    for (const node of this.drawingLayer.getDANodes()) {
-      const c = this.getNodeCenterInStageCoordinates(node);
-      const dx = c.x - origin.x, dy = c.y - origin.y;
-      const along = direction === 'right' ? dx : direction === 'left' ? -dx : direction === 'down' ? dy : -dy;
-      const offAxis = Math.abs(isHorizontal ? dy : dx);
-      if (along <= MIN_OFFSET || along < offAxis) continue;
-      scored.push({node, score: along + offAxis * 2});
-    }
-    scored.sort((a, b) => a.score - b.score);
-    return scored.map(s => s.node);
-  }
-
-  private findNodeInDirection(direction: 'left' | 'right' | 'up' | 'down',
-                              fromPoint?: {x: number; y: number}): DANode | null {
-    return this.nodesInDirection(direction, fromPoint)[0] ?? null;
-  }
-
-
-
-
-
   /** The node a traversal or gather should treat as its centre: under the
    *  crosshairs, else the single selected node. */
   private getTraversalAnchorNode(): DANode | null {
@@ -4745,14 +4707,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {
       x: node.group.x() + node.NODE_WIDTH / 2,
       y: node.group.y() + node.NODE_HEIGHT / 2,
-    };
-  }
-
-  private getCrosshairsInLayerCoordinates(): {x: number; y: number} {
-    const scale = this.drawingLayer.scaleX();
-    return {
-      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
-      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
     };
   }
 
@@ -5729,13 +5683,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       maxX: (this.stage.width() - lx) / scale,
       maxY: (this.stage.height() - ly) / scale,
     };
-    const visibleIds = new Set(layerNodes
-      .filter(node => {
-        const p = node.group.position();
-        return p.x + node.NODE_WIDTH >= bounds.minX && p.x <= bounds.maxX &&
-          p.y + node.NODE_HEIGHT >= bounds.minY && p.y <= bounds.maxY;
-      })
-      .map(node => node.id));
     return buildGrowGhostTargets(
       nodes,
       source,
