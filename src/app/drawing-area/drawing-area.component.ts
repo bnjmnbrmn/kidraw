@@ -25,10 +25,17 @@ import { VisualConfigService } from '../services/visual-config.service';
 import { DrawingLayer } from './drawing.layer';
 import { CrosshairsLayer } from './crosshairs.layer';
 import { DANode } from './da-node';
-import { DAEdge, EdgeControlPoint } from './da-edge';
+import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GraphItemNavigationStrategy, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
+import {
+  affectsContextState,
+  endsNormalMovementGoal,
+  isBlockedWhileRouting,
+  mutatesGraph,
+  showsMovementIndicators,
+} from './command-policy';
 import { lineSegmentIntersectsRect, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -44,30 +51,7 @@ import { onMathImageLoaded, onMathReady } from './math-images';
 import { layeredLayout } from './layered-layout';
 import { GatherController, GatherHost } from './gather-controller';
 import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
-import {
-  bandIndexAtCoordinate,
-  bandIndexForStop,
-  buildNavigationGrid,
-  NavigationAxisBand,
-  NavigationGridStop,
-} from './navigation-grid';
-import {
-  adaptiveGoalAngleStep,
-  adjustAngleTowardScreenVertical,
-  cardinalAngle,
-  CardinalDirection,
-  distanceToGoalRay,
-  GoalVerticalDirection,
-  moveUsesQuadrantConstraint,
-  navigationQuadrant,
-  quadrantForDirection,
-} from './navigation-quadrant-grid';
-import {
-  buildQuadrantRingGrid,
-  nextQuadrantRingStop,
-  quadrantArcAngles,
-  quarterArcPoints,
-} from './navigation-quadrant-rings';
+import { NavigationGridStop } from './navigation-grid';
 import {
   nextNormalMovementStep,
   NormalMovementGoal,
@@ -132,14 +116,11 @@ import {
   InlineStyleSet,
   KidrawGraphDoc,
   KidrawStyleSet,
-  StyleRef,
-  inlineToStyleSet,
   styleRefId,
 } from '../lib/file-format/types';
 import { resolveAndApplyToGraph, ImportResolver } from '../lib/file-format/resolver';
 import {
   findManifest,
-  isKidrawFile,
   packZip,
   PackedFile,
   unpackZip,
@@ -398,140 +379,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  pulled into the viewport). The view itself never moves while browsing. */
   private navGhostGroup: Konva.Group | null = null;
 
-  private static readonly CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
-    DACommandType.CREATE_NEW_NODE,
-    DACommandType.ADD_SELF_EDGE,
-    DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.ADD_LABEL,
-    DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
-    DACommandType.MULTI_ITEM_SELECT,
-    DACommandType.UNSELECT_ALL,
-    DACommandType.DELETE,
-    DACommandType.UNDO,
-    DACommandType.REDO,
-    DACommandType.SNAP_TO_NEAREST_NODE,
-    DACommandType.SNAP_TO_NODE_LEFT,
-    DACommandType.SNAP_TO_NODE_RIGHT,
-    DACommandType.SNAP_TO_NODE_UP,
-    DACommandType.SNAP_TO_NODE_DOWN,
-    DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH,
-    DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH,
-    DACommandType.TRAVERSE_SMART,
-    DACommandType.ENTER_LINK_NAV,
-    DACommandType.MOVE_LINK_LEFT,
-    DACommandType.MOVE_LINK_RIGHT,
-    DACommandType.MOVE_LINK_UP,
-    DACommandType.MOVE_LINK_DOWN,
-    DACommandType.RELEASE_LINK_NAV,
-    DACommandType.NAV_HISTORY_BACK,
-    DACommandType.NAV_HISTORY_FORWARD,
-    DACommandType.GATHER_CONNECTED_NODES,
-    DACommandType.UNGATHER,
-    DACommandType.LOAD_SAMPLE_GRAPH,
-    DACommandType.NEW_GRAPH,
-    DACommandType.EXIT_LABEL_EDIT_MODE,
-    DACommandType.RECENTER_VIEW,
-    DACommandType.RECENTER_CROSSHAIRS,
-    DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS,
-    DACommandType.SET_DEFAULT_LINE_STYLE,
-    DACommandType.SET_NODE_SHAPE,
-    DACommandType.TOGGLE_NODE_SHAPE,
-    DACommandType.QUICK_ADD,
-    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
-    DACommandType.SEARCH_GRAPH,
-    DACommandType.SEARCH_NEXT_MATCH,
-    DACommandType.SEARCH_PREV_MATCH,
-  ]);
-
-  /** Move-by-node has its own spatial overlay. Showing the ordinary drawing
-   * grid for these commands makes the band model visually ambiguous. */
-  private static readonly MOVE_BY_NODE_COMMANDS = new Set<DACommandType>([
-    DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY,
-    DACommandType.SHOW_NODE_GRID,
-    DACommandType.HIDE_NODE_GRID,
-    DACommandType.SNAP_TO_NODE_LEFT,
-    DACommandType.SNAP_TO_NODE_RIGHT,
-    DACommandType.SNAP_TO_NODE_UP,
-    DACommandType.SNAP_TO_NODE_DOWN,
-    DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH,
-    DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH,
-  ]);
-
-  private static readonly MUTATING_COMMANDS = new Set<DACommandType>([
-    DACommandType.CREATE_NEW_NODE,
-    DACommandType.ADD_SELF_EDGE,
-    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
-    DACommandType.INSERT_WAYPOINT,
-    DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.ADD_LABEL,
-    DACommandType.DELETE,
-    DACommandType.TOGGLE_PIN_SELECTED,
-    DACommandType.INSERT_CHAR,
-    DACommandType.DELETE_LAST_CHAR,
-    DACommandType.INCREASE_SELECTED_NODE_SIZE,
-    DACommandType.DECREASE_SELECTED_NODE_SIZE,
-    DACommandType.INCREASE_SELECTED_TEXT_SIZE,
-    DACommandType.DECREASE_SELECTED_TEXT_SIZE,
-    DACommandType.DRAG_SELECTED_LEFT,
-    DACommandType.DRAG_SELECTED_RIGHT,
-    DACommandType.DRAG_SELECTED_UP,
-    DACommandType.DRAG_SELECTED_DOWN,
-    DACommandType.MULTI_ITEM_SELECT,
-    DACommandType.SINGLE_ITEM_TOGGLE_SELECT,
-    DACommandType.UNSELECT_ALL,
-    DACommandType.SET_TEXT_OVERFLOW_MODE,
-    DACommandType.SET_NODE_SHAPE,
-    DACommandType.TOGGLE_NODE_SHAPE,
-    DACommandType.SET_DIAGRAM_TYPE,
-    DACommandType.SET_TASK_STATUS,
-    DACommandType.CUT_SELECTION,
-    DACommandType.PASTE_CLIPBOARD,
-  ]);
-
-  private static readonly ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
-    DACommandType.CREATE_NEW_NODE,
-    DACommandType.ADD_SELF_EDGE,
-    DACommandType.INSERT_WAYPOINT,
-    DACommandType.CONNECT_SELECTED_NODES,
-    DACommandType.ADD_LABEL,
-    DACommandType.EDIT_SELECTED,
-    DACommandType.QUICK_ADD,
-    DACommandType.CYCLE_EDGE_DIRECTEDNESS,
-    DACommandType.INSERT_CHAR,
-    DACommandType.DELETE_LAST_CHAR,
-    DACommandType.DELETE,
-    DACommandType.CUT_SELECTION,
-    DACommandType.PASTE_CLIPBOARD,
-    DACommandType.UNDO,
-    DACommandType.REDO,
-    DACommandType.INCREASE_SELECTED_NODE_SIZE,
-    DACommandType.DECREASE_SELECTED_NODE_SIZE,
-    DACommandType.INCREASE_SELECTED_TEXT_SIZE,
-    DACommandType.DECREASE_SELECTED_TEXT_SIZE,
-    DACommandType.DRAG_SELECTED_LEFT,
-    DACommandType.DRAG_SELECTED_RIGHT,
-    DACommandType.DRAG_SELECTED_UP,
-    DACommandType.DRAG_SELECTED_DOWN,
-    DACommandType.SET_TEXT_OVERFLOW_MODE,
-    DACommandType.SET_NODE_SHAPE,
-    DACommandType.TOGGLE_NODE_SHAPE,
-    DACommandType.SET_EDGE_DIRECTEDNESS,
-    DACommandType.SET_LINE_STYLE,
-    DACommandType.SET_ITEM_COLOR,
-    DACommandType.LOAD_SAMPLE_GRAPH,
-    DACommandType.LOAD_NAMED_GRAPH,
-    DACommandType.NEW_GRAPH,
-    DACommandType.OPEN_FILE,
-    DACommandType.VAULT_OPEN,
-    DACommandType.CYCLE_DISPLAY,
-    DACommandType.TOGGLE_PIN_SELECTED,
-    DACommandType.APPLY_LAYOUT,
-    DACommandType.APPLY_EDGE_ROUTING,
-    DACommandType.SET_DIAGRAM_TYPE,
-    DACommandType.SET_TASK_STATUS,
-  ]);
-
-
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
       container: 'mainDrawingArea',
@@ -600,7 +447,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       }
     }
 
-    this.commands.subscribe(this.handleCommands.bind(this));
+    this.commands.subscribe(this.handleCommand.bind(this));
 
     // Auto-save on page unload
     this._beforeUnloadHandler = () => this.saveGraphToStorage();
@@ -742,49 +589,39 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
   }
 
-  private handleCommands(command: DACommand) {
-    this.log.log("handleCommands - " + JSON.stringify(command));
+  /**
+   * The one entry point for every command the keymenu sends.
+   *
+   * Policy first, effect second: refuse what routing has locked, retire the
+   * movement goal line, snapshot for undo, raise the movement overlay. Then
+   * `dispatchCommand` performs the command, and `afterCommand` settles what
+   * every command leaves behind.
+   */
+  private handleCommand(command: DACommand) {
+    this.log.log("handleCommand - " + JSON.stringify(command));
 
-    if (this.isRoutingInProgress() && DrawingAreaComponent.ROUTING_LOCKED_COMMANDS.has(command.kind)) {
+    if (this.isRoutingInProgress() && isBlockedWhileRouting(command.kind)) {
       this.daOut.emit({ kind: 'status-message', message: 'Layout is running; graph edits are locked.' });
       return;
     }
 
-    // The ordinary goal line describes one uninterrupted normal-movement
-    // gesture. Any other command ends that gesture immediately rather than
-    // leaving a stale guide over editing, dragging, or graph navigation.
-    switch (command.kind) {
-      case DACommandType.MOVE_CROSSHAIRS_LEFT:
-      case DACommandType.MOVE_CROSSHAIRS_RIGHT:
-      case DACommandType.MOVE_CROSSHAIRS_UP:
-      case DACommandType.MOVE_CROSSHAIRS_DOWN:
-        if (command.gridTier && command.gridTier !== 'normal') {
-          this.clearNormalMovementGoal();
-        }
-        break;
-      default:
-        this.clearNormalMovementGoal();
+    if (endsNormalMovementGoal(command)) {
+      this.clearNormalMovementGoal();
     }
-
-    // Push undo snapshot before mutating commands
-    if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind)) {
+    if (mutatesGraph(command.kind)) {
       this.pushUndoSnapshot(command);
     }
-
-    // Show grid and indicators for any spatial/manipulation command
-    if (!DrawingAreaComponent.MOVE_BY_NODE_COMMANDS.has(command.kind) &&
-        command.kind !== DACommandType.INSERT_CHAR &&
-        command.kind !== DACommandType.DELETE_LAST_CHAR &&
-        command.kind !== DACommandType.EXIT_LABEL_EDIT_MODE &&
-        command.kind !== DACommandType.EDIT_SELECTED &&
-        command.kind !== DACommandType.QUICK_ADD &&
-        command.kind !== DACommandType.BEGIN_NEW_NODE_LABEL_EDIT &&
-        command.kind !== DACommandType.ENTER_ADD_MODE &&
-        command.kind !== DACommandType.EDIT_TEXT_AT_CROSSHAIRS &&
-        command.kind !== DACommandType.REDO) {
+    if (showsMovementIndicators(command.kind)) {
       this.showMovementIndicators();
     }
 
+    this.dispatchCommand(command);
+    this.afterCommand(command);
+  }
+
+  /** Perform one command. Nothing but the command's own effect belongs here;
+   *  the policy that surrounds every command lives in `handleCommand`. */
+  private dispatchCommand(command: DACommand) {
     switch (command.kind) {
       case DACommandType.MOVE_CROSSHAIRS_LEFT:
         this.moveCrosshairsLeft(command.gridTier);
@@ -1178,8 +1015,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       default:
         this.assertNever(command);
     }
+  }
 
-    if (DrawingAreaComponent.CONTEXT_AFFECTING_COMMANDS.has(command.kind)) {
+  /** Settle what every command leaves behind: the keymenu's context, waypoint
+   *  visibility, the hover highlight, and the vault auto-save. */
+  private afterCommand(command: DACommand) {
+    if (affectsContextState(command.kind)) {
       this.emitContextState();
     }
     this.refreshWaypointVisibility();
@@ -1192,7 +1033,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.refreshCrosshairHoverHighlight();
     }
 
-    if (DrawingAreaComponent.MUTATING_COMMANDS.has(command.kind) ||
+    if (mutatesGraph(command.kind) ||
         command.kind === DACommandType.UNDO ||
         command.kind === DACommandType.REDO) {
       this.scheduleVaultAutoSave();
