@@ -260,6 +260,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Screen-space margin the crosshairs keep from the viewport edge during a
    *  node drag; reaching it pans the view instead of letting them leave. */
   private static readonly DRAG_PAN_MARGIN = 60;
+  /** Nominal size of a ghosted node — the box stands in for a node that does
+   *  not exist yet and so cannot be measured. */
+  private static readonly GROW_GHOST_BOX = {w: 140, h: 60};
   /** Preserve closer views, but never label a new node below natural scale. */
   private static readonly NODE_EDIT_MIN_ZOOM = 1;
   /** Where the camera goes when a label is opened for editing: close enough
@@ -6493,135 +6496,181 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  midpoint/source-grid insertion stop is shown as a faint node; the
    *  current real or ghost landing gets a stronger outline and live edge.
    *  Before the first hop the release result is the node's self-loop. */
+  /** The dashed preview of what the held Add key is about to create: the
+   *  candidate slots around the anchor, the node that would land, and the edge
+   *  that would connect it. Rebuilt from scratch on every aim change. */
   private redrawGrowGhost(): void {
     this.growGhost?.destroy();
     const ghost = new Konva.Group({listening: false, opacity: 0.55});
     this.growGhost = ghost;
-    const anchor = this.growAnchor;
-    const scale = this.drawingLayer.scaleX();
-    const aCenter = this.growOrigin!;
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const stroke = palette.nodeStroke;
 
-    if (anchor && !this.growPlacing) {
-      for (const target of this.growGhostTargets) {
-        const active = target.id === this.growInsertionTarget?.id;
-        const marker = this.growGhostShape(
-          this._defaultNodeShape,
-          target,
-          140,
-          60,
-          stroke,
-          scale,
-        );
-        marker.name(active ? 'grow-insertion-target-active' : 'grow-insertion-target');
-        marker.setAttr('ghostSource', target.source);
-        marker.dash([2, 7]);
-        marker.opacity(active ? 1 : 0.24);
-        ghost.add(marker);
-        ghost.add(new Konva.Text({
-          name: `grow-insertion-kind grow-insertion-kind-${target.source}`,
-          x: target.x - 24 / scale,
-          y: target.y - 10 / scale,
-          width: 48 / scale,
-          align: 'center',
-          text: '+',
-          fontSize: 20 / scale,
-          fontStyle: 'bold',
-          fill: stroke,
-          opacity: active ? 1 : 0.5,
-          listening: false,
-        }));
-      }
-    }
-
-    if (anchor && !this.growPlacing && !this.growTarget && !this.growInsertionTarget) {
-      this.addGrowSelfLoopPreview(ghost, anchor, stroke, scale);
-      this.drawingLayer.add(ghost);
-      ghost.moveToTop();
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    if (anchor && this.growTarget === anchor) {
-      const pos = anchor.group.position();
-      ghost.add(new Konva.Rect({
-        name: 'grow-home-target',
-        x: pos.x - 6,
-        y: pos.y - 6,
-        width: anchor.NODE_WIDTH + 12,
-        height: anchor.NODE_HEIGHT + 12,
-        stroke,
-        dash: [6, 4],
-        strokeWidth: 3 / scale,
-        cornerRadius: 6,
-      }));
-      this.drawingLayer.add(ghost);
-      ghost.moveToTop();
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    let endCenter: {x: number; y: number};
-    let endHalf: {w: number; h: number};
-    if (this.growPlacing && this.growPlacePos) {
-      endCenter = this.growPlacePos;
-      const w = 140, h = 60;
-      endHalf = {w: w / 2, h: h / 2};
-      ghost.add(this.growGhostShape(this.growShape ?? this._defaultNodeShape, endCenter, w, h, stroke, scale));
-    } else if (anchor && this.growInsertionTarget) {
-      endCenter = this.growInsertionTarget;
-      endHalf = {w: 70, h: 30};
-    } else if (anchor && this.growTarget && this.growTarget !== anchor) {
-      const t = this.growTarget;
-      const tPos = t.group.position();
-      endCenter = {x: tPos.x + t.NODE_WIDTH / 2, y: tPos.y + t.NODE_HEIGHT / 2};
-      endHalf = {w: t.NODE_WIDTH / 2, h: t.NODE_HEIGHT / 2};
-      ghost.add(new Konva.Rect({
-        x: tPos.x - 6, y: tPos.y - 6,
-        width: t.NODE_WIDTH + 12, height: t.NODE_HEIGHT + 12,
-        stroke, dash: [6, 4], strokeWidth: 3 / scale, cornerRadius: 6,
-      }));
-    } else {
-      const w = 140, h = 60;
-      endCenter = {...aCenter};
-      endHalf = {w: w / 2, h: h / 2};
-      ghost.add(new Konva.Rect({
-        x: endCenter.x - w / 2, y: endCenter.y - h / 2,
-        width: w, height: h,
-        stroke, dash: [6, 4], strokeWidth: 2 / scale, cornerRadius: 4,
-      }));
-    }
-
-    // Empty-canvas adds have no anchor and therefore no ghost edge.
-    if (!anchor) {
-      this.drawingLayer.add(ghost);
-      ghost.moveToTop();
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    // Chord from the anchor boundary to the end boundary (axis-aligned trim).
-    const dx = endCenter.x - aCenter.x, dy = endCenter.y - aCenter.y;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
-    const trimA = Math.min(anchor.NODE_WIDTH, anchor.NODE_HEIGHT) / 2;
-    const trimB = Math.min(endHalf.w * 2, endHalf.h * 2) / 2;
-    const start = {x: aCenter.x + ux * trimA, y: aCenter.y + uy * trimA};
-    const end = {x: endCenter.x - ux * trimB, y: endCenter.y - uy * trimB};
-    const d = this.growDirState;
-    ghost.add(new Konva.Arrow({
-      points: [start.x, start.y, end.x, end.y],
-      stroke, fill: stroke, dash: [8, 6],
-      strokeWidth: 3 / scale,
-      pointerLength: 14, pointerWidth: 14,
-      pointerAtEnding: d === 0 || d === 3,
-      pointerAtBeginning: d === 1 || d === 3,
-    }));
+    this.drawGrowGhost(ghost);
 
     this.drawingLayer.add(ghost);
     ghost.moveToTop();
     this.drawingLayer.batchDraw();
+  }
+
+  /** Fill `ghost` with the preview for the current aim. Returns early at each
+   *  aim that draws no connecting edge. */
+  private drawGrowGhost(ghost: Konva.Group): void {
+    const anchor = this.growAnchor;
+    const scale = this.drawingLayer.scaleX();
+    const anchorCenter = this.growOrigin!;
+    const stroke = this.visualConfigService
+      .getEffectivePalette(this.themeService.theme).nodeStroke;
+
+    if (anchor && !this.growPlacing) {
+      this.addGrowInsertionMarkers(ghost, stroke, scale);
+    }
+
+    // Anchored but aimed at nothing yet: the offer is a self-loop.
+    if (anchor && !this.growPlacing && !this.growTarget && !this.growInsertionTarget) {
+      this.addGrowSelfLoopPreview(ghost, anchor, stroke, scale);
+      return;
+    }
+
+    // Aimed back at the anchor: outline it. An edge here would have zero length.
+    if (anchor && this.growTarget === anchor) {
+      ghost.add(this.growOutline(anchor, stroke, scale, 'grow-home-target'));
+      return;
+    }
+
+    const end = this.addGrowGhostNode(ghost, anchor, anchorCenter, stroke, scale);
+
+    // Empty-canvas adds have no anchor and therefore no ghost edge.
+    if (!anchor) return;
+    this.addGrowGhostEdge(ghost, anchor, anchorCenter, end, stroke, scale);
+  }
+
+  /** A dashed "+" slot at each place the new node could go, the aimed-at one
+   *  drawn at full strength. */
+  private addGrowInsertionMarkers(ghost: Konva.Group, stroke: string, scale: number): void {
+    const box = DrawingAreaComponent.GROW_GHOST_BOX;
+    for (const target of this.growGhostTargets) {
+      const active = target.id === this.growInsertionTarget?.id;
+      const marker = this.growGhostShape(this._defaultNodeShape, target, box.w, box.h, stroke, scale);
+      marker.name(active ? 'grow-insertion-target-active' : 'grow-insertion-target');
+      marker.setAttr('ghostSource', target.source);
+      marker.dash([2, 7]);
+      marker.opacity(active ? 1 : 0.24);
+      ghost.add(marker);
+      ghost.add(new Konva.Text({
+        name: `grow-insertion-kind grow-insertion-kind-${target.source}`,
+        x: target.x - 24 / scale,
+        y: target.y - 10 / scale,
+        width: 48 / scale,
+        align: 'center',
+        text: '+',
+        fontSize: 20 / scale,
+        fontStyle: 'bold',
+        fill: stroke,
+        opacity: active ? 1 : 0.5,
+        listening: false,
+      }));
+    }
+  }
+
+  /** The dashed box drawn just outside an existing node to show it is aimed at. */
+  private growOutline(node: DANode, stroke: string, scale: number, name?: string): Konva.Rect {
+    const pos = node.group.position();
+    const inset = 6;
+    return new Konva.Rect({
+      ...(name ? {name} : {}),
+      x: pos.x - inset,
+      y: pos.y - inset,
+      width: node.NODE_WIDTH + inset * 2,
+      height: node.NODE_HEIGHT + inset * 2,
+      stroke,
+      dash: [6, 4],
+      strokeWidth: 3 / scale,
+      cornerRadius: 6,
+    });
+  }
+
+  /**
+   * Draw the far end of the grow gesture and report its extent.
+   *
+   * Four aims land here: placing the node freely, filling one of the insertion
+   * slots, pointing at an existing node, or nothing in particular (the node
+   * defaults to the anchor's own centre). The returned half-extents are what
+   * the ghost edge trims itself against.
+   */
+  private addGrowGhostNode(
+    ghost: Konva.Group,
+    anchor: DANode | null,
+    anchorCenter: {x: number; y: number},
+    stroke: string,
+    scale: number,
+  ): {center: {x: number; y: number}; half: {w: number; h: number}} {
+    const box = DrawingAreaComponent.GROW_GHOST_BOX;
+    const half = {w: box.w / 2, h: box.h / 2};
+
+    if (this.growPlacing && this.growPlacePos) {
+      ghost.add(this.growGhostShape(
+        this.growShape ?? this._defaultNodeShape, this.growPlacePos, box.w, box.h, stroke, scale));
+      return {center: this.growPlacePos, half};
+    }
+
+    // The slot marker is already drawn, by addGrowInsertionMarkers.
+    if (anchor && this.growInsertionTarget) {
+      return {center: this.growInsertionTarget, half};
+    }
+
+    if (anchor && this.growTarget && this.growTarget !== anchor) {
+      const target = this.growTarget;
+      const pos = target.group.position();
+      ghost.add(this.growOutline(target, stroke, scale));
+      return {
+        center: {x: pos.x + target.NODE_WIDTH / 2, y: pos.y + target.NODE_HEIGHT / 2},
+        half: {w: target.NODE_WIDTH / 2, h: target.NODE_HEIGHT / 2},
+      };
+    }
+
+    const center = {...anchorCenter};
+    ghost.add(new Konva.Rect({
+      x: center.x - half.w,
+      y: center.y - half.h,
+      width: box.w,
+      height: box.h,
+      stroke,
+      dash: [6, 4],
+      strokeWidth: 2 / scale,
+      cornerRadius: 4,
+    }));
+    return {center, half};
+  }
+
+  /** The arrow from anchor to ghosted node, trimmed at both boundaries so it
+   *  starts and ends on the boxes rather than inside them. */
+  private addGrowGhostEdge(
+    ghost: Konva.Group,
+    anchor: DANode,
+    anchorCenter: {x: number; y: number},
+    end: {center: {x: number; y: number}; half: {w: number; h: number}},
+    stroke: string,
+    scale: number,
+  ): void {
+    const dx = end.center.x - anchorCenter.x;
+    const dy = end.center.y - anchorCenter.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const ux = dx / length, uy = dy / length;
+    // Trim by the smaller half-extent of each box: an axis-aligned
+    // approximation that keeps the arrow clear of both at any angle.
+    const trimFrom = Math.min(anchor.NODE_WIDTH, anchor.NODE_HEIGHT) / 2;
+    const trimTo = Math.min(end.half.w, end.half.h);
+    const directedness = this.growDirState;
+    ghost.add(new Konva.Arrow({
+      points: [
+        anchorCenter.x + ux * trimFrom, anchorCenter.y + uy * trimFrom,
+        end.center.x - ux * trimTo, end.center.y - uy * trimTo,
+      ],
+      stroke, fill: stroke, dash: [8, 6],
+      strokeWidth: 3 / scale,
+      pointerLength: 14, pointerWidth: 14,
+      pointerAtEnding: directedness === 0 || directedness === 3,
+      pointerAtBeginning: directedness === 1 || directedness === 3,
+    }));
   }
 
   /** Tap of the edit-text key: enter label edit on whatever text-bearing
