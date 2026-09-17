@@ -63,6 +63,25 @@ The failures are a mix, and the mix matters:
 Only the third kind is a bug, but all three read identically in the output,
 so none can be waved away without looking.
 
+## What the owed checks actually are
+
+67 checks were owed as of 2026-09-17, but they are not 67 problems. Grouped by
+apparent cause:
+
+| Cause | Checks | Read |
+|---|---:|---|
+| Add/insert wires a node to **itself** | 22 | real bug. `grow-mode` gets `A→A`; `add-insert-taps` gets `{from: alpha, to: alpha}` and the app's own status says "Self loop added to alpha" |
+| `nav-popup` fixture sits off-screen | 32 | unsure. Crosshairs at `(2320, −363)`; looks like the stale-fixture problem fixed in grid-overlay, but `binding-reorg` also reports root `f` renamed "Go" → "Move by Link" |
+| Recentring lands 102px high | 5 | stale test. Two scripts, same number, every run; 102px looks like a deliberate viewport inset |
+| Label anchoring | 4 | unsure. Coarse-right will not snap to a canonical stop; side cycles `below → on`; drag-right does not slide |
+| Increase Node Size does nothing | 1 | real bug. Width identical before and after |
+| Layout quality below the bar | 2 | unsure. Force-clear leaves 2 edges piercing nodes (expected 0); an 11-way fan draws 4 crossings |
+| Label text lands at the wrong offset | 1 | possible bug. "Hello world" plus more came out as `Hello wnd quite a lot more text to stretch the boxorld` |
+| `clipboard-yank-paste` throws | — | broken test. Two checks pass, then it exits non-zero with no failure line |
+
+Two clusters hold 54 of the 67, and both sit in regions due for
+restructuring — so the debt and the code are the same trip.
+
 ## Statuses
 
 - **suite** — in the regression suite.
