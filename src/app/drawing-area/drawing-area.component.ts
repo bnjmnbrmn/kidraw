@@ -42,7 +42,7 @@ import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import type {
-  AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
+  AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
 } from '../agent/agent-canvas';
 import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
@@ -153,7 +153,7 @@ function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
   templateUrl: './drawing-area.component.html',
   styleUrl: './drawing-area.component.css'
 })
-export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy, AgentCanvasTarget {
 
   @Input({required: true}) commands!: Observable<DACommand>;
   /** Screen-space strip on each edge that a DOM overlay covers: the compact
