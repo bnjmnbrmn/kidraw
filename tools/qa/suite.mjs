@@ -32,10 +32,10 @@ export const SUITE = [
   // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
   { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },
   { script: 'nav-popup/nav-margin.js', region: 'nav-popup', status: 'suite' },
-  { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite', baseline: { passed: 4, failed: 1, code: 1 } },
+  { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite' },
 
   // ── In-graph search (~2126-3724) ──
-  { script: 'search/search-recenter.js', region: 'search', status: 'suite', baseline: { passed: 2, failed: 4, code: 1 } },
+  { script: 'search/search-recenter.js', region: 'search', status: 'suite' },
 
   // ── Drag, grow ghosts, quick add (~7424-8753) ──
   { script: 'drag-and-grow/coarse-drag.js', region: 'drag-and-grow', status: 'suite', baseline: { passed: 16, failed: 1, code: 1 } },
