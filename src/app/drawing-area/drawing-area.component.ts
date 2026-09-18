@@ -39,7 +39,7 @@ import {
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
 import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
-import { Axis } from './axis';
+import { Axis, AxisKey } from './axis';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -5321,7 +5321,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * slide along their edge, waypoints nudge pointwise, nodes tween and pan the
    * view with them, and an edge on its own first grows a waypoint to drag.
    */
-  private dragSelected(axis: Axis, sign: 1 | -1, tier?: GridTier) {
+  private dragSelected(axis: Axis | AxisKey, sign: 1 | -1, tier?: GridTier) {
+    // `Axis` is not reachable from a browser-side page.evaluate, so the
+    // tools/qa scripts that drive this directly pass 'x' or 'y'. Accept both
+    // here and nowhere else: past this line the axis is an Axis.
+    const along = axis instanceof Axis ? axis : Axis.of(axis);
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
@@ -5337,14 +5341,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
 
     if (labels.length > 0 && nodes.length === 0 && waypoints.length === 0) {
-      this.dragLabelsAlongEdges(labels, axis, sign, tier);
+      this.dragLabelsAlongEdges(labels, along, sign, tier);
       return;
     }
     if (waypoints.length > 0 && nodes.length === 0) {
-      this.dragWaypoints(waypoints, axis, sign, tier);
+      this.dragWaypoints(waypoints, along, sign, tier);
       return;
     }
-    this.dragNodesAndFollow(nodes, axis, sign, tier);
+    this.dragNodesAndFollow(nodes, along, sign, tier);
   }
 
   /** One press of a drag key: the grid spacing it moves by, and how many of

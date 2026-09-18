@@ -21,6 +21,9 @@
  * (or the app) means deleting the baseline line.
  */
 export const SUITE = [
+  // ── The tools-facing surface of DrawingAreaComponent (no browser needed) ──
+  { script: 'contract/component-api.js', region: 'contract', status: 'suite' },
+
   // ── Move-by-node grid overlay (drawing-area.component.ts ~5342-7417) ──
   { script: 'grid-overlay/grid-nav.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/quadrant-grid-nav.js', region: 'grid-overlay', status: 'suite' },
