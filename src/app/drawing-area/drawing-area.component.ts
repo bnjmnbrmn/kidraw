@@ -75,6 +75,7 @@ import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
 import {NavGhost, NavGhostHost} from './nav-ghost';
 import {GrowAim, GrowGhost, GrowGhostHost} from './grow-ghost';
+import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-placement';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -1223,6 +1224,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       get stroke() {
         return da.visualConfigService.getEffectivePalette(da.themeService.theme).nodeStroke;
       },
+    };
+  }
+
+  /** Free grow placement reads the session's anchor and origin, and gives
+   *  every move back to the same ghost renderer the rest of grow mode uses. */
+  private growPlacementHost(): GrowPlacementHost {
+    const da = this;
+    return {
+      get anchor() { return da.growAnchor; },
+      get origin() { return da.growOrigin!; },
+      spacing: axis => da.quickAddSpacingFrom(axis),
+      coarseModifierHeld: () => da.growMods.has(da.growKeys?.coarse ?? 'coarse'),
+      fineModifierHeld: () => da.growMods.has(da.growKeys?.fine ?? 'fine'),
+      redraw: () => da.redrawGrowGhost(),
     };
   }
 
@@ -4392,17 +4407,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  tolerant of normal human key overlap instead of turning a rolled Self
    *  Loop into a rightward edge hop. */
   private growPressedKeys = new Set<string>();
-  // Placement sub-mode (after the type popup picked a kind for a NEW node).
-  private growPlacing = false;
-  private growShape: NodeShape | undefined = undefined;
-  /** Ghost position in drawing-layer coordinates (node center). */
-  private growPlacePos: Point | null = null;
-  /** First directional press throws the node a full spacing in that
-   *  direction; later presses step it by the grid. */
-  private growPlacedRough = false;
-  private growMods = new Set<string>();
+  /** Free placement after the type popup picked a kind for a new node. */
+  private readonly growPlacement = new GrowPlacement(this.growPlacementHost());
   /** The held-Add preview (grow-ghost.ts). */
   private readonly growGhost = new GrowGhost(this.growGhostHost());
+
+  // These accessors keep the browser-facing names stable while placement
+  // state lives with GrowPlacement. The tools and existing white-box specs
+  // intentionally reach through TypeScript's private boundary.
+  private get growPlacing(): boolean { return this.growPlacement.placing; }
+  private set growPlacing(value: boolean) { this.growPlacement.placing = value; }
+  private get growShape(): NodeShape | undefined { return this.growPlacement.shape; }
+  private set growShape(value: NodeShape | undefined) { this.growPlacement.shape = value; }
+  private get growPlacePos(): Point | null { return this.growPlacement.position; }
+  private set growPlacePos(value: Point | null) { this.growPlacement.position = value; }
+  private get growPlacedRough(): boolean { return this.growPlacement.rough; }
+  private set growPlacedRough(value: boolean) { this.growPlacement.rough = value; }
+  private get growMods(): Set<string> { return this.growPlacement.modifiers; }
+  private set growMods(value: Set<string>) { this.growPlacement.modifiers = value; }
 
   /** ENTER_ADD_MODE: take the hold as grow mode over a node or genuinely
    *  empty canvas. Edges/labels retain the classic label/waypoint hub. */
@@ -4537,7 +4559,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         return;
       }
       if (key === k.coarse || key === k.fine) {
-        this.growMods.add(key);
+        this.growPlacement.addModifier(key);
         return;
       }
       if (key === 'enter') {
@@ -4570,7 +4592,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const key = event.key.toLowerCase();
     this.growPressedKeys.delete(key);
     if (!this.growActive) return;
-    this.growMods.delete(key);
+    this.growPlacement.removeModifier(key);
     if (this.growEdgeMenuActive && this.growSelfLoopPending && key === this.growKeys?.selfLoop) {
       this.growSelfLoopPending = false;
       this.commitGrowSelfLoop();
@@ -4823,15 +4845,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private enterGrowPlacement(shapeId: string): void {
     this.navPopupOpen = false;
     this.navPopupPurpose = 'nav';
-    this.growPlacing = true;
-    this.growShape = shapeId as NodeShape;
+    this.growPlacement.enter(shapeId as NodeShape);
     this.growTarget = null;
     this.growInsertionTarget = null;
-    this.growPlacedRough = false;
-    const c = this.growOrigin!;
-    this.growPlacePos = this.growAnchor
-      ? {x: c.x + this.quickAddSpacingFrom('x'), y: c.y}
-      : {...c};
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
     this.redrawGrowGhost();
   }
@@ -4839,27 +4855,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Placement steering. Rough first (a full spacing thrown in the pressed
    *  direction, replacing the below default), grid steps after; `s`/`d` tier
    *  chords scale the step (coarse = a full spacing, fine = a tenth-grid). */
-  private growPlaceMove(direction: 'left' | 'right' | 'up' | 'down'): void {
-    const k = this.growKeys!;
-    const c = this.growOrigin!;
-    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-    if (!this.growPlacedRough) {
-      this.growPlacedRough = true;
-      const throwDistance = this.quickAddSpacingFrom(dy !== 0 ? 'y' : 'x');
-      this.growPlacePos = {x: c.x + dx * throwDistance, y: c.y + dy * throwDistance};
-    } else {
-      // A coarse step is "one more node over in this direction", so it
-      // follows the same axis split as the rough throw above.
-      const step = this.growMods.has(k.coarse)
-        ? this.quickAddSpacingFrom(dy !== 0 ? 'y' : 'x')
-        : this.growMods.has(k.fine) ? 10 : 50;
-      this.growPlacePos = {
-        x: this.growPlacePos!.x + dx * step,
-        y: this.growPlacePos!.y + dy * step,
-      };
-    }
-    this.redrawGrowGhost();
+  private growPlaceMove(direction: GrowPlacementDirection): void {
+    this.growPlacement.move(direction);
   }
 
   private commitGrowPlacement(): void {
