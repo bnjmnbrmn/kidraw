@@ -63,7 +63,8 @@ const UNIT: Record<HopDirection, Point> = {
  * actually is. Carried over unchanged from the component rather than tightened,
  * because what the cut-off should be — if there should be one — is a design
  * question, not a transcription one (inferred, 2026-09-18 — from the
- * arithmetic, not from a decision about what was wanted).
+ * arithmetic, not from a decision about what was wanted). Written up in
+ * notes/bug-lattice-tolerance-cannot-fire.md.
  */
 const ON_CELL_TOLERANCE = 0.6;
 

@@ -59,14 +59,13 @@ explanation graphs on `explanation-graphs`._
 >   into an empty quadrant. `moveLinkQuadrant`'s corner-crossing branch falls
 >   back to the focused edge, so a north press on a lone east link re-reports
 >   it as "north: east" and "No link in the north quadrant." never fires.
->   Left unpinned by the specs rather than blessed (inferred, 2026-09-18 —
->   from reading `graph-nav.ts`, not from observed intent).
+>   Written up in [`notes/bug-empty-quadrant-announced-as-a-move.md`](notes/bug-empty-quadrant-announced-as-a-move.md).
 > - **Second open question for Ben, found extracting the grow lattice:** the
 >   `ON_CELL_TOLERANCE` guard in `grow-lattice.ts` cannot fire. It rejects a
 >   node more than 0.6 of a step off its cell, but `Math.round` already bounds
 >   each axis at 0.5, so a node is assigned its nearest cell however far off
->   the lattice it is. Left working as it does, with the arithmetic written
->   down at the constant (inferred, 2026-09-18 — from the arithmetic).
+>   the lattice it is. Written up in
+>   [`notes/bug-lattice-tolerance-cannot-fire.md`](notes/bug-lattice-tolerance-cannot-fire.md).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
