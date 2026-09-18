@@ -37,6 +37,9 @@ export const SUITE = [
   { script: 'nav-popup/nav-margin.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite' },
 
+  // ── File, named graphs, diagram type (~1169-2139) ──
+  { script: 'file/file-flows.js', region: 'file', status: 'suite' },
+
   // ── In-graph search (~2126-3724) ──
   { script: 'search/search-recenter.js', region: 'search', status: 'suite' },
 
