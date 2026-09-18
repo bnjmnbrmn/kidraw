@@ -154,7 +154,11 @@ async function main() {
       results.push(result);
       const mark = result.ok ? (result.debt ? 'debt' : 'ok  ') : 'WORSE';
       const counts = result.failed || result.passed ? `${result.passed} passed, ${result.failed} failed` : `exit ${result.code}`;
-      const against = result.baseline ? ` (baseline ${result.baseline.passed}/${result.baseline.failed})` : '';
+      // Spelled out, and punctuated like the live counts beside it: these are two
+      // independent totals, and "baseline 12/3" got read as the fraction "12 of 3".
+      const against = result.baseline
+        ? ` (baseline ${result.baseline.passed} pass, ${result.baseline.failed} fail)`
+        : '';
       console.log(`${mark} ${result.script.padEnd(42)} ${counts}${against}  (${(result.ms / 1000).toFixed(1)}s)`);
       if (!result.ok && result.detail) console.log(result.detail.replace(/^/gm, '       '));
     }

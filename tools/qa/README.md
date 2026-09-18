@@ -48,6 +48,12 @@ checks are owed.
 protected. Fixing the script, or the app, means deleting the baseline line —
 that is the only way the number goes down.
 
+Reading the output: a baselined script prints its live counts and then the
+baseline it is measured against — `12 passed, 3 failed (baseline 12 pass, 3
+fail)`. Those are two independent totals, not a ratio. The `29/39 clean` on
+the summary line *is* a fraction: scripts that came out clean, out of scripts
+run.
+
 The failures are a mix, and the mix matters:
 
 - *Stale* — the app changed on purpose and the script was never updated.
