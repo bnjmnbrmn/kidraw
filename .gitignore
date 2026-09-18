@@ -46,6 +46,11 @@ src/**/*.js.map
 
 # E2E test output
 test-e2e-output/
+# Screenshots the QA scripts drop as they run, and the visual-regression
+# comparison output. Neither is read by anything: test-visual-regression.js
+# compares against test-baselines/, which stays tracked.
+test-output/
+test-diffs/
 debug-*.js
 tools/debug.log
 
