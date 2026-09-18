@@ -1,4 +1,5 @@
 import Konva from 'konva';
+import type { Animations } from './animations';
 import type { ThemeService } from '../services/theme.service';
 import type { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
@@ -24,7 +25,7 @@ interface MetaBox {
 export interface GatherHost {
   readonly drawingLayer: DrawingLayer;
   /** Animations in flight; gather adds its own and lets the host settle them. */
-  readonly tweens: Konva.Tween[];
+  readonly animations: Animations;
   readonly themeService: ThemeService;
   /** The edge the traversal is riding, if any. Read only. */
   readonly graphNavEdge: DAEdge | null;
@@ -174,7 +175,7 @@ export class GatherController {
     for (const p of plan.placed) {
       const node = nodeById.get(p.id)!;
       this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
-      this.host.tweens.push(new Konva.Tween({
+      this.host.animations.start({
         node: node.group,
         x: p.x - node.NODE_WIDTH / 2,
         y: p.y - node.NODE_HEIGHT / 2,
@@ -184,7 +185,7 @@ export class GatherController {
           this.host.updateEdgesForResizedNodes([node]);
           this.host.drawingLayer.batchDraw();
         },
-      }).play());
+      });
     }
     // Stack z-order: deepest first, so index 0 renders on top.
     const stackMembers = new Map<string, GatherPlacement[]>();
@@ -210,7 +211,7 @@ export class GatherController {
       if (d >= need) continue;
       const ang = d < 1e-6 ? 0 : Math.atan2(c.y - aC.y, c.x - aC.x);
       this.gatheredNodePositions.set(node, {x: node.group.x(), y: node.group.y()});
-      this.host.tweens.push(new Konva.Tween({
+      this.host.animations.start({
         node: node.group,
         x: aC.x + Math.cos(ang) * need - node.NODE_WIDTH / 2,
         y: aC.y + Math.sin(ang) * need - node.NODE_HEIGHT / 2,
@@ -220,7 +221,7 @@ export class GatherController {
           this.host.updateEdgesForResizedNodes([node]);
           this.host.drawingLayer.batchDraw();
         },
-      }).play());
+      });
     }
 
     this.scheduleAfterGatherTweens(anchorNode,
@@ -290,8 +291,7 @@ export class GatherController {
       x: anchorNode.group.x(),
       onFinish: work,
     });
-    this.host.tweens.push(scheduler);
-    scheduler.play();
+    this.host.animations.adopt(scheduler);
   }
 
   private saveGatherEdgeWiring(edge: DAEdge): void {
@@ -671,7 +671,7 @@ export class GatherController {
     }
 
     for (const [node, pos] of this.gatheredNodePositions) {
-      this.host.tweens.push(new Konva.Tween({
+      this.host.animations.start({
         node: node.group,
         x: pos.x,
         y: pos.y,
@@ -681,7 +681,7 @@ export class GatherController {
           this.host.updateEdgesForResizedNodes([node]);
           this.host.drawingLayer.batchDraw();
         },
-      }).play());
+      });
     }
     this.gatheredNodePositions.clear();
     restoreEdgeWiring();

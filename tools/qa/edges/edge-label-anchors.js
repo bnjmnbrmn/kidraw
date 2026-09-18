@@ -56,7 +56,7 @@ async function main() {
     };
 
     // 1. Real addLabel flow: crosshairs over the path's 30% point.
-    c.tweens.forEach(t => t.finish()); c.tweens = [];
+    c.finishTweens();
     const target = pathAt(edge.getPathPoints(), 0.3);
     xh.x = target.x * dl.scaleX() + dl.x();
     xh.y = target.y * dl.scaleY() + dl.y();

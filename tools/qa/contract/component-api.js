@@ -18,7 +18,7 @@
  * Adding to this list is cheap. Removing from it means finding the callers.
  */
 const {readFileSync, readdirSync, statSync} = require('fs');
-const {join, resolve, sep} = require('path');
+const {join, resolve} = require('path');
 
 const REPO = resolve(__dirname, '../../..');
 const COMPONENT = join(REPO, 'src/app/drawing-area/drawing-area.component.ts');
@@ -66,15 +66,39 @@ const TOOLS_FACING_FIELDS = [
   'navGhost',
 ];
 
+/**
+ * Component fields the scripts must NOT reach for, and what to call instead.
+ *
+ * `tweens` was read by seventeen scripts as
+ * `da.tweens.forEach(t => t.finish()); da.tweens = []` — which is exactly
+ * `finishTweens()`. When the array moved into Animations they all broke at
+ * once. Listing the retired names here turns the next such move into a failing
+ * check rather than five red scripts.
+ */
+const RETIRED_FIELDS = {
+  tweens: 'call finishTweens() instead',
+  currentDragRafId: 'the drag loop is owned by Animations',
+  crosshairHoverHighlight: 'use hoverTrace.node',
+  navGhostGroup: 'use navGhost.node',
+  normalMovementGoalLine: 'use goalLine.node',
+};
+
 /** Receivers the scripts use for the component, for the reverse check. */
 const RECEIVERS = ['da', 'c', 'comp', 'daComp', 'component'];
 /** Things reached through those names that belong to other objects. */
 const NOT_OURS = new Set(['addEventListener', 'navStops', 'querySelector', 'then', 'catch']);
 
+/**
+ * Every script under tools/, skipping what is not a hand-written driver:
+ * dot-directories (build caches), `archive/` (dated snapshots, never run), and
+ * this file, which names the retired fields in order to forbid them.
+ */
 function jsFilesUnder(dir) {
   return readdirSync(dir).flatMap(entry => {
+    if (entry.startsWith('.') || entry === 'archive') return [];
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) return jsFilesUnder(path);
+    if (path === __filename) return [];
     return /\.(js|mjs)$/.test(entry) ? [path] : [];
   });
 }
@@ -104,7 +128,6 @@ check('every tools-facing field is still declared on the component',
 // silently does nothing useful.
 const bareOverlayReads = [];
 for (const file of jsFilesUnder(join(REPO, 'tools'))) {
-  if (file.includes(`${sep}archive${sep}`)) continue;   // dated snapshots, not run
   const text = readFileSync(file, 'utf8');
   for (const name of TOOLS_FACING_FIELDS) {
     if (new RegExp(`\\.${name}\\s*(\\?\\.)?(find|getChildren|destroy|getAttr|children)\\b`).test(text)) {
@@ -112,6 +135,19 @@ for (const file of jsFilesUnder(join(REPO, 'tools'))) {
     }
   }
 }
+const retired = [];
+for (const file of jsFilesUnder(join(REPO, 'tools'))) {
+  const text = readFileSync(file, 'utf8');
+  for (const [name, advice] of Object.entries(RETIRED_FIELDS)) {
+    if (new RegExp(`\\.${name}\\b`).test(text)) {
+      retired.push(`${file.slice(REPO.length + 1)}: .${name} — ${advice}`);
+    }
+  }
+}
+check('no script reads a retired component field',
+  retired.length === 0,
+  retired.length ? retired.join('; ') : `${Object.keys(RETIRED_FIELDS).length} checked`);
+
 check('no script reaches through an Overlay without .node',
   bareOverlayReads.length === 0,
   bareOverlayReads.length ? bareOverlayReads.join('; ') : 'none');

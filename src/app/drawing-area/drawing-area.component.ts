@@ -44,6 +44,7 @@ import { Camera, Rect } from './camera';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
 import { CrosshairsProbe, ProbeBounds } from './crosshairs-probe';
+import { Animations } from './animations';
 import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -235,8 +236,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private crosshairsLayer!: CrosshairsLayer;
   private drawingLayer!: DrawingLayer;
   private stage!: Konva.Stage;
-  private tweens: Konva.Tween[] = [];
-  private currentDragRafId: number | null = null;
+  /** Every animation in flight — tweens and the drag loop (animations.ts). */
+  private readonly animations = new Animations();
   private demoDataService = inject(DemoDataService);
   private log = inject(DebugLogService);
   private themeService = inject(ThemeService);
@@ -1066,8 +1067,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private multiItemSelect() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
+    this.finishTweens();
     this.wasAlreadySelectedBeforeDrag = this.isTopItemSelected();
     this.ensureTopItemSelected();
   }
@@ -1116,8 +1116,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private singleItemSelect() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
+    this.finishTweens();
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
@@ -1538,7 +1537,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const da = this;
     return {
       get drawingLayer() { return da.drawingLayer; },
-      get tweens() { return da.tweens; },
+      get animations() { return da.animations; },
       get themeService() { return da.themeService; },
       get graphNavEdge() { return da.graphNavEdge; },
       get graphNavMomentum() { return da.graphNavMomentum; },
@@ -3012,7 +3011,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  animation on this canvas goes through here, so none is left running when
    *  the next command arrives. */
   private tween(config: TweenConfig): void {
-    this.tweens.push(new Konva.Tween(config).play());
+    this.animations.start(config);
   }
 
   /** Whatever moved, the overlay that tracks it has to catch up. */
@@ -4850,16 +4849,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+  // Kept as a method because tools/qa scripts call it; see
+  // tools/qa/contract/component-api.js.
   private finishTweens() {
-    this.tweens.forEach(t => t.finish());
-    this.tweens = [];
+    this.animations.finishAll();
   }
 
   private cancelDragAnimation() {
-    if (this.currentDragRafId !== null) {
-      cancelAnimationFrame(this.currentDragRafId);
-      this.currentDragRafId = null;
-    }
+    this.animations.cancelFrame();
   }
 
   private emitZoomLevel() {
@@ -5076,7 +5073,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       targetScale = Math.min(Math.max(fit, 0.02), 1.0);
     }
 
-    const tween = new Konva.Tween({
+    this.animations.startSelfRemoving({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
       scaleX: targetScale,
@@ -5084,17 +5081,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: stageWidth / 2 - centerX * targetScale,
       y: stageHeight / 2 - centerY * targetScale,
       easing: Konva.Easings.EaseInOut,
-      onFinish: () => {
-        this.emitZoomLevel();
-        const index = this.tweens.indexOf(tween);
-        if (index > -1) {
-          this.tweens.splice(index, 1);
-        }
-      }
+      onFinish: () => this.emitZoomLevel(),
     });
-
-    this.tweens.push(tween);
-    tween.play();
   }
 
   /** Bounding box of the given items in drawing-layer coordinates, or null
@@ -5154,23 +5142,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.finishTweens();
     this.clearCrosshairHoverHighlight(false);
 
-    const tween = new Konva.Tween({
+    this.animations.startSelfRemoving({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
       x: this.viewport.centerX,
       y: this.viewport.centerY,
       easing: Konva.Easings.EaseInOut,
-      onFinish: () => {
-        const index = this.tweens.indexOf(tween);
-        if (index > -1) {
-          this.tweens.splice(index, 1);
-        }
-        this.scheduleCrosshairHoverRefresh(20);
-      }
+      onFinish: () => this.scheduleCrosshairHoverRefresh(20),
     });
-
-    this.tweens.push(tween);
-    tween.play();
   }
 
   private dragSelectedLeft(tier?: GridTier)  {
@@ -5330,7 +5309,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const progress = Math.min((Date.now() - startTime) / (this.TWEEN_DURATION * 1000), 1);
       this.paintDragFrame(targets, edges, axis, progress);
       panned = this.followCrosshairs(axis, origin, travel * progress, panned);
-      this.currentDragRafId = progress < 1 ? requestAnimationFrame(frame) : null;
+      this.animations.trackFrame(progress < 1 ? requestAnimationFrame(frame) : null);
       // Node(s) landed on their new grid cell: re-route their edges around the
       // changed geometry (same pipeline as adding a new edge).
       if (progress >= 1) this.rerouteIncidentEdges(nodes);

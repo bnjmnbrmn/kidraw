@@ -17,7 +17,7 @@ async function main() {
 
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(tween => tween.finish()); da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({
       id, x: cx - 30, y: cy - 18, text: id,
       width: 60, height: 36, fontSize: 12, isSelected: false,
@@ -69,7 +69,7 @@ async function main() {
   };
   const park = async id => page.evaluate(nodeId => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(tween => tween.finish()); da.tweens = [];
+    da.finishTweens();
     const node = da.drawingLayer.getDANodes().find(candidate => candidate.id === nodeId);
     const center = da.getNodeCenterInStageCoordinates(node);
     da.crosshairsLayer.crosshairs.x = center.x;

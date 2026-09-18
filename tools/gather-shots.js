@@ -39,7 +39,7 @@ async function main() {
     const comp = window.ng.getComponent(document.querySelector('app-drawing-area'));
     return new Function('da', 'arg', b)(comp, a);
   }, [body, arg ?? null]);
-  const finish = () => da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+  const finish = () => da('da.finishTweens();');
   const canvasBox = await page.locator('#mainDrawingArea').boundingBox();
   const shots = [];
   const shoot = async (name, caption) => {
@@ -52,7 +52,7 @@ async function main() {
   };
 
   const placeOnAndCenter = async (id, scale) => da(`
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const n = dl.getDANodes().find(x => x.id === ${JSON.stringify(id)});
     const s = ${scale};
@@ -132,7 +132,7 @@ async function main() {
     for (const [i, edge] of window.__labelEdges.entries()) {
       const pts = edge.getPathPoints();
       const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2, y: (pts[0].y + pts[pts.length - 1].y) / 2};
-      daComp.tweens.forEach(t => t.finish()); daComp.tweens = [];
+      daComp.finishTweens();
       daComp.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
       daComp.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
       daComp.handleCommand({ kind: 'ADD_LABEL' });

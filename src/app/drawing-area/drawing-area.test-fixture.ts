@@ -16,6 +16,7 @@
  * Not reachable from the app: tsconfig.app.json compiles from `src/main.ts`
  * and nothing there imports this.
  */
+import { Animations } from './animations';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { Overlay } from './overlay';
@@ -34,6 +35,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   const drawingLayer = () => component.drawingLayer;
   const crosshairsLayer = () => component.crosshairsLayer;
 
+  component.animations = new Animations();
   component.camera = new Camera(drawingLayer);
   component.probe = new CrosshairsProbe(drawingLayer, crosshairsLayer, component.camera);
   component.viewport = new Viewport(() => component.stage, () => component.viewportInset ?? NO_INSET);

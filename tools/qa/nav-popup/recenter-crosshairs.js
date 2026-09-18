@@ -38,7 +38,7 @@ async function main() {
   // Park the crosshairs well off-center (screen coords).
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.crosshairsLayer.crosshairs.x = 210;
     da.crosshairsLayer.crosshairs.y = 780;
   });

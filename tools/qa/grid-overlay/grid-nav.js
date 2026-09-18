@@ -25,7 +25,7 @@ async function main() {
   // (r1c1) so the middle column has a gap.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({id, x: cx - 50, y: cy - 25, text: id, width: 100, height: 50, fontSize: 14, isSelected: false});
     const nodes = []; const cols = [300, 650, 1000], rows = [200, 400, 600];
     rows.forEach((y, r) => cols.forEach((x, c) => { if (!(r === 1 && c === 1)) nodes.push(mk('r' + r + 'c' + c, x, y)); }));
@@ -35,7 +35,7 @@ async function main() {
 
   const park = (id) => page.evaluate((t) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(x => x.finish()); da.tweens = [];
+    da.finishTweens();
     da.navGrid.navGridLast = null; da.navGrid.navGoalX = null; da.navGrid.navGoalY = null;
     // Nodes auto-size to their label, so the fixture's declared 100x50 is not
     // what renders. Park on the real center — the same one at() measures

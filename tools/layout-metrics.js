@@ -179,7 +179,7 @@ async function main() {
       await da(`da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
       await page.waitForTimeout(300);
       await waitIdle();
-      await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+      await da('da.finishTweens();');
       const m = await da(MEASURE);
       rows.push({ dataset: name, layout, ...m });
       console.log(`${name} ${layout}: pierces=${m.pierces} crossings=${m.crossings} columns=${m.columns}/${m.depths} dev=${m.clusterDev}px`);

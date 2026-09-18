@@ -59,14 +59,14 @@ async function main() {
 
   const park = (x, y) => page.evaluate(([px, py]) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.crosshairsLayer.crosshairs.x = px;
     da.crosshairsLayer.crosshairs.y = py;
   }, [x, y]);
 
   const parkOnNode = (text) => page.evaluate((t) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t2 => t2.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const node = dl.getDANodes().find(n => n.label.text() === t);
     const pos = node.group.position();
@@ -89,7 +89,7 @@ async function main() {
 
   const reset = (graph) => page.evaluate(g => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     dl.clearAll();
     dl.scale({x: 1, y: 1});
@@ -102,7 +102,7 @@ async function main() {
   /** Park on the chord midpoint of the first edge — clear of both node boxes. */
   const parkOnEdge = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const pts = dl.getDAEdges()[0].getPathPoints();
     const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2,

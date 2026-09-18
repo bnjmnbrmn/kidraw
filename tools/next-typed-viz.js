@@ -94,7 +94,7 @@ async function main() {
   // it, then gather around it.
   const gatherOn = async (rank) => {
     await da(`
-      da.tweens.forEach(t => t.finish()); da.tweens = [];
+      da.finishTweens();
       const dl = da.drawingLayer;
       const hub = ${hubExpr(rank)};
       da.crosshairsLayer.crosshairs.x = dl.x() + (hub.konvaGroup.x() + hub.NODE_WIDTH / 2) * dl.scaleX();
@@ -102,12 +102,12 @@ async function main() {
       da.handleCommand({kind: "GATHER_CONNECTED_NODES"});
     `);
     await page.waitForTimeout(500);
-    await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+    await da('da.finishTweens();');
   };
   const ungather = async () => {
     await da('da.handleCommand({kind: "UNGATHER"});');
     await page.waitForTimeout(500);
-    await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+    await da('da.finishTweens();');
   };
 
   for (const layout of ['tree-right-clear']) {
@@ -117,12 +117,12 @@ async function main() {
     await da(`da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
     await page.waitForTimeout(300);
     await waitRoutingIdle();
-    await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+    await da('da.finishTweens();');
     await applyGradient();
 
     const shoot = async (name) => {
       await page.waitForTimeout(450);
-      await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
+      await da('da.finishTweens();');
       const file = `${layout}--${name}.png`;
       await page.screenshot({ path: path.join(runDir, file), clip: canvasBox });
       shots.push({ layout, name, file });

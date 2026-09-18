@@ -90,7 +90,7 @@ async function main() {
   // Insert a node on empty canvas (hold a → d), type its label, escape out.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.crosshairsLayer.crosshairs.x = 400;
     da.crosshairsLayer.crosshairs.y = 500;
   });

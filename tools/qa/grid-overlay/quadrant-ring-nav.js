@@ -16,8 +16,7 @@ async function main() {
 
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(tween => tween.finish());
-    da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({
       id,
       x: cx - 30,

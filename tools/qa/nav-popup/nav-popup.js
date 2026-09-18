@@ -80,7 +80,7 @@ async function main() {
     const edge = window.__edges.cd;
     const pts = edge.getPathPoints();
     const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2, y: (pts[0].y + pts[pts.length - 1].y) / 2};
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
     da.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
     da.handleCommand({ kind: 'ADD_LABEL' });
@@ -95,7 +95,7 @@ async function main() {
 
   const placeOn = (id) => page.evaluate((nodeId) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const n = dl.getDANodes().find(x => x.id === nodeId);
     da.crosshairsLayer.crosshairs.x = dl.x() + (n.group.x() + n.NODE_WIDTH / 2) * dl.scaleX();
@@ -105,7 +105,7 @@ async function main() {
   const state = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const scale = dl.scaleX();
     const xh = {

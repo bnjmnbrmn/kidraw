@@ -78,7 +78,7 @@ async function main() {
   // Park the crosshairs on empty canvas first.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.crosshairsLayer.crosshairs.x = 120;
     da.crosshairsLayer.crosshairs.y = 520;
   });
@@ -102,7 +102,7 @@ async function main() {
   // Put the crosshairs on a node that has an outgoing edge.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const src = dl.getDAEdges()[0].srcNode;
     const pos = src.group.position();

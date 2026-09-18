@@ -127,7 +127,7 @@ async function main() {
       await da(page, `da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
       await page.waitForTimeout(300);
       await waitRoutingIdle(page);
-      await da(page, 'da.tweens.forEach(t => t.finish()); da.tweens = [];');
+      await da(page, 'da.finishTweens();');
 
       for (const view of VIEWS) {
         if (view.scale === null) {
@@ -150,7 +150,7 @@ async function main() {
           `);
         }
         await page.waitForTimeout(450);
-        await da(page, 'da.tweens.forEach(t => t.finish()); da.tweens = [];');
+        await da(page, 'da.finishTweens();');
         const file = `${dataset}--${layout}--${view.name}.png`;
         await page.screenshot({ path: path.join(runDir, file), clip: canvasBox });
         shots.push({ dataset, layout, view: view.name, file });

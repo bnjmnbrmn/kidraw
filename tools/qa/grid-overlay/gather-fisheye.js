@@ -95,7 +95,7 @@ async function main() {
     for (const [i, edge] of window.__labelEdges.entries()) {
       const pts = edge.getPathPoints();
       const mid = {x: (pts[0].x + pts[pts.length - 1].x) / 2, y: (pts[0].y + pts[pts.length - 1].y) / 2};
-      da.tweens.forEach(t => t.finish()); da.tweens = [];
+      da.finishTweens();
       da.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
       da.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
       da.handleCommand({ kind: 'ADD_LABEL' });
@@ -108,7 +108,7 @@ async function main() {
 
   const placeOn = (id) => page.evaluate((nodeId) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const n = dl.getDANodes().find(x => x.id === nodeId);
     da.crosshairsLayer.crosshairs.x = dl.x() + (n.group.x() + n.NODE_WIDTH / 2) * dl.scaleX();
@@ -129,7 +129,7 @@ async function main() {
 
   const gatherState = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const center = (n) => ({x: n.group.x() + n.NODE_WIDTH / 2, y: n.group.y() + n.NODE_HEIGHT / 2});
     const nodes = {};
@@ -161,7 +161,7 @@ async function main() {
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.handleCommand({ kind: 'GATHER_CONNECTED_NODES' });
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
   });
   // Stays: the 250ms debounce is the subject of this check.
   await page.waitForTimeout(450); // deferred stranger re-route fires at 250ms
@@ -219,7 +219,7 @@ async function main() {
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.handleCommand({ kind: 'UNGATHER' });
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
   });
   await page.waitForTimeout(150);
   const after = await snapshot();
@@ -239,7 +239,7 @@ async function main() {
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.handleCommand({ kind: 'GATHER_CONNECTED_NODES' });
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
   });
   s = await gatherState();
   const Y = s.nodes['Y'];
@@ -261,7 +261,7 @@ async function main() {
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.handleCommand({ kind: 'UNGATHER' });
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
   });
 
   // Auto-gather during navigation was removed: gathering proved too slow to

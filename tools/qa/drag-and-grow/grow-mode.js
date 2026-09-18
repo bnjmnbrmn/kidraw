@@ -57,7 +57,7 @@ async function main() {
 
   const parkOnNode = (text) => page.evaluate((t) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t2 => t2.finish()); da.tweens = [];
+    da.finishTweens();
     const dl = da.drawingLayer;
     const node = dl.getDANodes().find(n => n.label.text() === t);
     const pos = node.group.position();
@@ -317,7 +317,7 @@ async function main() {
   await escapeToNormal();
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({id, x: cx - 60, y: cy - 30, text: id, width: 120, height: 60, fontSize: 14, isSelected: false});
     da.drawingLayer.restoreGraph({nodes: [mk('X', 600, 700), mk('U1', 600, 500), mk('U2', 750, 450)], edges: []});
     const dl = da.drawingLayer, X = dl.getDANodes().find(n => n.id === 'X'), p = X.group.position();

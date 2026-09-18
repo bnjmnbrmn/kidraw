@@ -24,7 +24,7 @@ async function main() {
   /** Build a two-node graph: anchor at the left, target far to the right. */
   const setup = (targetWidth) => page.evaluate((w) => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     da.drawingLayer.restoreGraph({
       nodes: [
         {id: 'da-1', x: 100, y: 400, text: 'A', width: 120, height: 60, fontSize: 14,
@@ -107,7 +107,7 @@ async function main() {
   // --- 4. the goal column survives the stage-coordinate shift from panning ---
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({id, x: cx - 50, y: cy - 30, text: id,
       width: 100, height: 60, fontSize: 14, isSelected: false, textOverflowMode: 'clip'});
     da.drawingLayer.restoreGraph({

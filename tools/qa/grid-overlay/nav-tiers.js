@@ -21,7 +21,7 @@ async function main() {
 
   const setup = () => page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.tweens.forEach(t => t.finish()); da.tweens = [];
+    da.finishTweens();
     const mk = (id, cx, cy) => ({id, x: cx - 60, y: cy - 30, text: id, width: 120, height: 60, fontSize: 14, isSelected: false});
     da.drawingLayer.restoreGraph({
       nodes: [mk('A', 600, 300), mk('B', 600, 900)],
