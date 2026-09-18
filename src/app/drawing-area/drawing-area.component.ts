@@ -1307,9 +1307,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.emitStatus(`⚠ Unknown task status: ${status}`);
       return;
     }
-    const selected = this.drawingLayer.getSelectedDANodes();
-    const hovered = this.getDANodesContainingCrosshairs();
-    const targets = (selected.length > 0 ? selected : topmostSelection(hovered))
+    // Filters after the choice, not before: a selection of only junctions
+    // reports "nothing to do" rather than falling through to the node under
+    // the crosshairs. setTextOverflowMode does the opposite — see
+    // notes/bug-node-target-filter-order.md.
+    const targets = this.targetNodes()
       .filter(n => n.nodeShape !== 'junction' && n.nodeShape !== 'invisible');
     if (targets.length === 0) {
       this.emitStatus('⚠ Select or hover a node to set its status');
@@ -2676,9 +2678,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
-    const selected = this.drawingLayer.getSelectedDANodes().filter(n => n.nodeShape !== 'junction');
-    const targets = selected.length > 0 ? selected : topmostSelection(
-      this.getDANodesContainingCrosshairs().filter(n => n.nodeShape !== 'junction'));
+    const targets = this.targetNodes(n => n.nodeShape !== 'junction');
 
     const resized: DANode[] = [];
     targets.forEach(node => {
@@ -2689,13 +2689,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  /** Selection if there is one, else the topmost node under the crosshairs.
-   *  Empty means "no node addressed" — the shape commands read that as a
-   *  change to the default for new nodes. */
-  private nodeShapeTargets(): DANode[] {
-    const selected = this.drawingLayer.getSelectedDANodes();
-    if (selected.length > 0) return selected;
-    return topmostSelection(this.getDANodesContainingCrosshairs());
+  /**
+   * The nodes a command means: the selection if there is one, else the topmost
+   * node under the crosshairs. Empty means "no node addressed" — the shape
+   * commands read that as a change to the default for new nodes.
+   *
+   * `only` narrows both candidates before the choice, so restricting the kinds
+   * of node a command accepts cannot change which of the two wins.
+   */
+  private targetNodes(only: (node: DANode) => boolean = () => true): DANode[] {
+    const selected = this.drawingLayer.getSelectedDANodes().filter(only);
+    return selected.length > 0
+      ? selected
+      : topmostSelection(this.getDANodesContainingCrosshairs().filter(only));
   }
 
   /** Flip between the two shapes that carry a label, leaving diamond and the
@@ -2704,7 +2710,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  Anything that is not a circle becomes a circle, so a mixed selection
    *  converges instead of splitting further. */
   private toggleNodeShape() {
-    const targets = this.nodeShapeTargets();
+    const targets = this.targetNodes();
     if (targets.length === 0) {
       this._defaultNodeShape = this._defaultNodeShape === 'circle' ? 'box' : 'circle';
       this.daOut.emit({kind: 'status-message',
@@ -2716,7 +2722,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private setNodeShape(shape: NodeShape) {
-    const targets = this.nodeShapeTargets();
+    const targets = this.targetNodes();
 
     if (targets.length > 0) {
       targets.forEach(node => this.drawingLayer.changeNodeShape(node, shape));
