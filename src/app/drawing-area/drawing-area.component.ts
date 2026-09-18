@@ -68,7 +68,8 @@ import {
   startNormalMovementGoal,
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
-import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
+import {buildGrowGhostTargets, GrowGhostNodeCenter, GrowGhostTarget} from './grow-ghost-targets';
+import {HopDirection, planGrowHop} from './grow-lattice';
 import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
@@ -4585,13 +4586,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x();
     const ly = this.drawingLayer.y();
-    const layerNodes = this.drawingLayer.getDANodes();
-    const nodes = layerNodes.map(node => ({
-      id: node.id,
-      ...this.getNodeCenterInLayerCoordinates(node),
-      halfW: node.NODE_WIDTH / 2,
-      halfH: node.NODE_HEIGHT / 2,
-    }));
+    const nodes = this.nodeBoxes();
     const source = nodes.find(node => node.id === anchor.id)!;
     const bounds = {
       minX: -lx / scale,
@@ -4609,10 +4604,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       // major drawing grid: the spots then read as a grid — a coarse one, well
       // above the background's fine squares — rather than as free positions.
       this.growLatticeStep(anchor),
-      // The anchor's own box stands in for the node a target would create —
-      // it is also what the placement ghost is drawn at, so what is refused
-      // is exactly what you would have seen land on something (da-510).
-      {w: anchor.NODE_WIDTH / 2, h: anchor.NODE_HEIGHT / 2},
+      this.growAnchorHalf(anchor),
     );
   }
 
@@ -4766,7 +4758,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  Node engine. The augmented node tier shares its selected strategy,
    *  overlay, crosshair landing, viewport panning, same-direction run, and
    *  turn re-origin semantics. */
-  private growHop(direction: 'left' | 'right' | 'up' | 'down'): void {
+  private growHop(direction: HopDirection): void {
     if (!this.growAnchor) return;
     if (this.growHopOnLattice(direction)) return;
     // The crosshairs ride the candidate: Move-by-Node moves them to whatever
@@ -4787,143 +4779,57 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
 
-  /** The cell of the placement lattice a node is standing on, if it is near
-   *  enough to one to carry on walking from. */
-  private growCellOfNode(
-    node: DANode,
-    anchorCentre: Point,
-    step: Point,
-  ): {ix: number; iy: number} | null {
-    const centre = this.getNodeCenterInLayerCoordinates(node);
-    const ix = Math.round((centre.x - anchorCentre.x) / step.x);
-    const iy = Math.round((centre.y - anchorCentre.y) / step.y);
-    if (!ix && !iy) return null;
-    const off = Math.max(
-      Math.abs(centre.x - anchorCentre.x - ix * step.x) / step.x,
-      Math.abs(centre.y - anchorCentre.y - iy * step.y) / step.y,
-    );
-    return off <= 0.6 ? {ix, iy} : null;
-  }
-
-  /** Which cell of the placement lattice a ghost target is, if it is one. */
-  private growLatticeCell(id: string | null | undefined): {ix: number; iy: number} | null {
-    const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(id ?? '');
-    return match ? {ix: Number(match[1]), iy: Number(match[2])} : null;
-  }
-
   /**
-   * A hop between placement spots is a step on the lattice.
+   * A hop between placement spots is a step on the lattice (grow-lattice.ts).
    *
-   * Move by Node reads a field of stops as bands and rings, which is right for
-   * the scattered real nodes it was built for and wrong for a regular grid:
-   * with every intersection filled, a repeated right press wanders up and down
-   * the first column instead of walking out along the row. Aiming from the
-   * anchor or from another spot therefore steps by index — one cell in the
-   * direction pressed — and only falls through to the engine when the lattice
-   * has nothing there, which is how the real nodes beyond it stay reachable.
+   * Returns whether the lattice handled it. It does not when the press walks
+   * off the end, and the caller falls through to Move by Node, which knows
+   * about the real nodes beyond.
    */
-  private growHopOnLattice(direction: 'left' | 'right' | 'up' | 'down'): boolean {
+  private growHopOnLattice(direction: HopDirection): boolean {
     const anchorCentre = this.growOrigin;
     if (!anchorCentre) return false;
-    const step = this.growLatticeStep();
-    // Aiming at a node is not the end of the walk. The node stands on (or near)
-    // a cell of the same lattice, so pressing on from it carries on across the
-    // grid — otherwise a spot behind a neighbour could not be reached at all,
-    // and a diagonal one is only ever reached through its orthogonal
-    // neighbours.
-    const from = this.growInsertionTarget
-      ? this.growLatticeCell(this.growInsertionTarget.id)
-      : this.growTarget
-        ? this.growCellOfNode(this.growTarget, anchorCentre, step)
-        : {ix: 0, iy: 0};
-    if (!from) return false;
-    const dx = direction === 'left' ? -1 : direction === 'right' ? 1 : 0;
-    const dy = direction === 'up' ? -1 : direction === 'down' ? 1 : 0;
-    const to = {ix: from.ix + dx, iy: from.iy + dy};
-    // Where that cell is, whether or not it is on offer: a cell the lattice
-    // withheld is usually one an existing node is standing on, and that node
-    // is what the press was aimed at.
-    const at = {
-      x: anchorCentre.x + to.ix * step.x,
-      y: anchorCentre.y + to.iy * step.y,
-    };
-    const here = this.growInsertionTarget
-      ?? (this.growTarget ? this.getNodeCenterInLayerCoordinates(this.growTarget) : anchorCentre);
-    // A node between here and there wins: connecting two nodes must not mean
-    // walking past one of them because a placement spot lay beyond it.
-    const between = this.growNodeInTheWay(here, {x: dx, y: dy}, at);
-    if (between) {
-      this.landGrowAim(between);
-      return true;
-    }
-    const cell = this.growGhostTargets.find(target => {
-      const found = this.growLatticeCell(target.id);
-      return !!found && found.ix === to.ix && found.iy === to.iy;
+    const hop = planGrowHop({
+      direction,
+      fromTargetId: this.growInsertionTarget?.id ?? null,
+      fromNodeCentre: this.growTarget
+        ? this.getNodeCenterInLayerCoordinates(this.growTarget)
+        : null,
+      anchorCentre,
+      step: this.growLatticeStep(),
+      targets: this.growGhostTargets,
+      nodes: this.nodeBoxes(node => node !== this.growAnchor),
+      newNodeHalf: this.growAnchorHalf(),
     });
-    if (cell) {
-      this.landGrowAim(cell);
-      return true;
-    }
-    const occupier = this.growNodeAtCell(at);
-    if (occupier) {
-      this.landGrowAim(occupier);
-      return true;
-    }
-    // Off the end of the lattice: the engine knows about everything else.
-    return false;
+    if (!hop) return false;
+    this.landGrowAim(hop.kind === 'cell' ? hop.target : this.nodeById(hop.id)!);
+    return true;
   }
 
-  /** The node standing on a lattice cell — which is why the cell was not
-   *  offered — by the same geometry the builder refuses it with (da-510). */
-  private growNodeAtCell(at: Point): DANode | null {
-    const anchor = this.growAnchor;
-    const clearance = 12;
-    let best: {node: DANode; distance: number} | null = null;
-    for (const node of this.drawingLayer.getDANodes()) {
-      if (node === anchor) continue;
-      const centre = this.getNodeCenterInLayerCoordinates(node);
-      const halfW = node.NODE_WIDTH / 2 + (anchor?.NODE_WIDTH ?? 0) / 2 + clearance;
-      const halfH = node.NODE_HEIGHT / 2 + (anchor?.NODE_HEIGHT ?? 0) / 2 + clearance;
-      if (Math.abs(centre.x - at.x) >= halfW || Math.abs(centre.y - at.y) >= halfH) continue;
-      const distance = Math.hypot(centre.x - at.x, centre.y - at.y);
-      if (!best || distance < best.distance) best = {node, distance};
-    }
-    return best?.node ?? null;
+  /** Every node as a plain box, for the Konva-free placement modules. */
+  private nodeBoxes(keep: (node: DANode) => boolean = () => true): GrowGhostNodeCenter[] {
+    return this.drawingLayer.getDANodes().filter(keep).map(node => ({
+      id: node.id,
+      ...this.getNodeCenterInLayerCoordinates(node),
+      halfW: node.NODE_WIDTH / 2,
+      halfH: node.NODE_HEIGHT / 2,
+    }));
   }
 
-  /**
-   * The node a hop would pass through on its way to the next lattice cell.
-   *
-   * Cells the lattice offers are, by construction, clear of node boxes — so a
-   * step that stays on the lattice can walk straight past a node standing off
-   * the grid, which is what broke connecting two existing nodes. Anything whose
-   * box reaches into the corridor of the step, and which is nearer than the
-   * cell, is taken first; a node further out is simply reached a press later.
-   */
-  private growNodeInTheWay(
-    from: Point,
-    step: Point,
-    cell: Point,
-  ): DANode | null {
-    const reach = Math.abs(step.x * (cell.x - from.x) + step.y * (cell.y - from.y));
-    if (reach <= 0) return null;
-    const lattice = this.growLatticeStep();
-    const corridor = (step.x !== 0 ? lattice.y : lattice.x) / 2;
-    let best: {node: DANode; along: number} | null = null;
-    for (const node of this.drawingLayer.getDANodes()) {
-      if (node === this.growAnchor) continue;
-      const centre = this.getNodeCenterInLayerCoordinates(node);
-      const dxToNode = centre.x - from.x;
-      const dyToNode = centre.y - from.y;
-      const along = step.x * dxToNode + step.y * dyToNode;
-      const across = Math.abs(step.x !== 0 ? dyToNode : dxToNode);
-      const half = (step.x !== 0 ? node.NODE_HEIGHT : node.NODE_WIDTH) / 2;
-      if (along <= 1 || along >= reach) continue;
-      if (across - half > corridor) continue;
-      if (!best || along < best.along) best = {node, along};
-    }
-    return best?.node ?? null;
+  /** The anchor's own box stands in for the node a spot would create — it is
+   *  also what the placement ghost is drawn at, so what the lattice refuses is
+   *  exactly what you would have seen land on something (da-510). */
+  private growAnchorHalf(anchor: DANode | null = this.growAnchor): {w: number; h: number} {
+    return {
+      w: (anchor?.NODE_WIDTH ?? DEFAULT_BOX_SIZE) / 2,
+      h: (anchor?.NODE_HEIGHT ?? DEFAULT_BOX_SIZE) / 2,
+    };
   }
+
+  private nodeById(id: string): DANode | null {
+    return this.drawingLayer.getDANodes().find(node => node.id === id) ?? null;
+  }
+
 
   /** Put the aim on a spot or a node: the ghost follows, the crosshairs ride
    *  it, and Move by Node's memory is kept in step so a later hop off the
