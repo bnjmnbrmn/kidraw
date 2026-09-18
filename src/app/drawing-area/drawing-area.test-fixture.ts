@@ -19,6 +19,7 @@
 import { Animations } from './animations';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
+import { FileController } from './file-controller';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
 
@@ -39,6 +40,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.camera = new Camera(drawingLayer);
   component.probe = new CrosshairsProbe(drawingLayer, crosshairsLayer, component.camera);
   component.viewport = new Viewport(() => component.stage, () => component.viewportInset ?? NO_INSET);
+  component.fileController = new FileController(component.fileHost());
 
   component.goalLine = new Overlay(drawingLayer);
   component.hoverTrace = new Overlay(drawingLayer);

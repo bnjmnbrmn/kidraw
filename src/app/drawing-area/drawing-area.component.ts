@@ -45,6 +45,7 @@ import { Overlay } from './overlay';
 import { Viewport } from './viewport';
 import { CrosshairsProbe, ProbeBounds } from './crosshairs-probe';
 import { Animations } from './animations';
+import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
@@ -54,7 +55,6 @@ import type {
 } from '../agent/agent-canvas';
 import type { GraphOperationApplier } from './graph-operation-applier';
 import type { GraphOperation, UndoGroup } from './graph-operations';
-import { EXTENSION_REGISTRY } from '../extensions/extension-registry';
 import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
 import { layeredLayout } from './layered-layout';
@@ -129,7 +129,7 @@ interface NavCandidate {
   direction: 'out' | 'in';
   other: DANode;
 }
-import { DAFileState, DANotification } from './da-notification.model';
+import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
 import type { TweenConfig } from 'konva/lib/Tween';
@@ -159,45 +159,11 @@ import type { RoutingRequest, RoutingResponse } from './routing-worker-messages'
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
-import { Vault, VaultService, ensureKidrawFilename, normalizeVaultPath } from '../services/vault.service';
-import {
-  isYamlFilename,
-  parseGraphDocByFilename,
-  serializeGraphDocByFilename,
-} from '../lib/file-format/parser';
-import { snapshotToFiles, filesToSnapshot } from '../lib/file-format/snapshot-mapping';
-import { getExtension, resolveIdentity } from '../extensions/extension-registry';
+import { VaultService } from '../services/vault.service';
+import { resolveIdentity } from '../extensions/extension-registry';
 import { applyExclusiveTag } from '../extensions/tag-groups';
-import {
-  InlineStyleSet,
-  KidrawGraphDoc,
-  KidrawStyleSet,
-  styleRefId,
-} from '../lib/file-format/types';
-import { resolveAndApplyToGraph, ImportResolver } from '../lib/file-format/resolver';
-import {
-  findManifest,
-  packZip,
-  PackedFile,
-  unpackZip,
-} from '../lib/file-format/zip-bundle';
-import {
-  parseStyleSetByFilename,
-  serializeStyleSetByFilename,
-} from '../lib/file-format/parser';
 import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
-
-function defaultGraphFilename(): string {
-  const stamp = new Date().toISOString().slice(0, 10);
-  // YAML is the default save format.
-  return `kidraw-${stamp}.kidraw.yaml`;
-}
-
-/** Strip leading "./" and normalize separators for archive-relative paths. */
-function normalizeArchivePath(p: string): string {
-  return p.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\\/g, '/');
-}
 
 /** An in-graph search hit: a node (matched by its label text) or an edge label. */
 type SearchMatch =
@@ -244,26 +210,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private visualConfigService = inject(VisualConfigService);
   private metrics = inject(RoutingMetricsService);
   private draftStorage = inject(DraftStorageService);
-  /** Viewport from the draft loaded at startup, so a vault reopen keeps the
-   *  user's place instead of re-fitting. Consumed once by initVault. */
-  private startupDraftView: {x: number; y: number; scale: number} | null = null;
   private fileIo = inject(FileIoService);
   private graphStorage = inject(GraphStorageService);
   private vaultService = inject(VaultService);
-  /** Debounced auto-save to the vault-backed file (null = nothing pending). */
-  private vaultSaveTimer: ReturnType<typeof setTimeout> | null = null;
-  /** Guards the external-change poll against reacting to our own writes. */
-  private vaultWriteInFlight = false;
-  private vaultPollTimer: ReturnType<typeof setInterval> | null = null;
-  /** lastModified of the vault file as of our most recent read/write. */
-  private vaultLastModified = 0;
-  private static readonly VAULT_AUTOSAVE_DEBOUNCE_MS = 1000;
-  private static readonly VAULT_POLL_INTERVAL_MS = 1500;
-  /** The graph doc + style resolver from the most-recent Open. Used to
-   *  switch between top-level displays after the file is loaded. */
-  private openedDoc: KidrawGraphDoc | null = null;
-  private openedStyleResolver: ImportResolver | null = null;
-  private activeStyleIndex = 0;
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -283,6 +232,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly camera = new Camera(() => this.drawingLayer);
   /** The stage minus whatever the UI overlays cover (viewport.ts). */
   private readonly viewport = new Viewport(() => this.stage, () => this.viewportInset);
+  /** Files, the vault, named graphs and display (file-controller.ts). */
+  private readonly fileController = new FileController(this.fileHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -457,7 +408,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
           // Keep the user's place across a refresh; fall back to fit only
           // when the draft predates viewport persistence. Stash it so the
           // vault reopen (initVault) honors it instead of re-fitting.
-          this.startupDraftView = draft.view ?? null;
+          this.fileController.noteStartupDraftView(draft.view ?? null);
           if (!this.restoreViewport(draft.view) && snapshot.nodes.length > 0) {
             this.fitViewToContent();
           }
@@ -531,8 +482,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this._beforeUnloadHandler) {
       window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     }
-    if (this.vaultSaveTimer !== null) clearTimeout(this.vaultSaveTimer);
-    if (this.vaultPollTimer !== null) clearInterval(this.vaultPollTimer);
+    this.fileController.dispose();
     if (this.crosshairHoverRefreshTimer !== null) {
       clearTimeout(this.crosshairHoverRefreshTimer);
     }
@@ -1062,6 +1012,77 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
+
+  // ── File, vault, named graphs, display: delegated to FileController ──
+  // Command dispatch and lifecycle hooks enter the controller here.
+  private connectVault(): Promise<void> {
+    return this.fileController.connectVault();
+  }
+
+  private cycleDisplay(): void {
+    this.fileController.cycleDisplay();
+  }
+
+  private exportZip(): void {
+    this.fileController.exportZip();
+  }
+
+  private initVault(): Promise<void> {
+    return this.fileController.initVault();
+  }
+
+  private loadNamedGraph(snapshot: GraphSnapshot): void {
+    this.fileController.loadNamedGraph(snapshot);
+  }
+
+  private loadSampleGraph(graphId: string): void {
+    this.fileController.loadSampleGraph(graphId);
+  }
+
+  private newGraph(): void {
+    this.fileController.newGraph();
+  }
+
+  private openFile(): Promise<void> {
+    return this.fileController.openFile();
+  }
+
+  private restoreViewport(view: {x: number; y: number; scale: number} | undefined): boolean {
+    return this.fileController.restoreViewport(view);
+  }
+
+  private runExCommand(text: string): Promise<void> {
+    return this.fileController.runExCommand(text);
+  }
+
+  private saveFileAs(): void {
+    this.fileController.saveFileAs();
+  }
+
+  private saveGraphAs(name: string): void {
+    this.fileController.saveGraphAs(name);
+  }
+
+  private saveGraphToStorage(): void {
+    this.fileController.saveGraphToStorage();
+  }
+
+  private scheduleVaultAutoSave(): void {
+    this.fileController.scheduleVaultAutoSave();
+  }
+
+  private setDiagramType(typeId: string): void {
+    this.fileController.setDiagramType(typeId);
+  }
+
+  private vaultOpen(): Promise<void> {
+    return this.fileController.vaultOpen();
+  }
+
+  private vaultSaveAs(): Promise<void> {
+    return this.fileController.vaultSaveAs();
+  }
+
   assertNever(x: never): never {
     throw new Error(`Unexpected object: ${x}`);
   }
@@ -1166,132 +1187,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.probe.waypoint();
   }
 
-  private loadSampleGraph(graphId: string) {
-    this.detachVaultFile();
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.demoDataService.loadGraph(graphId, this.drawingLayer);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    this.drawingLayer.applyThemeColors(palette);
-    this.fitViewToContent();
-    this.recenterCrosshairs();
-    this.emitZoomLevel();
-    this.checkAndEmitEditState();
-  }
-
-  private saveGraphToStorage(): void {
-    this.finishTweens();
-    const snapshot = this.drawingLayer.serializeGraph();
-    this.draftStorage.saveSnapshot(snapshot, {view: this.currentViewport()});
-  }
-
-  /** The drawing-layer viewport: pan (stage px) + uniform scale. */
-  private currentViewport(): {x: number; y: number; scale: number} {
-    return {x: this.drawingLayer.x(), y: this.drawingLayer.y(), scale: this.drawingLayer.scaleX()};
-  }
-
-  /** Restore a saved viewport (pan + zoom) and re-center the crosshairs in
-   *  the visible area. Returns false if the view was absent/invalid so the
-   *  caller can fall back to fit-to-content. */
-  private restoreViewport(view: {x: number; y: number; scale: number} | undefined): boolean {
-    if (!view || !isFinite(view.x) || !isFinite(view.y) || !(view.scale > 0)) return false;
-    this.drawingLayer.scale({x: view.scale, y: view.scale});
-    this.drawingLayer.position({x: view.x, y: view.y});
-    this.crosshairsLayer.crosshairs.x = this.viewport.centerX;
-    this.crosshairsLayer.crosshairs.y = this.viewport.centerY;
-    this.drawingLayer.batchDraw();
-    this.emitZoomLevel();
-    return true;
-  }
-
-  private async openFile(): Promise<void> {
-    const accept = FileIoService.KIDRAW_ACCEPT;
-    const opened = await this.fileIo.openBinaryFile(accept);
-    if (!opened) return;
-
-    const lower = opened.name.toLowerCase();
-    const isZip = lower.endsWith('.zip');
-
-    let manifestText: string;
-    let manifestName: string;
-    let styleResolver: ImportResolver;
-
-    if (isZip) {
-      let unpacked: PackedFile[];
-      try {
-        unpacked = unpackZip(opened.bytes);
-      } catch (e) {
-        window.alert(`Could not unpack ${opened.name}:\n\n${(e as Error).message}`);
-        return;
-      }
-      const manifest = findManifest(unpacked);
-      if (!manifest) {
-        window.alert(`${opened.name} doesn't contain a .kidraw.{json,yaml} manifest file.`);
-        return;
-      }
-      manifestText = manifest.content;
-      manifestName = manifest.name;
-      const byPath = new Map<string, PackedFile>();
-      for (const f of unpacked) byPath.set(normalizeArchivePath(f.name), f);
-      styleResolver = (path: string) => {
-        const found = byPath.get(normalizeArchivePath(path));
-        if (!found) return null;
-        const parsed = parseStyleSetByFilename(found.content, found.name);
-        return parsed.ok ? parsed.value : null;
-      };
-    } else {
-      manifestText = new TextDecoder().decode(opened.bytes);
-      manifestName = opened.name;
-      styleResolver = (_path: string) => null; // pre-populated cache below
-    }
-
-    const parsed = parseGraphDocByFilename(manifestText, manifestName);
-    if (!parsed.ok) {
-      window.alert(`Could not open ${manifestName}:\n\n${parsed.error}`);
-      return;
-    }
-
-    // For plain (non-zip) opens, prompt-on-miss to gather any external
-    // style files referenced by the graph (top-level + transitive imports).
-    if (!isZip) {
-      const cache = new Map<string, KidrawStyleSet>();
-      const declined = new Set<string>();
-      await this.gatherExternalStyles(parsed.value.styles, cache, declined);
-      styleResolver = (path: string) => cache.get(normalizeArchivePath(path)) ?? null;
-    }
-
-    const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, styleResolver);
-    if (resolvedStyle === null) return;
-
-    // A picker-opened file is not vault-backed; stop auto-saving to the
-    // previously-open vault file.
-    this.detachVaultFile();
-
-    // Save open-state so the user can cycle through other displays later.
-    this.openedDoc = parsed.value;
-    this.openedStyleResolver = styleResolver;
-    this.activeStyleIndex = 0;
-
-    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.drawingLayer.restoreGraph(snapshot);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    this.drawingLayer.applyThemeColors(palette);
-    this.fitViewToContent();
-    this.recenterCrosshairs();
-    this.emitZoomLevel();
-    this.checkAndEmitEditState();
-    this.emitFileState({storage: 'external', path: manifestName});
-
-    this.emitDisplayStatus(parsed.value);
-  }
-
-  /** Apply a registered plugin: restyle existing nodes to its defaults and
-   *  record it as active so new nodes follow them too. Undoable; persisted
-   *  with the graph. */
   /** Mark the targeted task nodes (selection, else topmost node under the
    *  crosshairs) with a status from the identity's `status` tag group.
    *  Statuses are exclusive semantic tags (`status/done` etc.), so they
@@ -1328,192 +1223,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(choice ? `Status: ${choice.label}${suffix}` : `Status cleared${suffix}`);
   }
 
-  private setDiagramType(typeId: string): void {
-    const extension = getExtension(typeId);
-    if (!extension) {
-      this.emitStatus(`⚠ Unknown diagram type: ${typeId}`);
-      return;
-    }
-    this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.drawingLayer.setDiagramType(extension);
-    this.updateEdgesForResizedNodes(this.drawingLayer.getDANodes());
-    this.drawingLayer.batchDraw();
-    this.emitStatus(`Diagram type: ${extension.name}`);
-  }
-
-  private cycleDisplay(): void {
-    if (!this.openedDoc || !this.openedStyleResolver) {
-      this.daOut.emit({ kind: 'status-message', message: 'Open a graph file first to cycle displays.' });
-      return;
-    }
-    const styles = this.openedDoc.styles;
-    if (styles.length <= 1) {
-      this.daOut.emit({ kind: 'status-message', message: `Only one display in this graph (${styleRefId(styles[0])}).` });
-      return;
-    }
-    this.activeStyleIndex = (this.activeStyleIndex + 1) % styles.length;
-    const resolvedStyle = this.resolveStyleAtIndex(this.openedDoc, this.activeStyleIndex, this.openedStyleResolver);
-    if (resolvedStyle === null) return;
-
-    const snapshot = filesToSnapshot(this.openedDoc, resolvedStyle);
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.drawingLayer.restoreGraph(snapshot);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    this.drawingLayer.applyThemeColors(palette);
-    this.fitViewToContent();
-    this.emitZoomLevel();
-    this.checkAndEmitEditState();
-
-    this.emitDisplayStatus(this.openedDoc);
-  }
-
-  /** Resolve styles[index] into a cascaded KidrawStyleSet (or null if it errors). */
-  private resolveStyleAtIndex(
-    doc: KidrawGraphDoc,
-    index: number,
-    resolver: ImportResolver,
-  ): KidrawStyleSet | null {
-    const ref = doc.styles[index];
-    if (ref === undefined) return { kdStyle: 1 };
-    const rootStyle = typeof ref === 'string'
-      ? resolver(ref) ?? { kdStyle: 1 }
-      : ref;
-    const resolved = resolveAndApplyToGraph(doc, rootStyle, resolver);
-    if (!resolved.ok) {
-      window.alert(`Could not resolve display ${styleRefId(ref)}:\n\n${resolved.error}`);
-      return null;
-    }
-    return resolved.value;
-  }
-
-  private emitDisplayStatus(doc: KidrawGraphDoc): void {
-    if (doc.styles.length === 0) return;
-    const name = styleRefId(doc.styles[this.activeStyleIndex]);
-    const total = doc.styles.length;
-    const message = total > 1
-      ? `Display: ${name} (${this.activeStyleIndex + 1}/${total})`
-      : `Display: ${name}`;
-    this.daOut.emit({ kind: 'status-message', message });
-  }
-
-  /**
-   * For every external (path-string) style reference in `styles[]` —
-   * top-level and recursive imports — prompt the user to locate the file
-   * via the OS picker. Builds out `cache` keyed by normalized requested path.
-   * If the user declines a prompt, the path is added to `declined` so we
-   * don't ask again in the same open.
-   */
-  private async gatherExternalStyles(
-    refs: ReadonlyArray<string | InlineStyleSet>,
-    cache: Map<string, KidrawStyleSet>,
-    declined: Set<string>,
-  ): Promise<void> {
-    for (const ref of refs) {
-      if (typeof ref === 'string') {
-        await this.gatherExternalPath(ref, cache, declined);
-      } else {
-        // Inline style — still recurse into its imports (paths inside it).
-        for (const importPath of ref.imports ?? []) {
-          await this.gatherExternalPath(importPath, cache, declined);
-        }
-      }
-    }
-  }
-
-  private async gatherExternalPath(
-    path: string,
-    cache: Map<string, KidrawStyleSet>,
-    declined: Set<string>,
-  ): Promise<void> {
-    const key = normalizeArchivePath(path);
-    if (cache.has(key) || declined.has(key)) return;
-
-    const ok = window.confirm(`Locate referenced style file "${path}"?`);
-    if (!ok) {
-      declined.add(key);
-      return;
-    }
-    const file = await this.fileIo.openTextFile(FileIoService.STYLE_ACCEPT);
-    if (!file) {
-      declined.add(key);
-      return;
-    }
-    const parsed = parseStyleSetByFilename(file.content, file.name);
-    if (!parsed.ok) {
-      window.alert(`Could not parse ${file.name}:\n\n${parsed.error}`);
-      declined.add(key);
-      return;
-    }
-    cache.set(key, parsed.value);
-
-    // Recurse into this style's own imports.
-    for (const importPath of parsed.value.imports ?? []) {
-      await this.gatherExternalPath(importPath, cache, declined);
-    }
-  }
-
-  private exportZip(): void {
-    this.finishTweens();
-    const snapshot = this.drawingLayer.serializeGraph();
-    const { doc, style } = snapshotToFiles(snapshot);
-
-    // Multi-file zip: one .kidraw.yaml manifest + one .kd-style.yaml sibling.
-    const stylePath = './graph.kd-style.yaml';
-    doc.styles = [stylePath];
-
-    const manifestName = 'graph.kidraw.yaml';
-    const styleName = 'graph.kd-style.yaml';
-
-    const files: PackedFile[] = [
-      { name: manifestName, content: serializeGraphDocByFilename(doc, manifestName) },
-      { name: styleName, content: serializeStyleSetByFilename(style, styleName) },
-    ];
-
-    const bytes = packZip(files);
-    const stamp = new Date().toISOString().slice(0, 10);
-    this.fileIo.saveBinary(`kidraw-${stamp}.kidraw.zip`, bytes, 'application/zip');
-  }
-
-  private saveFileAs(): void {
-    this.finishTweens();
-    const filename = defaultGraphFilename();
-    const content = this.serializeCurrentGraphSingleFile(filename);
-    const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
-    this.fileIo.saveAs(filename, content, mime);
-  }
-
-  /**
-   * Serialize the live graph as a self-contained single file: the style is
-   * embedded inline so the result opens anywhere. (Multi-file save will land
-   * in a later phase.)
-   */
-  private serializeCurrentGraphSingleFile(filename: string): string {
-    const snapshot = this.drawingLayer.serializeGraph();
-    const { doc, style } = snapshotToFiles(snapshot);
-    const inline: InlineStyleSet = {
-      name: 'default',
-      ...(style.nodes ? { nodes: style.nodes } : {}),
-      ...(style.edges ? { edges: style.edges } : {}),
-      ...(style.imports ? { imports: style.imports } : {}),
-      ...(style.tagStyles ? { tagStyles: style.tagStyles } : {}),
-      ...(style.view ? { view: style.view } : {}),
-    };
-    doc.styles = [inline];
-    return serializeGraphDocByFilename(doc, filename);
-  }
-
-  // ─── Vault ────────────────────────────────────────────────────────────────
-  // Local-directory storage via the File System Access API. One directory
-  // grant, then silent auto-save + external-change polling — see
-  // notes/decision-vault-model.md. window.prompt inputs below are placeholders
-  // until the trad/large-menu overlay lands.
-
-  /** Lends the gather view what it needs, without widening this component's
-   *  own surface: everything here stays private, reached through getters so
-   *  the layer can still be assigned later in ngAfterViewInit. */
   /** Lends move-by-node what it needs, through getters so the layers can
    *  still be assigned later in ngAfterViewInit. */
   private navigationGridHost(): NavigationGridHost {
@@ -1533,6 +1242,40 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Layers are assigned after construction; getters keep the host current. */
+  private fileHost(): FileHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get viewport() { return da.viewport; },
+      get daOut() { return da.daOut; },
+
+      get vaultService() { return da.vaultService; },
+      get fileIo() { return da.fileIo; },
+      get graphStorage() { return da.graphStorage; },
+      get demoDataService() { return da.demoDataService; },
+      get draftStorage() { return da.draftStorage; },
+      get undoRedoService() { return da.undoRedoService; },
+      get themeService() { return da.themeService; },
+      get visualConfigService() { return da.visualConfigService; },
+      get log() { return da.log; },
+
+      emitStatus: message => da.emitStatus(message),
+      emitContextState: () => da.emitContextState(),
+      emitZoomLevel: () => da.emitZoomLevel(),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      finishTweens: () => da.finishTweens(),
+      unselectAllLabels: () => da.unselectAllLabels(),
+      fitViewToContent: () => da.fitViewToContent(),
+      recenterCrosshairs: () => da.recenterCrosshairs(),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+    };
+  }
+
+  /** Lends the gather view what it needs, without widening this component's
+   *  own surface: everything here stays private, reached through getters so
+   *  the layer can still be assigned later in ngAfterViewInit. */
   private gatherHost(): GatherHost {
     const da = this;
     return {
@@ -1558,41 +1301,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({ kind: 'status-message', message });
   }
 
-  private lastFileStateKey: string | undefined;
-
-  /** Tell the header which file is open (deduplicated — auto-save calls this
-   *  on every write). Storage and path remain separate across this boundary. */
-  private emitFileState(fileState: DAFileState): void {
-    const stateKey = JSON.stringify(fileState);
-    if (stateKey === this.lastFileStateKey) return;
-    this.lastFileStateKey = stateKey;
-    const displayLabel = fileState === null
-      ? '(none)'
-      : fileState.storage === 'vault'
-        ? `${fileState.vaultName}/${fileState.path}`
-        : fileState.path;
-    this.log.log('[file]', displayLabel);
-    this.daOut.emit({ kind: 'file-state-update', fileState });
-  }
-
-  private async initVault(): Promise<void> {
-    if (!VaultService.isSupported()) return;
-    const status = await this.vaultService.tryRestore();
-    this.log.log('[vault] startup restore:', status, 'storedPath:', this.vaultService.currentFilePath ?? '(none)');
-    if (status === 'connected') {
-      const path = this.vaultService.currentFilePath;
-      if (path && await this.loadVaultFile(path, { restoreView: this.startupDraftView, recenter: true })) {
-        this.emitStatus(`Vault: opened ${path}`);
-      }
-    } else if (status === 'needs-permission') {
-      this.emitStatus('Vault needs reconnecting — file menu → Vault: Connect.');
-    }
-    this.vaultPollTimer = setInterval(
-      () => void this.pollVaultFile(),
-      DrawingAreaComponent.VAULT_POLL_INTERVAL_MS,
-    );
-  }
-
   /** Run one ex-line command (da-165). An initial vocabulary: `:w` saves,
    *  `:e` switches files, `:ls` lists the vault. Unknown commands report
    *  themselves rather than failing silently, the way vim does. */
@@ -1609,398 +1317,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private releaseCrosshairsVisible(): void {
     this.crosshairsHeldVisible = false;
     this.showMovementIndicators();
-  }
-
-  private async runExCommand(text: string): Promise<void> {
-    const [name, ...rest] = text.trim().split(/\s+/);
-    const arg = rest.join(' ').trim();
-
-    switch (name) {
-      case 'w':
-      case 'write':
-        await this.exWrite(arg);
-        return;
-      case 'e':
-      case 'edit':
-      case 'o':
-      case 'open':
-        await this.exEdit(arg);
-        return;
-      case 'ls':
-      case 'files':
-        await this.exList();
-        return;
-      case 'enew':
-      case 'new':
-        this.newGraph();
-        this.emitStatus('New graph.');
-        return;
-      case 'type':
-      case 'plugin':
-        this.exType(arg);
-        return;
-      default:
-        this.emitStatus(`Not an editor command: ${name}`);
-    }
-  }
-
-  /** `:type` lists the plugins (diagram types); `:type <id>` binds one to
-   *  this graph, restyling it undoably. */
-  private exType(arg: string): void {
-    const current = this.drawingLayer.diagramType;
-    if (arg === '') {
-      const list = [...EXTENSION_REGISTRY.values()]
-        .map(extension => extension.id === current ? `${extension.id} (current)` : extension.id)
-        .join(', ');
-      this.emitStatus(`Plugins: ${list}. :type <name> switches.`);
-      return;
-    }
-    if (arg === current) {
-      this.emitStatus(`Already ${resolveIdentity(current).name}.`);
-      return;
-    }
-    this.setDiagramType(arg);
-    this.emitContextState();
-    this.scheduleVaultAutoSave();
-  }
-
-  /** `:w` saves to the open vault file; `:w <name>` saves as that name and
-   *  makes it the open file, so the next bare `:w` goes there. */
-  private async exWrite(arg: string): Promise<void> {
-    if (!this.vaultService.isConnected) {
-      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
-      return;
-    }
-    let path = arg === '' ? this.vaultService.currentFilePath : null;
-    if (arg !== '') {
-      try {
-        path = ensureKidrawFilename(arg);
-      } catch (e) {
-        this.emitStatus((e as Error).message);
-        return;
-      }
-    }
-    if (!path) {
-      this.emitStatus('No file name — use :w <name>.');
-      return;
-    }
-    this.cancelVaultAutoSave();
-    if (await this.writeGraphToVault(path)) {
-      this.emitStatus(`Wrote ${path}`);
-    }
-  }
-
-  /** `:e <name-or-number>` opens another vault file — the file switching
-   *  this command line was asked for. */
-  private async exEdit(arg: string): Promise<void> {
-    if (!this.vaultService.isConnected) {
-      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
-      return;
-    }
-    if (arg === '') {
-      this.emitStatus('Which file? Use :e <name> (:ls lists them).');
-      return;
-    }
-    const files = await this.exVaultFiles();
-    const path = /^\d+$/.test(arg)
-      ? files[parseInt(arg, 10) - 1]
-      : files.find(f => f === normalizeVaultPath(arg)) ?? normalizeVaultPath(arg);
-    if (!path) {
-      this.emitStatus(`No such file: ${arg}`);
-      return;
-    }
-    this.cancelVaultAutoSave();
-    if (await this.loadVaultFile(path, {recenter: true})) {
-      this.emitStatus(`Opened ${path}`);
-    } else {
-      this.emitStatus(`Could not open ${path}`);
-    }
-  }
-
-  private async exList(): Promise<void> {
-    if (!this.vaultService.isConnected) {
-      this.emitStatus('No vault connected — use the File menu → Vault: Connect first.');
-      return;
-    }
-    const files = await this.exVaultFiles();
-    if (files.length === 0) {
-      this.emitStatus('No graph files in the vault yet.');
-      return;
-    }
-    const open = this.vaultService.currentFilePath;
-    this.emitStatus(files
-      .map((f, i) => `${i + 1}. ${f}${f === open ? '  (open)' : ''}`)
-      .join('   '));
-  }
-
-  private async exVaultFiles(): Promise<string[]> {
-    const vault = this.vaultService.vault;
-    if (!vault) return [];
-    return (await vault.list()).filter(f => /\.kidraw\./i.test(f));
-  }
-
-  private async connectVault(): Promise<void> {
-    if (!VaultService.isSupported()) {
-      this.emitStatus('Vault requires a Chromium-based browser (File System Access API).');
-      return;
-    }
-    const status = await this.vaultService.connectOrReconnect();
-    if (status !== 'connected') {
-      this.emitStatus('Vault not connected.');
-      return;
-    }
-    const vault = this.vaultService.vault!;
-    const files = await vault.list();
-    this.emitStatus(`Vault connected: ${vault.name} (${files.length} kidraw file${files.length === 1 ? '' : 's'})`);
-
-    // If a file was open in a previous session and the canvas is still
-    // empty, resume it now that we have permission again.
-    const path = this.vaultService.currentFilePath;
-    const canvasEmpty = this.drawingLayer.getDANodes().length === 0;
-    if (path && canvasEmpty && await this.loadVaultFile(path, { recenter: true })) {
-      this.emitStatus(`Vault: opened ${path}`);
-    }
-  }
-
-  private async vaultSaveAs(): Promise<void> {
-    if (!this.vaultService.isConnected) {
-      this.emitStatus('Connect a vault first (file menu → Vault: Connect).');
-      return;
-    }
-    const suggestion = this.vaultService.currentFilePath ?? 'graph.kidraw.yaml';
-    const entered = window.prompt('Save in vault as:', suggestion);
-    if (!entered || entered.trim() === '') return;
-    let path: string;
-    try {
-      path = ensureKidrawFilename(entered.trim());
-    } catch (e) {
-      this.emitStatus((e as Error).message);
-      return;
-    }
-    this.cancelVaultAutoSave();
-    if (await this.writeGraphToVault(path)) {
-      this.emitStatus(`Saved to vault: ${path} — auto-save is on`);
-    }
-  }
-
-  private async vaultOpen(): Promise<void> {
-    if (!this.vaultService.isConnected) {
-      this.emitStatus('Connect a vault first (file menu → Vault: Connect).');
-      return;
-    }
-    const vault = this.vaultService.vault!;
-    const files = (await vault.list()).filter(f => /\.kidraw\./i.test(f));
-    if (files.length === 0) {
-      this.emitStatus('No graph files in the vault yet — use Vault: Save As first.');
-      return;
-    }
-    this.log.log('[vault] open picker,', files.length, 'files:', files.join(', '));
-    const listing = files.map((f, i) => `${i + 1}. ${f}`).join('\n');
-    const entered = window.prompt(`Open from vault (number or name):\n${listing}`, files[0]);
-    if (!entered || entered.trim() === '') {
-      this.log.log('[vault] open cancelled');
-      return;
-    }
-    const trimmed = entered.trim();
-    let path: string | undefined;
-    try {
-      path = /^\d+$/.test(trimmed)
-        ? files[parseInt(trimmed, 10) - 1]
-        : files.find(f => f === normalizeVaultPath(trimmed)) ?? normalizeVaultPath(trimmed);
-    } catch (e) {
-      this.emitStatus((e as Error).message);
-      return;
-    }
-    if (!path) {
-      this.emitStatus(`No such vault file: ${trimmed}`);
-      return;
-    }
-    if (await this.loadVaultFile(path, { recenter: true })) {
-      this.emitStatus(`Opened from vault: ${path} — auto-save is on`);
-    }
-  }
-
-  /**
-   * Load a graph file from the vault into the canvas and make it the
-   * auto-save target. Does not emit a success status — callers word their
-   * own. `recenter` is for user-initiated opens; external-change reloads
-   * leave the viewport and crosshairs alone.
-   */
-  private async loadVaultFile(path: string,
-      opts: { recenter?: boolean; restoreView?: {x: number; y: number; scale: number} | null } = {}): Promise<boolean> {
-    const vault = this.vaultService.vault;
-    if (!vault) return false;
-    this.log.log('[vault] loading', path);
-    const content = await vault.read(path);
-    if (content === null) {
-      this.emitStatus(`Vault: file not found: ${path}`);
-      return false;
-    }
-    const parsed = parseGraphDocByFilename(content, path);
-    if (!parsed.ok) {
-      this.emitStatus(`Vault: could not parse ${path}: ${parsed.error}`);
-      return false;
-    }
-
-    // Resolve external style references from the vault (relative to the
-    // graph file's directory), mirroring the zip-internal resolver.
-    const baseDir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
-    const cache = new Map<string, KidrawStyleSet>();
-    await this.gatherVaultStyles(parsed.value.styles, baseDir, cache, vault);
-    const resolver: ImportResolver = p => cache.get(normalizeArchivePath(p)) ?? null;
-
-    const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, resolver);
-    if (resolvedStyle === null) return false;
-
-    this.openedDoc = parsed.value;
-    this.openedStyleResolver = resolver;
-    this.activeStyleIndex = 0;
-
-    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
-    this.cancelVaultAutoSave();
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.drawingLayer.restoreGraph(snapshot);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    this.drawingLayer.applyThemeColors(palette);
-    if (opts.restoreView && this.restoreViewport(opts.restoreView)) {
-      // Draft viewport wins on a startup reopen — keeps the user's place.
-    } else if (opts.recenter) {
-      this.fitViewToContent();
-      this.recenterCrosshairs();
-      this.emitZoomLevel();
-    }
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    this.emitContextState();
-
-    this.vaultService.currentFilePath = path;
-    this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
-    this.emitFileState({storage: 'vault', vaultName: vault.name, path});
-    return true;
-  }
-
-  /** Read + parse external style references (and their transitive imports)
-   *  out of the vault into `cache`, keyed like the zip resolver. */
-  private async gatherVaultStyles(
-    refs: ReadonlyArray<string | InlineStyleSet>,
-    baseDir: string,
-    cache: Map<string, KidrawStyleSet>,
-    vault: Vault,
-  ): Promise<void> {
-    for (const ref of refs) {
-      const paths = typeof ref === 'string' ? [ref] : (ref.imports ?? []);
-      for (const p of paths) {
-        await this.gatherVaultStylePath(p, baseDir, cache, vault);
-      }
-    }
-  }
-
-  private async gatherVaultStylePath(
-    path: string,
-    baseDir: string,
-    cache: Map<string, KidrawStyleSet>,
-    vault: Vault,
-  ): Promise<void> {
-    const key = normalizeArchivePath(path);
-    if (cache.has(key)) return;
-    let vaultPath: string;
-    try {
-      vaultPath = normalizeVaultPath(`${baseDir}${key}`);
-    } catch {
-      return;
-    }
-    const content = await vault.read(vaultPath);
-    if (content === null) return;
-    const parsed = parseStyleSetByFilename(content, vaultPath);
-    if (!parsed.ok) return;
-    cache.set(key, parsed.value);
-    for (const importPath of parsed.value.imports ?? []) {
-      await this.gatherVaultStylePath(importPath, baseDir, cache, vault);
-    }
-  }
-
-  private scheduleVaultAutoSave(): void {
-    if (!this.vaultService.isConnected || !this.vaultService.currentFilePath) return;
-    if (this.vaultSaveTimer !== null) clearTimeout(this.vaultSaveTimer);
-    this.vaultSaveTimer = setTimeout(() => {
-      this.vaultSaveTimer = null;
-      void this.autoSaveToVault();
-    }, DrawingAreaComponent.VAULT_AUTOSAVE_DEBOUNCE_MS);
-  }
-
-  private cancelVaultAutoSave(): void {
-    if (this.vaultSaveTimer !== null) {
-      clearTimeout(this.vaultSaveTimer);
-      this.vaultSaveTimer = null;
-    }
-  }
-
-  private async autoSaveToVault(): Promise<void> {
-    const path = this.vaultService.currentFilePath;
-    if (!path || !this.vaultService.isConnected) return;
-    if (await this.writeGraphToVault(path)) {
-      this.emitStatus(`Saved: ${path}`);
-    }
-  }
-
-  private async writeGraphToVault(path: string): Promise<boolean> {
-    const vault = this.vaultService.vault;
-    if (!vault) return false;
-    this.vaultWriteInFlight = true;
-    try {
-      this.finishTweens();
-      const content = this.serializeCurrentGraphSingleFile(path);
-      await vault.write(path, content);
-      this.vaultService.currentFilePath = path;
-      this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
-      this.emitFileState({storage: 'vault', vaultName: vault.name, path});
-      return true;
-    } catch (e) {
-      this.emitStatus(`Vault save failed: ${(e as Error).message}`);
-      return false;
-    } finally {
-      this.vaultWriteInFlight = false;
-    }
-  }
-
-  private vaultReloadInFlight = false;
-
-  /** External-change poll: reload the open vault file when something else
-   *  (an editor, an LLM) writes it. Local unsaved changes win. */
-  private async pollVaultFile(): Promise<void> {
-    if (document.hidden || this.vaultWriteInFlight || this.vaultReloadInFlight) return;
-    const path = this.vaultService.currentFilePath;
-    const vault = this.vaultService.vault;
-    if (!path || !vault) return;
-    const modified = await vault.lastModified(path);
-    if (modified === null || modified <= this.vaultLastModified) return;
-    if (this.vaultSaveTimer !== null) {
-      // Dirty session: local wins (the pending auto-save will overwrite).
-      this.vaultLastModified = modified;
-      this.emitStatus(`${path} changed on disk while editing — keeping local changes.`);
-      return;
-    }
-    this.vaultReloadInFlight = true;
-    try {
-      if (await this.loadVaultFile(path)) {
-        this.emitStatus(`Reloaded — ${path} changed on disk.`);
-      }
-    } finally {
-      this.vaultReloadInFlight = false;
-    }
-  }
-
-  /** Called when a non-vault source replaces the graph: stop auto-saving to
-   *  the previously-open vault file. */
-  private detachVaultFile(): void {
-    this.cancelVaultAutoSave();
-    if (this.vaultService.currentFilePath) {
-      this.vaultService.currentFilePath = null;
-      this.emitStatus('Vault auto-save off — graph is no longer vault-backed.');
-    }
-    this.emitFileState(null);
   }
 
   // ─── In-graph search ──────────────────────────────────────────────────────
@@ -2093,48 +1409,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
     const shown = text.length > 40 ? `${text.slice(0, 40)}…` : text;
     this.emitStatus(`Match ${index + 1}/${total}: "${shown}"`);
-  }
-
-  private saveGraphAs(name: string): void {
-    this.finishTweens();
-    const snapshot = this.drawingLayer.serializeGraph();
-    this.graphStorage.save(name, snapshot);
-    this.daOut.emit({ kind: 'status-message', message: `Saved as "${name}"` });
-  }
-
-  private loadNamedGraph(snapshot: GraphSnapshot): void {
-    this.detachVaultFile();
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.drawingLayer.restoreGraph(snapshot);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    this.drawingLayer.applyThemeColors(palette);
-    this.fitViewToContent();
-    this.recenterCrosshairs();
-    this.emitZoomLevel();
-    this.checkAndEmitEditState();
-    this.openedDoc = null;
-    this.openedStyleResolver = null;
-    this.activeStyleIndex = 0;
-  }
-
-  private newGraph(): void {
-    const hasContent = this.drawingLayer.getDANodes().length > 0 || this.drawingLayer.getDAEdges().length > 0;
-    if (hasContent && !window.confirm('Start a new graph? This will clear the current diagram.')) return;
-    this.detachVaultFile();
-    this.finishTweens();
-    this.unselectAllLabels();
-    this.undoRedoService.clear();
-    this.drawingLayer.restoreGraph({ nodes: [], edges: [] });
-    // Drop any open-file context so display cycling doesn't reference the
-    // previously-loaded doc after a fresh-start.
-    this.openedDoc = null;
-    this.openedStyleResolver = null;
-    this.activeStyleIndex = 0;
-    this.recenterCrosshairs();
-    this.emitZoomLevel();
-    this.checkAndEmitEditState();
   }
 
   private togglePinSelected() {

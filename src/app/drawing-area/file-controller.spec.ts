@@ -1,0 +1,57 @@
+import {fakeAsync, flushMicrotasks, tick} from '@angular/core/testing';
+import {VaultService} from '../services/vault.service';
+import {FileController, FileHost} from './file-controller';
+
+describe('FileController vault lifecycle', () => {
+  let files: FileController;
+  let write: jasmine.Spy;
+  let lastModified: jasmine.Spy;
+
+  beforeEach(() => {
+    write = jasmine.createSpy('write').and.resolveTo();
+    lastModified = jasmine.createSpy('lastModified').and.resolveTo(0);
+    files = new FileController({
+      vaultService: {
+        isConnected: true,
+        currentFilePath: 'graph.kidraw.yaml',
+        vault: {name: 'test-vault', write, lastModified},
+        tryRestore: () => Promise.resolve('connected'),
+      },
+      drawingLayer: {serializeGraph: () => ({nodes: [], edges: []})},
+      finishTweens: () => {},
+      emitStatus: () => {},
+      daOut: {emit: () => {}},
+      log: {log: () => {}},
+    } as unknown as FileHost);
+  });
+
+  it('coalesces edits into one write after the last edit settles', fakeAsync(() => {
+    files.scheduleVaultAutoSave();
+    tick(700);
+    files.scheduleVaultAutoSave();
+    tick(700);
+    expect(write).not.toHaveBeenCalled();
+    tick(300);
+    expect(write).toHaveBeenCalledOnceWith('graph.kidraw.yaml', jasmine.any(String));
+    files.dispose();
+  }));
+
+  it('stops pending writes and external-change polling when disposed', fakeAsync(() => {
+    spyOn(VaultService, 'isSupported').and.returnValue(true);
+    spyOnProperty(document, 'hidden', 'get').and.returnValue(false);
+    // No file to reopen during startup; attach one after polling has started.
+    const host = (files as any).host as FileHost;
+    host.vaultService.currentFilePath = null;
+    void files.initVault();
+    flushMicrotasks();
+    host.vaultService.currentFilePath = 'graph.kidraw.yaml';
+    tick(1500);
+    expect(lastModified).toHaveBeenCalledTimes(1);
+    files.scheduleVaultAutoSave();
+    files.dispose();
+    files.dispose();
+    tick(3000);
+    expect(write).not.toHaveBeenCalled();
+    expect(lastModified).toHaveBeenCalledTimes(1);
+  }));
+});
