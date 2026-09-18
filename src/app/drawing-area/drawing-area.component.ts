@@ -42,6 +42,7 @@ import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
 import { Camera } from './camera';
 import { Overlay } from './overlay';
+import { Viewport } from './viewport';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -277,6 +278,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The stage↔layer transform (camera.ts). Reads the drawing layer
    *  lazily, because that layer is built in ngAfterViewInit. */
   private readonly camera = new Camera(() => this.drawingLayer);
+  /** The stage minus whatever the UI overlays cover (viewport.ts). */
+  private readonly viewport = new Viewport(() => this.stage, () => this.viewportInset);
   /** Move-by-node and its overlay (navigation-grid-controller.ts). */
   private readonly navGrid = new NavigationGridController(this.navigationGridHost());
   /** Labelable node created by the held insert hub. It is focused only when
@@ -1200,8 +1203,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (!view || !isFinite(view.x) || !isFinite(view.y) || !(view.scale > 0)) return false;
     this.drawingLayer.scale({x: view.scale, y: view.scale});
     this.drawingLayer.position({x: view.x, y: view.y});
-    this.crosshairsLayer.crosshairs.x = this.viewCenterX();
-    this.crosshairsLayer.crosshairs.y = this.viewCenterY();
+    this.crosshairsLayer.crosshairs.x = this.viewport.centerX;
+    this.crosshairsLayer.crosshairs.y = this.viewport.centerY;
     this.drawingLayer.batchDraw();
     this.emitZoomLevel();
     return true;
@@ -2829,33 +2832,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.moveCrosshairsBy(-1, 0, tier ?? 'normal');
   }
 
+  // Kept as methods because tools/qa scripts call them; see
+  // tools/qa/contract/component-api.js. Inside this class, ask the viewport.
+  private viewMinY(): number { return this.viewport.minY; }
+  private viewMaxY(): number { return this.viewport.maxY; }
+  private viewCenterX(): number { return this.viewport.centerX; }
+  private viewCenterY(): number { return this.viewport.centerY; }
+
   /** Screen-space keep-out band between the crosshairs and the drawing-area
    *  edge: cross it and movement pans the view instead of advancing the
    *  crosshairs. A flat band clips whatever you land on — navigate onto a
    *  wide card near the edge and half its text sits outside the viewport —
    *  so the band grows to half the landed-on node's rendered box plus
    *  padding. Capped at 40% of the viewport so it can never swallow it. */
-  /** Left edge of the usable viewport, in stage coordinates. An unbound or
-   *  partially bound inset degrades to the full stage. */
-  private inset(edge: 'left' | 'right' | 'top' | 'bottom'): number {
-    const raw = this.viewportInset?.[edge] ?? 0;
-    // An overlay taller/wider than the window would otherwise leave a
-    // zero-sized viewport and freeze navigation; give the graph the room
-    // back and let it show through instead.
-    const extent = edge === 'left' || edge === 'right'
-      ? this.stage.width()
-      : this.stage.height();
-    return Math.min(raw, extent * 0.45);
-  }
-  private viewMinX(): number { return this.inset('left'); }
-  private viewMaxX(): number { return this.stage.width() - this.inset('right'); }
-  private viewMinY(): number { return this.inset('top'); }
-  private viewMaxY(): number { return this.stage.height() - this.inset('bottom'); }
-  private viewWidth(): number { return Math.max(this.viewMaxX() - this.viewMinX(), 1); }
-  private viewHeight(): number { return Math.max(this.viewMaxY() - this.viewMinY(), 1); }
-  private viewCenterX(): number { return this.viewMinX() + this.viewWidth() / 2; }
-  private viewCenterY(): number { return this.viewMinY() + this.viewHeight() / 2; }
-
   private crosshairsEdgeMargin(target: Point): Point {
     const BASE = 60;
     const PAD = 24;
@@ -2867,8 +2856,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       my = Math.max(my, (node.NODE_HEIGHT * scale) / 2 + PAD);
     }
     return {
-      x: Math.min(mx, this.viewWidth() * 0.4),
-      y: Math.min(my, this.viewHeight() * 0.4),
+      x: Math.min(mx, this.viewport.width * 0.4),
+      y: Math.min(my, this.viewport.height * 0.4),
     };
   }
 
@@ -2895,8 +2884,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const margin = this.crosshairsEdgeMargin(target);
     const clamped = {
-      x: clamp(target.x, this.viewMinX() + margin.x, this.viewMaxX() - margin.x),
-      y: clamp(target.y, this.viewMinY() + margin.y, this.viewMaxY() - margin.y),
+      x: clamp(target.x, this.viewport.minX + margin.x, this.viewport.maxX - margin.x),
+      y: clamp(target.y, this.viewport.minY + margin.y, this.viewport.maxY - margin.y),
     };
     // What the crosshairs could not travel, the drawing travels instead.
     const overflow = {x: target.x - clamped.x, y: target.y - clamped.y};
@@ -3272,9 +3261,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       // stands in for. A pan that pushed a 400% box part-way out of frame used
       // to earn one anyway, and a small dashed copy would appear on top of the
       // very large node it was supposedly standing in for.
-    } else if (rect.x < this.viewMinX() + pad || rect.y < this.viewMinY() + pad ||
-        rect.x + rect.width > this.viewMaxX() - pad ||
-        rect.y + rect.height > this.viewMaxY() - pad) {
+    } else if (rect.x < this.viewport.minX + pad || rect.y < this.viewport.minY + pad ||
+        rect.x + rect.width > this.viewport.maxX - pad ||
+        rect.y + rect.height > this.viewport.maxY - pad) {
       reasons.push('offscreen');
     }
     if (node.FONT_SIZE * drawnScale < 12) {
@@ -3307,9 +3296,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         ? lo + (hi - lo - size) / 2
         : Math.max(lo + pad, Math.min(start, hi - size - pad));
     const x = clampedStart(center.x - node.NODE_WIDTH / 2, node.NODE_WIDTH,
-      this.viewMinX(), this.viewMaxX());
+      this.viewport.minX, this.viewport.maxX);
     const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT,
-      this.viewMinY(), this.viewMaxY());
+      this.viewport.minY, this.viewport.maxY);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
     // Fully opaque: this is a stand-in for a node you cannot read, and at
     // 0.94 the real node showed through it wherever the two overlapped.
@@ -4106,11 +4095,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Walk mode: land, then keep browsing from the new node.
     const scale = this.drawingLayer.scaleX();
     this.drawingLayer.position({
-      x: this.viewCenterX() - dC.x * scale,
-      y: this.viewCenterY() - dC.y * scale,
+      x: this.viewport.centerX - dC.x * scale,
+      y: this.viewport.centerY - dC.y * scale,
     });
-    this.crosshairsLayer.crosshairs.x = this.viewCenterX();
-    this.crosshairsLayer.crosshairs.y = this.viewCenterY();
+    this.crosshairsLayer.crosshairs.x = this.viewport.centerX;
+    this.crosshairsLayer.crosshairs.y = this.viewport.centerY;
     const candidates = this.navCandidatesFor(dest);
     if (candidates.length === 0) {
       this.emitStatus(`${destLabel}: dead end.`);
@@ -4358,10 +4347,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       destEast = dC.x >= sC.x;
     }
     const left = destEast ? rect.x - GAP - POPUP_W : rect.x + rect.w + GAP;
-    this.navPopupLeft = Math.max(this.viewMinX() + 8,
-      Math.min(left, this.viewMaxX() - POPUP_W - 8));
-    this.navPopupTop = Math.max(this.viewMinY() + 8,
-      Math.min(rect.y, this.viewMaxY() - POPUP_H - 8));
+    this.navPopupLeft = Math.max(this.viewport.minX + 8,
+      Math.min(left, this.viewport.maxX - POPUP_W - 8));
+    this.navPopupTop = Math.max(this.viewport.minY + 8,
+      Math.min(rect.y, this.viewport.maxY - POPUP_H - 8));
   }
 
   /** The popup's source node grows a little so it reads as "you are here";
@@ -4498,7 +4487,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   agentVisibleNodeIds(): string[] {
     const scale = this.drawingLayer.scaleX();
-    const minX = this.viewMinX(), maxX = this.viewMaxX(), minY = this.viewMinY(), maxY = this.viewMaxY();
+    const minX = this.viewport.minX, maxX = this.viewport.maxX, minY = this.viewport.minY, maxY = this.viewport.maxY;
     return this.drawingLayer.getDANodes().filter(node => {
       const x = this.drawingLayer.x() + node.group.x() * scale;
       const y = this.drawingLayer.y() + node.group.y() * scale;
@@ -4606,10 +4595,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   agentViewClientRect(): ClientRect {
     const container = this.stage.container().getBoundingClientRect();
     return {
-      left: container.left + this.viewMinX(),
-      top: container.top + this.viewMinY(),
-      width: this.viewWidth(),
-      height: this.viewHeight(),
+      left: container.left + this.viewport.minX,
+      top: container.top + this.viewport.minY,
+      width: this.viewport.width,
+      height: this.viewport.height,
     };
   }
 
@@ -4618,8 +4607,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     targetScale = this.drawingLayer.scaleX(),
     onFinish?: () => void,
   ): void {
-    const centerX = this.viewCenterX();
-    const centerY = this.viewCenterY();
+    const centerX = this.viewport.centerX;
+    const centerY = this.viewport.centerY;
     this.tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
@@ -5106,8 +5095,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const centerX = (box.minX + box.maxX) / 2;
     const centerY = (box.minY + box.maxY) / 2;
 
-    const stageWidth = this.viewWidth();
-    const stageHeight = this.viewHeight();
+    const stageWidth = this.viewport.width;
+    const stageHeight = this.viewport.height;
 
     // With a selection: center on it without changing scale. Without one:
     // this is the "rescue" command — also zoom out (never in past 100%)
@@ -5183,14 +5172,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const margin = 0.9;
     const w = Math.max(box.maxX - box.minX, 1);
     const h = Math.max(box.maxY - box.minY, 1);
-    const fit = Math.min((this.viewWidth() * margin) / w, (this.viewHeight() * margin) / h);
+    const fit = Math.min((this.viewport.width * margin) / w, (this.viewport.height * margin) / h);
     // Fitting may go below the interactive MIN_ZOOM — a rescue that stops
     // short of showing the whole graph isn't a rescue. Floor well below it.
     const scale = Math.min(Math.max(fit, 0.02), 1.0);
     this.drawingLayer.scale({ x: scale, y: scale });
     this.drawingLayer.position({
-      x: this.viewCenterX() - ((box.minX + box.maxX) / 2) * scale,
-      y: this.viewCenterY() - ((box.minY + box.maxY) / 2) * scale,
+      x: this.viewport.centerX - ((box.minX + box.maxX) / 2) * scale,
+      y: this.viewport.centerY - ((box.minY + box.maxY) / 2) * scale,
     });
     this.drawingLayer.batchDraw();
   }
@@ -5202,8 +5191,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const tween = new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_CROSSHAIRS_DURATION,
-      x: this.viewCenterX(),
-      y: this.viewCenterY(),
+      x: this.viewport.centerX,
+      y: this.viewport.centerY,
       easing: Konva.Easings.EaseInOut,
       onFinish: () => {
         const index = this.tweens.indexOf(tween);
@@ -5410,11 +5399,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private dragViewLo(axis: Axis): number {
-    return axis.pick(this.viewMinX(), this.viewMinY());
+    return axis.pick(this.viewport.minX, this.viewport.minY);
   }
 
   private dragViewHi(axis: Axis): number {
-    return axis.pick(this.viewMaxX(), this.viewMaxY());
+    return axis.pick(this.viewport.maxX, this.viewport.maxY);
   }
 
   private placeCrosshairs(at: Point): void {
@@ -5512,13 +5501,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const node = selected[0];
     const center = this.getNodeCenterInStageCoordinates(node);
     const padding = 12;
-    const x = Math.max(this.viewMinX() + padding, Math.min(
+    const x = Math.max(this.viewport.minX + padding, Math.min(
       center.x - node.NODE_WIDTH / 2,
-      this.viewMaxX() - node.NODE_WIDTH - padding,
+      this.viewport.maxX - node.NODE_WIDTH - padding,
     ));
-    const y = Math.max(this.viewMinY() + padding, Math.min(
+    const y = Math.max(this.viewport.minY + padding, Math.min(
       center.y - node.NODE_HEIGHT / 2,
-      this.viewMaxY() - node.NODE_HEIGHT - padding,
+      this.viewport.maxY - node.NODE_HEIGHT - padding,
     ));
     const ghost = node.konvaGroup.clone({
       name: 'label-edit-ghost',
@@ -5563,7 +5552,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
     const delta = caretVisibilityPanDelta(
       caret,
-      {width: this.viewWidth(), height: this.viewHeight()},
+      {width: this.viewport.width, height: this.viewport.height},
       local.lineHeight * targetGroup.scaleY() * layerScaleY,
     );
     if (delta.x === 0 && delta.y === 0) return;
@@ -6151,10 +6140,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.drawingLayer.y() + origin.y * scale,
       w: 0,
     };
-    this.navPopupLeft = Math.max(this.viewMinX() + 8,
-      Math.min(rect.x + rect.w + GAP, this.viewMaxX() - POPUP_W - 8));
-    this.navPopupTop = Math.max(this.viewMinY() + 8,
-      Math.min(rect.y, this.viewMaxY() - POPUP_H - 8));
+    this.navPopupLeft = Math.max(this.viewport.minX + 8,
+      Math.min(rect.x + rect.w + GAP, this.viewport.maxX - POPUP_W - 8));
+    this.navPopupTop = Math.max(this.viewport.minY + 8,
+      Math.min(rect.y, this.viewport.maxY - POPUP_H - 8));
   }
 
   /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the
@@ -7063,8 +7052,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.getGridSpacing(),
     ) * this.drawingLayer.scaleX();
     const edgeMargin = 60;
-    const lo = (axis === 'x' ? this.viewMinX() : this.viewMinY()) + edgeMargin;
-    const hi = (axis === 'x' ? this.viewMaxX() : this.viewMaxY()) - edgeMargin;
+    const lo = (axis === 'x' ? this.viewport.minX : this.viewport.minY) + edgeMargin;
+    const hi = (axis === 'x' ? this.viewport.maxX : this.viewport.maxY) - edgeMargin;
     const current = axis === 'x'
       ? this.crosshairsLayer.crosshairs.x
       : this.crosshairsLayer.crosshairs.y;

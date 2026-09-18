@@ -1,4 +1,5 @@
 import {DrawingAreaComponent} from './drawing-area.component';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 /** setItemColor used to act only on the selection, silently. Hovering a node
  *  and picking a colour then either did nothing or recoloured a stale
@@ -13,6 +14,7 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     edgesUnderCrosshairs?: any[];
   } = {}): any {
     const c = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(c);
     c.log = {log: () => {}};
     c.daOut = jasmine.createSpyObj('daOut', ['emit']);
     c.drawingLayer = {

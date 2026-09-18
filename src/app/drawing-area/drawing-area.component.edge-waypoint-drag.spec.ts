@@ -1,9 +1,11 @@
 import {DrawingAreaComponent} from './drawing-area.component';
 import {Axis} from './axis';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 describe('DrawingAreaComponent edge waypoint drag', () => {
   it('turns the selected edge under v into a waypoint on the first drag step', () => {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     const waypoint = {isSelected: false};
     const edge = {
       isSelected: true,

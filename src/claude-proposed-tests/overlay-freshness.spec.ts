@@ -12,9 +12,11 @@ import {DrawingAreaComponent} from '../app/drawing-area/drawing-area.component';
 import {DrawingLayer} from '../app/drawing-area/drawing.layer';
 import {DANode} from '../app/drawing-area/da-node';
 import {Overlay} from '../app/drawing-area/overlay';
+import {wireDrawingAreaCollaborators} from '../app/drawing-area/drawing-area.test-fixture';
 
 function componentWith(nodes: DANode[]): any {
   const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
   const drawingLayer = new DrawingLayer();
   for (const n of nodes) drawingLayer.addRawNode(n);
   component.drawingLayer = drawingLayer;
@@ -24,8 +26,6 @@ function componentWith(nodes: DANode[]): any {
     add: () => undefined,
     batchDraw: () => undefined,
   };
-  component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
-  component.hoverTrace = new Overlay(() => component.drawingLayer);
   component.visualConfigService = {
     getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
   };

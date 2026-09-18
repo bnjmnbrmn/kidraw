@@ -1,10 +1,12 @@
 import {DrawingAreaComponent} from './drawing-area.component';
 import {DALabel} from './da-label';
 import {DANode} from './da-node';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 describe('DrawingAreaComponent selection priority', () => {
   function buildSelectionTestComponent(): any {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     component.tweens = [];
     component.drawingLayer = {
       unselectAll: jasmine.createSpy('unselectAll'),

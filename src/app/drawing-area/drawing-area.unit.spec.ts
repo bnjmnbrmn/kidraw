@@ -10,6 +10,7 @@ import { Camera } from './camera';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
 import {Overlay} from './overlay';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 describe('DrawingArea Unit Tests', () => {
   describe('DANode', () => {
@@ -380,11 +381,10 @@ describe('DrawingArea Unit Tests', () => {
   describe('crosshair hover trace', () => {
     it('keeps its dash, stroke, and padding stable in screen pixels across zoom', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(20, 30, 'hovered');
       component.drawingLayer = drawingLayer;
-      component.hoverTrace = new Overlay(() => component.drawingLayer);
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.crosshairsLayer = {
         crosshairs: {konvaGroup: new Konva.Group({visible: true})},
       };
@@ -411,14 +411,13 @@ describe('DrawingArea Unit Tests', () => {
 
     it('traces the exact sampled render path of a smooth edge', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const src = new DANode(0, 0, 'src');
       const dest = new DANode(360, 100, 'dest');
       const edge = new DAEdge(src, dest, 'edge');
       edge.setControlPoints([{x: 170, y: -80}, {x: 240, y: 180}]);
       component.drawingLayer = drawingLayer;
-      component.hoverTrace = new Overlay(() => component.drawingLayer);
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.crosshairsLayer = {
         crosshairs: {konvaGroup: new Konva.Group({visible: true})},
       };
@@ -439,6 +438,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('renders a natural-scale edit ghost when the graph is zoomed out', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(0, 0, 'read me');
       drawingLayer.addRawNode(node);
@@ -452,7 +452,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
       component.getNodeCenterInStageCoordinates = () => ({x: 400, y: 200});
 
       component.refreshLabelEditGhost();
@@ -471,6 +470,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('leaves a zoomed-in box alone, and stands in only where it cannot be read', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(0, 0, 'one\ntwo\nthree\nfour');
       drawingLayer.addRawNode(node);
@@ -505,6 +505,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('pans the viewport to keep the active edit caret and line context visible', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(200, 520, 'line one\nline two\nline three');
       drawingLayer.addRawNode(node);
@@ -514,7 +515,6 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
 
       component.refreshLabelEditGhost();
 
@@ -526,6 +526,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('keeps an edge-label caret and its line context visible too', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const label = new DALabel(300, 520, 'first\nsecond\nthird');
       label.isSelected = true;
@@ -534,7 +535,6 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
       component.getSelectedLabels = () => [label];
 
       component.refreshLabelEditGhost();
@@ -547,6 +547,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('shows an actual natural-scale node ghost for an unreadably small navigation landing', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(300, 150, 'tiny target', undefined, undefined, 'diamond');
       drawingLayer.addRawNode(node);
@@ -558,7 +559,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
@@ -578,6 +578,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('shows a navigation ghost when a higher node occludes the landing', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const target = new DANode(200, 100, 'underneath');
       const covering = new DANode(220, 110, 'covering');
@@ -590,7 +591,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
@@ -605,13 +605,13 @@ describe('DrawingArea Unit Tests', () => {
 
     it('does not duplicate a fully visible readable navigation landing', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(200, 100, 'readable');
       drawingLayer.addRawNode(node);
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = new Konva.Layer();
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
 
       component.refreshNavigationLandingGhost(node);
 
@@ -620,6 +620,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('grows an edited node about its centre and off its neighbours', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const anchorNode = new DANode(400, 400, 'anchor');
       const editing = new DANode(400, 200, 'x');
@@ -691,6 +692,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('traces a stretched circle node with an ellipse, not a rounded box', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(200, 100, 'wide circle', undefined, undefined, 'circle');
       node.resizeBy(0);
@@ -702,9 +704,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
-      component.hoverTrace = new Overlay(() => component.drawingLayer);
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -720,6 +719,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('re-traces the node after geometry changes move it', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       component.crosshairsLayer = {crosshairs: {konvaGroup: {visible: () => true}}};
       const refresh = spyOn<any>(component, 'refreshCrosshairHoverHighlight');
 
@@ -732,6 +732,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('grounds the ghost so the real node cannot show through it', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(-40, 100, 'partial');
       drawingLayer.addRawNode(node);
@@ -742,7 +743,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -759,6 +759,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('leaves the dashed trace to the ghost when the landing has one', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(-40, 100, 'partial');
       drawingLayer.addRawNode(node);
@@ -770,9 +771,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
-      component.hoverTrace = new Overlay(() => component.drawingLayer);
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -789,6 +787,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('still rings a node that reads fine where it is', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(200, 100, 'readable');
       drawingLayer.addRawNode(node);
@@ -799,9 +798,6 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
-      component.hoverTrace = new Overlay(() => component.drawingLayer);
-      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -818,6 +814,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('classifies a partially off-screen navigation landing for ghosting', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const node = new DANode(-40, 100, 'partial');
       drawingLayer.addRawNode(node);
@@ -863,20 +860,18 @@ describe('DrawingArea Unit Tests', () => {
   describe('Move by Link quadrant overlay', () => {
     it('draws four zoom-stable diagonal boundary rays through the source', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const source = new DANode(340, 240, 'source');
       const dest = new DANode(640, 240, 'dest');
       const edge = new DAEdge(source, dest, '');
       component.drawingLayer = drawingLayer;
       component.stage = {width: () => 800, height: () => 600};
-      // Object.create skips field initialisers; the camera is one.
-      component.camera = new Camera(() => component.drawingLayer);
       component.crosshairsLayer = new Konva.Layer();
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
       component.themeService = {theme: 'dark'};
-      component.linkNavQuadrantLines = new Overlay(() => component.crosshairsLayer);
       component.graphNavEdge = edge;
 
       // Object.create skips field initialisers; a spy keeps this a unit test.
@@ -907,6 +902,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('snaps to the nearest node and immediately focuses an incident link', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const drawingLayer = new DrawingLayer();
       const nearest = new DANode(100, 100, 'nearest');
       const dest = new DANode(400, 100, 'dest');
@@ -917,8 +913,6 @@ describe('DrawingArea Unit Tests', () => {
       drawingLayer.addRawNode(farther);
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {crosshairsX: () => 190, crosshairsY: () => 180};
-      // Object.create skips field initialisers; the camera is one.
-      component.camera = new Camera(() => component.drawingLayer);
       component.finishTweens = () => undefined;
       component.getDANodesContainingCrosshairs = () => [];
       component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
@@ -959,6 +953,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('clears focus without traversing when the held mode is released', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const source = new DANode(0, 0, 'source');
       const dest = new DANode(300, 0, 'dest');
       const edge = new DAEdge(source, dest, '');
@@ -980,6 +975,7 @@ describe('DrawingArea Unit Tests', () => {
 
     it('focuses a momentum-aligned edge and quadrant after traversing', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
       const source = new DANode(0, 0, 'source');
       const landing = new DANode(300, 0, 'landing');
       const forward = new DANode(600, 0, 'forward');

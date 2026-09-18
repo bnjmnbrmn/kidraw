@@ -1,4 +1,5 @@
 import {DrawingAreaComponent} from './drawing-area.component';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 /** Leaving label-edit mode must stop every caret, not just the ones on
  *  selected items.
@@ -19,6 +20,7 @@ describe('DrawingAreaComponent caret teardown', () => {
 
   function buildComponent(nodes: unknown[], labels: unknown[]): any {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     component.log = {log: () => {}};
     const edge = {labels};
     component.drawingLayer = {

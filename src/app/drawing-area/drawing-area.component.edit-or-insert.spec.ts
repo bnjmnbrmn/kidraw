@@ -1,6 +1,7 @@
 import {DrawingAreaComponent} from './drawing-area.component';
 import {DACommandType} from './command.model';
 import {Overlay} from './overlay';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 /** Tap semantics of the a=add / i=insert model
  *  (notes/design-add-insert-model.md): tap-a adds by crosshairs
@@ -18,6 +19,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     diagramType?: string;
   } = {}): any {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     component.log = {log: () => {}};
     component.daOut = jasmine.createSpyObj('daOut', ['emit']);
     component.drawingLayer = {
@@ -195,7 +197,6 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
-      component.growGhost = new Overlay(() => component.drawingLayer);
       component.navPopupOpen = false;
       component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
 
@@ -250,7 +251,6 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       };
       component.getNodeCenterInLayerCoordinates = () => ({x: 100, y: 200});
       component.buildCurrentGrowGhostTargets = () => [];
-      component.growGhost = new Overlay(() => component.drawingLayer);
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
 
@@ -270,7 +270,6 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
-      component.growGhost = new Overlay(() => component.drawingLayer);
       component.navPopupOpen = false;
       component.growHop = jasmine.createSpy('growHop');
       component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');

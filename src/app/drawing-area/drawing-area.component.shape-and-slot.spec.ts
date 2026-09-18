@@ -1,4 +1,5 @@
 import {DrawingAreaComponent} from './drawing-area.component';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 /** Two pre-public cleanups:
  *  - the temporary Circle/Box toggle that stands in until shape follows a
@@ -11,6 +12,7 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
     defaultNodeShape?: string;
   } = {}): any {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     component.log = {log: () => {}};
     component.daOut = jasmine.createSpyObj('daOut', ['emit']);
     component._defaultNodeShape = overrides.defaultNodeShape ?? 'circle';
@@ -68,6 +70,7 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
   describe('grow placement slot', () => {
     function growComponent(): any {
       const c = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(c);
       c.growKeys = {coarse: 's', fine: 'd'};
       c.growMods = new Set<string>();
       c.growOrigin = {x: 0, y: 0};
