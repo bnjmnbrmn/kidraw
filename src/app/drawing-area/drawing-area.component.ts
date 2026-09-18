@@ -73,6 +73,7 @@ import {HopDirection, planGrowHop} from './grow-lattice';
 import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
+import {NavGhost, NavGhostHost} from './nav-ghost';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -87,19 +88,6 @@ interface NodeDragTarget {
   target: number;
 }
 
-/** The look of a navigation ghost, resolved for the current zoom. */
-interface NavGhostStyle {
-  scale: number;
-  /** Inverse-zoom factor keeping ghosts at their 100%-zoom size or larger. */
-  boost: number;
-  dash: number[];
-  palette: ReturnType<VisualConfigService['getEffectivePalette']>;
-}
-
-/** Grow half-extents by the ghost boost, so a ray meets the box as drawn. */
-function scaleHalf(half: {w: number; h: number}, boost: number): {w: number; h: number} {
-  return {w: half.w * boost, h: half.h * boost};
-}
 
 /** What the crosshairs are resting on, and the trace drawn around it.
  *  `trace` is null when the item is shown by a navigation landing ghost. */
@@ -332,7 +320,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Translucent dashed preview of the highlighted candidate (copies of the
    *  source node, a straightened edge + labels, and the destination node
    *  pulled into the viewport). The view itself never moves while browsing. */
-  private readonly navGhost = new Overlay<Konva.Group>(() => this.drawingLayer);
+  /** The popup's jump preview (nav-ghost.ts). */
+  private readonly navGhost = new NavGhost(this.navGhostHost());
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -1223,6 +1212,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       moveCrosshairsBy: (dx, dy, tier, showGrid) => da.moveCrosshairsBy(dx, dy, tier, showGrid),
       navStops: targets => da.navStops(targets),
       navStopCenter: (id, kind) => da.navStopCenter(id, kind),
+    };
+  }
+
+  /** The nav ghost needs the zoom, the viewport and the palette; nothing else. */
+  private navGhostHost(): NavGhostHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get camera() { return da.camera; },
+      get stage() { return da.stage; },
+      get palette() {
+        return da.visualConfigService.getEffectivePalette(da.themeService.theme);
+      },
     };
   }
 
@@ -3062,168 +3064,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
   }
 
+  // ── The nav popup's jump preview: delegated to NavGhost ──
   private clearNavGhost(): void {
     this.navGhost.clear();
   }
 
-  /** Ghost preview of the highlighted candidate: translucent dashed copies
-   *  of the source node, a straight edge with its labels, and the
-   *  destination node. An offscreen destination's ghost slides along the
-   *  source→destination ray until it fits in the viewport, so the bearing
-   *  (and therefore the sense of where you're headed) is preserved. The
-   *  straight ghost edge may cross real nodes and edges — that's the
-   *  accepted cost of keeping it cheap. */
-  /**
-   * Preview a candidate jump without moving the view: dashed copies of the
-   * source node, the edge and its labels, and the destination pulled into the
-   * viewport if it would otherwise land off-screen.
-   */
   private renderNavGhost(cand: NavCandidate): void {
-    this.clearNavGhost();
-    const source = this.navSource;
-    if (!source) return;
-
-    const style = this.navGhostStyle();
-    const destination = cand.other;
-
-    // Source box as rendered — the popup's emphasis scales its group.
-    const sourceHalf = {
-      w: source.NODE_WIDTH * source.group.scaleX() / 2,
-      h: source.NODE_HEIGHT * source.group.scaleY() / 2,
-    };
-    const sourceCenter = {
-      x: source.group.x() + sourceHalf.w,
-      y: source.group.y() + sourceHalf.h,
-    };
-    const destHalf = {w: destination.NODE_WIDTH / 2, h: destination.NODE_HEIGHT / 2};
-    const destCenter = this.getNodeCenterInLayerCoordinates(destination);
-
-    const {lo, hi} = this.navGhostBounds(destHalf, style.boost);
-    const landing = ghostLandingPoint(sourceCenter, destCenter, lo, hi);
-
-    const group = new Konva.Group({listening: false, opacity: 0.8});
-    const edge = this.buildNavGhostEdge(cand, sourceCenter, sourceHalf, landing, destHalf, style);
-
-    // Arrow first, then the boxes over it. Labels last: they stay readable even
-    // when a short ghost edge tucks them under one of the ghost boxes.
-    if (edge) group.add(edge.arrow);
-    group.add(this.navGhostBox(sourceCenter, sourceHalf, (source.label?.text() ?? '').trim(), style));
-    group.add(this.navGhostBox(landing, destHalf, (destination.label?.text() ?? '').trim(), style));
-    if (edge?.labels) group.add(edge.labels);
-
-    // on top of the node group: ghosts render over the graph
-    this.navGhost.show(() => group);
+    if (this.navSource) this.navGhost.show(this.navSource, cand);
   }
 
-  /** Ghosts never render below their 100%-zoom size: below that, every ghost
-   *  dimension (box, text, stroke, labels) is inflated by 1/scale so legibility
-   *  is independent of how far out the view is. Centres stay at true layer
-   *  positions — only the ghosts' size is zoom-immune. */
-  private navGhostStyle(): NavGhostStyle {
-    const scale = this.drawingLayer.scaleX();
-    return {
-      scale,
-      boost: Math.max(1, 1 / scale),
-      dash: [8, 5],
-      palette: this.visualConfigService.getEffectivePalette(this.themeService.theme),
-    };
-  }
-
-  /** The viewport in layer coordinates, inset so a boosted ghost box of the
-   *  given size lands fully visible: half the rendered box plus a screen margin. */
-  private navGhostBounds(half: {w: number; h: number}, boost: number): {lo: Point; hi: Point} {
-    const margin = this.camera.toLayerDistance(16);
-    const inset = {x: half.w * boost + margin, y: half.h * boost + margin};
-    const topLeft = this.camera.toLayer({x: 0, y: 0});
-    const bottomRight = this.camera.toLayer({x: this.stage.width(), y: this.stage.height()});
-    return {
-      lo: {x: topLeft.x + inset.x, y: topLeft.y + inset.y},
-      hi: {x: bottomRight.x - inset.x, y: bottomRight.y - inset.y},
-    };
-  }
-
-  /** A dashed copy of a node, anchored on its centre. The subgroup carries the
-   *  boost, so its contents are laid out at natural (100%-zoom) dimensions. */
-  private navGhostBox(
-    center: Point,
-    half: {w: number; h: number},
-    text: string,
-    {boost, dash, palette}: NavGhostStyle,
-  ): Konva.Group {
-    const w = half.w * 2, h = half.h * 2;
-    const box = new Konva.Group({
-      x: center.x, y: center.y,
-      offsetX: half.w, offsetY: half.h,
-      scaleX: boost, scaleY: boost,
-    });
-    box.add(new Konva.Rect({
-      width: w, height: h, cornerRadius: 10,
-      fill: palette.nodeFill, stroke: palette.nodeStroke, strokeWidth: 2,
-      dash,
-      shadowColor: palette.highlightShadowColor, shadowBlur: 10, shadowOpacity: 0.35,
-    }));
-    if (text) {
-      box.add(new Konva.Text({
-        text, width: w, height: h, align: 'center', verticalAlign: 'middle',
-        fontSize: 16, fill: palette.nodeText,
-      }));
-    }
-    return box;
-  }
-
-  /** Straight ghost edge between the two ghost boxes' borders, arrowhead
-   *  matching the real edge's direction, labels stacked at its midpoint.
-   *  Null when the two boxes sit on top of each other. */
-  private buildNavGhostEdge(
-    cand: NavCandidate,
-    sourceCenter: Point,
-    sourceHalf: {w: number; h: number},
-    destCenter: Point,
-    destHalf: {w: number; h: number},
-    style: NavGhostStyle,
-  ): {arrow: Konva.Arrow; labels: Konva.Group | null} | null {
-    const {boost, dash, palette} = style;
-    const span = {x: destCenter.x - sourceCenter.x, y: destCenter.y - sourceCenter.y};
-    if (Math.hypot(span.x, span.y) <= 1e-6) return null;
-
-    const from = boxEdgePoint(sourceCenter, scaleHalf(sourceHalf, boost), span);
-    const to = boxEdgePoint(destCenter, scaleHalf(destHalf, boost), {x: -span.x, y: -span.y});
-
-    const arrow = new Konva.Arrow({
-      points: cand.direction === 'out'
-        ? [from.x, from.y, to.x, to.y]
-        : [to.x, to.y, from.x, from.y],
-      stroke: palette.edgeStroke, fill: palette.edgeFill,
-      strokeWidth: 2.5 * boost, dash: dash.map(d => d * boost),
-      pointerLength: 12 * boost, pointerWidth: 10 * boost,
-    });
-
-    const texts = cand.edge.labels.map(l => l.label).filter(t => t.trim());
-    const midpoint = {x: (from.x + to.x) / 2, y: (from.y + to.y) / 2};
-    return {arrow, labels: texts.length > 0 ? this.navGhostLabels(texts, midpoint, style) : null};
-  }
-
-  /** The edge's labels as a stack of dashed pills, laid out at natural size
-   *  around (0,0) and boost-scaled as a whole onto the ghost edge's midpoint. */
-  private navGhostLabels(texts: string[], midpoint: Point, {boost, palette}: NavGhostStyle): Konva.Group {
-    const ROW_GAP = 4;
-    const stack = new Konva.Group({x: midpoint.x, y: midpoint.y, scaleX: boost, scaleY: boost});
-    let rowY = 0;
-    texts.forEach((text, i) => {
-      const label = new Konva.Text({text, fontSize: 12, fill: palette.labelText, padding: 5});
-      if (i === 0) rowY = -(texts.length * (label.height() + ROW_GAP) - ROW_GAP) / 2;
-      const x = -label.width() / 2;
-      stack.add(new Konva.Rect({
-        x, y: rowY, width: label.width(), height: label.height(), cornerRadius: 6,
-        fill: palette.labelFill, stroke: palette.labelStroke,
-        strokeWidth: 1.5, dash: [4, 3],
-      }));
-      label.position({x, y: rowY});
-      stack.add(label);
-      rowY += label.height() + ROW_GAP;
-    });
-    return stack;
-  }
 
   /** Beside the source node, on the opposite horizontal side from the
    *  highlighted destination (destination east → popup west), so the popup
