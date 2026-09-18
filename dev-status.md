@@ -14,7 +14,7 @@ explanation graphs on `explanation-graphs`._
 > real, expressions over statement sequences, and a named method over a
 > named local.
 >
-> **The file: 9,071 → 6,146 lines** across the series (`ea47d11`..`519f976`).
+> **The file: 9,071 → 5,901 lines** across the series (`ea47d11`..`41b6854`).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
 >   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
@@ -26,13 +26,16 @@ explanation graphs on `explanation-graphs`._
 >   graphs, display), `text-editing-controller.ts` (text mutations and the
 >   geometry they cause), `nav-journey.ts` (where the walk has been and which
 >   way it was going — shared by both navigation surfaces),
->   `link-nav-controller.ts` (the held NSEW Move by Link mode). Plus the pure
->   pieces: `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`, and
->   `navCandidatesFor` / `linkDirectionsFrom` in `graph-nav.ts`.
+>   `link-nav-controller.ts` (the held NSEW Move by Link mode),
+>   `nav-ghost.ts` (the popup's jump preview). Plus the pure pieces:
+>   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
+>   `grow-lattice.ts` (walking the placement lattice that
+>   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
+>   `linkDirectionsFrom` in `graph-nav.ts`.
 > - **Specs go with the unit.** `drawing-area.test-fixture.ts` gives the
 >   component specs one place to wire the collaborators; new units get their
 >   own spec against a small fake host (`file-controller.spec.ts` is the
->   pattern). 746 specs green, `npx ng build` clean.
+>   pattern). 777 specs green, `npx ng build` clean.
 > - **The tools-facing contract is a check, not a convention.**
 >   `node tools/qa/contract/component-api.js` fails when an extraction moves a
 >   field the browser scripts read. Retired names are listed there with what to
@@ -46,15 +49,24 @@ explanation graphs on `explanation-graphs`._
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
 >   file, not from a decision): the nav popup and its ghost (~530 lines, the
 >   other half of navigation — note it is a *shared* widget, also driven by
->   grow-target and grow-type, so it does not move wholesale), then selection,
->   the drag state machine and the directed-edge flow — the service
->   extractions sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
+>   grow-target and grow-type, so it does not move wholesale); the rest of
+>   grow mode, which is now the largest concern left (~1,000 lines, ~20 state
+>   fields — its ghost renderer reads a dozen of them, so it likely wants a
+>   named "aim" object before it will move); then selection, the drag state
+>   machine and the directed-edge flow — the service extractions sketched in
+>   [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
 > - **Open question for Ben, found while extracting Move by Link:** pressing
 >   into an empty quadrant. `moveLinkQuadrant`'s corner-crossing branch falls
 >   back to the focused edge, so a north press on a lone east link re-reports
 >   it as "north: east" and "No link in the north quadrant." never fires.
 >   Left unpinned by the specs rather than blessed (inferred, 2026-09-18 —
 >   from reading `graph-nav.ts`, not from observed intent).
+> - **Second open question for Ben, found extracting the grow lattice:** the
+>   `ON_CELL_TOLERANCE` guard in `grow-lattice.ts` cannot fire. It rejects a
+>   node more than 0.6 of a step off its cell, but `Math.round` already bounds
+>   each axis at 0.5, so a node is assigned its nearest cell however far off
+>   the lattice it is. Left working as it does, with the arithmetic written
+>   down at the constant (inferred, 2026-09-18 — from the arithmetic).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
@@ -670,6 +682,9 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `41b6854` | Extract the nav popup's jump preview |
+| `59658d1` | Lift the grow lattice walk out, and find a guard that cannot fire |
+| `a19ee0d` | dev-status: the two navigation extractions |
 | `519f976` | Extract Move by Link, and stop writing its geometry three times |
 | `95fdefe` | Name the walk: one NavJourney behind both navigation surfaces |
 | `d429f4d` | dev-status: record the readability refactor |
@@ -677,9 +692,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `de3b243` | Extract drawing area file controller |
 | `bcb007e` | QA: a net under the file region, which had none |
 | `5d6fa41` | Collect the animations in flight, and narrow GatherHost to them |
-| `8cd6fea` | Extract what the crosshairs are on, and where a node is |
-| `0c1e7bc` | Extract the usable viewport, and give the specs one place to wire fakes |
-| `4685032` | One lifecycle for the seven transient overlays |
 
 ---
 
