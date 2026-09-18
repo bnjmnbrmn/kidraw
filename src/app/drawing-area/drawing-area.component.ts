@@ -40,9 +40,11 @@ import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-sp
 import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
-import { Camera } from './camera';
+import { Camera, Rect } from './camera';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
+import { CrosshairsProbe, ProbeBounds } from './crosshairs-probe';
+import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -280,6 +282,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly camera = new Camera(() => this.drawingLayer);
   /** The stage minus whatever the UI overlays cover (viewport.ts). */
   private readonly viewport = new Viewport(() => this.stage, () => this.viewportInset);
+  /** What the crosshairs are on (crosshairs-probe.ts). */
+  private readonly probe = new CrosshairsProbe(
+    () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
   /** Move-by-node and its overlay (navigation-grid-controller.ts). */
   private readonly navGrid = new NavigationGridController(this.navigationGridHost());
   /** Labelable node created by the held insert hub. It is focused only when
@@ -1150,7 +1155,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  coordinates. The circle is drawn unscaled on the crosshairs layer, so its
    *  effective size relative to the drawing layer changes with zoom. */
   private crosshairsCircleRadiusInLayerCoords(): number {
-    return Math.max(this.crosshairsLayer.crosshairs.hitRadiusX, this.crosshairsLayer.crosshairs.hitRadiusY) / this.drawingLayer.scaleX();
+    return this.probe.reach;
   }
 
   /** Waypoint overlapping the crosshairs' selection circle — i.e. whose dot
@@ -1159,16 +1164,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  Used by every waypoint hit-test (select, select+drag, pin, delete) so they
    *  all share the same generous targeting. */
   private getWaypointUnderCrosshairs(): DAWaypoint | undefined {
-    const wps = this.drawingLayer.getDAWaypoints();
-    if (wps.length === 0) return undefined;
-    const pt = this.crosshairsInLayerCoords();
-    const tolerance = this.crosshairsCircleRadiusInLayerCoords();
-    const candidates = wps
-      .map(wp => ({wp, d: wp.distanceTo(pt)}))
-      .filter(c => c.d <= c.wp.RADIUS + tolerance);
-    if (candidates.length === 0) return undefined;
-    candidates.sort((a, b) => a.d - b.d);
-    return candidates[0].wp;
+    return this.probe.waypoint();
   }
 
   private loadSampleGraph(graphId: string) {
@@ -3234,15 +3230,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  private nodeStageRect(node: DANode): {x: number; y: number; width: number; height: number} {
-    const scaleX = this.drawingLayer.scaleX();
-    const scaleY = this.drawingLayer.scaleY();
-    return {
-      x: this.drawingLayer.x() + node.group.x() * scaleX,
-      y: this.drawingLayer.y() + node.group.y() * scaleY,
-      width: node.NODE_WIDTH * node.group.scaleX() * scaleX,
-      height: node.NODE_HEIGHT * node.group.scaleY() * scaleY,
-    };
+  private nodeStageRect(node: DANode): Rect {
+    return nodeStageRect(node, this.camera);
   }
 
   /** Why the real navigation target needs a readable screen-space copy. */
@@ -4759,14 +4748,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private getNodeCenterInStageCoordinates(node: DANode): Point {
-    return this.camera.toStage(this.getNodeCenterInLayerCoordinates(node));
+    return nodeCenterInStage(node, this.camera);
   }
 
   private getNodeCenterInLayerCoordinates(node: DANode): Point {
-    return {
-      x: node.group.x() + node.NODE_WIDTH / 2,
-      y: node.group.y() + node.NODE_HEIGHT / 2,
-    };
+    return nodeCenterInLayer(node);
   }
 
   private increaseSelectedNodeSize() {
@@ -4902,10 +4888,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private crosshairsInLayerCoords(): Point {
-    return this.camera.toLayer({
-      x: this.crosshairsLayer.crosshairsX(),
-      y: this.crosshairsLayer.crosshairsY(),
-    });
+    return this.probe.position;
   }
 
   /** Edge whose polyline comes closest to `point`, plus the snapped closest
@@ -5048,35 +5031,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
 
-  private getCrosshairsBBoxInDrawingLayer(): { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number } {
-    const {minX, minY, maxX, maxY} = this.camera.boundsToLayer(
-      this.crosshairsLayer.crosshairs.konvaGroup.getClientRect());
-    this.log.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${this.camera.scale} layerPos=(${this.camera.origin.x},${this.camera.origin.y})`);
-    return {minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2};
+  private getCrosshairsBBoxInDrawingLayer(): ProbeBounds {
+    return this.probe.bounds;
   }
 
-  private edgeIntersectsBox(edge: DAEdge, box: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
-    const pathPoints = edge.getPathPoints();
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const p1 = pathPoints[i];
-      const p2 = pathPoints[i + 1];
-      if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
+  // Kept as methods because tools/qa scripts call them; see
+  // tools/qa/contract/component-api.js. Inside this class, ask the probe.
   private getDAEdgesContainingCrosshairs(): DAEdge[] {
-    const box = this.getCrosshairsBBoxInDrawingLayer();
-
-    const edges = this.drawingLayer.getDAEdges();
-    return edges.filter(edge => this.edgeIntersectsBox(edge, box));
+    return this.probe.edges();
   }
-
 
   private getDANodesContainingCrosshairs(): DANode[] {
-    return this.drawingLayer.getDaNodesContainingPoint(this.crosshairsLayer.crosshairs.getAbsolutePosition());
+    return this.probe.nodes();
   }
 
   private recenterView() {
@@ -6831,25 +6797,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private getLabelUnderCrosshairs(): DALabel | null {
-    const box = this.getCrosshairsBBoxInDrawingLayer();
-
-    const edges = this.drawingLayer.getDAEdges();
-    for (const edge of edges) {
-      for (const label of edge.labels) {
-        // Check overlap between crosshairs bbox and label bounding rect
-        const labelLeft = label.x - label.width / 2;
-        const labelRight = label.x + label.width / 2;
-        const labelTop = label.y - label.height / 2;
-        const labelBottom = label.y + label.height / 2;
-
-        const overlaps = labelRight >= box.minX && labelLeft <= box.maxX &&
-                         labelBottom >= box.minY && labelTop <= box.maxY;
-        if (overlaps) {
-          return label;
-        }
-      }
-    }
-    return null;
+    return this.probe.label();
   }
 
   private unselectAllLabels(): void {

@@ -17,6 +17,7 @@
  * and nothing there imports this.
  */
 import { Camera } from './camera';
+import { CrosshairsProbe } from './crosshairs-probe';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
 
@@ -34,6 +35,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   const crosshairsLayer = () => component.crosshairsLayer;
 
   component.camera = new Camera(drawingLayer);
+  component.probe = new CrosshairsProbe(drawingLayer, crosshairsLayer, component.camera);
   component.viewport = new Viewport(() => component.stage, () => component.viewportInset ?? NO_INSET);
 
   component.goalLine = new Overlay(drawingLayer);

@@ -48,7 +48,15 @@ export class Camera {
   /** Lazily, because the layer is built in ngAfterViewInit. */
   constructor(private readonly layer: () => CameraLayer) {}
 
-  /** Layer units per stage pixel. */
+  /**
+   * Layer units per stage pixel.
+   *
+   * One number, not two: every place that scales the drawing layer sets x and
+   * y together (zoomAboutCrosshairs, recenterView, fitViewToContent, and the
+   * two `scale({x: s, y: s})` calls), so the layer is only ever uniformly
+   * scaled. A node's *own* group can be scaled independently — the nav popup
+   * enlarges its source that way — and that is read from the node, not here.
+   */
   get scale(): number {
     return this.layer().scaleX();
   }
