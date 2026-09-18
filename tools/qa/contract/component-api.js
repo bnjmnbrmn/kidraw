@@ -18,7 +18,7 @@
  * Adding to this list is cheap. Removing from it means finding the callers.
  */
 const {readFileSync, readdirSync, statSync} = require('fs');
-const {join, resolve} = require('path');
+const {join, resolve, sep} = require('path');
 
 const REPO = resolve(__dirname, '../../..');
 const COMPONENT = join(REPO, 'src/app/drawing-area/drawing-area.component.ts');
@@ -48,6 +48,24 @@ const TOOLS_FACING = [
   'viewMinY',
 ];
 
+/**
+ * Overlay fields the scripts read through, and what each now holds.
+ *
+ * These are not methods, so the call-shaped check below cannot see them. They
+ * were renamed and wrapped in an Overlay, which broke
+ * drag-and-grow/grow-ghost-targets.js at runtime — the third time a rename
+ * that compiled cleanly broke a browser script.
+ */
+const TOOLS_FACING_FIELDS = [
+  'growGhost',
+  'hoverTrace',
+  'goalLine',
+  'labelEditGhost',
+  'navigationLandingGhost',
+  'linkNavQuadrantLines',
+  'navGhost',
+];
+
 /** Receivers the scripts use for the component, for the reverse check. */
 const RECEIVERS = ['da', 'c', 'comp', 'daComp', 'component'];
 /** Things reached through those names that belong to other objects. */
@@ -75,6 +93,28 @@ const missing = TOOLS_FACING.filter(name => !declares(name));
 check('every tools-facing method is still declared on the component',
   missing.length === 0,
   missing.length ? `gone: ${missing.join(', ')}` : `${TOOLS_FACING.length} checked`);
+
+const fieldsMissing = TOOLS_FACING_FIELDS.filter(name =>
+  !new RegExp(`^\\s{2}(?:private |readonly |public |protected )*${name}\\s*[:=]`, 'm').test(source));
+check('every tools-facing field is still declared on the component',
+  fieldsMissing.length === 0,
+  fieldsMissing.length ? `gone: ${fieldsMissing.join(', ')}` : `${TOOLS_FACING_FIELDS.length} checked`);
+
+// An Overlay is reached as `.node`; reading it bare returns the wrapper and
+// silently does nothing useful.
+const bareOverlayReads = [];
+for (const file of jsFilesUnder(join(REPO, 'tools'))) {
+  if (file.includes(`${sep}archive${sep}`)) continue;   // dated snapshots, not run
+  const text = readFileSync(file, 'utf8');
+  for (const name of TOOLS_FACING_FIELDS) {
+    if (new RegExp(`\\.${name}\\s*(\\?\\.)?(find|getChildren|destroy|getAttr|children)\\b`).test(text)) {
+      bareOverlayReads.push(`${file.slice(REPO.length + 1)}: .${name}`);
+    }
+  }
+}
+check('no script reaches through an Overlay without .node',
+  bareOverlayReads.length === 0,
+  bareOverlayReads.length ? bareOverlayReads.join('; ') : 'none');
 
 const known = new Set(TOOLS_FACING);
 const pattern = new RegExp(`\\b(?:${RECEIVERS.join('|')})\\.([a-zA-Z_][a-zA-Z0-9_]*)\\(`, 'g');

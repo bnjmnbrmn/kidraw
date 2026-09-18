@@ -11,6 +11,7 @@ import Konva from 'konva';
 import {DrawingAreaComponent} from '../app/drawing-area/drawing-area.component';
 import {DrawingLayer} from '../app/drawing-area/drawing.layer';
 import {DANode} from '../app/drawing-area/da-node';
+import {Overlay} from '../app/drawing-area/overlay';
 
 function componentWith(nodes: DANode[]): any {
   const component = Object.create(DrawingAreaComponent.prototype) as any;
@@ -23,8 +24,8 @@ function componentWith(nodes: DANode[]): any {
     add: () => undefined,
     batchDraw: () => undefined,
   };
-  component.navigationLandingGhost = null;
-  component.crosshairHoverHighlight = null;
+  component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
+  component.hoverTrace = new Overlay(() => component.drawingLayer);
   component.visualConfigService = {
     getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
   };
@@ -38,7 +39,7 @@ function componentWith(nodes: DANode[]): any {
 
 /** Where the trace says the node is. */
 function traceBox(component: any): {x: number; y: number} | null {
-  const shape: Konva.Shape | null = component.crosshairHoverHighlight;
+  const shape: Konva.Shape | null = component.hoverTrace.node;
   if (!shape) return null;
   const r = shape.getClientRect();
   return {x: Math.round(r.x), y: Math.round(r.y)};
@@ -73,12 +74,12 @@ describe('overlay freshness', () => {
     component.getDANodesContainingCrosshairs = () => [hovered];
 
     component.refreshCrosshairHoverHighlight();
-    const before = component.crosshairHoverHighlight.getClientRect().width;
+    const before = component.hoverTrace.node.getClientRect().width;
 
     hovered.resizeBy(60);
     component.updateEdgesForResizedNodes([hovered]);
 
-    const after = component.crosshairHoverHighlight.getClientRect().width;
+    const after = component.hoverTrace.node.getClientRect().width;
     expect(after - before).toBeCloseTo(60, 0);
   });
 
@@ -92,7 +93,7 @@ describe('overlay freshness', () => {
 
       component.refreshCrosshairHoverHighlight();
 
-      expect(component.crosshairHoverHighlight.getClassName()).toBe(expected);
+      expect(component.hoverTrace.node.getClassName()).toBe(expected);
     }
   });
 });

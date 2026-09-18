@@ -41,6 +41,7 @@ import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, clo
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
 import { Camera } from './camera';
+import { Overlay } from './overlay';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -287,21 +288,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Ordinary hjkl movement follows this fixed line until the axis changes
    *  or the movement indicators time out. */
   private normalMovementGoal: NormalMovementGoal | null = null;
-  private normalMovementGoalLine: Konva.Line | null = null;
+  private readonly goalLine = new Overlay<Konva.Line>(() => this.drawingLayer);
   /** Dashed crosshair-colored trace around the single top-priority graph item
    *  currently under the crosshairs. This is intentionally separate from
    *  selection state and is never serialized. */
-  private crosshairHoverHighlight: Konva.Shape | null = null;
+  private readonly hoverTrace = new Overlay<Konva.Shape>(() => this.drawingLayer);
   private crosshairHoverRefreshTimer: number | null = null;
   /** Screen-space copy of one edited node at low graph zoom. The real node
    *  remains in place; this lens keeps its text and caret readable. */
-  private labelEditGhost: Konva.Group | null = null;
+  private readonly labelEditGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
   /** Destination scale of an in-flight focus zoom (da-198): the edit lens
    *  evaluates legibility against this rather than the animating scale. */
   private focusZoomTargetScale: number | null = null;
   /** Natural-scale copy of the node currently reached by crosshair
    *  navigation, shown only when the real node is not fully readable. */
-  private navigationLandingGhost: Konva.Group | null = null;
+  private readonly navigationLandingGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -346,7 +347,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Source and focus state for the held, popup-free Move by Link mode. */
   private linkNavSource: DANode | null = null;
   private linkNavDirectionalFocus = false;
-  private linkNavQuadrantLines: Konva.Group | null = null;
+  private readonly linkNavQuadrantLines = new Overlay<Konva.Group>(() => this.crosshairsLayer);
   private linkNavQuadrantRefreshTimer: number | null = null;
   /** In/out sense of the last nav jump — the popup's "momentum": candidates
    *  continuing this direction are the primary group, and a single one
@@ -387,7 +388,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Translucent dashed preview of the highlighted candidate (copies of the
    *  source node, a straightened edge + labels, and the destination node
    *  pulled into the viewport). The view itself never moves while browsing. */
-  private navGhostGroup: Konva.Group | null = null;
+  private readonly navGhost = new Overlay<Konva.Group>(() => this.drawingLayer);
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -529,7 +530,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.clearLinkNavQuadrantLines();
     this.clearLabelEditGhost(false);
     this.clearNavigationLandingGhost(false);
-    this.crosshairHoverHighlight?.destroy();
+    this.hoverTrace.clear(false);
     this.areaSelectMarquee?.destroy();
     this.mathUnsubscribes.forEach(unsubscribe => unsubscribe());
   }
@@ -3039,8 +3040,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  grid and below graph content. It therefore stays registered with the
    *  diagram during any edge-of-viewport pan. */
   private redrawNormalMovementGoalLine(): void {
-    this.normalMovementGoalLine?.destroy();
-    this.normalMovementGoalLine = null;
+    this.goalLine.clear(false);
     const goal = this.normalMovementGoal;
     if (!goal) return;
 
@@ -3066,19 +3066,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       opacity: 0.58,
       listening: false,
     });
-    this.drawingLayer.add(line);
-    line.zIndex(1);
-    this.normalMovementGoalLine = line;
+    this.goalLine.show(() => line);
+    line.zIndex(1);   // just above the grid, beneath the graph
     this.drawingLayer.batchDraw();
   }
 
   private clearNormalMovementGoal(draw = true): void {
     this.normalMovementGoal = null;
-    if (this.normalMovementGoalLine) {
-      this.normalMovementGoalLine.destroy();
-      this.normalMovementGoalLine = null;
-      if (draw) this.drawingLayer.batchDraw();
-    }
+    this.goalLine.clear(draw);
   }
 
   private scheduleCrosshairHoverRefresh(delayMs?: number): void {
@@ -3109,11 +3104,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     const hover = this.crosshairHoverTarget();
     if (hover?.trace) {
-      hover.trace.setAttr('targetKind', hover.kind);
-      hover.trace.setAttr('targetId', hover.id);
-      this.drawingLayer.add(hover.trace);
-      hover.trace.moveToTop();
-      this.crosshairHoverHighlight = hover.trace;
+      const trace = hover.trace;
+      trace.setAttr('targetKind', hover.kind);
+      trace.setAttr('targetId', hover.id);
+      this.hoverTrace.show(() => trace);
     }
     if (hover?.node) {
       this.refreshNavigationLandingGhost(hover.node, hover.ghostReasons);
@@ -3239,16 +3233,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private clearCrosshairHoverHighlight(draw = true): void {
-    let changed = false;
-    if (this.crosshairHoverHighlight) {
-      this.crosshairHoverHighlight.destroy();
-      this.crosshairHoverHighlight = null;
-      changed = true;
-    }
-    if (this.navigationLandingGhost) {
-      this.clearNavigationLandingGhost(false);
-      changed = true;
-    }
+    // The landing ghost carries the trace for a node that earned one, so the
+    // two come down together (da-434). Both layers repaint: the trace lives on
+    // the drawing layer, the ghost on the crosshairs layer.
+    const removedTrace = this.hoverTrace.clear(false);
+    const removedGhost = this.clearNavigationLandingGhost(false);
+    const changed = removedTrace || removedGhost;
     if (draw && changed) {
       this.drawingLayer.batchDraw();
       this.crosshairsLayer?.batchDraw();
@@ -3349,9 +3339,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       strokeWidth: 2,
       dash: [7, 5],
     }));
-    this.crosshairsLayer.add(group);
-    group.moveToTop();
-    this.navigationLandingGhost = group;
+    this.navigationLandingGhost.show(() => group);
     this.crosshairsLayer.batchDraw();
   }
 
@@ -3379,11 +3367,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private clearNavigationLandingGhost(draw = true): void {
-    if (!this.navigationLandingGhost) return;
-    this.navigationLandingGhost.destroy();
-    this.navigationLandingGhost = null;
-    if (draw) this.crosshairsLayer?.batchDraw();
+  private clearNavigationLandingGhost(draw = true): boolean {
+    return this.navigationLandingGhost.clear(draw);
   }
 
   private updateCrosshairsProbeShape(
@@ -3796,7 +3781,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  moveLinkQuadrant. They live in stage coordinates so their dash/stroke
    *  stays screen-stable at every drawing zoom. */
   private redrawLinkNavQuadrantLines(source: DANode): void {
-    this.linkNavQuadrantLines?.destroy();
     const group = new Konva.Group({name: 'move-by-link-quadrants', listening: false});
     const origin = this.getNodeCenterInStageCoordinates(source);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
@@ -3847,9 +3831,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         listening: false,
       }));
     }
-    this.crosshairsLayer.add(group);
-    group.moveToBottom();
-    this.linkNavQuadrantLines = group;
+    // A backdrop, not an overlay: the real graph stays readable through it.
+    this.linkNavQuadrantLines.show(() => group, 'bottom');
     this.crosshairsLayer.batchDraw();
   }
 
@@ -3868,9 +3851,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       window.clearTimeout(this.linkNavQuadrantRefreshTimer);
       this.linkNavQuadrantRefreshTimer = null;
     }
-    this.linkNavQuadrantLines?.destroy();
-    this.linkNavQuadrantLines = null;
-    this.crosshairsLayer?.batchDraw();
+    this.linkNavQuadrantLines.clear();
   }
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
@@ -4190,9 +4171,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private clearNavGhost(): void {
-    if (!this.navGhostGroup) return;
-    this.navGhostGroup.destroy();
-    this.navGhostGroup = null;
+    this.navGhost.clear();
   }
 
   /** Ghost preview of the highlighted candidate: translucent dashed copies
@@ -4240,8 +4219,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     group.add(this.navGhostBox(landing, destHalf, (destination.label?.text() ?? '').trim(), style));
     if (edge?.labels) group.add(edge.labels);
 
-    this.navGhostGroup = group;
-    this.drawingLayer.add(group); // after the node group: ghosts render on top
+    // on top of the node group: ghosts render over the graph
+    this.navGhost.show(() => group);
   }
 
   /** Ghosts never render below their 100%-zoom size: below that, every ghost
@@ -5551,9 +5530,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       listening: false,
     });
     ghost.getChildren().forEach(child => child.listening(false));
-    this.crosshairsLayer.add(ghost);
-    ghost.moveToTop();
-    this.labelEditGhost = ghost;
+    this.labelEditGhost.show(() => ghost);
     this.crosshairsLayer.batchDraw();
   }
 
@@ -5598,10 +5575,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private clearLabelEditGhost(draw = true): void {
-    if (!this.labelEditGhost) return;
-    this.labelEditGhost.destroy();
-    this.labelEditGhost = null;
-    if (draw) this.crosshairsLayer?.batchDraw();
+    this.labelEditGhost.clear(draw);
   }
 
   private handleEditSelected() {
@@ -5722,7 +5696,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  direction; later presses step it by the grid. */
   private growPlacedRough = false;
   private growMods = new Set<string>();
-  private growGhost: Konva.Group | null = null;
+  private readonly growGhost = new Overlay<Konva.Group>(() => this.drawingLayer);
 
   /** ENTER_ADD_MODE: take the hold as grow mode over a node or genuinely
    *  empty canvas. Edges/labels retain the classic label/waypoint hub. */
@@ -5938,8 +5912,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // If the leaf key arrived just before its submenu key, remember that
     // overlap and commit when the leaf is released.
     this.growSelfLoopPending = this.growPressedKeys.has(this.growKeys.selfLoop);
-    this.growGhost?.destroy();
-    this.growGhost = null;
+    this.growGhost.clear(false);
     this.navGrid.hideNodeGrid();
     this.drawingLayer.batchDraw();
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
@@ -6515,8 +6488,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.growSelfLoopPending = false;
     this.growHoldReleased = false;
     this.growPressedKeys.clear();
-    this.growGhost?.destroy();
-    this.growGhost = null;
+    this.growGhost.clear(false);
     this.growOrigin = null;
     this.growTarget = null;
     this.growInsertionTarget = null;
@@ -6566,14 +6538,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  candidate slots around the anchor, the node that would land, and the edge
    *  that would connect it. Rebuilt from scratch on every aim change. */
   private redrawGrowGhost(): void {
-    this.growGhost?.destroy();
-    const ghost = new Konva.Group({listening: false, opacity: 0.55});
-    this.growGhost = ghost;
-
-    this.drawGrowGhost(ghost);
-
-    this.drawingLayer.add(ghost);
-    ghost.moveToTop();
+    this.growGhost.show(() => {
+      const ghost = new Konva.Group({listening: false, opacity: 0.55});
+      this.drawGrowGhost(ghost);
+      return ghost;
+    });
     this.drawingLayer.batchDraw();
   }
 

@@ -9,6 +9,7 @@ import { DrawingAreaComponent } from './drawing-area.component';
 import { Camera } from './camera';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
+import {Overlay} from './overlay';
 
 describe('DrawingArea Unit Tests', () => {
   describe('DANode', () => {
@@ -382,7 +383,8 @@ describe('DrawingArea Unit Tests', () => {
       const drawingLayer = new DrawingLayer();
       const node = new DANode(20, 30, 'hovered');
       component.drawingLayer = drawingLayer;
-      component.crosshairHoverHighlight = null;
+      component.hoverTrace = new Overlay(() => component.drawingLayer);
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.crosshairsLayer = {
         crosshairs: {konvaGroup: new Konva.Group({visible: true})},
       };
@@ -397,7 +399,7 @@ describe('DrawingArea Unit Tests', () => {
       for (const scale of [0.25, 1, 4]) {
         drawingLayer.scale({x: scale, y: scale});
         component.refreshCrosshairHoverHighlight();
-        const trace = component.crosshairHoverHighlight as Konva.Rect;
+        const trace = component.hoverTrace.node as Konva.Rect;
 
         expect(trace.dash()).withContext(`dash at ${scale}×`).toEqual([7, 5]);
         expect(trace.strokeWidth()).withContext(`stroke at ${scale}×`).toBe(2);
@@ -415,7 +417,8 @@ describe('DrawingArea Unit Tests', () => {
       const edge = new DAEdge(src, dest, 'edge');
       edge.setControlPoints([{x: 170, y: -80}, {x: 240, y: 180}]);
       component.drawingLayer = drawingLayer;
-      component.crosshairHoverHighlight = null;
+      component.hoverTrace = new Overlay(() => component.drawingLayer);
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.crosshairsLayer = {
         crosshairs: {konvaGroup: new Konva.Group({visible: true})},
       };
@@ -429,7 +432,7 @@ describe('DrawingArea Unit Tests', () => {
       component.getDAEdgesContainingCrosshairs = () => [edge];
 
       component.refreshCrosshairHoverHighlight();
-      const trace = component.crosshairHoverHighlight as Konva.Line;
+      const trace = component.hoverTrace.node as Konva.Line;
       expect(trace.points()).toEqual(edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]));
       expect(trace.tension()).toBe(0);
     });
@@ -449,12 +452,12 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = null;
+      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
       component.getNodeCenterInStageCoordinates = () => ({x: 400, y: 200});
 
       component.refreshLabelEditGhost();
 
-      const ghost = component.labelEditGhost as Konva.Group;
+      const ghost = component.labelEditGhost.node as Konva.Group;
       expect(ghost).not.toBeNull();
       expect(ghost.scaleX()).toBe(1);
       expect(ghost.scaleY()).toBe(1);
@@ -463,7 +466,7 @@ describe('DrawingArea Unit Tests', () => {
         text.getAttr('text') === 'read me')).toBeTrue();
 
       component.clearLabelEditGhost();
-      expect(component.labelEditGhost).toBeNull();
+      expect(component.labelEditGhost.node).toBeNull();
     });
 
     it('leaves a zoomed-in box alone, and stands in only where it cannot be read', () => {
@@ -511,7 +514,7 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = null;
+      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
 
       component.refreshLabelEditGhost();
 
@@ -531,7 +534,7 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
       component.stage = {width: () => 800, height: () => 400};
-      component.labelEditGhost = null;
+      component.labelEditGhost = new Overlay(() => component.crosshairsLayer);
       component.getSelectedLabels = () => [label];
 
       component.refreshLabelEditGhost();
@@ -555,7 +558,7 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
@@ -563,7 +566,7 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshNavigationLandingGhost(node);
 
-      const ghost = component.navigationLandingGhost as Konva.Group;
+      const ghost = component.navigationLandingGhost.node as Konva.Group;
       expect(ghost).not.toBeNull();
       expect(ghost.name()).toBe('navigation-node-ghost');
       expect(ghost.getAttr('targetId')).toBe(node.id);
@@ -587,7 +590,7 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
@@ -595,8 +598,8 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshNavigationLandingGhost(target);
 
-      expect(component.navigationLandingGhost.getAttr('reasons')).toContain('occluded');
-      expect(component.navigationLandingGhost.find('Text').some((text: Konva.Node) =>
+      expect(component.navigationLandingGhost.node.getAttr('reasons')).toContain('occluded');
+      expect(component.navigationLandingGhost.node.find('Text').some((text: Konva.Node) =>
         text.getAttr('text') === 'underneath')).toBeTrue();
     });
 
@@ -608,11 +611,11 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = new Konva.Layer();
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
 
       component.refreshNavigationLandingGhost(node);
 
-      expect(component.navigationLandingGhost).toBeNull();
+      expect(component.navigationLandingGhost.node).toBeNull();
     });
 
     it('grows an edited node about its centre and off its neighbours', () => {
@@ -699,8 +702,9 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
-      component.crosshairHoverHighlight = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
+      component.hoverTrace = new Overlay(() => component.drawingLayer);
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -711,7 +715,7 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshCrosshairHoverHighlight();
 
-      expect(component.crosshairHoverHighlight.getClassName()).toBe('Ellipse');
+      expect(component.hoverTrace.node.getClassName()).toBe('Ellipse');
     });
 
     it('re-traces the node after geometry changes move it', () => {
@@ -738,7 +742,7 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -746,7 +750,7 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshNavigationLandingGhost(node);
 
-      const ghost = component.navigationLandingGhost as Konva.Group;
+      const ghost = component.navigationLandingGhost.node as Konva.Group;
       expect(ghost.opacity()).toBe(1);
       const backing = ghost.getChildren()[0] as Konva.Rect;
       expect(backing.fill()).toBe('#050505');
@@ -766,8 +770,9 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
-      component.crosshairHoverHighlight = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
+      component.hoverTrace = new Overlay(() => component.drawingLayer);
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -778,8 +783,8 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshCrosshairHoverHighlight();
 
-      expect(component.navigationLandingGhost).not.toBeNull();
-      expect(component.crosshairHoverHighlight).toBeNull();
+      expect(component.navigationLandingGhost.node).not.toBeNull();
+      expect(component.hoverTrace.node).toBeNull();
     });
 
     it('still rings a node that reads fine where it is', () => {
@@ -794,8 +799,9 @@ describe('DrawingArea Unit Tests', () => {
         batchDraw: () => undefined,
       };
       component.stage = {width: () => 800, height: () => 400};
-      component.navigationLandingGhost = null;
-      component.crosshairHoverHighlight = null;
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
+      component.hoverTrace = new Overlay(() => component.drawingLayer);
+      component.navigationLandingGhost = new Overlay(() => component.crosshairsLayer);
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef', drawingStageBackground: '#050505'}),
       };
@@ -806,8 +812,8 @@ describe('DrawingArea Unit Tests', () => {
 
       component.refreshCrosshairHoverHighlight();
 
-      expect(component.crosshairHoverHighlight).not.toBeNull();
-      expect(component.navigationLandingGhost).toBeNull();
+      expect(component.hoverTrace.node).not.toBeNull();
+      expect(component.navigationLandingGhost.node).toBeNull();
     });
 
     it('classifies a partially off-screen navigation landing for ghosting', () => {
@@ -870,7 +876,7 @@ describe('DrawingArea Unit Tests', () => {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
       component.themeService = {theme: 'dark'};
-      component.linkNavQuadrantLines = null;
+      component.linkNavQuadrantLines = new Overlay(() => component.crosshairsLayer);
       component.graphNavEdge = edge;
 
       // Object.create skips field initialisers; a spy keeps this a unit test.
@@ -885,7 +891,7 @@ describe('DrawingArea Unit Tests', () => {
     })();
       component.redrawLinkNavQuadrantLines(source);
 
-      const group = component.linkNavQuadrantLines as Konva.Group;
+      const group = component.linkNavQuadrantLines.node as Konva.Group;
       const lines = group.find<Konva.Line>('.move-by-link-diagonal');
       expect(lines.length).toBe(4);
       expect(group.find('.move-by-link-active-quadrant').length).toBe(1);
@@ -896,7 +902,7 @@ describe('DrawingArea Unit Tests', () => {
       });
 
       component.clearLinkNavQuadrantLines();
-      expect(component.linkNavQuadrantLines).toBeNull();
+      expect(component.linkNavQuadrantLines.node).toBeNull();
     });
 
     it('snaps to the nearest node and immediately focuses an incident link', () => {

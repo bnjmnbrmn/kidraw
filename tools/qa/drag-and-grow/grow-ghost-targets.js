@@ -61,7 +61,7 @@ async function main() {
       insertion: da.growInsertionTarget && {...da.growInsertionTarget},
       target: da.growTarget?.id ?? null,
       ghosts: da.growGhostTargets.map(target => ({...target})),
-      renderedGhosts: da.growGhost?.find('.grow-insertion-target').length ?? 0,
+      renderedGhosts: da.growGhost.node?.find('.grow-insertion-target').length ?? 0,
       augmentedStops: da.growActive ? da.navStops('nodes').length : 0,
       nodes: da.drawingLayer.getDANodes().map(node => ({
         id: node.id,
