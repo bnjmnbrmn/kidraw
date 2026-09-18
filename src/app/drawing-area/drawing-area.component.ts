@@ -127,6 +127,7 @@ interface NavCandidate {
 import { DAFileState, DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
+import type { TweenConfig } from 'konva/lib/Tween';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout, isClearLayout, layoutSpacingFor } from './graph-layout';
@@ -2784,60 +2785,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private zoomIn() {
-    this.finishTweens()
-    this.clearCrosshairHoverHighlight(false);
-
-    const oldScale = this.drawingLayer.scaleX();
-
-    const crosshairsPointTo = {
-      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x())/oldScale,
-      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y())/oldScale
-    };
-
-    const newScale = Math.min(oldScale * 2.0, this.MAX_ZOOM);
-    this.tweens.push(new Konva.Tween({
-      node: this.drawingLayer,
-      duration: this.TWEEN_DURATION,
-      scaleX: newScale,
-      scaleY: newScale,
-      x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
-      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
-      onFinish: () => {
-        this.emitZoomLevel();
-        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-        this.scheduleCrosshairHoverRefresh(20);
-      }
-
-    }).play());
+    this.zoomAboutCrosshairs(Math.min(this.camera.scale * 2, this.MAX_ZOOM));
   }
 
   private zoomOut() {
-    this.finishTweens()
+    this.zoomAboutCrosshairs(Math.max(this.camera.scale / 2, this.MIN_ZOOM));
+  }
+
+  /** Zoom with the crosshairs pinned: whatever they are over stays under them,
+   *  so the graph grows around the thing you are looking at. */
+  private zoomAboutCrosshairs(newScale: number): void {
+    this.finishTweens();
     this.clearCrosshairHoverHighlight(false);
-
-    const oldScale = this.drawingLayer.scaleX();
-
-    const crosshairsPointTo = {
-      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x())/oldScale,
-      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y())/oldScale
-    };
-
-    const newScale = Math.max(oldScale / 2.0, this.MIN_ZOOM);
-    let scale: Konva.Vector2d = {x: newScale, y: newScale};
-    this.log.log("scale", scale);
-    this.tweens.push(new Konva.Tween({
+    const pinned = this.crosshairsInLayerCoords();
+    this.tween({
       node: this.drawingLayer,
       duration: this.TWEEN_DURATION,
       scaleX: newScale,
       scaleY: newScale,
-      x: this.crosshairsLayer.crosshairsX() - crosshairsPointTo.x * newScale,
-      y: this.crosshairsLayer.crosshairsY() - crosshairsPointTo.y * newScale,
+      x: this.crosshairsLayer.crosshairsX() - pinned.x * newScale,
+      y: this.crosshairsLayer.crosshairsY() - pinned.y * newScale,
       onFinish: () => {
         this.emitZoomLevel();
-        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-        this.scheduleCrosshairHoverRefresh(20);
-      }
-    }).play());
+        this.afterMovementTween();
+      },
+    });
   }
 
   private moveCrosshairsUp(tier?: GridTier) {
@@ -3013,7 +2985,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private tweenCrosshairsTo(to: Point): void {
-    this.tweens.push(new Konva.Tween({
+    this.tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
       x: to.x,
@@ -3027,7 +2999,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.checkResizeHandleProximity();
         this.afterMovementTween();
       },
-    }).play());
+    });
   }
 
   /** Slide the drawing the distance the crosshairs could not travel, so the
@@ -3037,7 +3009,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: this.drawingLayer.x() - overflow.x,
       y: this.drawingLayer.y() - overflow.y,
     };
-    this.tweens.push(new Konva.Tween({
+    this.tween({
       node: this.drawingLayer,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
       x: to.x,
@@ -3047,7 +3019,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.drawingLayer.position(to);
         this.afterMovementTween();
       },
-    }).play());
+    });
+  }
+
+  /** Start a tween and keep it where finishTweens() can find it. Every
+   *  animation on this canvas goes through here, so none is left running when
+   *  the next command arrives. */
+  private tween(config: TweenConfig): void {
+    this.tweens.push(new Konva.Tween(config).play());
   }
 
   /** Whatever moved, the overlay that tracks it has to catch up. */
@@ -3537,17 +3516,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private panViewport(deltaX: number, deltaY: number) {
     this.finishTweens();
     this.clearCrosshairHoverHighlight(false);
-    this.tweens.push(new Konva.Tween({
+    this.tween({
       node: this.drawingLayer,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
       x: this.drawingLayer.x() + deltaX,
       y: this.drawingLayer.y() + deltaY,
       easing: Konva.Easings.Linear,
-      onFinish: () => {
-        if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-        this.scheduleCrosshairHoverRefresh(20);
-      },
-    }).play());
+      onFinish: () => this.afterMovementTween(),
+    });
   }
 
   private steerForward() {
@@ -4665,7 +4641,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   ): void {
     const centerX = this.viewCenterX();
     const centerY = this.viewCenterY();
-    this.tweens.push(new Konva.Tween({
+    this.tween({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
       scaleX: targetScale,
@@ -4677,15 +4653,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.emitZoomLevel();
         onFinish?.();
       },
-    }).play());
-    this.tweens.push(new Konva.Tween({
+    });
+    this.tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.RECENTER_DURATION,
       x: centerX,
       y: centerY,
       easing: Konva.Easings.EaseInOut,
       onFinish: () => this.checkResizeHandleProximity(),
-    }).play());
+    });
   }
 
 
