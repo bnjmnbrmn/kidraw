@@ -69,6 +69,7 @@ import {
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
+import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -234,6 +235,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly viewport = new Viewport(() => this.stage, () => this.viewportInset);
   /** Files, the vault, named graphs and display (file-controller.ts). */
   private readonly fileController = new FileController(this.fileHost());
+  private readonly textEditor = new TextEditingController(this.textEditingHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -1242,6 +1244,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Text editing owns mutations and keeps resized boxes centred. */
+  private textEditingHost(): TextEditingHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get resizeReflowGap() { return da.RESIZE_REFLOW_GAP; },
+      getSelectedLabels: () => da.getSelectedLabels(),
+      getEdgeForLabel: label => da.getEdgeForLabel(label),
+      finishTweens: () => da.finishTweens(),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      refreshLabelEditGhost: () => da.refreshLabelEditGhost(),
+    };
+  }
+
   /** Layers are assigned after construction; getters keep the host current. */
   private fileHost(): FileHost {
     const da = this;
@@ -1807,148 +1823,40 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`Pasted ${n} node${n === 1 ? '' : 's'}.`);
   }
 
-  private insertChar(key: string) {
-    this.finishTweens()
+  // ── Text edits and the geometry they cause: delegated to TextEditingController ──
+  // Command dispatch and the caret show/hide passes enter the controller here.
+  private insertChar(key: string): void {
     this.crosshairsLayer.hideCrosshairs();
-    const centres = this.selectedNodeCentres();
-    const resized = this.drawingLayer.appendTextToSelected(key);
-    this.settleGrowingNodes(resized, centres);
-    this.updateEdgesForResizedNodes(resized);
-    // Also insert into selected labels; re-place from the anchor so a growing
-    // box keeps its above/below clearance from the line.
-    this.getSelectedLabels().forEach(l => {
-      l.insertAtCursor(key);
-      this.getEdgeForLabel(l)?.refreshGeometry();
-    });
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+    this.textEditor.insertChar(key);
   }
 
-  /** Show or hide a node's caret. A markdown label resizes as it switches
-   *  between its rendered and source views; record where its centre was.
-   *  Showing or hiding the caret never moves the node, so the size read
-   *  beforehand gives that centre. */
   private toggleNodeCaret(node: DANode, toggle: () => boolean,
                           resized: Map<DANode, Point>): void {
-    const width = node.NODE_WIDTH;
-    const height = node.NODE_HEIGHT;
-    if (toggle()) resized.set(node, {x: node.group.x() + width / 2, y: node.group.y() + height / 2});
+    this.textEditor.toggleNodeCaret(node, toggle, resized);
   }
 
-  /** Keep caret-resized nodes on their centres and their edges attached,
-   *  the same as when typing grows a node. */
   private settleCaretResizes(resized: Map<DANode, Point>): void {
-    if (resized.size === 0) return;
-    const nodes = [...resized.keys()];
-    this.settleGrowingNodes(nodes, resized);
-    this.updateEdgesForResizedNodes(nodes);
+    this.textEditor.settleCaretResizes(resized);
   }
 
-  /** Box centres of the nodes being edited, read before their text changes. */
-  private selectedNodeCentres(): Map<DANode, Point> {
-    const centres = new Map<DANode, Point>();
-    for (const node of this.drawingLayer.getSelectedDANodes()) {
-      centres.set(node, {
-        x: node.group.x() + node.NODE_WIDTH / 2,
-        y: node.group.y() + node.NODE_HEIGHT / 2,
-      });
-    }
-    return centres;
+  private deleteLastChar(): void {
+    this.textEditor.deleteLastChar();
   }
 
-  /** Typing grows a box from its top-left corner, so a node walks down and
-   *  right over whatever is there — usually the node it was just connected
-   *  to (da-446). Two rules keep it out of the way: it grows about its own
-   *  centre, and if it still lands on a neighbour it is the one that moves,
-   *  not the neighbour. The rest of the graph holds still while you type. */
-  private settleGrowingNodes(
-    grown: DANode[],
-    centres: Map<DANode, Point>,
-  ): void {
-    if (grown.length === 0) return;
-    for (const node of grown) {
-      const centre = centres.get(node);
-      if (!centre || node.pinned) continue;
-      node.group.x(centre.x - node.NODE_WIDTH / 2);
-      node.group.y(centre.y - node.NODE_HEIGHT / 2);
-    }
-    const all = this.drawingLayer.getDANodes();
-    const growing = new Set(grown);
-    const boxes = all.map(node => ({
-      x: node.group.x(),
-      y: node.group.y(),
-      w: node.NODE_WIDTH,
-      h: node.NODE_HEIGHT,
-      movable: growing.has(node) && !node.pinned,
-    }));
-    for (const i of resolveBoxOverlaps(boxes, this.RESIZE_REFLOW_GAP)) {
-      all[i].group.x(boxes[i].x);
-      all[i].group.y(boxes[i].y);
-    }
+  private deleteCharAtCursor(): void {
+    this.textEditor.deleteCharAtCursor();
   }
 
-  private deleteLastChar() {
-    this.finishTweens();
-    const resized = this.drawingLayer.deleteBeforeCursorFromSelected();
-    this.updateEdgesForResizedNodes(resized);
-    // Also delete from selected labels
-    this.getSelectedLabels().forEach(l => {
-      l.deleteBeforeCursor();
-      this.getEdgeForLabel(l)?.refreshGeometry();
-    });
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+  private replaceCharAtCursor(value: string): void {
+    this.textEditor.replaceCharAtCursor(value);
   }
 
-  private deleteCharAtCursor() {
-    this.finishTweens();
-    const resized = this.drawingLayer.deleteAtCursorFromSelected();
-    this.updateEdgesForResizedNodes(resized);
-    this.getSelectedLabels().forEach(l => {
-      l.deleteAtCursor();
-      this.getEdgeForLabel(l)?.refreshGeometry();
-    });
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+  private changeTextAtCursor(motion: VimChangeMotion): void {
+    this.textEditor.changeTextAtCursor(motion);
   }
 
-  private replaceCharAtCursor(value: string) {
-    this.finishTweens();
-    const resized = this.drawingLayer.getSelectedDANodes()
-      .filter(node => node.replaceAtCursor(value));
-    this.updateEdgesForResizedNodes(resized);
-    this.getSelectedLabels().forEach(label => {
-      label.replaceAtCursor(value);
-      this.getEdgeForLabel(label)?.refreshGeometry();
-    });
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
-  }
-
-  private changeTextAtCursor(motion: VimChangeMotion) {
-    this.finishTweens();
-    const resized = this.drawingLayer.getSelectedDANodes()
-      .filter(node => node.changeAtCursor(motion));
-    this.updateEdgesForResizedNodes(resized);
-    this.getSelectedLabels().forEach(label => {
-      label.changeAtCursor(motion);
-      this.getEdgeForLabel(label)?.refreshGeometry();
-    });
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
-  }
-
-  /** Apply a caret motion to everything being edited (selected nodes and
-   *  edge labels). Motions never change geometry — just the caret. */
-  private moveEditCursor(motion: (target: {
-    moveCursorH(d: number): void; moveCursorV(d: number): void;
-    cursorToLineStart(): void; cursorToLineEnd(): void;
-    cursorWordForward(): void; cursorWordEnd(): void; cursorWordBack(): void;
-  }) => void) {
-    this.drawingLayer.getSelectedDANodes().forEach(n => motion(n));
-    this.getSelectedLabels().forEach(l => motion(l));
-    this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+  private moveEditCursor(motion: (target: CursorTarget) => void): void {
+    this.textEditor.moveCursor(motion);
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
