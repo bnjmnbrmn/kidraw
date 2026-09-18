@@ -5,16 +5,19 @@ import {fileURLToPath} from 'node:url';
 import {dirname, resolve} from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
+// The lists moved out of the component into command-policy.ts, which is the
+// "typed command metadata table" the note below asked for. They are still
+// parsed rather than imported: this is a .mjs test and they are TypeScript.
 const source = readFileSync(
-  resolve(here, '../src/app/drawing-area/drawing-area.component.ts'),
+  resolve(here, '../src/app/drawing-area/command-policy.ts'),
   'utf8',
 );
 
 function commandSet(name) {
   const match = source.match(
-    new RegExp(`private static readonly ${name} = new Set<DACommandType>\\(\\[([\\s\\S]*?)\\n\\s*\\]\\);`),
+    new RegExp(`const ${name} = new Set<DACommandType>\\(\\[([\\s\\S]*?)\\n\\s*\\]\\);`),
   );
-  assert.ok(match, `Could not locate ${name}`);
+  assert.ok(match, `Could not locate ${name} in command-policy.ts`);
   return new Set(
     [...match[1].matchAll(/DACommandType\.([A-Z0-9_]+)/g)].map(item => item[1]),
   );
@@ -73,7 +76,7 @@ test('geometry-changing text edits and grow mode cannot race a routing worker', 
 
 test('the generic pre-dispatch snapshot policy is not duplicated in handlers', () => {
   // Each of these handlers currently calls undoRedoService.pushSnapshot itself.
-  // If it is also in MUTATING_COMMANDS, handleCommands takes two identical
+  // If it is also in MUTATING_COMMANDS, handleCommand takes two identical
   // pre-change snapshots and one user action needs two Undo presses.
   const handlerOwnedSnapshots = [
     'CYCLE_EDGE_DIRECTEDNESS',

@@ -174,9 +174,9 @@ async function main() {
     const baseline = await da('return da.drawingLayer.serializeGraph();');
     for (const layout of LAYOUTS) {
       await waitIdle();
-      await da('da.handleCommands({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
+      await da('da.handleCommand({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
       await page.waitForTimeout(200);
-      await da(`da.handleCommands({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
+      await da(`da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
       await page.waitForTimeout(300);
       await waitIdle();
       await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');

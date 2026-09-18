@@ -64,14 +64,14 @@ async function main() {
     await page.evaluate((q) => { window.prompt = () => q; }, query);
     await page.evaluate(() => {
       window.ng.getComponent(document.querySelector('app-drawing-area'))
-        .handleCommands({ kind: 'SEARCH_GRAPH' });
+        .handleCommand({ kind: 'SEARCH_GRAPH' });
     });
     await page.waitForTimeout(500); // recenter tween
   };
   const next = async () => {
     await page.evaluate(() => {
       window.ng.getComponent(document.querySelector('app-drawing-area'))
-        .handleCommands({ kind: 'SEARCH_NEXT_MATCH' });
+        .handleCommand({ kind: 'SEARCH_NEXT_MATCH' });
     });
     await page.waitForTimeout(500);
   };

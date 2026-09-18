@@ -38,14 +38,14 @@ async function main() {
     const place = layerPt => { const s = toScreen(layerPt); xh.x = s.x; xh.y = s.y; };
 
     place(mid);
-    c.handleCommands({ kind: 'INSERT_WAYPOINT' });
+    c.handleCommand({ kind: 'INSERT_WAYPOINT' });
     const wp = dl.getDAWaypoints()[0];
     const wpPos = { x: Math.round(wp.x), y: Math.round(wp.y) };
 
     const trySelect = (cmdKind, offset) => {
       dl.unselectAll();
       place({ x: wp.x + offset, y: wp.y });   // partial overlap: 15 < circle(20)+wpR(5)
-      c.handleCommands({ kind: cmdKind });
+      c.handleCommand({ kind: cmdKind });
       return {
         cmd: cmdKind,
         offset,
@@ -67,9 +67,9 @@ async function main() {
     dl.unselectAll();
     place({ x: wp.x + 10, y: wp.y });
     const vTap = () => {
-      c.handleCommands({ kind: 'MULTI_ITEM_SELECT' });
-      c.handleCommands({ kind: 'ENTER_DRAG_MODE' });
-      c.handleCommands({ kind: 'EXIT_DRAG_MODE' });
+      c.handleCommand({ kind: 'MULTI_ITEM_SELECT' });
+      c.handleCommand({ kind: 'ENTER_DRAG_MODE' });
+      c.handleCommand({ kind: 'EXIT_DRAG_MODE' });
     };
     for (let i = 1; i <= 3; i++) {
       vTap();

@@ -152,7 +152,7 @@ async function main() {
     await waitRoutingIdle();
     await page.evaluate((l) => {
       const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-      da.handleCommands({ kind: 'APPLY_LAYOUT', layout: l });
+      da.handleCommand({ kind: 'APPLY_LAYOUT', layout: l });
     }, layout);
     await page.waitForTimeout(300);
     await waitRoutingIdle();

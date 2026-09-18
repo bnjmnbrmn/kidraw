@@ -121,10 +121,10 @@ async function main() {
 
     for (const layout of LAYOUTS) {
       await waitRoutingIdle(page);
-      await da(page, 'da.handleCommands({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
+      await da(page, 'da.handleCommand({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
       await page.waitForTimeout(200);
       await waitRoutingIdle(page);
-      await da(page, `da.handleCommands({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
+      await da(page, `da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
       await page.waitForTimeout(300);
       await waitRoutingIdle(page);
       await da(page, 'da.tweens.forEach(t => t.finish()); da.tweens = [];');
@@ -132,8 +132,8 @@ async function main() {
       for (const view of VIEWS) {
         if (view.scale === null) {
           await da(page, `
-            da.handleCommands({kind: "UNSELECT_ALL"});
-            da.handleCommands({kind: "RECENTER_VIEW"});
+            da.handleCommand({kind: "UNSELECT_ALL"});
+            da.handleCommand({kind: "RECENTER_VIEW"});
           `);
         } else {
           // Center the busiest node (the hub) at the given zoom.

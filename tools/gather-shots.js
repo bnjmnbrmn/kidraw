@@ -64,13 +64,13 @@ async function main() {
     dl.batchDraw();
   `);
   const gather = async () => {
-    await da('da.handleCommands({kind: "GATHER_CONNECTED_NODES"});');
+    await da('da.handleCommand({kind: "GATHER_CONNECTED_NODES"});');
     await finish();
     await page.waitForTimeout(450); // deferred stranger re-route
     await finish();
   };
   const ungather = async () => {
-    await da('da.handleCommands({kind: "UNGATHER"});');
+    await da('da.handleCommand({kind: "UNGATHER"});');
     await finish();
   };
 
@@ -81,7 +81,7 @@ async function main() {
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   });
   await page.waitForTimeout(800);
-  await da('da.handleCommands({kind: "RECENTER_VIEW"});');
+  await da('da.handleCommand({kind: "RECENTER_VIEW"});');
   await shoot('dev-fit', 'KiDraw Dev sample, fit view (16 labeled edges)');
 
   for (const [id, label, scale] of [
@@ -135,14 +135,14 @@ async function main() {
       daComp.tweens.forEach(t => t.finish()); daComp.tweens = [];
       daComp.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
       daComp.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
-      daComp.handleCommands({ kind: 'ADD_LABEL' });
+      daComp.handleCommand({ kind: 'ADD_LABEL' });
       const label = edge.labels[0];
       if (label) label.appendText(`needs ${i}`);
-      daComp.handleCommands({ kind: 'EXIT_LABEL_EDIT_MODE' });
-      daComp.handleCommands({ kind: 'UNSELECT_ALL' });
+      daComp.handleCommand({ kind: 'EXIT_LABEL_EDIT_MODE' });
+      daComp.handleCommand({ kind: 'UNSELECT_ALL' });
     }
   });
-  await da('da.handleCommands({kind: "RECENTER_VIEW"});');
+  await da('da.handleCommand({kind: "RECENTER_VIEW"});');
   await shoot('crowd-before', 'Synthetic 26-neighbor hub, ungathered');
   await placeOnAndCenter('hub', 0.9);
   await gather();

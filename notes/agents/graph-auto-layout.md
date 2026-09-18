@@ -35,7 +35,7 @@ Owns the math and physics of auto-layout and edge routing. Node-positioning algo
 ### Adding a new routing algorithm
 
 1. Create `src/app/drawing-area/<name>-edges.ts` with an `apply<Name>Edges(allNodes, edges, options, log)` entry point matching the existing pattern.
-2. Add a `DACommandType.APPLY_<NAME>_EDGES` command + drawing-area dispatch in `handleCommands`. Coordinate with **drawing-area** + **keymenu** for the binding.
+2. Add a `DACommandType.APPLY_<NAME>_EDGES` command + drawing-area dispatch in `dispatchCommand`. Coordinate with **drawing-area** + **keymenu** for the binding.
 3. Add the algorithm to the tuning panel's algorithm dropdown.
 4. Add quality metrics to the algorithm's output where applicable.
 5. Document trade-offs in a `notes/research-*.md` if non-obvious.

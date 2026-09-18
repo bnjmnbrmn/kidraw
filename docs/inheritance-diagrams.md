@@ -29,7 +29,7 @@ classDiagram
         -daOut: EventEmitter~DANotification~
         -zoomLevel: EventEmitter~number~
         +ngAfterViewInit(): void
-        -handleCommands(command: DACommand)
+        -handleCommand(command: DACommand)
     }
 
     class KeyMenuComponent {

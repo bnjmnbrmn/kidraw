@@ -36,7 +36,7 @@ async function main() {
   });
   await page.waitForTimeout(400);
   await page.evaluate(() => window.ng.getComponent(document.querySelector('app-drawing-area'))
-    .handleCommands({kind: 'APPLY_LAYOUT', layout: 'tree-right-clear'}));
+    .handleCommand({kind: 'APPLY_LAYOUT', layout: 'tree-right-clear'}));
   await page.waitForTimeout(3000);
 
   const result = await page.evaluate(() => {

@@ -41,7 +41,7 @@ async function main() {
 
     // First waypoint: 40 units off the straight line at midpoint.
     place({ x: mid.x + 40 * nx, y: mid.y + 40 * ny });
-    c.handleCommands({ kind: 'INSERT_WAYPOINT' });
+    c.handleCommand({ kind: 'INSERT_WAYPOINT' });
     const after1 = edge.getPathPoints().map(p => ({ x: Math.round(p.x), y: Math.round(p.y) }));
     dl.unselectAll();
 
@@ -56,7 +56,7 @@ async function main() {
     const px = -sy / slen, py = sx / slen;
     const targetCrosshairs = { x: onSeg.x + 25 * px, y: onSeg.y + 25 * py };
     place(targetCrosshairs);
-    c.handleCommands({ kind: 'INSERT_WAYPOINT' });
+    c.handleCommand({ kind: 'INSERT_WAYPOINT' });
     const after2 = edge.getPathPoints().map(p => ({ x: Math.round(p.x), y: Math.round(p.y) }));
 
     return {

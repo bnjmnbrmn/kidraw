@@ -98,11 +98,11 @@ async function main() {
       da.tweens.forEach(t => t.finish()); da.tweens = [];
       da.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
       da.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
-      da.handleCommands({ kind: 'ADD_LABEL' });
+      da.handleCommand({ kind: 'ADD_LABEL' });
       const label = edge.labels[0];
       if (label) label.appendText(`lbl${i}`);
-      da.handleCommands({ kind: 'EXIT_LABEL_EDIT_MODE' });
-      da.handleCommands({ kind: 'UNSELECT_ALL' });
+      da.handleCommand({ kind: 'EXIT_LABEL_EDIT_MODE' });
+      da.handleCommand({ kind: 'UNSELECT_ALL' });
     }
   });
 
@@ -160,7 +160,7 @@ async function main() {
   await placeOn('H');
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.handleCommands({ kind: 'GATHER_CONNECTED_NODES' });
+    da.handleCommand({ kind: 'GATHER_CONNECTED_NODES' });
     da.tweens.forEach(t => t.finish()); da.tweens = [];
   });
   // Stays: the 250ms debounce is the subject of this check.
@@ -218,7 +218,7 @@ async function main() {
   // Ungather → exact restore.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.handleCommands({ kind: 'UNGATHER' });
+    da.handleCommand({ kind: 'UNGATHER' });
     da.tweens.forEach(t => t.finish()); da.tweens = [];
   });
   await page.waitForTimeout(150);
@@ -238,7 +238,7 @@ async function main() {
   await placeOn('Y');
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.handleCommands({ kind: 'GATHER_CONNECTED_NODES' });
+    da.handleCommand({ kind: 'GATHER_CONNECTED_NODES' });
     da.tweens.forEach(t => t.finish()); da.tweens = [];
   });
   s = await gatherState();
@@ -260,7 +260,7 @@ async function main() {
     Math.max(...bearingDrift) < 0.15, `drift=${bearingDrift.map(d => d.toFixed(2)).join(',')}`);
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.handleCommands({ kind: 'UNGATHER' });
+    da.handleCommand({ kind: 'UNGATHER' });
     da.tweens.forEach(t => t.finish()); da.tweens = [];
   });
 

@@ -52,7 +52,7 @@ async function main() {
     c.crosshairsLayer.crosshairs.x = (dest.group.x() + dest.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
     c.crosshairsLayer.crosshairs.y = (dest.group.y() + dest.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
     dl.batchDraw();
-    c.handleCommands({kind: 'CONNECT_SELECTED_NODES'});
+    c.handleCommand({kind: 'CONNECT_SELECTED_NODES'});
     return {srcId: src.id, destId: dest.id};
   });
 

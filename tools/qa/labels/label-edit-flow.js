@@ -186,9 +186,9 @@ async function main() {
     // Near the right edge of the grown box — far outside the old 50px width.
     xh.x = (label.x + label.width / 2 - 5) * dl.scaleX() + dl.x();
     xh.y = label.y * dl.scaleY() + dl.y();
-    c.handleCommands({ kind: 'MULTI_ITEM_SELECT' });
+    c.handleCommand({ kind: 'MULTI_ITEM_SELECT' });
     const hit = label.isSelected;
-    c.handleCommands({ kind: 'UNSELECT_ALL' });
+    c.handleCommand({ kind: 'UNSELECT_ALL' });
     return hit;
   });
   check('grown box is selectable at its far edge', edgeHit);

@@ -83,10 +83,10 @@ async function main() {
     da.tweens.forEach(t => t.finish()); da.tweens = [];
     da.crosshairsLayer.crosshairs.x = dl.x() + mid.x * dl.scaleX();
     da.crosshairsLayer.crosshairs.y = dl.y() + mid.y * dl.scaleY();
-    da.handleCommands({ kind: 'ADD_LABEL' });
+    da.handleCommand({ kind: 'ADD_LABEL' });
     edge.labels[0]?.appendText('needs alpha');
-    da.handleCommands({ kind: 'EXIT_LABEL_EDIT_MODE' });
-    da.handleCommands({ kind: 'UNSELECT_ALL' });
+    da.handleCommand({ kind: 'EXIT_LABEL_EDIT_MODE' });
+    da.handleCommand({ kind: 'UNSELECT_ALL' });
     // The programmatic ADD_LABEL armed the keymenu's label-added flag; in the
     // real flow the held submenu key's release consumes it. Disarm it here so
     // it can't leak into a later key release.

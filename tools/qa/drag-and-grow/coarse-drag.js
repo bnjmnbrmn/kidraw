@@ -191,7 +191,7 @@ async function main() {
       const node = da.drawingLayer.getDANodes()[0];
       node.isSelected = true;
       const before = node.NODE_WIDTH;
-      da.handleCommands({kind: 'INCREASE_SELECTED_NODE_SIZE'});
+      da.handleCommand({kind: 'INCREASE_SELECTED_NODE_SIZE'});
       return {before, after: node.NODE_WIDTH};
     });
     check('explicit Increase Node Size still resizes a selected node',

@@ -63,7 +63,7 @@ the crosshair never walks under the card.
 ```
 key press → KeymenuComponent → DACommand → AppComponent → Subject<DACommand>
                                                               ↓
-                                              DrawingAreaComponent.handleCommands()
+                                              DrawingAreaComponent.handleCommand()
                                                               ↓
                                           DANotification → AppComponent → header / keymenu
 ```

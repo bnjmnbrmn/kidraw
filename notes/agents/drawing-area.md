@@ -2,7 +2,7 @@
 
 ## Mandate
 
-Owns the canvas — the largest domain. Nodes, edges, waypoints, labels, the crosshairs, selection logic, drag flows, label-edit entry / exit, mode transitions on the drawing side, the big `handleCommands` switch.
+Owns the canvas — the largest domain. Nodes, edges, waypoints, labels, the crosshairs, selection logic, drag flows, label-edit entry / exit, mode transitions on the drawing side, the `dispatchCommand` switch.
 
 ## Scope
 
@@ -40,7 +40,7 @@ The full list lives in [`architecture-invariants.md`](../architecture-invariants
 ### Adding a new command
 
 1. Add the `DACommandType` enum value + discriminated-union case in `command.model.ts`.
-2. Add a `case` in `handleCommands` calling a new private method on `DrawingAreaComponent`.
+2. Add a `case` in `dispatchCommand` calling a new private method on `DrawingAreaComponent`, and decide which lists in `command-policy.ts` the command belongs in.
 3. If the command mutates the graph, list it in `MUTATING_COMMANDS` so undo snapshots fire.
 4. If the command affects context (selection, defaults, undo state), list it in `CONTEXT_AFFECTING_COMMANDS` so `emitContextState` fires.
 5. Coordinate with **keymenu** to wire the command to a key.

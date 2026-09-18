@@ -99,22 +99,22 @@ async function main() {
       const hub = ${hubExpr(rank)};
       da.crosshairsLayer.crosshairs.x = dl.x() + (hub.konvaGroup.x() + hub.NODE_WIDTH / 2) * dl.scaleX();
       da.crosshairsLayer.crosshairs.y = dl.y() + (hub.konvaGroup.y() + hub.NODE_HEIGHT / 2) * dl.scaleY();
-      da.handleCommands({kind: "GATHER_CONNECTED_NODES"});
+      da.handleCommand({kind: "GATHER_CONNECTED_NODES"});
     `);
     await page.waitForTimeout(500);
     await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
   };
   const ungather = async () => {
-    await da('da.handleCommands({kind: "UNGATHER"});');
+    await da('da.handleCommand({kind: "UNGATHER"});');
     await page.waitForTimeout(500);
     await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
   };
 
   for (const layout of ['tree-right-clear']) {
     await waitRoutingIdle();
-    await da('da.handleCommands({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
+    await da('da.handleCommand({kind: "LOAD_NAMED_GRAPH", graphSnapshot: arg});', baseline);
     await page.waitForTimeout(200);
-    await da(`da.handleCommands({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
+    await da(`da.handleCommand({kind: "APPLY_LAYOUT", layout: ${JSON.stringify(layout)}});`);
     await page.waitForTimeout(300);
     await waitRoutingIdle();
     await da('da.tweens.forEach(t => t.finish()); da.tweens = [];');
@@ -130,7 +130,7 @@ async function main() {
     };
 
     // Plain views.
-    await da('da.handleCommands({kind:"UNSELECT_ALL"}); da.handleCommands({kind:"RECENTER_VIEW"});');
+    await da('da.handleCommand({kind:"UNSELECT_ALL"}); da.handleCommand({kind:"RECENTER_VIEW"});');
     await shoot('fit');
     await centerOn(0, 0.7);
     await shoot('hub1-70');

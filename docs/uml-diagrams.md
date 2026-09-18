@@ -14,7 +14,7 @@ classDiagram
         -crosshairsLayer: CrosshairsLayer
         -tweens: Tween[]
         +ngAfterViewInit()
-        -handleCommands(command: DACommand)
+        -handleCommand(command: DACommand)
         -zoomIn()
         -zoomOut()
         -recenterView()

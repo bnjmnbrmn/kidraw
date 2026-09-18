@@ -99,7 +99,7 @@ A typical keyboard action follows this path:
     AppComponent forwards the command
         |
         v
-    DrawingAreaComponent.handleCommands dispatches a large switch
+    DrawingAreaComponent.dispatchCommand dispatches a large switch
         |
         +--> graph/Konva objects are changed
         +--> an undo snapshot may be taken
