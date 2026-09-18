@@ -14,7 +14,7 @@ explanation graphs on `explanation-graphs`._
 > real, expressions over statement sequences, and a named method over a
 > named local.
 >
-> **The file: 9,071 → 5,901 lines** across the series (`ea47d11`..`41b6854`).
+> **The file: 9,071 → 5,707 lines** across the series (`ea47d11`..`97083d0`).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
 >   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
@@ -27,7 +27,8 @@ explanation graphs on `explanation-graphs`._
 >   geometry they cause), `nav-journey.ts` (where the walk has been and which
 >   way it was going — shared by both navigation surfaces),
 >   `link-nav-controller.ts` (the held NSEW Move by Link mode),
->   `nav-ghost.ts` (the popup's jump preview). Plus the pure pieces:
+>   `nav-ghost.ts` (the popup's jump preview), `grow-ghost.ts` (the held-Add
+>   preview, driven by a named `GrowAim`). Plus the pure pieces:
 >   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
 >   `grow-lattice.ts` (walking the placement lattice that
 >   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
@@ -35,7 +36,7 @@ explanation graphs on `explanation-graphs`._
 > - **Specs go with the unit.** `drawing-area.test-fixture.ts` gives the
 >   component specs one place to wire the collaborators; new units get their
 >   own spec against a small fake host (`file-controller.spec.ts` is the
->   pattern). 777 specs green, `npx ng build` clean.
+>   pattern). 793 specs green, `npx ng build` clean.
 > - **The tools-facing contract is a check, not a convention.**
 >   `node tools/qa/contract/component-api.js` fails when an extraction moves a
 >   field the browser scripts read. Retired names are listed there with what to
@@ -47,25 +48,19 @@ explanation graphs on `explanation-graphs`._
 >   exhaustiveness that grouped sub-dispatchers would trade away. Awaiting
 >   Ben's call (inferred, 2026-09-17 — from the absence of a decision).
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
->   file, not from a decision): the nav popup and its ghost (~530 lines, the
->   other half of navigation — note it is a *shared* widget, also driven by
->   grow-target and grow-type, so it does not move wholesale); the rest of
->   grow mode, which is now the largest concern left (~1,000 lines, ~20 state
->   fields — its ghost renderer reads a dozen of them, so it likely wants a
->   named "aim" object before it will move); then selection, the drag state
->   machine and the directed-edge flow — the service extractions sketched in
->   [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
-> - **Open question for Ben, found while extracting Move by Link:** pressing
->   into an empty quadrant. `moveLinkQuadrant`'s corner-crossing branch falls
->   back to the focused edge, so a north press on a lone east link re-reports
->   it as "north: east" and "No link in the north quadrant." never fires.
->   Written up in [`notes/bug-empty-quadrant-announced-as-a-move.md`](notes/bug-empty-quadrant-announced-as-a-move.md).
-> - **Second open question for Ben, found extracting the grow lattice:** the
->   `ON_CELL_TOLERANCE` guard in `grow-lattice.ts` cannot fire. It rejects a
->   node more than 0.6 of a step off its cell, but `Math.round` already bounds
->   each axis at 0.5, so a node is assigned its nearest cell however far off
->   the lattice it is. Written up in
->   [`notes/bug-lattice-tolerance-cannot-fire.md`](notes/bug-lattice-tolerance-cannot-fire.md).
+>   file, not from a decision): the nav popup (~370 lines now its ghost is
+>   out — note it is a *shared* widget, also driven by grow-target and
+>   grow-type, so it does not move wholesale); the rest of
+>   grow mode — its preview and lattice are out, what remains is the held-key
+>   state machine (~15 fields) and the commit paths; then selection, the drag
+>   state machine and the directed-edge flow — the service extractions
+>   sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
+> - **Findings go to `notes/` as atomic `bug-` files**, not into this block.
+>   Two so far, each "the code does X, is that wanted?", each written up with
+>   what happens, why, and the options, and each ending at Ben's call rather
+>   than at an answer:
+>   [an empty quadrant announced as a move](notes/bug-empty-quadrant-announced-as-a-move.md)
+>   and [the lattice tolerance that cannot fire](notes/bug-lattice-tolerance-cannot-fire.md).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
@@ -681,6 +676,9 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `97083d0` | Name the aim, and move the held-Add preview out |
+| `1e85a13` | Write up the two findings as notes, and file three bugs correctly |
+| `808a874` | dev-status: the grow lattice and nav ghost extractions |
 | `41b6854` | Extract the nav popup's jump preview |
 | `59658d1` | Lift the grow lattice walk out, and find a guard that cannot fire |
 | `a19ee0d` | dev-status: the two navigation extractions |
@@ -688,9 +686,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `95fdefe` | Name the walk: one NavJourney behind both navigation surfaces |
 | `d429f4d` | dev-status: record the readability refactor |
 | `2807fc5` | Extract the text editing controller |
-| `de3b243` | Extract drawing area file controller |
-| `bcb007e` | QA: a net under the file region, which had none |
-| `5d6fa41` | Collect the animations in flight, and narrow GatherHost to them |
 
 ---
 
