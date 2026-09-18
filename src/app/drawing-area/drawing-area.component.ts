@@ -76,6 +76,8 @@ import {LinkNavController, LinkNavHost} from './link-nav-controller';
 import {NavGhost, NavGhostHost} from './nav-ghost';
 import {GrowAim, GrowGhost, GrowGhostHost} from './grow-ghost';
 import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-placement';
+import {navPopupRows, orderNavCandidates} from './nav-popup-model';
+import {placePopup, popupSize} from './nav-popup-layout';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -2882,10 +2884,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const a = Math.atan2(oC.x - sC.x, -(oC.y - sC.y)); // clockwise from 12
       return a < 0 ? a + Math.PI * 2 : a;
     };
-    const ordered = [...candidates].sort((a, b) =>
-      Number(a.direction !== forwardDir) - Number(b.direction !== forwardDir)
-      || bearing(a) - bearing(b));
-    const hasForward = ordered.some(c => c.direction === forwardDir);
+    const ordered = orderNavCandidates(candidates, forwardDir, bearing);
     this.navCandidates = new Map(ordered.map(c => [c.edge.id, c]));
     this.navSource = source;
     this.navDirectionalFocus = false;
@@ -2893,14 +2892,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // deferred, so seed the candidate now for the initial popup placement.
     this.navHighlightCand = ordered[0];
     this.navPopupSelectedId = ordered[0].edge.id;
-    this.navPopupRows = ordered.map(c => ({
-      id: c.edge.id,
-      glyph: c.direction === 'out' ? '→' : '←',
-      title: (c.other.label?.text() ?? '').trim() || '(unlabeled)',
-      subtitle: c.edge.labels.map(l => l.label).filter(t => t.trim()).join(' · ') || undefined,
-      tags: [...c.edge.tags, ...c.other.tags],
-      secondary: hasForward && c.direction !== forwardDir,
-    }));
+    this.navPopupRows = navPopupRows(ordered, forwardDir);
     this.navPopupDark = this.themeService.theme === 'dark';
     this.emphasizeNavSource(source);
     if (!this.navPopupOpen) {
@@ -3105,18 +3097,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  never sits between you and where you're going. */
   private positionNavPopup(): void {
     if (!this.navSource) return;
-    // Estimates for edge clamping — keep in sync with nav-popup.component.css
-    // (width / max-height) and its compact row metrics.
-    const POPUP_W = 210;
-    const POPUP_H = Math.min(38 + this.navPopupRows.length * 28 + 16, 220);
-    const GAP = 14;
     const scale = this.drawingLayer.scaleX();
     const n = this.navSource;
     const rect = {
       x: this.drawingLayer.x() + n.group.x() * scale,
       y: this.drawingLayer.y() + n.group.y() * scale,
       w: n.NODE_WIDTH * scale,
-      h: n.NODE_HEIGHT * scale,
     };
     let destEast = true;
     if (this.navHighlightCand) {
@@ -3124,11 +3110,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const dC = this.getNodeCenterInLayerCoordinates(this.navHighlightCand.other);
       destEast = dC.x >= sC.x;
     }
-    const left = destEast ? rect.x - GAP - POPUP_W : rect.x + rect.w + GAP;
-    this.navPopupLeft = Math.max(this.viewport.minX + 8,
-      Math.min(left, this.viewport.maxX - POPUP_W - 8));
-    this.navPopupTop = Math.max(this.viewport.minY + 8,
-      Math.min(rect.y, this.viewport.maxY - POPUP_H - 8));
+    const position = placePopup(
+      rect, this.popupViewport(), popupSize(this.navPopupRows.length), destEast ? 'left' : 'right');
+    this.navPopupLeft = position.left;
+    this.navPopupTop = position.top;
+  }
+
+  private popupViewport(): {minX: number; maxX: number; minY: number; maxY: number} {
+    return {
+      minX: this.viewport.minX,
+      maxX: this.viewport.maxX,
+      minY: this.viewport.minY,
+      maxY: this.viewport.maxY,
+    };
   }
 
   /** The popup's source node grows a little so it reads as "you are here";
@@ -4769,9 +4763,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Beside the anchor node, east unless clamped. */
   private positionGrowPopup(): void {
-    const POPUP_W = 210;
-    const POPUP_H = Math.min(38 + this.navPopupRows.length * 28 + 16, 220);
-    const GAP = 14;
     const scale = this.drawingLayer.scaleX();
     const n = this.growAnchor;
     const origin = this.growOrigin!;
@@ -4784,10 +4775,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       y: this.drawingLayer.y() + origin.y * scale,
       w: 0,
     };
-    this.navPopupLeft = Math.max(this.viewport.minX + 8,
-      Math.min(rect.x + rect.w + GAP, this.viewport.maxX - POPUP_W - 8));
-    this.navPopupTop = Math.max(this.viewport.minY + 8,
-      Math.min(rect.y, this.viewport.maxY - POPUP_H - 8));
+    const position = placePopup(rect, this.popupViewport(), popupSize(this.navPopupRows.length), 'right');
+    this.navPopupLeft = position.left;
+    this.navPopupTop = position.top;
   }
 
   /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the

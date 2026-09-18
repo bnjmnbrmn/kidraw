@@ -14,8 +14,8 @@ explanation graphs on `explanation-graphs`._
 > real, expressions over statement sequences, and a named method over a
 > named local.
 >
-> **The file: 9,071 → 5,704 lines** across the series (`ea47d11`..`97083d0`,
-> plus the placement extraction below).
+> **The file: 9,071 → 5,694 lines** across the series (`ea47d11`..`97083d0`,
+> plus the placement and popup-model extractions below).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
 >   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
@@ -30,7 +30,9 @@ explanation graphs on `explanation-graphs`._
 >   `link-nav-controller.ts` (the held NSEW Move by Link mode),
 >   `nav-ghost.ts` (the popup's jump preview), `grow-ghost.ts` (the held-Add
 >   preview, driven by a named `GrowAim`), `grow-placement.ts` (the free
->   placement sub-state after choosing a node shape). Plus the pure pieces:
+>   placement sub-state after choosing a node shape), `nav-popup-layout.ts`
+>   (shared popup sizing and viewport clamping), and `nav-popup-model.ts`
+>   (candidate ordering and row mapping). Plus the pure pieces:
 >   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
 >   `grow-lattice.ts` (walking the placement lattice that
 >   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
@@ -38,7 +40,7 @@ explanation graphs on `explanation-graphs`._
 > - **Specs go with the unit.** `drawing-area.test-fixture.ts` gives the
 >   component specs one place to wire the collaborators; new units get their
 >   own spec against a small fake host (`file-controller.spec.ts` is the
->   pattern). 798 specs green, `npx ng build` clean.
+>   pattern). 803 specs green, `npx ng build` clean.
 > - **The tools-facing contract is a check, not a convention.**
 >   `node tools/qa/contract/component-api.js` fails when an extraction moves a
 >   field the browser scripts read. Retired names are listed there with what to
@@ -50,9 +52,10 @@ explanation graphs on `explanation-graphs`._
 >   exhaustiveness that grouped sub-dispatchers would trade away. Awaiting
 >   Ben's call (inferred, 2026-09-17 — from the absence of a decision).
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
->   file, not from a decision): the nav popup (~370 lines now its ghost is
->   out — note it is a *shared* widget, also driven by grow-target and
->   grow-type, so it does not move wholesale); the rest of
+>   file, not from a decision): the rest of the nav popup (~370 lines now its
+>   geometry, ordering and row model are out — note it is a *shared* widget,
+>   also driven by grow-target and grow-type, so it does not move wholesale);
+>   the rest of
 >   grow mode — its preview and lattice are out, what remains is the held-key
 >   state machine (~15 fields) and the commit paths; then selection, the drag
 >   state machine and the directed-edge flow — the service extractions
