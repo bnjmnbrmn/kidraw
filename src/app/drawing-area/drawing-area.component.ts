@@ -532,24 +532,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private canEdit = false;
 
   private checkAndEmitEditState() {
-    const hasSelection = this.drawingLayer.getSelectedDANodes().length > 0 ||
+    this.setCanEdit(this.hasTextBearingSelection() || this.isOverEditableItem());
+  }
+
+  /** Something selected that carries text of its own. */
+  private hasTextBearingSelection(): boolean {
+    return this.drawingLayer.getSelectedDANodes().length > 0 ||
       this.getSelectedLabels().length > 0;
+  }
 
-    let canEditNow = hasSelection;
+  /** The crosshairs are resting on something editable in place. */
+  private isOverEditableItem(): boolean {
+    return this.getLabelUnderCrosshairs() !== null ||
+      this.getDANodesContainingCrosshairs().length > 0;
+  }
 
-    if (!canEditNow) {
-      const label = this.getLabelUnderCrosshairs();
-      if (label) canEditNow = true;
-      else {
-        const nodes = this.getDANodesContainingCrosshairs();
-        if (nodes.length > 0) canEditNow = true;
-      }
-    }
-
-    if (this.canEdit !== canEditNow) {
-      this.canEdit = canEditNow;
-      this.canEditChange.emit(this.canEdit);
-    }
+  /** Tell the header only when the answer changes. */
+  private setCanEdit(canEdit: boolean): void {
+    if (this.canEdit === canEdit) return;
+    this.canEdit = canEdit;
+    this.canEditChange.emit(canEdit);
   }
 
   private pushUndoSnapshot(command: DACommand): void {
@@ -7298,55 +7300,31 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  private setEdgeDirectedness(directedness: EdgeDirectedness): void {
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
-    if (selectedEdges.length > 0) {
-      selectedEdges.forEach(e => e.directedness = directedness);
-    } else {
-      // Apply to edges under crosshairs
-      const box = this.getCrosshairsBBoxInDrawingLayer();
-      let applied = false;
-      for (const edge of this.drawingLayer.getDAEdges()) {
-        const points = edge.getPathPoints();
-        for (let i = 0; i < points.length - 1; i++) {
-          if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
-            edge.directedness = directedness;
-            applied = true;
-            break;
-          }
-        }
-      }
-      if (!applied) {
-        this.daOut.emit({kind: 'status-message', message: 'Select or hover an edge to change directedness'});
-        return;
-      }
+  /** The edges a style command means: the selection, else whatever the
+   *  crosshairs are over. */
+  private targetEdges(): DAEdge[] {
+    const selected = this.drawingLayer.getSelectedDAEdges();
+    return selected.length > 0 ? selected : this.getDAEdgesContainingCrosshairs();
+  }
+
+  /** Restyle those edges, or say why nothing happened — naming the thing the
+   *  user was trying to change, since the command is otherwise silent. */
+  private restyleTargetEdges(noun: string, apply: (edge: DAEdge) => void): void {
+    const edges = this.targetEdges();
+    if (edges.length === 0) {
+      this.emitStatus(`Select or hover an edge to change ${noun}`);
+      return;
     }
+    edges.forEach(apply);
     this.drawingLayer.batchDraw();
   }
 
+  private setEdgeDirectedness(directedness: EdgeDirectedness): void {
+    this.restyleTargetEdges('directedness', edge => edge.directedness = directedness);
+  }
+
   private setLineStyle(lineStyle: LineStyle): void {
-    const selectedEdges = this.drawingLayer.getSelectedDAEdges();
-    if (selectedEdges.length > 0) {
-      selectedEdges.forEach(e => e.lineStyle = lineStyle);
-    } else {
-      const box = this.getCrosshairsBBoxInDrawingLayer();
-      let applied = false;
-      for (const edge of this.drawingLayer.getDAEdges()) {
-        const points = edge.getPathPoints();
-        for (let i = 0; i < points.length - 1; i++) {
-          if (this.lineSegmentIntersectsBox(points[i], points[i + 1], box)) {
-            edge.lineStyle = lineStyle;
-            applied = true;
-            break;
-          }
-        }
-      }
-      if (!applied) {
-        this.daOut.emit({kind: 'status-message', message: 'Select or hover an edge to change line style'});
-        return;
-      }
-    }
-    this.drawingLayer.batchDraw();
+    this.restyleTargetEdges('line style', edge => edge.lineStyle = lineStyle);
   }
 
   private setItemColor(color: ItemColor): void {
@@ -7394,10 +7372,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (edges.length) parts.push(`${edges.length} link${edges.length === 1 ? '' : 's'}`);
     const name = color.charAt(0).toUpperCase() + color.slice(1);
     this.daOut.emit({kind: 'status-message', message: `${name}: ${parts.join(' + ')}`});
-  }
-
-  private lineSegmentIntersectsBox(p1: {x: number; y: number}, p2: {x: number; y: number}, box: {minX: number; minY: number; maxX: number; maxY: number}): boolean {
-    return lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY);
   }
 
 }
