@@ -334,7 +334,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
   /** Direction (unit vector, layer orientation) of the last nav-popup jump;
    *  used by gather's nav-next pick (`pickEntryCandidate`). */
-  private graphNavMomentum: {x: number; y: number} | null = null;
+  private graphNavMomentum: Point | null = null;
   /** The edge under consideration in the nav popup (preview highlight) or
    *  the edge last traveled. A glow (DAEdge.navFocused), not a selection:
    *  no editing command sees it. */
@@ -2075,7 +2075,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
 
     let text: string;
-    let layerCenter: {x: number; y: number};
+    let layerCenter: Point;
     if (match.kind === 'node') {
       text = match.node.label.text();
       match.node.isSelected = true;
@@ -2430,7 +2430,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // teardown off selection left that node's blink timer running for the rest
     // of the session, with a caret visible on a node nobody was editing.
     // hideCursor on a node without one is a no-op.
-    const resized = new Map<DANode, {x: number; y: number}>();
+    const resized = new Map<DANode, Point>();
     this.drawingLayer.getDANodes().forEach(n => this.toggleNodeCaret(n, () => n.hideCursor(), resized));
     this.settleCaretResizes(resized);
     this.getAllLabels().forEach(l => l.hideCursor());
@@ -2553,7 +2553,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  Showing or hiding the caret never moves the node, so the size read
    *  beforehand gives that centre. */
   private toggleNodeCaret(node: DANode, toggle: () => boolean,
-                          resized: Map<DANode, {x: number; y: number}>): void {
+                          resized: Map<DANode, Point>): void {
     const width = node.NODE_WIDTH;
     const height = node.NODE_HEIGHT;
     if (toggle()) resized.set(node, {x: node.group.x() + width / 2, y: node.group.y() + height / 2});
@@ -2561,7 +2561,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Keep caret-resized nodes on their centres and their edges attached,
    *  the same as when typing grows a node. */
-  private settleCaretResizes(resized: Map<DANode, {x: number; y: number}>): void {
+  private settleCaretResizes(resized: Map<DANode, Point>): void {
     if (resized.size === 0) return;
     const nodes = [...resized.keys()];
     this.settleGrowingNodes(nodes, resized);
@@ -2569,8 +2569,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Box centres of the nodes being edited, read before their text changes. */
-  private selectedNodeCentres(): Map<DANode, {x: number; y: number}> {
-    const centres = new Map<DANode, {x: number; y: number}>();
+  private selectedNodeCentres(): Map<DANode, Point> {
+    const centres = new Map<DANode, Point>();
     for (const node of this.drawingLayer.getSelectedDANodes()) {
       centres.set(node, {
         x: node.group.x() + node.NODE_WIDTH / 2,
@@ -2587,7 +2587,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  not the neighbour. The rest of the graph holds still while you type. */
   private settleGrowingNodes(
     grown: DANode[],
-    centres: Map<DANode, {x: number; y: number}>,
+    centres: Map<DANode, Point>,
   ): void {
     if (grown.length === 0) return;
     for (const node of grown) {
@@ -2877,7 +2877,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private viewCenterX(): number { return this.viewMinX() + this.viewWidth() / 2; }
   private viewCenterY(): number { return this.viewMinY() + this.viewHeight() / 2; }
 
-  private crosshairsEdgeMargin(target: {x: number; y: number}): {x: number; y: number} {
+  private crosshairsEdgeMargin(target: Point): Point {
     const BASE = 60;
     const PAD = 24;
     const scale = this.drawingLayer.scaleX();
@@ -2935,11 +2935,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Where one movement press lands the crosshairs, in stage pixels. */
   private crosshairsMoveTarget(
-    current: {x: number; y: number},
+    current: Point,
     deltaX: number,
     deltaY: number,
     tier?: GridTier,
-  ): {x: number; y: number} {
+  ): Point {
     if (!tier) {
       // Raw pixel movement (focusNode, moveByNode, zoom, etc.)
       this.clearNormalMovementGoal();
@@ -2970,9 +2970,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private goalLineStep(
     axis: 'x' | 'y',
     sign: -1 | 1,
-    inLayer: {x: number; y: number},
+    inLayer: Point,
     grid: MovementGrid,
-  ): {x: number; y: number} {
+  ): Point {
     if (!this.normalMovementGoal || this.normalMovementGoal.axis !== axis) {
       this.normalMovementGoal = startNormalMovementGoal(axis, inLayer);
     }
@@ -2990,9 +2990,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     tier: GridTier,
     deltaX: number,
     deltaY: number,
-    inLayer: {x: number; y: number},
+    inLayer: Point,
     grid: MovementGrid,
-  ): {x: number; y: number} {
+  ): Point {
     const step = gridSnapStepper(this.beginGridSnap(tier, grid));
     return {x: step(inLayer.x, deltaX), y: step(inLayer.y, deltaY)};
   }
@@ -3006,7 +3006,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return spacing;
   }
 
-  private tweenCrosshairsTo(to: {x: number; y: number}): void {
+  private tweenCrosshairsTo(to: Point): void {
     this.tweens.push(new Konva.Tween({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
@@ -3026,7 +3026,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Slide the drawing the distance the crosshairs could not travel, so the
    *  gesture continues past the edge of the viewport. */
-  private panLayerByOverflow(overflow: {x: number; y: number}): void {
+  private panLayerByOverflow(overflow: Point): void {
     const to = {
       x: this.drawingLayer.x() - overflow.x,
       y: this.drawingLayer.y() - overflow.y,
@@ -3708,7 +3708,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  traversal; a cold start uses clockwise order from North. */
   private focusLinkNavEntry(
     source: DANode,
-    momentum: {x: number; y: number} | null,
+    momentum: Point | null,
   ): NavCandidate | null {
     const navCandidates = this.navCandidatesFor(source);
     if (navCandidates.length === 0) {
@@ -3763,7 +3763,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private linkNavGeometryCandidates(
     source: DANode,
     navCandidates: readonly NavCandidate[],
-  ): {id: string; direction: {x: number; y: number} | null}[] {
+  ): {id: string; direction: Point | null}[] {
     return navCandidates.map(candidate => {
       const path = candidate.edge.getPathPoints();
       const flow = endpointFlowDirection(path, candidate.direction === 'out' ? 'src' : 'dest');
@@ -4653,7 +4653,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private centerViewOnLayerPoint(
-    p: {x: number; y: number},
+    p: Point,
     targetScale = this.drawingLayer.scaleX(),
     onFinish?: () => void,
   ): void {
@@ -4751,7 +4751,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Current stage center of a stop by id+kind (positions move under pan). */
-  private navStopCenter(id: string, kind: 'node'|'label'|'waypoint'): {x: number; y: number} | null {
+  private navStopCenter(id: string, kind: 'node'|'label'|'waypoint'): Point | null {
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
     if (kind === 'node') {
@@ -4964,11 +4964,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  spliced to split the chosen segment (segment 0 splits before the first
    *  control point; segment k splits between cp[k-1] and cp[k]). Returns
    *  undefined if no edges exist. */
-  private findNearestEdgeSnap(point: {x: number; y: number}):
-      {edge: DAEdge; point: {x: number; y: number}; segmentIndex: number} | undefined {
+  private findNearestEdgeSnap(point: Point):
+      {edge: DAEdge; point: Point; segmentIndex: number} | undefined {
     const edges = this.drawingLayer.getDAEdges();
     let bestEdge: DAEdge | undefined;
-    let bestSnap: {x: number; y: number} | undefined;
+    let bestSnap: Point | undefined;
     let bestSeg = 0;
     let bestDist = Infinity;
     for (const edge of edges) {
@@ -4987,10 +4987,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Closest point on one edge to a drawing-layer point. Keeping this
    *  edge-specific lets Select+Drag turn the exact edge under `v` into a
    *  waypoint drag, even when another edge passes very close by. */
-  private findSnapOnEdge(edge: DAEdge, point: {x: number; y: number}):
-      {point: {x: number; y: number}; segmentIndex: number; distance: number} | undefined {
+  private findSnapOnEdge(edge: DAEdge, point: Point):
+      {point: Point; segmentIndex: number; distance: number} | undefined {
     const pts = edge.getPathPoints();
-    let best: {point: {x: number; y: number}; segmentIndex: number; distance: number} | undefined;
+    let best: {point: Point; segmentIndex: number; distance: number} | undefined;
     for (let i = 0; i < pts.length - 1; i++) {
       const closest = closestPointOnSeg(
         point.x, point.y,
@@ -5511,8 +5511,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Show carets on everything about to be edited. A crosshairs point places
    *  the caret spatially for the single target under `i`; selection-driven
    *  editing retains the established end-of-text behavior. */
-  private showEditCarets(point?: {x: number; y: number}): void {
-    const resized = new Map<DANode, {x: number; y: number}>();
+  private showEditCarets(point?: Point): void {
+    const resized = new Map<DANode, Point>();
     this.drawingLayer.getSelectedDANodes().forEach(n => {
       if (point) {
         n.setCursorFromLocalPoint({
@@ -5707,7 +5707,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growActive = false;
   private growAnchor: DANode | null = null;
   /** Start point for an empty-canvas add, in drawing-layer coordinates. */
-  private growOrigin: {x: number; y: number} | null = null;
+  private growOrigin: Point | null = null;
   /** Existing-node landing selected through the Move-by-Node engine. */
   private growTarget: DANode | null = null;
   /** Empty insertion landing selected through the same navigation engine. */
@@ -5735,7 +5735,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growPlacing = false;
   private growShape: NodeShape | undefined = undefined;
   /** Ghost position in drawing-layer coordinates (node center). */
-  private growPlacePos: {x: number; y: number} | null = null;
+  private growPlacePos: Point | null = null;
   /** First directional press throws the node a full spacing in that
    *  direction; later presses step it by the grid. */
   private growPlacedRough = false;
@@ -5992,8 +5992,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  enough to one to carry on walking from. */
   private growCellOfNode(
     node: DANode,
-    anchorCentre: {x: number; y: number},
-    step: {x: number; y: number},
+    anchorCentre: Point,
+    step: Point,
   ): {ix: number; iy: number} | null {
     const centre = this.getNodeCenterInLayerCoordinates(node);
     const ix = Math.round((centre.x - anchorCentre.x) / step.x);
@@ -6076,7 +6076,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** The node standing on a lattice cell — which is why the cell was not
    *  offered — by the same geometry the builder refuses it with (da-510). */
-  private growNodeAtCell(at: {x: number; y: number}): DANode | null {
+  private growNodeAtCell(at: Point): DANode | null {
     const anchor = this.growAnchor;
     const clearance = 12;
     let best: {node: DANode; distance: number} | null = null;
@@ -6102,9 +6102,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * cell, is taken first; a node further out is simply reached a press later.
    */
   private growNodeInTheWay(
-    from: {x: number; y: number},
-    step: {x: number; y: number},
-    cell: {x: number; y: number},
+    from: Point,
+    step: Point,
+    cell: Point,
   ): DANode | null {
     const reach = Math.abs(step.x * (cell.x - from.x) + step.y * (cell.y - from.y));
     if (reach <= 0) return null;
@@ -6228,7 +6228,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The cell of the held-Add lattice: the placement spacing on each axis,
    *  rounded up to a whole major grid cell so every candidate spot sits a whole
    *  number of coarse squares from the anchor. */
-  private growLatticeStep(anchor: DANode | null = this.growAnchor): {x: number; y: number} {
+  private growLatticeStep(anchor: DANode | null = this.growAnchor): Point {
     const cell = Math.max(1, this.drawingLayer.getGridSpacing());
     const onGrid = (spacing: number) => Math.max(cell, Math.ceil(spacing / cell) * cell);
     return {
@@ -6508,7 +6508,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Dashed outline for the placement ghost, per shape. */
-  private growGhostShape(shape: NodeShape, center: {x: number; y: number},
+  private growGhostShape(shape: NodeShape, center: Point,
                          w: number, h: number, stroke: string, scale: number): Konva.Shape {
     const common = {stroke, dash: [6, 4], strokeWidth: 2 / scale};
     switch (shape) {
@@ -6683,10 +6683,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private addGrowGhostNode(
     ghost: Konva.Group,
     anchor: DANode | null,
-    anchorCenter: {x: number; y: number},
+    anchorCenter: Point,
     stroke: string,
     scale: number,
-  ): {center: {x: number; y: number}; half: {w: number; h: number}} {
+  ): {center: Point; half: {w: number; h: number}} {
     const box = DrawingAreaComponent.GROW_GHOST_BOX;
     const half = {w: box.w / 2, h: box.h / 2};
 
@@ -6730,8 +6730,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private addGrowGhostEdge(
     ghost: Konva.Group,
     anchor: DANode,
-    anchorCenter: {x: number; y: number},
-    end: {center: {x: number; y: number}; half: {w: number; h: number}},
+    anchorCenter: Point,
+    end: {center: Point; half: {w: number; h: number}},
     stroke: string,
     scale: number,
   ): void {
@@ -7089,7 +7089,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   // ---------------------------------------------------------------------
 
   private areaSelectActive = false;
-  private areaSelectAnchor: {x: number; y: number} | null = null;
+  private areaSelectAnchor: Point | null = null;
   private areaSelectMarquee: Konva.Rect | null = null;
   /** Items this marquee selected — shrinking the box releases exactly these,
    *  never a selection the user had before the gesture. */
