@@ -40,6 +40,7 @@ import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-sp
 import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
+import { Camera } from './camera';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -271,6 +272,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The fisheye gather view (gather-controller.ts). Its state lives with it;
    *  the drawing area only lends it the layer, the tweens and the nav context. */
   private readonly gather = new GatherController(this.gatherHost());
+  /** The stage↔layer transform (camera.ts). Reads the drawing layer
+   *  lazily, because that layer is built in ngAfterViewInit. */
+  private readonly camera = new Camera(() => this.drawingLayer);
   /** Move-by-node and its overlay (navigation-grid-controller.ts). */
   private readonly navGrid = new NavigationGridController(this.navigationGridHost());
   /** Labelable node created by the held insert hub. It is focused only when
@@ -2518,12 +2522,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.finishTweens();
-    const scale = this.drawingLayer.scaleX();
-    const pasted = this.drawingLayer.pasteSubgraph(
-      this.clipboard,
-      (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
-      (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
-    );
+    const at = this.crosshairsInLayerCoords();
+    const pasted = this.drawingLayer.pasteSubgraph(this.clipboard, at.x, at.y);
     this.updateEdgesForResizedNodes(pasted);
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
@@ -2951,24 +2951,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.gridInitialized = true;
 
     const grid: MovementGrid = {
-      scale: this.drawingLayer.scaleX(),
+      scale: this.camera.scale,
       major: this.drawingLayer.getGridSpacing(),
       minor: this.drawingLayer.getSubGridSpacing(),
     };
-    const inLayer = {
-      x: (current.x - this.drawingLayer.x()) / grid.scale,
-      y: (current.y - this.drawingLayer.y()) / grid.scale,
-    };
+    const inLayer = this.camera.toLayer(current);
     const axis: 'x' | 'y' | null = deltaX !== 0 ? 'x' : deltaY !== 0 ? 'y' : null;
 
     const landing = tier === 'normal' && axis
       ? this.goalLineStep(axis, (axis === 'x' ? Math.sign(deltaX) : Math.sign(deltaY)) as -1 | 1, inLayer, grid)
       : this.gridSnapStep(tier, deltaX, deltaY, inLayer, grid);
 
-    return {
-      x: landing.x * grid.scale + this.drawingLayer.x(),
-      y: landing.y * grid.scale + this.drawingLayer.y(),
-    };
+    return this.camera.toStage(landing);
   }
 
   /** Normal movement follows a visible goal line in fixed, configured steps.
@@ -3065,13 +3059,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const goal = this.normalMovementGoal;
     if (!goal) return;
 
-    const scale = this.drawingLayer.scaleX();
-    const minX = -this.drawingLayer.x() / scale - this.stage.width() / scale;
-    const maxX = (this.stage.width() - this.drawingLayer.x()) / scale +
-      this.stage.width() / scale;
-    const minY = -this.drawingLayer.y() / scale - this.stage.height() / scale;
-    const maxY = (this.stage.height() - this.drawingLayer.y()) / scale +
-      this.stage.height() / scale;
+    // A screenful of overshoot each side, so the line never ends in view.
+    const overshoot = {
+      x: this.camera.toLayerDistance(this.stage.width()),
+      y: this.camera.toLayerDistance(this.stage.height()),
+    };
+    const topLeft = this.camera.toLayer({x: 0, y: 0});
+    const bottomRight = this.camera.toLayer({x: this.stage.width(), y: this.stage.height()});
+    const minX = topLeft.x - overshoot.x, maxX = bottomRight.x + overshoot.x;
+    const minY = topLeft.y - overshoot.y, maxY = bottomRight.y + overshoot.y;
     const line = new Konva.Line({
       name: 'normal-movement-goal-line',
       points: goal.axis === 'x'
@@ -3079,8 +3075,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         : [goal.line, minY, goal.line, maxY],
       stroke: this.visualConfigService
         .getEffectivePalette(this.themeService.theme).crosshairsStroke,
-      strokeWidth: 1.5 / scale,
-      dash: [10 / scale, 7 / scale],
+      // Screen-constant: the guide keeps its weight at any zoom.
+      strokeWidth: this.camera.toLayerDistance(1.5),
+      dash: [this.camera.toLayerDistance(10), this.camera.toLayerDistance(7)],
       opacity: 0.58,
       listening: false,
     });
@@ -3493,10 +3490,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private checkResizeHandleProximity(): void {
     const PROXIMITY_THRESHOLD = 25; // in drawing-layer units
 
-    // Convert crosshairs position to drawing-layer coordinates
-    const scale = this.drawingLayer.scaleX();
-    const crosshairsX = (this.crosshairsLayer.crosshairs.x - this.drawingLayer.x()) / scale;
-    const crosshairsY = (this.crosshairsLayer.crosshairs.y - this.drawingLayer.y()) / scale;
+    const {x: crosshairsX, y: crosshairsY} = this.camera.toLayer({
+      x: this.crosshairsLayer.crosshairs.x,
+      y: this.crosshairsLayer.crosshairs.y,
+    });
 
     let closestNode: DANode | null = null;
     let closestDist = Infinity;
@@ -4282,19 +4279,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The viewport in layer coordinates, inset so a boosted ghost box of the
    *  given size lands fully visible: half the rendered box plus a screen margin. */
   private navGhostBounds(half: {w: number; h: number}, boost: number): {lo: Point; hi: Point} {
-    const scale = this.drawingLayer.scaleX();
-    const margin = 16 / scale;
-    const insetX = half.w * boost + margin;
-    const insetY = half.h * boost + margin;
+    const margin = this.camera.toLayerDistance(16);
+    const inset = {x: half.w * boost + margin, y: half.h * boost + margin};
+    const topLeft = this.camera.toLayer({x: 0, y: 0});
+    const bottomRight = this.camera.toLayer({x: this.stage.width(), y: this.stage.height()});
     return {
-      lo: {
-        x: -this.drawingLayer.x() / scale + insetX,
-        y: -this.drawingLayer.y() / scale + insetY,
-      },
-      hi: {
-        x: (this.stage.width() - this.drawingLayer.x()) / scale - insetX,
-        y: (this.stage.height() - this.drawingLayer.y()) / scale - insetY,
-      },
+      lo: {x: topLeft.x + inset.x, y: topLeft.y + inset.y},
+      hi: {x: bottomRight.x - inset.x, y: bottomRight.y - inset.y},
     };
   }
 
@@ -4455,11 +4446,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  over the same graph point) and the zoom level is untouched. */
   private recenterViewOnCrosshairs(): void {
     this.finishTweens();
-    const scale = this.drawingLayer.scaleX();
-    this.centerViewOnLayerPoint({
-      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
-      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
-    });
+    this.centerViewOnLayerPoint(this.crosshairsInLayerCoords());
   }
 
   // ─── Operations: the write path for changes that aren't keymenu commands ──
@@ -4821,15 +4808,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
   }
 
-  private getNodeCenterInStageCoordinates(node: DANode): {x: number; y: number} {
-    const scale = this.drawingLayer.scaleX();
-    return {
-      x: this.drawingLayer.x() + (node.group.x() + node.NODE_WIDTH / 2) * scale,
-      y: this.drawingLayer.y() + (node.group.y() + node.NODE_HEIGHT / 2) * scale,
-    };
+  private getNodeCenterInStageCoordinates(node: DANode): Point {
+    return this.camera.toStage(this.getNodeCenterInLayerCoordinates(node));
   }
 
-  private getNodeCenterInLayerCoordinates(node: DANode): {x: number; y: number} {
+  private getNodeCenterInLayerCoordinates(node: DANode): Point {
     return {
       x: node.group.x() + node.NODE_WIDTH / 2,
       y: node.group.y() + node.NODE_HEIGHT / 2,
@@ -4968,12 +4951,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-  private crosshairsInLayerCoords(): {x: number; y: number} {
-    const scale = this.drawingLayer.scaleX();
-    return {
-      x: (this.crosshairsLayer.crosshairsX() - this.drawingLayer.x()) / scale,
-      y: (this.crosshairsLayer.crosshairsY() - this.drawingLayer.y()) / scale,
-    };
+  private crosshairsInLayerCoords(): Point {
+    return this.camera.toLayer({
+      x: this.crosshairsLayer.crosshairsX(),
+      y: this.crosshairsLayer.crosshairsY(),
+    });
   }
 
   /** Edge whose polyline comes closest to `point`, plus the snapped closest
@@ -5117,18 +5099,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
   private getCrosshairsBBoxInDrawingLayer(): { minX: number; minY: number; maxX: number; maxY: number; cx: number; cy: number } {
-    const rect = this.crosshairsLayer.crosshairs.konvaGroup.getClientRect();
-    const scale = this.drawingLayer.scaleX();
-    const layerX = this.drawingLayer.x();
-    const layerY = this.drawingLayer.y();
-    const minX = (rect.x - layerX) / scale;
-    const minY = (rect.y - layerY) / scale;
-    const maxX = (rect.x + rect.width - layerX) / scale;
-    const maxY = (rect.y + rect.height - layerY) / scale;
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    this.log.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${scale} layerPos=(${layerX},${layerY})`);
-    return { minX, minY, maxX, maxY, cx, cy };
+    const {minX, minY, maxX, maxY} = this.camera.boundsToLayer(
+      this.crosshairsLayer.crosshairs.konvaGroup.getClientRect());
+    this.log.log(`crosshairs bbox (local): min(${minX.toFixed(1)},${minY.toFixed(1)}) max(${maxX.toFixed(1)},${maxY.toFixed(1)}) scale=${this.camera.scale} layerPos=(${this.camera.origin.x},${this.camera.origin.y})`);
+    return {minX, minY, maxX, maxY, cx: (minX + maxX) / 2, cy: (minY + maxY) / 2};
   }
 
   private edgeIntersectsBox(edge: DAEdge, box: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
@@ -6333,11 +6307,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
-    const scale = this.drawingLayer.scaleX();
-    const newNode = this.drawingLayer.createNewNode(
-      pos.x * scale + this.drawingLayer.x(),
-      pos.y * scale + this.drawingLayer.y(),
-      shape);
+    const at = this.camera.toStage(pos);
+    const newNode = this.drawingLayer.createNewNode(at.x, at.y, shape);
     this.newNodeEdgeFocus = anchor ? this.wireGrowEdge(anchor, newNode, dirState) : null;
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
@@ -6432,12 +6403,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
-    const scale = this.drawingLayer.scaleX();
-    const newNode = this.drawingLayer.createNewNode(
-      insertion.x * scale + this.drawingLayer.x(),
-      insertion.y * scale + this.drawingLayer.y(),
-      this._defaultNodeShape,
-    );
+    const at = this.camera.toStage(insertion);
+    const newNode = this.drawingLayer.createNewNode(at.x, at.y, this._defaultNodeShape);
     this.newNodeEdgeFocus = this.wireGrowEdge(anchor, newNode, dirState);
 
     const labelable = newNode.nodeShape !== 'junction' &&

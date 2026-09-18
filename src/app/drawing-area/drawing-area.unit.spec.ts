@@ -6,6 +6,7 @@ import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
 import { DACrosshairs } from './da-crosshairs.group';
 import { DrawingAreaComponent } from './drawing-area.component';
+import { Camera } from './camera';
 import { lineSegmentIntersectsRect, closestPointOnSegment } from './utils';
 import Konva from 'konva';
 
@@ -862,6 +863,8 @@ describe('DrawingArea Unit Tests', () => {
       const edge = new DAEdge(source, dest, '');
       component.drawingLayer = drawingLayer;
       component.stage = {width: () => 800, height: () => 600};
+      // Object.create skips field initialisers; the camera is one.
+      component.camera = new Camera(() => component.drawingLayer);
       component.crosshairsLayer = new Konva.Layer();
       component.visualConfigService = {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
@@ -908,6 +911,8 @@ describe('DrawingArea Unit Tests', () => {
       drawingLayer.addRawNode(farther);
       component.drawingLayer = drawingLayer;
       component.crosshairsLayer = {crosshairsX: () => 190, crosshairsY: () => 180};
+      // Object.create skips field initialisers; the camera is one.
+      component.camera = new Camera(() => component.drawingLayer);
       component.finishTweens = () => undefined;
       component.getDANodesContainingCrosshairs = () => [];
       component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
