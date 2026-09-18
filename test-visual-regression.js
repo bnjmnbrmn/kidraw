@@ -31,7 +31,7 @@ class VisualRegressionTester {
       // Test scenarios
       const tests = [
         { name: 'initial-state', url: 'http://localhost:4200' },
-        { name: 'demo-data', url: 'http://localhost:4200?demo=true' },
+        { name: 'demo-data', url: 'http://localhost:4200?samples=true', action: 'load-basic-sample' },
         { name: 'crosshairs-moved', url: 'http://localhost:4200', action: 'move-crosshairs' },
         { name: 'node-created', url: 'http://localhost:4200', action: 'create-node' },
         { name: 'zoom-max', url: 'http://localhost:4200', action: 'zoom-max' },
@@ -151,6 +151,12 @@ class VisualRegressionTester {
         await page.keyboard.press('i');
         await new Promise(resolve => setTimeout(resolve, 200));
         await page.keyboard.type('Test Label');
+        break;
+
+      case 'load-basic-sample':
+        await page.waitForSelector('select.sample-graph-select', { timeout: 10000 });
+        await page.select('select.sample-graph-select', 'basic');
+        await new Promise(resolve => setTimeout(resolve, 200));
         break;
     }
   }

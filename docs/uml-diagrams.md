@@ -146,7 +146,8 @@ classDiagram
 ```mermaid
 classDiagram
     class DemoDataService {
-        +createDemoGraph(drawingLayer: DrawingLayer)
+        +sampleGraphs: SampleGraphDef[]
+        +loadGraph(graphId: string, drawingLayer: DrawingLayer)
         -createNode(x: number, y: number, text: string): DANode
         -createEdge(src: DANode, dest: DANode): DAEdge
     }

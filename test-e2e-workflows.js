@@ -137,21 +137,28 @@ class E2EWorkflowTester {
     return { passed: true, message: 'Node created and positioned correctly' };
   }
 
+  async loadSampleGraph(page, graphId = 'basic') {
+    await page.waitForSelector('select.sample-graph-select', { timeout: 10000 });
+    await page.select('select.sample-graph-select', graphId);
+    await new Promise(resolve => setTimeout(resolve, 150));
+  }
+
   async complexGraphWorkflow(page) {
-    await page.goto('http://localhost:4200?demo=true');
+    await page.goto('http://localhost:4200?samples=true');
     await page.waitForSelector('canvas', { timeout: 10000 });
+    await this.loadSampleGraph(page);
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const state = await this.getComponentState(page);
     
-    // Should have demo data
+    // Should have the basic sample graph
     if (state.nodeCount < 5) {
-      return { passed: false, message: 'Demo data not loaded' };
+      return { passed: false, message: 'Sample data not loaded' };
     }
     
     // Verify edge connections
     if (state.edgeCount < 5) {
-      return { passed: false, message: 'Demo edges not created' };
+      return { passed: false, message: 'Sample edges not created' };
     }
     
     // Verify arrow calculations (edge-to-edge connections)
@@ -164,7 +171,7 @@ class E2EWorkflowTester {
       // For horizontal edges, Y should be at center, X should be at edges
       const [x1, y1, x2, y2] = edge.linePoints;
       
-      // For the demo data, we know the expected values:
+      // For the basic sample, we know the expected values:
       // Edge 0: Node 0 (100,100) to Node 1 (300,100) should be [200,150,300,150]
       // Edge 1: Node 1 (300,100) to Node 2 (500,100) should be [400,150,500,150]
       // etc.
@@ -183,8 +190,9 @@ class E2EWorkflowTester {
   }
 
   async zoomPanWorkflow(page) {
-    await page.goto('http://localhost:4200?demo=true');
+    await page.goto('http://localhost:4200?samples=true');
     await page.waitForSelector('canvas', { timeout: 10000 });
+    await this.loadSampleGraph(page);
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Get initial scale
@@ -325,8 +333,9 @@ class E2EWorkflowTester {
   }
 
   async selectionWorkflow(page) {
-    await page.goto('http://localhost:4200?demo=true');
+    await page.goto('http://localhost:4200?samples=true');
     await page.waitForSelector('canvas', { timeout: 10000 });
+    await this.loadSampleGraph(page);
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Move crosshairs to first node
@@ -490,8 +499,9 @@ class E2EWorkflowTester {
   }
 
   async keyboardWorkflow(page) {
-    await page.goto('http://localhost:4200?demo=true');
+    await page.goto('http://localhost:4200?samples=true');
     await page.waitForSelector('canvas', { timeout: 10000 });
+    await this.loadSampleGraph(page);
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const initialPos = await this.getCrosshairsPosition(page);

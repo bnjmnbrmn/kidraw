@@ -368,29 +368,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.setHeading(this.headingRadians);
     this.crosshairsLayer.setHeadingVisible(false);
 
-    // Check for demo flag in URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('demo') as string === 'true') {
-      this.demoDataService.createDemoGraph(this.drawingLayer);
-      this.drawingLayer.applyThemeColors(effectivePalette());
-    } else {
-      // Restore the localStorage draft (v2 schema; auto-migrates v1).
-      const draft = this.draftStorage.load();
-      if (draft) {
-        try {
-          const snapshot = this.draftStorage.draftToSnapshot(draft);
-          this.drawingLayer.restoreGraph(snapshot);
-          this.drawingLayer.applyThemeColors(effectivePalette());
-          // Keep the user's place across a refresh; fall back to fit only
-          // when the draft predates viewport persistence. Stash it so the
-          // vault reopen (initVault) honors it instead of re-fitting.
-          this.fileController.noteStartupDraftView(draft.view ?? null);
-          if (!this.restoreViewport(draft.view) && snapshot.nodes.length > 0) {
-            this.fitViewToContent();
-          }
-        } catch {
-          // Ignore corrupt stored data
+    // Restore the localStorage draft (v2 schema; auto-migrates v1).
+    const draft = this.draftStorage.load();
+    if (draft) {
+      try {
+        const snapshot = this.draftStorage.draftToSnapshot(draft);
+        this.drawingLayer.restoreGraph(snapshot);
+        this.drawingLayer.applyThemeColors(effectivePalette());
+        // Keep the user's place across a refresh; fall back to fit only
+        // when the draft predates viewport persistence. Stash it so the
+        // vault reopen (initVault) honors it instead of re-fitting.
+        this.fileController.noteStartupDraftView(draft.view ?? null);
+        if (!this.restoreViewport(draft.view) && snapshot.nodes.length > 0) {
+          this.fitViewToContent();
         }
+      } catch {
+        // Ignore corrupt stored data
       }
     }
 

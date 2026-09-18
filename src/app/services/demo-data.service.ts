@@ -387,8 +387,4 @@ export class DemoDataService {
     ]);
   }
 
-  // Legacy method for URL parameter demo
-  createDemoGraph(drawingLayer: DrawingLayer) {
-    this.buildBasicFlow(drawingLayer);
-  }
 }

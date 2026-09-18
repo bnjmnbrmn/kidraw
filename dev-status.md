@@ -14,7 +14,7 @@ explanation graphs on `explanation-graphs`._
 > real, expressions over statement sequences, and a named method over a
 > named local.
 >
-> **The file: 9,071 → 5,694 lines** across the series (`ea47d11`..`97083d0`,
+> **The file: 9,071 → 5,687 lines** across the series (`ea47d11`..`97083d0`,
 > plus the placement and popup-model extractions below).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
@@ -41,6 +41,9 @@ explanation graphs on `explanation-graphs`._
 >   component specs one place to wire the collaborators; new units get their
 >   own spec against a small fake host (`file-controller.spec.ts` is the
 >   pattern). 803 specs green, `npx ng build` clean.
+> - **The old URL-driven demo bootstrap is gone.** Startup restores the local
+>   draft; sample graphs remain available through the explicit samples affordance
+>   (Ben, 2026-09-18).
 > - **The tools-facing contract is a check, not a convention.**
 >   `node tools/qa/contract/component-api.js` fails when an extraction moves a
 >   field the browser scripts read. Retired names are listed there with what to
