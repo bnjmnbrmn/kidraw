@@ -145,6 +145,7 @@ _Workflow rules and retrospective lessons._
 
 - [Workflow lessons](process-workflow-lessons.md) — what works, what to be careful about, suggested phase ordering for new features.
 - [Parallel worktree dispatch failure modes](process-parallel-worktree-dispatch.md) — stale base, cwd confusion, budget exhaustion, auto-cleanup; recovery checklist + mitigations.
+- [What "more readable" means here](style-refactoring-taste.md) — Ben's refactoring taste, from four side-by-side calls: ~10-line methods, expressions over statements, higher-order helpers, methods over locals.
 - [IDE inspections on large files](process-ide-inspections.md) — an empty result is not a clean result; how to probe the inspector instead of trusting its silence.
 
 ## Agents
