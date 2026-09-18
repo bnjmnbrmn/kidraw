@@ -70,6 +70,7 @@ import {
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
 import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
+import {NavJourney} from './nav-journey';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -296,25 +297,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  traversal stop (label/waypoint pseudo-node). */
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
-  /** Direction (unit vector, layer orientation) of the last nav-popup jump;
-   *  used by gather's nav-next pick (`pickEntryCandidate`). */
-  private graphNavMomentum: Point | null = null;
-  /** The edge under consideration in the nav popup (preview highlight) or
-   *  the edge last traveled. A glow (DAEdge.navFocused), not a selection:
-   *  no editing command sees it. */
-  private graphNavEdge: DAEdge | null = null;
-  /** The traversal's current node: where the last nav jump landed (or
-   *  anchored). Anchor of last resort for navigation and gather. */
-  private graphNavLastNode: DANode | null = null;
+  /** Where traversal has been and which way it was going: momentum, the
+   *  current node, the focused edge and the jumplist (nav-journey.ts).
+   *  Move by Link and the nav popup share it, so one continues the other. */
+  private readonly journey = new NavJourney();
   /** Source and focus state for the held, popup-free Move by Link mode. */
   private linkNavSource: DANode | null = null;
   private linkNavDirectionalFocus = false;
   private readonly linkNavQuadrantLines = new Overlay<Konva.Group>(() => this.crosshairsLayer);
   private linkNavQuadrantRefreshTimer: number | null = null;
-  /** In/out sense of the last nav jump — the popup's "momentum": candidates
-   *  continuing this direction are the primary group, and a single one
-   *  auto-advances without a popup. */
-  private navDirection: 'out' | 'in' | null = null;
 
   // --- Nav popup state (template bindings + open-session bookkeeping) ---
   navPopupOpen = false;
@@ -334,9 +325,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  hold — a quick tap walks the chain without flashing UI). */
   navPopupHidden = false;
   private navPopupRevealTimer: number | null = null;
-  /** Vim-style jumplist over nav landings: Ctrl+O back, Ctrl+I forward. */
-  private navHistory: string[] = [];
-  private navHistoryIndex = -1;
   private navCandidates = new Map<string, NavCandidate>();
   private navSource: DANode | null = null;
   /** Original transform of the popup's enlarged source node. */
@@ -1298,8 +1286,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       get drawingLayer() { return da.drawingLayer; },
       get animations() { return da.animations; },
       get themeService() { return da.themeService; },
-      get graphNavEdge() { return da.graphNavEdge; },
-      get graphNavMomentum() { return da.graphNavMomentum; },
+      get journey() { return da.journey; },
       log: message => da.log.log(message),
       emitStatus: message => da.emitStatus(message),
       finishTweens: () => da.finishTweens(),
@@ -2774,11 +2761,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
   private setGraphNavEdge(edge: DAEdge | null): void {
-    if (this.graphNavEdge === edge) return;
-    if (this.graphNavEdge) this.graphNavEdge.navFocused = false;
-    this.graphNavEdge = edge;
-    if (edge) edge.navFocused = true;
-    this.drawingLayer.batchDraw();
+    if (this.journey.focusEdge(edge)) this.drawingLayer.batchDraw();
   }
 
   private nearestNodeToCrosshairs(): DANode | null {
@@ -2812,10 +2795,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
     }
     const continuingJourney = source === this.validGraphNavLastNode();
-    this.graphNavLastNode = source;
+    this.journey.startAt(source);
     const entry = this.focusLinkNavEntry(
       source,
-      continuingJourney ? this.graphNavMomentum : null,
+      continuingJourney ? this.journey.momentum : null,
     );
     if (!entry) {
       this.redrawLinkNavQuadrantLines(source);
@@ -2864,7 +2847,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const candidates = this.linkNavGeometryCandidates(source, navCandidates);
     const move = moveLinkQuadrant(
       candidates,
-      this.linkNavDirectionalFocus ? this.graphNavEdge?.id ?? null : null,
+      this.linkNavDirectionalFocus ? this.journey.focusedEdge?.id ?? null : null,
       direction,
       true,
     );
@@ -2909,17 +2892,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private traverseLinkNavCandidate(source: DANode, candidate: NavCandidate): void {
     const dest = candidate.other;
-    this.recordNavVisit(source.id, dest.id);
-    this.graphNavLastNode = dest;
-    this.navDirection = candidate.direction;
-    const sC = this.getNodeCenterInLayerCoordinates(source);
-    const dC = this.getNodeCenterInLayerCoordinates(dest);
-    const length = Math.hypot(dC.x - sC.x, dC.y - sC.y);
-    if (length > 1e-6) {
-      this.graphNavMomentum = {x: (dC.x - sC.x) / length, y: (dC.y - sC.y) / length};
-    }
+    this.journey.arrive(source, dest, candidate.direction);
     this.linkNavSource = dest;
-    this.focusLinkNavEntry(dest, this.graphNavMomentum);
+    this.focusLinkNavEntry(dest, this.journey.momentum);
     this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
     this.redrawLinkNavQuadrantLines(dest);
     this.scheduleLinkNavQuadrantRefresh(dest);
@@ -2943,7 +2918,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const group = new Konva.Group({name: 'move-by-link-quadrants', listening: false});
     const origin = this.getNodeCenterInStageCoordinates(source);
     const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const focused = this.graphNavEdge;
+    const focused = this.journey.focusedEdge;
     const navCandidates = this.navCandidatesFor(source);
     const geometry = this.linkNavGeometryCandidates(source, navCandidates);
     const focusedDirection = focused
@@ -3030,13 +3005,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     // Free movement to a different node is a cold start.
-    if (source !== this.graphNavLastNode) this.navDirection = null;
+    this.journey.coldStartUnlessAt(source);
     const candidates = this.navCandidatesFor(source);
     if (candidates.length === 0) {
       this.emitStatus('No edges here.');
       return;
     }
-    this.openNavPopup(source, candidates, this.navDirection ?? 'out',
+    this.openNavPopup(source, candidates, this.journey.direction ?? 'out',
       candidates.length === 1);
   }
 
@@ -3248,13 +3223,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  node. Every landing is recorded in the nav history (Ctrl+O / Ctrl+I). */
   private navCommitTo(source: DANode, cand: NavCandidate, walk: boolean): void {
     const dest = cand.other;
-    this.recordNavVisit(source.id, dest.id);
-    this.graphNavLastNode = dest;
-    this.navDirection = cand.direction;
-    const sC = this.getNodeCenterInLayerCoordinates(source);
+    this.journey.arrive(source, dest, cand.direction);
     const dC = this.getNodeCenterInLayerCoordinates(dest);
-    const len = Math.hypot(dC.x - sC.x, dC.y - sC.y);
-    if (len > 1e-6) this.graphNavMomentum = {x: (dC.x - sC.x) / len, y: (dC.y - sC.y) / len};
     const destLabel = (dest.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`${cand.direction === 'out' ? '→' : '←'} ${destLabel}`);
     if (!walk) {
@@ -3277,7 +3247,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.setGraphNavEdge(null);
-    this.openNavPopup(dest, candidates, this.navDirection ?? 'out');
+    this.openNavPopup(dest, candidates, this.journey.direction ?? 'out');
   }
 
   private clearNavPopupRevealTimer(): void {
@@ -3291,39 +3261,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Record a nav landing. A new jump truncates any forward history (vim
    *  jumplist semantics); the source is stitched in when the chain broke
    *  (free crosshairs movement between jumps). */
-  private recordNavVisit(sourceId: string, destId: string): void {
-    if (this.navHistoryIndex < this.navHistory.length - 1) {
-      this.navHistory.splice(this.navHistoryIndex + 1);
-    }
-    if (this.navHistory[this.navHistory.length - 1] !== sourceId) {
-      this.navHistory.push(sourceId);
-    }
-    this.navHistory.push(destId);
-    this.navHistoryIndex = this.navHistory.length - 1;
-  }
-
-  /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist.
-   *  Entries whose nodes have since been deleted are skipped. Stepping
-   *  doesn't edit the history — only a new jump truncates it. */
+  /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist. */
   private navHistoryGo(delta: -1 | 1): void {
-    const nodeById = (id: string) =>
-      this.drawingLayer.getDANodes().find(n => n.id === id);
-    let i = this.navHistoryIndex + delta;
-    while (i >= 0 && i < this.navHistory.length && !nodeById(this.navHistory[i])) {
-      i += delta;
-    }
-    if (i < 0 || i >= this.navHistory.length) {
+    const node = this.journey.stepHistory(
+      delta, id => this.drawingLayer.getDANodes().find(n => n.id === id));
+    if (!node) {
       this.emitStatus(delta < 0
         ? 'Already at the oldest nav position.'
         : 'Already at the newest nav position.');
       return;
     }
-    this.navHistoryIndex = i;
-    const node = nodeById(this.navHistory[i])!;
     this.finishTweens();
-    this.graphNavLastNode = node;
-    this.navDirection = null; // arriving by jumplist is a cold start
-    this.setGraphNavEdge(null);
+    this.drawingLayer.batchDraw();
     this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
     const label = (node.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
@@ -3550,11 +3499,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** `graphNavLastNode`, validated against the live graph (undo/redo,
    *  delete, and load rebuild nodes — a stale reference clears). */
   private validGraphNavLastNode(): DANode | null {
-    if (this.graphNavLastNode
-        && !this.drawingLayer.getDANodes().includes(this.graphNavLastNode)) {
-      this.graphNavLastNode = null;
-    }
-    return this.graphNavLastNode;
+    return this.journey.lastNodeAmong(this.drawingLayer.getDANodes());
   }
 
 

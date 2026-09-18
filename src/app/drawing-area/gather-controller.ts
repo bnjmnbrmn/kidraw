@@ -1,5 +1,6 @@
 import Konva from 'konva';
 import type { Animations } from './animations';
+import type { NavJourney } from './nav-journey';
 import type { ThemeService } from '../services/theme.service';
 import type { DrawingLayer } from './drawing.layer';
 import { DANode } from './da-node';
@@ -27,10 +28,8 @@ export interface GatherHost {
   /** Animations in flight; gather adds its own and lets the host settle them. */
   readonly animations: Animations;
   readonly themeService: ThemeService;
-  /** The edge the traversal is riding, if any. Read only. */
-  readonly graphNavEdge: DAEdge | null;
-  /** Direction of the last traversal step, if any. Read only. */
-  readonly graphNavMomentum: {x: number; y: number} | null;
+  /** Where traversal has been and which way it was going. Read only. */
+  readonly journey: NavJourney;
   log(message: string): void;
   emitStatus(message: string): void;
   finishTweens(): void;
@@ -243,11 +242,11 @@ export class GatherController {
   ): Set<DANode> {
     const result = new Set<DANode>();
     let navNext: DANode | null = null;
-    if (this.host.graphNavEdge
-        && this.host.drawingLayer.getDAEdges().includes(this.host.graphNavEdge)
-        && (this.host.graphNavEdge.srcNode === anchorNode || this.host.graphNavEdge.destNode === anchorNode)) {
-      const other = this.host.graphNavEdge.srcNode === anchorNode
-        ? this.host.graphNavEdge.destNode : this.host.graphNavEdge.srcNode;
+    const focused = this.host.journey.focusedEdge;
+    if (focused
+        && this.host.drawingLayer.getDAEdges().includes(focused)
+        && (focused.srcNode === anchorNode || focused.destNode === anchorNode)) {
+      const other = focused.srcNode === anchorNode ? focused.destNode : focused.srcNode;
       if (infos.has(other)) navNext = other;
     }
     if (!navNext) {
@@ -258,7 +257,7 @@ export class GatherController {
       if (candidates.length > 0) {
         const flows = candidates.map(e =>
           endpointFlowDirection(e.getPathPoints(), toDest ? 'src' : 'dest'));
-        const pick = pickEntryCandidate(flows, this.host.graphNavMomentum);
+        const pick = pickEntryCandidate(flows, this.host.journey.momentum);
         if (pick >= 0) {
           const e = candidates[pick];
           const other = e.srcNode === anchorNode ? e.destNode : e.srcNode;

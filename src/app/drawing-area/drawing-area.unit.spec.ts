@@ -840,7 +840,7 @@ describe('DrawingArea Unit Tests', () => {
         getEffectivePalette: () => ({crosshairsStroke: '#abcdef'}),
       };
       component.themeService = {theme: 'dark'};
-      component.graphNavEdge = edge;
+      component.journey.focusEdge(edge);
 
       // Object.create skips field initialisers; a spy keeps this a unit test.
       component.navGrid = (() => {
@@ -883,7 +883,7 @@ describe('DrawingArea Unit Tests', () => {
       component.crosshairsLayer = {crosshairsX: () => 190, crosshairsY: () => 180};
       component.finishTweens = () => undefined;
       component.getDANodesContainingCrosshairs = () => [];
-      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.setGraphNavEdge = (value: DAEdge | null) => component.journey.focusEdge(value);
       component.navGrid = (() => {
         const spy: any = jasmine.createSpyObj('navGrid',
           ['showNodeGrid', 'hideNodeGrid', 'redrawNodeGrid', 'snapToNodeInDirection',
@@ -908,12 +908,12 @@ describe('DrawingArea Unit Tests', () => {
     })();
       component.scheduleLinkNavQuadrantRefresh = jasmine.createSpy('scheduleLinkNavQuadrantRefresh');
       component.emitStatus = () => undefined;
-      component.graphNavMomentum = null;
+      // a cold start: the journey has no momentum yet
 
       component.enterLinkNav();
 
       expect(component.linkNavSource).toBe(nearest);
-      expect(component.graphNavEdge).toBe(edge);
+      expect(component.journey.focusedEdge).toBe(edge);
       expect(component.linkNavDirectionalFocus).toBeTrue();
       expect(component.navGrid.jumpCrosshairsToStopCenter).toHaveBeenCalledWith({x: 160, y: 160});
       expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(nearest);
@@ -928,9 +928,9 @@ describe('DrawingArea Unit Tests', () => {
       const candidate = {edge, direction: 'out', other: dest};
       component.linkNavSource = source;
       component.linkNavDirectionalFocus = true;
-      component.graphNavEdge = edge;
+      component.journey.focusEdge(edge);
       component.navCandidatesFor = () => [candidate];
-      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.setGraphNavEdge = (value: DAEdge | null) => component.journey.focusEdge(value);
       component.clearLinkNavQuadrantLines = () => undefined;
       const traverse = spyOn(component, 'traverseLinkNavCandidate');
 
@@ -938,7 +938,7 @@ describe('DrawingArea Unit Tests', () => {
 
       expect(traverse).not.toHaveBeenCalled();
       expect(component.linkNavSource).toBeNull();
-      expect(component.graphNavEdge).toBeNull();
+      expect(component.journey.focusedEdge).toBeNull();
     });
 
     it('focuses a momentum-aligned edge and quadrant after traversing', () => {
@@ -952,9 +952,9 @@ describe('DrawingArea Unit Tests', () => {
       const forwardEdge = new DAEdge(landing, forward, '');
       new DAEdge(landing, branch, '');
       component.linkNavSource = source;
-      component.graphNavMomentum = null;
+      // a cold start: the journey has no momentum yet
       component.recordNavVisit = () => undefined;
-      component.setGraphNavEdge = (value: DAEdge | null) => component.graphNavEdge = value;
+      component.setGraphNavEdge = (value: DAEdge | null) => component.journey.focusEdge(value);
       component.getNodeCenterInStageCoordinates = () => ({x: 360, y: 60});
       component.navGrid = (() => {
         const spy: any = jasmine.createSpyObj('navGrid',
@@ -987,7 +987,7 @@ describe('DrawingArea Unit Tests', () => {
       });
 
       expect(component.linkNavSource).toBe(landing);
-      expect(component.graphNavEdge).toBe(forwardEdge);
+      expect(component.journey.focusedEdge).toBe(forwardEdge);
       expect(component.linkNavDirectionalFocus).toBeTrue();
       expect(component.redrawLinkNavQuadrantLines).toHaveBeenCalledWith(landing);
     });

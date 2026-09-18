@@ -20,6 +20,7 @@ import { Animations } from './animations';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { FileController } from './file-controller';
+import { NavJourney } from './nav-journey';
 import { TextEditingController } from './text-editing-controller';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
@@ -43,6 +44,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.viewport = new Viewport(() => component.stage, () => component.viewportInset ?? NO_INSET);
   component.fileController = new FileController(component.fileHost());
   component.textEditor = new TextEditingController(component.textEditingHost());
+  component.journey = new NavJourney();
 
   component.goalLine = new Overlay(drawingLayer);
   component.hoverTrace = new Overlay(drawingLayer);
