@@ -20,6 +20,7 @@ import { Animations } from './animations';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { FileController } from './file-controller';
+import { LinkNavController } from './link-nav-controller';
 import { NavJourney } from './nav-journey';
 import { TextEditingController } from './text-editing-controller';
 import { Overlay } from './overlay';
@@ -45,6 +46,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.fileController = new FileController(component.fileHost());
   component.textEditor = new TextEditingController(component.textEditingHost());
   component.journey = new NavJourney();
+  component.linkNav = new LinkNavController(component.linkNavHost());
 
   component.goalLine = new Overlay(drawingLayer);
   component.hoverTrace = new Overlay(drawingLayer);
@@ -52,7 +54,6 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.growGhost = new Overlay(drawingLayer);
   component.labelEditGhost = new Overlay(crosshairsLayer);
   component.navigationLandingGhost = new Overlay(crosshairsLayer);
-  component.linkNavQuadrantLines = new Overlay(crosshairsLayer);
 }
 
 /** `Object.create` plus the wiring, for specs that want both in one step. */

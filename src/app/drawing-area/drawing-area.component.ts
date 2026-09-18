@@ -48,7 +48,7 @@ import { Animations } from './animations';
 import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
-import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
+import { linkDirectionsFrom, LinkCardinalDirection, moveLinkQuadrant, NavCandidate, navCandidatesFor, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import type {
   AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
@@ -71,6 +71,7 @@ import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
 import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
+import {LinkNavController, LinkNavHost} from './link-nav-controller';
 
 /** One press of a drag key, resolved against the grid. */
 interface DragStep {
@@ -126,11 +127,6 @@ interface MovementGrid {
 }
 
 /** One way out of the nav popup's source node. */
-interface NavCandidate {
-  edge: DAEdge;
-  direction: 'out' | 'in';
-  other: DANode;
-}
 import { DANotification } from './da-notification.model';
 import { Observable } from 'rxjs';
 import Konva from 'konva';
@@ -301,11 +297,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  current node, the focused edge and the jumplist (nav-journey.ts).
    *  Move by Link and the nav popup share it, so one continues the other. */
   private readonly journey = new NavJourney();
-  /** Source and focus state for the held, popup-free Move by Link mode. */
-  private linkNavSource: DANode | null = null;
-  private linkNavDirectionalFocus = false;
-  private readonly linkNavQuadrantLines = new Overlay<Konva.Group>(() => this.crosshairsLayer);
-  private linkNavQuadrantRefreshTimer: number | null = null;
+  /** The held, popup-free Move by Link mode (link-nav-controller.ts). */
+  private readonly linkNav = new LinkNavController(this.linkNavHost());
 
   // --- Nav popup state (template bindings + open-session bookkeeping) ---
   navPopupOpen = false;
@@ -354,7 +347,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.drawingLayer.applyThemeColors(palette);
       this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
       if (this.normalMovementGoal) this.redrawNormalMovementGoalLine();
-      if (this.linkNavSource) this.redrawLinkNavQuadrantLines(this.linkNavSource);
+      this.linkNav.redraw();
       this.refreshCrosshairHoverHighlight();
     };
     const reapplyConfig = () => {
@@ -427,7 +420,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.stage.width(this.componentNE.offsetWidth);
       this.stage.height(this.componentNE.offsetHeight);
       if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-      if (this.linkNavSource) this.redrawLinkNavQuadrantLines(this.linkNavSource);
+      this.linkNav.redraw();
     });
     this.resizeObserver.observe(this.componentNE);
 
@@ -476,7 +469,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.crosshairHoverRefreshTimer !== null) {
       clearTimeout(this.crosshairHoverRefreshTimer);
     }
-    this.clearLinkNavQuadrantLines();
+    this.linkNav.clear();
     this.clearLabelEditGhost(false);
     this.clearNavigationLandingGhost(false);
     this.hoverTrace.clear(false);
@@ -1229,6 +1222,29 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       moveCrosshairsBy: (dx, dy, tier, showGrid) => da.moveCrosshairsBy(dx, dy, tier, showGrid),
       navStops: targets => da.navStops(targets),
       navStopCenter: (id, kind) => da.navStopCenter(id, kind),
+    };
+  }
+
+  /** Move by Link reads the crosshairs and the shared walk, and draws one
+   *  overlay. Layers are assigned after construction, so these are getters. */
+  private linkNavHost(): LinkNavHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get stage() { return da.stage; },
+      get camera() { return da.camera; },
+      get probe() { return da.probe; },
+      get journey() { return da.journey; },
+      get navGrid() { return da.navGrid; },
+      get crosshairsStroke() {
+        return da.visualConfigService.getEffectivePalette(da.themeService.theme)
+          .crosshairsStroke;
+      },
+      get crosshairMovementDuration() { return da.CROSSHAIR_MOVEMENT_DURATION; },
+      emitStatus: message => da.emitStatus(message),
+      finishTweens: () => da.finishTweens(),
+      focusEdge: edge => da.setGraphNavEdge(edge),
     };
   }
 
@@ -2764,229 +2780,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.journey.focusEdge(edge)) this.drawingLayer.batchDraw();
   }
 
-  private nearestNodeToCrosshairs(): DANode | null {
-    const nodes = this.drawingLayer.getDANodes();
-    if (nodes.length === 0) return null;
-    const x = this.crosshairsLayer.crosshairsX();
-    const y = this.crosshairsLayer.crosshairsY();
-    return nodes.reduce((best, node) => {
-      const b = this.getNodeCenterInStageCoordinates(best);
-      const n = this.getNodeCenterInStageCoordinates(node);
-      return Math.hypot(n.x - x, n.y - y) < Math.hypot(b.x - x, b.y - y)
-        ? node
-        : best;
-    });
-  }
-
-  /** Begin a held Move by Link session at the node under the crosshairs. */
+  // ── Move by Link (held NSEW quadrants): delegated to LinkNavController ──
   private enterLinkNav(): void {
-    this.finishTweens();
-    const underCrosshairs = topmost(this.getDANodesContainingCrosshairs());
-    const source = underCrosshairs ?? this.nearestNodeToCrosshairs();
-    this.linkNavSource = source;
-    this.linkNavDirectionalFocus = false;
-    this.setGraphNavEdge(null);
-    if (!source) {
-      this.emitStatus('Move the crosshairs onto a node to navigate.');
-      return;
-    }
-    const snappedToNearest = underCrosshairs === null;
-    if (snappedToNearest) {
-      this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(source));
-    }
-    const continuingJourney = source === this.validGraphNavLastNode();
-    this.journey.startAt(source);
-    const entry = this.focusLinkNavEntry(
-      source,
-      continuingJourney ? this.journey.momentum : null,
-    );
-    if (!entry) {
-      this.redrawLinkNavQuadrantLines(source);
-      if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
-      this.emitStatus('No edges here.');
-      return;
-    }
-    this.redrawLinkNavQuadrantLines(source);
-    if (snappedToNearest) this.scheduleLinkNavQuadrantRefresh(source);
-    const label = (entry.other.label?.text() ?? '').trim() || '(unlabeled)';
-    this.emitStatus(`Link: ${label}`);
+    this.linkNav.enter();
   }
 
-  /** Select the entry edge for a source node and make its visible highlight
-   *  the active quadrant cursor. Momentum prefers continuing onward after a
-   *  traversal; a cold start uses clockwise order from North. */
-  private focusLinkNavEntry(
-    source: DANode,
-    momentum: Point | null,
-  ): NavCandidate | null {
-    const navCandidates = this.navCandidatesFor(source);
-    if (navCandidates.length === 0) {
-      this.linkNavDirectionalFocus = false;
-      this.setGraphNavEdge(null);
-      return null;
-    }
-    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
-    const entryIndex = pickEntryCandidate(
-      geometry.map(candidate => candidate.direction),
-      momentum,
-    );
-    const entry = entryIndex >= 0 ? navCandidates[entryIndex] : navCandidates[0];
-    // The visible highlight is the active scan position. Perpendicular keys
-    // can move away from it without an extra along-quadrant confirmation.
-    this.linkNavDirectionalFocus = true;
-    this.setGraphNavEdge(entry.edge);
-    return entry;
-  }
-
-  /** Select/scan an NSEW link. A unique link in the requested quadrant walks
-   *  immediately; ambiguous quadrants focus before an along-link press. */
   private moveLinkNav(direction: LinkCardinalDirection): void {
-    const source = this.linkNavSource;
-    if (!source) return;
-    const navCandidates = this.navCandidatesFor(source);
-    const candidates = this.linkNavGeometryCandidates(source, navCandidates);
-    const move = moveLinkQuadrant(
-      candidates,
-      this.linkNavDirectionalFocus ? this.journey.focusedEdge?.id ?? null : null,
-      direction,
-      true,
-    );
-    if (!move.id) {
-      this.emitStatus(`No link in the ${direction} quadrant.`);
-      return;
-    }
-    const candidate = navCandidates.find(c => c.edge.id === move.id);
-    if (!candidate) return;
-    if (!move.traverse) {
-      this.linkNavDirectionalFocus = true;
-      this.setGraphNavEdge(candidate.edge);
-      this.redrawLinkNavQuadrantLines(source);
-      const label = (candidate.other.label?.text() ?? '').trim() || '(unlabeled)';
-      this.emitStatus(`${direction}: ${label}`);
-      return;
-    }
-
-    this.traverseLinkNavCandidate(source, candidate);
+    this.linkNav.move(direction);
   }
 
-  private linkNavGeometryCandidates(
-    source: DANode,
-    navCandidates: readonly NavCandidate[],
-  ): {id: string; direction: Point | null}[] {
-    return navCandidates.map(candidate => {
-      const path = candidate.edge.getPathPoints();
-      const flow = endpointFlowDirection(path, candidate.direction === 'out' ? 'src' : 'dest');
-      const away = flow
-        ? (candidate.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
-        : (() => {
-            const s = this.getNodeCenterInLayerCoordinates(source);
-            const d = this.getNodeCenterInLayerCoordinates(candidate.other);
-            const length = Math.hypot(d.x - s.x, d.y - s.y);
-            return length > 1e-9
-              ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length}
-              : null;
-          })();
-      return {id: candidate.edge.id, direction: away};
-    });
-  }
-
-  private traverseLinkNavCandidate(source: DANode, candidate: NavCandidate): void {
-    const dest = candidate.other;
-    this.journey.arrive(source, dest, candidate.direction);
-    this.linkNavSource = dest;
-    this.focusLinkNavEntry(dest, this.journey.momentum);
-    this.navGrid.jumpCrosshairsToStopCenter(this.getNodeCenterInStageCoordinates(dest));
-    this.redrawLinkNavQuadrantLines(dest);
-    this.scheduleLinkNavQuadrantRefresh(dest);
-    const label = (dest.label?.text() ?? '').trim() || '(unlabeled)';
-    this.emitStatus(`${candidate.direction === 'out' ? '→' : '←'} ${label}`);
-  }
-
-  /** Releasing the held root key only exits. Traversal belongs to an explicit
-   * directional press, never to the mechanically unrelated key-up event. */
   private releaseLinkNav(): void {
-    this.linkNavSource = null;
-    this.linkNavDirectionalFocus = false;
-    this.setGraphNavEdge(null);
-    this.clearLinkNavQuadrantLines();
+    this.linkNav.release();
   }
 
-  /** Dashed 45° rays expose the exact N/E/S/W quadrant boundaries used by
-   *  moveLinkQuadrant. They live in stage coordinates so their dash/stroke
-   *  stays screen-stable at every drawing zoom. */
-  private redrawLinkNavQuadrantLines(source: DANode): void {
-    const group = new Konva.Group({name: 'move-by-link-quadrants', listening: false});
-    const origin = this.getNodeCenterInStageCoordinates(source);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    const focused = this.journey.focusedEdge;
-    const navCandidates = this.navCandidatesFor(source);
-    const geometry = this.linkNavGeometryCandidates(source, navCandidates);
-    const focusedDirection = focused
-      ? geometry.find(candidate => candidate.id === focused.id)?.direction ?? null
-      : null;
-    const activeQuadrant = linkQuadrant(focusedDirection);
-    if (activeQuadrant) {
-      const reach = this.stage.width() + this.stage.height();
-      const points = {
-        north: [origin.x, origin.y, origin.x - reach, origin.y - reach,
-          origin.x + reach, origin.y - reach],
-        south: [origin.x, origin.y, origin.x - reach, origin.y + reach,
-          origin.x + reach, origin.y + reach],
-        east: [origin.x, origin.y, origin.x + reach, origin.y - reach,
-          origin.x + reach, origin.y + reach],
-        west: [origin.x, origin.y, origin.x - reach, origin.y - reach,
-          origin.x - reach, origin.y + reach],
-      }[activeQuadrant];
-      group.add(new Konva.Line({
-        name: 'move-by-link-active-quadrant',
-        points,
-        closed: true,
-        fill: palette.crosshairsStroke,
-        opacity: 0.1,
-        listening: false,
-      }));
-    }
-    for (const angle of [
-      Math.PI / 4,
-      Math.PI * 3 / 4,
-      Math.PI * 5 / 4,
-      Math.PI * 7 / 4,
-    ]) {
-      const end = navigationRayEnd(origin, angle, this.stage.width(), this.stage.height());
-      if (!end) continue;
-      group.add(new Konva.Line({
-        name: 'move-by-link-diagonal',
-        points: [origin.x, origin.y, end.x, end.y],
-        stroke: palette.crosshairsStroke,
-        strokeWidth: 1.5,
-        strokeScaleEnabled: false,
-        opacity: 0.46,
-        dash: [7, 5],
-        listening: false,
-      }));
-    }
-    // A backdrop, not an overlay: the real graph stays readable through it.
-    this.linkNavQuadrantLines.show(() => group, 'bottom');
-    this.crosshairsLayer.batchDraw();
-  }
-
-  private scheduleLinkNavQuadrantRefresh(source: DANode): void {
-    if (this.linkNavQuadrantRefreshTimer !== null) {
-      window.clearTimeout(this.linkNavQuadrantRefreshTimer);
-    }
-    this.linkNavQuadrantRefreshTimer = window.setTimeout(() => {
-      this.linkNavQuadrantRefreshTimer = null;
-      if (this.linkNavSource === source) this.redrawLinkNavQuadrantLines(source);
-    }, Math.ceil(this.CROSSHAIR_MOVEMENT_DURATION * 1000) + 30);
-  }
-
-  private clearLinkNavQuadrantLines(): void {
-    if (this.linkNavQuadrantRefreshTimer !== null) {
-      window.clearTimeout(this.linkNavQuadrantRefreshTimer);
-      this.linkNavQuadrantRefreshTimer = null;
-    }
-    this.linkNavQuadrantLines.clear();
-  }
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
 
@@ -3006,7 +2812,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     // Free movement to a different node is a cold start.
     this.journey.coldStartUnlessAt(source);
-    const candidates = this.navCandidatesFor(source);
+    const candidates = navCandidatesFor(source);
     if (candidates.length === 0) {
       this.emitStatus('No edges here.');
       return;
@@ -3015,16 +2821,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       candidates.length === 1);
   }
 
-  private navCandidatesFor(source: DANode): NavCandidate[] {
-    const out: NavCandidate[] = [];
-    for (const edge of source.outgoingEdges) {
-      if (edge.destNode !== source) out.push({edge, direction: 'out', other: edge.destNode});
-    }
-    for (const edge of source.incomingEdges) {
-      if (edge.srcNode !== source) out.push({edge, direction: 'in', other: edge.srcNode});
-    }
-    return out;
-  }
 
   private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in',
                        concealed = false): void {
@@ -3117,21 +2913,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   onNavPopupDirection(direction: LinkCardinalDirection): void {
     if (this.navPopupPurpose !== 'nav' || !this.navSource) return;
     const source = this.navSource;
-    const candidates = [...this.navCandidates.values()].map(c => {
-      const path = c.edge.getPathPoints();
-      const flow = endpointFlowDirection(path, c.direction === 'out' ? 'src' : 'dest');
-      const away = flow
-        ? (c.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
-        : (() => {
-            const s = this.getNodeCenterInLayerCoordinates(source);
-            const d = this.getNodeCenterInLayerCoordinates(c.other);
-            const length = Math.hypot(d.x - s.x, d.y - s.y);
-            return length > 1e-9 ? {x: (d.x - s.x) / length, y: (d.y - s.y) / length} : null;
-          })();
-      return {id: c.edge.id, direction: away};
-    });
     const move = moveLinkQuadrant(
-      candidates,
+      linkDirectionsFrom(source, [...this.navCandidates.values()]),
       this.navDirectionalFocus ? this.navHighlightCand?.edge.id ?? null : null,
       direction,
       true,
@@ -3240,7 +3023,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
     this.crosshairsLayer.crosshairs.x = this.viewport.centerX;
     this.crosshairsLayer.crosshairs.y = this.viewport.centerY;
-    const candidates = this.navCandidatesFor(dest);
+    const candidates = navCandidatesFor(dest);
     if (candidates.length === 0) {
       this.emitStatus(`${destLabel}: dead end.`);
       this.closeNavPopup();

@@ -62,7 +62,6 @@ const TOOLS_FACING_FIELDS = [
   'goalLine',
   'labelEditGhost',
   'navigationLandingGhost',
-  'linkNavQuadrantLines',
   'navGhost',
 ];
 
@@ -81,6 +80,14 @@ const RETIRED_FIELDS = {
   crosshairHoverHighlight: 'use hoverTrace.node',
   navGhostGroup: 'use navGhost.node',
   normalMovementGoalLine: 'use goalLine.node',
+  linkNavSource: 'use linkNav.active; the source is the controller\'s own',
+  linkNavQuadrantLines: 'the overlay moved into LinkNavController',
+  linkNavDirectionalFocus: 'internal to LinkNavController',
+  graphNavEdge: 'use journey.focusedEdge',
+  graphNavMomentum: 'use journey.momentum',
+  graphNavLastNode: 'use journey.lastNodeAmong(nodes)',
+  navDirection: 'use journey.direction',
+  navHistory: 'the jumplist is private to NavJourney',
 };
 
 /** Receivers the scripts use for the component, for the reverse check. */

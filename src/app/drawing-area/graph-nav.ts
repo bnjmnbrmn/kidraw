@@ -19,6 +19,9 @@
 
 import {Point, projectPointToPath} from './edge-label-anchor';
 import type {GridTier} from './command.model';
+import type {DANode} from './da-node';
+import type {DAEdge} from './da-edge';
+import {nodeCenterInLayer} from './node-geometry';
 
 export type NavStopKind = 'node' | 'label' | 'waypoint';
 
@@ -244,4 +247,52 @@ export function pickEntryCandidate(dirs: ReadonlyArray<Point | null>, momentum: 
     if (best >= 0) return best;
   }
   return clockwiseOrder(dirs)[0] ?? -1;
+}
+
+/** One link out of a node, and where it leads. `direction` is the sense of
+ *  travel along the edge, not a compass bearing: 'out' follows the arrow,
+ *  'in' walks it backwards. */
+export interface NavCandidate {
+  edge: DAEdge;
+  direction: 'out' | 'in';
+  other: DANode;
+}
+
+/** Every link incident to `source`, in both senses. Self-loops are skipped:
+ *  traversing one would land where the walk already is. */
+export function navCandidatesFor(source: DANode): NavCandidate[] {
+  const candidates: NavCandidate[] = [];
+  for (const edge of source.outgoingEdges) {
+    if (edge.destNode !== source) candidates.push({edge, direction: 'out', other: edge.destNode});
+  }
+  for (const edge of source.incomingEdges) {
+    if (edge.srcNode !== source) candidates.push({edge, direction: 'in', other: edge.srcNode});
+  }
+  return candidates;
+}
+
+/** Each candidate as the direction it leaves `source` in — what the quadrant
+ *  keys steer by, on both navigation surfaces. The edge's own end stub is the
+ *  truth, since a routed edge can leave at an angle nothing else predicts; a
+ *  straight line between the two centres is the fallback for an edge with no
+ *  usable path, and null when the two sit on each other. */
+export function linkDirectionsFrom(
+  source: DANode,
+  candidates: readonly NavCandidate[],
+): {id: string; direction: Point | null}[] {
+  return candidates.map(candidate => {
+    const flow = endpointFlowDirection(
+      candidate.edge.getPathPoints(), candidate.direction === 'out' ? 'src' : 'dest');
+    const away = flow
+      ? (candidate.direction === 'out' ? flow : {x: -flow.x, y: -flow.y})
+      : unitVectorBetween(nodeCenterInLayer(source), nodeCenterInLayer(candidate.other));
+    return {id: candidate.edge.id, direction: away};
+  });
+}
+
+function unitVectorBetween(from: Point, to: Point): Point | null {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  return length > 1e-9
+    ? {x: (to.x - from.x) / length, y: (to.y - from.y) / length}
+    : null;
 }
