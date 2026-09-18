@@ -1,4 +1,5 @@
 import {DrawingAreaComponent} from './drawing-area.component';
+import {Axis} from './axis';
 
 describe('DrawingAreaComponent edge waypoint drag', () => {
   it('turns the selected edge under v into a waypoint on the first drag step', () => {
@@ -29,7 +30,7 @@ describe('DrawingAreaComponent edge waypoint drag', () => {
       batchDraw: jasmine.createSpy('batchDraw'),
     };
 
-    component.dragSelected('x', 1);
+    component.dragSelected(Axis.X, 1);
 
     expect(edge.insertWaypointAt).toHaveBeenCalledWith({x: 50, y: 0}, 0);
     expect(component.drawingLayer.unselectAll).toHaveBeenCalled();

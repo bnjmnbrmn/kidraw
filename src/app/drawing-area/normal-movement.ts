@@ -58,3 +58,17 @@ function pointOnLine(
 ): NormalMovementPoint {
   return axis === 'x' ? {x: primary, y: line} : {x: line, y: primary};
 }
+
+/**
+ * Snap a coordinate to the nearest grid line, then step one cell in the
+ * direction pressed. Zero delta leaves the coordinate alone, so a press on one
+ * axis never disturbs the other.
+ *
+ * Curried on the spacing because both axes of a single press share it: the
+ * caller builds the stepper once and applies it twice.
+ */
+export const gridSnapStepper = (spacing: number) =>
+  (position: number, delta: number): number =>
+    delta === 0
+      ? position
+      : Math.round(position / spacing) * spacing + spacing * Math.sign(delta);

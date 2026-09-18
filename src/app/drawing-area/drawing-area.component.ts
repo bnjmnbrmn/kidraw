@@ -39,6 +39,7 @@ import {
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
 import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
+import { Axis } from './axis';
 import { pointAtT, projectPointToPath } from './edge-label-anchor';
 import { endpointFlowDirection, LinkCardinalDirection, linkQuadrant, moveLinkQuadrant, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -55,12 +56,26 @@ import { GatherController, GatherHost } from './gather-controller';
 import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
 import { NavigationGridStop } from './navigation-grid';
 import {
+  gridSnapStepper,
   nextNormalMovementStep,
   NormalMovementGoal,
   startNormalMovementGoal,
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostTarget} from './grow-ghost-targets';
+
+/** One press of a drag key, resolved against the grid. */
+interface DragStep {
+  spacing: number;
+  steps: number;
+}
+
+/** Where one node starts and ends on the drag axis. */
+interface NodeDragTarget {
+  node: DANode;
+  initial: number;
+  target: number;
+}
 
 /** The look of a navigation ghost, resolved for the current zoom. */
 interface NavGhostStyle {
@@ -2984,13 +2999,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     inLayer: {x: number; y: number},
     grid: MovementGrid,
   ): {x: number; y: number} {
+    const step = gridSnapStepper(this.beginGridSnap(tier, grid));
+    return {x: step(inLayer.x, deltaX), y: step(inLayer.y, deltaY)};
+  }
+
+  /** Retire the goal line, size the probe for this tier, and report the spacing
+   *  the step will use. The two effects a direct grid move has to perform. */
+  private beginGridSnap(tier: GridTier, grid: MovementGrid): number {
     this.clearNormalMovementGoal();
     const spacing = this.movementDistanceForTier(tier, grid.minor, grid.major);
     this.updateCrosshairsProbeShape(tier, grid.minor, grid.major, spacing, grid.scale);
-    const step = (position: number, delta: number) => delta === 0
-      ? position
-      : Math.round(position / spacing) * spacing + spacing * Math.sign(delta);
-    return {x: step(inLayer.x, deltaX), y: step(inLayer.y, deltaY)};
+    return spacing;
   }
 
   private tweenCrosshairsTo(to: {x: number; y: number}): void {
@@ -5267,22 +5286,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private dragSelectedLeft(tier?: GridTier)  {
     if (this.areaSelectActive) { this.areaSelectStep('x', -1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
-    this.dragSelected('x', -1, tier);
+    this.dragSelected(Axis.X, -1, tier);
   }
   private dragSelectedRight(tier?: GridTier) {
     if (this.areaSelectActive) { this.areaSelectStep('x', +1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(1); return; }
-    this.dragSelected('x', +1, tier);
+    this.dragSelected(Axis.X, +1, tier);
   }
   private dragSelectedUp(tier?: GridTier)    {
     if (this.areaSelectActive) { this.areaSelectStep('y', -1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(-1); return; }
-    this.dragSelected('y', -1, tier);
+    this.dragSelected(Axis.Y, -1, tier);
   }
   private dragSelectedDown(tier?: GridTier)  {
     if (this.areaSelectActive) { this.areaSelectStep('y', +1, tier); return; }
     if (this.resizeTargetNode) { this.resizeSelected(1); return; }
-    this.dragSelected('y', +1, tier);
+    this.dragSelected(Axis.Y, +1, tier);
   }
 
   private resizeSelected(sign: 1 | -1) {
@@ -5302,7 +5321,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * slide along their edge, waypoints nudge pointwise, nodes tween and pan the
    * view with them, and an edge on its own first grows a waypoint to drag.
    */
-  private dragSelected(axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+  private dragSelected(axis: Axis, sign: 1 | -1, tier?: GridTier) {
     this.cancelDragAnimation();
     this.finishTweens();
     this.hasDragged = true;
@@ -5330,7 +5349,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** One press of a drag key: the grid spacing it moves by, and how many of
    *  those cells it covers. Fine drops to the sub-grid, coarse covers ten. */
-  private dragStep(tier?: GridTier): {spacing: number; steps: number} {
+  private dragStep(tier?: GridTier): DragStep {
     const effectiveTier = tier ?? 'normal';
     return {
       spacing: effectiveTier === 'fine'
@@ -5364,26 +5383,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Labels ride their own edge, so movement stays screen-directional even
    *  when that edge is reversed or nearly perpendicular to the key. */
-  private dragLabelsAlongEdges(labels: DALabel[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+  private dragLabelsAlongEdges(labels: DALabel[], axis: Axis, sign: 1 | -1, tier?: GridTier) {
     const {spacing} = this.dragStep(tier);
-    const direction = axis === 'x' ? {x: sign, y: 0} : {x: 0, y: sign};
-    labels.forEach(label => {
-      const edge = this.getEdgeForLabel(label);
-      edge?.dragLabelToward(label, direction, spacing, tier === 'coarse');
-    });
+    labels.forEach(label => this.getEdgeForLabel(label)
+      ?.dragLabelToward(label, axis.point(sign), spacing, tier === 'coarse'));
     this.drawingLayer.batchDraw();
   }
 
   /** Waypoint moves are pointwise and snappy — no tween, no crosshair pan. */
-  private dragWaypoints(waypoints: DAWaypoint[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
+  private dragWaypoints(waypoints: DAWaypoint[], axis: Axis, sign: 1 | -1, tier?: GridTier) {
     const {spacing, steps} = this.dragStep(tier);
-    const delta = sign * steps * spacing;
-    const dx = axis === 'x' ? delta : 0;
-    const dy = axis === 'y' ? delta : 0;
-    waypoints.forEach(wp => {
-      const edge = this.drawingLayer.findEdgeForWaypoint(wp);
-      edge?.moveWaypoint(wp, dx, dy);
-    });
+    const step = axis.point(sign * steps * spacing);
+    waypoints.forEach(wp =>
+      this.drawingLayer.findEdgeForWaypoint(wp)?.moveWaypoint(wp, step.x, step.y));
     this.drawingLayer.batchDraw();
   }
 
@@ -5392,80 +5404,89 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * the crosshairs along, and panning the view once the crosshairs reach the
    * margin. Called with no nodes selected, this walks the crosshairs alone.
    */
-  private dragNodesAndFollow(nodes: DANode[], axis: 'x' | 'y', sign: 1 | -1, tier?: GridTier) {
-    const {spacing, steps} = this.dragStep(tier);
+  private dragNodesAndFollow(nodes: DANode[], axis: Axis, sign: 1 | -1, tier?: GridTier) {
+    const step = this.dragStep(tier);
+    const targets = nodes.map(node => this.nodeDragTarget(node, axis, sign, step));
+    this.animateNodeDrag(nodes, targets, axis, sign * this.crosshairTravel(targets, step));
+  }
 
-    const edgesToMove = new Set<DAEdge>();
-    nodes.forEach(node => node.connectedEdges.forEach(edge => edgesToMove.add(edge)));
+  /** A node's centre snaps to the grid, then advances one step from there. */
+  private nodeDragTarget(node: DANode, axis: Axis, sign: 1 | -1, {spacing, steps}: DragStep): NodeDragTarget {
+    const initial = axis.nodePosition(node);
+    const offset = axis.halfExtent(node);
+    const snappedCenter = Math.round((initial + offset) / spacing) * spacing;
+    return {node, initial, target: snappedCenter + sign * steps * spacing - offset};
+  }
 
-    const initialCrosshairsX = this.crosshairsLayer.crosshairs.x;
-    const initialCrosshairsY = this.crosshairsLayer.crosshairs.y;
+  /** The crosshairs travel as far as the first node does, so they stay over the
+   *  thing being dragged. With nothing selected, they take a nominal step. */
+  private crosshairTravel(targets: NodeDragTarget[], {spacing, steps}: DragStep): number {
+    return targets.length === 0
+      ? steps * spacing
+      : Math.abs(targets[0].target - targets[0].initial);
+  }
 
-    // Axis-specific accessors
-    const getNodePos = (node: DANode) => axis === 'x' ? node.group.x() : node.group.y();
-    const setNodePos = (node: DANode, v: number) => axis === 'x' ? node.group.x(v) : node.group.y(v);
-    const initialCrosshairs = axis === 'x' ? initialCrosshairsX : initialCrosshairsY;
-    const dragViewLo = axis === 'x' ? this.viewMinX() : this.viewMinY();
-    const dragViewHi = axis === 'x' ? this.viewMaxX() : this.viewMaxY();
-    const getLayerPos = () => axis === 'x' ? this.drawingLayer.x() : this.drawingLayer.y();
-    const setLayerPos = (v: number) => axis === 'x' ? this.drawingLayer.x(v) : this.drawingLayer.y(v);
-    const getNodeCenterOffset = (node: DANode) =>
-      axis === 'x' ? node.NODE_WIDTH / 2 : node.NODE_HEIGHT / 2;
-
-    // Each node's centre snaps to the grid, then advances one step from there.
-    const snapToGrid = (pos: number) => Math.round(pos / spacing) * spacing;
-    const nodeTargets = nodes.map(node => {
-      const initial = getNodePos(node);
-      const centerOffset = getNodeCenterOffset(node);
-      const snappedCenter = snapToGrid(initial + centerOffset) + sign * steps * spacing;
-      return {node, initial, target: snappedCenter - centerOffset};
-    });
-
-    // The crosshairs travel as far as the first node does, so they stay over
-    // the thing being dragged. With nothing selected, they take a nominal step.
-    const snappedDistance = nodeTargets.length > 0
-      ? Math.abs(nodeTargets[0].target - nodeTargets[0].initial)
-      : steps * spacing;
-
-    const duration = this.TWEEN_DURATION * 1000;
+  /** Run the drag to completion, one frame at a time, then re-route. */
+  private animateNodeDrag(nodes: DANode[], targets: NodeDragTarget[], axis: Axis, travel: number) {
+    const edges = this.incidentEdges(nodes);
+    const origin = {x: this.crosshairsLayer.crosshairs.x, y: this.crosshairsLayer.crosshairs.y};
     const startTime = Date.now();
-    let prevOverflow = 0;
-
-    const animate = () => {
-      const progress = Math.min((Date.now() - startTime) / duration, 1);
-
-      nodeTargets.forEach(({node, initial, target}) => {
-        setNodePos(node, initial + (target - initial) * progress);
-      });
-      edgesToMove.forEach(edge => this.updateEdgePoints(edge));
-
-      // Push the view instead of letting the crosshairs leave the margin.
-      const scale = this.drawingLayer.scaleX();
-      const targetCrosshairs = initialCrosshairs + sign * snappedDistance * scale * progress;
-      const clamped = Math.min(
-        Math.max(targetCrosshairs, dragViewLo + DrawingAreaComponent.DRAG_PAN_MARGIN),
-        dragViewHi - DrawingAreaComponent.DRAG_PAN_MARGIN,
-      );
-      const overflow = targetCrosshairs - clamped;
-      this.crosshairsLayer.crosshairs.x = axis === 'x' ? clamped : initialCrosshairsX;
-      this.crosshairsLayer.crosshairs.y = axis === 'y' ? clamped : initialCrosshairsY;
-      const panDelta = -(overflow - prevOverflow);
-      if (panDelta !== 0) {
-        setLayerPos(getLayerPos() + panDelta);
-      }
-      prevOverflow = overflow;
-
-      if (progress < 1) {
-        this.currentDragRafId = requestAnimationFrame(animate);
-      } else {
-        this.currentDragRafId = null;
-        // Node(s) landed on their new grid cell: re-route their edges around
-        // the changed geometry (same pipeline as adding a new edge).
-        this.rerouteIncidentEdges(nodes);
-      }
+    let panned = 0;
+    const frame = () => {
+      const progress = Math.min((Date.now() - startTime) / (this.TWEEN_DURATION * 1000), 1);
+      this.paintDragFrame(targets, edges, axis, progress);
+      panned = this.followCrosshairs(axis, origin, travel * progress, panned);
+      this.currentDragRafId = progress < 1 ? requestAnimationFrame(frame) : null;
+      // Node(s) landed on their new grid cell: re-route their edges around the
+      // changed geometry (same pipeline as adding a new edge).
+      if (progress >= 1) this.rerouteIncidentEdges(nodes);
     };
+    frame();
+  }
 
-    animate();
+  /** Every edge touching any of these nodes, each once. */
+  private incidentEdges(nodes: DANode[]): Set<DAEdge> {
+    return new Set(nodes.flatMap(node => node.connectedEdges));
+  }
+
+  /** Place the nodes at this point in the tween, and redraw what they drag. */
+  private paintDragFrame(targets: NodeDragTarget[], edges: Set<DAEdge>, axis: Axis, progress: number) {
+    targets.forEach(({node, initial, target}) =>
+      axis.moveNode(node, initial + (target - initial) * progress));
+    edges.forEach(edge => this.updateEdgePoints(edge));
+  }
+
+  /**
+   * Put the crosshairs `travelled` layer units from where they started, and
+   * push the view by however much of that overshoots the margin. Returns the
+   * running overshoot, so the next frame pans only the difference.
+   */
+  private followCrosshairs(axis: Axis, origin: Point, travelled: number, pannedSoFar: number): number {
+    const wanted = axis.of(origin) + travelled * this.drawingLayer.scaleX();
+    const margin = DrawingAreaComponent.DRAG_PAN_MARGIN;
+    const reached = clamp(wanted, this.dragViewLo(axis) + margin, this.dragViewHi(axis) - margin);
+    this.placeCrosshairs(axis.point(reached, origin));
+    this.panLayerAlong(axis, -(wanted - reached - pannedSoFar));
+    return wanted - reached;
+  }
+
+  private dragViewLo(axis: Axis): number {
+    return axis.pick(this.viewMinX(), this.viewMinY());
+  }
+
+  private dragViewHi(axis: Axis): number {
+    return axis.pick(this.viewMaxX(), this.viewMaxY());
+  }
+
+  private placeCrosshairs(at: Point): void {
+    this.crosshairsLayer.crosshairs.x = at.x;
+    this.crosshairsLayer.crosshairs.y = at.y;
+  }
+
+  private panLayerAlong(axis: Axis, delta: number): void {
+    if (delta === 0) return;
+    const layer = this.drawingLayer;
+    if (axis.horizontal) layer.x(layer.x() + delta); else layer.y(layer.y() + delta);
   }
 
   private updateEdgePoints(edge: DAEdge) {
