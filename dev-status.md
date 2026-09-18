@@ -1,7 +1,45 @@
 # dev-status
 
-_Updated 2026-09-15. Branch: `main`; agent mode on `agent-mode-v0`;
-explanation graphs on `explanation-graphs` (built on agent mode)._
+_Updated 2026-09-18. Branch: `refactor/readability` (built on explanation
+graphs, which is built on agent mode). Agent mode on `agent-mode-v0`;
+explanation graphs on `explanation-graphs`._
+
+> ## 🔧 IN PROGRESS: readability refactor (2026-09-18, branch `refactor/readability`)
+>
+> Making `drawing-area.component.ts` readable, one extraction per commit.
+> What "more readable" means here was recorded from four side-by-side calls
+> Ben made on real code: [`notes/style-refactoring-taste.md`](notes/style-refactoring-taste.md)
+> — read it before continuing. The short version: methods of ~8–10 lines,
+> a new abstraction is a fair price for them provided it names something
+> real, expressions over statement sequences, and a named method over a
+> named local.
+>
+> **The file: 9,071 → 6,418 lines** across the series (`ea47d11`..`2807fc5`).
+>
+> - **Units pulled out so far**, each with the component keeping a thin
+>   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
+>   `command-policy.ts`, `overlay.ts` (one lifecycle for the seven transient
+>   overlays), `camera.ts` (names the stage/layer coordinate spaces),
+>   `viewport.ts` (the stage minus what the UI covers), `crosshairs-probe.ts`,
+>   `node-geometry.ts`, `animations.ts` (every tween in flight, so
+>   `finishTweens` has one home), `file-controller.ts` (files, vault, named
+>   graphs, display), `text-editing-controller.ts` (text mutations and the
+>   geometry they cause). Plus the pure pieces: `axis.ts`,
+>   `nav-ghost-geometry.ts`, `quick-add-spacing.ts`.
+> - **Specs go with the unit.** `drawing-area.test-fixture.ts` gives the
+>   component specs one place to wire the collaborators; new units get their
+>   own spec against a small fake host (`file-controller.spec.ts` is the
+>   pattern). 729 specs green, `npx ng build` clean.
+> - **QA nets first.** Where a region had no black-box cover, a QA commit
+>   went in before the extraction (`bcb007e` for the file region).
+> - **Deliberately not done:** `dispatchCommand`, the flat ~395-line `switch`.
+>   One `case` per command, and its `assertNever` buys compile-time
+>   exhaustiveness that grouped sub-dispatchers would trade away. Awaiting
+>   Ben's call (inferred, 2026-09-17 — from the absence of a decision).
+> - **Next candidates** (inferred, 2026-09-18 — from what is left in the
+>   file, not from a decision): selection, the drag state machine, the
+>   directed-edge flow, and traversal — the four service extractions
+>   sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
@@ -617,16 +655,16 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
-| `746dce6` | One fisheye Gather, auto-anchored to navigation |
-| `542b7f6` | Fisheye gather planner: sucked-in placement with direction/kind stacks |
-| `1c7f5a5` | KiDraw Dev sample: edge labels on the hub nodes' cross-links |
-| `35bfed1` | Debug logging works from kidraw.dev.bnjmnbrmn.com |
-| `6fe5e41` | Traversal tracks a current node; navigation recovers after crosshairs drift |
-| `b18dc72` | Toggle keyboard menu with g |
-| `103dde8` | Document typed cross-link routing result |
-| `02da288` | Route typed cross-links around layout nodes |
-| `9ba1b78` | dev-status: record arrowhead stub fix |
-| `b517e0b` | Fix arrowhead/tangent aim on curved edges: collinear end stubs at render time |
+| `2807fc5` | Extract the text editing controller |
+| `de3b243` | Extract drawing area file controller |
+| `bcb007e` | QA: a net under the file region, which had none |
+| `5d6fa41` | Collect the animations in flight, and narrow GatherHost to them |
+| `8cd6fea` | Extract what the crosshairs are on, and where a node is |
+| `0c1e7bc` | Extract the usable viewport, and give the specs one place to wire fakes |
+| `4685032` | One lifecycle for the seven transient overlays |
+| `a25ef5a` | zoomIn and zoomOut were the same method twice; route tweens through one door |
+| `135cf2e` | qa: stop the baseline counts reading as a fraction |
+| `5d33e15` | One rule for "the nodes this command means" |
 
 ---
 
@@ -796,7 +834,7 @@ The next.org graph is a **pure tree** (61n/60e, no multi-parent nodes) — strai
 
 | File | Purpose |
 |------|---------|
-| `src/app/drawing-area/drawing-area.component.ts` | Main command handler (`switch` on `DACommandType`), ~2000 lines |
+| `src/app/drawing-area/drawing-area.component.ts` | Main command handler (`switch` on `DACommandType`), 6,418 lines and shrinking — see the readability-refactor block above |
 | `src/app/drawing-area/drawing.layer.ts` | Konva layer holding nodes and edges |
 | `src/app/drawing-area/da-node.ts` | Node domain object (shape, label, selection, shadow/blink) |
 | `src/app/drawing-area/da-edge.ts` | Edge domain object (line, waypoints, labels) |
@@ -840,7 +878,7 @@ node tools/layout-gallery.js                          # publish layout screensho
 
 **Layout gallery** (2026-07-14): `tools/layout-gallery.js` applies every layout to Ben's real next.org graph (injected read-only via the localStorage draft) plus the synthetic fan tree, screenshots each at three views (fit / hub@100% / hub@150%), and publishes to `/var/www/kidraw-shots` → **`https://kidraw.dev.bnjmnbrmn.com/shots/`** (nginx `location /shots/` alias added to `/etc/nginx/sites-enabled/kidraw`; served directly, independent of the dev server). Run it after layout/routing experiments so results are reviewable from a phone; each run gets a timestamped directory + mobile-friendly index, and the root index lists runs newest-first.
 
-**Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`. Tests are at 152/152 after the consolidation (was 159; the deleted `charged-spring-edges.spec.ts` accounted for the difference).
+**Test note:** `npm test` can hang. Always use `npx ng test --watch=false --browsers=ChromeHeadless`. Tests are at 729/729 green (2026-09-18); `karma.conf.js` carries a low-memory Chrome launcher for this VPS.
 
 ---
 
