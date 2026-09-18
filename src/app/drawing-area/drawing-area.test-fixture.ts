@@ -21,6 +21,7 @@ import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { FileController } from './file-controller';
 import { LinkNavController } from './link-nav-controller';
+import { GrowGhost } from './grow-ghost';
 import { NavGhost } from './nav-ghost';
 import { NavJourney } from './nav-journey';
 import { TextEditingController } from './text-editing-controller';
@@ -49,10 +50,10 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.journey = new NavJourney();
   component.linkNav = new LinkNavController(component.linkNavHost());
   component.navGhost = new NavGhost(component.navGhostHost());
+  component.growGhost = new GrowGhost(component.growGhostHost());
 
   component.goalLine = new Overlay(drawingLayer);
   component.hoverTrace = new Overlay(drawingLayer);
-  component.growGhost = new Overlay(drawingLayer);
   component.labelEditGhost = new Overlay(crosshairsLayer);
   component.navigationLandingGhost = new Overlay(crosshairsLayer);
 }
