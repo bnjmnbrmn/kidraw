@@ -14,7 +14,7 @@ explanation graphs on `explanation-graphs`._
 > real, expressions over statement sequences, and a named method over a
 > named local.
 >
-> **The file: 9,071 → 6,418 lines** across the series (`ea47d11`..`2807fc5`).
+> **The file: 9,071 → 6,146 lines** across the series (`ea47d11`..`519f976`).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
 >   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
@@ -24,12 +24,19 @@ explanation graphs on `explanation-graphs`._
 >   `node-geometry.ts`, `animations.ts` (every tween in flight, so
 >   `finishTweens` has one home), `file-controller.ts` (files, vault, named
 >   graphs, display), `text-editing-controller.ts` (text mutations and the
->   geometry they cause). Plus the pure pieces: `axis.ts`,
->   `nav-ghost-geometry.ts`, `quick-add-spacing.ts`.
+>   geometry they cause), `nav-journey.ts` (where the walk has been and which
+>   way it was going — shared by both navigation surfaces),
+>   `link-nav-controller.ts` (the held NSEW Move by Link mode). Plus the pure
+>   pieces: `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`, and
+>   `navCandidatesFor` / `linkDirectionsFrom` in `graph-nav.ts`.
 > - **Specs go with the unit.** `drawing-area.test-fixture.ts` gives the
 >   component specs one place to wire the collaborators; new units get their
 >   own spec against a small fake host (`file-controller.spec.ts` is the
->   pattern). 729 specs green, `npx ng build` clean.
+>   pattern). 746 specs green, `npx ng build` clean.
+> - **The tools-facing contract is a check, not a convention.**
+>   `node tools/qa/contract/component-api.js` fails when an extraction moves a
+>   field the browser scripts read. Retired names are listed there with what to
+>   call instead, so the next move breaks one check rather than five scripts.
 > - **QA nets first.** Where a region had no black-box cover, a QA commit
 >   went in before the extraction (`bcb007e` for the file region).
 > - **Deliberately not done:** `dispatchCommand`, the flat ~395-line `switch`.
@@ -37,9 +44,17 @@ explanation graphs on `explanation-graphs`._
 >   exhaustiveness that grouped sub-dispatchers would trade away. Awaiting
 >   Ben's call (inferred, 2026-09-17 — from the absence of a decision).
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
->   file, not from a decision): selection, the drag state machine, the
->   directed-edge flow, and traversal — the four service extractions
->   sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
+>   file, not from a decision): the nav popup and its ghost (~530 lines, the
+>   other half of navigation — note it is a *shared* widget, also driven by
+>   grow-target and grow-type, so it does not move wholesale), then selection,
+>   the drag state machine and the directed-edge flow — the service
+>   extractions sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
+> - **Open question for Ben, found while extracting Move by Link:** pressing
+>   into an empty quadrant. `moveLinkQuadrant`'s corner-crossing branch falls
+>   back to the focused edge, so a north press on a lone east link re-reports
+>   it as "north: east" and "No link in the north quadrant." never fires.
+>   Left unpinned by the specs rather than blessed (inferred, 2026-09-18 —
+>   from reading `graph-nav.ts`, not from observed intent).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
@@ -655,6 +670,9 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 
 | Commit | Subject |
 | :--- | :--- |
+| `519f976` | Extract Move by Link, and stop writing its geometry three times |
+| `95fdefe` | Name the walk: one NavJourney behind both navigation surfaces |
+| `d429f4d` | dev-status: record the readability refactor |
 | `2807fc5` | Extract the text editing controller |
 | `de3b243` | Extract drawing area file controller |
 | `bcb007e` | QA: a net under the file region, which had none |
@@ -662,9 +680,6 @@ The white-box harness runs bf-wc against a 12-scenario battery and dumps SVG + m
 | `8cd6fea` | Extract what the crosshairs are on, and where a node is |
 | `0c1e7bc` | Extract the usable viewport, and give the specs one place to wire fakes |
 | `4685032` | One lifecycle for the seven transient overlays |
-| `a25ef5a` | zoomIn and zoomOut were the same method twice; route tweens through one door |
-| `135cf2e` | qa: stop the baseline counts reading as a fraction |
-| `5d33e15` | One rule for "the nodes this command means" |
 
 ---
 
