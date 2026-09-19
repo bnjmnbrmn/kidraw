@@ -35,7 +35,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     component.clearLabelEditGhost = jasmine.createSpy('clearLabelEditGhost');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.getEdgesContainingLabel = () => [];
-    component.newNodeEdgeFocus = null;
+    component.newNodeArrivedByLink = false;
     component.getDANodesContainingCrosshairs = () => [];
     component.getLabelUnderCrosshairs = () => undefined;
     component.getNodeCenterInLayerCoordinates = () => ({x: 10, y: 20});
