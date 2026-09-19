@@ -2491,6 +2491,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.getAllLabels().forEach(l => l.hideCursor());
     // A label left empty has no visible content — drop it rather than leave
     // an invisible hit-target on the edge.
+    const editedNodes = this.drawingLayer.getSelectedDANodes();
+    const editedLabels = this.getSelectedLabels().filter(label => label.label.trim() !== '');
     this.getSelectedLabels()
       .filter(label => label.label.trim() === '')
       .forEach(label => {
@@ -2506,6 +2508,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.newNodeEdgeFocus = null;
     if (edge && this.drawingLayer.getDAEdges().includes(edge)) {
       this.parkCrosshairsOnNewEdge(edge);
+      return;
+    }
+    // Keeping the caret in view pans the graph under the hidden crosshairs,
+    // so editing could end with them off the thing just edited, and the edit
+    // key then found nothing there. Put them back on it.
+    if (editedNodes.length === 1 && !this.getDANodesContainingCrosshairs().includes(editedNodes[0])) {
+      this.parkCrosshairsAt(this.getNodeCenterInLayerCoordinates(editedNodes[0]));
+    } else if (editedNodes.length === 0 && editedLabels.length === 1
+        && this.getLabelUnderCrosshairs() !== editedLabels[0]) {
+      this.parkCrosshairsAt({x: editedLabels[0].x, y: editedLabels[0].y});
     }
   }
 
@@ -7845,6 +7857,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private parkCrosshairsOnNewEdge(edge: DAEdge): void {
     const anchor = pointAtT(edge.getRenderedPathPoints(), DrawingAreaComponent.NEW_EDGE_FOCUS_T);
     if (!anchor) return;
+    this.parkCrosshairsAt(anchor);
+  }
+
+  /** Move the crosshairs onto a layer point, if it is on screen. */
+  private parkCrosshairsAt(anchor: {x: number; y: number}): void {
     const scale = this.drawingLayer.scaleX();
     const sx = this.drawingLayer.x() + anchor.x * scale;
     const sy = this.drawingLayer.y() + anchor.y * scale;

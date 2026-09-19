@@ -1827,9 +1827,14 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     const inLabelEdit = currentModeName === 'labelEdit' || currentModeName === 'labelEditCaps';
     const inLabelEditVimNormal = currentModeName === 'labelEditVimNormal' || currentModeName === 'labelEditVimNormalCaps';
     const inLabelEditVimVisual = currentModeName === 'labelEditVimVisual' || currentModeName === 'labelEditVimVisualCaps';
+    // Holding Ctrl opens the Ctrl submenu, whose `[` clears the selection. In
+    // the label modes Ctrl-[ has to mean Escape, as vim users type it.
+    const inAnyLabelEdit = inLabelEdit || inLabelEditVimNormal || inLabelEditVimVisual;
+    const escapePressed = event.key === 'Escape'
+      || (event.key === '[' && event.ctrlKey && (!ctrlSubmenuActive || inAnyLabelEdit));
 
     if (this.vimTextObjectPending && inLabelEditVimVisual) {
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         event.preventDefault();
         this.vimTextObjectPending = false;
         return;
@@ -1847,7 +1852,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     // a motion (cw, dw, d$), the doubled operator key for the whole line
     // (cc, dd), or `i`/`a` then a text object (ciw, diw).
     if (this.vimChangePending && inLabelEditVimNormal) {
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         event.preventDefault();
         this.clearVimOperator();
         return;
@@ -1887,7 +1892,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     }
 
     if (this.vimReplacePending && (inLabelEditVimNormal || inLabelEditVimVisual)) {
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         event.preventDefault();
         this.vimReplacePending = false;
         return;
@@ -1907,7 +1912,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (inLabelEdit) {
       const capsMode = currentModeName === 'labelEditCaps';
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         // First Escape in insert mode → enter vim-normal mode within label edit
         this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
         this.labelEditModeOut.emit('vimNormal');
@@ -1922,7 +1927,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (inLabelEditVimNormal) {
       const capsMode = currentModeName === 'labelEditVimNormalCaps';
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         // Second Escape → exit label edit entirely
         this.keyMenuOut.emit({kind: DACommandType.EXIT_LABEL_EDIT_MODE});
         this.switchMode(capsMode ? 'normalCaps' : 'normal');
@@ -1932,7 +1937,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     if (inLabelEditVimVisual) {
       const capsMode = currentModeName === 'labelEditVimVisualCaps';
-      if (event.key === 'Escape' || (event.key === '[' && event.ctrlKey && !ctrlSubmenuActive)) {
+      if (escapePressed) {
         this.vimReplacePending = false;
         this.vimChangePending = false;
         this.switchMode(capsMode ? 'labelEditVimNormalCaps' : 'labelEditVimNormal');
