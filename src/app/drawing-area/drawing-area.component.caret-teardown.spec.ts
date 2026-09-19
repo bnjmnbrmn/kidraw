@@ -25,6 +25,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     const edge = {labels};
     component.drawingLayer = {
       getDANodes: () => nodes,
+      getSelectedDANodes: () => nodes.filter((n: any) => n.isSelected),
       getDAEdges: () => [edge],
       unselectAll: jasmine.createSpy('unselectAll'),
       batchDraw: jasmine.createSpy('batchDraw'),
@@ -36,7 +37,11 @@ describe('DrawingAreaComponent caret teardown', () => {
     component.clearLabelEditGhost = jasmine.createSpy('clearLabelEditGhost');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.getEdgesContainingLabel = () => [];
-    component.newNodeEdgeFocus = null;
+    component.newNodeArrivedByLink = false;
+    component.getDANodesContainingCrosshairs = () => [];
+    component.getLabelUnderCrosshairs = () => undefined;
+    component.getNodeCenterInLayerCoordinates = () => ({x: 10, y: 20});
+    component.parkCrosshairsAt = jasmine.createSpy('parkCrosshairsAt');
     return component;
   }
 
@@ -61,5 +66,26 @@ describe('DrawingAreaComponent caret teardown', () => {
 
     expect(selectedLabel.hideCursor).toHaveBeenCalled();
     expect(unselectedLabel.hideCursor).toHaveBeenCalled();
+  });
+
+  // Keeping the caret in view pans the graph under the hidden crosshairs; the
+  // edit key must still find the node afterwards.
+  it('puts the crosshairs back on the edited node when they ended up off it', () => {
+    const node = fakeItem(true);
+    const component = buildComponent([node], []);
+
+    component.exitLabelEditMode();
+
+    expect(component.parkCrosshairsAt).toHaveBeenCalledWith({x: 10, y: 20});
+  });
+
+  it('leaves the crosshairs alone when they are still on the edited node', () => {
+    const node = fakeItem(true);
+    const component = buildComponent([node], []);
+    component.getDANodesContainingCrosshairs = () => [node];
+
+    component.exitLabelEditMode();
+
+    expect(component.parkCrosshairsAt).not.toHaveBeenCalled();
   });
 });

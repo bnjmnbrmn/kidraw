@@ -47,7 +47,7 @@ import { CrosshairsProbe, ProbeBounds } from './crosshairs-probe';
 import { Animations } from './animations';
 import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
-import { pointAtT, projectPointToPath } from './edge-label-anchor';
+import { projectPointToPath } from './edge-label-anchor';
 import { linkDirectionsFrom, LinkCardinalDirection, moveLinkQuadrant, NavCandidate, navCandidatesFor, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import type {
@@ -278,9 +278,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  not exist yet and so cannot be measured. */
   /** Preserve closer views, but never label a new node below natural scale. */
   private static readonly NODE_EDIT_MIN_ZOOM = 1;
-  /** Where the camera goes when a label is opened for editing: close enough
-   *  that the text you are typing is the thing you are looking at. */
-  private static readonly NODE_EDIT_ZOOM = 4;
+  /** Where the camera goes when a label is opened for editing: natural size,
+   *  so the text is readable without losing the graph around it. A closer
+   *  view is kept. (Was 400%, which Ben found too close, 2026-09-19.) */
+  private static readonly NODE_EDIT_ZOOM = 1;
   /** Stage-pixel radius within which the crosshairs count as standing on a
    *  traversal stop (label/waypoint pseudo-node). */
   private headingRadians = -Math.PI / 2;
@@ -434,9 +435,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private routingCountdown: ReturnType<typeof setInterval> | null = null;
   private routingDeadline: ReturnType<typeof setTimeout> | null = null;
   private static readonly ROUTING_TIMEOUT_MS = 15000;
-  /** Where along a freshly connected link the crosshairs land: near the
-   *  destination, but not so close that the arrowhead sits under them. */
-  private static readonly NEW_EDGE_FOCUS_T = 0.8;
 
   ngOnInit(): void {
   }
@@ -1755,6 +1753,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.getAllLabels().forEach(l => l.hideCursor());
     // A label left empty has no visible content — drop it rather than leave
     // an invisible hit-target on the edge.
+    const editedNodes = this.drawingLayer.getSelectedDANodes();
+    const editedLabels = this.getSelectedLabels().filter(label => label.label.trim() !== '');
     this.getSelectedLabels()
       .filter(label => label.label.trim() === '')
       .forEach(label => {
@@ -1763,14 +1763,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
     this.drawingLayer.batchDraw();
-    // The link this node arrived on is the thing you are most likely to want
-    // next — its direction, usually. Same landing as connecting two existing
-    // nodes, just deferred until the label is written (da-509).
-    const edge = this.newNodeEdgeFocus;
-    this.newNodeEdgeFocus = null;
-    if (edge && this.drawingLayer.getDAEdges().includes(edge)) {
-      this.parkCrosshairsOnNewEdge(edge);
+    const drewLink = this.newNodeArrivedByLink;
+    this.newNodeArrivedByLink = false;
+    // Keeping the caret in view pans the graph under the hidden crosshairs,
+    // so editing could end with them off the thing just edited, and the edit
+    // key then found nothing there. Put them back on it.
+    if (editedNodes.length === 1 && !this.getDANodesContainingCrosshairs().includes(editedNodes[0])) {
+      this.parkCrosshairsAt(this.getNodeCenterInLayerCoordinates(editedNodes[0]));
+    } else if (editedNodes.length === 0 && editedLabels.length === 1
+        && this.getLabelUnderCrosshairs() !== editedLabels[0]) {
+      this.parkCrosshairsAt({x: editedLabels[0].x, y: editedLabels[0].y});
     }
+    // A node that arrived on a new link rests the crosshairs on it, the same
+    // landing as connecting two existing nodes.
+    if (drewLink) this.hideCrosshairsUntilMoved();
   }
 
   private unselectAll() {
@@ -1972,18 +1978,18 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if(daNodesContainingCrosshairs.length == 1) {
         const destNode = daNodesContainingCrosshairs[0];
         const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
-        const edge = this.addDefaultEdge(srcNode, destNode);
+        this.addDefaultEdge(srcNode, destNode);
         this.unselectAll();
-        this.parkCrosshairsOnNewEdge(edge);
+        this.restCrosshairsOn(destNode);
       } else {
         return;
       }
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
       const destNode = daNodesContainingCrosshairs[0];
       const srcNode = selectedDANodes[0];
-      const edge = this.addDefaultEdge(srcNode, destNode);
+      this.addDefaultEdge(srcNode, destNode);
       this.unselectAll();
-      this.parkCrosshairsOnNewEdge(edge);
+      this.restCrosshairsOn(destNode);
       return;
     } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
       //todo: create new connected node
@@ -3737,7 +3743,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Enter label editing for a node that has just been added. Every label edit
-   *  now takes the same focus — in at 400% and centred on the box — since what
+   *  now takes the same focus — at least 100% and centred on the box — since what
    *  you are typing is the thing you want to be looking at. */
   private beginNewNodeLabelEdit(node: DANode): void {
     this.pendingNodeLabelEdit = null;
@@ -3781,7 +3787,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // exactly one link was drawn, that is the one the crosshairs land on once
     // the label is written (da-509).
     const drawn = selectedNodes.map(srcNode => this.addDefaultEdge(srcNode, newNode));
-    this.newNodeEdgeFocus = drawn.length === 1 ? drawn[0] : null;
+    this.newNodeArrivedByLink = drawn.length > 0;
 
     const labelable = newNode.nodeShape !== 'junction' &&
       newNode.nodeShape !== 'invisible';
@@ -4377,10 +4383,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growInsertionTarget: GrowGhostTarget | null = null;
   /** All midpoint and source-grid insertion stops for this Add hold. */
   private growGhostTargets: GrowGhostTarget[] = [];
-  /** The edge a quick-add just drew, held while its new node is being
-   *  labelled so the crosshairs can land on it when the label is done
-   *  (da-509) — the same landing connecting two existing nodes gets. */
-  private newNodeEdgeFocus: DAEdge | null = null;
+  /** Whether the node being labelled arrived on a link a quick-add just drew;
+   *  if so the crosshairs rest on it, hidden, once the label is done. */
+  private newNodeArrivedByLink = false;
   /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
   private growDirState = 0;
   private growHoldKey = 'a';
@@ -4855,7 +4860,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
     const at = this.camera.toStage(pos);
     const newNode = this.drawingLayer.createNewNode(at.x, at.y, shape);
-    this.newNodeEdgeFocus = anchor ? this.wireGrowEdge(anchor, newNode, dirState) : null;
+    if (anchor) this.wireGrowEdge(anchor, newNode, dirState);
+    this.newNodeArrivedByLink = !!anchor;
 
     const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
     if (labelable) {
@@ -4881,8 +4887,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.commitGrowEdgeTo(anchor, target, dirState);
   }
 
-  /** Wire the grow edge and leave the crosshairs on it, near the destination,
-   *  so cycling its direction is one keypress away (da-345). Shared by every
+  /** Wire the grow edge and rest the crosshairs on the target. Shared by every
    *  way of choosing an existing node as the target: walking the ghosts with
    *  hjkl, and the `/` search popup. Only the old select-then-connect path
    *  did this before (`249e6e0`) — held-Add, which is how a link actually
@@ -4890,9 +4895,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private commitGrowEdgeTo(anchor: DANode, target: DANode, dirState: number): void {
     this.finishTweens();
     this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const edge = this.wireGrowEdge(anchor, target, dirState);
+    this.wireGrowEdge(anchor, target, dirState);
     this.drawingLayer.batchDraw();
-    this.parkCrosshairsOnNewEdge(edge);
+    this.restCrosshairsOn(target);
     this.checkAndEmitEditState();
     this.scheduleVaultAutoSave();
     this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
@@ -4951,7 +4956,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
     const at = this.camera.toStage(insertion);
     const newNode = this.drawingLayer.createNewNode(at.x, at.y, this._defaultNodeShape);
-    this.newNodeEdgeFocus = this.wireGrowEdge(anchor, newNode, dirState);
+    this.wireGrowEdge(anchor, newNode, dirState);
+    this.newNodeArrivedByLink = true;
 
     const labelable = newNode.nodeShape !== 'junction' &&
       newNode.nodeShape !== 'invisible';
@@ -4987,9 +4993,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  A connect can land off-screen (the crosshairs were over a node at the
    *  viewport edge); in that case leave them where they are rather than
    *  parking them somewhere invisible. */
-  private parkCrosshairsOnNewEdge(edge: DAEdge): void {
-    const anchor = pointAtT(edge.getRenderedPathPoints(), DrawingAreaComponent.NEW_EDGE_FOCUS_T);
-    if (!anchor) return;
+  /** After a link is drawn, the crosshairs rest on the node it reached,
+   *  hidden until the next move, as they are after sitting idle. (They used
+   *  to land on the link itself, da-345/da-509; Ben preferred this,
+   *  2026-09-19.) */
+  private restCrosshairsOn(node: DANode): void {
+    this.parkCrosshairsAt(this.getNodeCenterInLayerCoordinates(node));
+    this.hideCrosshairsUntilMoved();
+  }
+
+  private hideCrosshairsUntilMoved(): void {
+    this.crosshairsLayer.hideCrosshairs();
+    this.crosshairsLayer.batchDraw();
+  }
+
+  /** Move the crosshairs onto a layer point, if it is on screen. */
+  private parkCrosshairsAt(anchor: {x: number; y: number}): void {
     const scale = this.drawingLayer.scaleX();
     const sx = this.drawingLayer.x() + anchor.x * scale;
     const sy = this.drawingLayer.y() + anchor.y * scale;
