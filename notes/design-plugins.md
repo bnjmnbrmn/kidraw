@@ -186,6 +186,51 @@ detection. Keep the graph shallow.
 6. Plugin commands as namespaced ids (`todo.setStatus`, typed by declaration
    merging), with core keeping the `DACommandType` enum for now? (Lean: yes.)
 
+## Spike: task status as a todo plugin (2026-09-23)
+
+Branch `spike/plugin-todo-status`, not merged — for Ben to look at. Task status
+moved out of the drawing area into the todo plugin, which is now one file:
+its declaration, its menu, and its command, written against the host only and
+tested with a fake host (no Konva, no component). Findings (inferred,
+2026-09-23 — from building it and running unit and browser tests on it):
+
+- **The host needed four things:** the graph's type, the target nodes (as
+  data), `apply` (operations as one undo group), and `status`. The component
+  lost `setTaskStatus` outright; what remains for the command is a routing
+  line in its table.
+- **Writes through operations bring two fixes for free.** A status change is
+  an operation group, so it undoes as one step; and a status a node already
+  has produces no operations, so no empty undo step — the
+  [refused-command bug](bug-refused-command-leaves-undo-step.md) cannot happen
+  on this path.
+- **The operation path must be synchronous on the keystroke path.** It was a
+  lazy chunk (kept out of the bundle for the budget, when only agent edits
+  used it). From the keyboard, the first status change waited ~250 ms for the
+  chunk, and a second key press in that gap planned against the graph the
+  first had not changed yet, then hit a conflict. Loading it eagerly costs
+  **1.5 kB** of the main bundle. `PluginHost.apply` is now synchronous by
+  type, so no plugin can await between reading the graph and writing it.
+- **Menu:** root `t` opens the bound plugin's own submenu when it has one
+  (the reserved Status key, now "the type's key"). Its entries take keys by
+  position from the profile's `pluginMenu` list (h j k l ; u i o), so a plugin
+  never names a key and cannot collide with core bindings in either profile.
+  The cost is mnemonics: the old Status menu had r Draft / t To Do /
+  w In Progress / b Blocked / d Done / c None. **Question for Ben:** keys by
+  position, or plugins proposing mnemonic keys with the "warn loudly and
+  rebind" rule of 2026-07-12?
+- **Command vocabulary:** `SET_TASK_STATUS` stays in the core `DACommand`
+  union and the core table routes it to whichever plugin claims it. With
+  namespaced plugin commands (question 6), one core kind — say
+  `PLUGIN_COMMAND {id, args}` — could route all of them, keeping the core
+  union closed and exhaustive while plugins add commands freely.
+- A plugin's commands are registered whether or not it is the graph's type;
+  its owner says what happens when it is not (the todo plugin warns, as
+  before).
+
+Checked: 819 unit specs; `task-status.js` 16/16 with two new real-key checks
+(root `t` menu, `t`→`l` marks Blocked); `one-step-per-change.js` 9/9;
+`file-flows.js` 9/9.
+
 ## Sequencing (inferred, 2026-09-23)
 
 1. Dispatch as typed handler tables, grouped by owner — behaviour-neutral.
