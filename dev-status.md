@@ -55,8 +55,12 @@ explanation graphs on `explanation-graphs`._
 >   went in before the extraction (`bcb007e` for the file region).
 >   (Now 5,586, after the dispatch change below.)
 > - **Commands dispatch through a table, not a switch** (2026-09-23).
->   `command-handlers.ts`: each owner — crosshairs, graph navigation, text
->   editing, files… — contributes a slice mapping command kinds to handlers.
+>   `command-handlers.ts`: each owner contributes a slice mapping command
+>   kinds to handlers. Six units now bring their own slice —
+>   `GraphSearch`, `FileController`, `LinkNavController`,
+>   `NavigationGridController`, `TextEditingController`,
+>   `GatherController` — and the component keeps slices only for what it
+>   still does itself (crosshairs, view, selection, structure, style…).
 >   A mapped type keeps the old `assertNever`'s compile-time exhaustiveness
 >   (a missing kind fails the build; probed), and `mergeCommandSlices` refuses
 >   a kind claimed twice. This is the seam plugins register into: Ben's

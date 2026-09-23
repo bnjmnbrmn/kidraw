@@ -86,7 +86,11 @@ component:
 
 These two are the pattern to follow when more comes out: the component lends a
 collaborator only what it needs, through getters, and keeps its own members
-private.
+private. A collaborator that handles commands brings its own slice of the
+command table (`commands()`, see `command-handlers.ts`) — search, files,
+Move by Link, move by node, text editing and gather do — so the component
+does not keep one-line delegates for it. That is also the shape plugins will
+have ([`notes/design-plugins.md`](notes/design-plugins.md)).
 
 ## State that outlives a keystroke
 

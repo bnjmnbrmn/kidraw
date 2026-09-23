@@ -101,6 +101,10 @@ named for their owners. Two things it showed (inferred, 2026-09-23):
   Typed over the enum, the build failed on `OPEN_INSERT_SUBMENU`, an enum
   member no command carries — already reported as stranded in
   `claude-proposed-tests/README.md`, and still left alone.
+- Six core units now bring their own slice through `commands()` —
+  search, files, Move by Link, move by node, text editing, gather — the
+  plugin shape applied to core, and it removed about twenty one-line
+  delegates from the component (inferred, 2026-09-23).
 - The drawing area's table has to list six commands it never sees
   (`shellCommands`: the ex line, agent chat, reading), because AppComponent
   intercepts them. With a registry, the owners of those — an agent-chat
