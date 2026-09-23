@@ -60,6 +60,21 @@ explanation graphs on `explanation-graphs`._
 >   direction of 2026-09-23 is plugins handling commands in place of the
 >   component's switch — [`notes/design-plugins.md`](notes/design-plugins.md),
 >   which also holds six questions awaiting his answers.
+> - **QA drift found 2026-09-23, before any of that day's changes** (each
+>   script run on `7fe36512` and on HEAD; inferred from those runs):
+>   - `labels/connect-focus.js` 11/11 → 5/11 with the alpha-fix merge
+>     (`9a7a169e`). `c1c866ff` moved where the crosshairs land after drawing
+>     a link, from the link to the node it reached (Ben, 2026-09-19); the
+>     script still expects the link. Knock-on: `v`+`o` no longer re-directs a
+>     just-drawn link without moving onto it first — the reason da-345/da-509
+>     put the crosshairs on the link. Ben's call whether that matters; the
+>     script needs updating either way.
+>   - `nav-popup/nav-popup.js` 7 → 6 passing with the same merge: 6.6c now
+>     fails, but only downstream of 6.6a/6.6b, which already failed (the
+>     popup is not open, so it is pressing Esc on the bare canvas).
+>   - `drag-and-grow/add-insert-taps.js` was already one worse than its
+>     baseline before the merge; its `v+o` checks expect a different cycle
+>     order from the one `edit-or-insert.spec.ts` pins.
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
 >   file, not from a decision): the rest of the nav popup (~370 lines now its
 >   geometry, ordering and row model are out — note it is a *shared* widget,
