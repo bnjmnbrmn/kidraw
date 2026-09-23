@@ -909,48 +909,42 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.ensureTopItemSelected();
   }
 
+  /** What the select+drag gesture acts on: whatever is under the crosshairs,
+   *  a label winning over everything, then a waypoint overlapping the
+   *  crosshairs circle (over the edge beneath it), then the topmost node,
+   *  then the topmost edge. */
+  private topItemUnderCrosshairs(): DALabel | DAWaypoint | DANode | DAEdge | null {
+    return this.getLabelUnderCrosshairs()
+      ?? this.getWaypointUnderCrosshairs()
+      ?? topmost(this.getDANodesContainingCrosshairs())
+      ?? topmost(this.getDAEdgesContainingCrosshairs());
+  }
+
+  private hasItemUnderCrosshairs(): boolean {
+    return this.topItemUnderCrosshairs() !== null;
+  }
+
   private isTopItemSelected(): boolean {
-    // Same priority as singleItemSelect: a label beats everything under it.
-    const label = this.getLabelUnderCrosshairs();
-    if (label) return label.isSelected;
-
-    const wp = this.getWaypointUnderCrosshairs();
-    if (wp) return wp.isSelected;
-
-    const topNode = topmost(this.getDANodesContainingCrosshairs());
-    if (topNode) return topNode.isSelected;
-
-    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
-    if (topEdge) return topEdge.isSelected;
-
-    return false;
+    return this.topItemUnderCrosshairs()?.isSelected ?? false;
   }
 
-  private ensureTopItemSelected() {
-    const label = this.getLabelUnderCrosshairs();
-    if (label) {
-      label.isSelected = true;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const wp = this.getWaypointUnderCrosshairs();
-    if (wp) {
-      wp.isSelected = true;
-      return;
-    }
-
-    const topNode = topmost(this.getDANodesContainingCrosshairs());
-    if (topNode) {
-      topNode.isSelected = true;
-      return;
-    }
-
-    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
-    if (topEdge) {
-      topEdge.isSelected = true;
-    }
+  private ensureTopItemSelected(): void {
+    this.reselectTopItem(() => true);
   }
+
+  /** The quick tap of the select key on an item already selected. */
+  private toggleTopItemSelection(): void {
+    this.reselectTopItem(selected => !selected);
+  }
+
+  private reselectTopItem(next: (selected: boolean) => boolean): void {
+    const item = this.topItemUnderCrosshairs();
+    if (!item) return;
+    item.isSelected = next(item.isSelected);
+    this.drawingLayer.batchDraw();
+  }
+
+
 
   private singleItemSelect() {
     this.finishTweens();
@@ -5132,15 +5126,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  /** Anything the select+drag gesture could act on, same hit priority as
-   *  ensureTopItemSelected: label → waypoint → node → edge. */
-  private hasItemUnderCrosshairs(): boolean {
-    return !!this.getLabelUnderCrosshairs() ||
-      !!this.getWaypointUnderCrosshairs() ||
-      this.getDANodesContainingCrosshairs().length > 0 ||
-      this.getDAEdgesContainingCrosshairs().length > 0;
-  }
-
   private hasDragSelection(): boolean {
     return this.drawingLayer.getSelectedDANodes().length > 0 ||
       this.drawingLayer.getSelectedDAWaypoints().length > 0 ||
@@ -5173,35 +5158,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Quick tap vv on unselected item: leave it selected (ensureTopItemSelected already did it)
   }
 
-  private toggleTopItemSelection() {
-    // Same priority as the rest of the waypoint hit-tests: a label wins over
-    // everything; a waypoint overlapping the crosshairs circle wins over the
-    // edge underneath it.
-    const label = this.getLabelUnderCrosshairs();
-    if (label) {
-      label.isSelected = !label.isSelected;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const wp = this.getWaypointUnderCrosshairs();
-    if (wp) {
-      wp.isSelected = !wp.isSelected;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const topNode = topmost(this.getDANodesContainingCrosshairs());
-    if (topNode) {
-      topNode.isSelected = !topNode.isSelected;
-      return;
-    }
-
-    const topEdge = topmost(this.getDAEdgesContainingCrosshairs());
-    if (topEdge) {
-      topEdge.isSelected = !topEdge.isSelected;
-    }
-  }
 
   /** The edges a style command means: the selection, else whatever the
    *  crosshairs are over. */
