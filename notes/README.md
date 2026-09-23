@@ -119,6 +119,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 - [Node target filter order](bug-node-target-filter-order.md) — setTaskStatus and setTextOverflowMode filter at different moments, so the same gesture acts or refuses depending on the command.
 - [An empty quadrant is announced as a move in that direction](bug-empty-quadrant-announced-as-a-move.md) — Move by Link says `north: <east node>` when nothing is north; the "no link in that quadrant" message is unreachable.
 - [The grow lattice's off-cell tolerance cannot reject anything](bug-lattice-tolerance-cannot-fire.md) — rounding bounds the residual at 0.5, so the 0.6 guard never fires and any node is assigned its nearest cell.
+- [A refused command still leaves an undo step](bug-refused-command-leaves-undo-step.md) — the policy snapshots before the command decides it can act, so a refusal leaves an undo press that does nothing; three options, Ben's call.
 
 ## Research
 
