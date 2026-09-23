@@ -86,14 +86,26 @@ keeps that guarantee while making dispatch data:
 
 ```ts
 type CommandHandlers = {
-  [K in DACommandType]: (command: Extract<DACommand, {kind: K}>) => void;
+  [K in DACommand['kind']]: (command: Extract<DACommand, {kind: K}>) => void;
 };
 const handlers: CommandHandlers = {...navigation, ...files, ...styling /* … */};
 ```
 
 A missing command kind is a compile error, as before; each owner contributes
-its own slice. Duplicate keys across slices are not a compile error, so a spec
-checks the slices are disjoint.
+its own slice. Duplicate keys across slices are not a compile error, so
+`mergeCommandSlices` throws on one and a spec builds the real table.
+
+**Done 2026-09-23** (`command-handlers.ts`): fifteen slices in the component,
+named for their owners. Two things it showed (inferred, 2026-09-23):
+- The table is typed over the `DACommand` union, not the `DACommandType` enum.
+  Typed over the enum, the build failed on `OPEN_INSERT_SUBMENU`, an enum
+  member no command carries — already reported as stranded in
+  `claude-proposed-tests/README.md`, and still left alone.
+- The drawing area's table has to list six commands it never sees
+  (`shellCommands`: the ex line, agent chat, reading), because AppComponent
+  intercepts them. With a registry, the owners of those — an agent-chat
+  plugin, a reading plugin — would register them themselves, so the registry
+  belongs at the app level, with the drawing area as one contributor.
 
 ### The host API is the real design work
 

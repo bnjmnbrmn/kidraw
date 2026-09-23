@@ -155,6 +155,7 @@ import { resolveIdentity } from '../extensions/extension-registry';
 import { applyExclusiveTag } from '../extensions/tag-groups';
 import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
+import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
 
 /** An in-graph search hit: a node (matched by its label text) or an edge label. */
 type SearchMatch =
@@ -165,6 +166,12 @@ function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
   if (a.kind === 'node' && b.kind === 'node') return a.node === b.node;
   if (a.kind === 'edge-label' && b.kind === 'edge-label') return a.label === b.label;
   return false;
+}
+
+/** Which stops a move-by-node command steps between: nodes and labels unless
+ *  it says otherwise. */
+function navTargetsOf(command: {targets?: NavTargetKind}): NavTargetKind {
+  return command.targets ?? 'labels';
 }
 
 @Component({
@@ -533,8 +540,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *
    * Policy first, effect second: refuse what routing has locked, retire the
    * movement goal line, snapshot for undo, raise the movement overlay. Then
-   * `dispatchCommand` performs the command, and `afterCommand` settles what
-   * every command leaves behind.
+   * the command's handler performs it, and `afterCommand` settles what every
+   * command leaves behind.
    */
   private handleCommand(command: DACommand) {
     this.log.log("handleCommand - " + JSON.stringify(command));
@@ -554,406 +561,264 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.showMovementIndicators();
     }
 
-    this.dispatchCommand(command);
+    runCommand(this.commandHandlers, command);
     this.afterCommand(command);
   }
 
-  /** Perform one command. Nothing but the command's own effect belongs here;
-   *  the policy that surrounds every command lives in `handleCommand`. */
-  private dispatchCommand(command: DACommand) {
-    switch (command.kind) {
-      case DACommandType.MOVE_CROSSHAIRS_LEFT:
-        this.moveCrosshairsLeft(command.gridTier);
-        break;
-      case DACommandType.MOVE_CROSSHAIRS_DOWN:
-        this.moveCrosshairsDown(command.gridTier);
-        break;
-      case DACommandType.MOVE_CROSSHAIRS_RIGHT:
-        this.moveCrosshairsRight(command.gridTier);
-        break;
-      case DACommandType.MOVE_CROSSHAIRS_UP:
-        this.moveCrosshairsUp(command.gridTier);
-        break;
-      case DACommandType.STEER_FORWARD:
-        this.steerForward();
-        break;
-      case DACommandType.STEER_BACKWARD:
-        this.steerBackward();
-        break;
-      case DACommandType.STRAFE_LEFT:
-        this.strafeLeft();
-        break;
-      case DACommandType.STRAFE_RIGHT:
-        this.strafeRight();
-        break;
-      case DACommandType.ROTATE_HEADING_LEFT:
-        this.rotateHeadingLeft();
-        break;
-      case DACommandType.ROTATE_HEADING_RIGHT:
-        this.rotateHeadingRight();
-        break;
-      case DACommandType.INCREASE_MOVE_SPEED:
-        this.increaseMoveSpeed();
-        break;
-      case DACommandType.DECREASE_MOVE_SPEED:
-        this.decreaseMoveSpeed();
-        break;
-      case DACommandType.TRAVERSE_SMART:
-        this.traverseSmart(command.keys);
-        break;
-      case DACommandType.ENTER_LINK_NAV:
-        this.enterLinkNav();
-        break;
-      case DACommandType.MOVE_LINK_LEFT:
-        this.moveLinkNav('west');
-        break;
-      case DACommandType.MOVE_LINK_RIGHT:
-        this.moveLinkNav('east');
-        break;
-      case DACommandType.MOVE_LINK_UP:
-        this.moveLinkNav('north');
-        break;
-      case DACommandType.MOVE_LINK_DOWN:
-        this.moveLinkNav('south');
-        break;
-      case DACommandType.RELEASE_LINK_NAV:
-        this.releaseLinkNav();
-        break;
-      case DACommandType.NAV_HISTORY_BACK:
-        this.navHistoryGo(-1);
-        break;
-      case DACommandType.NAV_HISTORY_FORWARD:
-        this.navHistoryGo(1);
-        break;
-      case DACommandType.SNAP_TO_NEAREST_NODE:
-        this.snapToNearestNode();
-        break;
-      case DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY:
-        this.navGrid.setGraphItemNavigationStrategy(command.strategy);
-        break;
-      case DACommandType.SHOW_NODE_GRID:
-        this.navGrid.showNodeGrid(command.targets ?? 'labels');
-        break;
-      case DACommandType.HIDE_NODE_GRID:
-        this.navGrid.hideNodeGrid();
-        break;
-      case DACommandType.SNAP_TO_NODE_LEFT:
-        this.navGrid.snapToNodeInDirection('left', command.targets ?? 'labels');
-        break;
-      case DACommandType.SNAP_TO_NODE_RIGHT:
-        this.navGrid.snapToNodeInDirection('right', command.targets ?? 'labels');
-        break;
-      case DACommandType.SNAP_TO_NODE_UP:
-        this.navGrid.snapToNodeInDirection('up', command.targets ?? 'labels');
-        break;
-      case DACommandType.SNAP_TO_NODE_DOWN:
-        this.navGrid.snapToNodeInDirection('down', command.targets ?? 'labels');
-        break;
-      case DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH:
-        this.navGrid.adjustQuadrantGoalAngle('south', command.targets ?? 'labels');
-        break;
-      case DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH:
-        this.navGrid.adjustQuadrantGoalAngle('north', command.targets ?? 'labels');
-        break;
-      case DACommandType.INCREASE_SELECTED_NODE_SIZE:
-        this.increaseSelectedNodeSize();
-        break;
-      case DACommandType.DECREASE_SELECTED_NODE_SIZE:
-        this.decreaseSelectedNodeSize();
-        break;
-      case DACommandType.INCREASE_SELECTED_TEXT_SIZE:
-        this.increaseSelectedTextSize();
-        break;
-      case DACommandType.DECREASE_SELECTED_TEXT_SIZE:
-        this.decreaseSelectedTextSize();
-        break;
-      case DACommandType.CREATE_NEW_NODE:
-        this.createNewNode(command.nodeShape);
-        break;
-      case DACommandType.ADD_SELF_EDGE:
-        this.addSelfEdge();
-        break;
-      case DACommandType.INSERT_WAYPOINT:
-        this.insertWaypointAtCrosshairs();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.INSERT_CHAR:
-        const key = command.value;
-        this.insertChar(key);
-        break;
-      case DACommandType.EXIT_LABEL_EDIT_MODE:
-        this.exitLabelEditMode();
-        break;
-      case DACommandType.SHOW_CROSSHAIRS:
-        this.holdCrosshairsVisible();
-        break;
-      case DACommandType.RELEASE_CROSSHAIRS:
-        this.releaseCrosshairsVisible();
-        break;
-      case DACommandType.OPEN_EX_LINE:
-        // AppComponent owns the ex line and intercepts this before the
-        // drawing area sees it; the case is here for exhaustiveness.
-        break;
-      case DACommandType.EX_COMMAND:
-        void this.runExCommand(command.text);
-        break;
-      case DACommandType.COPY_SELECTION:
-        this.copySelection();
-        break;
-      case DACommandType.CUT_SELECTION:
-        this.cutSelection();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.PASTE_CLIPBOARD:
-        this.pasteClipboard();
-        break;
-      case DACommandType.SINGLE_ITEM_TOGGLE_SELECT:
-        this.singleItemSelect();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.MULTI_ITEM_SELECT:
-        this.multiItemSelect();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.ZOOM_IN:
-        this.zoomIn();
-        break;
-      case DACommandType.ZOOM_OUT:
-        this.zoomOut();
-        break;
-      case DACommandType.CONNECT_SELECTED_NODES:
-        this.connectSelectedNodes();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.RECENTER_VIEW:
-        this.recenterView();
-        this.recenterCrosshairs();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.RECENTER_CROSSHAIRS:
-        this.recenterCrosshairs();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.RECENTER_VIEW_ON_CROSSHAIRS:
-        this.recenterViewOnCrosshairs();
-        break;
-      case DACommandType.UNSELECT_ALL:
-        this.unselectAll();
-        this.checkAndEmitEditState();
-        break;
-      case DACommandType.DRAG_SELECTED_LEFT:
-        this.dragSelectedLeft(command.gridTier);
-        break;
-      case DACommandType.DRAG_SELECTED_RIGHT:
-        this.dragSelectedRight(command.gridTier);
-        break;
-      case DACommandType.DRAG_SELECTED_UP:
-        this.dragSelectedUp(command.gridTier);
-        break;
-      case DACommandType.DRAG_SELECTED_DOWN:
-        this.dragSelectedDown(command.gridTier);
-        break;
-      case DACommandType.ENTER_DRAG_MODE:
-        this.enterDragMode();
-        break;
-      case DACommandType.EXIT_DRAG_MODE:
-        this.exitDragMode();
-        break;
-      case DACommandType.ADD_LABEL:
-        this.addLabel();
-        break;
-      case DACommandType.EDIT_SELECTED:
-        this.handleEditSelected();
-        break;
-      case DACommandType.QUICK_ADD:
-        this.handleQuickAdd();
-        break;
-      case DACommandType.BEGIN_NEW_NODE_LABEL_EDIT:
-        this.beginPendingNodeLabelEdit();
-        break;
-      case DACommandType.ENTER_ADD_MODE:
-        this.maybeEnterGrowMode(command.holdKey, command.keys);
-        break;
-      case DACommandType.EDIT_TEXT_AT_CROSSHAIRS:
-        this.editTextAtCrosshairs();
-        break;
-      case DACommandType.CYCLE_EDGE_DIRECTEDNESS:
-        this.cycleEdgeDirectedness();
-        break;
-      case DACommandType.DELETE_LAST_CHAR:
-        this.deleteLastChar();
-        break;
-      case DACommandType.DELETE_CHAR_AT_CURSOR:
-        this.deleteCharAtCursor();
-        break;
-      case DACommandType.REPLACE_CHAR_AT_CURSOR:
-        this.replaceCharAtCursor(command.value);
-        break;
-      case DACommandType.CHANGE_TEXT_AT_CURSOR:
-        this.changeTextAtCursor(command.motion);
-        break;
-      case DACommandType.CURSOR_LEFT:
-        this.moveEditCursor(t => t.moveCursorH(-1));
-        break;
-      case DACommandType.CURSOR_RIGHT:
-        this.moveEditCursor(t => t.moveCursorH(1));
-        break;
-      case DACommandType.CURSOR_UP:
-        this.moveEditCursor(t => t.moveCursorV(-1));
-        break;
-      case DACommandType.CURSOR_DOWN:
-        this.moveEditCursor(t => t.moveCursorV(1));
-        break;
-      case DACommandType.CURSOR_LINE_START:
-        this.moveEditCursor(t => t.cursorToLineStart());
-        break;
-      case DACommandType.CURSOR_LINE_END:
-        this.moveEditCursor(t => t.cursorToLineEnd());
-        break;
-      case DACommandType.CURSOR_WORD_FORWARD:
-        this.moveEditCursor(t => t.cursorWordForward());
-        break;
-      case DACommandType.CURSOR_WORD_END:
-        this.moveEditCursor(t => t.cursorWordEnd());
-        break;
-      case DACommandType.CURSOR_WORD_BACK:
-        this.moveEditCursor(t => t.cursorWordBack());
-        break;
-      case DACommandType.SELECT_INNER_WORD:
-        this.drawingLayer.getSelectedDANodes().forEach(n => n.selectInnerWord());
-        this.getSelectedLabels().forEach(l => l.selectInnerWord());
-        this.drawingLayer.batchDraw();
-        this.refreshLabelEditGhost();
-        break;
-      case DACommandType.SET_TEXT_CURSOR_MODE:
-        this.drawingLayer.getSelectedDANodes().forEach(n => n.setCursorMode(command.mode));
-        this.getSelectedLabels().forEach(l => l.setCursorMode(command.mode));
-        this.drawingLayer.batchDraw();
-        this.refreshLabelEditGhost();
-        break;
-      case DACommandType.DELETE:
-        this.deleteSelected();
-        break;
-      case DACommandType.UNDO:
-        this.handleUndo();
-        break;
-      case DACommandType.REDO:
-        this.handleRedo();
-        break;
-      case DACommandType.SET_TEXT_OVERFLOW_MODE:
-        this.setTextOverflowMode(command.mode);
-        break;
-      case DACommandType.SET_NODE_SHAPE:
-        this.setNodeShape(command.shape);
-        break;
-      case DACommandType.TOGGLE_NODE_SHAPE:
-        this.toggleNodeShape();
-        break;
-      case DACommandType.PAN_LEFT:
-        this.panViewport(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE, 0);
-        break;
-      case DACommandType.PAN_RIGHT:
-        this.panViewport(-(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE), 0);
-        break;
-      case DACommandType.PAN_UP:
-        this.panViewport(0, command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE);
-        break;
-      case DACommandType.PAN_DOWN:
-        this.panViewport(0, -(command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE));
-        break;
-      case DACommandType.GATHER_CONNECTED_NODES:
-        this.gather.toggle();
-        break;
-      case DACommandType.UNGATHER:
-        this.gather.ungather();
-        break;
-      case DACommandType.LOAD_SAMPLE_GRAPH:
-        this.loadSampleGraph(command.graphId);
-        break;
-      case DACommandType.NEW_GRAPH:
-        this.newGraph();
-        break;
-      case DACommandType.OPEN_FILE:
-        void this.openFile();
-        break;
-      case DACommandType.SAVE_FILE_AS:
-        this.saveFileAs();
-        break;
-      case DACommandType.EXPORT_ZIP:
-        this.exportZip();
-        break;
-      case DACommandType.CYCLE_DISPLAY:
-        this.cycleDisplay();
-        break;
-      case DACommandType.SET_DIAGRAM_TYPE:
-        this.setDiagramType(command.typeId);
-        break;
-      case DACommandType.SET_TASK_STATUS:
-        this.setTaskStatus(command.status);
-        break;
-      case DACommandType.CONNECT_VAULT:
-        void this.connectVault();
-        break;
-      case DACommandType.VAULT_OPEN:
-        void this.vaultOpen();
-        break;
-      case DACommandType.VAULT_SAVE_AS:
-        void this.vaultSaveAs();
-        break;
-      case DACommandType.SEARCH_GRAPH:
-        this.searchGraph();
-        break;
-      case DACommandType.SEARCH_NEXT_MATCH:
-        this.searchStep(1);
-        break;
-      case DACommandType.SEARCH_PREV_MATCH:
-        this.searchStep(-1);
-        break;
-      case DACommandType.SAVE_GRAPH_AS:
-        this.saveGraphAs(command.name);
-        break;
-      case DACommandType.LOAD_NAMED_GRAPH:
-        this.loadNamedGraph(command.graphSnapshot);
-        break;
-      case DACommandType.TOGGLE_PIN_SELECTED:
-        this.togglePinSelected();
-        break;
-      case DACommandType.APPLY_LAYOUT:
-        this.applyGraphLayout(command.layout);
-        break;
-      case DACommandType.APPLY_EDGE_ROUTING:
-        this.applyEdgeRouting(command.algorithm);
-        break;
-      case DACommandType.SET_EDGE_DIRECTEDNESS:
-        this.log.log('[style] setEdgeDirectedness:', command.directedness);
-        this.setEdgeDirectedness(command.directedness);
-        break;
-      case DACommandType.SET_LINE_STYLE:
-        this.log.log('[style] setLineStyle:', command.lineStyle);
-        this.setLineStyle(command.lineStyle);
-        break;
-      case DACommandType.SET_ITEM_COLOR:
-        this.log.log('[style] setItemColor:', command.color);
-        this.setItemColor(command.color);
-        break;
-      case DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS:
-        this.log.log('[style] setDefaultEdgeDirectedness:', command.directedness);
-        this._defaultEdgeDirectedness = command.directedness;
-        break;
-      case DACommandType.SET_DEFAULT_LINE_STYLE:
-        this.log.log('[style] setDefaultLineStyle:', command.lineStyle);
-        this._defaultLineStyle = command.lineStyle;
-        break;
-      case DACommandType.OPEN_AGENT_CHAT:
-      case DACommandType.ENTER_READING_MODE:
-      case DACommandType.CLOSE_AGENT_CHAT:
-      case DACommandType.ASK_AGENT_ABOUT_SELECTION:
-      case DACommandType.FOLLOW_AGENT:
-        // Agent mode commands are handled by AppComponent and never forwarded.
-        break;
-      default:
-        this.assertNever(command);
-    }
+  // ── Command handlers: one slice per owner (see command-handlers.ts) ──
+  // A handler performs its command's own effect and nothing else; the policy
+  // around every command lives in `handleCommand`.
+
+  private _commandHandlers?: CommandHandlers;
+
+  /** Every command's handler. Built on first use rather than by a field
+   *  initialiser, which specs that build the component with `Object.create`
+   *  would skip. */
+  private get commandHandlers(): CommandHandlers {
+    return this._commandHandlers ??= mergeCommandSlices(
+      this.crosshairsCommands(), this.graphNavigationCommands(), this.navGridCommands(),
+      this.searchCommands(), this.viewCommands(), this.selectionCommands(),
+      this.structureCommands(), this.textEditingCommands(), this.caretCommands(),
+      this.styleCommands(), this.layoutCommands(), this.fileCommands(),
+      this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
+    );
+  }
+
+  /** A handler that runs `run`, then tells the keymenu whether editing is
+   *  possible now — for commands that change what editing would act on. */
+  private thenEmitEditState<C>(run: (command: C) => void): (command: C) => void {
+    return command => {
+      run(command);
+      this.checkAndEmitEditState();
+    };
+  }
+
+  /** Moving the crosshairs freely: by distance, by heading, and showing them. */
+  private crosshairsCommands() {
+    return {
+      [DACommandType.MOVE_CROSSHAIRS_LEFT]: c => this.moveCrosshairsLeft(c.gridTier),
+      [DACommandType.MOVE_CROSSHAIRS_DOWN]: c => this.moveCrosshairsDown(c.gridTier),
+      [DACommandType.MOVE_CROSSHAIRS_RIGHT]: c => this.moveCrosshairsRight(c.gridTier),
+      [DACommandType.MOVE_CROSSHAIRS_UP]: c => this.moveCrosshairsUp(c.gridTier),
+      [DACommandType.STEER_FORWARD]: () => this.steerForward(),
+      [DACommandType.STEER_BACKWARD]: () => this.steerBackward(),
+      [DACommandType.STRAFE_LEFT]: () => this.strafeLeft(),
+      [DACommandType.STRAFE_RIGHT]: () => this.strafeRight(),
+      [DACommandType.ROTATE_HEADING_LEFT]: () => this.rotateHeadingLeft(),
+      [DACommandType.ROTATE_HEADING_RIGHT]: () => this.rotateHeadingRight(),
+      [DACommandType.INCREASE_MOVE_SPEED]: () => this.increaseMoveSpeed(),
+      [DACommandType.DECREASE_MOVE_SPEED]: () => this.decreaseMoveSpeed(),
+      [DACommandType.SHOW_CROSSHAIRS]: () => this.holdCrosshairsVisible(),
+      [DACommandType.RELEASE_CROSSHAIRS]: () => this.releaseCrosshairsVisible(),
+    } satisfies CommandSlice;
+  }
+
+  /** Moving along the graph: smart traverse, Move by Link, the walk's
+   *  history, and snapping to the nearest node. */
+  private graphNavigationCommands() {
+    return {
+      [DACommandType.TRAVERSE_SMART]: c => this.traverseSmart(c.keys),
+      [DACommandType.ENTER_LINK_NAV]: () => this.enterLinkNav(),
+      [DACommandType.MOVE_LINK_LEFT]: () => this.moveLinkNav('west'),
+      [DACommandType.MOVE_LINK_RIGHT]: () => this.moveLinkNav('east'),
+      [DACommandType.MOVE_LINK_UP]: () => this.moveLinkNav('north'),
+      [DACommandType.MOVE_LINK_DOWN]: () => this.moveLinkNav('south'),
+      [DACommandType.RELEASE_LINK_NAV]: () => this.releaseLinkNav(),
+      [DACommandType.NAV_HISTORY_BACK]: () => this.navHistoryGo(-1),
+      [DACommandType.NAV_HISTORY_FORWARD]: () => this.navHistoryGo(1),
+      [DACommandType.SNAP_TO_NEAREST_NODE]: () => this.snapToNearestNode(),
+    } satisfies CommandSlice;
+  }
+
+  /** Move by node: the held grid overlay and its steps. */
+  private navGridCommands() {
+    return {
+      [DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY]: c => this.navGrid.setGraphItemNavigationStrategy(c.strategy),
+      [DACommandType.SHOW_NODE_GRID]: c => this.navGrid.showNodeGrid(navTargetsOf(c)),
+      [DACommandType.HIDE_NODE_GRID]: () => this.navGrid.hideNodeGrid(),
+      [DACommandType.SNAP_TO_NODE_LEFT]: c => this.navGrid.snapToNodeInDirection('left', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_RIGHT]: c => this.navGrid.snapToNodeInDirection('right', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_UP]: c => this.navGrid.snapToNodeInDirection('up', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_DOWN]: c => this.navGrid.snapToNodeInDirection('down', navTargetsOf(c)),
+      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH]: c => this.navGrid.adjustQuadrantGoalAngle('south', navTargetsOf(c)),
+      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH]: c => this.navGrid.adjustQuadrantGoalAngle('north', navTargetsOf(c)),
+    } satisfies CommandSlice;
+  }
+
+  /** In-graph search: open it, and step between matches. */
+  private searchCommands() {
+    return {
+      [DACommandType.SEARCH_GRAPH]: () => this.searchGraph(),
+      [DACommandType.SEARCH_NEXT_MATCH]: () => this.searchStep(1),
+      [DACommandType.SEARCH_PREV_MATCH]: () => this.searchStep(-1),
+    } satisfies CommandSlice;
+  }
+
+  /** The view: zoom, pan, and recentring. */
+  private viewCommands() {
+    return {
+      [DACommandType.ZOOM_IN]: () => this.zoomIn(),
+      [DACommandType.ZOOM_OUT]: () => this.zoomOut(),
+      [DACommandType.PAN_LEFT]: c => this.panViewport(this.panDistance(c), 0),
+      [DACommandType.PAN_RIGHT]: c => this.panViewport(-this.panDistance(c), 0),
+      [DACommandType.PAN_UP]: c => this.panViewport(0, this.panDistance(c)),
+      [DACommandType.PAN_DOWN]: c => this.panViewport(0, -this.panDistance(c)),
+      [DACommandType.RECENTER_VIEW]: this.thenEmitEditState(() => this.recenterViewAndCrosshairs()),
+      [DACommandType.RECENTER_CROSSHAIRS]: this.thenEmitEditState(() => this.recenterCrosshairs()),
+      [DACommandType.RECENTER_VIEW_ON_CROSSHAIRS]: () => this.recenterViewOnCrosshairs(),
+    } satisfies CommandSlice;
+  }
+
+  /** How far one pan step goes: the command's own distance, else one
+   *  crosshairs step. */
+  private panDistance(command: {distance?: number}): number {
+    return command.distance ?? this.CROSSHAIRS_MOVEMENT_DISTANCE;
+  }
+
+  /** Selecting, and dragging what is selected. */
+  private selectionCommands() {
+    return {
+      [DACommandType.SINGLE_ITEM_TOGGLE_SELECT]: this.thenEmitEditState(() => this.singleItemSelect()),
+      [DACommandType.MULTI_ITEM_SELECT]: this.thenEmitEditState(() => this.multiItemSelect()),
+      [DACommandType.UNSELECT_ALL]: this.thenEmitEditState(() => this.unselectAll()),
+      [DACommandType.ENTER_DRAG_MODE]: () => this.enterDragMode(),
+      [DACommandType.DRAG_SELECTED_LEFT]: c => this.dragSelectedLeft(c.gridTier),
+      [DACommandType.DRAG_SELECTED_RIGHT]: c => this.dragSelectedRight(c.gridTier),
+      [DACommandType.DRAG_SELECTED_UP]: c => this.dragSelectedUp(c.gridTier),
+      [DACommandType.DRAG_SELECTED_DOWN]: c => this.dragSelectedDown(c.gridTier),
+      [DACommandType.EXIT_DRAG_MODE]: () => this.exitDragMode(),
+    } satisfies CommandSlice;
+  }
+
+  /** Adding, connecting and removing nodes, edges, labels and waypoints. */
+  private structureCommands() {
+    return {
+      [DACommandType.CREATE_NEW_NODE]: c => this.createNewNode(c.nodeShape),
+      [DACommandType.QUICK_ADD]: () => this.handleQuickAdd(),
+      [DACommandType.ENTER_ADD_MODE]: c => this.maybeEnterGrowMode(c.holdKey, c.keys),
+      [DACommandType.BEGIN_NEW_NODE_LABEL_EDIT]: () => this.beginPendingNodeLabelEdit(),
+      [DACommandType.ADD_SELF_EDGE]: () => this.addSelfEdge(),
+      [DACommandType.CONNECT_SELECTED_NODES]: this.thenEmitEditState(() => this.connectSelectedNodes()),
+      [DACommandType.ADD_LABEL]: () => this.addLabel(),
+      [DACommandType.INSERT_WAYPOINT]: this.thenEmitEditState(() => this.insertWaypointAtCrosshairs()),
+      [DACommandType.TOGGLE_PIN_SELECTED]: () => this.togglePinSelected(),
+      [DACommandType.DELETE]: () => this.deleteSelected(),
+    } satisfies CommandSlice;
+  }
+
+  /** Editing text: starting and leaving an edit, and changing the text. */
+  private textEditingCommands() {
+    return {
+      [DACommandType.EDIT_SELECTED]: () => this.handleEditSelected(),
+      [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
+      [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
+      [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
+      [DACommandType.DELETE_LAST_CHAR]: () => this.deleteLastChar(),
+      [DACommandType.DELETE_CHAR_AT_CURSOR]: () => this.deleteCharAtCursor(),
+      [DACommandType.REPLACE_CHAR_AT_CURSOR]: c => this.replaceCharAtCursor(c.value),
+      [DACommandType.CHANGE_TEXT_AT_CURSOR]: c => this.changeTextAtCursor(c.motion),
+    } satisfies CommandSlice;
+  }
+
+  /** The caret while editing: its motions, vim's `iw`, and its mode. */
+  private caretCommands() {
+    return {
+      [DACommandType.CURSOR_LEFT]: () => this.withEditCarets(t => t.moveCursorH(-1)),
+      [DACommandType.CURSOR_RIGHT]: () => this.withEditCarets(t => t.moveCursorH(1)),
+      [DACommandType.CURSOR_UP]: () => this.withEditCarets(t => t.moveCursorV(-1)),
+      [DACommandType.CURSOR_DOWN]: () => this.withEditCarets(t => t.moveCursorV(1)),
+      [DACommandType.CURSOR_LINE_START]: () => this.withEditCarets(t => t.cursorToLineStart()),
+      [DACommandType.CURSOR_LINE_END]: () => this.withEditCarets(t => t.cursorToLineEnd()),
+      [DACommandType.CURSOR_WORD_FORWARD]: () => this.withEditCarets(t => t.cursorWordForward()),
+      [DACommandType.CURSOR_WORD_END]: () => this.withEditCarets(t => t.cursorWordEnd()),
+      [DACommandType.CURSOR_WORD_BACK]: () => this.withEditCarets(t => t.cursorWordBack()),
+      [DACommandType.SELECT_INNER_WORD]: () => this.withEditCarets(t => t.selectInnerWord()),
+      [DACommandType.SET_TEXT_CURSOR_MODE]: c => this.withEditCarets(t => t.setCursorMode(c.mode)),
+    } satisfies CommandSlice;
+  }
+
+  /** Styling what is selected or under the crosshairs, and the defaults new
+   *  edges take. */
+  private styleCommands() {
+    return {
+      [DACommandType.INCREASE_SELECTED_NODE_SIZE]: () => this.increaseSelectedNodeSize(),
+      [DACommandType.DECREASE_SELECTED_NODE_SIZE]: () => this.decreaseSelectedNodeSize(),
+      [DACommandType.INCREASE_SELECTED_TEXT_SIZE]: () => this.increaseSelectedTextSize(),
+      [DACommandType.DECREASE_SELECTED_TEXT_SIZE]: () => this.decreaseSelectedTextSize(),
+      [DACommandType.SET_TEXT_OVERFLOW_MODE]: c => this.setTextOverflowMode(c.mode),
+      [DACommandType.SET_NODE_SHAPE]: c => this.setNodeShape(c.shape),
+      [DACommandType.TOGGLE_NODE_SHAPE]: () => this.toggleNodeShape(),
+      [DACommandType.CYCLE_EDGE_DIRECTEDNESS]: () => this.cycleEdgeDirectedness(),
+      [DACommandType.SET_EDGE_DIRECTEDNESS]: c => this.setEdgeDirectedness(c.directedness),
+      [DACommandType.SET_LINE_STYLE]: c => this.setLineStyle(c.lineStyle),
+      [DACommandType.SET_ITEM_COLOR]: c => this.setItemColor(c.color),
+      [DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS]: c => this.setDefaultEdgeDirectedness(c.directedness),
+      [DACommandType.SET_DEFAULT_LINE_STYLE]: c => this.setDefaultLineStyle(c.lineStyle),
+    } satisfies CommandSlice;
+  }
+
+  /** Rearranging the graph: layouts, edge routing, and gather. */
+  private layoutCommands() {
+    return {
+      [DACommandType.APPLY_LAYOUT]: c => this.applyGraphLayout(c.layout),
+      [DACommandType.APPLY_EDGE_ROUTING]: c => this.applyEdgeRouting(c.algorithm),
+      [DACommandType.GATHER_CONNECTED_NODES]: () => this.gather.toggle(),
+      [DACommandType.UNGATHER]: () => this.gather.ungather(),
+    } satisfies CommandSlice;
+  }
+
+  /** Files, the vault, named and sample graphs, the display cycle, and ex
+   *  commands — all FileController's. */
+  private fileCommands() {
+    return {
+      [DACommandType.NEW_GRAPH]: () => this.newGraph(),
+      [DACommandType.OPEN_FILE]: () => void this.openFile(),
+      [DACommandType.SAVE_FILE_AS]: () => this.saveFileAs(),
+      [DACommandType.EXPORT_ZIP]: () => this.exportZip(),
+      [DACommandType.CONNECT_VAULT]: () => void this.connectVault(),
+      [DACommandType.VAULT_OPEN]: () => void this.vaultOpen(),
+      [DACommandType.VAULT_SAVE_AS]: () => void this.vaultSaveAs(),
+      [DACommandType.SAVE_GRAPH_AS]: c => this.saveGraphAs(c.name),
+      [DACommandType.LOAD_NAMED_GRAPH]: c => this.loadNamedGraph(c.graphSnapshot),
+      [DACommandType.LOAD_SAMPLE_GRAPH]: c => this.loadSampleGraph(c.graphId),
+      [DACommandType.CYCLE_DISPLAY]: () => this.cycleDisplay(),
+      [DACommandType.EX_COMMAND]: c => void this.runExCommand(c.text),
+    } satisfies CommandSlice;
+  }
+
+  /** The Edit menu's five: undo, redo, cut, copy and paste. */
+  private editMenuCommands() {
+    return {
+      [DACommandType.UNDO]: () => this.handleUndo(),
+      [DACommandType.REDO]: () => this.handleRedo(),
+      [DACommandType.CUT_SELECTION]: this.thenEmitEditState(() => this.cutSelection()),
+      [DACommandType.COPY_SELECTION]: () => this.copySelection(),
+      [DACommandType.PASTE_CLIPBOARD]: () => this.pasteClipboard(),
+    } satisfies CommandSlice;
+  }
+
+  /** The graph's diagram type, and the task status todo graphs add. The
+   *  plugin-shaped slice: the first to leave when plugins bring their own
+   *  commands (notes/design-plugins.md). */
+  private diagramTypeCommands() {
+    return {
+      [DACommandType.SET_DIAGRAM_TYPE]: c => this.setDiagramType(c.typeId),
+      [DACommandType.SET_TASK_STATUS]: c => this.setTaskStatus(c.status),
+    } satisfies CommandSlice;
+  }
+
+  /** Commands AppComponent handles and never forwards: the ex line, agent
+   *  mode and reading. Listed so that every command kind has an owner. */
+  private shellCommands() {
+    const handledByShell = () => undefined;
+    return {
+      [DACommandType.OPEN_EX_LINE]: handledByShell,
+      [DACommandType.OPEN_AGENT_CHAT]: handledByShell,
+      [DACommandType.CLOSE_AGENT_CHAT]: handledByShell,
+      [DACommandType.ASK_AGENT_ABOUT_SELECTION]: handledByShell,
+      [DACommandType.FOLLOW_AGENT]: handledByShell,
+      [DACommandType.ENTER_READING_MODE]: handledByShell,
+    } satisfies CommandSlice;
   }
 
   /** Settle what every command leaves behind: the keymenu's context, waypoint
@@ -1048,10 +913,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private vaultSaveAs(): Promise<void> {
     return this.fileController.vaultSaveAs();
-  }
-
-  assertNever(x: never): never {
-    throw new Error(`Unexpected object: ${x}`);
   }
 
   private multiItemSelect() {
@@ -1888,8 +1749,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.textEditor.changeTextAtCursor(motion);
   }
 
-  private moveEditCursor(motion: (target: CursorTarget) => void): void {
-    this.textEditor.moveCursor(motion);
+  /** Apply a caret command to everything being edited. */
+  private withEditCarets(apply: (target: CursorTarget) => void): void {
+    this.textEditor.applyToCarets(apply);
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
@@ -3821,6 +3683,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.probe.nodes();
   }
 
+  private recenterViewAndCrosshairs(): void {
+    this.recenterView();
+    this.recenterCrosshairs();
+  }
+
   private recenterView() {
     this.finishTweens();
 
@@ -5649,14 +5516,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private setEdgeDirectedness(directedness: EdgeDirectedness): void {
+    this.log.log('[style] setEdgeDirectedness:', directedness);
     this.restyleTargetEdges('directedness', edge => edge.directedness = directedness);
   }
 
   private setLineStyle(lineStyle: LineStyle): void {
+    this.log.log('[style] setLineStyle:', lineStyle);
     this.restyleTargetEdges('line style', edge => edge.lineStyle = lineStyle);
   }
 
+  private setDefaultEdgeDirectedness(directedness: EdgeDirectedness): void {
+    this.log.log('[style] setDefaultEdgeDirectedness:', directedness);
+    this._defaultEdgeDirectedness = directedness;
+  }
+
+  private setDefaultLineStyle(lineStyle: LineStyle): void {
+    this.log.log('[style] setDefaultLineStyle:', lineStyle);
+    this._defaultLineStyle = lineStyle;
+  }
+
   private setItemColor(color: ItemColor): void {
+    this.log.log('[style] setItemColor:', color);
     const COLOR_MAP: Record<ItemColor, {node: {fill: string; stroke: string; text: string}; edge: {stroke: string; fill: string}}> = {
       'default': {node: this.drawingLayer.nodeColors()!, edge: this.drawingLayer.edgeColors()!},
       'red': {node: {fill: '#ffcccc', stroke: '#cc0000', text: '#660000'}, edge: {stroke: '#cc0000', fill: '#cc0000'}},

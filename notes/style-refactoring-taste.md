@@ -44,6 +44,13 @@ something real.
 
 ## What this does not say
 
+*Superseded 2026-09-23:* Ben's plugin direction ([`design-plugins.md`](design-plugins.md))
+has commands handled by registered owners rather than the switch, and a mapped
+type turned out to keep the exhaustiveness below — so the switch became
+per-owner handler slices (`command-handlers.ts`). Neither was a ruling on the
+switch as such (inferred, 2026-09-23). The original paragraph, kept for the
+record:
+
 Ben has not ruled on how far to go with `dispatchCommand`, the 395-line flat
 `switch`. It is one `case` per command and its `assertNever` gives
 compile-time exhaustiveness; splitting it into grouped sub-dispatchers would

@@ -50,10 +50,16 @@ explanation graphs on `explanation-graphs`._
 >   call instead, so the next move breaks one check rather than five scripts.
 > - **QA nets first.** Where a region had no black-box cover, a QA commit
 >   went in before the extraction (`bcb007e` for the file region).
-> - **Deliberately not done:** `dispatchCommand`, the flat ~395-line `switch`.
->   One `case` per command, and its `assertNever` buys compile-time
->   exhaustiveness that grouped sub-dispatchers would trade away. Awaiting
->   Ben's call (inferred, 2026-09-17 — from the absence of a decision).
+>   (Now 5,586, after the dispatch change below.)
+> - **Commands dispatch through a table, not a switch** (2026-09-23).
+>   `command-handlers.ts`: each owner — crosshairs, graph navigation, text
+>   editing, files… — contributes a slice mapping command kinds to handlers.
+>   A mapped type keeps the old `assertNever`'s compile-time exhaustiveness
+>   (a missing kind fails the build; probed), and `mergeCommandSlices` refuses
+>   a kind claimed twice. This is the seam plugins register into: Ben's
+>   direction of 2026-09-23 is plugins handling commands in place of the
+>   component's switch — [`notes/design-plugins.md`](notes/design-plugins.md),
+>   which also holds six questions awaiting his answers.
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
 >   file, not from a decision): the rest of the nav popup (~370 lines now its
 >   geometry, ordering and row model are out — note it is a *shared* widget,

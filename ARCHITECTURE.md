@@ -41,7 +41,9 @@ This is the spine. Almost everything follows it.
 2. **`AppComponent`** is the shell. It routes commands to the drawing area over
    an RxJS `Subject<DACommand>`, and calls keymenu methods directly for mode
    switches.
-3. **`DrawingAreaComponent`** executes them against the Konva canvas and emits
+3. **`DrawingAreaComponent`** executes them against the Konva canvas — each
+   command kind has one handler, in a slice owned by the feature it belongs
+   to (`command-handlers.ts`) — and emits
    `DANotification`s back — "a node was inserted", "the view changed", "edit
    state changed" — which the shell and header react to.
 
@@ -51,7 +53,7 @@ the same code with different tables.
 
 ## Inside the drawing area
 
-`drawing-area.component.ts` is still ~7,500 lines and is the part of the
+`drawing-area.component.ts` is still ~5,600 lines and is the part of the
 codebase most worth knowing your way around. It is the orchestrator: Angular
 lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
 movement.

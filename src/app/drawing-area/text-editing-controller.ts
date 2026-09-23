@@ -2,10 +2,10 @@ import type {DrawingLayer} from './drawing.layer';
 import type {DANode} from './da-node';
 import type {DALabel} from './da-label';
 import type {Point} from './utils';
-import type {VimChangeMotion} from './command.model';
+import type {TextCursorMode, VimChangeMotion} from './command.model';
 import {resolveBoxOverlaps} from './overlap-resolution';
 
-/** What a caret motion can be applied to: a node or an edge label. */
+/** What a caret command can be applied to: a node or an edge label. */
 export interface CursorTarget {
   moveCursorH(distance: number): void;
   moveCursorV(distance: number): void;
@@ -14,6 +14,9 @@ export interface CursorTarget {
   cursorWordForward(): void;
   cursorWordEnd(): void;
   cursorWordBack(): void;
+  /** Vim's `iw`: select the word under the caret. */
+  selectInnerWord(): void;
+  setCursorMode(mode: TextCursorMode): void;
 }
 
 export interface TextEditingHost {
@@ -74,11 +77,12 @@ export class TextEditingController {
     this.finishEdit();
   }
 
-  /** Apply a caret motion to everything being edited (selected nodes and
-   *  edge labels). Motions never change geometry — just the caret. */
-  moveCursor(motion: (target: CursorTarget) => void): void {
-    this.host.drawingLayer.getSelectedDANodes().forEach(motion);
-    this.host.getSelectedLabels().forEach(motion);
+  /** Apply a caret command — a motion, a selection, the caret's mode — to
+   *  everything being edited (selected nodes and edge labels). None of them
+   *  change geometry, just the caret. */
+  applyToCarets(apply: (target: CursorTarget) => void): void {
+    this.host.drawingLayer.getSelectedDANodes().forEach(apply);
+    this.host.getSelectedLabels().forEach(apply);
     this.host.drawingLayer.batchDraw();
     this.host.refreshLabelEditGhost();
   }

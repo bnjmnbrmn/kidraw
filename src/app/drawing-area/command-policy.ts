@@ -8,8 +8,9 @@
  * command kinds, so the lists and the predicates reading them live here rather
  * than as static members of a component that never varies them.
  *
- * Adding a command kind is a two-step job: give it a `case` in the drawing
- * area's dispatch, then decide which of these lists it belongs in.
+ * Adding a command kind is a two-step job: give it a handler in its owner's
+ * slice (see command-handlers.ts; the compiler refuses a kind with none), then
+ * decide which of these lists it belongs in.
  */
 import { DACommand, DACommandType } from './command.model';
 
