@@ -2,7 +2,8 @@ import type {DrawingLayer} from './drawing.layer';
 import type {DANode} from './da-node';
 import type {DALabel} from './da-label';
 import type {Point} from './utils';
-import type {TextCursorMode, VimChangeMotion} from './command.model';
+import {DACommandType, TextCursorMode, VimChangeMotion} from './command.model';
+import type {CommandSlice} from './command-handlers';
 import {resolveBoxOverlaps} from './overlap-resolution';
 
 /** What a caret command can be applied to: a node or an edge label. */
@@ -32,6 +33,27 @@ export interface TextEditingHost {
 /** Owns text mutations and the geometry they cause while labels are edited. */
 export class TextEditingController {
   constructor(private readonly host: TextEditingHost) {}
+
+  /** Changing the text being edited, and moving its caret. */
+  commands() {
+    return {
+      [DACommandType.DELETE_LAST_CHAR]: () => this.deleteLastChar(),
+      [DACommandType.DELETE_CHAR_AT_CURSOR]: () => this.deleteCharAtCursor(),
+      [DACommandType.REPLACE_CHAR_AT_CURSOR]: c => this.replaceCharAtCursor(c.value),
+      [DACommandType.CHANGE_TEXT_AT_CURSOR]: c => this.changeTextAtCursor(c.motion),
+      [DACommandType.CURSOR_LEFT]: () => this.applyToCarets(t => t.moveCursorH(-1)),
+      [DACommandType.CURSOR_RIGHT]: () => this.applyToCarets(t => t.moveCursorH(1)),
+      [DACommandType.CURSOR_UP]: () => this.applyToCarets(t => t.moveCursorV(-1)),
+      [DACommandType.CURSOR_DOWN]: () => this.applyToCarets(t => t.moveCursorV(1)),
+      [DACommandType.CURSOR_LINE_START]: () => this.applyToCarets(t => t.cursorToLineStart()),
+      [DACommandType.CURSOR_LINE_END]: () => this.applyToCarets(t => t.cursorToLineEnd()),
+      [DACommandType.CURSOR_WORD_FORWARD]: () => this.applyToCarets(t => t.cursorWordForward()),
+      [DACommandType.CURSOR_WORD_END]: () => this.applyToCarets(t => t.cursorWordEnd()),
+      [DACommandType.CURSOR_WORD_BACK]: () => this.applyToCarets(t => t.cursorWordBack()),
+      [DACommandType.SELECT_INNER_WORD]: () => this.applyToCarets(t => t.selectInnerWord()),
+      [DACommandType.SET_TEXT_CURSOR_MODE]: c => this.applyToCarets(t => t.setCursorMode(c.mode)),
+    } satisfies CommandSlice;
+  }
 
   insertChar(key: string): void {
     this.host.finishTweens();

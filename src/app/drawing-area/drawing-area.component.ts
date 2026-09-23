@@ -28,7 +28,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode } from './command.model';
 import {
   affectsContextState,
   endsNormalMovementGoal,
@@ -70,7 +70,7 @@ import {
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {buildGrowGhostTargets, GrowGhostNodeCenter, GrowGhostTarget} from './grow-ghost-targets';
 import {HopDirection, planGrowHop} from './grow-lattice';
-import {CursorTarget, TextEditingController, TextEditingHost} from './text-editing-controller';
+import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
 import {NavGhost, NavGhostHost} from './nav-ghost';
@@ -147,11 +147,6 @@ import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 
-/** Which stops a move-by-node command steps between: nodes and labels unless
- *  it says otherwise. */
-function navTargetsOf(command: {targets?: NavTargetKind}): NavTargetKind {
-  return command.targets ?? 'labels';
-}
 
 @Component({
   selector: 'app-drawing-area',
@@ -555,9 +550,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  would skip. */
   private get commandHandlers(): CommandHandlers {
     return this._commandHandlers ??= mergeCommandSlices(
-      this.crosshairsCommands(), this.graphNavigationCommands(), this.navGridCommands(),
+      this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
-      this.structureCommands(), this.textEditingCommands(), this.caretCommands(),
+      this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
       this.styleCommands(), this.layoutCommands(), this.fileController.commands(),
       this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
     );
@@ -592,35 +587,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** Moving along the graph: smart traverse, Move by Link, the walk's
-   *  history, and snapping to the nearest node. */
+  /** Moving along the graph: smart traverse, the walk's history, and
+   *  snapping to the nearest node. (Move by Link and move by node bring their
+   *  own commands.) */
   private graphNavigationCommands() {
     return {
       [DACommandType.TRAVERSE_SMART]: c => this.traverseSmart(c.keys),
-      [DACommandType.ENTER_LINK_NAV]: () => this.enterLinkNav(),
-      [DACommandType.MOVE_LINK_LEFT]: () => this.moveLinkNav('west'),
-      [DACommandType.MOVE_LINK_RIGHT]: () => this.moveLinkNav('east'),
-      [DACommandType.MOVE_LINK_UP]: () => this.moveLinkNav('north'),
-      [DACommandType.MOVE_LINK_DOWN]: () => this.moveLinkNav('south'),
-      [DACommandType.RELEASE_LINK_NAV]: () => this.releaseLinkNav(),
       [DACommandType.NAV_HISTORY_BACK]: () => this.navHistoryGo(-1),
       [DACommandType.NAV_HISTORY_FORWARD]: () => this.navHistoryGo(1),
       [DACommandType.SNAP_TO_NEAREST_NODE]: () => this.snapToNearestNode(),
-    } satisfies CommandSlice;
-  }
-
-  /** Move by node: the held grid overlay and its steps. */
-  private navGridCommands() {
-    return {
-      [DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY]: c => this.navGrid.setGraphItemNavigationStrategy(c.strategy),
-      [DACommandType.SHOW_NODE_GRID]: c => this.navGrid.showNodeGrid(navTargetsOf(c)),
-      [DACommandType.HIDE_NODE_GRID]: () => this.navGrid.hideNodeGrid(),
-      [DACommandType.SNAP_TO_NODE_LEFT]: c => this.navGrid.snapToNodeInDirection('left', navTargetsOf(c)),
-      [DACommandType.SNAP_TO_NODE_RIGHT]: c => this.navGrid.snapToNodeInDirection('right', navTargetsOf(c)),
-      [DACommandType.SNAP_TO_NODE_UP]: c => this.navGrid.snapToNodeInDirection('up', navTargetsOf(c)),
-      [DACommandType.SNAP_TO_NODE_DOWN]: c => this.navGrid.snapToNodeInDirection('down', navTargetsOf(c)),
-      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH]: c => this.navGrid.adjustQuadrantGoalAngle('south', navTargetsOf(c)),
-      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH]: c => this.navGrid.adjustQuadrantGoalAngle('north', navTargetsOf(c)),
     } satisfies CommandSlice;
   }
 
@@ -676,34 +651,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** Editing text: starting and leaving an edit, and changing the text. */
+  /** Starting and leaving a text edit, and typing. (Changing the text and
+   *  moving the caret are the TextEditingController's own commands.) */
   private textEditingCommands() {
     return {
       [DACommandType.EDIT_SELECTED]: () => this.handleEditSelected(),
       [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
       [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
       [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
-      [DACommandType.DELETE_LAST_CHAR]: () => this.deleteLastChar(),
-      [DACommandType.DELETE_CHAR_AT_CURSOR]: () => this.deleteCharAtCursor(),
-      [DACommandType.REPLACE_CHAR_AT_CURSOR]: c => this.replaceCharAtCursor(c.value),
-      [DACommandType.CHANGE_TEXT_AT_CURSOR]: c => this.changeTextAtCursor(c.motion),
-    } satisfies CommandSlice;
-  }
-
-  /** The caret while editing: its motions, vim's `iw`, and its mode. */
-  private caretCommands() {
-    return {
-      [DACommandType.CURSOR_LEFT]: () => this.withEditCarets(t => t.moveCursorH(-1)),
-      [DACommandType.CURSOR_RIGHT]: () => this.withEditCarets(t => t.moveCursorH(1)),
-      [DACommandType.CURSOR_UP]: () => this.withEditCarets(t => t.moveCursorV(-1)),
-      [DACommandType.CURSOR_DOWN]: () => this.withEditCarets(t => t.moveCursorV(1)),
-      [DACommandType.CURSOR_LINE_START]: () => this.withEditCarets(t => t.cursorToLineStart()),
-      [DACommandType.CURSOR_LINE_END]: () => this.withEditCarets(t => t.cursorToLineEnd()),
-      [DACommandType.CURSOR_WORD_FORWARD]: () => this.withEditCarets(t => t.cursorWordForward()),
-      [DACommandType.CURSOR_WORD_END]: () => this.withEditCarets(t => t.cursorWordEnd()),
-      [DACommandType.CURSOR_WORD_BACK]: () => this.withEditCarets(t => t.cursorWordBack()),
-      [DACommandType.SELECT_INNER_WORD]: () => this.withEditCarets(t => t.selectInnerWord()),
-      [DACommandType.SET_TEXT_CURSOR_MODE]: c => this.withEditCarets(t => t.setCursorMode(c.mode)),
     } satisfies CommandSlice;
   }
 
@@ -1589,27 +1544,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private settleCaretResizes(resized: Map<DANode, Point>): void {
     this.textEditor.settleCaretResizes(resized);
-  }
-
-  private deleteLastChar(): void {
-    this.textEditor.deleteLastChar();
-  }
-
-  private deleteCharAtCursor(): void {
-    this.textEditor.deleteCharAtCursor();
-  }
-
-  private replaceCharAtCursor(value: string): void {
-    this.textEditor.replaceCharAtCursor(value);
-  }
-
-  private changeTextAtCursor(motion: VimChangeMotion): void {
-    this.textEditor.changeTextAtCursor(motion);
-  }
-
-  /** Apply a caret command to everything being edited. */
-  private withEditCarets(apply: (target: CursorTarget) => void): void {
-    this.textEditor.applyToCarets(apply);
   }
 
   private setTextOverflowMode(mode: TextOverflowMode) {
@@ -2531,18 +2465,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   // ── Move by Link (held NSEW quadrants): delegated to LinkNavController ──
-  private enterLinkNav(): void {
-    this.linkNav.enter();
-  }
-
-  private moveLinkNav(direction: LinkCardinalDirection): void {
-    this.linkNav.move(direction);
-  }
-
-  private releaseLinkNav(): void {
-    this.linkNav.release();
-  }
-
 
   // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
 

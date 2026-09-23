@@ -3,7 +3,8 @@ import type { ThemeService } from '../services/theme.service';
 import type { VisualConfigService } from '../services/visual-config.service';
 import type { CrosshairsLayer } from './crosshairs.layer';
 import type { DrawingLayer } from './drawing.layer';
-import { GraphItemNavigationStrategy, GridTier, NavTargetKind } from './command.model';
+import { DACommandType, GraphItemNavigationStrategy, GridTier, NavTargetKind } from './command.model';
+import type { CommandSlice } from './command-handlers';
 import { bandIndexAtCoordinate, bandIndexForStop, buildNavigationGrid, NavigationAxisBand,
   NavigationGridStop } from './navigation-grid';
 import { adaptiveGoalAngleStep, adjustAngleTowardScreenVertical, cardinalAngle, CardinalDirection,
@@ -59,8 +60,29 @@ export interface NavigationGridHost {
  *
  * Covered by `tools/qa/grid-overlay/` — six scripts, 65 checks.
  */
+/** Which stops a move-by-node command steps between: nodes and labels unless
+ *  it says otherwise. */
+function navTargetsOf(command: {targets?: NavTargetKind}): NavTargetKind {
+  return command.targets ?? 'labels';
+}
+
 export class NavigationGridController {
   constructor(private readonly host: NavigationGridHost) {}
+
+  /** Move by node's commands: the held grid overlay, its steps, and its strategy. */
+  commands() {
+    return {
+      [DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY]: c => this.setGraphItemNavigationStrategy(c.strategy),
+      [DACommandType.SHOW_NODE_GRID]: c => this.showNodeGrid(navTargetsOf(c)),
+      [DACommandType.HIDE_NODE_GRID]: () => this.hideNodeGrid(),
+      [DACommandType.SNAP_TO_NODE_LEFT]: c => this.snapToNodeInDirection('left', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_RIGHT]: c => this.snapToNodeInDirection('right', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_UP]: c => this.snapToNodeInDirection('up', navTargetsOf(c)),
+      [DACommandType.SNAP_TO_NODE_DOWN]: c => this.snapToNodeInDirection('down', navTargetsOf(c)),
+      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH]: c => this.adjustQuadrantGoalAngle('south', navTargetsOf(c)),
+      [DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH]: c => this.adjustQuadrantGoalAngle('north', navTargetsOf(c)),
+    } satisfies CommandSlice;
+  }
 
   // ── Grid navigation (move-by-node): notes/design-grid-navigation.md ──
   // Purely spatial (no edges). Visible stops form a fixed spreadsheet-like

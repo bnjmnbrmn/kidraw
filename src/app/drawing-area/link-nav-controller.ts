@@ -1,4 +1,6 @@
 import Konva from 'konva';
+import {DACommandType} from './command.model';
+import type {CommandSlice} from './command-handlers';
 import type {DANode} from './da-node';
 import type {DAEdge} from './da-edge';
 import type {DrawingLayer} from './drawing.layer';
@@ -74,6 +76,18 @@ export class LinkNavController {
   }
 
   /** Begin a held session at the node under the crosshairs. */
+  /** Move by Link's commands: hold, step toward a quadrant, release. */
+  commands() {
+    return {
+      [DACommandType.ENTER_LINK_NAV]: () => this.enter(),
+      [DACommandType.MOVE_LINK_LEFT]: () => this.move('west'),
+      [DACommandType.MOVE_LINK_RIGHT]: () => this.move('east'),
+      [DACommandType.MOVE_LINK_UP]: () => this.move('north'),
+      [DACommandType.MOVE_LINK_DOWN]: () => this.move('south'),
+      [DACommandType.RELEASE_LINK_NAV]: () => this.release(),
+    } satisfies CommandSlice;
+  }
+
   enter(): void {
     this.host.finishTweens();
     const underCrosshairs = topmost(this.host.probe.nodes());
