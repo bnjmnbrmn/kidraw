@@ -1,7 +1,7 @@
 ---
 title: Plugins — the unit the drawing area breaks up into
 type: design
-status: direction set by Ben 2026-09-23; proposals below are inferred and awaiting his answers
+status: direction and seven decisions by Ben, 2026-09-23; the rest is inferred
 ---
 
 # Plugins
@@ -173,22 +173,47 @@ detection. Keep the graph shallow.
 - **Each plugin is tested against a fake host**, the pattern
   `file-controller.spec.ts` already uses.
 
-## Open questions for Ben
+## Decisions (Ben, 2026-09-23)
 
-1. Rename `extensions/` → `plugins/` in the code, one word everywhere?
-   (Lean: yes.)
-2. Do core features register through the same mechanism, VS Code style?
-   (Lean: yes, same shape; privileged access allowed at first.)
-3. Activation per graph (the file declares it), per user (settings), or both
-   — e.g. AI chat per user, explanation per graph? (Lean: both.)
-4. What is dynamic registration for — writing plugins without a rebuild,
-   sharing them, or agents authoring diagram types? Decides whether tier 1 is
-   enough.
-5. A missing dependency: enable it automatically, or refuse? Optional
-   dependencies (explanation works without chat, but sends reader marks when
-   chat is on)? (Lean: auto-enable; yes to optional.)
-6. Plugin commands as namespaced ids (`todo.setStatus`, typed by declaration
-   merging), with core keeping the `DACommandType` enum for now? (Lean: yes.)
+Answers to the questions this note asked, given in chat:
+
+1. **"Plugin" everywhere**, code included. Supersedes "extension in the code,
+   plugin in the UI" (Ben, 2026-09-15).
+2. **Core features register through the same mechanism** as plugins.
+3. **Activation per graph and per user, both** — and **non-core plugins can
+   be turned off in the settings.**
+4. **Dynamic registration is for all three, eventually:** adding plugins
+   without a rebuild, sharing them, and agents authoring diagram types.
+5. **Missing dependencies are switched on automatically, and optional
+   dependencies exist — with warnings/notifications.**
+6. **Plugins name their own commands** (namespaced, e.g. `todo.setStatus`).
+7. **Plugin menu keys: don't clash, be ergonomic, be memorable — in that
+   order.**
+
+Also: `SINGLE_ITEM_TOGGLE_SELECT` ("select only this") is retired; clearing
+the selection is root `c` (Ben, 2026-09-23).
+
+## What the decisions imply (inferred, 2026-09-23 — proposals, not decisions)
+
+- **Core vs non-core** (3): every plugin declares whether it is core. Core
+  ones cannot be switched off; the settings list the rest.
+- **A graph whose type is switched off** (3 meets activation-by-file): the
+  graph still opens and saves losslessly (its tags survive), the plugin's
+  behaviour stays off, and a notification says so ("This graph is an
+  Explanation; Explanation is off in Settings"). Whether it should instead
+  offer to turn the plugin back on is Ben's call.
+- **Notifications** (5): switching a plugin on that needs another says what
+  it switched on too ("Math needs Markdown — switched Markdown on"), and
+  switching off one that others need says what stops working.
+- **Keys** (7), as an algorithm: the keymenu offers each plugin menu the
+  profile's ergonomic keys for that position (opposite hand to the hub, home
+  row first); keys already taken are removed first (no clash); the plugin's
+  suggested key is used if it is still in that ergonomic set (memorable);
+  otherwise the first free ergonomic key; a menu with more entries than
+  keys warns loudly. Applies to both profiles.
+- **Dynamic registration** (4): declarative plugins (data only) first, since
+  they are safe to share and for agents to write; plugins with code later,
+  and only sandboxed.
 
 ## Spike: task status as a todo plugin (2026-09-23)
 
