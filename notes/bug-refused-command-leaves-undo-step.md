@@ -1,6 +1,7 @@
 ---
 title: A refused command still leaves an undo step
 type: bug
+status: fixed 2026-09-23 — steps that would change nothing are skipped at undo time
 ---
 
 # A refused command still leaves an undo step
@@ -47,6 +48,23 @@ net. This note is what that fix deliberately left alone.
 
 Option 1 is the cheapest now, and option 3 makes it unnecessary later
 (inferred, 2026-09-23). Which one, and whether now, is Ben's call.
+
+## What was done
+
+Ben left it to judgement (Ben, 2026-09-23: "Use your best judgement"). Done
+as a fourth option, **skip at undo time**: `UndoRedoService.undo` and `redo`
+drop snapshot steps identical to the graph as it is before taking a step, so
+one press always reverts something (inferred, 2026-09-23 — chosen over option
+1 on reading the code). Option 1 compares straight after the command, and a
+node drag tweens over the following frames: compared that early, a real drag
+looks unchanged and would lose its undo step. By the time undo is pressed,
+every command has finished.
+
+Selection is part of a snapshot, so a step that changed only the selection
+is still a step. Operation groups are never skipped. The header's Undo can
+still look available when only such steps remain; pressing it then does
+nothing, as before. `tools/qa/undo/one-step-per-change.js` has the case (a
+deletion, then a refused command, then one undo brings the node back).
 
 Related: [`bug-node-target-filter-order.md`](bug-node-target-filter-order.md)
 (the same commands refusing for different reasons).

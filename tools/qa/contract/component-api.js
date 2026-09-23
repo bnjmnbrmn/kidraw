@@ -34,6 +34,7 @@ const TOOLS_FACING = [
   'finishTweens',
   'fitViewToContent',
   'getDAEdgesContainingCrosshairs',
+  'getDANodesContainingCrosshairs',
   'getNodeCenterInLayerCoordinates',
   'getNodeCenterInStageCoordinates',
   'handleCommand',

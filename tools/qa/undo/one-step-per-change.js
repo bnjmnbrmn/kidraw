@@ -10,6 +10,11 @@
  * change under test, then presses undo twice. The first undo must revert the
  * change; the second must bring the deleted node back. With a spare step,
  * the second press is spent on nothing and the node stays gone.
+ *
+ * The last case is a command that is refused ("Select an edge first"). It
+ * still took a snapshot of the graph as it was, and until 2026-09-23 the
+ * next undo spent itself restoring that; now steps that would change nothing
+ * are skipped, so one undo reverts the change before it.
  */
 const {launch, openApp, settled, checker, DA} = require('../harness.js');
 
@@ -78,6 +83,25 @@ const CASES = [
     const nodesAfter = await nodeCount(page);
     check(`${c.name}: the next undo reverts the change before it`, nodesAfter === nodesAtStart,
       `${nodesAfter} nodes, expected ${nodesAtStart}`);
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser);
+    await loadSample(page);
+    const nodesAtStart = await nodeCount(page);
+    await selectOnly(page, `da.drawingLayer.getDANodes().slice(-1)[0]`);
+    await run(page, `da.handleCommand({kind: 'DELETE'});`);
+    await run(page, `da.drawingLayer.getDANodes().forEach(n => n.isSelected = false);
+      da.drawingLayer.getDAEdges().forEach(e => e.isSelected = false);`);
+    const message = await da(page, `(() => { let said = '';
+      const sub = da.daOut.subscribe(n => { if (n.kind === 'status-message') said = n.message; });
+      da.handleCommand({kind: 'CYCLE_EDGE_DIRECTEDNESS'});
+      sub.unsubscribe(); return said; })()`);
+    check('refused command: it is refused', /Select an edge/.test(message), message);
+    await undo(page);
+    check('refused command: one undo still reverts the change before it',
+      (await nodeCount(page)) === nodesAtStart, `${await nodeCount(page)} nodes, expected ${nodesAtStart}`);
     await page.close();
   }
 

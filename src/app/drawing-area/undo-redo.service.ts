@@ -38,8 +38,10 @@ export class UndoRedoService {
 
   /** Take the latest step off the undo stack. A snapshot step is replaced on
    *  the redo stack by `currentState`; a group moves across unchanged (the
-   *  caller applies its inverse). */
+   *  caller applies its inverse). Steps that would change nothing are
+   *  dropped on the way (see `dropUnchanged`). */
   undo(currentState: GraphSnapshot): UndoEntry | null {
+    dropUnchanged(this.undoStack, currentState);
     const entry = this.undoStack.pop();
     if (!entry) return null;
     this.redoStack.push(entry.kind === 'snapshot' ? { kind: 'snapshot', snapshot: currentState } : entry);
@@ -47,6 +49,7 @@ export class UndoRedoService {
   }
 
   redo(currentState: GraphSnapshot): UndoEntry | null {
+    dropUnchanged(this.redoStack, currentState);
     const entry = this.redoStack.pop();
     if (!entry) return null;
     this.undoStack.push(entry.kind === 'snapshot' ? { kind: 'snapshot', snapshot: currentState } : entry);
@@ -84,5 +87,23 @@ export class UndoRedoService {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+  }
+}
+
+/**
+ * Drop snapshot steps from the top of `stack` that match the graph as it is:
+ * restoring one would change nothing, so the key press would seem to do
+ * nothing. They come from commands that were refused ("Select an edge
+ * first") or found nothing to change, because the snapshot is taken before
+ * the command decides (notes/bug-refused-command-leaves-undo-step.md).
+ *
+ * Checked at undo time rather than when the command ends, because some
+ * commands finish later — a node drag tweens over the following frames — and
+ * would look unchanged if compared straight away.
+ */
+function dropUnchanged(stack: UndoEntry[], currentState: GraphSnapshot): void {
+  const current = JSON.stringify(currentState);
+  for (let top = stack.at(-1); top?.kind === 'snapshot' && JSON.stringify(top.snapshot) === current; top = stack.at(-1)) {
+    stack.pop();
   }
 }
