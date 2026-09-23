@@ -19,7 +19,7 @@ import {
 } from './text-cursor';
 import { hasInlineMarkdown, InlineStyle, LaidLine, layoutSpans, parseInlineMarkdown } from './markdown-label';
 import { mathImage, mathMetrics } from './math-images';
-import type { LabelFormat } from '../extensions/extension.model';
+import type { LabelFormat } from '../plugins/plugin.model';
 
 /** Konva.Text's own default, named so markdown runs match plain labels. */
 const LABEL_FONT = 'Arial';

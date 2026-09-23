@@ -1,8 +1,8 @@
 import type {AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
 import {
   EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_SUPPORTS_TAG,
-} from '../extensions/explanation.extension';
-import {numberedTags} from '../extensions/tag-groups';
+} from '../plugins/explanation.plugin';
+import {numberedTags} from '../plugins/tag-groups';
 import {examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
 
 const node = (id: string, ...steps: number[]): AgentNodeInfo =>

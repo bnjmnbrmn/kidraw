@@ -1,5 +1,5 @@
 import type {AgentChange, AgentChangeResult, AgentEditMeta} from '../agent/agent-canvas';
-import {resolveIdentity} from '../extensions/extension-registry';
+import {resolveIdentity} from '../plugins/plugin-registry';
 import {APP_NODE_DEFAULTS} from '../lib/file-format/snapshot-mapping';
 import {EdgeDirectedness, NodeShape, TextOverflowMode} from './command.model';
 import {GraphOperation, UndoGroup, updateEdgeOperation, updateNodeOperation} from './graph-operations';

@@ -31,7 +31,7 @@ import type { DANode } from './da-node';
 import type { GraphSnapshot } from './graph-snapshot';
 import { DACommandType } from './command.model';
 import type { CommandSlice } from './command-handlers';
-import { EXTENSION_REGISTRY, getExtension, resolveIdentity } from '../extensions/extension-registry';
+import { PLUGIN_REGISTRY, getPlugin, resolveIdentity } from '../plugins/plugin-registry';
 import { isYamlFilename, parseGraphDocByFilename, parseStyleSetByFilename, serializeGraphDocByFilename, serializeStyleSetByFilename } from '../lib/file-format/parser';
 import { ImportResolver, resolveAndApplyToGraph } from '../lib/file-format/resolver';
 import { filesToSnapshot, snapshotToFiles } from '../lib/file-format/snapshot-mapping';
@@ -284,17 +284,17 @@ export class FileController {
    *  a command — which is why SET_DIAGRAM_TYPE is missing from the mutating
    *  commands in command-policy.ts. */
   setDiagramType(typeId: string): void {
-    const extension = getExtension(typeId);
-    if (!extension) {
+    const plugin = getPlugin(typeId);
+    if (!plugin) {
       this.host.emitStatus(`⚠ Unknown diagram type: ${typeId}`);
       return;
     }
     this.host.finishTweens();
     this.host.undoRedoService.pushSnapshot(this.host.drawingLayer.serializeGraph());
-    this.host.drawingLayer.setDiagramType(extension);
+    this.host.drawingLayer.setDiagramType(plugin);
     this.host.updateEdgesForResizedNodes(this.host.drawingLayer.getDANodes());
     this.host.drawingLayer.batchDraw();
-    this.host.emitStatus(`Diagram type: ${extension.name}`);
+    this.host.emitStatus(`Diagram type: ${plugin.name}`);
     this.scheduleVaultAutoSave();
   }
 
@@ -532,8 +532,8 @@ export class FileController {
   private exType(arg: string): void {
     const current = this.host.drawingLayer.diagramType;
     if (arg === '') {
-      const list = [...EXTENSION_REGISTRY.values()]
-        .map(extension => extension.id === current ? `${extension.id} (current)` : extension.id)
+      const list = [...PLUGIN_REGISTRY.values()]
+        .map(plugin => plugin.id === current ? `${plugin.id} (current)` : plugin.id)
         .join(', ');
       this.host.emitStatus(`Plugins: ${list}. :type <name> switches.`);
       return;

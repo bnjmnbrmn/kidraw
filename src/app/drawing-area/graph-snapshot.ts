@@ -62,7 +62,7 @@ export interface DAEdgeSnapshot {
 export interface GraphSnapshot {
   nodes: DANodeSnapshot[];
   edges: DAEdgeSnapshot[];
-  /** Id of the identity extension (diagram type) bound to this graph;
+  /** Id of the identity plugin (diagram type) bound to this graph;
    *  absent means 'default'. Persisted as the graph doc's `type`. */
   diagramType?: string;
   /** Legacy (plugin v0): identity was recorded as plugins: ['todo-graph'].

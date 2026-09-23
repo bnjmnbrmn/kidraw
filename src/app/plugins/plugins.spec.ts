@@ -2,13 +2,13 @@ import { DrawingLayer } from '../drawing-area/drawing.layer';
 import { DANode } from '../drawing-area/da-node';
 import { DAEdge } from '../drawing-area/da-edge';
 import {
-  EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXTENSION, EXPLANATION_SUPPORTS_TAG,
-} from './explanation.extension';
-import { TODO_GRAPH_EXTENSION } from './todo-graph.extension';
-import { resolveIdentity, DEFAULT_EXTENSION } from './extension-registry';
+  EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_PLUGIN, EXPLANATION_SUPPORTS_TAG,
+} from './explanation.plugin';
+import { TODO_GRAPH_PLUGIN } from './todo-graph.plugin';
+import { resolveIdentity, DEFAULT_PLUGIN } from './plugin-registry';
 import { activeTagChoice, applyExclusiveTag } from './tag-groups';
 
-describe('extensions (identity slot)', () => {
+describe('plugins (identity slot)', () => {
   function layerWithNodes(...nodes: DANode[]): DrawingLayer {
     const dl = new DrawingLayer();
     for (const n of nodes) {
@@ -33,14 +33,14 @@ describe('extensions (identity slot)', () => {
     const stroke = (edge: DAEdge) => (edge as unknown as {_line: {stroke(): string}})._line.stroke();
     const plainStroke = stroke(plain);
 
-    dl.setDiagramType(EXPLANATION_EXTENSION);
-    const supportsKind = EXPLANATION_EXTENSION.edgeKinds!.find(k => k.tag === EXPLANATION_SUPPORTS_TAG)!;
-    const mark = activeTagChoice(EXPLANATION_EXTENSION, [EXPLANATION_DOESNT_FOLLOW_TAG])!;
+    dl.setDiagramType(EXPLANATION_PLUGIN);
+    const supportsKind = EXPLANATION_PLUGIN.edgeKinds!.find(k => k.tag === EXPLANATION_SUPPORTS_TAG)!;
+    const mark = activeTagChoice(EXPLANATION_PLUGIN, [EXPLANATION_DOESNT_FOLLOW_TAG])!;
     expect(stroke(supports)).toBe(supportsKind.color);
     expect(stroke(marked)).toBe(mark.color);
     expect(stroke(plain)).toBe(plainStroke);
 
-    dl.setDiagramType(DEFAULT_EXTENSION);
+    dl.setDiagramType(DEFAULT_PLUGIN);
     expect(stroke(supports)).not.toBe(supportsKind.color);
     expect(stroke(marked)).not.toBe(mark.color);
   });
@@ -51,12 +51,12 @@ describe('extensions (identity slot)', () => {
     const dl = layerWithNodes(definition);
     const plainStroke = definition.shape.stroke();
 
-    dl.setDiagramType(EXPLANATION_EXTENSION);
-    const kind = EXPLANATION_EXTENSION.nodeKinds!.find(k => k.tag === 'kind/definition')!;
+    dl.setDiagramType(EXPLANATION_PLUGIN);
+    const kind = EXPLANATION_PLUGIN.nodeKinds!.find(k => k.tag === 'kind/definition')!;
     expect(definition.shape.stroke()).toBe(kind.color);
     expect(definition.kindBadgeLabel).toBe('DEFINITION');
 
-    dl.setDiagramType(DEFAULT_EXTENSION);
+    dl.setDiagramType(DEFAULT_PLUGIN);
     expect(definition.shape.stroke()).toBe(plainStroke);
     expect(definition.kindBadgeLabel).toBe('');
   });
@@ -73,7 +73,7 @@ describe('extensions (identity slot)', () => {
     dl.addRawEdge(supports);
     const opacity = (edge: DAEdge) => edge.konvaGroup.opacity();
 
-    dl.setDiagramType(EXPLANATION_EXTENSION);
+    dl.setDiagramType(EXPLANATION_PLUGIN);
     expect(opacity(link)).toBe(DAEdge.FAINT_OPACITY);
     expect(opacity(supports)).toBe(1);
 
@@ -91,7 +91,7 @@ describe('extensions (identity slot)', () => {
     expect(opacity(link)).toBe(1);
 
     link.tags = [EXPLANATION_DEFINITION_TAG];
-    dl.setDiagramType(DEFAULT_EXTENSION);
+    dl.setDiagramType(DEFAULT_PLUGIN);
     expect(opacity(link)).toBe(1);
   });
 
@@ -100,10 +100,10 @@ describe('extensions (identity slot)', () => {
     statement.tags = ['step/3', 'step/1', 'other'];
     const dl = layerWithNodes(statement);
 
-    dl.setDiagramType(EXPLANATION_EXTENSION);
+    dl.setDiagramType(EXPLANATION_PLUGIN);
     expect(statement.stepBadgeLabel).toBe('1 · 3');
 
-    dl.setDiagramType(DEFAULT_EXTENSION);
+    dl.setDiagramType(DEFAULT_PLUGIN);
     expect(statement.stepBadgeLabel).toBe('');
   });
 
@@ -112,7 +112,7 @@ describe('extensions (identity slot)', () => {
     const box = new DANode(300, 0, 'todo B');
     const dl = layerWithNodes(circle, box);
 
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     for (const n of [circle, box]) {
       expect(n.nodeShape).toBe('box');
@@ -130,7 +130,7 @@ describe('extensions (identity slot)', () => {
       'a genuinely long todo item whose label cannot possibly fit on a single line of card text');
     const dl = layerWithNodes(long);
 
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     expect(long.NODE_WIDTH).toBe(280);
     expect(long.NODE_HEIGHT).toBeGreaterThan(long.MIN_NODE_SIZE);
@@ -141,7 +141,7 @@ describe('extensions (identity slot)', () => {
     const dl = layerWithNodes(junction);
     const w = junction.NODE_WIDTH;
 
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     expect(junction.nodeShape).toBe('junction');
     expect(junction.NODE_WIDTH).toBe(w);
@@ -149,7 +149,7 @@ describe('extensions (identity slot)', () => {
 
   it('new nodes follow the identity defaults', () => {
     const dl = layerWithNodes();
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     const node = dl.createNewNode(100, 100);
     expect(node.nodeShape).toBe('box');
@@ -161,7 +161,7 @@ describe('extensions (identity slot)', () => {
 
   it('an explicitly requested shape wins over the identity default shape', () => {
     const dl = layerWithNodes();
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     const node = dl.createNewNode(100, 100, 'diamond');
     expect(node.nodeShape).toBe('diamond');
@@ -171,7 +171,7 @@ describe('extensions (identity slot)', () => {
 
   it('the diagram type survives serialize/restore and is cleared by clearAll', () => {
     const dl = layerWithNodes(new DANode(0, 0, 'x'));
-    dl.setDiagramType(TODO_GRAPH_EXTENSION);
+    dl.setDiagramType(TODO_GRAPH_PLUGIN);
 
     const snap = dl.serializeGraph();
     expect(snap.diagramType).toBe('todo-graph');
@@ -195,14 +195,14 @@ describe('extensions (identity slot)', () => {
   });
 
   it('resolveIdentity falls back to the default identity for unknown or absent types', () => {
-    expect(resolveIdentity(undefined)).toBe(DEFAULT_EXTENSION);
-    expect(resolveIdentity('no-such-type')).toBe(DEFAULT_EXTENSION);
-    expect(resolveIdentity('todo-graph')).toBe(TODO_GRAPH_EXTENSION);
+    expect(resolveIdentity(undefined)).toBe(DEFAULT_PLUGIN);
+    expect(resolveIdentity('no-such-type')).toBe(DEFAULT_PLUGIN);
+    expect(resolveIdentity('todo-graph')).toBe(TODO_GRAPH_PLUGIN);
   });
 });
 
-describe('extensions (tag groups / task status)', () => {
-  const statusGroup = TODO_GRAPH_EXTENSION.tagGroups!.find(g => g.id === 'status')!;
+describe('plugins (tag groups / task status)', () => {
+  const statusGroup = TODO_GRAPH_PLUGIN.tagGroups!.find(g => g.id === 'status')!;
 
   it('todo-graph declares the five task statuses', () => {
     expect(statusGroup.choices.map(c => c.tag)).toEqual([
@@ -226,9 +226,9 @@ describe('extensions (tag groups / task status)', () => {
   });
 
   it('activeTagChoice finds the status present on the node, none otherwise', () => {
-    expect(activeTagChoice(TODO_GRAPH_EXTENSION, ['milestone', 'status/blocked'])!.label).toBe('BLOCKED');
-    expect(activeTagChoice(TODO_GRAPH_EXTENSION, ['milestone'])).toBeNull();
-    expect(activeTagChoice(DEFAULT_EXTENSION, ['status/blocked'])).toBeNull();
+    expect(activeTagChoice(TODO_GRAPH_PLUGIN, ['milestone', 'status/blocked'])!.label).toBe('BLOCKED');
+    expect(activeTagChoice(TODO_GRAPH_PLUGIN, ['milestone'])).toBeNull();
+    expect(activeTagChoice(DEFAULT_PLUGIN, ['status/blocked'])).toBeNull();
   });
 
   it('setStatusBadge shows a badge, dims done nodes, and clears cleanly', () => {
@@ -278,7 +278,7 @@ describe('extensions (tag groups / task status)', () => {
       }],
       edges: [],
     });
-    dl.setDiagramType(DEFAULT_EXTENSION);
+    dl.setDiagramType(DEFAULT_PLUGIN);
     const node = dl.getDANodes()[0];
     expect(node.statusBadgeVisible).toBeFalse();
     expect(node.tags).toEqual(['status/done']);

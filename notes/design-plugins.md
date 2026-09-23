@@ -39,9 +39,10 @@ Earlier decisions this builds on:
 
 ## What exists (2026-09-23)
 
-- `src/app/extensions/`: `KidrawExtension` is declarative — identity,
+- `src/app/plugins/` (called `extensions/` until renamed on 2026-09-23):
+  `KidrawPlugin` is declarative — identity,
   node defaults, label format, tag groups, edge kinds, node kinds, reading
-  order. Registered in a fixed map (`extension-registry.ts`); one bound per
+  order. Registered in a fixed map (`plugin-registry.ts`); one bound per
   graph as its diagram type.
 - The component's plugin-specific code is small: roughly 250 of its ~5,700
   lines (the agent canvas surface, `setDiagramType`, `setTaskStatus`, math

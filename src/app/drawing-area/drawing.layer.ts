@@ -15,9 +15,9 @@ import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
 import {nextId, resetIdCounter} from './id-generator';
 import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
-import {KidrawExtension} from '../extensions/extension.model';
-import {resolveIdentity} from '../extensions/extension-registry';
-import {activeTagChoice, numberedTags} from '../extensions/tag-groups';
+import {KidrawPlugin} from '../plugins/plugin.model';
+import {resolveIdentity} from '../plugins/plugin-registry';
+import {activeTagChoice, numberedTags} from '../plugins/tag-groups';
 
 export class DrawingLayer extends Konva.Layer {
   private readonly gridGroup: Konva.Group;
@@ -26,7 +26,7 @@ export class DrawingLayer extends Konva.Layer {
   private readonly daNodes: DANode[] = [];
   private readonly daEdges: DAEdge[] = [];
   private _palette?: ThemePalette;
-  /** Id of the identity extension bound to this graph (its diagram type).
+  /** Id of the identity plugin bound to this graph (its diagram type).
    *  Serialized with the graph; 'default' is implicit and never persisted. */
   private _diagramType = 'default';
   private gridSpacing = 50;
@@ -169,7 +169,7 @@ export class DrawingLayer extends Konva.Layer {
 
     // Create node first so we can read its actual size constants
     const daNode = new DANode(0, 0, "", undefined, this.nodeColors(), nodeShape);
-    // The identity extension sets the defaults for new nodes; an explicitly
+    // The identity plugin sets the defaults for new nodes; an explicitly
     // requested shape (insert-with-shape submenu) wins over its default shape.
     this.applyIdentityDefaultsToNode(daNode, resolveIdentity(this._diagramType), nodeShape !== undefined);
     const nodeW = daNode.NODE_WIDTH;
@@ -471,13 +471,13 @@ export class DrawingLayer extends Konva.Layer {
     };
   }
 
-  /** Bind an identity extension (diagram type) to this graph and restyle the
+  /** Bind an identity plugin (diagram type) to this graph and restyle the
    *  existing nodes to its defaults. Junction/invisible nodes keep their
    *  fixed geometry. */
-  setDiagramType(extension: KidrawExtension): void {
-    this._diagramType = extension.id;
+  setDiagramType(plugin: KidrawPlugin): void {
+    this._diagramType = plugin.id;
     for (const node of this.daNodes) {
-      this.applyIdentityDefaultsToNode(node, extension, false);
+      this.applyIdentityDefaultsToNode(node, plugin, false);
     }
     this.refreshTagBadges();
   }
@@ -512,8 +512,8 @@ export class DrawingLayer extends Konva.Layer {
     return resolveIdentity(this._diagramType).labelFormat ?? 'plain';
   }
 
-  private applyIdentityDefaultsToNode(node: DANode, extension: KidrawExtension, keepShape: boolean): void {
-    const d = extension.nodeDefaults;
+  private applyIdentityDefaultsToNode(node: DANode, plugin: KidrawPlugin, keepShape: boolean): void {
+    const d = plugin.nodeDefaults;
     if (!keepShape && d.shape && node.nodeShape !== d.shape
         && node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
       node.changeShape(d.shape, this.nodeColors());
@@ -525,7 +525,7 @@ export class DrawingLayer extends Konva.Layer {
       d.fontSize ?? node.FONT_SIZE,
       d.textOverflow ?? node.textOverflowMode,
     );
-    node.setLabelFormat(extension.labelFormat ?? 'plain');
+    node.setLabelFormat(plugin.labelFormat ?? 'plain');
     node.applyTextOverflow();
   }
 

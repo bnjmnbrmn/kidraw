@@ -1,5 +1,7 @@
 # Explanation graphs
 
+> Renamed 2026-09-23: extensions are called plugins in the code too (`src/app/plugins/`, `KidrawPlugin`) — Ben's decision, [`design-plugins.md`](design-plugins.md).
+
 _2026-09-15. Branch `explanation-graphs` (off `agent-mode-v0`)._
 
 The first main use of agent mode: the agent builds an explanation or tutorial
@@ -21,7 +23,7 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
 - The user must be able to stop the agent.
 - Labels: bold, italic and code first; math after.
 - Gather-style views need a lot of iteration, so not in the first pass.
-- "Extension" in the code is "plugin" in the UI and in conversation.
+- "Extension" in the code is "plugin" in the UI and in conversation. *(Superseded 2026-09-23: "plugin" everywhere, code included — Ben.)*
 - The reading order is numbers on the statements, not edges. A statement
   read twice shows two numbers. (This replaced numbered path edges the same
   day.)

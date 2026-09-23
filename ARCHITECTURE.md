@@ -19,7 +19,7 @@ reaching for it.
 | `keymenu/` | ~2,600 | The on-screen keyboard overlay (its own Konva canvas) |
 | `agent/` | ~2,400 | Agent mode's tab side — see [`agent/README.md`](agent/README.md) for the server |
 | `services/` | ~1,900 | Storage, theming, vault, config, logging |
-| `extensions/` | ~300 | Diagram types (explanation, todo) that add node kinds and edge kinds |
+| `plugins/` | ~300 | Plugins: so far the diagram types (explanation, todo), which add node kinds and edge kinds |
 | `nav-popup/`, `reading/`, `header/`, `ex-line/` | ~1,000 | Go-to popup, reading mode, header chips, the vim `:` line |
 
 ## How a keystroke becomes a change
@@ -102,10 +102,11 @@ undo groups so one agent turn undoes as one step.
 and a zip bundle format. The vault (`services/vault.service.ts`) watches files
 on disk; drafts persist to localStorage through `draft-storage.service.ts`.
 
-**Diagram types** are extensions (`extensions/`), registered in
-`extension-registry.ts`. An extension contributes node kinds, edge kinds and
-behaviour — `explanation.extension.ts` adds Supports edges and reading order,
-`todo-graph.extension.ts` adds task statuses. `:type explanation` switches.
+**Diagram types** are plugins (`plugins/`), registered in
+`plugin-registry.ts`. A plugin contributes node kinds, edge kinds and
+behaviour — `explanation.plugin.ts` adds Supports edges and reading order,
+`todo-graph.plugin.ts` adds task statuses. `:type explanation` switches.
+Where plugins are headed: [`notes/design-plugins.md`](notes/design-plugins.md).
 
 ## Agent mode
 

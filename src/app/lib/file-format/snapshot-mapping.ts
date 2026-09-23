@@ -9,7 +9,7 @@
  *     waypoints, label offsets, text-overflow mode.
  *
  * Node style props resolve through the cascade
- *   app defaults -> identity extension defaults -> per-node file props,
+ *   app defaults -> identity plugin defaults -> per-node file props,
  * and a per-node prop is only written when it differs from its resolved
  * cascade value. File `w`/`h`/`fontSize` are the node's *base* values (the
  * inputs — e.g. fit mode's max width), never the rendered size, which is
@@ -34,7 +34,7 @@ import {
   NodeSemantics,
   NodeStyleProps,
 } from './types';
-import { resolveIdentity } from '../../extensions/extension-registry';
+import { resolveIdentity } from '../../plugins/plugin-registry';
 
 /** App-level bottom of the node style cascade; mirrors DANode's defaults.
  *  `width`/`height` are the *base* box — under the default `fit` overflow they
@@ -56,7 +56,7 @@ function identityOf(explicit: string | undefined, legacyPlugins: string[] | unde
 }
 
 /** The fully resolved cascade values (app defaults overlaid with the identity
- *  extension's defaults) that per-node props are compared against / filled from. */
+ *  plugin's defaults) that per-node props are compared against / filled from. */
 function cascadeDefaults(diagramType: string) {
   const d = resolveIdentity(diagramType).nodeDefaults;
   return {

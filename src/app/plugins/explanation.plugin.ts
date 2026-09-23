@@ -1,4 +1,4 @@
-import { KidrawExtension } from './extension.model';
+import { KidrawPlugin } from './plugin.model';
 
 /** The tag on structure edges: premise → the statement that follows from it. */
 export const EXPLANATION_SUPPORTS_TAG = 'explanation/supports';
@@ -23,7 +23,7 @@ export const EXPLANATION_TOO_DETAILED_TAG = 'feedback/too-detailed';
 export const EXPLANATION_FEEDBACK_TAGS: readonly string[] = [EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_TOO_DETAILED_TAG];
 
 /**
- * Identity extension for explanations and tutorials an agent builds and the
+ * Identity plugin for explanations and tutorials an agent builds and the
  * reader questions: roughly one statement per node, with two kinds of edge.
  *
  * - Supports (structure): an edge from each premise to the statement that
@@ -38,7 +38,7 @@ export const EXPLANATION_FEEDBACK_TAGS: readonly string[] = [EXPLANATION_DOESNT_
  * - Feedback: a reader marks a statement, or a supports link, that doesn't
  *   follow for them (or a statement that is too detailed).
  */
-export const EXPLANATION_EXTENSION: KidrawExtension = {
+export const EXPLANATION_PLUGIN: KidrawPlugin = {
   id: 'explanation',
   name: 'Explanation',
   description: 'Statements linked by what follows from what, with a numbered reading path',

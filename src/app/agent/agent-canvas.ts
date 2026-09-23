@@ -83,7 +83,7 @@ export interface AgentCanvasTarget {
   agentNodeClientRect(id: string): ClientRect | null;
   /** The usable viewport (inside header, keymenu, and panel insets). */
   agentViewClientRect(): ClientRect;
-  /** The bound diagram type's id (see the extension registry). */
+  /** The bound diagram type's id (see the plugin registry). */
   agentDiagramTypeId(): string;
   /** Apply a batch as one undo group, all-or-nothing. */
   agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult>;

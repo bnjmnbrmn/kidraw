@@ -1,4 +1,4 @@
-import {resolveIdentity} from '../extensions/extension-registry';
+import {resolveIdentity} from '../plugins/plugin-registry';
 import {fuzzyMatch} from '../lib/fuzzy-match';
 import type {AgentCanvasTarget, AgentChange, AgentChangeResult, AgentNodeInfo} from './agent-canvas';
 

@@ -162,7 +162,7 @@ export function validateGraphDoc(raw: unknown): ParseResult<KidrawGraphDoc> {
   }
 
   if (raw['type'] !== undefined && typeof raw['type'] !== 'string') {
-    return fail('"type" must be a string (identity extension id)');
+    return fail('"type" must be a string (the id of a diagram-type plugin)');
   }
 
   return ok({

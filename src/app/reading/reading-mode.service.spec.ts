@@ -3,7 +3,7 @@ import {
   EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_TAG,
   EXPLANATION_SUPPORTS_TAG,
   EXPLANATION_TOO_DETAILED_TAG,
-} from '../extensions/explanation.extension';
+} from '../plugins/explanation.plugin';
 import {ReadingModeService} from './reading-mode.service';
 
 const node = (id: string, label: string, ...steps: number[]): AgentNodeInfo =>

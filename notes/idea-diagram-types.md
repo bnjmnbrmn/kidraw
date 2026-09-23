@@ -6,6 +6,8 @@ status: persistence slice SHIPPED 2026-07-12 (eab8642) — identity slot + style
 
 # Extensions + contribution points (supersedes the "diagram types vs plugins" framing)
 
+> Renamed 2026-09-23: extensions are called plugins in the code too (`src/app/plugins/`, `KidrawPlugin`) — Ben's decision, [`design-plugins.md`](design-plugins.md).
+
 Origin: dogfooding `next.kidraw.yaml`. First proposal (2026-07-11) framed a
 new "diagram type" concept vs plugins as emacs major vs minor modes. **User
 rejected that framing as under-expressive**: mutual exclusivity shouldn't be

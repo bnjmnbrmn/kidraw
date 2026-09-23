@@ -51,7 +51,7 @@ export type LineStyle = 'solid' | 'dashed' | 'dotted';
 export type ItemColor = 'default' | 'red' | 'blue' | 'green' | 'orange' | 'purple';
 
 /** Task statuses on todo graphs; 'none' clears the status. The tag persisted
- *  on the node is `status/<value>` (see the todo-graph extension's tag group). */
+ *  on the node is `status/<value>` (see the todo-graph plugin's tag group). */
 export type TaskStatus = 'draft' | 'todo' | 'in-progress' | 'blocked' | 'done' | 'none';
 
 export enum DACommandType {

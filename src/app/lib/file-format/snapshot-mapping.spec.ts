@@ -229,7 +229,7 @@ describe('snapshot-mapping', () => {
     expect(snap.edges[0].labels[0].side).toBe('on');
   });
 
-  it('fills missing props from the identity extension, not just app defaults', () => {
+  it('fills missing props from the identity plugin, not just app defaults', () => {
     const doc: KidrawGraphDoc = {
       kidraw: 1,
       type: 'todo-graph',

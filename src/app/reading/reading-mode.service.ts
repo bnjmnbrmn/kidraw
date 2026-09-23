@@ -5,7 +5,7 @@ import {
   EXPLANATION_ASSUMPTION_KIND_TAG, EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_KIND_TAG,
   EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_KIND_TAG,
   EXPLANATION_FEEDBACK_TAGS, EXPLANATION_TOO_DETAILED_TAG,
-} from '../extensions/explanation.extension';
+} from '../plugins/explanation.plugin';
 import {plainText} from '../drawing-area/markdown-label';
 import {backgroundLinks, examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
 

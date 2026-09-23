@@ -138,8 +138,8 @@ import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
 import { VaultService } from '../services/vault.service';
-import { resolveIdentity } from '../extensions/extension-registry';
-import { applyExclusiveTag } from '../extensions/tag-groups';
+import { resolveIdentity } from '../plugins/plugin-registry';
+import { applyExclusiveTag } from '../plugins/tag-groups';
 import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
@@ -4227,7 +4227,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the
-   *  extension node-kinds slot slots in here later). Held-f rhythm: browse
+   *  plugin node-kinds slot slots in here later). Held-f rhythm: browse
    *  with j/k while f is down, releasing f selects (the popup's holdKey
    *  machinery); Enter also selects. */
   private openGrowTypePopup(): void {
