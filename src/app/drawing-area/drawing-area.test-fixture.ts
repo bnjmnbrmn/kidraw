@@ -18,6 +18,7 @@
  */
 import { Animations } from './animations';
 import { AreaSelect } from './area-select';
+import { KeyboardDrag } from './keyboard-drag';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { FileController } from './file-controller';
@@ -50,6 +51,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.fileController = new FileController(component.fileHost());
   component.textEditor = new TextEditingController(component.textEditingHost());
   component.areaSelect = new AreaSelect(component.areaSelectHost());
+  component.keyboardDrag = new KeyboardDrag(component.keyboardDragHost());
   component.journey = new NavJourney();
   component.linkNav = new LinkNavController(component.linkNavHost());
   component.navGhost = new NavGhost(component.navGhostHost());
