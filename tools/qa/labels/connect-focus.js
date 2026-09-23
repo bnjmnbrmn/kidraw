@@ -1,12 +1,16 @@
 /*
- * Repro for da-345: "Immediately after connecting two nodes with a link,
- * place the crosshairs over the link near the destination node so that one
- * can easily change the direction of the link."
+ * Where the crosshairs land after a link is drawn.
  *
- * Cycling direction acts on the SELECTED edge ("Select an edge first (hold v
- * over it)"), so landing the crosshairs on the new link is what makes
- * hold-v + cycle work without navigating back. This drives the whole flow
- * with real keys and checks the direction actually changes.
+ * They rest on the node the link reached, hidden until the next move, as
+ * they are after sitting idle (Ben, 2026-09-19 — c1c866ff). Three flows get
+ * that landing: connecting two existing nodes, held-Add to an existing node,
+ * and a new node added on a link once its label is written.
+ *
+ * History: da-345 and da-509 used to land the crosshairs on the new link
+ * itself, near its destination, so that hold-v + cycle could change its
+ * direction without moving first. Losing that — the link now has to be
+ * reached before v+o — is accepted (Ben, 2026-09-23), and this script's
+ * checks for it went with the old landing.
  */
 const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
   overlay: waitForOverlay, waitForDA, checker} = require('../harness');
@@ -21,12 +25,6 @@ async function main() {
     if (sel) { sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true})); }
   });
   await page.waitForTimeout(600);
-
-  const keys = await page.evaluate(() => {
-    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    return {select: km.keyAssignments.root.selectDragSubmenu,
-            cycle: km.keyAssignments.select.cycleDirection};
-  });
 
   const edgeCount = () => page.evaluate(() => {
     const dl = window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer;
@@ -97,7 +95,8 @@ async function main() {
       distToDest: Math.round(Math.hypot(destC.x - lx, destC.y - ly)),
       distToSrc: Math.round(Math.hypot(srcC.x - lx, srcC.y - ly)),
       onEdge: c.getDAEdgesContainingCrosshairs().includes(edge),
-      directedness: edge.directedness,
+      onNodes: c.getDANodesContainingCrosshairs().map(n => n.id),
+      hidden: !xh.konvaGroup.visible(),
     };
   }, ids);
 
@@ -109,38 +108,14 @@ async function main() {
 
   const r = await crosshairReport(ids);
   console.log('  crosshairs vs new edge:', JSON.stringify(r));
-  check('the crosshairs land on the new link', r.found && r.distToPath <= 12,
-    `${r.distToPath}px from the painted path`);
-  check('the crosshairs sit at the destination end', r.found && r.distToDest < r.distToSrc,
-    `dest ${r.distToDest}px vs src ${r.distToSrc}px`);
-  check('the link is pickable there', r.onEdge === true, String(r.onEdge));
-
-  // The whole point: hold the select key, tap cycle, direction changes.
-  const dirBefore = r.directedness;
-  await page.keyboard.down(keys.select);
-  await page.waitForTimeout(150);
-  await page.keyboard.press(keys.cycle);
-  await page.waitForTimeout(200);
-  await page.keyboard.up(keys.select);
-  await page.waitForTimeout(300);
-  const after = await crosshairReport(ids);
-  const flipped = await page.evaluate(ids => {
-    const dl = window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer;
-    // A reversal swaps the endpoints, so look for the edge either way round.
-    const e = dl.getDAEdges().find(x =>
-      (x.srcNode.id === ids.srcId && x.destNode.id === ids.destId) ||
-      (x.srcNode.id === ids.destId && x.destNode.id === ids.srcId));
-    return e ? {directedness: e.directedness, reversed: e.srcNode.id === ids.destId} : null;
-  }, ids);
-  console.log('  after hold-select + cycle:', JSON.stringify(flipped));
-  check('hold-select then cycle changes the link direction without moving first',
-    !!flipped && (flipped.directedness !== dirBefore || flipped.reversed),
-    `${dirBefore} -> ${JSON.stringify(flipped)}`);
+  check('the crosshairs rest on the node the link reached', r.found && r.onNodes.includes(ids.destId),
+    `on ${JSON.stringify(r.onNodes)}, ${r.distToDest}px from its centre`);
+  check('at its centre', r.found && r.distToDest <= 2, `${r.distToDest}px`);
+  check('hidden until the next move', r.found && r.hidden, `hidden=${r.hidden}`);
 
   /* ---------------------------------------------------------------------
-   * The same promise, through the flow the link actually gets drawn with:
-   * hold Add over a node, cycle to an existing one, release. That path
-   * wired the edge but left the crosshairs behind until 2026-08-29.
+   * The same landing, through the flow the link actually gets drawn with:
+   * hold Add over a node, cycle to an existing one, release.
    * ------------------------------------------------------------------- */
   const addKey = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
@@ -182,15 +157,13 @@ async function main() {
   const g = await crosshairReport(growIds);
   console.log('  held-Add: crosshairs vs new edge:', JSON.stringify(g));
   check('held-Add makes the edge', g.found === true, JSON.stringify(g));
-  check('held-Add lands the crosshairs on the new link', g.found && g.distToPath <= 12,
-    `${g.distToPath}px from the painted path`);
-  check('held-Add lands them at the destination end', g.found && g.distToDest < g.distToSrc,
-    `dest ${g.distToDest}px vs src ${g.distToSrc}px`);
-  check('the link is pickable there too', g.onEdge === true, String(g.onEdge));
+  check('held-Add rests the crosshairs on the node it reached', g.found && g.onNodes.includes(growIds.destId),
+    `on ${JSON.stringify(g.onNodes)}, ${g.distToDest}px from its centre`);
+  check('held-Add hides them until the next move', g.found && g.hidden, `hidden=${g.hidden}`);
 
   /* ---------------------------------------------------------------------
-   * da-509: the same landing for a *new* node's link, deferred until its
-   * label is written — held-Add, a direction, type, Escape out.
+   * A *new* node added on a link: the same landing, once its label is
+   * written — held-Add, a direction, type, Escape out.
    * ------------------------------------------------------------------- */
   await page.evaluate(() => {
     const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -213,14 +186,15 @@ async function main() {
   const newIds = await page.evaluate(() => {
     const dl = window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer;
     const e = dl.getDAEdges()[0];
-    return e ? {srcId: e.srcNode.id, destId: e.destNode.id} : {srcId: '', destId: ''};
+    const child = dl.getDANodes().find(node => node.label.text() === 'child');
+    return e ? {srcId: e.srcNode.id, destId: e.destNode.id, childId: child?.id ?? ''}
+      : {srcId: '', destId: '', childId: ''};
   });
   const n = await crosshairReport(newIds);
   console.log('  new connected node: crosshairs vs its link:', JSON.stringify(n));
-  check('a new node\'s link gets the same landing, after the label', n.found && n.distToPath <= 12,
-    `${n.distToPath}px from the painted path`);
-  check('and at the destination end', n.found && n.distToDest < n.distToSrc,
-    `dest ${n.distToDest}px vs src ${n.distToSrc}px`);
+  check('a new node on a link: the crosshairs rest on it once labelled', n.found && n.onNodes.includes(newIds.childId),
+    `on ${JSON.stringify(n.onNodes)}, new node ${newIds.childId}`);
+  check('hidden until the next move there too', n.found && n.hidden, `hidden=${n.hidden}`);
 
   console.log(check.failures ? `\n${check.failures} FAILURE(S)` : '\nall checks passed');
   await browser.close();

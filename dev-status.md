@@ -72,10 +72,10 @@ explanation graphs on `explanation-graphs`._
 >   - `labels/connect-focus.js` 11/11 → 5/11 with the alpha-fix merge
 >     (`9a7a169e`). `c1c866ff` moved where the crosshairs land after drawing
 >     a link, from the link to the node it reached (Ben, 2026-09-19); the
->     script still expects the link. Knock-on: `v`+`o` no longer re-directs a
->     just-drawn link without moving onto it first — the reason da-345/da-509
->     put the crosshairs on the link. Ben's call whether that matters; the
->     script needs updating either way.
+>     script still expected the link. Knock-on: `v`+`o` no longer re-directs
+>     a just-drawn link without moving onto it first — the reason
+>     da-345/da-509 put the crosshairs on the link. **Accepted (Ben,
+>     2026-09-23)**; the script now checks the new landing (9/9).
 >   - `nav-popup/nav-popup.js` 7 → 6 passing with the same merge: 6.6c now
 >     fails, but only downstream of 6.6a/6.6b, which already failed (the
 >     popup is not open, so it is pressing Esc on the bare canvas).
