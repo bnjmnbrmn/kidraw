@@ -553,7 +553,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
-      this.styleCommands(), this.layoutCommands(), this.fileController.commands(),
+      this.styleCommands(), this.layoutCommands(), this.gather.commands(), this.fileController.commands(),
       this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -682,13 +682,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** Rearranging the graph: layouts, edge routing, and gather. */
+  /** Rearranging the graph: layouts and edge routing. (Gather brings its own commands.) */
   private layoutCommands() {
     return {
       [DACommandType.APPLY_LAYOUT]: c => this.applyGraphLayout(c.layout),
       [DACommandType.APPLY_EDGE_ROUTING]: c => this.applyEdgeRouting(c.algorithm),
-      [DACommandType.GATHER_CONNECTED_NODES]: () => this.gather.toggle(),
-      [DACommandType.UNGATHER]: () => this.gather.ungather(),
     } satisfies CommandSlice;
   }
 

@@ -1,4 +1,6 @@
 import Konva from 'konva';
+import { DACommandType } from './command.model';
+import type { CommandSlice } from './command-handlers';
 import type { Animations } from './animations';
 import type { NavJourney } from './nav-journey';
 import type { ThemeService } from '../services/theme.service';
@@ -81,6 +83,14 @@ export class GatherController {
   private gatheredEdgeControlPoints = new Map<DAEdge, EdgeControlPoint[]>();
 
   constructor(private readonly host: GatherHost) {}
+
+  /** Gather the neighbourhood of the node under the crosshairs, or put it back. */
+  commands() {
+    return {
+      [DACommandType.GATHER_CONNECTED_NODES]: () => this.toggle(),
+      [DACommandType.UNGATHER]: () => this.ungather(),
+    } satisfies CommandSlice;
+  }
 
   /** The Gather key: gather here, pin an auto-gathered view, or restore. */
   toggle(): void {
