@@ -88,6 +88,9 @@ export const SUITE = [
   // ── Graph types ──
   { script: 'graph-types/task-status.js', region: 'graph-types', status: 'suite' },
 
+  // ── Undo: one step per change ──
+  { script: 'undo/one-step-per-change.js', region: 'undo', status: 'suite' },
+
   // ── Snapshots of one day's "Next" list, kept for the record ──
   { script: 'archive/2026-08-03-next-five.js', region: 'dated-snapshots', status: 'oneoff', note: '2026-08-03 Next items' },
   { script: 'archive/next-items.js', region: 'dated-snapshots', status: 'oneoff' },

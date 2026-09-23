@@ -15,7 +15,11 @@
 import { DACommand, DACommandType } from './command.model';
 
 /** Commands that change the graph: each takes an undo snapshot first and
- *  schedules a vault auto-save afterwards. */
+ *  schedules a vault auto-save afterwards. SET_DIAGRAM_TYPE changes the graph
+ *  but is not here: `:type` reaches the same change without a command, so
+ *  FileController.setDiagramType snapshots and saves for itself. A command
+ *  listed here must not also snapshot for itself, or undo gets a spare step
+ *  (tools/qa/undo/one-step-per-change.js). */
 const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.CREATE_NEW_NODE,
   DACommandType.ADD_SELF_EDGE,
@@ -41,7 +45,6 @@ const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.SET_TEXT_OVERFLOW_MODE,
   DACommandType.SET_NODE_SHAPE,
   DACommandType.TOGGLE_NODE_SHAPE,
-  DACommandType.SET_DIAGRAM_TYPE,
   DACommandType.SET_TASK_STATUS,
   DACommandType.CUT_SELECTION,
   DACommandType.PASTE_CLIPBOARD,

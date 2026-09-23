@@ -1041,7 +1041,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
     for (const node of targets) {
       node.tags = applyExclusiveTag(node.tags, group, choice);
       node.setStatusBadge(choice);
@@ -5061,7 +5060,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
     this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
     let lastLabel = '';
     for (const edge of edges) {
       const from = this.dirCycleIndex(edge);

@@ -1,5 +1,6 @@
 import {DrawingAreaComponent} from './drawing-area.component';
 import {DACommandType} from './command.model';
+import {mutatesGraph} from './command-policy';
 import {Overlay} from './overlay';
 import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
@@ -549,7 +550,11 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('directed');
       expect([edge.src, edge.dest]).toEqual(['A', 'B']);  // back where it started
-      expect(component.undoRedoService.pushSnapshot).toHaveBeenCalledTimes(4);
+      // Each press is one undo step, taken by the command policy before the
+      // command runs. Snapshotting here as well gave undo a spare step
+      // (tools/qa/undo/one-step-per-change.js).
+      expect(mutatesGraph(DACommandType.CYCLE_EDGE_DIRECTEDNESS)).toBeTrue();
+      expect(component.undoRedoService.pushSnapshot).not.toHaveBeenCalled();
     });
 
     it('re-derives its place in the cycle when the edge changed behind its back', () => {

@@ -258,7 +258,10 @@ export class FileController {
     this.emitDisplayStatus(parsed.value);
   }
 
-  /** Apply a registered plugin undoably; its defaults also govern new nodes. */
+  /** Apply a registered plugin undoably; its defaults also govern new nodes.
+   *  Takes its own undo snapshot and saves, because `:type` reaches it without
+   *  a command — which is why SET_DIAGRAM_TYPE is missing from the mutating
+   *  commands in command-policy.ts. */
   setDiagramType(typeId: string): void {
     const extension = getExtension(typeId);
     if (!extension) {
@@ -271,6 +274,7 @@ export class FileController {
     this.host.updateEdgesForResizedNodes(this.host.drawingLayer.getDANodes());
     this.host.drawingLayer.batchDraw();
     this.host.emitStatus(`Diagram type: ${extension.name}`);
+    this.scheduleVaultAutoSave();
   }
 
   cycleDisplay(): void {
@@ -519,7 +523,6 @@ export class FileController {
     }
     this.setDiagramType(arg);
     this.host.emitContextState();
-    this.scheduleVaultAutoSave();
   }
 
   /** `:w` saves to the open vault file; `:w <name>` saves as that name and
