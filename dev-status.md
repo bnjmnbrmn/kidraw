@@ -82,6 +82,9 @@ explanation graphs on `explanation-graphs`._
 >   - `drag-and-grow/add-insert-taps.js` was already one worse than its
 >     baseline before the merge; its `v+o` checks expect a different cycle
 >     order from the one `edit-or-insert.spec.ts` pins.
+>   - `grid-overlay/grid-nav.js` "return guide clears after its column is
+>     re-acquired" failed once in a full run under load and passed 3/3 alone
+>     (2026-09-23): a timing flake to watch, not a regression.
 > - **Next candidates** (inferred, 2026-09-18 — from what is left in the
 >   file, not from a decision): the rest of the nav popup (~370 lines now its
 >   geometry, ordering and row model are out — note it is a *shared* widget,
