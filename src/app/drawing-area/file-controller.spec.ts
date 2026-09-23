@@ -1,4 +1,5 @@
 import {fakeAsync, flushMicrotasks, tick} from '@angular/core/testing';
+import {DACommandType} from './command.model';
 import {VaultService} from '../services/vault.service';
 import {FileController, FileHost} from './file-controller';
 
@@ -54,4 +55,17 @@ describe('FileController vault lifecycle', () => {
     expect(write).not.toHaveBeenCalled();
     expect(lastModified).toHaveBeenCalledTimes(1);
   }));
+});
+
+describe('FileController commands', () => {
+  it('handles the file commands itself, payload and all', () => {
+    const files = new FileController({} as FileHost);
+    const saveGraphAs = spyOn(files, 'saveGraphAs');
+    const runExCommand = spyOn(files, 'runExCommand').and.resolveTo();
+    const commands = files.commands();
+    commands[DACommandType.SAVE_GRAPH_AS]({kind: DACommandType.SAVE_GRAPH_AS, name: 'plan'});
+    commands[DACommandType.EX_COMMAND]({kind: DACommandType.EX_COMMAND, text: 'w'});
+    expect(saveGraphAs).toHaveBeenCalledOnceWith('plan');
+    expect(runExCommand).toHaveBeenCalledOnceWith('w');
+  });
 });

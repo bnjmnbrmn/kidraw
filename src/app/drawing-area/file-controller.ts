@@ -29,6 +29,8 @@ import type { Viewport } from './viewport';
 import type { DAFileState, DANotification } from './da-notification.model';
 import type { DANode } from './da-node';
 import type { GraphSnapshot } from './graph-snapshot';
+import { DACommandType } from './command.model';
+import type { CommandSlice } from './command-handlers';
 import { EXTENSION_REGISTRY, getExtension, resolveIdentity } from '../extensions/extension-registry';
 import { isYamlFilename, parseGraphDocByFilename, parseStyleSetByFilename, serializeGraphDocByFilename, serializeStyleSetByFilename } from '../lib/file-format/parser';
 import { ImportResolver, resolveAndApplyToGraph } from '../lib/file-format/resolver';
@@ -87,6 +89,25 @@ const VAULT_POLL_INTERVAL_MS = 1500;
 
 export class FileController {
   constructor(private readonly host: FileHost) {}
+
+  /** The file commands: files, the vault, named and sample graphs, the
+   *  display cycle, and ex commands. */
+  commands() {
+    return {
+      [DACommandType.NEW_GRAPH]: () => this.newGraph(),
+      [DACommandType.OPEN_FILE]: () => void this.openFile(),
+      [DACommandType.SAVE_FILE_AS]: () => this.saveFileAs(),
+      [DACommandType.EXPORT_ZIP]: () => this.exportZip(),
+      [DACommandType.CONNECT_VAULT]: () => void this.connectVault(),
+      [DACommandType.VAULT_OPEN]: () => void this.vaultOpen(),
+      [DACommandType.VAULT_SAVE_AS]: () => void this.vaultSaveAs(),
+      [DACommandType.SAVE_GRAPH_AS]: c => this.saveGraphAs(c.name),
+      [DACommandType.LOAD_NAMED_GRAPH]: c => this.loadNamedGraph(c.graphSnapshot),
+      [DACommandType.LOAD_SAMPLE_GRAPH]: c => this.loadSampleGraph(c.graphId),
+      [DACommandType.CYCLE_DISPLAY]: () => this.cycleDisplay(),
+      [DACommandType.EX_COMMAND]: c => void this.runExCommand(c.text),
+    } satisfies CommandSlice;
+  }
 
   /**
    * Remember the viewport a restored draft was showing.

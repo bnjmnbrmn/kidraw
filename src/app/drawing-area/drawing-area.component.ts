@@ -558,7 +558,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.navGridCommands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.caretCommands(),
-      this.styleCommands(), this.layoutCommands(), this.fileCommands(),
+      this.styleCommands(), this.layoutCommands(), this.fileController.commands(),
       this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -737,25 +737,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** Files, the vault, named and sample graphs, the display cycle, and ex
-   *  commands — all FileController's. */
-  private fileCommands() {
-    return {
-      [DACommandType.NEW_GRAPH]: () => this.newGraph(),
-      [DACommandType.OPEN_FILE]: () => void this.openFile(),
-      [DACommandType.SAVE_FILE_AS]: () => this.saveFileAs(),
-      [DACommandType.EXPORT_ZIP]: () => this.exportZip(),
-      [DACommandType.CONNECT_VAULT]: () => void this.connectVault(),
-      [DACommandType.VAULT_OPEN]: () => void this.vaultOpen(),
-      [DACommandType.VAULT_SAVE_AS]: () => void this.vaultSaveAs(),
-      [DACommandType.SAVE_GRAPH_AS]: c => this.saveGraphAs(c.name),
-      [DACommandType.LOAD_NAMED_GRAPH]: c => this.loadNamedGraph(c.graphSnapshot),
-      [DACommandType.LOAD_SAMPLE_GRAPH]: c => this.loadSampleGraph(c.graphId),
-      [DACommandType.CYCLE_DISPLAY]: () => this.cycleDisplay(),
-      [DACommandType.EX_COMMAND]: c => void this.runExCommand(c.text),
-    } satisfies CommandSlice;
-  }
-
   /** The Edit menu's five: undo, redo, cut, copy and paste. */
   private editMenuCommands() {
     return {
@@ -772,7 +753,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  commands (notes/design-plugins.md). */
   private diagramTypeCommands() {
     return {
-      [DACommandType.SET_DIAGRAM_TYPE]: c => this.setDiagramType(c.typeId),
+      [DACommandType.SET_DIAGRAM_TYPE]: c => this.fileController.setDiagramType(c.typeId),
       [DACommandType.SET_TASK_STATUS]: c => this.setTaskStatus(c.status),
     } satisfies CommandSlice;
   }
@@ -816,53 +797,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
   // ── File, vault, named graphs, display: delegated to FileController ──
-  // Command dispatch and lifecycle hooks enter the controller here.
-  private connectVault(): Promise<void> {
-    return this.fileController.connectVault();
-  }
-
-  private cycleDisplay(): void {
-    this.fileController.cycleDisplay();
-  }
-
-  private exportZip(): void {
-    this.fileController.exportZip();
-  }
-
+  // Lifecycle hooks enter the controller here; its commands reach it through
+  // its own slice of the command table (FileController.commands).
   private initVault(): Promise<void> {
     return this.fileController.initVault();
   }
 
-  private loadNamedGraph(snapshot: GraphSnapshot): void {
-    this.fileController.loadNamedGraph(snapshot);
-  }
-
-  private loadSampleGraph(graphId: string): void {
-    this.fileController.loadSampleGraph(graphId);
-  }
-
-  private newGraph(): void {
-    this.fileController.newGraph();
-  }
-
-  private openFile(): Promise<void> {
-    return this.fileController.openFile();
-  }
-
   private restoreViewport(view: {x: number; y: number; scale: number} | undefined): boolean {
     return this.fileController.restoreViewport(view);
-  }
-
-  private runExCommand(text: string): Promise<void> {
-    return this.fileController.runExCommand(text);
-  }
-
-  private saveFileAs(): void {
-    this.fileController.saveFileAs();
-  }
-
-  private saveGraphAs(name: string): void {
-    this.fileController.saveGraphAs(name);
   }
 
   private saveGraphToStorage(): void {
@@ -871,18 +813,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private scheduleVaultAutoSave(): void {
     this.fileController.scheduleVaultAutoSave();
-  }
-
-  private setDiagramType(typeId: string): void {
-    this.fileController.setDiagramType(typeId);
-  }
-
-  private vaultOpen(): Promise<void> {
-    return this.fileController.vaultOpen();
-  }
-
-  private vaultSaveAs(): Promise<void> {
-    return this.fileController.vaultSaveAs();
   }
 
   private multiItemSelect() {
