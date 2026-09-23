@@ -17,6 +17,7 @@
  * and nothing there imports this.
  */
 import { Animations } from './animations';
+import { AreaSelect } from './area-select';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
 import { FileController } from './file-controller';
@@ -48,6 +49,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.viewport = new Viewport(() => component.stage, () => component.viewportInset ?? NO_INSET);
   component.fileController = new FileController(component.fileHost());
   component.textEditor = new TextEditingController(component.textEditingHost());
+  component.areaSelect = new AreaSelect(component.areaSelectHost());
   component.journey = new NavJourney();
   component.linkNav = new LinkNavController(component.linkNavHost());
   component.navGhost = new NavGhost(component.navGhostHost());

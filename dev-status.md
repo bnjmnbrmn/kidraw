@@ -31,8 +31,9 @@ explanation graphs on `explanation-graphs`._
 >   `nav-ghost.ts` (the popup's jump preview), `grow-ghost.ts` (the held-Add
 >   preview, driven by a named `GrowAim`), `grow-placement.ts` (the free
 >   placement sub-state after choosing a node shape), `nav-popup-layout.ts`
->   (shared popup sizing and viewport clamping), and `nav-popup-model.ts`
->   (candidate ordering and row mapping). Plus the pure pieces:
+>   (shared popup sizing and viewport clamping), `nav-popup-model.ts`
+>   (candidate ordering and row mapping), and `area-select.ts` (the
+>   keyboard rubber band, da-195; 2026-09-23). Plus the pure pieces:
 >   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
 >   `grow-lattice.ts` (walking the placement lattice that
 >   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
