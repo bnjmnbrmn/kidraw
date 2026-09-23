@@ -1,9 +1,9 @@
 /*
  * Reproduce the waypoint-selection bug. Loads the `basic` sample, inserts a
- * waypoint via the real INSERT_WAYPOINT command, then drives both selection
- * commands (SINGLE_ITEM_TOGGLE_SELECT = `c`, MULTI_ITEM_SELECT = the `v`
- * select+drag path) with the crosshairs partially overlapping the waypoint,
- * and reports what each path selected.
+ * waypoint via the real INSERT_WAYPOINT command, then drives the selection
+ * command (MULTI_ITEM_SELECT, the `v` select+drag path) with the crosshairs
+ * partially overlapping the waypoint, and reports what it selected.
+ * (SINGLE_ITEM_TOGGLE_SELECT, once driven here too, was retired 2026-09-23.)
  */
 const { chromium } = require('@playwright/test');
 
@@ -56,7 +56,6 @@ async function main() {
 
     const results = [];
     for (const off of [0, 8, 15, 22]) {
-      results.push(trySelect('SINGLE_ITEM_TOGGLE_SELECT', off));
       results.push(trySelect('MULTI_ITEM_SELECT', off));
     }
 

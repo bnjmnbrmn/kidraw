@@ -370,7 +370,6 @@ classDiagram
         INSERT_CHAR
         EXIT_LABEL_EDIT_MODE
         MULTI_ITEM_SELECT
-        SINGLE_ITEM_TOGGLE_SELECT
         ZOOM_IN
         ZOOM_OUT
         CONNECT_SELECTED_NODES
@@ -389,7 +388,6 @@ classDiagram
         INSERT_CHAR
         EXIT_LABEL_EDIT_MODE
         MULTI_ITEM_SELECT
-        SINGLE_ITEM_TOGGLE_SELECT
         ZOOM_IN
         ZOOM_OUT
         CONNECT_SELECTED_NODES

@@ -623,7 +623,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Selecting, and dragging what is selected. */
   private selectionCommands() {
     return {
-      [DACommandType.SINGLE_ITEM_TOGGLE_SELECT]: this.thenEmitEditState(() => this.singleItemSelect()),
       [DACommandType.MULTI_ITEM_SELECT]: this.thenEmitEditState(() => this.multiItemSelect()),
       [DACommandType.UNSELECT_ALL]: this.thenEmitEditState(() => this.unselectAll()),
       [DACommandType.ENTER_DRAG_MODE]: () => this.enterDragMode(),
@@ -811,39 +810,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
 
 
-  private singleItemSelect() {
+  /** Select the item under the crosshairs and nothing else — the item the
+   *  hover trace is on, so the edit keys act on what is highlighted. */
+  private selectOnlyTopItem(): void {
     this.finishTweens();
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
-
-    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
-    if (labelUnderCrosshairs) {
-      labelUnderCrosshairs.isSelected = true;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    // A waypoint is selectable (in preference to its edge) whenever it even
-    // partially overlaps the crosshairs' selection circle.
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (wpUnderCrosshairs) {
-      wpUnderCrosshairs.isSelected = true;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const daNodesContainingCrosshairs: DANode[] = this.getDANodesContainingCrosshairs();
-    if (daNodesContainingCrosshairs.length > 0) {
-      daNodesContainingCrosshairs[0].isSelected = true;
-      return;
-    }
-
-    const daEdgesContainingCrosshairs: DAEdge[] = this.getDAEdgesContainingCrosshairs();
-    if (daEdgesContainingCrosshairs.length > 0) {
-      daEdgesContainingCrosshairs[0].isSelected = true;
-      this.drawingLayer.batchDraw();
-      return;
-    }
+    const item = this.topItemUnderCrosshairs();
+    if (item) item.isSelected = true;
+    this.drawingLayer.batchDraw();
   }
 
   /** Radius of the crosshairs' selection circle expressed in drawing-layer
@@ -3784,7 +3759,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const label = this.getLabelUnderCrosshairs();
     if (label) {
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
-      this.singleItemSelect();
+      this.selectOnlyTopItem();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
@@ -3796,7 +3771,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log(`  -> Nodes under crosshairs: ${nodes.length}`);
     if (nodes.length > 0) {
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
-      this.singleItemSelect();
+      this.selectOnlyTopItem();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
@@ -4595,7 +4570,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const cursorPoint = this.crosshairsInLayerCoords();
       this.drawingLayer.unselectAll();
       this.unselectAllLabels();
-      this.singleItemSelect();
+      this.selectOnlyTopItem();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(cursorPoint);
       this.drawingLayer.batchDraw();

@@ -120,7 +120,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 - [An empty quadrant is announced as a move in that direction](bug-empty-quadrant-announced-as-a-move.md) — Move by Link says `north: <east node>` when nothing is north; the "no link in that quadrant" message is unreachable.
 - [The grow lattice's off-cell tolerance cannot reject anything](bug-lattice-tolerance-cannot-fire.md) — rounding bounds the residual at 0.5, so the 0.6 guard never fires and any node is assigned its nearest cell.
 - [A refused command still leaves an undo step](bug-refused-command-leaves-undo-step.md) — fixed 2026-09-23: undo skips steps that would change nothing (checked at undo time, since drags finish after the command returns).
-- [SINGLE_ITEM_TOGGLE_SELECT picks the bottom node, and nothing sends it](bug-single-select-picks-the-bottom-node.md) — where nodes overlap it picks the one underneath while the select key's hold and tap pick the one on top; no key sends it any more.
+- [SINGLE_ITEM_TOGGLE_SELECT picks the bottom node, and nothing sends it](bug-single-select-picks-the-bottom-node.md) — resolved 2026-09-23: command retired (Ben); the edit keys, which shared its method, now select the highlighted item.
 
 ## Research
 

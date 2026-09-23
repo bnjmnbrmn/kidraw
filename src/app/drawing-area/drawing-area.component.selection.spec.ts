@@ -27,7 +27,7 @@ describe('DrawingAreaComponent selection priority', () => {
     component.getLabelUnderCrosshairs = () => label;
     component.getDANodesContainingCrosshairs = () => [node];
 
-    component.singleItemSelect();
+    component.selectOnlyTopItem();
 
     expect(component.drawingLayer.unselectAll).toHaveBeenCalled();
     expect(component.unselectAllLabels).toHaveBeenCalled();
@@ -42,8 +42,21 @@ describe('DrawingAreaComponent selection priority', () => {
     component.getLabelUnderCrosshairs = () => null;
     component.getDANodesContainingCrosshairs = () => [node];
 
-    component.singleItemSelect();
+    component.selectOnlyTopItem();
 
     expect(node.isSelected).toBeTrue();
+  });
+
+  it('selects the node on top where nodes overlap, the one the hover trace is on', () => {
+    const component = buildSelectionTestComponent();
+    const under = {isSelected: false, zIndex: () => 0};
+    const onTop = {isSelected: false, zIndex: () => 5};
+    component.getLabelUnderCrosshairs = () => null;
+    component.getDANodesContainingCrosshairs = () => [under, onTop];
+
+    component.selectOnlyTopItem();
+
+    expect(onTop.isSelected).toBeTrue();
+    expect(under.isSelected).toBeFalse();
   });
 });
