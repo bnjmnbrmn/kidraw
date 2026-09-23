@@ -145,17 +145,7 @@ import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
 import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
-
-/** An in-graph search hit: a node (matched by its label text) or an edge label. */
-type SearchMatch =
-  | { kind: 'node'; node: DANode }
-  | { kind: 'edge-label'; label: DALabel };
-
-function searchMatchesEqual(a: SearchMatch, b: SearchMatch): boolean {
-  if (a.kind === 'node' && b.kind === 'node') return a.node === b.node;
-  if (a.kind === 'edge-label' && b.kind === 'edge-label') return a.label === b.label;
-  return false;
-}
+import { GraphSearch, GraphSearchHost } from './graph-search';
 
 /** Which stops a move-by-node command steps between: nodes and labels unless
  *  it says otherwise. */
@@ -224,6 +214,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly textEditor = new TextEditingController(this.textEditingHost());
   private readonly areaSelect = new AreaSelect(this.areaSelectHost());
   private readonly keyboardDrag = new KeyboardDrag(this.keyboardDragHost());
+  private readonly search = new GraphSearch(this.graphSearchHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -565,7 +556,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private get commandHandlers(): CommandHandlers {
     return this._commandHandlers ??= mergeCommandSlices(
       this.crosshairsCommands(), this.graphNavigationCommands(), this.navGridCommands(),
-      this.searchCommands(), this.viewCommands(), this.selectionCommands(),
+      this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.caretCommands(),
       this.styleCommands(), this.layoutCommands(), this.fileCommands(),
       this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
@@ -630,15 +621,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.SNAP_TO_NODE_DOWN]: c => this.navGrid.snapToNodeInDirection('down', navTargetsOf(c)),
       [DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH]: c => this.navGrid.adjustQuadrantGoalAngle('south', navTargetsOf(c)),
       [DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH]: c => this.navGrid.adjustQuadrantGoalAngle('north', navTargetsOf(c)),
-    } satisfies CommandSlice;
-  }
-
-  /** In-graph search: open it, and step between matches. */
-  private searchCommands() {
-    return {
-      [DACommandType.SEARCH_GRAPH]: () => this.searchGraph(),
-      [DACommandType.SEARCH_NEXT_MATCH]: () => this.searchStep(1),
-      [DACommandType.SEARCH_PREV_MATCH]: () => this.searchStep(-1),
     } satisfies CommandSlice;
   }
 
@@ -1032,6 +1014,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(choice ? `Status: ${choice.label}${suffix}` : `Status cleared${suffix}`);
   }
 
+  /** Lends search what it needs, through getters so the layers can still be
+   *  assigned later in ngAfterViewInit. */
+  private graphSearchHost(): GraphSearchHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      prompt: (message, initial) => window.prompt(message, initial),
+      finishTweens: () => da.finishTweens(),
+      unselectAllLabels: () => da.unselectAllLabels(),
+      nodeCenter: node => da.getNodeCenterInLayerCoordinates(node),
+      centerViewOnLayerPoint: point => da.centerViewOnLayerPoint(point),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      emitStatus: message => da.emitStatus(message),
+    };
+  }
+
   /** Lends the keyboard drag what it needs, through getters so the layers
    *  can still be assigned later in ngAfterViewInit. */
   private keyboardDragHost(): KeyboardDragHost {
@@ -1241,98 +1239,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private releaseCrosshairsVisible(): void {
     this.crosshairsHeldVisible = false;
     this.showMovementIndicators();
-  }
-
-  // ─── In-graph search ──────────────────────────────────────────────────────
-  // Vim-style: `/` prompts for a query (window.prompt is a placeholder until
-  // the trad/large-menu overlay lands) and jumps to the first match; `n` / `p`
-  // cycle forward/backward. The query persists so n/p keep working across
-  // graph edits — matches are recomputed on every step.
-
-  private searchQuery: string | null = null;
-  private lastSearchMatch: SearchMatch | null = null;
-
-  private searchGraph(): void {
-    const entered = window.prompt('Search graph:', this.searchQuery ?? '');
-    if (entered === null || entered.trim() === '') return;
-    this.searchQuery = entered.trim();
-    this.lastSearchMatch = null;
-    const matches = this.computeSearchMatches();
-    if (matches.length === 0) {
-      this.emitStatus(`No matches for "${this.searchQuery}"`);
-      return;
-    }
-    this.focusSearchMatch(matches[0], 0, matches.length);
-  }
-
-  private searchStep(step: 1 | -1): void {
-    if (!this.searchQuery) {
-      this.emitStatus('No search yet — press / to search.');
-      return;
-    }
-    const matches = this.computeSearchMatches();
-    if (matches.length === 0) {
-      this.emitStatus(`No matches for "${this.searchQuery}"`);
-      return;
-    }
-    const currentIndex = this.lastSearchMatch === null
-      ? -1
-      : matches.findIndex(m => searchMatchesEqual(m, this.lastSearchMatch!));
-    const index = currentIndex === -1
-      ? (step === 1 ? 0 : matches.length - 1)
-      : (currentIndex + step + matches.length) % matches.length;
-    this.focusSearchMatch(matches[index], index, matches.length);
-  }
-
-  /** All items whose text contains the query (case-insensitive): nodes in
-   *  layer order, then edge labels. */
-  private computeSearchMatches(): SearchMatch[] {
-    const query = (this.searchQuery ?? '').toLowerCase();
-    if (query === '') return [];
-    const matches: SearchMatch[] = [];
-    for (const node of this.drawingLayer.getDANodes()) {
-      if (node.label.text().toLowerCase().includes(query)) {
-        matches.push({ kind: 'node', node });
-      }
-    }
-    for (const edge of this.drawingLayer.getDAEdges()) {
-      for (const label of edge.labels) {
-        if (label.label.toLowerCase().includes(query)) {
-          matches.push({ kind: 'edge-label', label });
-        }
-      }
-    }
-    return matches;
-  }
-
-  /** Select the match, move the crosshairs onto it AND recenter the view on
-   *  it (pan only, no rescale — the match lands at screen center under the
-   *  crosshairs), then report position. */
-  private focusSearchMatch(match: SearchMatch, index: number, total: number): void {
-    // Land any in-flight tween BEFORE reading positions — a rapid n/p
-    // sequence would otherwise pan from a mid-tween layer offset.
-    this.finishTweens();
-    this.lastSearchMatch = match;
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-
-    let text: string;
-    let layerCenter: Point;
-    if (match.kind === 'node') {
-      text = match.node.label.text();
-      match.node.isSelected = true;
-      layerCenter = this.getNodeCenterInLayerCoordinates(match.node);
-    } else {
-      text = match.label.label;
-      match.label.isSelected = true;
-      // Label x/y are already drawing-layer coords (label center).
-      layerCenter = {x: match.label.x, y: match.label.y};
-    }
-    this.centerViewOnLayerPoint(layerCenter);
-    this.checkAndEmitEditState();
-    this.drawingLayer.batchDraw();
-    const shown = text.length > 40 ? `${text.slice(0, 40)}…` : text;
-    this.emitStatus(`Match ${index + 1}/${total}: "${shown}"`);
   }
 
   private togglePinSelected() {

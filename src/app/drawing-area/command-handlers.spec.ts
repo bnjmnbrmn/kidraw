@@ -1,6 +1,7 @@
 import {DACommandType} from './command.model';
 import {CommandHandlers, CommandSlice, mergeCommandSlices, runCommand} from './command-handlers';
 import {DrawingAreaComponent} from './drawing-area.component';
+import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 describe('command handler slices', () => {
   it('joins slices from different owners into one table', () => {
@@ -30,6 +31,7 @@ describe('command handler slices', () => {
   // check that no two of the drawing area's owners claim the same one.
   it("gives each of the drawing area's commands exactly one owner", () => {
     const component = Object.create(DrawingAreaComponent.prototype) as any;
+    wireDrawingAreaCollaborators(component);
     const handlers = component.commandHandlers as CommandHandlers;
     expect(Object.values(handlers).every(handler => typeof handler === 'function')).toBeTrue();
   });
