@@ -120,8 +120,6 @@ export enum DACommandType {
   PAN_RIGHT = 'PAN_RIGHT',
   PAN_UP = 'PAN_UP',
   PAN_DOWN = 'PAN_DOWN',
-  GATHER_CONNECTED_NODES = 'GATHER_CONNECTED_NODES',
-  UNGATHER = 'UNGATHER',
   SET_EDGE_DIRECTEDNESS = 'SET_EDGE_DIRECTEDNESS',
   SET_LINE_STYLE = 'SET_LINE_STYLE',
   SET_ITEM_COLOR = 'SET_ITEM_COLOR',
@@ -257,8 +255,6 @@ export type DACommand =
   | {kind: DACommandType.PAN_RIGHT; distance?: number}
   | {kind: DACommandType.PAN_UP; distance?: number}
   | {kind: DACommandType.PAN_DOWN; distance?: number}
-  | {kind: DACommandType.GATHER_CONNECTED_NODES}
-  | {kind: DACommandType.UNGATHER}
   | {kind: DACommandType.SET_EDGE_DIRECTEDNESS; directedness: EdgeDirectedness}
   | {kind: DACommandType.SET_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.SET_ITEM_COLOR; color: ItemColor}

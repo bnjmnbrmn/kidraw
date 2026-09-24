@@ -37,7 +37,7 @@ explanation graphs on `explanation-graphs`._
 > plus the placement and popup-model extractions below).
 >
 > - **Units pulled out so far**, each with the component keeping a thin
->   delegate block: `gather-controller.ts`, `navigation-grid-controller.ts`,
+>   delegate block: `gather-controller.ts` (retired 2026-09-24), `navigation-grid-controller.ts`,
 >   `command-policy.ts`, `overlay.ts` (one lifecycle for the seven transient
 >   overlays), `camera.ts` (names the stage/layer coordinate spaces),
 >   `viewport.ts` (the stage minus what the UI covers), `crosshairs-probe.ts`,
@@ -82,10 +82,10 @@ explanation graphs on `explanation-graphs`._
 >   (Now 5,586, after the dispatch change below.)
 > - **Commands dispatch through a table, not a switch** (2026-09-23).
 >   `command-handlers.ts`: each owner contributes a slice mapping command
->   kinds to handlers. Nine units now bring their own slice —
+>   kinds to handlers. Eight units now bring their own slice —
 >   `GraphSearch`, `FileController`, `LinkNavController`,
 >   `NavigationGridController`, `TextEditingController`,
->   `GatherController`, `ClipboardController`, `StyleController`,
+>   `ClipboardController`, `StyleController`,
 >   `LayoutController` — and the component keeps slices only for what it
 >   still does itself (crosshairs, view, selection, structure…).
 >   **3,965 lines** on 2026-09-24.

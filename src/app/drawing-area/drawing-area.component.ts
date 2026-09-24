@@ -6,7 +6,7 @@
  * and crosshairs movement. The work itself lives beside it — the shapes in
  * `da-*.ts`, routing and layout in their own pure modules, and subsystems that
  * have earned their own file (`navigation-grid-controller.ts`,
- * `gather-controller.ts`) behind narrow host interfaces.
+ * `text-editing-controller.ts`) behind narrow host interfaces.
  *
  * It receives `DACommand`s from the keymenu through AppComponent and answers
  * with `DANotification`s. It never reads a key code: bindings resolve upstream,
@@ -53,7 +53,6 @@ import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { GraphOperationApplier } from './graph-operation-applier';
 import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
 import { onMathImageLoaded, onMathReady } from './math-images';
-import { GatherController, GatherHost } from './gather-controller';
 import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
 import { NavigationGridStop } from './navigation-grid';
 import {
@@ -163,9 +162,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
   private resizeTargetNode: DANode | null = null;
-  /** The fisheye gather view (gather-controller.ts). Its state lives with it;
-   *  the drawing area only lends it the layer, the tweens and the nav context. */
-  private readonly gather = new GatherController(this.gatherHost());
   /** The stage↔layer transform (camera.ts). Reads the drawing layer
    *  lazily, because that layer is built in ngAfterViewInit. */
   private readonly camera = new Camera(() => this.drawingLayer);
@@ -520,7 +516,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
-      this.style.commands(), this.layout.commands(), this.gather.commands(), this.fileController.commands(),
+      this.style.commands(), this.layout.commands(), this.fileController.commands(),
       this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -1094,26 +1090,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       unselectAllLabels: () => da.unselectAllLabels(),
       fitViewToContent: () => da.fitViewToContent(),
       recenterCrosshairs: () => da.recenterCrosshairs(),
-      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
-    };
-  }
-
-  /** Lends the gather view what it needs, without widening this component's
-   *  own surface: everything here stays private, reached through getters so
-   *  the layer can still be assigned later in ngAfterViewInit. */
-  private gatherHost(): GatherHost {
-    const da = this;
-    return {
-      get drawingLayer() { return da.drawingLayer; },
-      get animations() { return da.animations; },
-      get themeService() { return da.themeService; },
-      get journey() { return da.journey; },
-      log: message => da.log.log(message),
-      emitStatus: message => da.emitStatus(message),
-      finishTweens: () => da.finishTweens(),
-      getTraversalAnchorNode: () => da.getTraversalAnchorNode(),
-      getNodeCenterInLayerCoordinates: node => da.getNodeCenterInLayerCoordinates(node),
-      refreshWaypointVisibility: draw => da.refreshWaypointVisibility(draw),
       updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
     };
   }
@@ -2352,7 +2328,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
   }
 
-  /** The node a traversal or gather should treat as its centre. Priority:
+  /** The node a traversal should treat as its centre. Priority:
    *  the node you're on (the crosshairs — where nodes overlap, the one on
    *  top), then the traversal's current node — an in-progress journey
    *  continues from where it is — and only then the selection. A selection

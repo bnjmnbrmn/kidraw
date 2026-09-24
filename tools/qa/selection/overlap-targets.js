@@ -94,13 +94,6 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
   check('Grow Node resizes the highlighted node', JSON.stringify(grown) === JSON.stringify([nodes.onTop]), JSON.stringify(grown));
 
   nodes = await overlapped(page);
-  await run(page, {kind: 'GATHER_CONNECTED_NODES'});
-  const centre = await page.evaluate(`${DA}.gather.gatherAnchor?.label.text() ?? null`);
-  check('Gather centres on the highlighted node', centre === nodes.onTop, String(centre));
-  await run(page, {kind: 'UNGATHER'});
-  await settled(page);
-
-  nodes = await overlapped(page);
   const before = await labels(page);
   await run(page, {kind: 'DELETE'});
   const after = await labels(page);

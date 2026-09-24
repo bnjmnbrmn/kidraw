@@ -28,7 +28,6 @@ export const SUITE = [
   { script: 'grid-overlay/grid-nav.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/quadrant-grid-nav.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/quadrant-ring-nav.js', region: 'grid-overlay', status: 'suite' },
-  { script: 'grid-overlay/gather-fisheye.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/nav-tiers.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite' },
 

@@ -61,7 +61,7 @@ export class LayoutController {
 
   constructor(private readonly host: LayoutHost) {}
 
-  /** Rearranging the graph: layouts and edge routing. (Gather brings its own commands.) */
+  /** Rearranging the graph: layouts and edge routing. */
   commands() {
     return {
       [DACommandType.APPLY_LAYOUT]: c => this.applyLayout(c.layout),
