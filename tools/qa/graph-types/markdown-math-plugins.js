@@ -62,7 +62,7 @@ async function toggle(page, pluginId) {
 
   const hint = await page.evaluate(() =>
     document.querySelector('input[data-plugin="explanation"]')?.closest('label')?.querySelector('.plugin-hint')?.textContent?.trim());
-  check('Settings says what Explanation needs and uses', hint === 'needs Markdown · uses Math', String(hint));
+  check('Settings says what Explanation needs and uses', hint === 'needs Markdown · uses Math and AI Chat', String(hint));
 
   await page.evaluate(() => localStorage.removeItem('kidraw-plugins-disabled'));
   console.log(`\n${check.failures} failure(s)`);

@@ -51,7 +51,7 @@ export const EXPLANATION_PLUGIN: KidrawPlugin = {
   },
   labelFormat: 'markdown',
   requires: ['markdown'],
-  uses: ['math'],
+  uses: ['math', 'agent-chat'],
   tagGroups: [
     {
       id: 'feedback',

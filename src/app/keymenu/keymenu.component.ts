@@ -700,10 +700,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [root.clipboardSubmenu]: new LabeledAction('Copy',
         () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION}), false),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
-      [this.keyAssignments.agent.chat]: new LabeledAction('Agent Chat',
-        () => this.keyMenuOut.emit({kind: DACommandType.OPEN_AGENT_CHAT}), false),
-      [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
-        () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
+      ...this.buildAgentChatBindings(),
       [this.keyAssignments.reading.enter]: new LabeledAction('Read',
         () => this.keyMenuOut.emit({kind: DACommandType.ENTER_READING_MODE}), false),
       // Holding Shift shows what the shifted keys do, the same way every
@@ -713,6 +710,33 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       ...this.buildTypeSubmenuBinding(),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
+  }
+
+  /** The AI Chat plugin's keys: `m` opens the chat, `o` asks about the
+   *  selection — present only while the plugin is on. */
+  private buildAgentChatBindings(): SubmenuConfig {
+    if (!this.agentChatOn()) return {} as SubmenuConfig;
+    return {
+      [this.keyAssignments.agent.chat]: new LabeledAction('Agent Chat',
+        () => this.keyMenuOut.emit({kind: DACommandType.OPEN_AGENT_CHAT}), false),
+      [this.keyAssignments.agent.askAboutSelection]: new LabeledAction('Ask Agent',
+        () => this.keyMenuOut.emit({kind: DACommandType.ASK_AGENT_ABOUT_SELECTION}), false),
+    } as SubmenuConfig;
+  }
+
+  /** Its shifted keys: O follows the agent, M closes the chat. */
+  private buildAgentChatShiftBindings(): SubmenuConfig {
+    if (!this.agentChatOn()) return {} as SubmenuConfig;
+    return {
+      [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent', () =>
+        this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
+      [this.keyAssignments.agent.chat]: new LabeledAction('Close Chat', () =>
+        this.keyMenuOut.emit({kind: DACommandType.CLOSE_AGENT_CHAT}), false),
+    } as SubmenuConfig;
+  }
+
+  private agentChatOn(): boolean {
+    return this.pluginSettings.isEnabled('agent-chat');
   }
 
   /** Root `t`: the diagram type's own menu, from the plugin bound as the
@@ -750,10 +774,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [search.next]: new LabeledAction('Prev Match', () =>
         this.keyMenuOut.emit({kind: DACommandType.SEARCH_PREV_MATCH}), false),
       // The agent chords are intercepted in handleKeyDown too, like Redo.
-      [this.keyAssignments.agent.follow]: new LabeledAction('Follow Agent', () =>
-        this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
-      [this.keyAssignments.agent.chat]: new LabeledAction('Close Chat', () =>
-        this.keyMenuOut.emit({kind: DACommandType.CLOSE_AGENT_CHAT}), false),
+      ...this.buildAgentChatShiftBindings(),
     } as SubmenuConfig;
   }
 
@@ -1892,7 +1913,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
     // Shift+O (Follow Agent) and Shift+M (Close Chat) are intercepted for the
     // same reason as Redo: a quick chord would otherwise never reach the Shift card.
-    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.repeat
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey && !event.repeat && this.agentChatOn()
         && (this.keyMenu.currentMode.name === 'normal' || this.keyMenu.currentMode.name === 'normalCaps')) {
       const key = event.key.toLowerCase();
       const agentChord = key === this.keyAssignments.agent.follow ? DACommandType.FOLLOW_AGENT

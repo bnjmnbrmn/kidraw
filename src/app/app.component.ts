@@ -25,6 +25,12 @@ import {PluginLibraryService} from './plugins/plugin-library.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
+/** The commands the AI Chat plugin brings. */
+function isAgentCommand(kind: DACommandType): boolean {
+  return kind === DACommandType.OPEN_AGENT_CHAT || kind === DACommandType.CLOSE_AGENT_CHAT
+    || kind === DACommandType.ASK_AGENT_ABOUT_SELECTION || kind === DACommandType.FOLLOW_AGENT;
+}
+
 /** How the keymenu presents itself: the classic keyboard overlay, the
  *  compact file-picker-style tree (da-200), or nothing. The toggle key
  *  cycles through all three; key handling runs identically in each. */
@@ -213,7 +219,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.openExLine();
     } else if (key === keys.send) {
       const refs = this.reading.markedRefs();
-      if (refs.length === 0) {
+      if (!this.pluginSettings.isEnabled('agent-chat')) {
+        this.headerComponent?.showStatusMessage('Your marks stay on the graph: AI Chat, which sends them, is turned off in Settings', 5000);
+      } else if (refs.length === 0) {
         this.headerComponent?.showStatusMessage(
           `Nothing marked: ${keys.doesntFollow} marks a step that doesn't follow, ${keys.tooDetailed} one that is too detailed.`, 4000);
       } else {
@@ -255,6 +263,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private configSub?: Subscription;
   private visualSub?: Subscription;
+  private pluginSub?: Subscription;
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
   ngOnInit() {
@@ -270,11 +279,13 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.compactMenuSide = this.visualConfig.config.compactMenu.side;
       this.compactMenuWidth = this.visualConfig.config.compactMenu.widthPx;
     });
+    this.pluginSub = this.pluginSettings.changed$.subscribe(() => this.noticePluginsChanged());
   }
 
   ngOnDestroy() {
     this.configSub?.unsubscribe();
     this.visualSub?.unsubscribe();
+    this.pluginSub?.unsubscribe();
   }
 
   ngAfterViewInit() {
@@ -313,6 +324,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (kmCommand.kind === DACommandType.OPEN_EX_LINE) {
       this.openExLine();
+      return;
+    }
+    if (isAgentCommand(kmCommand.kind) && !this.pluginSettings.isEnabled('agent-chat')) {
+      this.headerComponent?.showStatusMessage('AI Chat is turned off in Settings', 4000);
       return;
     }
     switch (kmCommand.kind) {
@@ -539,6 +554,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         this.agent.userTookViewControl();
         break;
     }
+  }
+
+  /** AI Chat turned off: no chat, no session. */
+  private noticePluginsChanged(): void {
+    if (!this.pluginSettings.isEnabled('agent-chat')) this.agent.shutDown();
   }
 
   /** Keep the keymenu told of the graph's type. A graph whose type is a

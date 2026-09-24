@@ -4,6 +4,7 @@ import { EXPLANATION_PLUGIN } from './explanation.plugin';
 import { MARKDOWN_PLUGIN } from './markdown.plugin';
 import { MATH_PLUGIN } from './math.plugin';
 import { TAGS_PLUGIN } from './tags.plugin';
+import { AGENT_CHAT_PLUGIN } from './agent-chat.plugin';
 
 /** The implicit identity of every graph that doesn't declare a `type`.
  *  Its (empty) defaults resolve to the app defaults, so binding it is
@@ -16,7 +17,7 @@ export const DEFAULT_PLUGIN: KidrawPlugin = {
 };
 
 const BUILT_IN: readonly KidrawPlugin[] =
-  [DEFAULT_PLUGIN, TAGS_PLUGIN, TODO_GRAPH_PLUGIN, EXPLANATION_PLUGIN, MARKDOWN_PLUGIN, MATH_PLUGIN];
+  [DEFAULT_PLUGIN, TAGS_PLUGIN, TODO_GRAPH_PLUGIN, EXPLANATION_PLUGIN, MARKDOWN_PLUGIN, MATH_PLUGIN, AGENT_CHAT_PLUGIN];
 
 const registry = new Map<string, KidrawPlugin>(BUILT_IN.map(plugin => [plugin.id, plugin] as const));
 const listeners = new Set<() => void>();

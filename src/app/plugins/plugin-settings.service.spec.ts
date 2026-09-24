@@ -76,7 +76,7 @@ describe('PluginSettingsService dependencies', () => {
   it('describes what a plugin needs and uses', () => {
     const settings = new PluginSettingsService();
     const explanation = settings.optionalPlugins().find(p => p.id === 'explanation')!;
-    expect(dependencyHint(explanation)).toBe('needs Markdown · uses Math');
+    expect(dependencyHint(explanation)).toBe('needs Markdown · uses Math and AI Chat');
   });
 });
 

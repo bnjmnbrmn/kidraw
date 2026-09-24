@@ -194,6 +194,13 @@ export class AgentStore {
     this.service?.graphMayHaveChanged();
   }
 
+  /** AI Chat was turned off in Settings: close the chat and end any session
+   *  (the server drops it rather than keeping it for a resume). */
+  shutDown(): void {
+    this.closePanel();
+    this.service?.disconnect();
+  }
+
   say(text: string): void {
     this.notice.set({text, seq: (this.notice()?.seq ?? 0) + 1});
   }
