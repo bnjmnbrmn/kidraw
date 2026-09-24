@@ -16,6 +16,10 @@ const check = checker();
 const da = (page, expr) => page.evaluate(`(() => { const da = ${DA}; return ${expr}; })()`);
 const statusText = page => page.evaluate(() => document.querySelector('.status-message')?.textContent ?? '');
 const syntax = page => da(page, `(n => n.labelFormat + (n.labelMath ? '+math' : ''))(da.drawingLayer.getDANodes()[0])`);
+const readKey = page => page.evaluate(() => {
+  const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+  return km.buildRootSubmenuConfig()[km.keyAssignments.reading.enter]?.actionLabel ?? null;
+});
 
 async function toggle(page, pluginId) {
   await page.click('.settings-dropdown > summary');
@@ -50,11 +54,13 @@ async function toggle(page, pluginId) {
     (await statusText(page)) === 'Markdown: off — and Explanation, which needs it', await statusText(page));
   check('labels are plain', (await syntax(page)) === 'plain', await syntax(page));
   check('the graph is still an explanation', (await da(page, 'da.drawingLayer.diagramType')) === 'explanation');
+  check('and Read, which Explanation brings, leaves the keymenu', (await readKey(page)) === null, String(await readKey(page)));
 
   await toggle(page, 'explanation');
   check('Explanation on brings Markdown back, and says so',
     (await statusText(page)) === 'Explanation: on — and Markdown, which it needs', await statusText(page));
   check('labels are markdown again, still without math', (await syntax(page)) === 'markdown', await syntax(page));
+  check('and Read is back', (await readKey(page)) === 'Read', String(await readKey(page)));
 
   await toggle(page, 'math');
   check('Math on says so', (await statusText(page)) === 'Math: on', await statusText(page));

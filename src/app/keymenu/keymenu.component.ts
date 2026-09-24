@@ -701,8 +701,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         () => this.keyMenuOut.emit({kind: DACommandType.COPY_SELECTION}), false),
       [root.toggleVisibility]: new LabeledAction('Cycle Menu View', () => this.visibilityToggle.emit(), false),
       ...this.buildAgentChatBindings(),
-      [this.keyAssignments.reading.enter]: new LabeledAction('Read',
-        () => this.keyMenuOut.emit({kind: DACommandType.ENTER_READING_MODE}), false),
+      ...this.buildReadBinding(),
       // Holding Shift shows what the shifted keys do, the same way every
       // other hub does. Redo lives here as U; Ctrl-R still works.
       ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
@@ -732,6 +731,18 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.keyMenuOut.emit({kind: DACommandType.FOLLOW_AGENT}), false),
       [this.keyAssignments.agent.chat]: new LabeledAction('Close Chat', () =>
         this.keyMenuOut.emit({kind: DACommandType.CLOSE_AGENT_CHAT}), false),
+    } as SubmenuConfig;
+  }
+
+  /** Read, for a diagram type with a reading order (Explanation) while its
+   *  plugin is on: reading is what that plugin brings, so other graphs do not
+   *  offer it. */
+  private buildReadBinding(): SubmenuConfig {
+    const type = resolveIdentity(this.diagramTypeId);
+    if (!type.readingOrder || !this.pluginSettings.isEnabled(type.id)) return {} as SubmenuConfig;
+    return {
+      [this.keyAssignments.reading.enter]: new LabeledAction('Read',
+        () => this.keyMenuOut.emit({kind: DACommandType.ENTER_READING_MODE}), false),
     } as SubmenuConfig;
   }
 

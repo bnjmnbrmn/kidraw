@@ -589,6 +589,8 @@ describe('KeymenuComponent', () => {
   it('keeps agent keys clear of other root bindings, with Follow Agent on the Shift card', () => {
     const fixture = TestBed.createComponent(KeymenuComponent);
     const component = fixture.componentInstance;
+    // Read is the Explanation plugin's: it is offered on explanation graphs.
+    component.diagramTypeId = 'explanation';
 
     for (const assignments of [component.keyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS]) {
       component.keyAssignments = assignments;
@@ -616,6 +618,15 @@ describe('KeymenuComponent', () => {
       expect((shift[agent.follow] as LabeledAction).actionLabel).toBe('Follow Agent');
       expect((shift[agent.chat] as LabeledAction).actionLabel).toBe('Close Chat');
     }
+  });
+
+  it('offers Read only on a graph whose type has a reading order', () => {
+    const component = TestBed.createComponent(KeymenuComponent).componentInstance;
+    const read = component.keyAssignments.reading.enter;
+    component.diagramTypeId = 'todo-graph';
+    expect(buildRootConfig(component)[read]).toBeUndefined();
+    component.diagramTypeId = 'explanation';
+    expect((buildRootConfig(component)[read] as LabeledAction).actionLabel).toBe('Read');
   });
 
   describe('add hub (held a)', () => {
