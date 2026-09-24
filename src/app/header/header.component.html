@@ -123,8 +123,12 @@
                   }
                 </label>
                 @if (pluginLibrary.isAdded(plugin.id)) {
-                  <button class="plugin-remove" [attr.data-remove-plugin]="plugin.id"
-                          (click)="onPluginRemove(plugin)" title="Remove this plugin you added">Remove</button>
+                  <span class="plugin-actions">
+                    <button class="plugin-save" [attr.data-save-plugin]="plugin.id"
+                            (click)="onPluginSave(plugin)" title="Save this plugin's file, to share it">Save</button>
+                    <button class="plugin-remove" [attr.data-remove-plugin]="plugin.id"
+                            (click)="onPluginRemove(plugin)" title="Remove this plugin you added">Remove</button>
+                  </span>
                 }
               </div>
             }

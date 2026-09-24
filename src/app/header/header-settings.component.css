@@ -191,3 +191,14 @@ button:focus-visible,
 .plugin-add .plugin-file {
   display: none;
 }
+
+.plugin-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.plugin-save {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  cursor: pointer;
+}

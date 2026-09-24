@@ -5,8 +5,8 @@
  * "Add a plugin from a file…", makes a graph a Kanban board with `:type`,
  * moves a card between columns with the plugin's own menu on root `t` (real
  * keys), and checks the plugin — and the graph's type — survive a reload.
- * Removing the plugin takes it out of `:type` and root `t`, and leaves the
- * graph's type as it was.
+ * Save hands back its file, for sharing. Removing the plugin takes it out of
+ * `:type` and root `t`, and leaves the graph's type as it was.
  */
 const path = require('path');
 const {launch, openApp, settled, checker, DA} = require('../harness.js');
@@ -73,6 +73,10 @@ async function reload(page) {
 
   await page.click('.settings-dropdown > summary');
   if (!(await page.$eval('.plugins-section', el => el.open))) await page.click('.plugins-section > summary');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('[data-save-plugin="kanban"]')]);
+  const saved = require('fs').readFileSync(await download.path(), 'utf8');
+  check('Save hands back the plugin\'s file, to share', download.suggestedFilename() === 'kanban.kidraw-plugin.yaml'
+    && saved === require('fs').readFileSync(KANBAN, 'utf8'), download.suggestedFilename());
   await page.click('[data-remove-plugin="kanban"]');
   await page.click('.settings-dropdown > summary');
   await settled(page);

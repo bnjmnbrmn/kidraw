@@ -13,6 +13,7 @@ import { AgentStore } from '../agent/agent-store';
 import { KidrawPlugin } from '../plugins/plugin.model';
 import { dependencyHint, describePluginChange, PluginSettingsService } from '../plugins/plugin-settings.service';
 import { PluginLibraryService } from '../plugins/plugin-library.service';
+import { FileIoService } from '../services/file-io.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -143,6 +144,7 @@ export class HeaderComponent {
   agent = inject(AgentStore);
   pluginSettings = inject(PluginSettingsService);
   pluginLibrary = inject(PluginLibraryService);
+  private fileIo = inject(FileIoService);
 
   get agentChipTitle(): string {
     const keys = this.agent.keyLabels();
@@ -179,6 +181,13 @@ export class HeaderComponent {
       ? `Added the ${result.plugin.name} plugin`
       : `Couldn't add ${file.name}: ${result.errors[0]}${result.errors.length > 1 ? ` (and ${result.errors.length - 1} more)` : ''}`,
       8000);
+  }
+
+  /** Download an added plugin's YAML, to share it: whoever gets the file
+   *  adds it the same way. */
+  onPluginSave(plugin: KidrawPlugin): void {
+    const source = this.pluginLibrary.sourceOf(plugin.id);
+    if (source) this.fileIo.saveAs(`${plugin.id}.kidraw-plugin.yaml`, source, 'text/yaml');
   }
 
   onPluginRemove(plugin: KidrawPlugin): void {

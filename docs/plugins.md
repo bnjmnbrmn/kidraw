@@ -2,8 +2,9 @@
 
 A KiDraw plugin can be a YAML file: no code, nothing to build. Add one in
 **Settings → Plugins → Add a plugin from a file…**; it is kept in your browser
-and comes back when you reload. Share it by sharing the file. Remove it from
-the same list.
+and comes back when you reload. **Save** beside it hands the file back, to
+share; **Remove** takes it out. An agent connected through AI Chat can write
+one too (its `define_plugin` tool), and it lands in the same list.
 
 A plugin written this way is a **diagram type**: switch a graph to it with
 `:type <id>`, and its menu appears on root `t`. What it can declare:
