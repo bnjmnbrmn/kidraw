@@ -246,16 +246,32 @@ browser checks (inferred, 2026-09-24 — what was built, not new decisions):
    open; menus set tags through the core `tags.set` command. Format and a
    Kanban example: [`docs/plugins.md`](../docs/plugins.md).
 
+After the five steps, the same night:
+
+6. **AI Chat is a plugin** (`50423665`), the first on Ben's list: off, its
+   keys (m, o, Shift+O, Shift+M) leave the keymenu, stray agent commands
+   say so, and any session ends. Explanation *uses* it (sending marks).
+7. **Agents can write plugins** (`efdbaa94`): a `define_plugin` tool takes
+   the same YAML, with the same checks, into the same library. The live
+   `kidraw-agent` offers it after a restart (not done).
+8. **Save** beside an added plugin downloads its YAML, to share
+   (`03a6ce37`).
+9. **Read is Explanation's** (`c3389524`): offered only on a graph whose
+   type has a reading order, while that plugin is on.
+
 Browser checks: `graph-types/` holds task-status (18), plugin-settings (13),
-markdown-math-plugins (11) and plugin-library (14), all driving the real
-Settings panel and real keys.
+markdown-math-plugins (13), plugin-library (15) and ai-chat-plugin (9), all
+driving the real Settings panel and real keys.
 
 **Not built yet:** code plugins from outside the build (needs a sandbox);
-agents writing plugins; plugins kept in the vault; explanation's reading
-mode and agent tools as its contributions; core features registered as
-plugins (decision 2 is followed in shape — core units bring `commands()`
-— but core commands are still the closed enum); versioning and
-multiplayer (need keymenu edits on operations first).
+plugins kept in the vault (the File System Access API cannot be driven
+headlessly, so only unit-testable); reading mode as a capability any
+plugin with a reading order can use (today it knows Explanation's tags);
+explanation's agent change kinds (`set_reading_order`, `arrange`) as its
+contributions; core features registered as plugins (decision 2 is followed
+in shape — core units bring `commands()` — but core commands are still the
+closed enum); versioning and multiplayer (need keymenu edits on operations
+first).
 
 ## Spike: task status as a todo plugin (2026-09-23)
 

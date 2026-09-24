@@ -16,7 +16,9 @@ explanation graphs on `explanation-graphs`._
 >   operations (`PluginHost.apply`).
 > - Settings → Plugins turns non-core plugins off; Markdown and Math are
 >   plugins; dependencies follow automatically with notices.
-> - Diagram types can be YAML, added from a file without a rebuild.
+> - Diagram types can be YAML, added from a file without a rebuild, saved
+>   back to share, or written by the agent (`define_plugin`).
+> - AI Chat is a plugin you can turn off; Read is Explanation's.
 > - Browser checks in `tools/qa/graph-types/`; full suite 35/45 clean, the
 >   two below baseline being the long-standing nav-popup and
 >   add-insert-taps.
