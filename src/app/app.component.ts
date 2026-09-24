@@ -68,7 +68,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(HeaderComponent) headerComponent!: HeaderComponent;
   @ViewChild(DrawingAreaComponent) drawingArea!: DrawingAreaComponent;
 
-  movementSpeed = 50;
   exLineOpen = false;
   exLineMessage = '';
   /** Ex-line command history. Lives here because the line is created and
@@ -582,10 +581,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.headerComponent) {
       this.headerComponent.onZoomLevelChange(level);
     }
-  }
-
-  onMovementSpeedChange(speed: number) {
-    this.movementSpeed = speed;
   }
 
   onLoadSampleGraph(graphId: string) {

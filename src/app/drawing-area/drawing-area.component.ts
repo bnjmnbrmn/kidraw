@@ -134,7 +134,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     {left: 0, right: 0, top: 0, bottom: 0};
   @Output() daOut = new EventEmitter<DANotification>()
   @Output() zoomLevel = new EventEmitter<number>()
-  @Output() movementSpeedChange = new EventEmitter<number>()
   @Output() canEditChange = new EventEmitter<boolean>();
   private componentNE = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private resizeObserver!: ResizeObserver;
@@ -222,10 +221,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly TWEEN_DURATION = .1;
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
-  public readonly STEERING_ROTATION_STEP_RADIANS = Math.PI / 18;
-  public readonly STEERING_SPEED_STEP = 10;
-  public readonly MIN_STEERING_SPEED = 20;
-  public readonly MAX_STEERING_SPEED = 200;
   public readonly NODE_SIZE_STEP = 20;
   public readonly TEXT_SIZE_STEP = 2;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
@@ -236,8 +231,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  so the text is readable without losing the graph around it. A closer
    *  view is kept. (Was 400%, which Ben found too close, 2026-09-19.) */
   private static readonly NODE_EDIT_ZOOM = 1;
-  private headingRadians = -Math.PI / 2;
-  private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
   /** Where traversal has been and which way it was going: momentum, the
    *  current node, the focused edge and the jumplist (nav-journey.ts).
    *  Move by Link and the nav popup share it, so one continues the other. */
@@ -317,8 +310,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
-    this.crosshairsLayer.setHeading(this.headingRadians);
-    this.crosshairsLayer.setHeadingVisible(false);
 
     // Restore the localStorage draft (v2 schema; auto-migrates v1).
     const draft = this.draftStorage.load();
@@ -350,7 +341,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     // Emit initial zoom level and context state
     this.emitZoomLevel();
-    this.emitMovementSpeed();
     this.emitContextState();
     this.hover.refresh();
 
@@ -537,14 +527,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.MOVE_CROSSHAIRS_DOWN]: c => this.moveCrosshairsDown(c.gridTier),
       [DACommandType.MOVE_CROSSHAIRS_RIGHT]: c => this.moveCrosshairsRight(c.gridTier),
       [DACommandType.MOVE_CROSSHAIRS_UP]: c => this.moveCrosshairsUp(c.gridTier),
-      [DACommandType.STEER_FORWARD]: () => this.steerForward(),
-      [DACommandType.STEER_BACKWARD]: () => this.steerBackward(),
-      [DACommandType.STRAFE_LEFT]: () => this.strafeLeft(),
-      [DACommandType.STRAFE_RIGHT]: () => this.strafeRight(),
-      [DACommandType.ROTATE_HEADING_LEFT]: () => this.rotateHeadingLeft(),
-      [DACommandType.ROTATE_HEADING_RIGHT]: () => this.rotateHeadingRight(),
-      [DACommandType.INCREASE_MOVE_SPEED]: () => this.increaseMoveSpeed(),
-      [DACommandType.DECREASE_MOVE_SPEED]: () => this.decreaseMoveSpeed(),
       [DACommandType.SHOW_CROSSHAIRS]: () => this.holdCrosshairsVisible(),
       [DACommandType.RELEASE_CROSSHAIRS]: () => this.releaseCrosshairsVisible(),
     } satisfies CommandSlice;
@@ -558,7 +540,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.TRAVERSE_SMART]: c => this.traverseSmart(c.keys),
       [DACommandType.NAV_HISTORY_BACK]: () => this.navHistoryGo(-1),
       [DACommandType.NAV_HISTORY_FORWARD]: () => this.navHistoryGo(1),
-      [DACommandType.SNAP_TO_NEAREST_NODE]: () => this.snapToNearestNode(),
     } satisfies CommandSlice;
   }
 
@@ -1710,66 +1691,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  private steerForward() {
-    this.moveCrosshairsBy(
-      Math.cos(this.headingRadians) * this.steeringMoveDistance,
-      Math.sin(this.headingRadians) * this.steeringMoveDistance,
-    );
-  }
-
-  private steerBackward() {
-    this.moveCrosshairsBy(
-      -Math.cos(this.headingRadians) * this.steeringMoveDistance,
-      -Math.sin(this.headingRadians) * this.steeringMoveDistance,
-    );
-  }
-
-  private strafeLeft() {
-    const leftAngle = this.headingRadians - Math.PI / 2;
-    this.moveCrosshairsBy(
-      Math.cos(leftAngle) * this.steeringMoveDistance,
-      Math.sin(leftAngle) * this.steeringMoveDistance,
-    );
-  }
-
-  private strafeRight() {
-    const rightAngle = this.headingRadians + Math.PI / 2;
-    this.moveCrosshairsBy(
-      Math.cos(rightAngle) * this.steeringMoveDistance,
-      Math.sin(rightAngle) * this.steeringMoveDistance,
-    );
-  }
-
-  private rotateHeadingLeft() {
-    this.headingRadians = this.normalizeHeading(this.headingRadians - this.STEERING_ROTATION_STEP_RADIANS);
-    this.crosshairsLayer.setHeading(this.headingRadians);
-  }
-
-  private rotateHeadingRight() {
-    this.headingRadians = this.normalizeHeading(this.headingRadians + this.STEERING_ROTATION_STEP_RADIANS);
-    this.crosshairsLayer.setHeading(this.headingRadians);
-  }
-
-  private increaseMoveSpeed() {
-    this.steeringMoveDistance = Math.min(
-      this.steeringMoveDistance + this.STEERING_SPEED_STEP,
-      this.MAX_STEERING_SPEED,
-    );
-    this.emitMovementSpeed();
-  }
-
-  private decreaseMoveSpeed() {
-    this.steeringMoveDistance = Math.max(
-      this.steeringMoveDistance - this.STEERING_SPEED_STEP,
-      this.MIN_STEERING_SPEED,
-    );
-    this.emitMovementSpeed();
-  }
-
-  private emitMovementSpeed() {
-    this.movementSpeedChange.emit(this.steeringMoveDistance);
-  }
-
   private emitContextState(): void {
     const selectedNodes = this.drawingLayer.getSelectedDANodes();
     const selectedEdges = this.drawingLayer.getSelectedDAEdges();
@@ -1792,18 +1713,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       diagramTypeName: this.drawingLayer.diagramType === 'default'
         ? '' : resolveIdentity(this.drawingLayer.diagramType).name,
     });
-  }
-
-  private normalizeHeading(angleRadians: number): number {
-    if (angleRadians <= -Math.PI) {
-      return angleRadians + Math.PI * 2;
-    }
-
-    if (angleRadians > Math.PI) {
-      return angleRadians - Math.PI * 2;
-    }
-
-    return angleRadians;
   }
 
   // --- Move-by-graph traversal (see graph-nav.ts for the geometry) ---
@@ -2241,35 +2150,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       easing: Konva.Easings.EaseInOut,
       onFinish: () => this.checkResizeHandleProximity(),
     });
-  }
-
-  private snapToNearestNode() {
-    const nodes = this.drawingLayer.getDANodes();
-    if (nodes.length === 0) {
-      return;
-    }
-
-    const crosshairsPosition = {
-      x: this.crosshairsLayer.crosshairsX(),
-      y: this.crosshairsLayer.crosshairsY(),
-    };
-
-    let nearestNode = nodes[0];
-    let nearestDistanceSquared = Number.POSITIVE_INFINITY;
-
-    nodes.forEach((node) => {
-      const center = this.getNodeCenterInStageCoordinates(node);
-      const dx = center.x - crosshairsPosition.x;
-      const dy = center.y - crosshairsPosition.y;
-      const distanceSquared = dx * dx + dy * dy;
-
-      if (distanceSquared < nearestDistanceSquared) {
-        nearestDistanceSquared = distanceSquared;
-        nearestNode = node;
-      }
-    });
-
-    this.focusNode(nearestNode);
   }
 
   /** A place move-by-node can land: a node, an edge label, or a waypoint,

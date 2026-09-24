@@ -39,14 +39,6 @@ describe('AppComponent', () => {
     expect(tabButtons.length).toBe(0);
   });
 
-  it('should pass movementSpeed to keymenu component', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-
-    const keymenu = fixture.debugElement.query(By.directive(KeymenuComponent)).componentInstance as KeymenuComponent;
-    expect(keymenu.movementSpeed).toBe(fixture.componentInstance.movementSpeed);
-  });
-
   // 2026-08-15 (da-200): the toggle cycles three presentations —
   // keyboard → compact tree → hidden → keyboard. The keyboard overlay is
   // still only hidden, never destroyed, in the two non-keyboard states.

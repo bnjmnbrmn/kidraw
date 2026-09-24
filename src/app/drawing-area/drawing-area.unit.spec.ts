@@ -338,32 +338,6 @@ describe('DrawingArea Unit Tests', () => {
       expect(crosshairs.y).toBe(250);
     });
 
-    it('should update heading line points based on heading angle', () => {
-      const crosshairs = new DACrosshairs({ x: 0, y: 0 });
-      crosshairs.setHeading(Math.PI / 2);
-
-      const headingLine = crosshairs.konvaGroup.getChildren()[3] as Konva.Line;
-      const points = headingLine.points();
-
-      expect(points[0]).toBe(0);
-      expect(points[1]).toBe(0);
-      expect(points[2]).toBeCloseTo(0, 3);
-      expect(points[3]).toBeCloseTo(crosshairs.HEADING_LENGTH, 3);
-    });
-
-    it('should toggle heading line visibility', () => {
-      const crosshairs = new DACrosshairs({ x: 0, y: 0 });
-      const headingLine = crosshairs.konvaGroup.getChildren()[3] as Konva.Line;
-
-      expect(headingLine.visible()).toBe(false);
-
-      crosshairs.setHeadingVisible(true);
-      expect(headingLine.visible()).toBe(true);
-
-      crosshairs.setHeadingVisible(false);
-      expect(headingLine.visible()).toBe(false);
-    });
-
     it('should update hit radii and rendered line extents', () => {
       const crosshairs = new DACrosshairs({ x: 0, y: 0 });
       crosshairs.setHitRadii(12, 8);

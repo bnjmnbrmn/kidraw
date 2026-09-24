@@ -135,7 +135,6 @@ const CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
   DACommandType.DELETE,
   DACommandType.UNDO,
   DACommandType.REDO,
-  DACommandType.SNAP_TO_NEAREST_NODE,
   DACommandType.SNAP_TO_NODE_LEFT,
   DACommandType.SNAP_TO_NODE_RIGHT,
   DACommandType.SNAP_TO_NODE_UP,

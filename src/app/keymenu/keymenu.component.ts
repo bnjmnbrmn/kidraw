@@ -56,7 +56,6 @@ interface ProfileHint {
 })
 export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
-  @Input() movementSpeed = 20;
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
   /** The graph's diagram type: its plugin's menu, if any, sits on root `t`. */
@@ -151,8 +150,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return k;
   }
 
-  readonly MIN_STEERING_SPEED = 20;
-  readonly MAX_STEERING_SPEED = 200;
   activeKeyPath: string[] = [];
 
   private get dragSubmenuConfig(): SubmenuConfig {
@@ -208,16 +205,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   private getPairKeyHint(first: KeyString, second: KeyString): string {
     return `${first}/${second}`;
-  }
-
-  get movementSpeedDialPercent(): number {
-    const range = this.MAX_STEERING_SPEED - this.MIN_STEERING_SPEED;
-    if (range <= 0) {
-      return 0;
-    }
-
-    const normalized = (this.movementSpeed - this.MIN_STEERING_SPEED) / range;
-    return Math.max(0, Math.min(1, normalized));
   }
 
   ngAfterViewInit(): void {

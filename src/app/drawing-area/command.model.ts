@@ -56,14 +56,6 @@ export enum DACommandType {
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
   MOVE_CROSSHAIRS_UP = 'MOVE_CROSSHAIRS_UP',
   MOVE_CROSSHAIRS_DOWN = 'MOVE_CROSSHAIRS_DOWN',
-  STEER_FORWARD = 'STEER_FORWARD',
-  STEER_BACKWARD = 'STEER_BACKWARD',
-  STRAFE_LEFT = 'STRAFE_LEFT',
-  STRAFE_RIGHT = 'STRAFE_RIGHT',
-  ROTATE_HEADING_LEFT = 'ROTATE_HEADING_LEFT',
-  ROTATE_HEADING_RIGHT = 'ROTATE_HEADING_RIGHT',
-  INCREASE_MOVE_SPEED = 'INCREASE_MOVE_SPEED',
-  DECREASE_MOVE_SPEED = 'DECREASE_MOVE_SPEED',
   TRAVERSE_SMART = 'TRAVERSE_SMART',
   ENTER_LINK_NAV = 'ENTER_LINK_NAV',
   MOVE_LINK_LEFT = 'MOVE_LINK_LEFT',
@@ -73,7 +65,6 @@ export enum DACommandType {
   RELEASE_LINK_NAV = 'RELEASE_LINK_NAV',
   NAV_HISTORY_BACK = 'NAV_HISTORY_BACK',
   NAV_HISTORY_FORWARD = 'NAV_HISTORY_FORWARD',
-  SNAP_TO_NEAREST_NODE = 'SNAP_TO_NEAREST_NODE',
   SET_GRAPH_ITEM_NAVIGATION_STRATEGY = 'SET_GRAPH_ITEM_NAVIGATION_STRATEGY',
   SHOW_NODE_GRID = 'SHOW_NODE_GRID',
   HIDE_NODE_GRID = 'HIDE_NODE_GRID',
@@ -188,14 +179,6 @@ export type DACommand =
   | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.MOVE_CROSSHAIRS_UP; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN; distance?: number; gridTier?: GridTier}
-  | {kind: DACommandType.STEER_FORWARD}
-  | {kind: DACommandType.STEER_BACKWARD}
-  | {kind: DACommandType.STRAFE_LEFT}
-  | {kind: DACommandType.STRAFE_RIGHT}
-  | {kind: DACommandType.ROTATE_HEADING_LEFT}
-  | {kind: DACommandType.ROTATE_HEADING_RIGHT}
-  | {kind: DACommandType.INCREASE_MOVE_SPEED}
-  | {kind: DACommandType.DECREASE_MOVE_SPEED}
   | {kind: DACommandType.TRAVERSE_SMART;
      keys?: {up: string; left: string; down: string; right: string}}
   | {kind: DACommandType.ENTER_LINK_NAV}
@@ -206,7 +189,6 @@ export type DACommand =
   | {kind: DACommandType.RELEASE_LINK_NAV}
   | {kind: DACommandType.NAV_HISTORY_BACK}
   | {kind: DACommandType.NAV_HISTORY_FORWARD}
-  | {kind: DACommandType.SNAP_TO_NEAREST_NODE}
   | {kind: DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY; strategy: GraphItemNavigationStrategy}
   // targets: which stops move-by-node jumps between — 'nodes' (coarse),
   // 'labels' = nodes+labels (default), 'all' = nodes+labels+waypoints (fine).

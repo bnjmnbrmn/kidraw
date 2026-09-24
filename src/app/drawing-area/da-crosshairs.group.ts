@@ -5,11 +5,9 @@ export class DACrosshairs {
   private readonly horizLine: Konva.Line;
   private readonly vertLine: Konva.Line;
   private readonly selectionCircle: Konva.Circle;
-  private readonly headingLine: Konva.Line;
 
   public readonly CROSSHAIRS_LENGTH = 20;
   public readonly CROSSHAIRS_STROKE_WIDTH = 3;
-  public readonly HEADING_LENGTH = 34;
   private _hitRadiusX = this.CROSSHAIRS_LENGTH;
   private _hitRadiusY = this.CROSSHAIRS_LENGTH;
 
@@ -39,16 +37,6 @@ export class DACrosshairs {
       strokeWidth: this.CROSSHAIRS_STROKE_WIDTH,
     });
     this.group.add(this.vertLine);
-
-    this.headingLine = new Konva.Line({
-      points: [0, 0, 0, -this.HEADING_LENGTH],
-      stroke: '#e4572e',
-      strokeWidth: 2,
-      lineCap: 'round',
-      dash: [6, 4],
-      visible: false,
-    });
-    this.group.add(this.headingLine);
   }
 
   get konvaGroup(): Konva.Group {
@@ -81,19 +69,6 @@ export class DACrosshairs {
 
   set y(value: number) {
     this.group.y(value);
-  }
-
-  setHeading(angleRadians: number) {
-    this.headingLine.points([
-      0,
-      0,
-      Math.cos(angleRadians) * this.HEADING_LENGTH,
-      Math.sin(angleRadians) * this.HEADING_LENGTH,
-    ]);
-  }
-
-  setHeadingVisible(visible: boolean) {
-    this.headingLine.visible(visible);
   }
 
   setHitRadii(radiusX: number, radiusY: number) {

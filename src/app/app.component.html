@@ -9,14 +9,12 @@
                   }"
                   (daOut)="handleDANotification($event)"
                   (zoomLevel)="onZoomLevelChange($event)"
-                  (movementSpeedChange)="onMovementSpeedChange($event)"
                   (canEditChange)="onCanEditChange($event)"
 />
 
 <app-keymenu
   [class.keymenu-hidden]="!keymenuVisible"
   [attr.aria-hidden]="!keymenuVisible"
-  [movementSpeed]="movementSpeed"
   [canEdit]="canEdit"
   [visible]="keymenuVisible"
   [keyAssignments]="keyAssignments"

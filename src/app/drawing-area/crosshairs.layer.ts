@@ -37,16 +37,6 @@ export class CrosshairsLayer extends Konva.Layer {
       return this.crosshairs.getAbsolutePosition().y;
     }
 
-    setHeading(angleRadians: number) {
-      this.crosshairs.setHeading(angleRadians);
-      this.batchDraw();
-    }
-
-    setHeadingVisible(visible: boolean) {
-      this.crosshairs.setHeadingVisible(visible);
-      this.batchDraw();
-    }
-
     setHitRadii(radiusX: number, radiusY: number) {
       this.crosshairs.setHitRadii(radiusX, radiusY);
       this.batchDraw();
