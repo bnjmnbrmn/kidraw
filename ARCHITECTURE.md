@@ -102,11 +102,16 @@ undo groups so one agent turn undoes as one step.
 and a zip bundle format. The vault (`services/vault.service.ts`) watches files
 on disk; drafts persist to localStorage through `draft-storage.service.ts`.
 
-**Diagram types** are plugins (`plugins/`), registered in
-`plugin-registry.ts`. A plugin contributes node kinds, edge kinds and
-behaviour — `explanation.plugin.ts` adds Supports edges and reading order,
-`todo-graph.plugin.ts` adds task statuses. `:type explanation` switches.
-Where plugins are headed: [`notes/design-plugins.md`](notes/design-plugins.md).
+**Plugins** live in `plugins/`, registered in `plugin-registry.ts`. A
+diagram type is a plugin a graph is bound to (`:type explanation`); a
+feature (Markdown, Math, Tags) adds to other types. A plugin contributes
+node and edge kinds, tag groups, style defaults, commands with namespaced
+ids (`todo.setStatus`, routed as `PLUGIN_COMMAND`), and a menu that root
+`t` opens. Plugins change the graph only through `PluginHost.apply`
+(operations). Non-core ones can be turned off in Settings, dependencies
+follow automatically, and diagram types can be written as YAML and added
+without a rebuild ([`docs/plugins.md`](docs/plugins.md)). Design and Ben's
+decisions: [`notes/design-plugins.md`](notes/design-plugins.md).
 
 ## Agent mode
 

@@ -1,8 +1,25 @@
 # dev-status
 
-_Updated 2026-09-18. Branch: `refactor/readability` (built on explanation
+_Updated 2026-09-24. Branch: `refactor/readability` (built on explanation
 graphs, which is built on agent mode). Agent mode on `agent-mode-v0`;
 explanation graphs on `explanation-graphs`._
+
+> ## 🧩 IN PROGRESS: plugins (2026-09-23/24, branch `refactor/readability`)
+>
+> Ben set the direction and answered seven design questions on 2026-09-23;
+> the framework was built overnight in five steps. What exists, what each
+> step did, and what is not built yet:
+> [`notes/design-plugins.md`](notes/design-plugins.md) ("Built"). For
+> users: [`docs/plugins.md`](docs/plugins.md).
+> - Plugins bring commands (`todo.setStatus`, via `PLUGIN_COMMAND`) and a
+>   menu on root `t`, with keys by Ben's rule; they write only through
+>   operations (`PluginHost.apply`).
+> - Settings → Plugins turns non-core plugins off; Markdown and Math are
+>   plugins; dependencies follow automatically with notices.
+> - Diagram types can be YAML, added from a file without a rebuild.
+> - Browser checks in `tools/qa/graph-types/`; full suite 35/45 clean, the
+>   two below baseline being the long-standing nav-popup and
+>   add-insert-taps.
 
 > ## 🔧 IN PROGRESS: readability refactor (2026-09-18, branch `refactor/readability`)
 >

@@ -216,6 +216,47 @@ the selection is root `c` (Ben, 2026-09-23).
   they are safe to share and for agents to write; plugins with code later,
   and only sandboxed.
 
+## Built (2026-09-24, overnight, on `refactor/readability`)
+
+The five steps proposed after Ben's decisions, each committed with specs and
+browser checks (inferred, 2026-09-24 — what was built, not new decisions):
+
+1. **Plugins bring their own commands** (`b8b4d5af`). Namespaced ids
+   (`todo.setStatus`), carried by one core kind, `PLUGIN_COMMAND {call}`,
+   and type-checked through `PluginCommandArgs`, which each plugin extends
+   from its own file. `SET_TASK_STATUS` and `TaskStatus` left core. Plugin
+   writes go through `PluginHost.apply` (operations, one undo group,
+   synchronous by type); the operations code loads with the app.
+2. **Root `t` is the diagram type's own menu** (`b7f72fbb`), keys by Ben's
+   rule — no clash, ergonomic, memorable — implemented as `menu-keys.ts`
+   against the profile's `pluginMenu` keys. Todo's: h Draft, j To Do,
+   i In Progress, k Blocked, l Done, n No Status.
+3. **Settings → Plugins** turns non-core plugins off (`2345d7c1`). Off
+   means: commands say so, the menu goes, `:type` stops offering it; its
+   data still renders, and a graph of its type opens as itself with a
+   notice (the proposal above — still Ben's call). On the way, every graph
+   load now emits the context update (some never did).
+4. **Markdown and Math are plugins** (`013a343e`): features, not types.
+   `requires` / `uses`, followed automatically both ways with notices
+   ("Markdown: off — and Explanation and Math, which need it"). Labels
+   follow the settings; with Math off, `$` is text. `registryProblems()`
+   keeps the registry sound (a spec holds the real one to it).
+5. **Plugins written as data** (`f210488e`): YAML diagram types, added in
+   Settings from a file, kept in the browser, registered before graphs
+   open; menus set tags through the core `tags.set` command. Format and a
+   Kanban example: [`docs/plugins.md`](../docs/plugins.md).
+
+Browser checks: `graph-types/` holds task-status (18), plugin-settings (13),
+markdown-math-plugins (11) and plugin-library (14), all driving the real
+Settings panel and real keys.
+
+**Not built yet:** code plugins from outside the build (needs a sandbox);
+agents writing plugins; plugins kept in the vault; explanation's reading
+mode and agent tools as its contributions; core features registered as
+plugins (decision 2 is followed in shape — core units bring `commands()`
+— but core commands are still the closed enum); versioning and
+multiplayer (need keymenu edits on operations first).
+
 ## Spike: task status as a todo plugin (2026-09-23)
 
 Branch `spike/plugin-todo-status`, not merged — for Ben to look at. Task status
