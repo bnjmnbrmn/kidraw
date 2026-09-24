@@ -32,7 +32,7 @@ import type { GraphSnapshot } from './graph-snapshot';
 import type { PluginSettingsService } from '../plugins/plugin-settings.service';
 import { DACommandType } from './command.model';
 import type { CommandSlice } from './command-handlers';
-import { PLUGIN_REGISTRY, getPlugin, resolveIdentity } from '../plugins/plugin-registry';
+import { diagramTypes, getPlugin, resolveIdentity } from '../plugins/plugin-registry';
 import { isYamlFilename, parseGraphDocByFilename, parseStyleSetByFilename, serializeGraphDocByFilename, serializeStyleSetByFilename } from '../lib/file-format/parser';
 import { ImportResolver, resolveAndApplyToGraph } from '../lib/file-format/resolver';
 import { filesToSnapshot, snapshotToFiles } from '../lib/file-format/snapshot-mapping';
@@ -285,6 +285,10 @@ export class FileController {
       this.host.emitStatus(`⚠ Unknown diagram type: ${typeId}`);
       return;
     }
+    if (plugin.feature) {
+      this.host.emitStatus(`⚠ ${plugin.name} is not a diagram type`);
+      return;
+    }
     if (!this.host.pluginSettings.isEnabled(plugin.id)) {
       this.host.emitStatus(`⚠ ${plugin.name} is turned off in Settings`);
       return;
@@ -527,7 +531,7 @@ export class FileController {
   private exType(arg: string): void {
     const current = this.host.drawingLayer.diagramType;
     if (arg === '') {
-      const list = [...PLUGIN_REGISTRY.values()]
+      const list = diagramTypes()
         .filter(plugin => plugin.id === current || this.host.pluginSettings.isEnabled(plugin.id))
         .map(plugin => plugin.id === current ? `${plugin.id} (current)` : plugin.id)
         .join(', ');

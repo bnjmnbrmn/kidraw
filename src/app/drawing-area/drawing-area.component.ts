@@ -196,6 +196,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private pluginSettings = inject(PluginSettingsService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
+  private pluginSub?: Subscription;
   private hasDragged = false;
   private wasAlreadySelectedBeforeDrag = false;
   private undoRedoService = new UndoRedoService();
@@ -343,6 +344,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
     this.drawingLayer = new DrawingLayer();
     this.drawingLayer.palette = effectivePalette();
+    this.drawingLayer.isPluginEnabled = id => this.pluginSettings.isEnabled(id);
+    this.pluginSub = this.pluginSettings.changed$.subscribe(() => this.onPluginsChanged());
     this.stage.add(this.drawingLayer);
     // Math in labels lays out as TeX source until MathJax has loaded, then again at its real size.
     this.mathUnsubscribes = [
@@ -436,6 +439,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navGrid.cancelQuadrantGoalRayFade();
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
+    this.pluginSub?.unsubscribe();
     if (this._beforeUnloadHandler) {
       window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     }
@@ -452,6 +456,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private mathUnsubscribes: (() => void)[] = [];
+
+  /** Plugins were turned on or off: labels may be written differently now
+   *  (Markdown, Math), and so take a different size. */
+  private onPluginsChanged(): void {
+    this.updateEdgesForResizedNodes(this.drawingLayer.refreshLabelSyntax());
+    this.drawingLayer.batchDraw();
+    this.refreshLabelEditGhost();
+  }
 
   /** MathJax has loaded: labels with math take their real size. */
   private relayoutMathLabels(): void {

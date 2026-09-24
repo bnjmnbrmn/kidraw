@@ -110,6 +110,16 @@ export interface KidrawPlugin {
   /** Core plugins are always on; any other can be turned off in Settings
    *  (Ben, 2026-09-23). */
   core?: boolean;
+  /** A feature that adds to graphs of other types (Markdown, Math), rather
+   *  than a diagram type a graph can be bound to. */
+  feature?: boolean;
+  /** Plugins this one cannot work without. Switching it on switches them on;
+   *  switching one of them off switches it off — each with a notice (Ben,
+   *  2026-09-23). */
+  requires?: string[];
+  /** Plugins this one makes use of when they are on, and does without when
+   *  they are off (Explanation uses Math). */
+  uses?: string[];
   nodeDefaults: PluginNodeDefaults;
   /** 'markdown' renders **bold**, *italic* and `code` in node labels and edits
    *  them as highlighted monospace source. Default 'plain'. */

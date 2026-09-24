@@ -154,3 +154,15 @@ button:focus-visible,
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* Plugins: the checkbox, the name, then what it needs or uses. */
+.plugin-toggle {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plugin-hint {
+  opacity: 0.6;
+  font-size: 0.7rem;
+}

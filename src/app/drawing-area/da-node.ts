@@ -17,7 +17,7 @@ import {
   logicalLineEnd, logicalLineStart, moveVertical, wordBack, wordEnd, wordForward,
   vimChangeRange,
 } from './text-cursor';
-import { hasInlineMarkdown, InlineStyle, LaidLine, layoutSpans, parseInlineMarkdown } from './markdown-label';
+import { hasInlineMarkdown, InlineStyle, LabelSyntax, LaidLine, layoutSpans, parseInlineMarkdown } from './markdown-label';
 import { mathImage, mathMetrics } from './math-images';
 import type { LabelFormat } from '../plugins/plugin.model';
 
@@ -61,6 +61,8 @@ export class DANode {
    *  `_label` stays the text of record (and the caret's layout) underneath. */
   private readonly _richLabel: Konva.Group;
   private _labelFormat: LabelFormat = 'plain';
+  /** Whether `$…$` in a markdown label is TeX (the Math plugin is on). */
+  private _labelMath = true;
   private _editingText = false;
   private readonly _cursor: Konva.Line;
   private readonly _visualSelection: Konva.Group;
@@ -1115,10 +1117,18 @@ export class DANode {
     return this._labelFormat;
   }
 
-  /** Set by the graph's plugin. Returns whether the node resized. */
-  setLabelFormat(format: LabelFormat): boolean {
-    if (format === this._labelFormat) return false;
+  /** Whether `$…$` in this node's markdown label is typeset as math. */
+  get labelMath(): boolean {
+    return this._labelMath;
+  }
+
+  /** Set from the graph's plugin and the plugins that are on: markdown or
+   *  plain, and whether markdown includes math. Returns whether the node
+   *  resized. */
+  setLabelFormat(format: LabelFormat, math = true): boolean {
+    if (format === this._labelFormat && math === this._labelMath) return false;
     this._labelFormat = format;
+    this._labelMath = math;
     return this.applyTextOverflow();
   }
 
@@ -1128,6 +1138,10 @@ export class DANode {
     return this._labelFormat === 'markdown' ? this.applyTextOverflow() : false;
   }
 
+  private get labelSyntax(): LabelSyntax {
+    return {math: this._labelMath};
+  }
+
   /** Editing a markdown label: monospace source with its markers coloured. */
   private get sourceView(): boolean {
     return this._labelFormat === 'markdown' && this._editingText;
@@ -1135,7 +1149,7 @@ export class DANode {
 
   /** Not editing, and the text has markup to render. */
   private rendersRich(text: string): boolean {
-    return this._labelFormat === 'markdown' && !this._editingText && hasInlineMarkdown(text);
+    return this._labelFormat === 'markdown' && !this._editingText && hasInlineMarkdown(text, this.labelSyntax);
   }
 
   setCursorMode(mode: TextCursorMode): void {
@@ -1478,7 +1492,7 @@ export class DANode {
   private layoutRich(text: string, width: number, fontSize: number, wrap: boolean): LaidLine[] {
     const measure = DANode._runMeasure ??= new Konva.Text({ visible: false });
     measure.fontSize(fontSize);
-    return layoutSpans(parseInlineMarkdown(text).spans, width, (run: string, style: InlineStyle) => {
+    return layoutSpans(parseInlineMarkdown(text, this.labelSyntax).spans, width, (run: string, style: InlineStyle) => {
       const math = style.math ? mathMetrics(run, fontSize) : null;
       if (math && !math.error) return math;
       // Text, or TeX shown as its source (MathJax still loading, or bad TeX).
@@ -1503,7 +1517,7 @@ export class DANode {
     const labelless = this.nodeShape === 'junction' || this.nodeShape === 'invisible';
     const text = this._label.text();
     const rich = !labelless && this.rendersRich(text);
-    const source = !labelless && this.sourceView && hasInlineMarkdown(text);
+    const source = !labelless && this.sourceView && hasInlineMarkdown(text, this.labelSyntax);
     this._label.fillEnabled(!rich && !source);
     this._richLabel.visible(rich || source);
     if (rich) this.drawRichText(text);
@@ -1564,7 +1578,7 @@ export class DANode {
     const textArr: { text: string; width: number; lastInParagraph: boolean }[] =
       (measure as any).textArr ?? [];
     const ranges = lineRangesFromWrapped(text, textArr);
-    const {source} = parseInlineMarkdown(text);
+    const {source} = parseInlineMarkdown(text, this.labelSyntax);
     const fontSize = this._fontSize;
     const lineHeight = fontSize * (this._label.lineHeight() ?? 1);
     const top = this._label.y() + (this._label.height() - measure.height()) / 2;

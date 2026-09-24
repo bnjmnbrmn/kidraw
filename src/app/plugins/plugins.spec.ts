@@ -107,6 +107,24 @@ describe('plugins (identity slot)', () => {
     expect(statement.stepBadgeLabel).toBe('');
   });
 
+  it('writes labels in markdown only while the Markdown plugin is on, and math only with Math', () => {
+    const node = new DANode(0, 0, 'a **b** and $x$');
+    const dl = layerWithNodes(node);
+    const off = new Set<string>();
+    dl.isPluginEnabled = id => !off.has(id);
+
+    dl.setDiagramType(EXPLANATION_PLUGIN);
+    expect([node.labelFormat, node.labelMath]).toEqual(['markdown', true]);
+
+    off.add('math');
+    dl.refreshLabelSyntax();
+    expect([node.labelFormat, node.labelMath]).toEqual(['markdown', false]);
+
+    off.add('markdown');
+    dl.refreshLabelSyntax();
+    expect(node.labelFormat).toBe('plain');
+  });
+
   it('setDiagramType restyles existing nodes to the identity defaults', () => {
     const circle = new DANode(0, 0, 'todo A', undefined, undefined, 'circle');
     const box = new DANode(300, 0, 'todo B');

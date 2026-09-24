@@ -7,6 +7,20 @@ const roles = (text: string) =>
   parseInlineMarkdown(text).source.map(s => `${s.role}:${text.slice(s.start, s.end)}`);
 
 describe('markdown labels', () => {
+  describe('with the Math plugin off', () => {
+    const noMath = {math: false};
+    it('leaves $…$ as text', () => {
+      const spans = parseInlineMarkdown('area $x^2$ and **b**', noMath).spans;
+      expect(spans.some(span => span.math)).toBeFalse();
+      expect(spans.map(span => span.text).join('')).toBe('area $x^2$ and b');
+    });
+
+    it('does not count $ as markup, or treat \\$ as an escape', () => {
+      expect(hasInlineMarkdown('costs $5', noMath)).toBeFalse();
+      expect(parseInlineMarkdown('\\$5', noMath).spans.map(span => span.text).join('')).toBe('\\$5');
+    });
+  });
+
   describe('parsing', () => {
     it('leaves plain text alone', () => {
       expect(hasInlineMarkdown('Socrates is a man')).toBeFalse();

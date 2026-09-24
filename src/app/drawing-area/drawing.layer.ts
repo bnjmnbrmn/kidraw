@@ -355,7 +355,7 @@ export class DrawingLayer extends Konva.Layer {
   addNodeFromSnapshot(ns: DANodeSnapshot): DANode {
     const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
     node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
-    node.setLabelFormat(this.identityLabelFormat());
+    this.applyLabelSyntax(node);
     node.applyTextOverflow();
     node.pinned = ns.pinned ?? false;
     node.tags = [...(ns.tags ?? [])];
@@ -507,9 +507,22 @@ export class DrawingLayer extends Konva.Layer {
     return this._diagramType;
   }
 
-  /** How node labels are written under the bound plugin (markdown or plain). */
-  private identityLabelFormat() {
-    return resolveIdentity(this._diagramType).labelFormat ?? 'plain';
+  /** Whether a plugin is on: the drawing area sets this from the user's
+   *  settings; until then everything is on. */
+  isPluginEnabled: (id: string) => boolean = () => true;
+
+  /** How a node's label is written: markdown when the graph's type asks for
+   *  it and the Markdown plugin is on, with math when Math is on too.
+   *  Returns whether the node resized. */
+  private applyLabelSyntax(node: DANode): boolean {
+    const markdown = resolveIdentity(this._diagramType).labelFormat === 'markdown' && this.isPluginEnabled('markdown');
+    return node.setLabelFormat(markdown ? 'markdown' : 'plain', markdown && this.isPluginEnabled('math'));
+  }
+
+  /** The plugins that are on changed: write every label the new way.
+   *  Returns the nodes that resized. */
+  refreshLabelSyntax(): DANode[] {
+    return this.daNodes.filter(node => this.applyLabelSyntax(node));
   }
 
   private applyIdentityDefaultsToNode(node: DANode, plugin: KidrawPlugin, keepShape: boolean): void {
@@ -525,7 +538,7 @@ export class DrawingLayer extends Konva.Layer {
       d.fontSize ?? node.FONT_SIZE,
       d.textOverflow ?? node.textOverflowMode,
     );
-    node.setLabelFormat(plugin.labelFormat ?? 'plain');
+    this.applyLabelSyntax(node);
     node.applyTextOverflow();
   }
 
@@ -571,7 +584,7 @@ export class DrawingLayer extends Konva.Layer {
       const node = new DANode(ns.x + dx, ns.y + dy, ns.text, undefined, undefined, ns.nodeShape);
       node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode,
         ns.baseWidth, ns.baseHeight, ns.baseFontSize);
-      node.setLabelFormat(this.identityLabelFormat());
+      this.applyLabelSyntax(node);
       node.applyTextOverflow();
       node.isSelected = true;
       node.pinned = ns.pinned ?? false;
@@ -661,7 +674,7 @@ export class DrawingLayer extends Konva.Layer {
     for (const ns of snapshot.nodes) {
       const node = new DANode(ns.x, ns.y, ns.text, ns.id, undefined, ns.nodeShape);
       node.restoreState(ns.width, ns.height, ns.fontSize, ns.textOverflowMode, ns.baseWidth, ns.baseHeight, ns.baseFontSize);
-      node.setLabelFormat(this.identityLabelFormat());
+      this.applyLabelSyntax(node);
       node.applyTextOverflow();
       node.isSelected = ns.isSelected;
       node.pinned = ns.pinned ?? false;

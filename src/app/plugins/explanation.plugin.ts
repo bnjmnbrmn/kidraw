@@ -50,6 +50,8 @@ export const EXPLANATION_PLUGIN: KidrawPlugin = {
     textOverflow: 'fit',
   },
   labelFormat: 'markdown',
+  requires: ['markdown'],
+  uses: ['math'],
   tagGroups: [
     {
       id: 'feedback',

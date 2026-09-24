@@ -32,6 +32,12 @@ export interface SourceSpan {
   italic: boolean;
 }
 
+/** Which markup a label understands. Math is a plugin of its own: with it
+ *  off, `$` is ordinary text (notes/design-plugins.md). */
+export interface LabelSyntax {
+  math?: boolean;
+}
+
 export interface ParsedLabel {
   /** What is rendered, markers removed. */
   spans: InlineSpan[];
@@ -42,8 +48,8 @@ export interface ParsedLabel {
 const ESCAPABLE = new Set(['\\', '*', '_', '`', '$']);
 
 /** Cheap check: could this text contain markup at all? */
-export function hasInlineMarkdown(text: string): boolean {
-  return /[*_`\\$]/.test(text);
+export function hasInlineMarkdown(text: string, syntax: LabelSyntax = {}): boolean {
+  return (syntax.math ?? true) ? /[*_`\\$]/.test(text) : /[*_`\\]/.test(text);
 }
 
 const isSpace = (ch: string | undefined) => ch === undefined || /\s/.test(ch);
@@ -64,7 +70,8 @@ function mathEnd(text: string, from: number): number {
   return -1;
 }
 
-export function parseInlineMarkdown(text: string): ParsedLabel {
+export function parseInlineMarkdown(text: string, syntax: LabelSyntax = {}): ParsedLabel {
+  const math = syntax.math ?? true;
   const spans: InlineSpan[] = [];
   const source: SourceSpan[] = [];
   let bold = false;
@@ -100,7 +107,7 @@ export function parseInlineMarkdown(text: string): ParsedLabel {
         const end = text.indexOf('`', j + 1);
         if (end !== -1) { j = end; continue; }
       }
-      if (text[j] === '$') {
+      if (math && text[j] === '$') {
         const end = mathEnd(text, j + 1);
         if (end !== -1) { j = end; continue; }
       }
@@ -116,7 +123,7 @@ export function parseInlineMarkdown(text: string): ParsedLabel {
   while (i < text.length) {
     const ch = text[i];
 
-    if (ch === '\\' && ESCAPABLE.has(text[i + 1])) {
+    if (ch === '\\' && ESCAPABLE.has(text[i + 1]) && (math || text[i + 1] !== '$')) {
       mark(i, i + 1, 'marker');
       mark(i + 1, i + 2, 'text');
       emit(text[i + 1]);
@@ -124,7 +131,7 @@ export function parseInlineMarkdown(text: string): ParsedLabel {
       continue;
     }
 
-    if (ch === '$') {
+    if (math && ch === '$') {
       const end = mathEnd(text, i + 1);
       if (end !== -1) {
         mark(i, i + 1, 'marker');

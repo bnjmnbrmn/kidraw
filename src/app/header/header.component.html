@@ -117,6 +117,9 @@
                        [checked]="pluginSettings.isEnabled(plugin.id)"
                        (change)="onPluginToggle(plugin, $event)">
                 {{ plugin.name }}
+                @if (dependencyHint(plugin); as hint) {
+                  <span class="plugin-hint">{{ hint }}</span>
+                }
               </label>
             }
           </div>

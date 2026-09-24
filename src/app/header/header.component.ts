@@ -11,7 +11,7 @@ import { GraphSnapshot } from '../drawing-area/graph-snapshot';
 import { DAFileState } from '../drawing-area/da-notification.model';
 import { AgentStore } from '../agent/agent-store';
 import { KidrawPlugin } from '../plugins/plugin.model';
-import { PluginSettingsService } from '../plugins/plugin-settings.service';
+import { dependencyHint, describePluginChange, PluginSettingsService } from '../plugins/plugin-settings.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -160,10 +160,11 @@ export class HeaderComponent {
 
   /** A plugin's checkbox in Settings: turn it on or off, and say so. */
   onPluginToggle(plugin: KidrawPlugin, event: Event): void {
-    const on = (event.target as HTMLInputElement).checked;
-    this.pluginSettings.setEnabled(plugin.id, on);
-    this.showStatusMessage(`${plugin.name}: ${on ? 'on' : 'off'}`);
+    const change = this.pluginSettings.setEnabled(plugin.id, (event.target as HTMLInputElement).checked);
+    if (change) this.showStatusMessage(describePluginChange(change), 5000);
   }
+
+  readonly dependencyHint = dependencyHint;
 
   showStatusMessage(message: string, durationMs = 2500): void {
     this.statusMessage = message;
