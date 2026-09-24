@@ -16,7 +16,7 @@ A plugin written this way is a **diagram type**: switch a graph to it with
 | `description` | One line on what it is for. |
 | `requires` / `uses` | Other plugins: ones it cannot work without (switched on with it), and ones it makes use of when they are on. |
 | `labels` | `plain` (the default) or `markdown` — markdown labels need the Markdown plugin, and get math when Math is on. |
-| `nodes` | Defaults for its nodes: `shape` (box, circle, diamond), `width`, `height`, `fontSize`, `textOverflow` (clip, shrink-font, ellipsis, widen-h, widen-v, widen-both, fit). |
+| `nodes` | Defaults for the nodes you add: `shape` (box, circle, diamond) — unless you pick another with the insert-with-shape submenu or set your own default with the shape toggle — `width`, `height`, `fontSize`, `textOverflow` (clip, shrink-font, ellipsis, widen-h, widen-v, widen-both, fit). With `fit`, the default, `width` is the widest a node grows before its text wraps, not a fixed size. |
 | `tagGroups` | Families of tags a node carries at most one of, each drawn as a badge: `id`, `name`, and `choices` of `{tag, label, color, dims?}`. `dims: true` fades the node and strikes its label through. |
 | `edgeKinds` | Kinds of edge, drawn in their own colour: `{tag, name, color, description, faint?}`. |
 | `nodeKinds` | Kinds of node, drawn with their colour and name: `{tag, name, color, description}`. |

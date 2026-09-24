@@ -94,6 +94,7 @@ export const SUITE = [
   { script: 'graph-types/markdown-math-plugins.js', region: 'graph-types', status: 'suite' },
   { script: 'graph-types/plugin-library.js', region: 'graph-types', status: 'suite' },
   { script: 'graph-types/ai-chat-plugin.js', region: 'graph-types', status: 'suite' },
+  { script: 'graph-types/type-node-defaults.js', region: 'graph-types', status: 'suite' },
 
   // ── Style: sizes, shapes, edge styles, colour, and the defaults ──
   { script: 'style/style-commands.js', region: 'style', status: 'suite' },

@@ -22,6 +22,8 @@ export interface StyleHost {
   /** The selection, else the topmost node under the crosshairs; `only`
    *  narrows both before the choice. */
   targetNodes(only?: (node: DANode) => boolean): DANode[];
+  /** The shape the graph's diagram type gives new nodes, if it names one. */
+  typeNodeShape(): NodeShape | undefined;
   nodeUnderCrosshairs(): DANode | null;
   edgesUnderCrosshairs(): DAEdge[];
   labelUnderCrosshairs(): DALabel | null;
@@ -35,7 +37,9 @@ export interface StyleHost {
 
 /** What new nodes and edges start as. */
 export interface StyleDefaults {
-  nodeShape: NodeShape;
+  /** Unset until you choose one, and then the diagram type's shape applies
+   *  (notes/design-plugin-v0.md: a shape you ask for wins over the type's). */
+  nodeShape?: NodeShape;
   edgeDirectedness: EdgeDirectedness;
   lineStyle: LineStyle;
 }
@@ -49,7 +53,7 @@ const DIR_CYCLE: {directedness: EdgeDirectedness; label: string}[] = [
 ];
 
 export class StyleController {
-  readonly defaults: StyleDefaults = {nodeShape: 'box', edgeDirectedness: 'directed', lineStyle: 'solid'};
+  readonly defaults: StyleDefaults = {edgeDirectedness: 'directed', lineStyle: 'solid'};
 
   /** Transient cursor into the four-state directionality cycle, per edge id:
    *  0 forward · 1 reversed · 2 undirected · 3 bidirectional. The endpoint
@@ -77,6 +81,12 @@ export class StyleController {
       [DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS]: c => this.setDefaultEdgeDirectedness(c.directedness),
       [DACommandType.SET_DEFAULT_LINE_STYLE]: c => this.setDefaultLineStyle(c.lineStyle),
     } satisfies CommandSlice;
+  }
+
+  /** The shape a new node takes when none is asked for at insert: the
+   *  default you chose, else the diagram type's, else a box. */
+  effectiveNodeShape(): NodeShape {
+    return this.defaults.nodeShape ?? this.host.typeNodeShape() ?? 'box';
   }
 
   // ── Nodes ──
@@ -147,7 +157,7 @@ export class StyleController {
   toggleNodeShape(): void {
     const targets = this.host.targetNodes();
     if (targets.length === 0) {
-      this.defaults.nodeShape = this.defaults.nodeShape === 'circle' ? 'box' : 'circle';
+      this.defaults.nodeShape = this.effectiveNodeShape() === 'circle' ? 'box' : 'circle';
       this.host.emitStatus(`Default node shape: ${this.defaults.nodeShape}`);
       return;
     }

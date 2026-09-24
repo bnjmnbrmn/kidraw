@@ -91,6 +91,19 @@ describe('StyleController', () => {
     commands[DACommandType.SET_DEFAULT_LINE_STYLE]({kind: DACommandType.SET_DEFAULT_LINE_STYLE, lineStyle: 'dashed'});
     expect(nodeSize.calls.allArgs()).toEqual([[20], [-20]]);
     expect(textSize.calls.allArgs()).toEqual([[2], [-2]]);
-    expect(style.defaults).toEqual({nodeShape: 'box', edgeDirectedness: 'undirected', lineStyle: 'dashed'});
+    expect(style.defaults).toEqual({edgeDirectedness: 'undirected', lineStyle: 'dashed'});
+  });
+
+  it('gives new nodes the shape you chose, else the diagram type\'s, else a box', () => {
+    let typeShape: string | undefined;
+    const style = new StyleController({
+      typeNodeShape: () => typeShape, targetNodes: () => [], emitStatus: () => undefined,
+    } as unknown as StyleHost);
+    expect(style.effectiveNodeShape()).toBe('box');
+    typeShape = 'circle';
+    expect(style.effectiveNodeShape()).toBe('circle');
+    style.toggleNodeShape();
+    expect(style.defaults.nodeShape).toBe('box');
+    expect(style.effectiveNodeShape()).toBe('box');
   });
 });
