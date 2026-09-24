@@ -1,11 +1,14 @@
 /*
- * The style commands, through the real app: node size, text size and
- * overflow, shape, an edge's direction and line style, colour — each on the
- * node or edge under the crosshairs with nothing selected — and the defaults
- * that a shape or edge-style command sets for what is drawn next.
+ * The style commands, through the real app: text overflow, shape, an edge's
+ * line style, colour — each on the node or edge under the crosshairs with
+ * nothing selected — and the default shape that Set Shape over empty canvas
+ * sets for what is drawn next.
  *
  * Written 2026-09-24 when the commands moved out of the drawing area into a
- * unit of their own, and run against the code before and after the move.
+ * unit of their own, and run against the code before and after the move. The
+ * size keys, the shape toggle, the direction setter and the edge-default
+ * setters were retired the same day (no key sent them), and their checks
+ * with them.
  */
 const {launch, openApp, settled, checker, DA} = require('../harness.js');
 
@@ -63,36 +66,16 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
 
   // ── Nodes, under the crosshairs ──
   await onNode(page, 'Action');
-  const plain = await nodeNamed(page, 'Action');
-  await run(page, {kind: 'INCREASE_SELECTED_NODE_SIZE'});
-  const bigger = await nodeNamed(page, 'Action');
-  await onNode(page, 'Action');
-  await run(page, {kind: 'DECREASE_SELECTED_NODE_SIZE'});
-  const back = await nodeNamed(page, 'Action');
-  check('Grow Node and Shrink Node change the node under the crosshairs, and undo each other',
-    bigger.baseWidth === plain.baseWidth + 20 && back.baseWidth === plain.baseWidth,
-    `${plain.baseWidth} → ${bigger.baseWidth} → ${back.baseWidth}`);
-
-  await onNode(page, 'Action');
-  await run(page, {kind: 'INCREASE_SELECTED_TEXT_SIZE'});
-  const larger = await nodeNamed(page, 'Action');
-  await onNode(page, 'Action');
-  await run(page, {kind: 'DECREASE_SELECTED_TEXT_SIZE'});
-  const smaller = await nodeNamed(page, 'Action');
-  check('the text size keys step the font by 2', larger.fontSize === plain.fontSize + 2 && smaller.fontSize === plain.fontSize,
-    `${plain.fontSize} → ${larger.fontSize} → ${smaller.fontSize}`);
-
-  await onNode(page, 'Action');
   await run(page, {kind: 'SET_TEXT_OVERFLOW_MODE', mode: 'ellipsis'});
   check('Text Overflow sets the mode', (await nodeNamed(page, 'Action')).textOverflowMode === 'ellipsis');
 
   const shapes = [];
-  for (const command of [{kind: 'TOGGLE_NODE_SHAPE'}, {kind: 'TOGGLE_NODE_SHAPE'}, {kind: 'SET_NODE_SHAPE', shape: 'diamond'}]) {
+  for (const command of [{kind: 'SET_NODE_SHAPE', shape: 'circle'}, {kind: 'SET_NODE_SHAPE', shape: 'box'}, {kind: 'SET_NODE_SHAPE', shape: 'diamond'}]) {
     await onNode(page, 'Action');
     await run(page, command);
     shapes.push((await nodeNamed(page, 'Action')).nodeShape ?? 'box');
   }
-  check('the shape toggle flips box and circle; Set Shape sets any', JSON.stringify(shapes) === '["circle","box","diamond"]',
+  check('Set Shape reshapes the node under the crosshairs', JSON.stringify(shapes) === '["circle","box","diamond"]',
     JSON.stringify(shapes));
 
   await onNode(page, 'Action');
@@ -103,10 +86,8 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
   // ── Edges, under the crosshairs ──
   await aim(page, await edgeMiddle(page, 'Start', 'Process'));
   await run(page, {kind: 'SET_LINE_STYLE', lineStyle: 'dashed'});
-  await run(page, {kind: 'SET_EDGE_DIRECTEDNESS', directedness: 'undirected'});
   const restyled = await edgeBetween(page, 'Start', 'Process');
-  check('Line Style and Direction restyle the edge under the crosshairs',
-    restyled.lineStyle === 'dashed' && restyled.directedness === 'undirected', JSON.stringify(restyled));
+  check('Line Style restyles the edge under the crosshairs', restyled.lineStyle === 'dashed', JSON.stringify(restyled));
   const blue = await run(page, {kind: 'SET_ITEM_COLOR', color: 'blue'});
   check('Colour paints the edge under the crosshairs and says so', blue === 'Blue: 1 link', blue);
 
@@ -114,13 +95,10 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
   await aim(page, {x: 1100, y: 700});
   const refused = await run(page, {kind: 'SET_LINE_STYLE', lineStyle: 'dotted'});
   check('an edge style with no edge says what to do', refused === 'Select or hover an edge to change line style', refused);
-  const flipped = await run(page, {kind: 'TOGGLE_NODE_SHAPE'});
-  check('the shape toggle over empty canvas flips the default', flipped === 'Default node shape: circle', flipped);
-  await run(page, {kind: 'SET_DEFAULT_LINE_STYLE', lineStyle: 'dotted'});
-  await run(page, {kind: 'SET_DEFAULT_EDGE_DIRECTEDNESS', directedness: 'bidirectional'});
+  await run(page, {kind: 'SET_NODE_SHAPE', shape: 'circle'});
 
   // A new node from the selected End: it takes the default shape, and the
-  // edge to it the default line style and direction.
+  // edge to it the built-in line style and direction.
   await page.evaluate(`(() => { const dl = ${DA}.drawingLayer;
     dl.getDANodes().find(n => n.label.text() === 'End').isSelected = true; })()`);
   await run(page, {kind: 'CREATE_NEW_NODE'});
@@ -131,7 +109,7 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
   const wired = graph.edges.find(e => e.srcNodeId === end.id && e.destNodeId === created?.id);
   check('a new node takes the default shape', created?.nodeShape === 'circle', JSON.stringify(created?.nodeShape));
   check('its edge takes the default line style and direction',
-    wired?.lineStyle === 'dotted' && wired?.directedness === 'bidirectional', JSON.stringify(wired));
+    (wired?.lineStyle ?? 'solid') === 'solid' && (wired?.directedness ?? 'directed') === 'directed', JSON.stringify(wired));
 
   console.log(`\n${check.failures} failure(s)`);
   await check.exit(browser);

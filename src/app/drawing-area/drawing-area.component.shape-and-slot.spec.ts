@@ -1,72 +1,9 @@
 import {DrawingAreaComponent} from './drawing-area.component';
 import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
-/** Two pre-public cleanups:
- *  - the temporary Circle/Box toggle that stands in until shape follows a
- *    tag or class rather than being set per node;
- *  - vertical grow throws being half a slot, so stacks don't sprawl. */
-describe('DrawingAreaComponent shape toggle and vertical slot', () => {
-  function build(overrides: {
-    selectedNodes?: unknown[];
-    nodesUnderCrosshairs?: unknown[];
-    defaultNodeShape?: string;
-  } = {}): any {
-    const component = Object.create(DrawingAreaComponent.prototype) as any;
-    wireDrawingAreaCollaborators(component);
-    component.log = {log: () => {}};
-    component.daOut = jasmine.createSpyObj('daOut', ['emit']);
-    component.style.defaults.nodeShape = overrides.defaultNodeShape ?? 'circle';
-    component.drawingLayer = {
-      getSelectedDANodes: () => overrides.selectedNodes ?? [],
-      changeNodeShape: jasmine.createSpy('changeNodeShape'),
-      batchDraw: jasmine.createSpy('batchDraw'),
-    };
-    component.getDANodesContainingCrosshairs =
-      () => overrides.nodesUnderCrosshairs ?? [];
-    component.updateEdgePoints = () => {};
-    return component;
-  }
-
-  const node = (shape: string) =>
-    ({nodeShape: shape, zIndex: () => 1, connectedEdges: []});
-
-  describe('toggleNodeShape', () => {
-    it('turns a box into a circle', () => {
-      const c = build({selectedNodes: [node('box')]});
-      c.style.toggleNodeShape();
-      expect(c.drawingLayer.changeNodeShape)
-        .toHaveBeenCalledWith(jasmine.anything(), 'circle');
-    });
-
-    it('turns a circle into a box', () => {
-      const c = build({selectedNodes: [node('circle')]});
-      c.style.toggleNodeShape();
-      expect(c.drawingLayer.changeNodeShape)
-        .toHaveBeenCalledWith(jasmine.anything(), 'box');
-    });
-
-    it('falls back to the node under the crosshairs when nothing is selected', () => {
-      const c = build({nodesUnderCrosshairs: [node('box')]});
-      c.style.toggleNodeShape();
-      expect(c.drawingLayer.changeNodeShape)
-        .toHaveBeenCalledWith(jasmine.anything(), 'circle');
-    });
-
-    it('converges a mixed selection on circle rather than splitting it', () => {
-      const c = build({selectedNodes: [node('box'), node('circle')]});
-      c.style.toggleNodeShape();
-      const shapes = c.drawingLayer.changeNodeShape.calls.allArgs().map((a: unknown[]) => a[1]);
-      expect(shapes).toEqual(['circle', 'circle']);
-    });
-
-    it('flips the default for new nodes when no node is addressed', () => {
-      const c = build({defaultNodeShape: 'circle'});
-      c.style.toggleNodeShape();
-      expect(c.style.defaults.nodeShape).toBe('box');
-      expect(c.drawingLayer.changeNodeShape).not.toHaveBeenCalled();
-    });
-  });
-
+/** Vertical grow throws are half a slot, so stacks don't sprawl. (The
+ *  temporary Circle/Box toggle tested here too was retired on 2026-09-24.) */
+describe('DrawingAreaComponent vertical slot', () => {
   describe('grow placement slot', () => {
     function growComponent(): any {
       const c = Object.create(DrawingAreaComponent.prototype) as any;

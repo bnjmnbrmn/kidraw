@@ -86,14 +86,6 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
   check('Copy takes the highlighted node', JSON.stringify(clip) === JSON.stringify([nodes.onTop]), `${copied} ${JSON.stringify(clip)}`);
 
   nodes = await overlapped(page);
-  const widths = () => page.evaluate(`Object.fromEntries(${DA}.drawingLayer.getDANodes().map(n => [n.label.text(), n.NODE_WIDTH]))`);
-  const narrow = await widths();
-  await run(page, {kind: 'INCREASE_SELECTED_NODE_SIZE'});
-  const wide = await widths();
-  const grown = Object.keys(wide).filter(label => wide[label] !== narrow[label]);
-  check('Grow Node resizes the highlighted node', JSON.stringify(grown) === JSON.stringify([nodes.onTop]), JSON.stringify(grown));
-
-  nodes = await overlapped(page);
   const before = await labels(page);
   await run(page, {kind: 'DELETE'});
   const after = await labels(page);

@@ -74,10 +74,6 @@ export enum DACommandType {
   SNAP_TO_NODE_DOWN = 'SNAP_TO_NODE_DOWN',
   ADJUST_GRAPH_ITEM_GOAL_SOUTH = 'ADJUST_GRAPH_ITEM_GOAL_SOUTH',
   ADJUST_GRAPH_ITEM_GOAL_NORTH = 'ADJUST_GRAPH_ITEM_GOAL_NORTH',
-  INCREASE_SELECTED_NODE_SIZE = 'INCREASE_SELECTED_NODE_SIZE',
-  DECREASE_SELECTED_NODE_SIZE = 'DECREASE_SELECTED_NODE_SIZE',
-  INCREASE_SELECTED_TEXT_SIZE = 'INCREASE_SELECTED_TEXT_SIZE',
-  DECREASE_SELECTED_TEXT_SIZE = 'DECREASE_SELECTED_TEXT_SIZE',
   CREATE_NEW_NODE = 'CREATE_NEW_NODE',
   ADD_SELF_EDGE = 'ADD_SELF_EDGE',
   INSERT_WAYPOINT = 'INSERT_WAYPOINT',
@@ -106,16 +102,12 @@ export enum DACommandType {
   REDO = 'REDO',
   SET_TEXT_OVERFLOW_MODE = 'SET_TEXT_OVERFLOW_MODE',
   SET_NODE_SHAPE = 'SET_NODE_SHAPE',
-  TOGGLE_NODE_SHAPE = 'TOGGLE_NODE_SHAPE',
   PAN_LEFT = 'PAN_LEFT',
   PAN_RIGHT = 'PAN_RIGHT',
   PAN_UP = 'PAN_UP',
   PAN_DOWN = 'PAN_DOWN',
-  SET_EDGE_DIRECTEDNESS = 'SET_EDGE_DIRECTEDNESS',
   SET_LINE_STYLE = 'SET_LINE_STYLE',
   SET_ITEM_COLOR = 'SET_ITEM_COLOR',
-  SET_DEFAULT_EDGE_DIRECTEDNESS = 'SET_DEFAULT_EDGE_DIRECTEDNESS',
-  SET_DEFAULT_LINE_STYLE = 'SET_DEFAULT_LINE_STYLE',
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
   SAVE_GRAPH_AS = 'SAVE_GRAPH_AS',
   LOAD_NAMED_GRAPH = 'LOAD_NAMED_GRAPH',
@@ -201,10 +193,6 @@ export type DACommand =
   | {kind: DACommandType.SNAP_TO_NODE_DOWN; targets?: NavTargetKind}
   | {kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH; targets?: NavTargetKind}
   | {kind: DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH; targets?: NavTargetKind}
-  | {kind: DACommandType.INCREASE_SELECTED_NODE_SIZE}
-  | {kind: DACommandType.DECREASE_SELECTED_NODE_SIZE}
-  | {kind: DACommandType.INCREASE_SELECTED_TEXT_SIZE}
-  | {kind: DACommandType.DECREASE_SELECTED_TEXT_SIZE}
   | {kind: DACommandType.CREATE_NEW_NODE; nodeShape?: NodeShape}
   | {kind: DACommandType.ADD_SELF_EDGE}
   | {kind: DACommandType.INSERT_WAYPOINT}
@@ -232,16 +220,12 @@ export type DACommand =
   | {kind: DACommandType.REDO}
   | {kind: DACommandType.SET_TEXT_OVERFLOW_MODE; mode: TextOverflowMode}
   | {kind: DACommandType.SET_NODE_SHAPE; shape: NodeShape}
-  | {kind: DACommandType.TOGGLE_NODE_SHAPE}
   | {kind: DACommandType.PAN_LEFT; distance?: number}
   | {kind: DACommandType.PAN_RIGHT; distance?: number}
   | {kind: DACommandType.PAN_UP; distance?: number}
   | {kind: DACommandType.PAN_DOWN; distance?: number}
-  | {kind: DACommandType.SET_EDGE_DIRECTEDNESS; directedness: EdgeDirectedness}
   | {kind: DACommandType.SET_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.SET_ITEM_COLOR; color: ItemColor}
-  | {kind: DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS; directedness: EdgeDirectedness}
-  | {kind: DACommandType.SET_DEFAULT_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
   | {kind: DACommandType.SAVE_GRAPH_AS; name: string}
   | {kind: DACommandType.LOAD_NAMED_GRAPH; graphSnapshot: GraphSnapshot}

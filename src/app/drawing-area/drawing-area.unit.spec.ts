@@ -83,22 +83,6 @@ describe('DrawingArea Unit Tests', () => {
       expect(node.resizeBy(-1)).toBe(false);
     });
 
-    it('should adjust node label font size within bounds', () => {
-      const node = new DANode(0, 0, 'test');
-
-      expect(node.adjustLabelFontSizeBy(6)).toBe(true);
-      expect(node.FONT_SIZE).toBe(node.DEFAULT_FONT_SIZE + 6);
-      expect(node.label.fontSize()).toBe(node.FONT_SIZE);
-
-      expect(node.adjustLabelFontSizeBy(10000)).toBe(true);
-      expect(node.FONT_SIZE).toBe(node.MAX_FONT_SIZE);
-      expect(node.adjustLabelFontSizeBy(1)).toBe(false);
-
-      expect(node.adjustLabelFontSizeBy(-10000)).toBe(true);
-      expect(node.FONT_SIZE).toBe(node.MIN_FONT_SIZE);
-      expect(node.adjustLabelFontSizeBy(-1)).toBe(false);
-    });
-
     it('blinks the edit caret, uses a box in vim-normal, and synchronizes its color', () => {
       const node = new DANode(0, 0, 'test');
       const cursor = (node as any)._cursor as Konva.Line;

@@ -1,33 +1,25 @@
 /**
- * How things look: node size and shape, text size and overflow, an edge's
- * direction, line style and colour — for the selection, else whatever the
- * crosshairs are on — and the defaults new nodes and edges start with, which
- * a shape or edge style command changes when there is nothing to act on.
+ * How things look: node shape and text overflow, an edge's direction, line
+ * style and colour — for the selection, else whatever the crosshairs are on —
+ * and the defaults new nodes and edges start with, which a shape command
+ * changes when there is nothing to act on.
  */
 import { DACommandType, EdgeDirectedness, ItemColor, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import type { CommandSlice } from './command-handlers';
 import type { DAEdge } from './da-edge';
-import type { DALabel } from './da-label';
 import type { DANode } from './da-node';
 import type { DrawingLayer } from './drawing.layer';
-import { resolveBoxOverlaps } from './overlap-resolution';
 
 /** What the style commands need from the drawing area. */
 export interface StyleHost {
   readonly drawingLayer: DrawingLayer;
-  readonly nodeSizeStep: number;
-  readonly textSizeStep: number;
-  /** Clearance kept between boxes when a resize pushes neighbours aside. */
-  readonly resizeReflowGap: number;
-  /** The selection, else the topmost node under the crosshairs; `only`
-   *  narrows both before the choice. */
+  /** The selection, else the topmost node under the crosshairs, narrowed by
+   *  `only` after the choice. */
   targetNodes(only?: (node: DANode) => boolean): DANode[];
   /** The shape the graph's diagram type gives new nodes, if it names one. */
   typeNodeShape(): NodeShape | undefined;
   nodeUnderCrosshairs(): DANode | null;
   edgesUnderCrosshairs(): DAEdge[];
-  labelUnderCrosshairs(): DALabel | null;
-  getSelectedLabels(): DALabel[];
   updateEdgePoints(edge: DAEdge): void;
   updateEdgesForResizedNodes(nodes: DANode[]): void;
   finishTweens(): void;
@@ -63,23 +55,14 @@ export class StyleController {
 
   constructor(private readonly host: StyleHost) {}
 
-  /** Styling what is selected or under the crosshairs, and the defaults new
-   *  edges take. */
+  /** Styling what is selected or under the crosshairs. */
   commands() {
     return {
-      [DACommandType.INCREASE_SELECTED_NODE_SIZE]: () => this.adjustNodeSize(this.host.nodeSizeStep),
-      [DACommandType.DECREASE_SELECTED_NODE_SIZE]: () => this.adjustNodeSize(-this.host.nodeSizeStep),
-      [DACommandType.INCREASE_SELECTED_TEXT_SIZE]: () => this.adjustTextSize(this.host.textSizeStep),
-      [DACommandType.DECREASE_SELECTED_TEXT_SIZE]: () => this.adjustTextSize(-this.host.textSizeStep),
       [DACommandType.SET_TEXT_OVERFLOW_MODE]: c => this.setTextOverflowMode(c.mode),
       [DACommandType.SET_NODE_SHAPE]: c => this.setNodeShape(c.shape),
-      [DACommandType.TOGGLE_NODE_SHAPE]: () => this.toggleNodeShape(),
       [DACommandType.CYCLE_EDGE_DIRECTEDNESS]: () => this.cycleEdgeDirectedness(),
-      [DACommandType.SET_EDGE_DIRECTEDNESS]: c => this.setEdgeDirectedness(c.directedness),
       [DACommandType.SET_LINE_STYLE]: c => this.setLineStyle(c.lineStyle),
       [DACommandType.SET_ITEM_COLOR]: c => this.setItemColor(c.color),
-      [DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS]: c => this.setDefaultEdgeDirectedness(c.directedness),
-      [DACommandType.SET_DEFAULT_LINE_STYLE]: c => this.setDefaultLineStyle(c.lineStyle),
     } satisfies CommandSlice;
   }
 
@@ -91,78 +74,11 @@ export class StyleController {
 
   // ── Nodes ──
 
-  adjustNodeSize(delta: number): void {
-    const resized = this.host.targetNodes().filter(node => node.resizeBy(delta));
-    if (resized.length === 0) return;
-    // A grown node may now sit on top of its neighbors: push them out of the
-    // way (chains included), keeping the resized nodes themselves anchored.
-    // Shrinking creates no new overlaps, so the pass is a no-op then.
-    const moved = this.resolveOverlapsAround(resized);
-    this.host.updateEdgesForResizedNodes([...resized, ...moved]);
-    this.host.drawingLayer.batchDraw();
-  }
-
-  /** Push movable nodes apart until nothing overlaps, treating `anchored` and
-   *  pinned nodes as immovable obstacles. Returns the nodes that moved. */
-  private resolveOverlapsAround(anchored: DANode[]): DANode[] {
-    const all = this.host.drawingLayer.getDANodes();
-    const anchoredSet = new Set(anchored);
-    const boxes = all.map(n => ({
-      x: n.group.x(),
-      y: n.group.y(),
-      w: n.NODE_WIDTH,
-      h: n.NODE_HEIGHT,
-      movable: !anchoredSet.has(n) && !n.pinned,
-    }));
-    const moved: DANode[] = [];
-    for (const i of resolveBoxOverlaps(boxes, this.host.resizeReflowGap)) {
-      all[i].group.position({x: boxes[i].x, y: boxes[i].y});
-      moved.push(all[i]);
-    }
-    return moved;
-  }
-
-  /** The selected nodes' and labels' text; with nothing selected, the node
-   *  and the label under the crosshairs. */
-  adjustTextSize(delta: number): void {
-    let changed = false;
-    const selectedNodes = this.host.drawingLayer.getSelectedDANodes();
-    const selectedLabels = this.host.getSelectedLabels();
-
-    if (selectedNodes.length === 0 && selectedLabels.length === 0) {
-      const node = this.host.nodeUnderCrosshairs();
-      if (node) changed = node.adjustLabelFontSizeBy(delta) || changed;
-      const label = this.host.labelUnderCrosshairs();
-      if (label) changed = label.adjustFontSizeBy(delta) || changed;
-    } else {
-      selectedNodes.forEach(node => changed = node.adjustLabelFontSizeBy(delta) || changed);
-      selectedLabels.forEach(label => changed = label.adjustFontSizeBy(delta) || changed);
-    }
-
-    if (changed) this.host.drawingLayer.batchDraw();
-  }
-
   setTextOverflowMode(mode: TextOverflowMode): void {
     const targets = this.host.targetNodes(n => n.nodeShape !== 'junction');
     targets.forEach(node => node.textOverflowMode = mode);
     this.host.updateEdgesForResizedNodes(targets);
     this.host.drawingLayer.batchDraw();
-  }
-
-  /** Flip between the two shapes that carry a label, leaving diamond and the
-   *  two markers alone. Temporary: the intent is that shape follows a tag or
-   *  class rather than being set per node, and this goes when that lands.
-   *  Anything that is not a circle becomes a circle, so a mixed selection
-   *  converges instead of splitting further. */
-  toggleNodeShape(): void {
-    const targets = this.host.targetNodes();
-    if (targets.length === 0) {
-      this.defaults.nodeShape = this.effectiveNodeShape() === 'circle' ? 'box' : 'circle';
-      this.host.emitStatus(`Default node shape: ${this.defaults.nodeShape}`);
-      return;
-    }
-    const toCircle = targets.some(n => n.nodeShape !== 'circle');
-    this.setNodeShape(toCircle ? 'circle' : 'box');
   }
 
   /** Reshape the target nodes; with none, the shape new nodes take. */
@@ -219,24 +135,9 @@ export class StyleController {
       : edge.directedness === 'bidirectional' ? 3 : 0;
   }
 
-  setEdgeDirectedness(directedness: EdgeDirectedness): void {
-    this.host.log('[style] setEdgeDirectedness:', directedness);
-    this.restyleTargetEdges('directedness', edge => edge.directedness = directedness);
-  }
-
   setLineStyle(lineStyle: LineStyle): void {
     this.host.log('[style] setLineStyle:', lineStyle);
     this.restyleTargetEdges('line style', edge => edge.lineStyle = lineStyle);
-  }
-
-  setDefaultEdgeDirectedness(directedness: EdgeDirectedness): void {
-    this.host.log('[style] setDefaultEdgeDirectedness:', directedness);
-    this.defaults.edgeDirectedness = directedness;
-  }
-
-  setDefaultLineStyle(lineStyle: LineStyle): void {
-    this.host.log('[style] setDefaultLineStyle:', lineStyle);
-    this.defaults.lineStyle = lineStyle;
   }
 
   /** The edges a style command means: the selection, else whatever the

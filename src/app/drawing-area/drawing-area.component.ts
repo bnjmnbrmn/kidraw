@@ -222,7 +222,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly RECENTER_DURATION = 0.3;
   public readonly RECENTER_CROSSHAIRS_DURATION = 0.2;
   public readonly NODE_SIZE_STEP = 20;
-  public readonly TEXT_SIZE_STEP = 2;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
   public readonly RESIZE_REFLOW_GAP = 16;
   /** Preserve closer views, but never label a new node below natural scale. */
@@ -834,15 +833,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const da = this;
     return {
       get drawingLayer() { return da.drawingLayer; },
-      get nodeSizeStep() { return da.NODE_SIZE_STEP; },
-      get textSizeStep() { return da.TEXT_SIZE_STEP; },
-      get resizeReflowGap() { return da.RESIZE_REFLOW_GAP; },
       targetNodes: only => da.targetNodes(only),
       typeNodeShape: () => resolveIdentity(da.drawingLayer.diagramType).nodeDefaults.shape,
       nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
       edgesUnderCrosshairs: () => da.getDAEdgesContainingCrosshairs(),
-      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
-      getSelectedLabels: () => da.getSelectedLabels(),
       updateEdgePoints: edge => da.updateEdgePoints(edge),
       updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
       finishTweens: () => da.finishTweens(),

@@ -1029,16 +1029,6 @@ export class DANode {
     return true;
   }
 
-  adjustLabelFontSizeBy(delta: number): boolean {
-    if (this.nodeShape === 'junction' || this.nodeShape === 'invisible') return false;
-    const nextSize = this.clamp(this._baseFontSize + delta, this.MIN_FONT_SIZE, this.MAX_FONT_SIZE);
-    if (nextSize === this._baseFontSize) return false;
-    this._baseFontSize = nextSize;
-    this._fontSize = nextSize;
-    this.applyTextOverflow();
-    return true;
-  }
-
   restoreState(width: number, height: number, fontSize: number, textOverflowMode?: TextOverflowMode, baseWidth?: number, baseHeight?: number, baseFontSize?: number): void {
     this._baseWidth = baseWidth ?? width;
     this._baseHeight = baseHeight ?? height;

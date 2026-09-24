@@ -183,21 +183,6 @@ async function main() {
       moved > 0.5, `moved=${moved.toFixed(1)}`);
   }
 
-  // The explicit resize commands remain the reliable resize path.
-  {
-    await setupCorner(1, true);
-    const resized = await page.evaluate(() => {
-      const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-      const node = da.drawingLayer.getDANodes()[0];
-      node.isSelected = true;
-      const before = node.NODE_WIDTH;
-      da.handleCommand({kind: 'INCREASE_SELECTED_NODE_SIZE'});
-      return {before, after: node.NODE_WIDTH};
-    });
-    check('explicit Increase Node Size still resizes a selected node',
-      resized.after > resized.before, JSON.stringify(resized));
-  }
-
   await browser.close();
   console.log(check.failures === 0 ? 'ALL PASS' : `${check.failures} FAILURES`);
   process.exit(check.failures === 0 ? 0 : 1);
