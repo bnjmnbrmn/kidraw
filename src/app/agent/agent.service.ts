@@ -6,6 +6,7 @@ import {
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import {AGENT_SESSION_STORAGE_KEY, AgentStore, ChatMessage, GraphIdentity} from './agent-store';
 import type {AgentToolHost} from './agent-tools';
+import {PluginLibraryService} from '../plugins/plugin-library.service';
 
 export type {AgentCaption, AgentKeyLabels, AgentState, ChatMessage, GraphIdentity} from './agent-store';
 export {AGENT_PANEL_WIDTH} from './agent-store';
@@ -37,6 +38,7 @@ export class AgentService {
   private readonly settings = inject(AgentSettingsService);
   /** The always-loaded state this service drives: the same signals the header and shell render. */
   private readonly store = inject(AgentStore);
+  private readonly pluginLibrary = inject(PluginLibraryService);
 
   readonly state = this.store.state;
   readonly panelOpen = this.store.panelOpen;
@@ -792,6 +794,12 @@ export class AgentService {
       editsRefused: () => (this.editsStopped
         ? 'The user stopped you. Do not change the graph until they send another message.'
         : null),
+      definePlugin: source => {
+        const result = this.pluginLibrary.add(source);
+        if (result.errors) throw new Error(`The plugin was not added:\n- ${result.errors.join('\n- ')}`);
+        this.store.say(`The agent added the ${result.plugin.name} plugin (Settings → Plugins to remove it)`);
+        return {id: result.plugin.id, name: result.plugin.name};
+      },
       applyChanges: async changes => {
         const changeSetId = this.turnChangeSetId ?? `agent-turn-${Date.now().toString(36)}-${++this.turn}`;
         const result = await canvas.agentApplyChanges(changes, {

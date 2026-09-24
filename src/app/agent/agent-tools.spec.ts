@@ -44,6 +44,7 @@ describe('executeAgentTool', () => {
   let applied: AgentChange[][];
   let refused: string | null;
   let applyResult: AgentChangeResult;
+  let defined: string[];
 
   beforeEach(() => {
     canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas', [
@@ -61,7 +62,13 @@ describe('executeAgentTool', () => {
     applied = [];
     refused = null;
     applyResult = {ok: true, created: [{kind: 'node', id: 'da-9', handle: 'h'}], touchedNodeIds: ['da-9']};
+    defined = [];
     host = {
+      definePlugin: source => {
+        if (source.includes('bad')) throw new Error('The plugin was not added:\n- plugin.id: "bad!" is not allowed here');
+        defined.push(source);
+        return {id: 'kanban', name: 'Kanban'};
+      },
       applyChanges: changes => {
         applied.push(changes);
         return Promise.resolve(applyResult);
@@ -75,6 +82,22 @@ describe('executeAgentTool', () => {
       setHighlights: nodes => canvas.agentSetHighlights(nodes.map(n => n.id)),
       clearAnnotations: () => { captions = []; },
     };
+  });
+
+  it('adds a plugin the agent wrote, and tells it how the user switches to it', () => {
+    const result = executeAgentTool('define_plugin', {source: 'id: kanban\nname: Kanban'}, host);
+    expect(defined).toEqual(['id: kanban\nname: Kanban']);
+    expect(result).toEqual({added: 'kanban', name: 'Kanban', next: 'Ask the user to run :type kanban to use it on their graph.'});
+  });
+
+  it('passes every problem with a plugin back to the agent', () => {
+    expect(() => executeAgentTool('define_plugin', {source: 'id: bad!'}, host)).toThrowError(/bad!/);
+  });
+
+  it('adds no plugin after the user pressed Stop', () => {
+    refused = 'The user stopped you.';
+    expect(() => executeAgentTool('define_plugin', {source: 'id: kanban'}, host)).toThrowError(/stopped/);
+    expect(defined).toEqual([]);
   });
 
   it('outlines nodes and edges, omitting empty tags and labels', () => {

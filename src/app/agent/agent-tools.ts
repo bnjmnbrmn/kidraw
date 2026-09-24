@@ -18,6 +18,9 @@ export interface AgentToolHost {
   applyChanges(changes: AgentChange[]): Promise<AgentChangeResult>;
   /** Why the agent may not change the graph right now (e.g. the user pressed Stop), or null. */
   editsRefused(): string | null;
+  /** Add a diagram type written as YAML (plugins/declarative-plugin.ts).
+   *  Throws with every problem when it is refused. */
+  definePlugin(source: string): {id: string; name: string};
 }
 
 /**
@@ -245,6 +248,12 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
         if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
         return {applied: changes.length, created: result.created};
       });
+    }
+    case 'define_plugin': {
+      const refused = host.editsRefused();
+      if (refused) throw new Error(refused);
+      const {id, name: added} = host.definePlugin(String(args['source'] ?? ''));
+      return {added: id, name: added, next: `Ask the user to run :type ${id} to use it on their graph.`};
     }
     default:
       throw new Error(`Unknown KiDraw tool "${name}"`);

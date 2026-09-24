@@ -116,6 +116,22 @@ export const CANVAS_TOOLS: CanvasToolDefinition[] = [
     inputSchema: {},
   },
   {
+    name: 'define_plugin',
+    readOnly: false,
+    description:
+      'Add a new diagram type to KiDraw, written as YAML data (nothing in it runs). Fields: id (lower-case, ' +
+      'dashes; must be new), name, description, labels (plain | markdown), nodes {shape: box|circle|diamond, ' +
+      'width, height, fontSize, textOverflow: fit|clip|...}, tagGroups [{id, name, choices [{tag: family/name, ' +
+      'label, color: "#rrggbb", dims?}]}] (drawn as badges; a node has at most one tag per group), edgeKinds ' +
+      '[{tag, name, color, description, faint?}], nodeKinds [{tag, name, color, description}], and menu ' +
+      '[{label, set: <tag>} or {label, clear: <group id>}, key?] for the user\'s root `t` menu. It is kept in ' +
+      'the user\'s browser and they can remove it in Settings > Plugins. To use it on the open graph, ask the ' +
+      'user to run :type <id>. Every problem with the YAML comes back at once.',
+    inputSchema: {
+      source: z.string().min(1).max(20000).describe('The plugin, as YAML.'),
+    },
+  },
+  {
     name: 'apply_changes',
     readOnly: false,
     description:
@@ -143,6 +159,8 @@ export const SESSION_PREAMBLE = [
   '- Change the graph when the user asks you to, or when it is clearly what they want. Put related changes in',
   '  one apply_changes call: the user undoes each call as one step, and can undo your whole turn.',
   '- If the user stops you, stop changing the graph.',
+  '- If the user wants a kind of diagram KiDraw does not have (a Kanban board, say), you can add one as a',
+  '  plugin with define_plugin, then ask them to run :type <id> on their graph.',
   '- Keep replies short. Everything you need about the graph comes from the tools. Never change files.',
   '',
   'Explanations and tutorials:',
