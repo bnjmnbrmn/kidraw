@@ -47,6 +47,12 @@ filter-before form, because that is what `setTextOverflowMode` did.
 `targetNodes()` and filters the result, preserving its own order. A comment at
 that call site points here.
 
+*Moved since (2026-09-24):* task status is now the Todo Graph plugin's
+(`plugins/todo-graph.plugin.ts`), and the plugins' `tags.set`
+(`plugins/tags.plugin.ts`) works the same way. Both take the host's
+`targetNodes()` and filter after, so the filter-after form is now the rule for
+every plugin command that sets tags (inferred, 2026-09-24 — from the code).
+
 ## A second, unrelated divergence nearby
 
 `togglePinSelected` narrows even a multi-node selection to one node:
@@ -60,3 +66,18 @@ const targets = topmostSelection(hovered);
 candidates, so selecting five nodes and pressing pin toggles exactly one of
 them — the topmost. Every other command in this family acts on the whole
 selection. Left alone for the same reason (inferred, 2026-09-18).
+
+## A third: edges under the crosshairs
+
+With nothing selected, the style commands for edges — directedness, line
+style (`targetEdges`) and colour (`setItemColor`) — act on **every** edge under
+the crosshairs, where the hover trace, Delete, Edit Text and a new label all
+mean the one drawn on top (inferred, 2026-09-24 — from the code, while fixing
+the commands that took the edge underneath). Where two edges cross under the
+crosshairs, `v` then a line style restyles both. `setItemColor` is split
+within itself: it narrows hovered nodes to the topmost but takes every hovered
+edge.
+
+Acting on all of them is a different thing from acting on the wrong one, so it
+is left as it is. Ben's call whether a restyle should mean the highlighted edge
+only.

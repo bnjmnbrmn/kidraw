@@ -37,7 +37,7 @@ import {
   showsMovementIndicators,
 } from './command-policy';
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
-import { clamp, lineSegmentIntersectsRect, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
+import { clamp, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
 import { Camera, Rect } from './camera';
@@ -3087,10 +3087,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The node a traversal or gather should treat as its centre: under the
    *  crosshairs, else the single selected node. */
   private getTraversalAnchorNode(): DANode | null {
-    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
-    if (nodesUnderCrosshairs.length > 0) {
-      this.log.log('[getTraversalAnchorNode] under crosshairs:', nodesUnderCrosshairs[0].id);
-      return nodesUnderCrosshairs[0];
+    const underCrosshairs = this.nodeUnderCrosshairs();
+    if (underCrosshairs) {
+      this.log.log('[getTraversalAnchorNode] under crosshairs:', underCrosshairs.id);
+      return underCrosshairs;
     }
 
     const navNode = this.validGraphNavLastNode();
@@ -3138,7 +3138,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private adjustSelectedNodeSize(delta: number) {
-    const targetNodes = this.getSelectedNodesOrNodeUnderCrosshairs();
+    const targetNodes = this.targetNodes();
     if (targetNodes.length === 0) {
       return;
     }
@@ -3174,16 +3174,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       moved.push(all[i]);
     }
     return moved;
-  }
-
-  private getSelectedNodesOrNodeUnderCrosshairs(): DANode[] {
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedNodes.length > 0) {
-      return selectedNodes;
-    }
-
-    const nodesUnderCrosshairs = this.getDANodesContainingCrosshairs();
-    return nodesUnderCrosshairs.length > 0 ? [nodesUnderCrosshairs[0]] : [];
   }
 
   private increaseSelectedTextSize() {
@@ -3575,40 +3565,34 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  /** Add an empty label to the edge under the crosshairs — where edges
+   *  cross, the one the hover trace is on — anchored where the crosshairs
+   *  project onto it. */
   private addLabel(notifyHeldAdd = true): DALabel | null {
-    const box = this.getCrosshairsBBoxInDrawingLayer();
-
-    const edges: DAEdge[] = this.drawingLayer.getDAEdges();
-
-    for (const edge of edges) {
-      const pathPoints = edge.getPathPoints();
-      for (let i = 0; i < pathPoints.length - 1; i++) {
-        const p1 = pathPoints[i];
-        const p2 = pathPoints[i + 1];
-        if (lineSegmentIntersectsRect(p1.x, p1.y, p2.x, p2.y, box.minX, box.minY, box.maxX, box.maxY)) {
-          const projected = projectPointToPath(pathPoints, {x: box.cx, y: box.cy});
-          this.log.log(`addLabel: anchoring at t=${(projected?.t ?? 0.5).toFixed(3)} on edge ${edge.id}`);
-          const label = new DALabel(0, 0, '', undefined, this.drawingLayer.labelColors());
-          edge.addLabel(label);
-          edge.setLabelAnchor(label, projected?.t ?? 0.5, 'on');
-          // Leave only the new label selected so the label-edit mode the
-          // keymenu enters on key release types straight into it.
-          this.unselectAll();
-          label.isSelected = true;
-          label.setCursorToEnd();
-          label.showCursor();
-          this.crosshairsLayer.hideCrosshairs();
-          this.drawingLayer.batchDraw();
-          this.checkAndEmitEditState();
-          if (notifyHeldAdd) {
-            this.daOut.emit({kind: 'label-added'});
-          }
-          return label;
-        }
-      }
+    const edge = this.edgeUnderCrosshairs();
+    if (!edge) {
+      this.log.log('addLabel: no edge found under crosshairs');
+      return null;
     }
-    this.log.log('addLabel: no edge found under crosshairs');
-    return null;
+    const box = this.getCrosshairsBBoxInDrawingLayer();
+    const projected = projectPointToPath(edge.getPathPoints(), {x: box.cx, y: box.cy});
+    this.log.log(`addLabel: anchoring at t=${(projected?.t ?? 0.5).toFixed(3)} on edge ${edge.id}`);
+    const label = new DALabel(0, 0, '', undefined, this.drawingLayer.labelColors());
+    edge.addLabel(label);
+    edge.setLabelAnchor(label, projected?.t ?? 0.5, 'on');
+    // Leave only the new label selected so the label-edit mode the
+    // keymenu enters on key release types straight into it.
+    this.unselectAll();
+    label.isSelected = true;
+    label.setCursorToEnd();
+    label.showCursor();
+    this.crosshairsLayer.hideCrosshairs();
+    this.drawingLayer.batchDraw();
+    this.checkAndEmitEditState();
+    if (notifyHeldAdd) {
+      this.daOut.emit({kind: 'label-added'});
+    }
+    return label;
   }
 
   /** Show carets on everything about to be edited. A crosshairs point places
@@ -4562,9 +4546,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       if (editing.length === 1) setTimeout(() => this.focusNodeForLabelEdit(editing[0]));
       return;
     }
-    const edges = this.getDAEdgesContainingCrosshairs();
-    if (edges.length > 0) {
-      const edge = edges[0];
+    const edge = this.edgeUnderCrosshairs();
+    if (edge) {
       let mode: Extract<TextCursorMode, 'insert' | 'vimNormal'> = 'vimNormal';
       this.drawingLayer.unselectAll();
       this.unselectAllLabels();
