@@ -1,9 +1,28 @@
 ---
 title: Two commands disagree about when to filter node targets
 type: bug
+status: resolved 2026-09-24 by Ben's rule; the edge-style case is to be revisited
 ---
 
 # Two commands disagree about when to filter node targets
+
+> **Ben's rule (Ben, 2026-09-24):** *if things are selected, actions should
+> affect those things, and if things aren't selected then what's under the
+> crosshairs should be considered (not necessarily acted upon).*
+>
+> What followed from it (2026-09-24, checked by
+> `tools/qa/selection/selection-wins.js`, which failed on the old code):
+> - **Filter order:** `targetNodes(only)` now filters *after* choosing, as
+>   `setTaskStatus` always did. A selection of only junctions makes
+>   text-overflow act on nothing instead of on the node under the crosshairs
+>   (inferred from the rule, 2026-09-24).
+> - **Pin** takes every selected node (Ben, 2026-09-24). A selected node also
+>   beats a waypoint under the crosshairs, which used to win (inferred from
+>   the rule). A mixed set goes one way, pinned unless all already are, as the
+>   waypoints already did (inferred, 2026-09-24).
+> - **Edge style commands** keep restyling *every* edge under the crosshairs
+>   when nothing is selected, for now. Ben is not sure that is right and wants
+>   to revisit it (Ben, 2026-09-24).
 
 Both `setTaskStatus` and `setTextOverflowMode` act on "the selection, else the
 node under the crosshairs", and both refuse to act on some kinds of node. They

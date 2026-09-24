@@ -1140,32 +1140,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.showMovementIndicators();
   }
 
-  private togglePinSelected() {
-    // Waypoints take priority — if any are selected (or hovered under
-    // crosshairs), pin/unpin them. Otherwise fall through to node pinning.
-    const selectedWps = this.drawingLayer.getSelectedDAWaypoints();
-    if (selectedWps.length > 0) {
-      const newPinned = !selectedWps.every(wp => wp.pinned);
-      selectedWps.forEach(wp => {
-        const edge = this.drawingLayer.findEdgeForWaypoint(wp);
-        edge?.setWaypointPinned(wp, newPinned);
-      });
-      this.drawingLayer.batchDraw();
-      return;
-    }
-    const hoveredWp = this.getWaypointUnderCrosshairs();
-    if (hoveredWp) {
-      const edge = this.drawingLayer.findEdgeForWaypoint(hoveredWp);
-      edge?.setWaypointPinned(hoveredWp, !hoveredWp.pinned);
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const selected = this.drawingLayer.getSelectedDANodes();
-    const hovered = selected.length > 0 ? selected : this.getDANodesContainingCrosshairs();
-    const targets = topmostSelection(hovered);
-    targets.forEach(n => { n.pinned = !n.pinned; });
+  /** Pin or unpin: a selection first (waypoints, else nodes), and only
+   *  without one the waypoint, else the topmost node, under the crosshairs.
+   *  Ben's rule (Ben, 2026-09-24): if things are selected, actions affect
+   *  those things. A mixed set goes one way, pinned unless all already are
+   *  (inferred, 2026-09-24 — what the waypoints already did). */
+  private togglePinSelected(): void {
+    const waypoints = this.drawingLayer.getSelectedDAWaypoints();
+    const nodes = this.drawingLayer.getSelectedDANodes();
+    const hoveredWaypoint = this.getWaypointUnderCrosshairs();
+    if (waypoints.length > 0) this.togglePins(waypoints);
+    else if (nodes.length > 0) this.togglePins(nodes);
+    else if (hoveredWaypoint) this.togglePins([hoveredWaypoint]);
+    else this.togglePins(this.targetNodes());
     this.drawingLayer.batchDraw();
+  }
+
+  private togglePins(items: DAWaypoint[] | DANode[]): void {
+    const pinned = !items.every(item => item.pinned);
+    for (const item of items) {
+      if (item instanceof DAWaypoint) this.drawingLayer.findEdgeForWaypoint(item)?.setWaypointPinned(item, pinned);
+      else item.pinned = pinned;
+    }
   }
 
   private exitLabelEditMode() {
@@ -1241,14 +1237,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * node under the crosshairs. Empty means "no node addressed" — the shape
    * commands read that as a change to the default for new nodes.
    *
-   * `only` narrows both candidates before the choice, so restricting the kinds
-   * of node a command accepts cannot change which of the two wins.
+   * `only` narrows the choice after it is made: a selection wins even when
+   * none of it qualifies, and then the command acts on nothing rather than on
+   * the node under the crosshairs. Ben's rule (Ben, 2026-09-24): if things are
+   * selected, actions affect those things; if not, what is under the
+   * crosshairs is considered. Before, `only` narrowed first
+   * (notes/bug-node-target-filter-order.md).
    */
   private targetNodes(only: (node: DANode) => boolean = () => true): DANode[] {
-    const selected = this.drawingLayer.getSelectedDANodes().filter(only);
-    return selected.length > 0
-      ? selected
-      : topmostSelection(this.getDANodesContainingCrosshairs().filter(only));
+    const selected = this.drawingLayer.getSelectedDANodes();
+    return (selected.length > 0 ? selected : topmostSelection(this.getDANodesContainingCrosshairs())).filter(only);
   }
 
   private updateEdgesForResizedNodes(nodes: DANode[]) {
