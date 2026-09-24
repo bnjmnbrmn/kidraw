@@ -59,4 +59,18 @@ describe('DrawingAreaComponent selection priority', () => {
     expect(onTop.isSelected).toBeTrue();
     expect(under.isSelected).toBeFalse();
   });
+
+  it('the edit keys take the node under a waypoint within reach, not the waypoint', () => {
+    const component = buildSelectionTestComponent();
+    const node = {isSelected: false, zIndex: () => 0};
+    const waypoint = {isSelected: false};
+    component.getLabelUnderCrosshairs = () => null;
+    component.getWaypointUnderCrosshairs = () => waypoint;
+    component.getDANodesContainingCrosshairs = () => [node];
+
+    component.selectTextUnderCrosshairs();
+
+    expect(node.isSelected).toBeTrue();
+    expect(waypoint.isSelected).toBeFalse();
+  });
 });

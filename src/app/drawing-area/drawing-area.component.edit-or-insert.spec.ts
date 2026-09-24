@@ -49,7 +49,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       });
     component.quickAddSelfLoop = jasmine.createSpy('quickAddSelfLoop');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
-    component.selectOnlyTopItem = jasmine.createSpy('selectOnlyTopItem');
+    component.selectTextUnderCrosshairs = jasmine.createSpy('selectTextUnderCrosshairs');
     component.showEditCarets = jasmine.createSpy('showEditCarets');
     component.crosshairsInLayerCoords = () => ({x: 10, y: 20});
     component.addLabel = jasmine.createSpy('addLabel').and.returnValue({});
@@ -465,7 +465,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('edits the node under the crosshairs', () => {
       const component = buildComponent({nodesUnderCrosshairs: [{}]});
       component.editTextAtCrosshairs();
-      expect(component.selectOnlyTopItem).toHaveBeenCalled();
+      expect(component.selectTextUnderCrosshairs).toHaveBeenCalled();
       expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'vimNormal'});
@@ -474,7 +474,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('edits a label under the crosshairs', () => {
       const component = buildComponent({labelUnderCrosshairs: {}});
       component.editTextAtCrosshairs();
-      expect(component.selectOnlyTopItem).toHaveBeenCalled();
+      expect(component.selectTextUnderCrosshairs).toHaveBeenCalled();
       expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'vimNormal'});

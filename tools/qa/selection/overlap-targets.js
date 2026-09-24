@@ -8,6 +8,11 @@
  * Each node case moves the basic sample's Process over Start and puts the
  * crosshairs where they overlap; the edge case crosses two edges and puts the
  * crosshairs on the crossing.
+ *
+ * And a waypoint within reach of the crosshairs, over a node: the select key
+ * takes the waypoint, but the edit keys mean the node's text. Until
+ * 2026-09-24 they selected the waypoint and entered label editing with
+ * nothing to edit.
  */
 const {launch, openApp, settled, checker, DA} = require('../harness.js');
 
@@ -102,6 +107,29 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
   const deleted = before.filter(label => !after.includes(label));
   check('Delete removes the highlighted node, not the one beneath it',
     JSON.stringify(deleted) === JSON.stringify([nodes.onTop]), JSON.stringify(deleted));
+
+  for (const kind of ['EDIT_TEXT_AT_CROSSHAIRS', 'EDIT_SELECTED']) {
+    await page.evaluate(`(() => { const sel = document.querySelector('select.sample-graph-select');
+      sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true})); })()`);
+    await settled(page);
+    const edited = await page.evaluate(`(() => { const da = ${DA}; const dl = da.drawingLayer;
+      da.finishTweens(); dl.scale({x: 1, y: 1}); dl.x(0); dl.y(0); dl.unselectAll(); da.unselectAllLabels();
+      const proc = dl.getDANodes().find(n => n.label.text() === 'Process');
+      const e = dl.getDAEdges().find(e => e.srcNode === proc && e.destNode.label.text() === 'Action');
+      const at = {x: proc.group.x() + proc.NODE_WIDTH / 2, y: proc.group.y() + proc.NODE_HEIGHT - 8};
+      e.insertWaypointAt(at, 0);
+      da.crosshairsLayer.crosshairs.x = at.x + 4; da.crosshairsLayer.crosshairs.y = at.y - 4;
+      da.crosshairsLayer.showCrosshairs(); dl.batchDraw();
+      const hover = da.crosshairHoverTarget()?.kind;
+      da.handleCommand({kind: '${kind}'});
+      return {hover, editing: dl.getDANodes().filter(n => n.isEditingText).map(n => n.label.text()),
+        waypointSelected: dl.getSelectedDAWaypoints().length > 0}; })()`);
+    check(`${kind === 'EDIT_SELECTED' ? 'Edit Selected' : 'Edit Text'} over a node, with a waypoint in reach, edits the node`,
+      edited.hover === 'waypoint' && JSON.stringify(edited.editing) === '["Process"]' && !edited.waypointSelected,
+      JSON.stringify(edited));
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+  }
 
   const edges = await crossed(page);
   check('the crosshairs are on both edges, and the hover trace on one of them',

@@ -775,8 +775,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
+  /** Select the text the edit keys mean, and nothing else: the label under
+   *  the crosshairs, else the node — where nodes overlap, the one on top.
+   *  Not simply the top item: a waypoint within reach outranks the node
+   *  beneath it for the select key, but has no text, and taking it entered
+   *  label editing with nothing to edit (seen 2026-09-24). */
+  private selectTextUnderCrosshairs(): void {
+    this.finishTweens();
+    this.drawingLayer.unselectAll();
+    this.unselectAllLabels();
+    const item = this.getLabelUnderCrosshairs() ?? this.nodeUnderCrosshairs();
+    if (item) item.isSelected = true;
+    this.drawingLayer.batchDraw();
+  }
+
   /** Select the item under the crosshairs and nothing else — the item the
-   *  hover trace is on, so the edit keys act on what is highlighted. */
+   *  hover trace is on. */
   private selectOnlyTopItem(): void {
     this.finishTweens();
     this.drawingLayer.unselectAll();
@@ -2889,7 +2903,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const label = this.getLabelUnderCrosshairs();
     if (label) {
       this.log.log('  -> Found label under crosshairs. Selecting and editing.');
-      this.selectOnlyTopItem();
+      this.selectTextUnderCrosshairs();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
@@ -2901,7 +2915,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.log.log(`  -> Nodes under crosshairs: ${nodes.length}`);
     if (nodes.length > 0) {
       this.log.log('  -> Found node under crosshairs. Selecting and editing.');
-      this.selectOnlyTopItem();
+      this.selectTextUnderCrosshairs();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(this.crosshairsInLayerCoords());
       this.drawingLayer.batchDraw();
@@ -3684,9 +3698,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const node = this.getDANodesContainingCrosshairs().length > 0;
     if (label || node) {
       const cursorPoint = this.crosshairsInLayerCoords();
-      this.drawingLayer.unselectAll();
-      this.unselectAllLabels();
-      this.selectOnlyTopItem();
+      this.selectTextUnderCrosshairs();
       this.crosshairsLayer.hideCrosshairs();
       this.showEditCarets(cursorPoint);
       this.drawingLayer.batchDraw();
