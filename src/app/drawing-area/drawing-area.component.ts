@@ -40,13 +40,13 @@ import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-sp
 import { clamp, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
-import { Camera, Rect } from './camera';
+import { Camera } from './camera';
 import { Overlay } from './overlay';
 import { Viewport } from './viewport';
 import { CrosshairsProbe, ProbeBounds } from './crosshairs-probe';
 import { Animations } from './animations';
 import { FileController, FileHost } from './file-controller';
-import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geometry';
+import { nodeCenterInLayer, nodeCenterInStage } from './node-geometry';
 import { projectPointToPath } from './edge-label-anchor';
 import { linkDirectionsFrom, LinkCardinalDirection, moveLinkQuadrant, NavCandidate, navCandidatesFor, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
@@ -73,23 +73,6 @@ import {GrowAim, GrowGhost, GrowGhostHost} from './grow-ghost';
 import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-placement';
 import {navPopupRows, orderNavCandidates} from './nav-popup-model';
 import {placePopup, popupSize} from './nav-popup-layout';
-
-/** What the crosshairs are resting on, and the trace drawn around it.
- *  `trace` is null when the item is shown by a navigation landing ghost. */
-interface CrosshairHover {
-  kind: 'label' | 'waypoint' | 'node' | 'edge';
-  id: string;
-  trace: Konva.Shape | null;
-  node?: DANode;
-  ghostReasons?: string[];
-}
-
-/** The look every hover trace shares, resolved for the current zoom. */
-interface HoverTraceStyle {
-  scale: number;
-  pad: number;
-  common: Konva.ShapeConfig;
-}
 
 /** The grid a movement step measures itself against, at the current zoom. */
 interface MovementGrid {
@@ -126,6 +109,7 @@ import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { StyleController, StyleHost } from './style-controller';
 import { LayoutController, LayoutHost } from './layout-controller';
 import { AgentCanvasSurface, AgentCanvasHost } from './agent-canvas-surface';
+import { CrosshairHover, CrosshairsHover, CrosshairsHoverHost } from './crosshairs-hover';
 
 /** A node as plugins see it: plain data, not the Konva object. */
 function pluginNodeOf(node: DANode): PluginNode {
@@ -223,7 +207,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  currently under the crosshairs. This is intentionally separate from
    *  selection state and is never serialized. */
   private readonly hoverTrace = new Overlay<Konva.Shape>(() => this.drawingLayer);
-  private crosshairHoverRefreshTimer: number | null = null;
   /** Screen-space copy of one edited node at low graph zoom. The real node
    *  remains in place; this lens keeps its text and caret readable. */
   private readonly labelEditGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
@@ -233,6 +216,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Natural-scale copy of the node currently reached by crosshair
    *  navigation, shown only when the real node is not fully readable. */
   private readonly navigationLandingGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
+  /** Draws both of those (crosshairs-hover.ts). */
+  private readonly hover = new CrosshairsHover(this.crosshairsHoverHost());
 
   public readonly MAX_ZOOM = 8.0;
   public readonly MIN_ZOOM = 0.125;
@@ -310,7 +295,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsLayer.updateCrosshairsColor(palette.crosshairsStroke);
       if (this.normalMovementGoal) this.redrawNormalMovementGoalLine();
       this.linkNav.redraw();
-      this.refreshCrosshairHoverHighlight();
+      this.hover.refresh();
     };
     const reapplyConfig = () => {
       reapplyTheme();
@@ -371,7 +356,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitZoomLevel();
     this.emitMovementSpeed();
     this.emitContextState();
-    this.refreshCrosshairHoverHighlight();
+    this.hover.refresh();
 
     this.resizeObserver = new ResizeObserver(() => {
       this.stage.width(this.componentNE.offsetWidth);
@@ -406,13 +391,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     }
     this.fileController.dispose();
-    if (this.crosshairHoverRefreshTimer !== null) {
-      clearTimeout(this.crosshairHoverRefreshTimer);
-    }
     this.linkNav.clear();
     this.clearLabelEditGhost(false);
-    this.clearNavigationLandingGhost(false);
-    this.hoverTrace.clear(false);
+    this.hover.dispose();
     this.areaSelect.dispose();
     this.mathUnsubscribes.forEach(unsubscribe => unsubscribe());
   }
@@ -710,9 +691,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Refresh just after the standard movement tween, coalescing held-key
     // repeats so the highlight never trails several landings behind.
     if (this.crosshairsLayer.crosshairs.konvaGroup.visible()) {
-      this.scheduleCrosshairHoverRefresh();
+      this.hover.scheduleRefresh();
     } else {
-      this.refreshCrosshairHoverHighlight();
+      this.hover.refresh();
     }
 
     if (mutatesGraph(command.kind) ||
@@ -874,6 +855,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       finishTweens: () => da.finishTweens(),
       emitStatus: message => da.emitStatus(message),
       log: (...parts) => da.log.log(...parts),
+    };
+  }
+
+  /** Lends the hover cues what they need, through getters so the stage and
+   *  layers can still be assigned later in ngAfterViewInit. */
+  private crosshairsHoverHost(): CrosshairsHoverHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get stage() { return da.stage; },
+      get camera() { return da.camera; },
+      get viewport() { return da.viewport; },
+      get trace() { return da.hoverTrace; },
+      get ghost() { return da.navigationLandingGhost; },
+      get movementDuration() { return da.CROSSHAIR_MOVEMENT_DURATION; },
+      palette: () => da.visualConfigService.getEffectivePalette(da.themeService.theme),
+      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
+      waypointUnderCrosshairs: () => da.getWaypointUnderCrosshairs(),
+      nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
+      edgeUnderCrosshairs: () => da.edgeUnderCrosshairs(),
     };
   }
 
@@ -1245,7 +1247,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // describing the old geometry, which is how a dashed outline ends up
     // sitting next to its node instead of around it (2026-08-29). This is the
     // common exit for every one of those paths.
-    if (this.crosshairsLayer?.crosshairs) this.refreshCrosshairHoverHighlight();
+    if (this.crosshairsLayer?.crosshairs) this.hover.refresh();
   }
 
   private connectSelectedNodes() {
@@ -1295,7 +1297,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  so the graph grows around the thing you are looking at. */
   private zoomAboutCrosshairs(newScale: number): void {
     this.finishTweens();
-    this.clearCrosshairHoverHighlight(false);
+    this.hover.clear(false);
     const pinned = this.crosshairsInLayerCoords();
     this.tween({
       node: this.drawingLayer,
@@ -1367,7 +1369,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private moveCrosshairsBy(deltaX: number, deltaY: number, tier?: GridTier,
                            showMovementGrid = true) {
     this.finishTweens();
-    this.clearCrosshairHoverHighlight(false);
+    this.hover.clear(false);
     this.crosshairsLayer.showCrosshairs();
     this.crosshairsLayer.batchDraw();
 
@@ -1517,7 +1519,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Whatever moved, the overlay that tracks it has to catch up. */
   private afterMovementTween(): void {
     if (this.navGrid.visible) this.navGrid.redrawNodeGrid();
-    this.scheduleCrosshairHoverRefresh(20);
+    this.hover.scheduleRefresh(20);
   }
 
   /** Draw the current goal in drawing-layer space, just above the ordinary
@@ -1560,292 +1562,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.goalLine.clear(draw);
   }
 
-  private scheduleCrosshairHoverRefresh(delayMs?: number): void {
-    if (this.crosshairHoverRefreshTimer !== null) {
-      clearTimeout(this.crosshairHoverRefreshTimer);
-    }
-    const delay = delayMs ??
-      Math.ceil(this.CROSSHAIR_MOVEMENT_DURATION * 1000) + 30;
-    this.crosshairHoverRefreshTimer = window.setTimeout(() => {
-      this.crosshairHoverRefreshTimer = null;
-      this.refreshCrosshairHoverHighlight();
-    }, delay);
-  }
-
-  /**
-   * Show one non-semantic hover trace for the top item under the crosshairs.
-   * The hit priority matches selection: label, waypoint, top node, top edge.
-   * Using a separate overlay keeps this cue visually and behaviorally
-   * independent from the blue selection treatment.
-   */
+  // Kept as methods because tools/qa scripts call them; see
+  // tools/qa/contract/component-api.js. Inside this class, ask `hover`.
   private refreshCrosshairHoverHighlight(): void {
-    this.clearCrosshairHoverHighlight(false);
-    if (!this.drawingLayer || !this.crosshairsLayer ||
-        !this.crosshairsLayer.crosshairs.konvaGroup.visible()) {
-      this.drawingLayer?.batchDraw();
-      return;
-    }
-
-    const hover = this.crosshairHoverTarget();
-    if (hover?.trace) {
-      const trace = hover.trace;
-      trace.setAttr('targetKind', hover.kind);
-      trace.setAttr('targetId', hover.id);
-      this.hoverTrace.show(() => trace);
-    }
-    if (hover?.node) {
-      this.refreshNavigationLandingGhost(hover.node, hover.ghostReasons);
-    }
-    this.drawingLayer.batchDraw();
+    this.hover.refresh();
   }
 
-  /** The one item the crosshairs are on, in selection's priority order, with
-   *  the trace to draw around it. Null when they are over empty canvas. */
   private crosshairHoverTarget(): CrosshairHover | null {
-    const style = this.hoverTraceStyle();
-
-    const label = this.getLabelUnderCrosshairs();
-    if (label) {
-      return {kind: 'label', id: label.id, trace: this.labelHoverTrace(label, style)};
-    }
-
-    const waypoint = this.getWaypointUnderCrosshairs();
-    if (waypoint) {
-      return {kind: 'waypoint', id: waypoint.id, trace: this.waypointHoverTrace(waypoint, style)};
-    }
-
-    const node = this.nodeUnderCrosshairs();
-    if (node) {
-      // A node that earns a landing ghost gets its dashed trace on the ghost
-      // instead. Ringing the real node as well put two dashed outlines of the
-      // same node on screen at once (da-434).
-      const ghostReasons = this.navigationGhostReasons(node);
-      return {
-        kind: 'node',
-        id: node.id,
-        node,
-        ghostReasons,
-        trace: ghostReasons.length > 0 ? null : this.nodeHoverTrace(node, style),
-      };
-    }
-
-    const edge = this.edgeUnderCrosshairs();
-    if (edge) {
-      return {kind: 'edge', id: edge.id, trace: this.edgeHoverTrace(edge, style)};
-    }
-
-    return null;
-  }
-
-  /** Dash, colour and glow shared by every hover trace, plus the zoom-corrected
-   *  padding that keeps the trace clear of the thing it traces. */
-  private hoverTraceStyle(): HoverTraceStyle {
-    const scale = Math.max(this.drawingLayer.scaleX(), 0.001);
-    const color = this.visualConfigService
-      .getEffectivePalette(this.themeService.theme).crosshairsStroke;
-    return {
-      scale,
-      pad: 6 / scale,
-      common: {
-        name: 'crosshair-hover-highlight',
-        stroke: color,
-        strokeWidth: 2,
-        strokeScaleEnabled: false,
-        // With stroke scaling disabled, Konva applies dash lengths in screen
-        // pixels too. Dividing by zoom here would compensate a second time.
-        dash: [7, 5],
-        opacity: 0.9,
-        lineCap: 'round' as const,
-        lineJoin: 'round' as const,
-        listening: false,
-        shadowColor: color,
-        shadowBlur: 5,
-        shadowOpacity: 0.3,
-      },
-    };
-  }
-
-  private labelHoverTrace(label: DALabel, {common, pad, scale}: HoverTraceStyle): Konva.Shape {
-    return new Konva.Rect({
-      ...common,
-      x: label.x - label.width / 2 - pad,
-      y: label.y - label.height / 2 - pad,
-      width: label.width + pad * 2,
-      height: label.height + pad * 2,
-      cornerRadius: 5 / scale,
-    });
-  }
-
-  private waypointHoverTrace(waypoint: DAWaypoint, {common, pad}: HoverTraceStyle): Konva.Shape {
-    return new Konva.Circle({...common, x: waypoint.x, y: waypoint.y, radius: waypoint.RADIUS + pad});
-  }
-
-  private nodeHoverTrace(node: DANode, {common, pad, scale}: HoverTraceStyle): Konva.Shape {
-    // A circle node is an ellipse once its label stretches it, and a rounded
-    // rectangle around one reads as a different shape than the thing it is
-    // tracing (da-442).
-    if (node.nodeShape === 'circle') {
-      return new Konva.Ellipse({
-        ...common,
-        x: node.group.x() + node.NODE_WIDTH / 2,
-        y: node.group.y() + node.NODE_HEIGHT / 2,
-        radiusX: node.NODE_WIDTH / 2 + pad,
-        radiusY: node.NODE_HEIGHT / 2 + pad,
-      });
-    }
-    return new Konva.Rect({
-      ...common,
-      x: node.group.x() - pad,
-      y: node.group.y() - pad,
-      width: node.NODE_WIDTH + pad * 2,
-      height: node.NODE_HEIGHT + pad * 2,
-      cornerRadius: 7 / scale,
-    });
-  }
-
-  private edgeHoverTrace(edge: DAEdge, {common}: HoverTraceStyle): Konva.Shape {
-    return new Konva.Line({
-      ...common,
-      // Trace the exact polyline Konva paints, including the render-only
-      // endpoint stubs used by smooth edges. Applying tension to the raw
-      // control points produced a similar, but visibly different, dotted curve.
-      points: edge.getRenderedPathPoints().flatMap(p => [p.x, p.y]),
-      tension: 0,
-      strokeWidth: 5,
-      opacity: 0.72,
-    });
+    return this.hover.target();
   }
 
   private clearCrosshairHoverHighlight(draw = true): void {
-    // The landing ghost carries the trace for a node that earned one, so the
-    // two come down together (da-434). Both layers repaint: the trace lives on
-    // the drawing layer, the ghost on the crosshairs layer.
-    const removedTrace = this.hoverTrace.clear(false);
-    const removedGhost = this.clearNavigationLandingGhost(false);
-    const changed = removedTrace || removedGhost;
-    if (draw && changed) {
-      this.drawingLayer.batchDraw();
-      this.crosshairsLayer?.batchDraw();
-    }
+    this.hover.clear(draw);
   }
 
-  private nodeStageRect(node: DANode): Rect {
-    return nodeStageRect(node, this.camera);
-  }
-
-  /** Why the real navigation target needs a readable screen-space copy. */
-  private navigationGhostReasons(node: DANode): string[] {
-    if (!this.stage || node.nodeShape === 'junction' || node.nodeShape === 'invisible') return [];
-    const rect = this.nodeStageRect(node);
-    const reasons: string[] = [];
-    // The ghost is a copy of the node at its *natural* size, so it is only
-    // worth drawing when the real node is harder to read than that copy would
-    // be.
-    const drawnScale = node.group.scaleY() * this.drawingLayer.scaleY();
-    const pad = 8;
-    if (drawnScale > 1) {
-      // Zoomed in past natural size there is no stand-in worth drawing: the
-      // copy is made at natural size, so it would be *smaller* than the box it
-      // stands in for. A pan that pushed a 400% box part-way out of frame used
-      // to earn one anyway, and a small dashed copy would appear on top of the
-      // very large node it was supposedly standing in for.
-    } else if (rect.x < this.viewport.minX + pad || rect.y < this.viewport.minY + pad ||
-        rect.x + rect.width > this.viewport.maxX - pad ||
-        rect.y + rect.height > this.viewport.maxY - pad) {
-      reasons.push('offscreen');
-    }
-    if (node.FONT_SIZE * drawnScale < 12) {
-      reasons.push('too-small');
-    }
-    const overlaps = (a: typeof rect, b: typeof rect) =>
-      a.x < b.x + b.width && a.x + a.width > b.x &&
-      a.y < b.y + b.height && a.y + a.height > b.y;
-    if (this.drawingLayer.getDANodes().some(other =>
-      other !== node && other.nodeShape !== 'invisible' && other.konvaGroup.visible() &&
-      other.zIndex() > node.zIndex() && overlaps(rect, this.nodeStageRect(other)))) {
-      reasons.push('occluded');
-    }
-    return reasons;
-  }
-
-  /** Overlay the actual node (shape, text, status, selection) at natural
-   *  scale on the chrome layer. Its position follows the real node when
-   *  possible and clamps wholly inside the viewport otherwise. */
   private refreshNavigationLandingGhost(node: DANode, knownReasons?: string[]): void {
-    this.clearNavigationLandingGhost(false);
-    if (!this.stage || !this.crosshairsLayer) return;
-    const reasons = knownReasons ?? this.navigationGhostReasons(node);
-    if (reasons.length === 0) return;
-    const rect = this.nodeStageRect(node);
-    const center = {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
-    const pad = 12;
-    const clampedStart = (start: number, size: number, lo: number, hi: number) =>
-      size + pad * 2 > hi - lo
-        ? lo + (hi - lo - size) / 2
-        : Math.max(lo + pad, Math.min(start, hi - size - pad));
-    const x = clampedStart(center.x - node.NODE_WIDTH / 2, node.NODE_WIDTH,
-      this.viewport.minX, this.viewport.maxX);
-    const y = clampedStart(center.y - node.NODE_HEIGHT / 2, node.NODE_HEIGHT,
-      this.viewport.minY, this.viewport.maxY);
-    const palette = this.visualConfigService.getEffectivePalette(this.themeService.theme);
-    // Fully opaque: this is a stand-in for a node you cannot read, and at
-    // 0.94 the real node showed through it wherever the two overlapped.
-    const group = new Konva.Group({
-      name: 'navigation-node-ghost',
-      x,
-      y,
-      listening: false,
-    });
-    group.setAttr('targetId', node.id);
-    group.setAttr('reasons', reasons);
-    // Ground the clone on the canvas colour so anything behind the ghost is
-    // occluded even where the node's own fill is translucent.
-    group.add(this.ghostOutlineShape(node, {
-      fill: palette.drawingStageBackground,
-    }));
-    const clone = node.konvaGroup.clone({
-      x: 0,
-      y: 0,
-      scaleX: 1,
-      scaleY: 1,
-      listening: false,
-    });
-    group.add(clone);
-    group.add(this.ghostOutlineShape(node, {
-      stroke: palette.crosshairsStroke,
-      strokeWidth: 2,
-      dash: [7, 5],
-    }));
-    this.navigationLandingGhost.show(() => group);
-    this.crosshairsLayer.batchDraw();
-  }
-
-  /** The ghost's backing and its dashed outline, in the node's own shape:
-   *  an ellipse for a circle node — which a long label stretches into a real
-   *  ellipse — and a rounded box otherwise (da-442). Local to the ghost
-   *  group, whose origin is the node's top-left. */
-  private ghostOutlineShape(node: DANode, style: Record<string, unknown>): Konva.Shape {
-    if (node.nodeShape === 'circle') {
-      return new Konva.Ellipse({
-        x: node.NODE_WIDTH / 2,
-        y: node.NODE_HEIGHT / 2,
-        radiusX: node.NODE_WIDTH / 2,
-        radiusY: node.NODE_HEIGHT / 2,
-        listening: false,
-        ...style,
-      });
-    }
-    return new Konva.Rect({
-      width: node.NODE_WIDTH,
-      height: node.NODE_HEIGHT,
-      cornerRadius: 7,
-      listening: false,
-      ...style,
-    });
-  }
-
-  private clearNavigationLandingGhost(draw = true): boolean {
-    return this.navigationLandingGhost.clear(draw);
+    this.hover.showGhost(node, knownReasons);
   }
 
   private updateCrosshairsProbeShape(
@@ -1905,7 +1637,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.setGridIndicatorsVisible(false);
       this.refreshWaypointVisibility(false);
       this.clearNormalMovementGoal(false);
-      this.clearCrosshairHoverHighlight(false);
+      this.hover.clear(false);
       this.crosshairsLayer.hideCrosshairs();
       this.drawingLayer.batchDraw();
       this.crosshairsLayer.batchDraw();
@@ -1977,7 +1709,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private panViewport(deltaX: number, deltaY: number) {
     this.finishTweens();
-    this.clearCrosshairHoverHighlight(false);
+    this.hover.clear(false);
     this.tween({
       node: this.drawingLayer,
       duration: this.CROSSHAIR_MOVEMENT_DURATION,
@@ -2951,7 +2683,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private recenterCrosshairs() {
     this.finishTweens();
-    this.clearCrosshairHoverHighlight(false);
+    this.hover.clear(false);
 
     this.animations.startSelfRemoving({
       node: this.crosshairsLayer.crosshairs.konvaGroup,
@@ -2959,7 +2691,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       x: this.viewport.centerX,
       y: this.viewport.centerY,
       easing: Konva.Easings.EaseInOut,
-      onFinish: () => this.scheduleCrosshairHoverRefresh(20),
+      onFinish: () => this.hover.scheduleRefresh(20),
     });
   }
 
@@ -3855,7 +3587,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.crosshairsLayer.crosshairs.x = sx;
     this.crosshairsLayer.crosshairs.y = sy;
     this.crosshairsLayer.batchDraw();
-    this.scheduleCrosshairHoverRefresh(20);
+    this.hover.scheduleRefresh(20);
   }
 
   /** Add an edge using the user's current defaults. Labels are absent by

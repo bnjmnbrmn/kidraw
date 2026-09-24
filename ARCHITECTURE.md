@@ -53,7 +53,7 @@ the same code with different tables.
 
 ## Inside the drawing area
 
-`drawing-area.component.ts` is still ~4,400 lines and is the part of the
+`drawing-area.component.ts` is still ~4,000 lines and is the part of the
 codebase most worth knowing your way around. It is the orchestrator: Angular
 lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
 movement.

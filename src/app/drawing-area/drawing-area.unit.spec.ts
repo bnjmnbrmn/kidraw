@@ -489,18 +489,18 @@ describe('DrawingArea Unit Tests', () => {
       expect(tall).withContext('the box is taller than the visible band').toBeGreaterThan(
         band.bottom - band.top);
       drawingLayer.position({x: 100, y: band.top + (band.bottom - band.top - tall) / 2});
-      expect(component.navigationGhostReasons(node)).toEqual([]);
+      expect(component.hover.ghostReasons(node)).toEqual([]);
 
       // Zoomed out until the label is too small to read: that is what the
       // stand-in is for.
       drawingLayer.scale({x: 0.25, y: 0.25});
       drawingLayer.position({x: 300, y: 200});
-      expect(component.navigationGhostReasons(node)).toContain('too-small');
+      expect(component.hover.ghostReasons(node)).toContain('too-small');
 
       // At natural size, but mostly behind the keymenu.
       drawingLayer.scale({x: 1, y: 1});
       drawingLayer.position({x: 300, y: band.bottom - node.NODE_HEIGHT * 0.25});
-      expect(component.navigationGhostReasons(node)).toContain('offscreen');
+      expect(component.hover.ghostReasons(node)).toContain('offscreen');
     });
 
     it('pans the viewport to keep the active edit caret and line context visible', () => {
@@ -689,7 +689,7 @@ describe('DrawingArea Unit Tests', () => {
       const component = Object.create(DrawingAreaComponent.prototype) as any;
     wireDrawingAreaCollaborators(component);
       component.crosshairsLayer = {crosshairs: {konvaGroup: {visible: () => true}}};
-      const refresh = spyOn<any>(component, 'refreshCrosshairHoverHighlight');
+      const refresh = spyOn(component.hover, 'refresh');
 
       component.updateEdgesForResizedNodes([]);
 
@@ -789,7 +789,7 @@ describe('DrawingArea Unit Tests', () => {
       component.drawingLayer = drawingLayer;
       component.stage = {width: () => 800, height: () => 400};
 
-      expect(component.navigationGhostReasons(node)).toContain('offscreen');
+      expect(component.hover.ghostReasons(node)).toContain('offscreen');
     });
   });
 
