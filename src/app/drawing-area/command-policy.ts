@@ -19,7 +19,9 @@ import { DACommand, DACommandType } from './command.model';
  *  but is not here: `:type` reaches the same change without a command, so
  *  FileController.setDiagramType snapshots and saves for itself. A command
  *  listed here must not also snapshot for itself, or undo gets a spare step
- *  (tools/qa/undo/one-step-per-change.js). */
+ *  (tools/qa/undo/one-step-per-change.js). PLUGIN_COMMAND is not here either:
+ *  plugins change the graph through operations, which record their own undo
+ *  group and save (plugins/plugin-host.ts). */
 const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.CREATE_NEW_NODE,
   DACommandType.ADD_SELF_EDGE,
@@ -44,7 +46,6 @@ const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.SET_TEXT_OVERFLOW_MODE,
   DACommandType.SET_NODE_SHAPE,
   DACommandType.TOGGLE_NODE_SHAPE,
-  DACommandType.SET_TASK_STATUS,
   DACommandType.CUT_SELECTION,
   DACommandType.PASTE_CLIPBOARD,
 ]);
@@ -91,7 +92,7 @@ const ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
   DACommandType.APPLY_LAYOUT,
   DACommandType.APPLY_EDGE_ROUTING,
   DACommandType.SET_DIAGRAM_TYPE,
-  DACommandType.SET_TASK_STATUS,
+  DACommandType.PLUGIN_COMMAND,
 ]);
 
 /** Move-by-node has its own spatial overlay. Showing the ordinary drawing

@@ -73,7 +73,7 @@ async function main() {
   // --- 2. Plain graph: setting a status warns ---
   await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    km.keyMenuOut.emit({ kind: 'SET_TASK_STATUS', status: 'done' });
+    km.keyMenuOut.emit({ kind: 'PLUGIN_COMMAND', call: {id: 'todo.setStatus', args: {status: 'done'}} });
   });
   await page.waitForTimeout(120);
   let s = await info();
@@ -118,7 +118,7 @@ async function main() {
       da.drawingLayer.getDANodes()[0].isSelected = sel;
       da.drawingLayer.batchDraw();
       window.ng.getComponent(document.querySelector('app-keymenu'))
-        .keyMenuOut.emit({kind: 'SET_TASK_STATUS', status});
+        .keyMenuOut.emit({kind: 'PLUGIN_COMMAND', call: {id: 'todo.setStatus', args: {status}}});
     }, {sel: select, status: STATUS_FOR_KEY[key]});
     await page.waitForTimeout(200);
   };

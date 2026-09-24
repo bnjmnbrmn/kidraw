@@ -33,14 +33,20 @@ type Intersection<U> = (U extends unknown ? (member: U) => void : never) extends
 /** Join slices into one table. Throws when two slices claim the same kind:
  *  a command has exactly one owner. */
 export function mergeCommandSlices<S extends CommandSlice[]>(...slices: S): Intersection<S[number]> {
-  const table: Record<string, unknown> = {};
-  for (const slice of slices) {
-    for (const [kind, handler] of Object.entries(slice)) {
-      if (kind in table) throw new Error(`Two command slices claim ${kind}`);
-      table[kind] = handler;
+  return joinDisjoint(slices, 'command slices') as Intersection<S[number]>;
+}
+
+/** Join tables of handlers into one, refusing a key that two of them claim.
+ *  `owners` names them for the error: "Two plugins claim todo.setStatus". */
+export function joinDisjoint(tables: readonly object[], owners: string): Record<string, unknown> {
+  const joined: Record<string, unknown> = {};
+  for (const table of tables) {
+    for (const [key, handler] of Object.entries(table)) {
+      if (key in joined) throw new Error(`Two ${owners} claim ${key}`);
+      joined[key] = handler;
     }
   }
-  return table as Intersection<S[number]>;
+  return joined;
 }
 
 /** Run the command's handler. */

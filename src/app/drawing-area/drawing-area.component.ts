@@ -28,7 +28,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TextCursorMode, TextOverflowMode } from './command.model';
 import {
   affectsContextState,
   endsNormalMovementGoal,
@@ -53,8 +53,8 @@ import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import type {
   AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
 } from '../agent/agent-canvas';
-import type { GraphOperationApplier } from './graph-operation-applier';
-import type { GraphOperation, UndoGroup } from './graph-operations';
+import { GraphOperationApplier } from './graph-operation-applier';
+import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
 import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
 import { layeredLayout } from './layered-layout';
@@ -139,7 +139,9 @@ import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
 import { VaultService } from '../services/vault.service';
 import { resolveIdentity } from '../plugins/plugin-registry';
-import { applyExclusiveTag } from '../plugins/tag-groups';
+import { PLUGIN_REGISTRY } from '../plugins/plugin-registry';
+import { PluginCommandCall, PluginCommands } from '../plugins/plugin-commands';
+import type { PluginHost, PluginNode } from '../plugins/plugin-host';
 import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
@@ -147,6 +149,11 @@ import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 
+
+/** A node as plugins see it: plain data, not the Konva object. */
+function pluginNodeOf(node: DANode): PluginNode {
+  return {id: node.id, label: node.label.text(), tags: [...node.tags], shape: node.nodeShape};
+}
 
 @Component({
   selector: 'app-drawing-area',
@@ -700,14 +707,32 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** The graph's diagram type, and the task status todo graphs add. The
-   *  plugin-shaped slice: the first to leave when plugins bring their own
-   *  commands (notes/design-plugins.md). */
+  /** The graph's diagram type, and the commands plugins bring — each goes to
+   *  the plugin that owns it (plugins/plugin-commands.ts). */
   private diagramTypeCommands() {
     return {
       [DACommandType.SET_DIAGRAM_TYPE]: c => this.fileController.setDiagramType(c.typeId),
-      [DACommandType.SET_TASK_STATUS]: c => this.setTaskStatus(c.status),
+      [DACommandType.PLUGIN_COMMAND]: c => this.runPluginCommand(c.call),
     } satisfies CommandSlice;
+  }
+
+  private _pluginCommands?: PluginCommands;
+
+  /** Run a plugin's command. The table of them is built on first use, with
+   *  what plugins may use of the canvas. */
+  private runPluginCommand(call: PluginCommandCall): void {
+    this._pluginCommands ??= new PluginCommands(this.pluginHost(), PLUGIN_REGISTRY.values());
+    if (!this._pluginCommands.run(call)) this.emitStatus(`No plugin has the command ${call.id}`);
+  }
+
+  /** Lends plugins what their commands may use (plugins/plugin-host.ts). */
+  private pluginHost(): PluginHost {
+    return {
+      diagramType: () => this.drawingLayer.diagramType,
+      targetNodes: () => this.targetNodes().map(pluginNodeOf),
+      apply: (label, ops) => this.applyOperationsNow({author: 'user', label, ops}),
+      status: message => this.emitStatus(message),
+    };
   }
 
   /** Commands AppComponent handles and never forwards: the ex line, agent
@@ -841,37 +866,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  crosshairs) with a status from the identity's `status` tag group.
    *  Statuses are exclusive semantic tags (`status/done` etc.), so they
    *  persist with the graph document and survive undo/redo. */
-  private setTaskStatus(status: TaskStatus): void {
-    const group = resolveIdentity(this.drawingLayer.diagramType).tagGroups?.find(g => g.id === 'status');
-    if (!group) {
-      this.emitStatus('⚠ Task statuses need a Todo Graph (m → t)');
-      return;
-    }
-    const choice = status === 'none' ? null : group.choices.find(c => c.tag === `status/${status}`) ?? null;
-    if (status !== 'none' && choice === null) {
-      this.emitStatus(`⚠ Unknown task status: ${status}`);
-      return;
-    }
-    // Filters after the choice, not before: a selection of only junctions
-    // reports "nothing to do" rather than falling through to the node under
-    // the crosshairs. setTextOverflowMode does the opposite — see
-    // notes/bug-node-target-filter-order.md.
-    const targets = this.targetNodes()
-      .filter(n => n.nodeShape !== 'junction' && n.nodeShape !== 'invisible');
-    if (targets.length === 0) {
-      this.emitStatus('⚠ Select or hover a node to set its status');
-      return;
-    }
-    this.finishTweens();
-    for (const node of targets) {
-      node.tags = applyExclusiveTag(node.tags, group, choice);
-      node.setStatusBadge(choice);
-    }
-    this.drawingLayer.batchDraw();
-    const suffix = targets.length > 1 ? ` (${targets.length} nodes)` : '';
-    this.emitStatus(choice ? `Status: ${choice.label}${suffix}` : `Status cleared${suffix}`);
-  }
-
   /** Lends search what it needs, through getters so the layers can still be
    *  assigned later in ngAfterViewInit. */
   private graphSearchHost(): GraphSearchHost {
@@ -2783,22 +2777,27 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // ─── Operations: the write path for changes that aren't keymenu commands ──
 
-  private operationsRuntime: Promise<{
+  private operationsRuntime: {
     applier: GraphOperationApplier;
     invert: (ops: readonly GraphOperation[]) => GraphOperation[];
-  }> | null = null;
+  } | null = null;
 
-  /** The operations code loads on first use; so far only agent edits need it,
-   *  and it keeps the initial bundle inside its budget. */
+  /** The operations code loads with the app. It was a lazy chunk while only
+   *  agent edits used it; plugin commands edit through it from the keyboard,
+   *  where waiting for the chunk let a second key press plan against a graph
+   *  the first had not changed yet (+1.5 kB, 2026-09-23). */
   private loadOperations() {
-    return this.operationsRuntime ??= Promise.all([import('./graph-operation-applier'), import('./graph-operations')])
-      .then(([applierModule, operations]) => ({
-        applier: new applierModule.GraphOperationApplier(this.drawingLayer, {
-          nodesChanged: nodes => this.updateEdgesForResizedNodes(nodes),
-          edgeAdded: edge => this.autoRouteNewEdge(edge),
-        }),
-        invert: operations.invertOperations,
-      }));
+    return Promise.resolve(this.operationsNow());
+  }
+
+  private operationsNow() {
+    return this.operationsRuntime ??= {
+      applier: new GraphOperationApplier(this.drawingLayer, {
+        nodesChanged: nodes => this.updateEdgesForResizedNodes(nodes),
+        edgeAdded: edge => this.autoRouteNewEdge(edge),
+      }),
+      invert: invertOperations,
+    };
   }
 
   /**
@@ -2807,9 +2806,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * nothing, when the graph no longer matches what the operations expect.
    */
   async applyOperations(group: UndoGroup): Promise<string | null> {
-    const {applier} = await this.loadOperations();
+    return this.applyOperationsNow(group);
+  }
+
+  /** `applyOperations` within the current keystroke, for plugin commands: a
+   *  command that reads the graph and writes it in one go leaves no gap for a
+   *  second key press to plan against a graph the first has not changed. */
+  private applyOperationsNow(group: UndoGroup): string | null {
     this.finishTweens();
-    const conflict = applier.apply(group.ops);
+    const conflict = this.operationsNow().applier.apply(group.ops);
     if (conflict) return conflict;
     this.undoRedoService.pushGroup(group);
     this.afterOperations();

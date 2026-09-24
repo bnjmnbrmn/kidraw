@@ -1,4 +1,6 @@
 import { NodeShape, TextOverflowMode } from '../drawing-area/command.model';
+import type { PluginCommandHandlers } from './plugin-commands';
+import type { PluginHost } from './plugin-host';
 
 export type LabelFormat = 'plain' | 'markdown';
 
@@ -104,4 +106,7 @@ export interface KidrawPlugin {
   edgeKinds?: PluginEdgeKind[];
   nodeKinds?: PluginNodeKind[];
   readingOrder?: PluginReadingOrder;
+  /** The commands it brings, given what it may use of the canvas. Ids are
+   *  namespaced by the plugin (`todo.setStatus`); see plugin-commands.ts. */
+  commands?: (host: PluginHost) => PluginCommandHandlers;
 }

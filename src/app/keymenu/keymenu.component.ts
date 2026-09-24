@@ -12,7 +12,7 @@ import {
   SimpleChanges, ChangeDetectorRef} from '@angular/core';
 import Konva from 'konva';
 import {Subscription} from 'rxjs';
-import {DACommand, DACommandType, GridTier, ItemColor, LineStyle, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TaskStatus, TextCursorMode, TextOverflowMode, VimChangeMotion} from '../drawing-area/command.model';
+import {DACommand, DACommandType, GridTier, ItemColor, LineStyle, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TextCursorMode, TextOverflowMode, VimChangeMotion} from '../drawing-area/command.model';
 import {KeyMenu} from '../lib/keymenu/keyMenu';
 import {USQwertyMode, USQwertyModeConfig} from '../lib/keymenu/modes/us-qwerty';
 import {LabeledSubmenuConfig} from '../lib/keymenu/keys/labeledSubmenuConfig';
@@ -808,10 +808,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
 
 
   // The task-status menu lived here until 2026-08-29 (da-438). Task status
-  // is a todo-graph concept, so its menu belongs to the plugin that will own
-  // that identity — and plugins are not built yet. SET_TASK_STATUS and the
-  // drawing area's handling of it are untouched; only the menu route is
-  // withdrawn, the same way `w`'s styling entries were.
+  // is a todo-graph concept, so its menu belongs to the todo plugin, which
+  // since 2026-09-24 also owns the command (`todo.setStatus`).
 
 
   private buildLayoutSubmenuConfig(): SubmenuConfig {

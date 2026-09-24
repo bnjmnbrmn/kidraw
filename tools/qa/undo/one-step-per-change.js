@@ -46,7 +46,7 @@ const CASES = [
     name: 'task status',
     before: `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph'}); da.undoRedoService.clear();`,
     target: `da.drawingLayer.getDANodes()[0]`,
-    act: `da.handleCommand({kind: 'SET_TASK_STATUS', status: 'done'});`,
+    act: `da.handleCommand({kind: 'PLUGIN_COMMAND', call: {id: 'todo.setStatus', args: {status: 'done'}}});`,
     state: `da.drawingLayer.getDANodes()[0].tags.join(',')`,
   },
   {
