@@ -44,6 +44,7 @@ const TOOLS_FACING = [
   'refreshCrosshairHoverHighlight',
   'refreshLabelEditGhost',
   'refreshNavigationLandingGhost',
+  'unselectAllLabels',
   'viewCenterX',
   'viewCenterY',
   'viewMaxY',
