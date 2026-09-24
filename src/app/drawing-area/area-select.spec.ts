@@ -35,6 +35,7 @@ function setUp(nodes: ReturnType<typeof fakeNode>[], crosshairs = {x: 100, y: 10
     stepDistance: () => 50,
     marqueeColor: () => '#ffffff',
     checkAndEmitEditState: jasmine.createSpy('checkAndEmitEditState'),
+    beginMode: () => {},
   } as unknown as AreaSelectHost;
   const marquee = () => crosshairsLayer.findOne('.area-select-marquee');
   return {areaSelect: new AreaSelect(host), host, crosshairs, panned, marquee};

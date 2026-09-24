@@ -60,6 +60,7 @@ import {
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {GrowController, GrowHost} from './grow-controller';
+import {InteractionMode, InteractionModes} from './interaction-modes';
 import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
@@ -227,6 +228,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Grow mode, the held add key (grow-controller.ts). The template binds
    *  its popup. */
   protected readonly grow = new GrowController(this.growHost());
+  /** The interaction modes, at most one on (interaction-modes.ts). Move by
+   *  Node's is its held session, not the grid grow borrows while aiming. */
+  private readonly modes = this.interactionModes();
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -884,6 +888,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private areaSelectHost(): AreaSelectHost {
     const da = this;
     return {
+      beginMode: () => da.modes.begin(da.areaSelect.name),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get viewport() { return da.viewport; },
@@ -897,11 +902,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Every interaction mode, in one list so at most one is on. */
+  private interactionModes(): InteractionModes {
+    return new InteractionModes([this.grow, this.linkNav, this.areaSelect, this.moveByNodeSession()]);
+  }
+
+  /** Move by Node's held session as a mode. The grid it shows is also what
+   *  grow aims across, so while grow is on this session is not. */
+  private moveByNodeSession(): InteractionMode {
+    const da = this;
+    return {
+      name: 'move-by-node',
+      get active() { return da.navGrid.visible && !da.grow.active; },
+      cancel: () => da.navGrid.hideNodeGrid(),
+    };
+  }
+
   /** Grow mode reads the canvas and the crosshairs, and hands every change
    *  back through here. Getters, because the layers arrive in ngAfterViewInit. */
   private growHost(): GrowHost {
     const da = this;
     return {
+      beginMode: () => da.modes.begin(da.grow.name),
       get drawingLayer() { return da.drawingLayer; },
       get stage() { return da.stage; },
       get camera() { return da.camera; },
@@ -939,6 +961,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navigationGridHost(): NavigationGridHost {
     const da = this;
     return {
+      beginMode: () => da.modes.begin('move-by-node'),
       get crosshairsLayer() { return da.crosshairsLayer; },
       get drawingLayer() { return da.drawingLayer; },
       get stage() { return da.stage; },
@@ -958,6 +981,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private linkNavHost(): LinkNavHost {
     const da = this;
     return {
+      beginMode: () => da.modes.begin(da.linkNav.name),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get stage() { return da.stage; },
@@ -994,6 +1018,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private fileHost(): FileHost {
     const da = this;
     return {
+      cancelModes: () => da.modes.cancelAll(),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get viewport() { return da.viewport; },
@@ -2362,14 +2387,15 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // ── Grow mode (held add): grow-controller.ts owns it; keys reach it here ──
 
+  /** Raw keys, for a mode that has suspended the keymenu (today, grow). */
   @HostListener('document:keydown', ['$event'])
   handleGrowKeyDown(event: KeyboardEvent): void {
-    this.grow.keyDown(event);
+    this.modes.keyDown(event);
   }
 
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
-    this.grow.keyUp(event);
+    this.modes.keyUp(event);
   }
 
   /** A node grow mode just added: open its label, or settle it if it has
@@ -2579,6 +2605,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private restoreHistorySnapshot(snapshot: GraphSnapshot): void {
+    this.modes.cancelAll();
     this.clearLabelEditGhost();
     this.drawingLayer.restoreGraph(snapshot);
     this.drawingLayer.batchDraw();

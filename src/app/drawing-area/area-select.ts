@@ -10,6 +10,7 @@
  * The anchor is kept in drawing-layer coordinates and the marquee is drawn on
  * the crosshairs layer, so panning part-way through stays true.
  */
+import type { InteractionMode } from './interaction-modes';
 import Konva from 'konva';
 import { Axis } from './axis';
 import type { CrosshairsLayer } from './crosshairs.layer';
@@ -25,6 +26,8 @@ import type { Viewport } from './viewport';
 
 /** What area select needs from the drawing area. */
 export interface AreaSelectHost {
+  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
+  beginMode(): void;
   readonly drawingLayer: DrawingLayer;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly viewport: Viewport;
@@ -52,7 +55,8 @@ interface LayerRect {
  *  view pans instead. */
 const EDGE_MARGIN = 60;
 
-export class AreaSelect {
+export class AreaSelect implements InteractionMode {
+  readonly name = 'area-select';
   private anchor: Point | null = null;
   private readonly captured = new Set<Selectable>();
   private readonly marquee = new Overlay<Konva.Rect>(() => this.host.crosshairsLayer);
@@ -66,6 +70,7 @@ export class AreaSelect {
 
   /** Anchor a new box at the crosshairs. */
   begin(): void {
+    this.host.beginMode();
     this.anchor = this.host.crosshairsInLayerCoords();
     this.captured.clear();
     this.refreshMarquee();
@@ -86,6 +91,11 @@ export class AreaSelect {
     this.marquee.clear(false);
     this.host.crosshairsLayer?.batchDraw();
     this.host.checkAndEmitEditState();
+  }
+
+  /** Stop: what the box has already selected stays selected, as on release. */
+  cancel(): void {
+    this.finish();
   }
 
   /** Take the marquee down when the drawing area goes away. */

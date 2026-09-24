@@ -61,6 +61,8 @@ export interface FileHost {
   emitZoomLevel(): void;
   checkAndEmitEditState(): void;
   finishTweens(): void;
+  /** Stop whatever interaction mode is on: its nodes are about to go. */
+  cancelModes(): void;
   unselectAllLabels(): void;
   fitViewToContent(): void;
   recenterCrosshairs(): void;
@@ -133,6 +135,7 @@ export class FileController {
   private vaultReloadInFlight = false;
 
   loadSampleGraph(graphId: string): void {
+    this.host.cancelModes();
     this.detachVaultFile();
     this.host.finishTweens();
     this.host.unselectAllLabels();
@@ -673,6 +676,7 @@ export class FileController {
   /** Put a whole new graph on the canvas: nothing left in flight, no undo
    *  history from the last one, the theme's colours. */
   private replaceGraph(snapshot: GraphSnapshot): void {
+    this.host.cancelModes();
     this.host.finishTweens();
     this.host.unselectAllLabels();
     this.host.undoRedoService.clear();

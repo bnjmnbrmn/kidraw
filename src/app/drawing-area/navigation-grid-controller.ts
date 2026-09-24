@@ -30,6 +30,8 @@ export interface NavStopRef {
 
 /** What move-by-node needs from the drawing area that owns it. */
 export interface NavigationGridHost {
+  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
+  beginMode(): void;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly drawingLayer: DrawingLayer;
   readonly stage: Konva.Stage;
@@ -73,7 +75,7 @@ export class NavigationGridController {
   commands() {
     return {
       [DACommandType.SET_GRAPH_ITEM_NAVIGATION_STRATEGY]: c => this.setGraphItemNavigationStrategy(c.strategy),
-      [DACommandType.SHOW_NODE_GRID]: c => this.showNodeGrid(navTargetsOf(c)),
+      [DACommandType.SHOW_NODE_GRID]: c => this.beginSession(navTargetsOf(c)),
       [DACommandType.HIDE_NODE_GRID]: () => this.hideNodeGrid(),
       [DACommandType.SNAP_TO_NODE_LEFT]: c => this.snapToNodeInDirection('left', navTargetsOf(c)),
       [DACommandType.SNAP_TO_NODE_RIGHT]: c => this.snapToNodeInDirection('right', navTargetsOf(c)),
@@ -82,6 +84,13 @@ export class NavigationGridController {
       [DACommandType.ADJUST_GRAPH_ITEM_GOAL_SOUTH]: c => this.adjustQuadrantGoalAngle('south', navTargetsOf(c)),
       [DACommandType.ADJUST_GRAPH_ITEM_GOAL_NORTH]: c => this.adjustQuadrantGoalAngle('north', navTargetsOf(c)),
     } satisfies CommandSlice;
+  }
+
+  /** The held Move by Node session, as its key starts it. Grow shows the same
+   *  grid while aiming, directly, and is not a session of this mode. */
+  private beginSession(targets: NavTargetKind): void {
+    this.host.beginMode();
+    this.showNodeGrid(targets);
   }
 
   // ── Grid navigation (move-by-node): notes/design-grid-navigation.md ──

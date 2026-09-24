@@ -26,6 +26,7 @@ import type { DAEdge } from './da-edge';
 import type { DALabel } from './da-label';
 import type { DANode } from './da-node';
 import type { DAWaypoint } from './da-waypoint';
+import type { InteractionMode } from './interaction-modes';
 import type { KeyboardSurface } from './da-notification.model';
 import type { DrawingLayer } from './drawing.layer';
 import { buildGrowGhostTargets, GrowGhostNodeCenter, GrowGhostTarget } from './grow-ghost-targets';
@@ -49,6 +50,8 @@ export interface GrowKeys {
 
 /** What grow mode needs from the drawing area. */
 export interface GrowHost {
+  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
+  beginMode(): void;
   readonly drawingLayer: DrawingLayer;
   readonly stage: Konva.Stage;
   readonly camera: Camera;
@@ -98,7 +101,8 @@ export interface GrowPopup {
   listKeys: {up: string; down: string};
 }
 
-export class GrowController {
+export class GrowController implements InteractionMode {
+  readonly name = 'grow';
   active = false;
   anchor: DANode | null = null;
   /** Start point for an empty-canvas add, in drawing-layer coordinates. */
@@ -161,6 +165,7 @@ export class GrowController {
     const hasEdge = this.host.edgesUnderCrosshairs().length > 0;
     const hasWaypoint = !!this.host.waypointUnderCrosshairs();
     if (hasLabel || (nodes.length === 0 && (hasEdge || hasWaypoint))) return;
+    this.host.beginMode();
     this.host.finishTweens();
     this.active = true;
     this.anchor = topmost(nodes);
@@ -710,6 +715,12 @@ export class GrowController {
     this.host.navGrid.hideNodeGrid();
     this.host.emitPopupState(null);
     this.host.drawingLayer.batchDraw();
+  }
+
+  /** Stop without committing: the popup closes and the preview goes. */
+  cancel(): void {
+    this.closePopup();
+    this.exit();
   }
 
   // ── What Move by Node and the preview read ──

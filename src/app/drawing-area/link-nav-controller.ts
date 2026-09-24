@@ -1,3 +1,4 @@
+import type {InteractionMode} from './interaction-modes';
 import Konva from 'konva';
 import {DACommandType} from './command.model';
 import type {CommandSlice} from './command-handlers';
@@ -24,6 +25,8 @@ import {
 } from './graph-nav';
 
 export interface LinkNavHost {
+  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
+  beginMode(): void;
   readonly drawingLayer: DrawingLayer;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly stage: Konva.Stage;
@@ -56,7 +59,8 @@ export interface LinkNavHost {
  * Where it has been lives in `NavJourney`, not here: the nav popup is the
  * other surface onto the same walk.
  */
-export class LinkNavController {
+export class LinkNavController implements InteractionMode {
+  readonly name = 'move-by-link';
   /** The node the held session is scanning from; null when not held. */
   private source: DANode | null = null;
   /** Whether the visible highlight is the active scan position. When it is,
@@ -89,6 +93,7 @@ export class LinkNavController {
 
   /** Begin a held session at the node under the crosshairs. */
   enter(): void {
+    this.host.beginMode();
     this.host.finishTweens();
     const underCrosshairs = topmost(this.host.probe.nodes());
     const source = underCrosshairs ?? this.nearestNodeToCrosshairs();
@@ -153,6 +158,11 @@ export class LinkNavController {
     this.directionalFocus = false;
     this.host.focusEdge(null);
     this.clear();
+  }
+
+  /** Stop, as releasing the held key does. */
+  cancel(): void {
+    this.release();
   }
 
   /** Redraw the quadrant overlay for the open session — after a theme change,

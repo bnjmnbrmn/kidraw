@@ -1,10 +1,29 @@
 ---
 title: A list of interaction modes on the drawing area
 type: idea
-status: open — Ben's question, an agent's proposal; not built
+status: built 2026-09-24 (Ben: "go ahead and build this")
 ---
 
 # A list of interaction modes on the drawing area
+
+> **Built (Ben, 2026-09-24: "go ahead and build this").** `interaction-modes.ts`
+> holds the list: grow, Move by Link, area select, and Move by Node's held
+> session. A mode starting cancels the one that is on; a load, a sample and
+> an undo or redo cancel whatever is on; raw keys go to the active mode.
+> Checked by `tools/qa/selection/interaction-modes.js` (it errors on the old
+> code) and `interaction-modes.spec.ts`.
+>
+> The two open questions below were settled by the agent building it
+> (inferred, 2026-09-24), and are Ben's to overturn:
+> - **Held-chord modes keep their keymenu commands.** The list tracks and
+>   cancels them but does not route their commands. Moving them to raw keys
+>   would duplicate what the keymenu does for them (display, profiles).
+> - **Text editing is not a mode here.** It has its own vim sub-modes and
+>   a much larger surface.
+> - Also: the interface has no `surface` field yet. Grow changes its surface
+>   several times within one hold, so a single field did not fit; it still
+>   reports surfaces through `popup-state`. The resize handle stays out: it is
+>   a hover affordance that captures a drag, not a mode of its own.
 
 ## The question (Ben, 2026-09-24)
 

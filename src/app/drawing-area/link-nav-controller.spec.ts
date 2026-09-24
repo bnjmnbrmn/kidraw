@@ -36,6 +36,7 @@ function fixture(options: {
     crosshairMovementDuration: 0.1,
     emitStatus,
     finishTweens: () => {},
+    beginMode: () => {},
     focusEdge: (edge: DAEdge | null) => journey.focusEdge(edge),
   } as unknown as LinkNavHost;
 
