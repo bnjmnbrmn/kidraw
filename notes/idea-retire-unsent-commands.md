@@ -1,10 +1,22 @@
 ---
 title: 31 commands no key sends
 type: idea
-status: open — Ben's call, command by command
+status: done 2026-09-24 — all 31 retired (Ben's call)
 ---
 
 # 31 commands no key sends
+
+> **Done (Ben, 2026-09-24): retire them all**, with a note that **Gather**
+> should come back soon: the first version "didn't quite get it right"
+> (see [`idea-gather-recursive.md`](idea-gather-recursive.md)). Retired in six
+> commits on `refactor/readability` (`cf87eb94` Gather, `23f47883` steering,
+> `322156ce` style, `9bab9a7f` file/menu/structure, `fd28d016` TRAVERSE_SMART).
+> `drawing-area.component.ts` went from 3,965 to 3,374 lines. Features that
+> left with no other way in: opening a file from disk (zip import too),
+> downloading one, exporting a zip, cycling displays, routing one selected
+> edge. Save As and the others are candidates for the centred menus
+> ([`idea-center-menus.md`](idea-center-menus.md)); `lib/file-format/zip-bundle`
+> was kept for that.
 
 Of the 125 `DACommandType` kinds, 31 are sent by nothing in the app — not the
 keymenu, the header, the shell, the ex line or the agent. Their handlers are
