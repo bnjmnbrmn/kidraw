@@ -121,6 +121,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 - [The grow lattice's off-cell tolerance cannot reject anything](bug-lattice-tolerance-cannot-fire.md) — rounding bounds the residual at 0.5, so the 0.6 guard never fires and any node is assigned its nearest cell.
 - [A refused command still leaves an undo step](bug-refused-command-leaves-undo-step.md) — fixed 2026-09-23: undo skips steps that would change nothing (checked at undo time, since drags finish after the command returns).
 - [SINGLE_ITEM_TOGGLE_SELECT picks the bottom node, and nothing sends it](bug-single-select-picks-the-bottom-node.md) — resolved 2026-09-23: command retired (Ben); the edit keys, which shared its method, now select the highlighted item.
+- [Delete over a highlighted label removes the whole edge](bug-delete-over-a-label-removes-its-edge.md) — open, Ben's call: Delete's fallback order (edges before labels) disagrees with the hover trace's (labels first).
 
 ## Research
 
