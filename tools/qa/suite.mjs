@@ -84,6 +84,7 @@ export const SUITE = [
   { script: 'selection/selection-visibility.js', region: 'selection', status: 'suite' },
   { script: 'selection/panzoom-crosshairs.js', region: 'selection', status: 'suite' },
   { script: 'selection/viewport-persist.js', region: 'selection', status: 'suite' },
+  { script: 'selection/overlap-targets.js', region: 'selection', status: 'suite' },
 
   // ── Graph types ──
   { script: 'graph-types/task-status.js', region: 'graph-types', status: 'suite' },

@@ -29,6 +29,7 @@ const TOOLS_FACING = [
   'checkResizeHandleProximity',
   'clearCrosshairHoverHighlight',
   'clearNormalMovementGoal',
+  'crosshairHoverTarget',
   'crosshairsInLayerCoords',
   'dragSelected',
   'finishTweens',

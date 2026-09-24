@@ -824,8 +824,20 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private topItemUnderCrosshairs(): DALabel | DAWaypoint | DANode | DAEdge | null {
     return this.getLabelUnderCrosshairs()
       ?? this.getWaypointUnderCrosshairs()
-      ?? topmost(this.getDANodesContainingCrosshairs())
-      ?? topmost(this.getDAEdgesContainingCrosshairs());
+      ?? this.nodeUnderCrosshairs()
+      ?? this.edgeUnderCrosshairs();
+  }
+
+  /** The node the crosshairs are on: where nodes overlap, the one drawn on
+   *  top — the one the hover trace is around, and so the one every command
+   *  that acts on "the node under the crosshairs" means. */
+  private nodeUnderCrosshairs(): DANode | null {
+    return topmost(this.getDANodesContainingCrosshairs());
+  }
+
+  /** The edge the crosshairs are on, the same way. */
+  private edgeUnderCrosshairs(): DAEdge | null {
+    return topmost(this.getDAEdgesContainingCrosshairs());
   }
 
   private hasItemUnderCrosshairs(): boolean {
@@ -1466,7 +1478,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.drawingLayer.getSelectedDAEdges().length > 0) return [];
     if (this.getSelectedLabels().length > 0) return [];
     if (this.getWaypointUnderCrosshairs()) return [];
-    const hovered = this.getDANodesContainingCrosshairs()[0];
+    const hovered = this.nodeUnderCrosshairs();
     return hovered ? [hovered] : [];
   }
 
@@ -1970,7 +1982,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return {kind: 'waypoint', id: waypoint.id, trace: this.waypointHoverTrace(waypoint, style)};
     }
 
-    const node = topmost(this.getDANodesContainingCrosshairs());
+    const node = this.nodeUnderCrosshairs();
     if (node) {
       // A node that earns a landing ghost gets its dashed trace on the ghost
       // instead. Ringing the real node as well put two dashed outlines of the
@@ -1985,7 +1997,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       };
     }
 
-    const edge = topmost(this.getDAEdgesContainingCrosshairs());
+    const edge = this.edgeUnderCrosshairs();
     if (edge) {
       return {kind: 'edge', id: edge.id, trace: this.edgeHoverTrace(edge, style)};
     }
@@ -2885,7 +2897,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {
       nodeIds: this.drawingLayer.getSelectedDANodes().map(n => n.id),
       edgeIds: this.drawingLayer.getSelectedDAEdges().map(e => e.id),
-      underCrosshairsId: this.getDANodesContainingCrosshairs()[0]?.id ?? null,
+      underCrosshairsId: this.nodeUnderCrosshairs()?.id ?? null,
     };
   }
 
@@ -3245,7 +3257,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selectedLabels = this.getSelectedLabels();
 
     if (selectedNodes.length === 0 && selectedLabels.length === 0) {
-      const nodeUnderCrosshairs = this.getDANodesContainingCrosshairs()[0];
+      const nodeUnderCrosshairs = this.nodeUnderCrosshairs();
       if (nodeUnderCrosshairs) {
         changed = nodeUnderCrosshairs.adjustLabelFontSizeBy(delta) || changed;
       }
@@ -4828,14 +4840,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    const nodeUnderCrosshairs = this.getDANodesContainingCrosshairs()[0];
+    const nodeUnderCrosshairs = this.nodeUnderCrosshairs();
     if (nodeUnderCrosshairs) {
       this.drawingLayer.removeNode(nodeUnderCrosshairs);
       this.drawingLayer.batchDraw();
       return;
     }
 
-    const edgeUnderCrosshairs = this.getDAEdgesContainingCrosshairs()[0];
+    const edgeUnderCrosshairs = this.edgeUnderCrosshairs();
     if (edgeUnderCrosshairs) {
       this.drawingLayer.removeEdge(edgeUnderCrosshairs);
       this.drawingLayer.batchDraw();
