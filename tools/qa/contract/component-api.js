@@ -61,6 +61,7 @@ const TOOLS_FACING = [
 const TOOLS_FACING_FIELDS = [
   'growGhost',
   'hoverTrace',
+  'layout',
   'goalLine',
   'labelEditGhost',
   'navigationLandingGhost',
@@ -90,6 +91,7 @@ const RETIRED_FIELDS = {
   graphNavLastNode: 'use journey.lastNodeAmong(nodes)',
   navDirection: 'use journey.direction',
   navHistory: 'the jumplist is private to NavJourney',
+  routingWorker: 'use layout.running (LayoutController)',
 };
 
 /** Receivers the scripts use for the component, for the reverse check. */

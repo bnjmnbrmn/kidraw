@@ -53,7 +53,7 @@ the same code with different tables.
 
 ## Inside the drawing area
 
-`drawing-area.component.ts` is still ~4,700 lines and is the part of the
+`drawing-area.component.ts` is still ~4,400 lines and is the part of the
 codebase most worth knowing your way around. It is the orchestrator: Angular
 lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
 movement.
@@ -72,7 +72,8 @@ you would expect.
 **Edge routing**, the largest body of pure algorithm here:
 `bezier-fit-weighted-chain-edges.ts`, `desiderata-route-edges.ts`,
 `routing-local-score.ts`, `incremental-desiderata-v3-route-edges.ts`. These are
-pure functions over geometry; the component only orchestrates them.
+pure functions over geometry; `layout-controller.ts` orchestrates them, in a
+Web Worker (`routing.worker.ts`) for whole-graph passes.
 
 **Layout** — `graph-layout.ts` (1,116) and `layered-layout.ts`.
 
@@ -89,8 +90,8 @@ collaborator only what it needs, through getters, and keeps its own members
 private. A collaborator that handles commands brings its own slice of the
 command table (`commands()`, see `command-handlers.ts`) — search, files,
 Move by Link, move by node, text editing, gather, the clipboard
-(`clipboard-controller.ts`) and the style commands (`style-controller.ts`)
-do — so the component
+(`clipboard-controller.ts`), the style commands (`style-controller.ts`) and
+layout and routing (`layout-controller.ts`) do — so the component
 does not keep one-line delegates for it. That is also the shape plugins will
 have ([`notes/design-plugins.md`](notes/design-plugins.md)).
 

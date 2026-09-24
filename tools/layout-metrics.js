@@ -168,7 +168,7 @@ async function main() {
     }, [body, arg ?? null]);
     const waitIdle = () => page.waitForFunction(() => {
       const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
-      return c.routingWorker === null || c.routingWorker === undefined;
+      return !c.layout.running;
     }, { timeout: 30000 });
 
     const baseline = await da('return da.drawingLayer.serializeGraph();');

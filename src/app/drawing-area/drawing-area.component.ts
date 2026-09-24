@@ -28,7 +28,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, GridTier, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TextCursorMode } from './command.model';
+import { DACommand, DACommandType, GridTier, NavTargetKind, NodeShape, TextCursorMode } from './command.model';
 import {
   affectsContextState,
   endsNormalMovementGoal,
@@ -112,26 +112,6 @@ import Konva from 'konva';
 import type { TweenConfig } from 'konva/lib/Tween';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
-import { applyLayout, isClearLayout, layoutSpacingFor } from './graph-layout';
-import {
-  applyDesiderataRouteEdges,
-  DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
-} from './desiderata-route-edges';
-import {
-  applyBezierFitWeightedChainEdges,
-  DEFAULT_OPTIONS as BFWC_FIT_DEFAULTS,
-  DEFAULT_WC_OPTIONS as BFWC_WC_DEFAULTS,
-} from './bezier-fit-weighted-chain-edges';
-import {
-  applyIncrementalDesiderataRouteEdges,
-  DEFAULT_OPTIONS as INCREMENTAL_DEFAULTS,
-} from './incremental-desiderata-route-edges';
-import {
-  routeNewEdgeIncrementally,
-  applyIncrementalDesiderataV3RouteEdges,
-  DEFAULT_OPTIONS as INCREMENTAL_V3_DEFAULTS,
-} from './incremental-desiderata-v3-route-edges';
-import type { RoutingRequest, RoutingResponse } from './routing-worker-messages';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { FileIoService } from '../services/file-io.service';
@@ -149,6 +129,7 @@ import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { StyleController, StyleHost } from './style-controller';
+import { LayoutController, LayoutHost } from './layout-controller';
 
 /** A node as plugins see it: plain data, not the Konva object. */
 function pluginNodeOf(node: DANode): PluginNode {
@@ -221,6 +202,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Sizes, shapes, edge styles, colour, and the defaults new nodes and
    *  edges take (style-controller.ts). */
   private readonly style = new StyleController(this.styleHost());
+  /** Layouts and edge routing, and the routing run in flight
+   *  (layout-controller.ts). */
+  private readonly layout = new LayoutController(this.layoutHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -403,22 +387,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   ngOnChanges(changes: SimpleChanges): void {
   }
 
-  /** Tracks whether the user has applied a routing this session. Kept as a
-   *  null-vs-string marker; parameter-driven re-routing is no longer wired
-   *  here (the tuning panel was removed). */
-  private lastAppliedRouting: RoutingAlgorithm | null = null;
-
   /** True while a key that owns the view is held (Pan/Zoom). The idle fade
    *  is suspended for the duration — you cannot aim a pan at something you
    *  cannot see (da-257). */
   private crosshairsHeldVisible = false;
-  /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
-   *  can't freeze the UI. These track the in-flight run so we can drive the
-   *  countdown, enforce the timeout, and cancel a superseding run. */
-  private routingWorker: Worker | null = null;
-  private routingCountdown: ReturnType<typeof setInterval> | null = null;
-  private routingDeadline: ReturnType<typeof setTimeout> | null = null;
-  private static readonly ROUTING_TIMEOUT_MS = 15000;
 
   ngOnInit(): void {
   }
@@ -426,7 +398,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private _beforeUnloadHandler?: () => void;
 
   ngOnDestroy(): void {
-    this.stopRouting();
+    this.layout.stop();
     this.navGrid.cancelQuadrantGoalRayFade();
     this.themeSub?.unsubscribe();
     this.visualSub?.unsubscribe();
@@ -535,7 +507,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private handleCommand(command: DACommand) {
     this.log.log("handleCommand - " + JSON.stringify(command));
 
-    if (this.isRoutingInProgress() && isBlockedWhileRouting(command.kind)) {
+    if (this.layout.running && isBlockedWhileRouting(command.kind)) {
       this.daOut.emit({ kind: 'status-message', message: 'Layout is running; graph edits are locked.' });
       return;
     }
@@ -568,7 +540,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
-      this.style.commands(), this.layoutCommands(), this.gather.commands(), this.fileController.commands(),
+      this.style.commands(), this.layout.commands(), this.gather.commands(), this.fileController.commands(),
       this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -673,14 +645,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
       [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
       [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
-    } satisfies CommandSlice;
-  }
-
-  /** Rearranging the graph: layouts and edge routing. (Gather brings its own commands.) */
-  private layoutCommands() {
-    return {
-      [DACommandType.APPLY_LAYOUT]: c => this.applyGraphLayout(c.layout),
-      [DACommandType.APPLY_EDGE_ROUTING]: c => this.applyEdgeRouting(c.algorithm),
     } satisfies CommandSlice;
   }
 
@@ -914,6 +878,22 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Lends layout and routing what they need, through a getter so the layer
+   *  can still be assigned later in ngAfterViewInit. */
+  private layoutHost(): LayoutHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      finishTweens: () => da.finishTweens(),
+      pushUndoSnapshot: () => da.undoRedoService.pushSnapshot(da.drawingLayer.serializeGraph()),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      refreshWaypointVisibility: draw => da.refreshWaypointVisibility(draw),
+      computeMetrics: (nodes, edges) => da.metrics.compute(nodes, edges),
+      status: message => da.daOut.emit({kind: 'status-message', message}),
+      log: message => da.log.log(message),
+    };
+  }
+
   /** Lends the keyboard drag what it needs, through getters so the layers
    *  can still be assigned later in ngAfterViewInit. */
   private keyboardDragHost(): KeyboardDragHost {
@@ -933,7 +913,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       placeCrosshairs: at => da.placeCrosshairs(at),
       panLayerAlong: (axis, delta) => da.panLayerAlong(axis, delta),
       updateEdgePoints: edge => da.updateEdgePoints(edge),
-      rerouteIncidentEdges: nodes => da.rerouteIncidentEdges(nodes),
+      rerouteIncidentEdges: nodes => da.layout.rerouteIncidentEdges(nodes),
     };
   }
 
@@ -1149,262 +1129,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const targets = topmostSelection(hovered);
     targets.forEach(n => { n.pinned = !n.pinned; });
     this.drawingLayer.batchDraw();
-  }
-
-  private applyGraphLayout(layout: LayoutType) {
-    this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const allNodes = this.drawingLayer.getDANodes();
-    const allEdges = this.drawingLayer.getDAEdges();
-
-    const selectedNodes = allNodes.filter(n => n.isSelected);
-    const nodes = selectedNodes.length > 0 ? selectedNodes : allNodes;
-    const nodeSet = new Set(nodes);
-    const edges = allEdges.filter(e => nodeSet.has(e.srcNode) && nodeSet.has(e.destNode));
-
-    const crossLinks = applyLayout(layout, nodes, edges, layoutSpacingFor(nodes, layout));
-    this.updateEdgesForResizedNodes(allNodes);
-
-    // The layout moved nodes wholesale, so pre-existing unpinned waypoints on
-    // affected edges now describe meaningless detours — drop them (pinned
-    // waypoints survive setControlPoints) and re-route to fit the new
-    // positions. The "-clear" variants keep tree/skeleton edges straight;
-    // for the tree-clears the layout hands back the NON-TREE cross-links,
-    // whose straight chords legitimately pierce nodes the tree geometry
-    // can't move — those still get routed, against everything else frozen.
-    const touchedEdges = allEdges.filter(
-      e => nodeSet.has(e.srcNode) || nodeSet.has(e.destNode));
-    for (const e of touchedEdges) e.setControlPoints([]);
-    this.drawingLayer.batchDraw();
-    if (isClearLayout(layout)) {
-      if (crossLinks.length > 0) {
-        this.daOut.emit({kind: 'status-message',
-          message: `Layout applied — tree edges straight, routing ${crossLinks.length} cross-link${crossLinks.length === 1 ? '' : 's'}.`});
-        this.applyEdgeRouting(
-          this.lastAppliedRouting ?? 'incremental-desiderata-v3', crossLinks);
-      } else {
-        this.daOut.emit({kind: 'status-message', message: 'Layout applied — edges left straight (clear variant).'});
-      }
-      return;
-    }
-    this.applyEdgeRouting(
-      this.lastAppliedRouting ?? 'incremental-desiderata-v3', touchedEdges);
-  }
-
-  private applyEdgeRouting(algorithm: RoutingAlgorithm, explicitEdges?: DAEdge[]) {
-    this.finishTweens();
-    const allNodes = this.drawingLayer.getDANodes();
-    const allEdges = this.drawingLayer.getDAEdges();
-
-    const routeEdges = explicitEdges && explicitEdges.length > 0
-      ? explicitEdges
-      : this.routingScopeFromSelection(allEdges);
-    const routeSet = new Set(routeEdges);
-    // When routing only a subset, the other edges stay put but still act as
-    // obstacles so the routed edges weave around them rather than overlap.
-    const frozenEdges = routeSet.size < allEdges.length
-      ? allEdges.filter(e => !routeSet.has(e))
-      : [];
-
-    this.routeInWorker(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
-  }
-
-  /** What the routing commands act on. Selected edges win; otherwise selected
-   *  nodes scope routing to their outgoing edges and, recursively, every edge
-   *  reachable from them along outgoing edges (the whole subtree's wiring);
-   *  with no selection the whole graph is routed. */
-  private routingScopeFromSelection(allEdges: DAEdge[]): DAEdge[] {
-    const selectedEdges = allEdges.filter(e => e.isSelected);
-    if (selectedEdges.length > 0) return selectedEdges;
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedNodes.length === 0) return allEdges;
-    const inScope = new Set<DANode>(selectedNodes);
-    let grew = true;
-    while (grew) {
-      grew = false;
-      for (const e of allEdges) {
-        if (inScope.has(e.srcNode) && !inScope.has(e.destNode)) {
-          inScope.add(e.destNode);
-          grew = true;
-        }
-      }
-    }
-    return allEdges.filter(e => inScope.has(e.srcNode));
-  }
-
-  /** Run the chosen edge-routing algorithm in the Web Worker with a live
-   *  countdown and a hard timeout, so a non-converging graph can't freeze the
-   *  UI. Falls back to synchronous routing where Worker is unavailable. */
-  private routeInWorker(
-    algorithm: RoutingAlgorithm,
-    allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
-  ): void {
-    this.stopRouting(); // supersede any in-flight run
-
-    if (typeof Worker === 'undefined') {
-      this.applyRoutingSync(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
-      return;
-    }
-
-    const request: RoutingRequest = {
-      algorithm,
-      nodes: allNodes.map(n => ({
-        id: n.id, x: n.konvaGroup.x(), y: n.konvaGroup.y(),
-        width: n.NODE_WIDTH, height: n.NODE_HEIGHT, shape: n.nodeShape,
-      })),
-      routeEdges: routeEdges.map(e => ({ id: e.id, srcId: e.srcNode.id, destId: e.destNode.id })),
-      frozenEdges: frozenEdges.map(e => ({
-        id: e.id, srcId: e.srcNode.id, destId: e.destNode.id,
-        controlPoints: e.controlPoints.map(p => ({ x: p.x, y: p.y })),
-      })),
-    };
-
-    let worker: Worker;
-    try {
-      worker = new Worker(new URL('./routing.worker', import.meta.url));
-    } catch {
-      this.applyRoutingSync(algorithm, allNodes, allEdges, routeEdges, frozenEdges);
-      return;
-    }
-    this.routingWorker = worker;
-
-    worker.onmessage = ({ data }: MessageEvent<RoutingResponse>) => {
-      this.stopRouting();
-      this.applyRoutedControlPoints(data, allNodes, allEdges);
-      this.lastAppliedRouting = algorithm;
-      const unclean = data.uncleanEdgeIds?.length ?? 0;
-      const message = unclean > 0
-        ? `⚠ ${unclean} edge${unclean === 1 ? '' : 's'} could not be routed cleanly.`
-        : '';
-      this.daOut.emit({ kind: 'status-message', message });
-    };
-    worker.onerror = () => {
-      this.stopRouting();
-      this.daOut.emit({ kind: 'status-message', message: '⚠ Layout failed (routing error).' });
-    };
-
-    const deadline = Date.now() + DrawingAreaComponent.ROUTING_TIMEOUT_MS;
-    const tick = () => {
-      const remaining = Math.max(0, deadline - Date.now()) / 1000;
-      this.daOut.emit({ kind: 'status-message', message: `Calculating layout… ${remaining.toFixed(1)}s` });
-    };
-    tick();
-    this.routingCountdown = setInterval(tick, 100);
-    this.routingDeadline = setTimeout(() => {
-      this.stopRouting();
-      const secs = DrawingAreaComponent.ROUTING_TIMEOUT_MS / 1000;
-      this.daOut.emit({ kind: 'status-message', message: `⚠ Layout gave up after ${secs}s — graph too complex to converge.` });
-    }, DrawingAreaComponent.ROUTING_TIMEOUT_MS);
-
-    worker.postMessage(request);
-  }
-
-  /** Apply the control points the worker computed onto the live edges. Edges
-   *  removed while routing ran are simply skipped. */
-  private applyRoutedControlPoints(result: RoutingResponse, allNodes: DANode[], allEdges: DAEdge[]): void {
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const byId = new Map(allEdges.map(e => [e.id, e]));
-    for (const routed of result.edges) {
-      const edge = byId.get(routed.id);
-      if (!edge) continue;
-      edge.setControlPoints(routed.controlPoints);
-      edge.setSmoothRendering(true);
-      edge.promoteToWaypoints();
-    }
-    this.refreshWaypointVisibility(false);
-    this.drawingLayer.batchDraw();
-    this.lastAppliedRouting = 'desiderata';
-    this.metrics.compute(allNodes, allEdges);
-  }
-
-  /** Synchronous routing fallback for environments without Web Workers. */
-  private applyRoutingSync(
-    algorithm: RoutingAlgorithm,
-    allNodes: DANode[], allEdges: DAEdge[], routeEdges: DAEdge[], frozenEdges: DAEdge[],
-  ): void {
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    const log = (msg: string) => this.log.log(msg);
-    let unclean = 0;
-    switch (algorithm) {
-      case 'bezier-fit-weighted-chain':
-        applyBezierFitWeightedChainEdges(allNodes, routeEdges, BFWC_FIT_DEFAULTS, BFWC_WC_DEFAULTS, log, frozenEdges);
-        break;
-      case 'incremental-desiderata-v2': {
-        const stats = applyIncrementalDesiderataRouteEdges(allNodes, routeEdges, INCREMENTAL_DEFAULTS, log, frozenEdges);
-        unclean = stats.uncleanEdges.length;
-        break;
-      }
-      case 'incremental-desiderata-v3': {
-        const stats = applyIncrementalDesiderataV3RouteEdges(allNodes, routeEdges, INCREMENTAL_V3_DEFAULTS, log, frozenEdges);
-        unclean = stats.uncleanEdges.length;
-        break;
-      }
-      case 'desiderata':
-      default:
-        applyDesiderataRouteEdges(allNodes, routeEdges, DESIDERATA_DEFAULTS, log, frozenEdges);
-        break;
-    }
-    routeEdges.forEach(e => { e.setSmoothRendering(true); e.promoteToWaypoints(); });
-    this.drawingLayer.batchDraw();
-    this.lastAppliedRouting = algorithm;
-    if (unclean > 0) {
-      this.daOut.emit({ kind: 'status-message', message: `⚠ ${unclean} edge${unclean === 1 ? '' : 's'} could not be routed cleanly.` });
-    }
-    this.metrics.compute(allNodes, allEdges);
-  }
-
-  /** Route a just-added edge with incremental-desiderata-v3, holding every
-   *  other edge fixed. Synchronous — a single edge routes in milliseconds under
-   *  the per-edge budgets. The undo snapshot for the add-edge command is pushed
-   *  before the command mutates, so the routed shape is part of the same undo
-   *  step as the edge itself. */
-  private autoRouteNewEdge(edge: DAEdge): void {
-    const clean = routeNewEdgeIncrementally(
-      this.drawingLayer.getDANodes(),
-      this.drawingLayer.getDAEdges(),
-      edge,
-      undefined,
-      (msg: string) => this.log.log(msg),
-    );
-    edge.promoteToWaypoints();
-    this.refreshWaypointVisibility(false);
-    this.drawingLayer.batchDraw();
-    if (!clean) {
-      this.daOut.emit({ kind: 'status-message', message: '⚠ New edge could not be routed cleanly.' });
-    }
-  }
-
-  /** Re-route every edge incident to the given nodes with the same single-edge
-   *  incremental pipeline used when adding an edge, holding the rest of the
-   *  graph fixed. Runs at drag-step granularity (once per grid step, not per
-   *  animation frame). Edges are re-routed one at a time, each seeing the
-   *  previous ones' fresh routes; pinned user waypoints survive via
-   *  setControlPoints' merge. Silent about unclean routes — a status message
-   *  every repeat tick would spam; the route keeps improving as the node moves. */
-  private rerouteIncidentEdges(nodes: DANode[]): void {
-    const incident = new Set<DAEdge>();
-    nodes.forEach(n => n.connectedEdges.forEach(e => incident.add(e)));
-    if (incident.size === 0) return;
-    const allNodes = this.drawingLayer.getDANodes();
-    const allEdges = this.drawingLayer.getDAEdges();
-    for (const edge of incident) {
-      routeNewEdgeIncrementally(allNodes, allEdges, edge, undefined, (msg: string) => this.log.log(msg));
-      edge.promoteToWaypoints();
-    }
-    this.refreshWaypointVisibility(false);
-    this.drawingLayer.batchDraw();
-  }
-
-  /** Tear down the in-flight routing run: stop the countdown + timeout and kill
-   *  the worker. Safe to call when nothing is running. */
-  private stopRouting(): void {
-    if (this.routingCountdown !== null) { clearInterval(this.routingCountdown); this.routingCountdown = null; }
-    if (this.routingDeadline !== null) { clearTimeout(this.routingDeadline); this.routingDeadline = null; }
-    if (this.routingWorker) { this.routingWorker.terminate(); this.routingWorker = null; }
-  }
-
-  private isRoutingInProgress(): boolean {
-    return this.routingWorker !== null;
   }
 
   private exitLabelEditMode() {
@@ -2700,7 +2424,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.operationsRuntime ??= {
       applier: new GraphOperationApplier(this.drawingLayer, {
         nodesChanged: nodes => this.updateEdgesForResizedNodes(nodes),
-        edgeAdded: edge => this.autoRouteNewEdge(edge),
+        edgeAdded: edge => this.layout.autoRouteNewEdge(edge),
       }),
       invert: invertOperations,
     };
@@ -4270,7 +3994,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edge = this.drawingLayer.addEdge(src, dest);
     edge.directedness = this.style.defaults.edgeDirectedness;
     edge.lineStyle = this.style.defaults.lineStyle;
-    this.autoRouteNewEdge(edge);
+    this.layout.autoRouteNewEdge(edge);
     return edge;
   }
 
@@ -4304,7 +4028,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     edge.directedness = dirState === 2 ? 'undirected'
       : dirState === 3 ? 'bidirectional' : 'directed';
     edge.lineStyle = this.style.defaults.lineStyle;
-    this.autoRouteNewEdge(edge);
+    this.layout.autoRouteNewEdge(edge);
     return edge;
   }
 
@@ -4620,7 +4344,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     if (this.hasDragged) {
       // A cancelled mid-tween step leaves nodes at their final (part-way)
       // position without the step-completion reroute having fired.
-      this.rerouteIncidentEdges(this.drawingLayer.getSelectedDANodes());
+      this.layout.rerouteIncidentEdges(this.drawingLayer.getSelectedDANodes());
       this.unselectAll();
       this.checkAndEmitEditState();
     } else if (this.wasAlreadySelectedBeforeDrag) {

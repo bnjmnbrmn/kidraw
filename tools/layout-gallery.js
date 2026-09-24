@@ -57,7 +57,7 @@ function draftFromVaultYaml(file) {
 async function waitRoutingIdle(page) {
   await page.waitForFunction(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.routingWorker === null || da.routingWorker === undefined;
+    return !da.layout.running;
   }, { timeout: 30000 });
 }
 
