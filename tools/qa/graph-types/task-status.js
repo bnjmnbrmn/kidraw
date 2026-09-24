@@ -12,6 +12,8 @@
  *      hovered (unselected) node DRAFT.
  *   4. Undo restores the previous status, badge included.
  *   5. y→c clears the status entirely.
+ *   5b. On a todo graph, root `t` opens the todo plugin's own menu, keys
+ *       chosen by the key rule, and statuses set through it with real keys.
  *   6. Statuses survive a page reload via the localStorage draft.
  */
 const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
@@ -161,6 +163,43 @@ async function main() {
   n = s.nodes[0];
   check('y→r marks a hovered unselected node DRAFT', n.tags.join() === 'status/draft'
     && n.badgeLabel === 'DRAFT' && !n.selected, JSON.stringify(n));
+
+  // --- 5b. The todo plugin's own menu on root `t` (notes/design-plugins.md).
+  // Keys come from the key rule — no clash, ergonomic, memorable: the right
+  // hand's home row in order, with In Progress on its suggested `i` and
+  // No Status on `n`. Then two statuses set with real keys. ---
+  const typeMenu = await page.evaluate(() => {
+    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+    const t = km.buildRootSubmenuConfig()['t'];
+    const entries = t ? Object.entries(t.submenuConfig).filter(([k]) => k !== '_repeatConfig')
+      .map(([k, v]) => `${k} ${v.actionLabel}`) : [];
+    return {label: t?.submenuLabel ?? null, entries};
+  });
+  check('root t is the Todo Graph menu on a todo graph', typeMenu.label === 'Todo Graph',
+    JSON.stringify(typeMenu.label));
+  check('its keys follow the key rule',
+    JSON.stringify(typeMenu.entries.sort()) === JSON.stringify(
+      ['h Draft', 'i In Progress', 'j To Do', 'k Blocked', 'l Done', 'n No Status']),
+    JSON.stringify(typeMenu.entries));
+  const tChord = async key => {
+    await page.evaluate(() => {
+      const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
+      da.drawingLayer.getDANodes()[0].isSelected = true;
+      da.drawingLayer.batchDraw();
+    });
+    await page.keyboard.down('t');
+    await page.waitForTimeout(250);
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+    await page.keyboard.up('t');
+    await page.waitForTimeout(250);
+    return (await info()).nodes[0];
+  };
+  n = await tChord('k');
+  check('t→k marks BLOCKED with real keys', n.tags.join() === 'status/blocked' && n.badgeLabel === 'BLOCKED',
+    JSON.stringify(n.tags));
+  n = await tChord('i');
+  check('t→i marks IN PROGRESS', n.tags.join() === 'status/in-progress', JSON.stringify(n.tags));
 
   // --- 6. Reload persistence via the localStorage draft ---
   await holdStatusChord('w');

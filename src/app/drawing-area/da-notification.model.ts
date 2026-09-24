@@ -27,8 +27,8 @@ export type DANotification =
   | {kind: "node-inserted", labelable: boolean}
   | {kind: "exit-label-editing-mode"}
   | {kind: "context-state-update", selectionSummary: string, totalNodes: number, totalEdges: number, defaultNodeShape: NodeShape, defaultEdgeDirectedness: EdgeDirectedness, defaultLineStyle: LineStyle, canUndo: boolean, canRedo: boolean,
-     /** The bound diagram type (plugin) by name, or '' for the default type. */
-     diagramTypeName: string}
+     /** The bound diagram type (plugin): its id, and its name or '' for the default type. */
+     diagramTypeId: string, diagramTypeName: string}
   | {kind: "status-message", message: string}
   | {kind: "file-state-update", fileState: DAFileState}
   | {kind: "popup-state", open: true, surface: KeyboardSurface}

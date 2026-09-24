@@ -32,6 +32,9 @@ import {
   VIM_KEYMENU_KEY_ASSIGNMENTS,
 } from './config/key-assignments';
 import {DebugLogService} from '../services/debug-log.service';
+import {PluginMenuEntry} from '../plugins/plugin.model';
+import {resolveIdentity} from '../plugins/plugin-registry';
+import {assignMenuKeys} from '../plugins/menu-keys';
 import {ThemeService} from '../services/theme.service';
 import {KeyboardConfigService} from '../services/keyboard-config.service';
 import {VisualConfigService} from '../services/visual-config.service';
@@ -55,6 +58,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() movementSpeed = 20;
   @Input() canEdit = false;
   @Input() keyAssignments: KeymenuKeyAssignments = VIM_KEYMENU_KEY_ASSIGNMENTS;
+  /** The graph's diagram type: its plugin's menu, if any, sits on root `t`. */
+  @Input() diagramTypeId = 'default';
   @Input() visible = true;
   @Output() keyMenuOut = new EventEmitter<DACommand>();
   @Output() labelEditModeOut = new EventEmitter<TextCursorMode>();
@@ -226,7 +231,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['keyAssignments'] && this.keyMenu) {
+    if ((changes['keyAssignments'] || changes['diagramTypeId']) && this.keyMenu) {
       this.rebuildKeyMenu();
     }
   }
@@ -698,8 +703,29 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // other hub does. Redo lives here as U; Ctrl-R still works.
       ['Shift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
       ['RShift' as KeyString]: new LabeledSubmenuConfig('Shift', this.buildNormalShiftSubmenuConfig()),
+      ...this.buildTypeSubmenuBinding(),
       ...this.buildSharedUtilityBindings(),
     } as SubmenuConfig;
+  }
+
+  /** Root `t`: the diagram type's own menu, from the plugin bound as the
+   *  graph's type — or nothing, when that plugin brings no menu. */
+  private buildTypeSubmenuBinding(): SubmenuConfig {
+    const plugin = resolveIdentity(this.diagramTypeId);
+    if (!plugin.menu?.length) return {} as SubmenuConfig;
+    return {
+      [this.keyAssignments.root.typeSubmenu]: new LabeledSubmenuConfig(plugin.name, this.buildPluginMenuConfig(plugin.menu)),
+    } as SubmenuConfig;
+  }
+
+  /** A plugin's entries on keys chosen by menu-keys.ts: never clashing,
+   *  ergonomic for this profile, memorable where the plugin suggests one.
+   *  An entry left without a key says so in the debug log. */
+  private buildPluginMenuConfig(entries: readonly PluginMenuEntry[]): SubmenuConfig {
+    const {placed, unplaced} = assignMenuKeys(entries, this.keyAssignments.pluginMenu);
+    unplaced.forEach(entry => this.log.log(`[keymenu] ⚠ no key left for plugin menu entry "${entry.label}"`));
+    return Object.fromEntries(placed.map(({key, entry}) => [key, new LabeledAction(entry.label,
+      () => this.keyMenuOut.emit({kind: DACommandType.PLUGIN_COMMAND, call: entry.call}), false)])) as SubmenuConfig;
   }
 
   /** The shifted layer of normal mode. Small on purpose: it names the

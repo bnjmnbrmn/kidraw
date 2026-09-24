@@ -2402,6 +2402,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       defaultLineStyle: this._defaultLineStyle,
       canUndo: this.undoRedoService.canUndo,
       canRedo: this.undoRedoService.canRedo,
+      diagramTypeId: this.drawingLayer.diagramType,
       diagramTypeName: this.drawingLayer.diagramType === 'default'
         ? '' : resolveIdentity(this.drawingLayer.diagramType).name,
     });

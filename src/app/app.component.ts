@@ -62,6 +62,8 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
    *  destroyed each time it opens. */
   exHistory: string[] = [];
   canEdit = false;
+  /** The graph's diagram type, so the keymenu can offer its plugin's menu. */
+  diagramTypeId = 'default';
   keymenuDisplay: KeymenuDisplay = 'keyboard';
   compactRows: CompactMenuRow[] = [];
   compactHint = '';
@@ -502,6 +504,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           this.headerComponent.canRedo = daNotification.canRedo;
           this.headerComponent.diagramTypeName = daNotification.diagramTypeName;
         }
+        this.diagramTypeId = daNotification.diagramTypeId;
         break;
       case "status-message":
         if (this.headerComponent) {

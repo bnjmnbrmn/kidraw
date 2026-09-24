@@ -29,7 +29,14 @@ export interface KeymenuKeyAssignments {
     /** Held: task-status submenu (todo graphs) — right-hand hold, the
      *  status choice keys all sit in the left hand. */
     readonly clipboardSubmenu: KeyString;
+    /** Held: the diagram type's own menu, from the plugin bound as the
+     *  graph's type (notes/design-plugins.md). Absent when it has none. */
+    readonly typeSubmenu: KeyString;
   };
+  /** The keys a plugin's menu entries may take, best first. Held under a
+   *  left-hand hub, so they run along the right hand: home row, then top
+   *  row, then bottom. Plugins never name keys themselves (menu-keys.ts). */
+  readonly pluginMenu: readonly KeyString[];
   /** Children of the held add hub. The hub key is left-hand in both
    *  profiles, so the kind keys sit in the left hand next to it and the
    *  right hand stays free for movement. (Connecting to another node is the
@@ -202,7 +209,9 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     go: 'f',
     editText: ';',
     clipboardSubmenu: 'y',
+    typeSubmenu: 't',
   },
+  pluginMenu: ['h', 'j', 'k', 'l', ';', 'u', 'i', 'o', 'p', 'n', 'm'],
   // diamond avoids the held hub key ('e' here); vim uses 'e'.
   insert: {
     box: 'd',
@@ -310,7 +319,9 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
     go: 'f',
     editText: 'i',
     clipboardSubmenu: 'y',
+    typeSubmenu: 't',
   },
+  pluginMenu: ['h', 'j', 'k', 'l', ';', 'u', 'i', 'o', 'p', 'n', 'm'],
   insert: {
     box: 'd',
     circle: 'c',

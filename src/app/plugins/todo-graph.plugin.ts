@@ -1,5 +1,5 @@
 import type { GraphOperation } from '../drawing-area/graph-operations';
-import { KidrawPlugin, PluginTagChoice, PluginTagGroup } from './plugin.model';
+import { KidrawPlugin, PluginMenuEntry, PluginTagChoice, PluginTagGroup } from './plugin.model';
 import type { PluginHost, PluginNode } from './plugin-host';
 import { applyExclusiveTag } from './tag-groups';
 
@@ -30,6 +30,14 @@ const STATUS_GROUP: PluginTagGroup = {
   ],
 };
 
+/** The menu on root `t`, in workflow order. Suggested keys only where the
+ *  word gives a right-hand letter: In progress, No status. */
+const MENU: PluginMenuEntry[] = ([
+  ['Draft', 'draft'], ['To Do', 'todo'], ['In Progress', 'in-progress', 'i'],
+  ['Blocked', 'blocked'], ['Done', 'done'], ['No Status', 'none', 'n'],
+] as [string, TaskStatus, string?][]).map(([label, status, key]) =>
+  ({label, key, call: {id: 'todo.setStatus', args: {status}}}));
+
 /** Identity plugin for todo/planning graphs: cards sized to their text —
  *  short items get small cards, long items wrap at the max width and grow
  *  downward. width/height here are the fit mode's max width and baseline,
@@ -49,6 +57,7 @@ export const TODO_GRAPH_PLUGIN: KidrawPlugin = {
   commands: host => ({
     'todo.setStatus': ({status}) => setTaskStatus(host, status),
   }),
+  menu: MENU,
 };
 
 /** Set the status of what the command acts on, or clear it with 'none'.

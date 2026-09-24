@@ -1,5 +1,6 @@
 import { NodeShape, TextOverflowMode } from '../drawing-area/command.model';
-import type { PluginCommandHandlers } from './plugin-commands';
+import type { PluginCommandCall, PluginCommandHandlers } from './plugin-commands';
+import type { KeyedEntry } from './menu-keys';
 import type { PluginHost } from './plugin-host';
 
 export type LabelFormat = 'plain' | 'markdown';
@@ -73,6 +74,14 @@ export interface PluginReadingOrder {
   color: string;
 }
 
+/** One entry in a plugin's own menu, which root `t` opens while the plugin
+ *  is the graph's diagram type. Keys are assigned by the keymenu
+ *  (menu-keys.ts): never clashing, ergonomic, and the suggested `key` when
+ *  that fits. */
+export interface PluginMenuEntry extends KeyedEntry {
+  call: PluginCommandCall;
+}
+
 /**
  * A kidraw plugin (see notes/idea-diagram-types.md).
  *
@@ -109,4 +118,6 @@ export interface KidrawPlugin {
   /** The commands it brings, given what it may use of the canvas. Ids are
    *  namespaced by the plugin (`todo.setStatus`); see plugin-commands.ts. */
   commands?: (host: PluginHost) => PluginCommandHandlers;
+  /** Its own menu, in order (see PluginMenuEntry). */
+  menu?: PluginMenuEntry[];
 }
