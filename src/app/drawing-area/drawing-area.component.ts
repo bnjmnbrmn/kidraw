@@ -839,6 +839,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {
       get drawingLayer() { return da.drawingLayer; },
       getSelectedLabels: () => da.getSelectedLabels(),
+      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
       waypointUnderCrosshairs: () => da.getWaypointUnderCrosshairs(),
       nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
       crosshairsInLayerCoords: () => da.crosshairsInLayerCoords(),
@@ -3831,7 +3832,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private deleteSelected(): void {
-    // Priority: waypoints > nodes > edges > labels > crosshairs
+    // A selection wins, in the order waypoints > nodes > edges > labels;
+    // without one, the item under the crosshairs.
     const selectedWaypoints = this.drawingLayer.getSelectedDAWaypoints();
     if (selectedWaypoints.length > 0) {
       selectedWaypoints.forEach(wp => {
@@ -3866,35 +3868,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       return;
     }
 
-    // Nothing selected: delete item under crosshairs
-    const wpUnderCrosshairs = this.getWaypointUnderCrosshairs();
-    if (wpUnderCrosshairs) {
-      const edge = this.drawingLayer.findEdgeForWaypoint(wpUnderCrosshairs);
-      edge?.removeWaypoint(wpUnderCrosshairs);
+    // Nothing selected: delete what the hover trace is around, in the order
+    // select uses. A label on its edge used to take the edge with it; Ben
+    // chose the label alone (Ben, 2026-09-24).
+    const item = this.topItemUnderCrosshairs();
+    if (item) {
+      this.deleteItem(item);
       this.drawingLayer.batchDraw();
-      return;
     }
+  }
 
-    const nodeUnderCrosshairs = this.nodeUnderCrosshairs();
-    if (nodeUnderCrosshairs) {
-      this.drawingLayer.removeNode(nodeUnderCrosshairs);
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const edgeUnderCrosshairs = this.edgeUnderCrosshairs();
-    if (edgeUnderCrosshairs) {
-      this.drawingLayer.removeEdge(edgeUnderCrosshairs);
-      this.drawingLayer.batchDraw();
-      return;
-    }
-
-    const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
-    if (labelUnderCrosshairs) {
-      const edges = this.getEdgesContainingLabel(labelUnderCrosshairs);
-      edges.forEach(edge => edge.removeLabel(labelUnderCrosshairs));
-      this.drawingLayer.batchDraw();
-    }
+  private deleteItem(item: DALabel | DAWaypoint | DANode | DAEdge): void {
+    if (item instanceof DALabel) this.getEdgesContainingLabel(item).forEach(edge => edge.removeLabel(item));
+    else if (item instanceof DAWaypoint) this.drawingLayer.findEdgeForWaypoint(item)?.removeWaypoint(item);
+    else if (item instanceof DANode) this.drawingLayer.removeNode(item);
+    else this.drawingLayer.removeEdge(item);
   }
 
   private enterDragMode() {

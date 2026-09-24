@@ -18,6 +18,7 @@ import type { Point } from './utils';
 export interface ClipboardHost {
   readonly drawingLayer: DrawingLayer;
   getSelectedLabels(): DALabel[];
+  labelUnderCrosshairs(): DALabel | null | undefined;
   waypointUnderCrosshairs(): DAWaypoint | undefined;
   nodeUnderCrosshairs(): DANode | null;
   crosshairsInLayerCoords(): Point;
@@ -89,14 +90,16 @@ export class ClipboardController {
    *
    *  The guards mirror Delete's priority order, so a cut copies exactly what
    *  it is about to remove: with a waypoint, edge or label selected, delete
-   *  acts on that and the clipboard takes nothing. */
+   *  acts on that and the clipboard takes nothing. Unselected, Delete takes
+   *  the item the hover trace is around (label, waypoint, node, edge), so a
+   *  label or waypoint under the crosshairs also leaves the clipboard empty. */
   private targetNodes(): DANode[] {
     const layer = this.host.drawingLayer;
     if (layer.getSelectedDAWaypoints().length > 0) return [];
     const selected = layer.getSelectedDANodes();
     if (selected.length > 0) return selected;
     if (layer.getSelectedDAEdges().length > 0 || this.host.getSelectedLabels().length > 0) return [];
-    if (this.host.waypointUnderCrosshairs()) return [];
+    if (this.host.labelUnderCrosshairs() || this.host.waypointUnderCrosshairs()) return [];
     const hovered = this.host.nodeUnderCrosshairs();
     return hovered ? [hovered] : [];
   }

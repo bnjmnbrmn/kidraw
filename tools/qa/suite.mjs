@@ -81,6 +81,7 @@ export const SUITE = [
   // ── Labels and editing ──
   { script: 'labels/label-edit-flow.js', region: 'labels', status: 'suite', baseline: { passed: 16, failed: 2, code: 1 } },
   { script: 'labels/connect-focus.js', region: 'labels', status: 'suite' },
+  { script: 'labels/cut-over-a-label.js', region: 'labels', status: 'suite' },
 
   // ── Selection, crosshairs, viewport ──
   { script: 'selection/selection-visibility.js', region: 'selection', status: 'suite' },

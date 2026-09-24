@@ -13,7 +13,7 @@ type FakeNode = ReturnType<typeof fakeNode>;
  *  like, are left to the browser tests (tools/qa/keys/clipboard-yank-paste.js). */
 function setUp(state: {
   selected?: FakeNode[]; underCrosshairs?: FakeNode; edges?: [string, string][];
-  selectedEdges?: object[]; selectedWaypoints?: object[]; selectedLabels?: object[]; waypointUnderCrosshairs?: object;
+  selectedEdges?: object[]; selectedWaypoints?: object[]; selectedLabels?: object[]; waypointUnderCrosshairs?: object; labelUnderCrosshairs?: object;
 } = {}) {
   const calls: string[] = [];
   const statuses: string[] = [];
@@ -34,6 +34,7 @@ function setUp(state: {
       batchDraw: () => calls.push('draw'),
     },
     getSelectedLabels: () => state.selectedLabels ?? [],
+    labelUnderCrosshairs: () => state.labelUnderCrosshairs as never,
     waypointUnderCrosshairs: () => state.waypointUnderCrosshairs,
     nodeUnderCrosshairs: () => state.underCrosshairs ?? null,
     crosshairsInLayerCoords: () => ({x: 100, y: 40}),
@@ -73,6 +74,7 @@ describe('ClipboardController', () => {
       {underCrosshairs: node, selectedEdges: [{}]},
       {underCrosshairs: node, selectedLabels: [{}]},
       {underCrosshairs: node, waypointUnderCrosshairs: {}},
+      {underCrosshairs: node, labelUnderCrosshairs: {}},
     ];
     for (const state of cases) {
       const {clipboard, statuses} = setUp(state);

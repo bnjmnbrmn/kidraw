@@ -1,10 +1,16 @@
 ---
 title: Delete over a highlighted label removes the whole edge
 type: bug
-status: open — Ben's call
+status: fixed 2026-09-24 — option 1, Ben's call
 ---
 
 # Delete over a highlighted label removes the whole edge
+
+> **Decided (Ben, 2026-09-24): remove only the label** (option 1 below).
+> Delete (reached by Cut, `x`) now takes its unselected target from
+> `topItemUnderCrosshairs()`, the order the hover trace uses, and Cut's
+> clipboard copies nothing when a label is on top. Checked by
+> `tools/qa/labels/cut-over-a-label.js`, which failed on the old code.
 
 With nothing selected, Delete removes whatever is under the crosshairs. When
 the crosshairs are on an edge's label, the hover trace is around the label,
