@@ -18,6 +18,7 @@
  *   npm run qa -- --region grid-overlay
  *   npm run qa -- --only nav-popup
  *   npm run qa -- --list
+ *   npm run qa -- --region search --no-contract   # skip the source contract check
  *
  * Needs the dev server up (`npm start`) and, on a machine without a system
  * Chrome, CHROME_BIN pointing at one.
@@ -58,7 +59,21 @@ function selected() {
   if (flag('all')) entries = entries.filter(e => e.status !== 'diagnostic');
   if (region) entries = entries.filter(e => e.region === region);
   if (only) entries = entries.filter(e => e.script.includes(only));
-  return entries;
+  return withContract(entries);
+}
+
+/**
+ * The contract check rides along with every narrowed run. It reads source, needs
+ * no browser and takes a fraction of a second, but a run filtered by --region or
+ * --only used to skip it, and on 2026-09-24 it sat failing for several commits
+ * that way. Ben asked for it on every run, to be switched off by default if it
+ * turns out to slow things without finding anything (Ben, 2026-09-24);
+ * --no-contract leaves it out.
+ */
+function withContract(entries) {
+  if (flag('no-contract') || entries.some(e => e.region === 'contract')) return entries;
+  const contract = SUITE.filter(e => e.region === 'contract');
+  return entries.length > 0 ? [...contract, ...entries] : entries;
 }
 
 if (flag('list')) {
