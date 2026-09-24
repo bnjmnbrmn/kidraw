@@ -5,6 +5,14 @@ type: idea
 
 # Gather feature
 
+> **Status (Ben, 2026-09-24):** the first implementation is being retired: its
+> commands had no key since 2026-08-29, and `gather-controller.ts` goes with
+> them. Ben wants to **return to Gather soon**. The first version "didn't
+> quite get it right". The last version of the code is in git history: the
+> parent of the commit that retired it (search `git log -S gather-controller`).
+> What follows is the wishlist written against that version, and it still
+> applies to a new one.
+
 The current `gather` ( `g → h` ) animates immediate connected nodes close to the current node, restoring after 5 s or on next gather. It's useful but limited.
 
 Wanted:
