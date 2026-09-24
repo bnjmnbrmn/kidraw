@@ -4,7 +4,6 @@ import {EdgeDirectedness, LineStyle, NodeShape, TextCursorMode} from './command.
  *  still renders this surface's live controls while its command handlers are
  *  suspended. */
 export type KeyboardSurface =
-  | 'nav-popup'
   | 'grow-targeting'
   | 'grow-edge'
   | 'grow-empty'

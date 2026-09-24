@@ -269,7 +269,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         labelEditVimNormalCaps: new USQwertyModeConfig(this.buildLabelEditVimNormalSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimVisual: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(false), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         labelEditVimVisualCaps: new USQwertyModeConfig(this.buildLabelEditVimVisualSubmenuConfig(true), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
-        surfaceNavPopup: new USQwertyModeConfig(this.buildNavPopupSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         // The chat's screens and reading take the whole keyboard rather than
         // opening over the menu you were in, so no card shows underneath.
         surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
@@ -1283,19 +1282,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     return new LabeledActionWithRelease(label, () => undefined, () => undefined);
   }
 
-  private buildNavPopupSurfaceConfig(): SubmenuConfig {
-    const m = this.keyAssignments.movement;
-    return {
-      [m.up]: this.surfaceAction('North link'),
-      [m.left]: this.surfaceAction('West link'),
-      [m.down]: this.surfaceAction('South link'),
-      [m.right]: this.surfaceAction('East link'),
-      'Enter': this.surfaceAction('Jump / Select'),
-      'Tab': this.surfaceAction('Walk + Continue'),
-      '[': this.surfaceAction('Esc: Back / Close'),
-    } as SubmenuConfig;
-  }
-
   /** Shown while reading an explanation (AppComponent handles these keys). */
   private buildReadingSurfaceConfig(): SubmenuConfig {
     const r = this.keyAssignments.reading;
@@ -1384,7 +1370,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private static readonly SURFACE_MODES: Record<KeyboardSurface, string> = {
-    'nav-popup': 'surfaceNavPopup',
     'grow-targeting': 'surfaceGrowTargeting',
     'grow-edge': 'surfaceGrowEdge',
     'grow-empty': 'surfaceGrowEmpty',
@@ -1558,7 +1543,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     labelEditVimNormalCaps: '#ed7d31', // orange
     labelEditVimVisual: '#c084fc',
     labelEditVimVisualCaps: '#ed7d31',
-    surfaceNavPopup: '#9b59b6',
     surfaceGrowTargeting: '#00a6a6',
     surfaceGrowEdge: '#00a6a6',
     surfaceGrowEmpty: '#00a6a6',
@@ -1589,8 +1573,6 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'capslock / edit: visual';
     } else if (modeName === 'normalCaps') {
       displayName = 'capslock / normal';
-    } else if (modeName === 'surfaceNavPopup') {
-      displayName = 'move by link > choose edge';
     } else if (modeName === 'surfaceGrowTargeting') {
       displayName = 'add > choose target';
     } else if (modeName === 'surfaceGrowEdge') {
