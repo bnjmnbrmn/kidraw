@@ -239,6 +239,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  selects the highlighted row (grow's `f` type list). */
   navPopupHoldKey: string | null = null;
   navPopupStartFilter = false;
+  /** The profile's up and down keys, for browsing the popup's list. */
+  navPopupListKeys = {up: 'k', down: 'j'};
   /** Which grow popup is open, if any: the target search or the node types.
    *  (It was also graph navigation's until TRAVERSE_SMART was retired on
    *  2026-09-24.) */
@@ -2767,6 +2769,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupStartFilter = true;
     this.navPopupHoldKey = null;
     this.navPopupDark = this.themeService.theme === 'dark';
+    if (this.growKeys) this.navPopupListKeys = {up: this.growKeys.up, down: this.growKeys.down};
     this.positionGrowPopup();
     this.navPopupOpen = true;
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-target-popup'});
@@ -2808,6 +2811,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupStartFilter = false;
     this.navPopupHoldKey = this.growKeys?.newNode ?? 'f';
     this.navPopupDark = this.themeService.theme === 'dark';
+    if (this.growKeys) this.navPopupListKeys = {up: this.growKeys.up, down: this.growKeys.down};
     this.positionGrowPopup();
     this.navPopupOpen = true;
     this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-type-popup'});

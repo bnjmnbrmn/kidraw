@@ -1,6 +1,6 @@
 import {NavPopupComponent} from './nav-popup.component';
 
-describe('NavPopupComponent link directions', () => {
+describe('NavPopupComponent list keys', () => {
   function keyEvent(key: string): KeyboardEvent {
     return {
       key,
@@ -10,26 +10,42 @@ describe('NavPopupComponent link directions', () => {
     } as unknown as KeyboardEvent;
   }
 
-  it('emits NSEW movement from the configured profile keys in list mode', () => {
+  function withRows(): NavPopupComponent {
     const component = new NavPopupComponent();
-    component.directionKeys = {up: 'i', left: 'j', down: 'k', right: 'l'};
-    const emit = spyOn(component.moveDirection, 'emit');
+    component.rows = [{id: 'box', title: 'Box'}, {id: 'circle', title: 'Circle'}, {id: 'diamond', title: 'Diamond'}];
+    component.ngOnChanges({rows: {} as never});
+    return component;
+  }
 
-    component.onKeydown(keyEvent('j'));
+  it('moves the selection with the profile\'s down and up keys in list mode', () => {
+    const component = withRows();
+    component.listKeys = {up: 'i', down: 'k'};
+    const highlighted = spyOn(component.highlightRow, 'emit');
+
+    component.onKeydown(keyEvent('k'));
     component.onKeydown(keyEvent('k'));
     component.onKeydown(keyEvent('i'));
-    component.onKeydown(keyEvent('l'));
 
-    expect(emit.calls.allArgs()).toEqual([['west'], ['south'], ['north'], ['east']]);
+    expect(highlighted.calls.allArgs()).toEqual([['circle'], ['diamond'], ['circle']]);
   });
 
-  it('leaves direction letters available to the fuzzy filter in filter mode', () => {
-    const component = new NavPopupComponent();
+  it('leaves those letters to the fuzzy filter in filter mode', () => {
+    const component = withRows();
     component.filterMode = true;
-    const emit = spyOn(component.moveDirection, 'emit');
+    const highlighted = spyOn(component.highlightRow, 'emit');
 
-    component.onKeydown(keyEvent('h'));
+    component.onKeydown(keyEvent('j'));
 
-    expect(emit).not.toHaveBeenCalled();
+    expect(highlighted).not.toHaveBeenCalled();
+  });
+
+  it('commits the selected row on Enter', () => {
+    const component = withRows();
+    const committed = spyOn(component.commitRow, 'emit');
+
+    component.onKeydown(keyEvent('j'));
+    component.onKeydown(keyEvent('Enter'));
+
+    expect(committed).toHaveBeenCalledOnceWith({id: 'circle'});
   });
 });

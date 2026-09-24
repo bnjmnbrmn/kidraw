@@ -1,9 +1,9 @@
 import {Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild} from '@angular/core';
 import {fuzzyMatch} from '../lib/fuzzy-match';
 
-/** One choice in the popup. Generic on purpose: the nav popup is the first
- *  client, but the same widget is intended for the vault fuzzy finder and
- *  the command palette. */
+/** One choice in the popup. Generic on purpose: grow mode's target search and
+ *  node-type list use it now (graph navigation did until 2026-09-24), and the
+ *  same widget is intended for the vault fuzzy finder and the command palette. */
 export interface PopupRow {
   /** Opaque id handed back on highlight/commit. */
   id: string;
@@ -58,14 +58,16 @@ export class NavPopupComponent implements OnChanges {
    *  flows like the grow-target search where the hold key is naturally
    *  released to type. */
   @Input() startFilter = false;
-  @Input() selectedId: string | null = null;
-  @Input() directionKeys = {up: 'k', left: 'h', down: 'j', right: 'l'};
+  /** The profile's up and down keys, which move the selection in list mode.
+   *  From 2026-08-01 list mode sent h/j/k/l out as Move by Link directions
+   *  instead, for graph navigation; grow's popups ignored them, so j/k browsed
+   *  nothing until that navigation was retired (2026-09-24). */
+  @Input() listKeys = {up: 'k', down: 'j'};
 
   /** Selection moved (id of the newly highlighted row). */
   @Output() highlightRow = new EventEmitter<string>();
-  @Output() moveDirection = new EventEmitter<'north' | 'east' | 'south' | 'west'>();
-  /** Row committed; walk = keep navigating (Tab) vs jump and close (Enter). */
-  @Output() commitRow = new EventEmitter<{id: string; walk: boolean}>();
+  /** Row committed (Enter, Tab, a click, or releasing the hold key). */
+  @Output() commitRow = new EventEmitter<{id: string}>();
   @Output() closed = new EventEmitter<void>();
 
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
@@ -96,17 +98,12 @@ export class NavPopupComponent implements OnChanges {
         if (topId !== null) this.highlightRow.emit(topId);
       });
     }
-    if (changes['selectedId'] && this.selectedId !== null) {
-      const selected = this.filtered.findIndex(item => item.row.id === this.selectedId);
-      if (selected >= 0) this.selectedIndex = selected;
-    }
   }
 
   get hint(): string {
     return this.filterMode
-      ? '^j ^k results · Enter jump · Tab walk · Esc list'
-      : `${this.directionKeys.left} ${this.directionKeys.down} ${this.directionKeys.up} `
-        + `${this.directionKeys.right} quadrants · Enter jump · Esc close`;
+      ? '^j ^k results · Enter choose · Esc list'
+      : `${this.listKeys.down} ${this.listKeys.up} rows · Enter choose · Esc close`;
   }
 
   onInput(value: string): void {
@@ -155,22 +152,13 @@ export class NavPopupComponent implements OnChanges {
         return;
       }
       const row = this.filtered[this.selectedIndex];
-      if (row) this.commitRow.emit({id: row.row.id, walk: key === 'Tab'});
+      if (row) this.commitRow.emit({id: row.row.id});
       return;
     }
     if (!this.filterMode) {
       const normalized = key.toLowerCase();
-      const direction = normalized === this.directionKeys.up.toLowerCase() ? 'north'
-        : normalized === this.directionKeys.right.toLowerCase() ? 'east'
-        : normalized === this.directionKeys.down.toLowerCase() ? 'south'
-        : normalized === this.directionKeys.left.toLowerCase() ? 'west' : null;
-      if (direction) {
-        event.preventDefault();
-        event.stopPropagation();
-        this.moveDirection.emit(direction);
-        return;
-      }
-      // n/p retain list-order browsing as an alternative to geometry.
+      if (normalized === this.listKeys.down.toLowerCase()) { move(1); return; }
+      if (normalized === this.listKeys.up.toLowerCase()) { move(-1); return; }
       if (key === 'n') { move(1); return; }
       if (key === 'p') { move(-1); return; }
       // ...and everything else is swallowed so nothing types into the box.
@@ -181,10 +169,10 @@ export class NavPopupComponent implements OnChanges {
     event.stopPropagation(); // typing (incl. Backspace/Delete) stays in the box
   }
 
-  /** Releasing the Go key acts on the selection: over the search pseudo-item
-   *  it starts filtering, over a row it jumps there. A plain tap therefore
-   *  takes the top candidate (the popup merely flashes) — hold and navigate
-   *  to pick a different one; Esc while holding cancels without moving.
+  /** Releasing the hold key acts on the selection: over the search
+   *  pseudo-item it starts filtering, over a row it chooses it. A plain tap
+   *  therefore takes the top row — hold and browse to pick a different one;
+   *  Esc while holding cancels.
    *  Document-level: a fast tap's keyup can arrive before the deferred focus
    *  lands on the input, so listening on the input alone would miss it. */
   @HostListener('document:keyup', ['$event'])
@@ -199,7 +187,7 @@ export class NavPopupComponent implements OnChanges {
       return;
     }
     const row = this.filtered[this.selectedIndex];
-    if (row) this.commitRow.emit({id: row.row.id, walk: false});
+    if (row) this.commitRow.emit({id: row.row.id});
   }
 
   /** Clicking the box is an explicit "I want to type". */
@@ -226,7 +214,7 @@ export class NavPopupComponent implements OnChanges {
   onRowClick(index: number): void {
     this.select(index);
     const row = this.filtered[this.selectedIndex];
-    if (row) this.commitRow.emit({id: row.row.id, walk: false});
+    if (row) this.commitRow.emit({id: row.row.id});
   }
 
   onRowEnter(index: number): void {
