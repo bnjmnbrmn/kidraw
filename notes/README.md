@@ -39,6 +39,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 
 **Keymenu / interaction:**
 
+- [31 commands no key sends](idea-retire-unsent-commands.md) — handlers left behind by the August menu culls and earlier; retiring them (Ben's call, command by command) is the cheapest way to shrink the drawing area.
 - [Keymenu binding reorg — f for graph nav, a for insert, File menu cleanup](plan-keymenu-binding-reorg.md) — full root-level inventory + the rebind decisions (implemented 2026-07-13).
 - [Graph nav — maybe swap n/p and j/k roles](idea-graph-nav-key-swap.md) — siblings on n/p, in/out of edges on j/k; undecided, dogfood first.
 - [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)

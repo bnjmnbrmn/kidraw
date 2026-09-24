@@ -1,8 +1,9 @@
 /*
  * A diagram type's node defaults reach the nodes you add. The shape it
  * declares applies unless you asked for another: with the insert-with-shape
- * submenu, or by setting the default shape yourself (the shape toggle over
- * empty canvas) — notes/design-plugin-v0.md.
+ * submenu, or by setting the default shape yourself (choosing a shape with
+ * nothing selected and nothing under the crosshairs) —
+ * notes/design-plugin-v0.md.
  *
  * Found 2026-09-24: new nodes always took the drawing area's own default
  * shape, passed along as though you had asked for it, so a type's shape never
@@ -58,10 +59,10 @@ const said = (page, command, spot) => page.evaluate(`(() => { const da = ${DA};
   const asked = await add(page, {kind: 'CREATE_NEW_NODE', nodeShape: 'diamond'}, {x: 700, y: 300});
   check('a shape asked for with the insert-with-shape submenu wins', asked?.shape === 'diamond', JSON.stringify(asked));
 
-  const toggled = await said(page, {kind: 'TOGGLE_NODE_SHAPE'}, {x: 900, y: 500});
-  check('the shape toggle over empty canvas starts from the type\'s shape', toggled === 'Default node shape: box', toggled);
+  await said(page, {kind: 'SET_NODE_SHAPE', shape: 'box'}, {x: 900, y: 500});
   const chosen = await add(page, {kind: 'CREATE_NEW_NODE'}, {x: 300, y: 500});
-  check('and the default you set wins over the type\'s', chosen?.shape === 'box', JSON.stringify(chosen));
+  check('a shape chosen over empty canvas becomes your default, and wins over the type\'s', chosen?.shape === 'box',
+    JSON.stringify(chosen));
 
   await page.evaluate(() => localStorage.removeItem('kidraw-user-plugins'));
   console.log(`\n${check.failures} failure(s)`);
