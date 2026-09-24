@@ -2585,47 +2585,45 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
   }
 
+  /** Centre the usable view on the selection at the same zoom; with nothing
+   *  selected, this is the rescue command — fit the whole graph and centre
+   *  it, so it always brings everything on screen. */
   private recenterView() {
     this.finishTweens();
 
-    const hasSelection = this.drawingLayer.getSelectedDANodes().length > 0;
-    const nodes = hasSelection
-      ? this.drawingLayer.getSelectedDANodes()
-      : this.drawingLayer.getDANodes();
-    const edges = this.drawingLayer.getDAEdges();
-
-    const box = this.contentBoundingBox(nodes, edges);
+    const selected = this.drawingLayer.getSelectedDANodes();
+    const hasSelection = selected.length > 0;
+    // The selection's own nodes; the whole graph's edges would pull the
+    // centre towards the whole graph (they did, from 2026-02 to 09-24).
+    const box = hasSelection
+      ? this.contentBoundingBox(selected, [])
+      : this.contentBoundingBox(this.drawingLayer.getDANodes(), this.drawingLayer.getDAEdges());
     if (!box) return;
 
-    // Calculate the center point of the drawing in layer coordinates
-    const centerX = (box.minX + box.maxX) / 2;
-    const centerY = (box.minY + box.maxY) / 2;
-
-    const stageWidth = this.viewport.width;
-    const stageHeight = this.viewport.height;
-
-    // With a selection: center on it without changing scale. Without one:
-    // this is the "rescue" command — also zoom out (never in past 100%)
-    // until the whole graph fits, so it always brings everything on screen.
-    let targetScale = this.drawingLayer.scaleX();
-    if (!hasSelection) {
-      const margin = 0.9;
-      const w = Math.max(box.maxX - box.minX, 1);
-      const h = Math.max(box.maxY - box.minY, 1);
-      const fit = Math.min((stageWidth * margin) / w, (stageHeight * margin) / h);
-      targetScale = Math.min(Math.max(fit, 0.02), 1.0);
-    }
-
+    const targetScale = hasSelection ? this.drawingLayer.scaleX() : this.fitScale(box);
+    // The usable view's centre, below the header: half its size from the top
+    // of the stage put the graph higher by the header's height (to 09-24).
     this.animations.startSelfRemoving({
       node: this.drawingLayer,
       duration: this.RECENTER_DURATION,
       scaleX: targetScale,
       scaleY: targetScale,
-      x: stageWidth / 2 - centerX * targetScale,
-      y: stageHeight / 2 - centerY * targetScale,
+      x: this.viewport.centerX - ((box.minX + box.maxX) / 2) * targetScale,
+      y: this.viewport.centerY - ((box.minY + box.maxY) / 2) * targetScale,
       easing: Konva.Easings.EaseInOut,
       onFinish: () => this.emitZoomLevel(),
     });
+  }
+
+  /** The zoom that fits `box` in the usable view with a margin: never in
+   *  past 100%, and floored well below the interactive MIN_ZOOM — a rescue
+   *  that stops short of showing the whole graph isn't a rescue. */
+  private fitScale(box: {minX: number; minY: number; maxX: number; maxY: number}): number {
+    const margin = 0.9;
+    const w = Math.max(box.maxX - box.minX, 1);
+    const h = Math.max(box.maxY - box.minY, 1);
+    const fit = Math.min((this.viewport.width * margin) / w, (this.viewport.height * margin) / h);
+    return Math.min(Math.max(fit, 0.02), 1.0);
   }
 
   /** Bounding box of the given items in drawing-layer coordinates, or null
@@ -2666,13 +2664,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private fitViewToContent(): void {
     const box = this.contentBoundingBox(this.drawingLayer.getDANodes(), this.drawingLayer.getDAEdges());
     if (!box) return;
-    const margin = 0.9;
-    const w = Math.max(box.maxX - box.minX, 1);
-    const h = Math.max(box.maxY - box.minY, 1);
-    const fit = Math.min((this.viewport.width * margin) / w, (this.viewport.height * margin) / h);
-    // Fitting may go below the interactive MIN_ZOOM — a rescue that stops
-    // short of showing the whole graph isn't a rescue. Floor well below it.
-    const scale = Math.min(Math.max(fit, 0.02), 1.0);
+    const scale = this.fitScale(box);
     this.drawingLayer.scale({ x: scale, y: scale });
     this.drawingLayer.position({
       x: this.viewport.centerX - ((box.minX + box.maxX) / 2) * scale,

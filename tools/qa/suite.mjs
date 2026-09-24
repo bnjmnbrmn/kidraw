@@ -36,6 +36,7 @@ export const SUITE = [
   { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },
   { script: 'nav-popup/nav-margin.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite' },
+  { script: 'nav-popup/recenter-view.js', region: 'nav-popup', status: 'suite' },
 
   // ── File, named graphs, diagram type (~1169-2139) ──
   { script: 'file/file-flows.js', region: 'file', status: 'suite' },
