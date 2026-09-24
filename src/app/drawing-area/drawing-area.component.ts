@@ -142,6 +142,7 @@ import { resolveIdentity } from '../plugins/plugin-registry';
 import { PLUGIN_REGISTRY } from '../plugins/plugin-registry';
 import { PluginCommandCall, PluginCommands } from '../plugins/plugin-commands';
 import type { PluginHost, PluginNode } from '../plugins/plugin-host';
+import { PluginSettingsService } from '../plugins/plugin-settings.service';
 import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
@@ -192,6 +193,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private fileIo = inject(FileIoService);
   private graphStorage = inject(GraphStorageService);
   private vaultService = inject(VaultService);
+  private pluginSettings = inject(PluginSettingsService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private hasDragged = false;
@@ -721,7 +723,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Run a plugin's command. The table of them is built on first use, with
    *  what plugins may use of the canvas. */
   private runPluginCommand(call: PluginCommandCall): void {
-    this._pluginCommands ??= new PluginCommands(this.pluginHost(), PLUGIN_REGISTRY.values());
+    this._pluginCommands ??= new PluginCommands(this.pluginHost(), PLUGIN_REGISTRY.values(),
+      id => this.pluginSettings.isEnabled(id));
     if (!this._pluginCommands.run(call)) this.emitStatus(`No plugin has the command ${call.id}`);
   }
 
@@ -1035,6 +1038,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       get themeService() { return da.themeService; },
       get visualConfigService() { return da.visualConfigService; },
       get log() { return da.log; },
+      get pluginSettings() { return da.pluginSettings; },
 
       emitStatus: message => da.emitStatus(message),
       emitContextState: () => da.emitContextState(),

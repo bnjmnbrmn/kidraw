@@ -9,10 +9,11 @@ export const DEFAULT_PLUGIN: KidrawPlugin = {
   id: 'default',
   name: 'Default',
   nodeDefaults: {},
+  core: true,
 };
 
 export const PLUGIN_REGISTRY: ReadonlyMap<string, KidrawPlugin> = new Map(
-  [DEFAULT_PLUGIN, TODO_GRAPH_PLUGIN, EXPLANATION_PLUGIN].map(e => [e.id, e] as const),
+  [DEFAULT_PLUGIN, TODO_GRAPH_PLUGIN, EXPLANATION_PLUGIN].map(plugin => [plugin.id, plugin] as const),
 );
 
 export function getPlugin(id: string): KidrawPlugin | undefined {

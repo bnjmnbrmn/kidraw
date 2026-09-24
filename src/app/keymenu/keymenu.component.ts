@@ -35,6 +35,7 @@ import {DebugLogService} from '../services/debug-log.service';
 import {PluginMenuEntry} from '../plugins/plugin.model';
 import {resolveIdentity} from '../plugins/plugin-registry';
 import {assignMenuKeys} from '../plugins/menu-keys';
+import {PluginSettingsService} from '../plugins/plugin-settings.service';
 import {ThemeService} from '../services/theme.service';
 import {KeyboardConfigService} from '../services/keyboard-config.service';
 import {VisualConfigService} from '../services/visual-config.service';
@@ -86,6 +87,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   private themeSub?: Subscription;
   private configSub?: Subscription;
   private visualSub?: Subscription;
+  private pluginSub?: Subscription;
+  private pluginSettings = inject(PluginSettingsService);
 
   // When true, releasing the add key without selecting a child fires QUICK_ADD.
   private editPending = false;
@@ -225,6 +228,9 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
       this.rebuildKeyMenu();
     });
+    this.pluginSub = this.pluginSettings.changed$.subscribe(() => {
+      this.rebuildKeyMenu();
+    });
     this.visualSub = this.visualConfig.configChanged$.subscribe(() => {
       this.rebuildKeyMenu();
     });
@@ -240,6 +246,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.themeSub?.unsubscribe();
     this.configSub?.unsubscribe();
     this.visualSub?.unsubscribe();
+    this.pluginSub?.unsubscribe();
     if (this.keyMenu) {
       this.keyMenu.destroy();
     }
@@ -709,10 +716,11 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   /** Root `t`: the diagram type's own menu, from the plugin bound as the
-   *  graph's type — or nothing, when that plugin brings no menu. */
+   *  graph's type — or nothing, when that plugin brings no menu or is
+   *  turned off in Settings. */
   private buildTypeSubmenuBinding(): SubmenuConfig {
     const plugin = resolveIdentity(this.diagramTypeId);
-    if (!plugin.menu?.length) return {} as SubmenuConfig;
+    if (!plugin.menu?.length || !this.pluginSettings.isEnabled(plugin.id)) return {} as SubmenuConfig;
     return {
       [this.keyAssignments.root.typeSubmenu]: new LabeledSubmenuConfig(plugin.name, this.buildPluginMenuConfig(plugin.menu)),
     } as SubmenuConfig;

@@ -29,6 +29,7 @@ import type { Viewport } from './viewport';
 import type { DAFileState, DANotification } from './da-notification.model';
 import type { DANode } from './da-node';
 import type { GraphSnapshot } from './graph-snapshot';
+import type { PluginSettingsService } from '../plugins/plugin-settings.service';
 import { DACommandType } from './command.model';
 import type { CommandSlice } from './command-handlers';
 import { PLUGIN_REGISTRY, getPlugin, resolveIdentity } from '../plugins/plugin-registry';
@@ -57,6 +58,7 @@ export interface FileHost {
   readonly themeService: ThemeService;
   readonly visualConfigService: VisualConfigService;
   readonly log: DebugLogService;
+  readonly pluginSettings: PluginSettingsService;
 
   // --- telling the rest of the app that the graph changed under it ---
   emitStatus(message: string): void;
@@ -263,17 +265,11 @@ export class FileController {
     this.openedStyleResolver = styleResolver;
     this.activeStyleIndex = 0;
 
-    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
-    this.host.finishTweens();
-    this.host.unselectAllLabels();
-    this.host.undoRedoService.clear();
-    this.host.drawingLayer.restoreGraph(snapshot);
-    const palette = this.host.visualConfigService.getEffectivePalette(this.host.themeService.theme);
-    this.host.drawingLayer.applyThemeColors(palette);
+    this.replaceGraph(filesToSnapshot(parsed.value, resolvedStyle));
     this.host.fitViewToContent();
     this.host.recenterCrosshairs();
     this.host.emitZoomLevel();
-    this.host.checkAndEmitEditState();
+    this.announceGraph();
     this.emitFileState({storage: 'external', path: manifestName});
 
     this.emitDisplayStatus(parsed.value);
@@ -289,12 +285,17 @@ export class FileController {
       this.host.emitStatus(`⚠ Unknown diagram type: ${typeId}`);
       return;
     }
+    if (!this.host.pluginSettings.isEnabled(plugin.id)) {
+      this.host.emitStatus(`⚠ ${plugin.name} is turned off in Settings`);
+      return;
+    }
     this.host.finishTweens();
     this.host.undoRedoService.pushSnapshot(this.host.drawingLayer.serializeGraph());
     this.host.drawingLayer.setDiagramType(plugin);
     this.host.updateEdgesForResizedNodes(this.host.drawingLayer.getDANodes());
     this.host.drawingLayer.batchDraw();
     this.host.emitStatus(`Diagram type: ${plugin.name}`);
+    this.host.emitContextState();
     this.scheduleVaultAutoSave();
   }
 
@@ -312,16 +313,10 @@ export class FileController {
     const resolvedStyle = this.resolveStyleAtIndex(this.openedDoc, this.activeStyleIndex, this.openedStyleResolver);
     if (resolvedStyle === null) return;
 
-    const snapshot = filesToSnapshot(this.openedDoc, resolvedStyle);
-    this.host.finishTweens();
-    this.host.unselectAllLabels();
-    this.host.undoRedoService.clear();
-    this.host.drawingLayer.restoreGraph(snapshot);
-    const palette = this.host.visualConfigService.getEffectivePalette(this.host.themeService.theme);
-    this.host.drawingLayer.applyThemeColors(palette);
+    this.replaceGraph(filesToSnapshot(this.openedDoc, resolvedStyle));
     this.host.fitViewToContent();
     this.host.emitZoomLevel();
-    this.host.checkAndEmitEditState();
+    this.announceGraph();
 
     this.emitDisplayStatus(this.openedDoc);
   }
@@ -527,12 +522,13 @@ export class FileController {
     }
   }
 
-  /** `:type` lists the plugins (diagram types); `:type <id>` binds one to
-   *  this graph, restyling it undoably. */
+  /** `:type` lists the plugins (diagram types) that are on; `:type <id>`
+   *  binds one to this graph, restyling it undoably. */
   private exType(arg: string): void {
     const current = this.host.drawingLayer.diagramType;
     if (arg === '') {
       const list = [...PLUGIN_REGISTRY.values()]
+        .filter(plugin => plugin.id === current || this.host.pluginSettings.isEnabled(plugin.id))
         .map(plugin => plugin.id === current ? `${plugin.id} (current)` : plugin.id)
         .join(', ');
       this.host.emitStatus(`Plugins: ${list}. :type <name> switches.`);
@@ -543,7 +539,6 @@ export class FileController {
       return;
     }
     this.setDiagramType(arg);
-    this.host.emitContextState();
   }
 
   /** `:w` saves to the open vault file; `:w <name>` saves as that name and
@@ -738,14 +733,8 @@ export class FileController {
     this.openedStyleResolver = resolver;
     this.activeStyleIndex = 0;
 
-    const snapshot = filesToSnapshot(parsed.value, resolvedStyle);
     this.cancelVaultAutoSave();
-    this.host.finishTweens();
-    this.host.unselectAllLabels();
-    this.host.undoRedoService.clear();
-    this.host.drawingLayer.restoreGraph(snapshot);
-    const palette = this.host.visualConfigService.getEffectivePalette(this.host.themeService.theme);
-    this.host.drawingLayer.applyThemeColors(palette);
+    this.replaceGraph(filesToSnapshot(parsed.value, resolvedStyle));
     if (opts.restoreView && this.restoreViewport(opts.restoreView)) {
       // Draft viewport wins on a startup reopen — keeps the user's place.
     } else if (opts.recenter) {
@@ -754,8 +743,7 @@ export class FileController {
       this.host.emitZoomLevel();
     }
     this.host.drawingLayer.batchDraw();
-    this.host.checkAndEmitEditState();
-    this.host.emitContextState();
+    this.announceGraph();
 
     this.host.vaultService.currentFilePath = path;
     this.vaultLastModified = (await vault.lastModified(path)) ?? Date.now();
@@ -892,16 +880,11 @@ export class FileController {
 
   loadNamedGraph(snapshot: GraphSnapshot): void {
     this.detachVaultFile();
-    this.host.finishTweens();
-    this.host.unselectAllLabels();
-    this.host.undoRedoService.clear();
-    this.host.drawingLayer.restoreGraph(snapshot);
-    const palette = this.host.visualConfigService.getEffectivePalette(this.host.themeService.theme);
-    this.host.drawingLayer.applyThemeColors(palette);
+    this.replaceGraph(snapshot);
     this.host.fitViewToContent();
     this.host.recenterCrosshairs();
     this.host.emitZoomLevel();
-    this.host.checkAndEmitEditState();
+    this.announceGraph();
     this.openedDoc = null;
     this.openedStyleResolver = null;
     this.activeStyleIndex = 0;
@@ -911,10 +894,7 @@ export class FileController {
     const hasContent = this.host.drawingLayer.getDANodes().length > 0 || this.host.drawingLayer.getDAEdges().length > 0;
     if (hasContent && !window.confirm('Start a new graph? This will clear the current diagram.')) return;
     this.detachVaultFile();
-    this.host.finishTweens();
-    this.host.unselectAllLabels();
-    this.host.undoRedoService.clear();
-    this.host.drawingLayer.restoreGraph({ nodes: [], edges: [] });
+    this.replaceGraph({ nodes: [], edges: [] });
     // Drop any open-file context so display cycling doesn't reference the
     // previously-loaded doc after a fresh-start.
     this.openedDoc = null;
@@ -922,6 +902,26 @@ export class FileController {
     this.activeStyleIndex = 0;
     this.host.recenterCrosshairs();
     this.host.emitZoomLevel();
+    this.announceGraph();
+  }
+
+  /** Put a whole new graph on the canvas: nothing left in flight, no undo
+   *  history from the last one, the theme's colours. */
+  private replaceGraph(snapshot: GraphSnapshot): void {
+    this.host.finishTweens();
+    this.host.unselectAllLabels();
+    this.host.undoRedoService.clear();
+    this.host.drawingLayer.restoreGraph(snapshot);
+    this.host.drawingLayer.applyThemeColors(
+      this.host.visualConfigService.getEffectivePalette(this.host.themeService.theme));
+  }
+
+  /** Tell the rest of the app a different graph is showing: what can be
+   *  edited, and the context the header and keymenu show — the counts, and
+   *  the diagram type, which decides the keymenu's `t`. Every load ends here;
+   *  some used to skip the context, leaving the header a graph behind. */
+  private announceGraph(): void {
     this.host.checkAndEmitEditState();
+    this.host.emitContextState();
   }
 }

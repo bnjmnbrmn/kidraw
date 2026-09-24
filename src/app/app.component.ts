@@ -19,6 +19,8 @@ import {DETAIL_LEVELS, DetailLevel} from './agent/agent-protocol';
 /** Problems noted with :note, kept in this browser as well as the debug log. */
 const NOTES_KEY = 'kidraw_notes_v1';
 import {ReadingModeService} from './reading/reading-mode.service';
+import {getPlugin} from './plugins/plugin-registry';
+import {PluginSettingsService} from './plugins/plugin-settings.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
@@ -49,6 +51,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private visualConfig = inject(VisualConfigService);
   readonly agent = inject(AgentStore);
   readonly reading = inject(ReadingModeService);
+  private readonly pluginSettings = inject(PluginSettingsService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;
@@ -504,7 +507,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
           this.headerComponent.canRedo = daNotification.canRedo;
           this.headerComponent.diagramTypeName = daNotification.diagramTypeName;
         }
-        this.diagramTypeId = daNotification.diagramTypeId;
+        this.noticeTypeChange(daNotification.diagramTypeId);
         break;
       case "status-message":
         if (this.headerComponent) {
@@ -531,6 +534,19 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       case "view-changed-by-user":
         this.agent.userTookViewControl();
         break;
+    }
+  }
+
+  /** Keep the keymenu told of the graph's type. A graph whose type is a
+   *  plugin that is turned off still opens and saves as itself; say so when
+   *  one arrives (notes/design-plugins.md). */
+  private noticeTypeChange(typeId: string): void {
+    if (typeId === this.diagramTypeId) return;
+    this.diagramTypeId = typeId;
+    const plugin = getPlugin(typeId);
+    if (plugin && !this.pluginSettings.isEnabled(plugin.id)) {
+      this.headerComponent?.showStatusMessage(
+        `This graph's type, ${plugin.name}, is turned off in Settings: its commands and menu are off`, 6000);
     }
   }
 

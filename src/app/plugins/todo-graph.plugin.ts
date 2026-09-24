@@ -46,6 +46,7 @@ const MENU: PluginMenuEntry[] = ([
 export const TODO_GRAPH_PLUGIN: KidrawPlugin = {
   id: TODO_GRAPH_ID,
   name: 'Todo Graph',
+  description: 'Tasks as cards, each with a status: draft, to do, in progress, blocked or done',
   nodeDefaults: {
     shape: 'box',
     width: 280,

@@ -10,6 +10,8 @@ import { GraphStorageService, SavedGraph } from '../services/graph-storage.servi
 import { GraphSnapshot } from '../drawing-area/graph-snapshot';
 import { DAFileState } from '../drawing-area/da-notification.model';
 import { AgentStore } from '../agent/agent-store';
+import { KidrawPlugin } from '../plugins/plugin.model';
+import { PluginSettingsService } from '../plugins/plugin-settings.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -138,6 +140,7 @@ export class HeaderComponent {
   demoData = inject(DemoDataService);
   graphStorage = inject(GraphStorageService);
   agent = inject(AgentStore);
+  pluginSettings = inject(PluginSettingsService);
 
   get agentChipTitle(): string {
     const keys = this.agent.keyLabels();
@@ -154,6 +157,13 @@ export class HeaderComponent {
   readonly simpleColorFields = SIMPLE_COLOR_FIELDS;
   readonly arrayColorFields = ARRAY_COLOR_FIELDS;
   readonly depthIndices = [0, 1, 2, 3, 4, 5];
+
+  /** A plugin's checkbox in Settings: turn it on or off, and say so. */
+  onPluginToggle(plugin: KidrawPlugin, event: Event): void {
+    const on = (event.target as HTMLInputElement).checked;
+    this.pluginSettings.setEnabled(plugin.id, on);
+    this.showStatusMessage(`${plugin.name}: ${on ? 'on' : 'off'}`);
+  }
 
   showStatusMessage(message: string, durationMs = 2500): void {
     this.statusMessage = message;

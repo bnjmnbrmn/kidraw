@@ -38,13 +38,19 @@ export type PluginCommandHandlers = {
 /**
  * Every registered plugin's commands in one table. A command has exactly one
  * owner: two plugins claiming the same id is refused when the table is built.
+ * Plugins that are turned off keep their commands in the table, so the id
+ * still has its owner, who is then reported as off rather than missing.
  */
 export class PluginCommands {
-  private readonly table: Record<string, (args: unknown) => void>;
+  private readonly table: Record<string, {plugin: KidrawPlugin; run: (args: unknown) => void}>;
 
-  constructor(host: PluginHost, plugins: Iterable<KidrawPlugin>) {
-    this.table = joinDisjoint([...plugins].map(plugin => plugin.commands?.(host) ?? {}), 'plugins') as
-      Record<string, (args: unknown) => void>;
+  constructor(
+    private readonly host: PluginHost,
+    plugins: Iterable<KidrawPlugin>,
+    private readonly isEnabled: (pluginId: string) => boolean = () => true,
+  ) {
+    this.table = joinDisjoint([...plugins].map(plugin => ownedBy(plugin, plugin.commands?.(host) ?? {})), 'plugins') as
+      Record<string, {plugin: KidrawPlugin; run: (args: unknown) => void}>;
   }
 
   /** Whether some plugin brought this command. */
@@ -52,10 +58,18 @@ export class PluginCommands {
     return id in this.table;
   }
 
-  /** Run the call if a plugin owns it. False when none does. */
+  /** Run the call if a plugin owns it, or say that its plugin is off. False
+   *  when no plugin owns it. */
   run(call: PluginCommandCall): boolean {
-    const handler = this.table[call.id];
-    handler?.(call.args);
-    return handler !== undefined;
+    const owned = this.table[call.id];
+    if (!owned) return false;
+    if (this.isEnabled(owned.plugin.id)) owned.run(call.args);
+    else this.host.status(`${owned.plugin.name} is turned off in Settings`);
+    return true;
   }
+}
+
+/** A plugin's handlers, each labelled with the plugin. */
+function ownedBy(plugin: KidrawPlugin, handlers: PluginCommandHandlers): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(handlers).map(([id, run]) => [id, {plugin, run}]));
 }

@@ -107,6 +107,21 @@
         </label>
 
         <hr>
+        <details class="settings-section plugins-section">
+          <summary>Plugins</summary>
+          <div class="settings-group">
+            @for (plugin of pluginSettings.optionalPlugins(); track plugin.id) {
+              <label class="swap-label plugin-toggle" [title]="plugin.description ?? ''">
+                <input type="checkbox"
+                       [attr.data-plugin]="plugin.id"
+                       [checked]="pluginSettings.isEnabled(plugin.id)"
+                       (change)="onPluginToggle(plugin, $event)">
+                {{ plugin.name }}
+              </label>
+            }
+          </div>
+        </details>
+
         <details class="settings-section">
           <summary>Slide Animation</summary>
           <div class="settings-group">

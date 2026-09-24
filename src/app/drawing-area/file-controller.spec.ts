@@ -69,3 +69,26 @@ describe('FileController commands', () => {
     expect(runExCommand).toHaveBeenCalledOnceWith('w');
   });
 });
+
+describe('FileController :type with a plugin turned off', () => {
+  const files = (statuses: string[]) => new FileController({
+    drawingLayer: {diagramType: 'default'},
+    pluginSettings: {isEnabled: (id: string) => id !== 'explanation'},
+    emitStatus: (message: string) => statuses.push(message),
+    emitContextState: () => {},
+    log: {log: () => {}},
+  } as unknown as FileHost);
+
+  it('does not offer it', async () => {
+    const statuses: string[] = [];
+    await files(statuses).runExCommand('type');
+    expect(statuses[0]).toContain('todo-graph');
+    expect(statuses[0]).not.toContain('explanation');
+  });
+
+  it('refuses to switch to it, and says why', async () => {
+    const statuses: string[] = [];
+    await files(statuses).runExCommand('type explanation');
+    expect(statuses).toEqual(['⚠ Explanation is turned off in Settings']);
+  });
+});

@@ -107,6 +107,9 @@ export interface KidrawPlugin {
   name: string;
   /** One line on what the diagram type is for, for the plugin picker. */
   description?: string;
+  /** Core plugins are always on; any other can be turned off in Settings
+   *  (Ben, 2026-09-23). */
+  core?: boolean;
   nodeDefaults: PluginNodeDefaults;
   /** 'markdown' renders **bold**, *italic* and `code` in node labels and edits
    *  them as highlighted monospace source. Default 'plain'. */

@@ -46,6 +46,15 @@ describe('plugin commands', () => {
     expect(commands.run({id: 'todo.setStatus', args: {status: 'done'}} as PluginCommandCall)).toBeFalse();
   });
 
+  it('says so when the plugin that brought a command is turned off', () => {
+    const run = jasmine.createSpy('run');
+    const {host, statuses} = fakeHost();
+    const commands = new PluginCommands(host, [echo(run)], () => false);
+    expect(commands.run({id: 'todo.setStatus', args: {status: 'done'}})).toBeTrue();
+    expect(run).not.toHaveBeenCalled();
+    expect(statuses).toEqual(['Echo is turned off in Settings']);
+  });
+
   it('refuses two plugins bringing the same command', () => {
     const run = jasmine.createSpy('run');
     expect(() => new PluginCommands(fakeHost().host, [echo(run), {...echo(run), id: 'echo-2'}]))
