@@ -542,16 +542,9 @@ export class DrawingLayer extends Konva.Layer {
     node.applyTextOverflow();
   }
 
-  /** The selected nodes plus the edges whose endpoints are BOTH selected, as
-   *  a standalone subgraph. Edges reaching an unselected node are dropped —
-   *  a pasted copy has nothing to attach them to. Null when nothing is
-   *  selected. */
-  copySelectionSubgraph(): GraphSnapshot | null {
-    return this.copySubgraphOf(this.getSelectedDANodes());
-  }
-
-  /** The same thing for an explicit set of nodes, so a copy can act on what
-   *  the crosshairs are over rather than only on the selection. */
+  /** These nodes plus the edges whose endpoints are BOTH among them, as a
+   *  standalone subgraph. Edges reaching any other node are dropped — a
+   *  pasted copy has nothing to attach them to. Null for no nodes. */
   copySubgraphOf(nodes: readonly DANode[]): GraphSnapshot | null {
     const selectedIds = new Set(nodes.map(node => node.id));
     if (selectedIds.size === 0) return null;

@@ -149,6 +149,7 @@ import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from '.
 import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
+import { ClipboardController, ClipboardHost } from './clipboard-controller';
 
 
 /** A node as plugins see it: plain data, not the Konva object. */
@@ -220,6 +221,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly areaSelect = new AreaSelect(this.areaSelectHost());
   private readonly keyboardDrag = new KeyboardDrag(this.keyboardDragHost());
   private readonly search = new GraphSearch(this.graphSearchHost());
+  /** Yank, cut and paste of subgraphs (clipboard-controller.ts). */
+  private readonly clipboard = new ClipboardController(this.clipboardHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -414,16 +417,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  here (the tuning panel was removed). */
   private lastAppliedRouting: RoutingAlgorithm | null = null;
 
-  /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
-   *  can't freeze the UI. These track the in-flight run so we can drive the
-   *  countdown, enforce the timeout, and cancel a superseding run. */
-  /** Graph-local clipboard: the last copied/cut subgraph. Not the system
-   *  clipboard, and deliberately not persisted with the draft. */
-  private clipboard: GraphSnapshot | null = null;
   /** True while a key that owns the view is held (Pan/Zoom). The idle fade
    *  is suspended for the duration — you cannot aim a pan at something you
    *  cannot see (da-257). */
   private crosshairsHeldVisible = false;
+  /** Layout (edge routing) runs in a Web Worker so a slow/non-converging graph
+   *  can't freeze the UI. These track the in-flight run so we can drive the
+   *  countdown, enforce the timeout, and cancel a superseding run. */
   private routingWorker: Worker | null = null;
   private routingCountdown: ReturnType<typeof setInterval> | null = null;
   private routingDeadline: ReturnType<typeof setTimeout> | null = null;
@@ -578,7 +578,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
       this.styleCommands(), this.layoutCommands(), this.gather.commands(), this.fileController.commands(),
-      this.editMenuCommands(), this.diagramTypeCommands(), this.shellCommands(),
+      this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
 
@@ -713,14 +713,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** The Edit menu's five: undo, redo, cut, copy and paste. */
-  private editMenuCommands() {
+  /** Undo and redo. (Cut, copy and paste are the clipboard's.) */
+  private historyCommands() {
     return {
       [DACommandType.UNDO]: () => this.handleUndo(),
       [DACommandType.REDO]: () => this.handleRedo(),
-      [DACommandType.CUT_SELECTION]: this.thenEmitEditState(() => this.cutSelection()),
-      [DACommandType.COPY_SELECTION]: () => this.copySelection(),
-      [DACommandType.PASTE_CLIPBOARD]: () => this.pasteClipboard(),
     } satisfies CommandSlice;
   }
 
@@ -893,10 +890,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return this.probe.waypoint();
   }
 
-  /** Mark the targeted task nodes (selection, else topmost node under the
-   *  crosshairs) with a status from the identity's `status` tag group.
-   *  Statuses are exclusive semantic tags (`status/done` etc.), so they
-   *  persist with the graph document and survive undo/redo. */
   /** Lends search what it needs, through getters so the layers can still be
    *  assigned later in ngAfterViewInit. */
   private graphSearchHost(): GraphSearchHost {
@@ -908,6 +901,24 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       unselectAllLabels: () => da.unselectAllLabels(),
       nodeCenter: node => da.getNodeCenterInLayerCoordinates(node),
       centerViewOnLayerPoint: point => da.centerViewOnLayerPoint(point),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      emitStatus: message => da.emitStatus(message),
+    };
+  }
+
+  /** Lends the clipboard what it needs, through a getter so the layer can
+   *  still be assigned later in ngAfterViewInit. */
+  private clipboardHost(): ClipboardHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      getSelectedLabels: () => da.getSelectedLabels(),
+      waypointUnderCrosshairs: () => da.getWaypointUnderCrosshairs(),
+      nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
+      crosshairsInLayerCoords: () => da.crosshairsInLayerCoords(),
+      deleteSelected: () => da.deleteSelected(),
+      finishTweens: () => da.finishTweens(),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
       checkAndEmitEditState: () => da.checkAndEmitEditState(),
       emitStatus: message => da.emitStatus(message),
     };
@@ -1459,74 +1470,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.unselectAllLabels();
     // Escape also ends the traversal: drop the navigation focus glow.
     this.setGraphNavEdge(null);
-  }
-
-  /** Yank the selected nodes (and the edges wholly inside the selection).
-   *  Graph-local, not the system clipboard: the payload is a subgraph, and
-   *  nothing about it survives a page reload. */
-  /** The nodes the clipboard acts on. The selection when there is one;
-   *  otherwise whatever the crosshairs are over, so `y` yanks the node you
-   *  are looking at the way vim yanks the line you are on (da-272).
-   *
-   *  The guards mirror deleteSelected's priority order, so a cut copies
-   *  exactly what it is about to remove: with a waypoint, edge or label
-   *  selected, delete acts on that and the clipboard takes nothing. */
-  private clipboardTargetNodes(): DANode[] {
-    if (this.drawingLayer.getSelectedDAWaypoints().length > 0) return [];
-    const selected = this.drawingLayer.getSelectedDANodes();
-    if (selected.length > 0) return selected;
-    if (this.drawingLayer.getSelectedDAEdges().length > 0) return [];
-    if (this.getSelectedLabels().length > 0) return [];
-    if (this.getWaypointUnderCrosshairs()) return [];
-    const hovered = this.nodeUnderCrosshairs();
-    return hovered ? [hovered] : [];
-  }
-
-  private copySelection(): void {
-    const sub = this.drawingLayer.copySubgraphOf(this.clipboardTargetNodes());
-    if (!sub) {
-      this.emitStatus('Nothing to copy.');
-      return;
-    }
-    this.clipboard = sub;
-    // The text goes on the system clipboard too, to paste into the agent chat
-    // or another label. Best effort: the browser may refuse.
-    const text = this.clipboardTargetNodes().map(node => node.label.text()).join('\n\n');
-    void navigator.clipboard?.writeText(text).catch(() => {});
-    const n = sub.nodes.length;
-    const e = sub.edges.length;
-    this.emitStatus(`Copied ${n} node${n === 1 ? '' : 's'}` +
-      (e > 0 ? ` and ${e} edge${e === 1 ? '' : 's'}.` : '.'));
-  }
-
-  /** `x`: cut. Copies the nodes the delete is about to remove, then deletes
-   *  exactly what Delete would have — so cut stays a strict superset of the
-   *  Delete it replaced and still removes waypoints, edges and labels, which
-   *  the clipboard has no representation for (da-272). */
-  private cutSelection(): void {
-    const sub = this.drawingLayer.copySubgraphOf(this.clipboardTargetNodes());
-    if (sub) this.clipboard = sub;
-    this.deleteSelected();
-    this.emitStatus(sub
-      ? `Cut ${sub.nodes.length} node${sub.nodes.length === 1 ? '' : 's'}.`
-      : 'Deleted.');
-  }
-
-  /** Drop the clipboard subgraph centred on the crosshairs, selected so it
-   *  can be dragged straight away. */
-  private pasteClipboard(): void {
-    if (!this.clipboard) {
-      this.emitStatus('Clipboard is empty.');
-      return;
-    }
-    this.finishTweens();
-    const at = this.crosshairsInLayerCoords();
-    const pasted = this.drawingLayer.pasteSubgraph(this.clipboard, at.x, at.y);
-    this.updateEdgesForResizedNodes(pasted);
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    const n = pasted.length;
-    this.emitStatus(`Pasted ${n} node${n === 1 ? '' : 's'}.`);
   }
 
   // ── Text edits and the geometry they cause: delegated to TextEditingController ──

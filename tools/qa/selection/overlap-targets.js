@@ -54,7 +54,7 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
 
   nodes = await overlapped(page);
   const copied = await run(page, {kind: 'COPY_SELECTION'});
-  const clip = await page.evaluate(`${DA}.clipboard?.nodes.map(n => n.text) ?? []`);
+  const clip = await page.evaluate(`${DA}.clipboard.held?.nodes.map(n => n.text) ?? []`);
   check('Copy takes the highlighted node', JSON.stringify(clip) === JSON.stringify([nodes.onTop]), `${copied} ${JSON.stringify(clip)}`);
 
   nodes = await overlapped(page);
