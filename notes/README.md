@@ -122,6 +122,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 - [A refused command still leaves an undo step](bug-refused-command-leaves-undo-step.md) — fixed 2026-09-23: undo skips steps that would change nothing (checked at undo time, since drags finish after the command returns).
 - [SINGLE_ITEM_TOGGLE_SELECT picks the bottom node, and nothing sends it](bug-single-select-picks-the-bottom-node.md) — resolved 2026-09-23: command retired (Ben); the edit keys, which shared its method, now select the highlighted item.
 - [Delete over a highlighted label removes the whole edge](bug-delete-over-a-label-removes-its-edge.md) — open, Ben's call: Delete's fallback order (edges before labels) disagrees with the hover trace's (labels first).
+- [Two rows of the add/insert ledger disagree with the code](bug-add-insert-ledger-drift.md) — open, Ben's call: tap `i` enters vim normal (ledger: insert), `v`+`o` has four states (ledger: three); why `add-insert-taps.js` is below baseline.
 
 ## Research
 

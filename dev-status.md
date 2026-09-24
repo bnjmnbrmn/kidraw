@@ -19,9 +19,9 @@ explanation graphs on `explanation-graphs`._
 > - Diagram types can be YAML, added from a file without a rebuild, saved
 >   back to share, or written by the agent (`define_plugin`).
 > - AI Chat is a plugin you can turn off; Read is Explanation's.
-> - Browser checks in `tools/qa/graph-types/`; full suite 35/45 clean, the
->   two below baseline being the long-standing nav-popup and
->   add-insert-taps.
+> - Browser checks in `tools/qa/graph-types/`; full suite 40/50 clean
+>   (2026-09-24), the two below baseline being the long-standing nav-popup
+>   and add-insert-taps.
 
 > ## 🔧 IN PROGRESS: readability refactor (2026-09-18, branch `refactor/readability`)
 >
@@ -54,7 +54,14 @@ explanation graphs on `explanation-graphs`._
 >   (candidate ordering and row mapping), `area-select.ts` (the keyboard
 >   rubber band, da-195), `keyboard-drag.ts` (one press of a drag key
 >   moves the selection) and `graph-search.ts` (`/`, `n`, `N` — the first
->   unit to bring its own command slice; all three 2026-09-23). Plus the pure pieces:
+>   unit to bring its own command slice; all three 2026-09-23);
+>   `clipboard-controller.ts`, `style-controller.ts` (the thirteen style
+>   commands and the defaults new nodes and edges take),
+>   `layout-controller.ts` (layouts, routing and its worker),
+>   `agent-canvas-surface.ts` (the `AgentCanvasTarget` agent and reading mode
+>   hold) and `crosshairs-hover.ts` (the hover trace and landing ghost; all
+>   five 2026-09-24, each checked by a browser script run before and after
+>   the move). Plus the pure pieces:
 >   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
 >   `grow-lattice.ts` (walking the placement lattice that
 >   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
@@ -75,11 +82,13 @@ explanation graphs on `explanation-graphs`._
 >   (Now 5,586, after the dispatch change below.)
 > - **Commands dispatch through a table, not a switch** (2026-09-23).
 >   `command-handlers.ts`: each owner contributes a slice mapping command
->   kinds to handlers. Six units now bring their own slice —
+>   kinds to handlers. Nine units now bring their own slice —
 >   `GraphSearch`, `FileController`, `LinkNavController`,
 >   `NavigationGridController`, `TextEditingController`,
->   `GatherController` — and the component keeps slices only for what it
->   still does itself (crosshairs, view, selection, structure, style…).
+>   `GatherController`, `ClipboardController`, `StyleController`,
+>   `LayoutController` — and the component keeps slices only for what it
+>   still does itself (crosshairs, view, selection, structure…).
+>   **3,965 lines** on 2026-09-24.
 >   A mapped type keeps the old `assertNever`'s compile-time exhaustiveness
 >   (a missing kind fails the build; probed), and `mergeCommandSlices` refuses
 >   a kind claimed twice. This is the seam plugins register into: Ben's
@@ -100,7 +109,9 @@ explanation graphs on `explanation-graphs`._
 >     popup is not open, so it is pressing Esc on the bare canvas).
 >   - `drag-and-grow/add-insert-taps.js` was already one worse than its
 >     baseline before the merge; its `v+o` checks expect a different cycle
->     order from the one `edit-or-insert.spec.ts` pins.
+>     order from the one `edit-or-insert.spec.ts` pins. Why, found
+>     2026-09-24: it follows two ledger rows the code has since left —
+>     [`notes/bug-add-insert-ledger-drift.md`](notes/bug-add-insert-ledger-drift.md).
 >   - Two timing checks flake in full runs under load and pass 3/3 alone
 >     (2026-09-23): `grid-overlay/grid-nav.js` "return guide clears after its
 >     column is re-acquired" and `keys/speed-while-held.js` "pressing s while
@@ -114,12 +125,26 @@ explanation graphs on `explanation-graphs`._
 >   state machine (~15 fields) and the commit paths; then selection, the drag
 >   state machine and the directed-edge flow — the service extractions
 >   sketched in [`notes/idea-drawing-area-refactor.md`](notes/idea-drawing-area-refactor.md).
+>   *Update (inferred, 2026-09-24):* what is left is entangled — grow mode
+>   (~680 lines), the nav popup it shares, and the label-edit session all
+>   reach into one another's state, and the specs and browser scripts read
+>   grow mode's fields by name about 200 times. Worth a word with Ben before
+>   moving any of them; `grow-mode.js` (8/25) needs bringing up to the
+>   current design first to be a net for it.
 > - **Findings go to `notes/` as atomic `bug-` files**, not into this block.
 >   Two so far, each "the code does X, is that wanted?", each written up with
 >   what happens, why, and the options, and each ending at Ben's call rather
 >   than at an answer:
 >   [an empty quadrant announced as a move](notes/bug-empty-quadrant-announced-as-a-move.md)
->   and [the lattice tolerance that cannot fire](notes/bug-lattice-tolerance-cannot-fire.md).
+>   and [the lattice tolerance that cannot fire](notes/bug-lattice-tolerance-cannot-fire.md);
+>   2026-09-24 added [Delete over a label](notes/bug-delete-over-a-label-removes-its-edge.md)
+>   and [the add/insert ledger drift](notes/bug-add-insert-ledger-drift.md).
+>   Where the code contradicted its own comments or design note, it was fixed
+>   instead, each with a browser check that failed first: commands acting on
+>   the item under the highlighted one (`907fd833`, `2297de2b`), Recenter
+>   View centring under the header and on the whole graph (`abba218f`), the
+>   edit keys taking a waypoint (`b119111a`), and a diagram type's node shape
+>   never reaching new nodes (`2b965649`).
 
 > ## 🧭 IN PROGRESS: explanation graphs (2026-09-15, branch `explanation-graphs`)
 >
