@@ -6,10 +6,15 @@
  *      The new node is centered and raised to at least 100% zoom for editing.
  *   2. tap `a` over a node → connected default node one slot right → labelEdit.
  *   3. tap `a` over an edge → hint, nothing added.
- *   4. tap `i` over a node → edit its text (append to existing).
+ *   4. tap `i` over a node → edit its text, starting in vim normal mode
+ *      (`A` then appends).
  *   5. tap `i` over a label-less edge → empty label created and edited.
- *   6. hold `v` over the new undirected edge + `o` → four-state cycle:
- *      bidirectional → directed one way → directed the other way → undirected.
+ *   6. hold `v` over a new edge (directed, the default) + `o` → four-state
+ *      cycle: reversed → undirected → bidirectional → back to the original.
+ *
+ * Cases 4 and 6 followed ledger rows 1 and 19 of the design note until
+ * 2026-09-24, when Ben ruled the ledger wrong on both and the code right
+ * (Ben, 2026-09-24; notes/bug-add-insert-ledger-drift.md).
  */
 const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
   overlay: waitForOverlay, waitForDA, checker} = require('../harness');
@@ -171,17 +176,21 @@ async function main() {
   check('typed text lands on the new edge label', s.edges[0]?.labels?.join() === 'mid',
     JSON.stringify(s.edges[0]?.labels));
 
-  // --- 4. tap i over a node: edit its text ---
+  // --- 4. tap i over a node: edit its text, in vim normal mode ---
   await reset(twoNodes());
   await parkOnNode('beta');
   await page.keyboard.press('i');
   await afterFrame(page); await settled(page);
   s = await state();
-  check('tap i over a node enters labelEdit', s.mode === 'labelEdit', s.mode);
+  check('tap i over a node enters text editing in vim normal mode', s.mode === 'labelEditVimNormal', s.mode);
+  // `A` lives under a held Shift, so Shift goes down for real.
+  await page.keyboard.down('Shift');
+  await page.keyboard.press('a');
+  await page.keyboard.up('Shift');
   await page.keyboard.type('x', {delay: 25});
   await escapeToNormal();
   s = await state();
-  check('typed text appended to the node label', s.nodes.some(n => n.text === 'betax'),
+  check('A then typed text appends to the node label', s.nodes.some(n => n.text === 'betax'),
     JSON.stringify(s.nodes.map(n => n.text)));
 
   // --- 5. tap i over the (label-less) edge: creates + edits an empty label ---
@@ -216,37 +225,25 @@ async function main() {
   await page.keyboard.down('v');
   await page.waitForTimeout(200);
 
-  await page.keyboard.press('o');
-  await page.waitForTimeout(120);
-  let w = await wiring();
-  check('v+o 1: bidirectional with stable endpoints', w.from === start.from && w.to === start.to
-    && w.dir === 'bidirectional', JSON.stringify(w));
-  check('label anchor stays put without a reversal',
-    w.labelT !== null && Math.abs(w.labelT - start.labelT) < 0.001,
-    `t ${start.labelT} → ${w.labelT}`);
+  const press = async () => { await page.keyboard.press('o'); await page.waitForTimeout(120); return wiring(); };
+  check('a new edge starts directed', start.dir === 'directed', JSON.stringify(start));
 
-  await page.keyboard.press('o');
-  await page.waitForTimeout(120);
-  w = await wiring();
-  check('v+o 2: first directed orientation', w.from === start.to && w.to === start.from
-    && w.dir === 'directed', JSON.stringify(w));
+  let w = await press();
+  check('v+o 1: reversed', w.from === start.to && w.to === start.from && w.dir === 'directed', JSON.stringify(w));
   check('label anchor mirrors with the reversal',
-    w.labelT !== null && Math.abs(w.labelT - (1 - start.labelT)) < 0.001,
-    `t ${start.labelT} → ${w.labelT}`);
+    w.labelT !== null && Math.abs(w.labelT - (1 - start.labelT)) < 0.001, `t ${start.labelT} → ${w.labelT}`);
 
-  await page.keyboard.press('o');
-  await page.waitForTimeout(120);
-  w = await wiring();
-  check('v+o 3: opposite directed orientation', w.from === start.from && w.to === start.to
-    && w.dir === 'directed', JSON.stringify(w));
+  w = await press();
+  check('v+o 2: undirected', w.dir === 'undirected', JSON.stringify(w));
 
-  await page.keyboard.press('o');
-  await page.waitForTimeout(120);
+  w = await press();
+  check('v+o 3: bidirectional', w.dir === 'bidirectional', JSON.stringify(w));
+
+  w = await press();
   await page.keyboard.up('v');
   await page.waitForTimeout(150);
-  w = await wiring();
-  check('v+o 4: back to the original undirected wiring', w.from === start.from && w.to === start.to
-    && w.dir === 'undirected', JSON.stringify(w));
+  check('v+o 4: back to the original direction', w.from === start.from && w.to === start.to
+    && w.dir === 'directed', JSON.stringify(w));
   check('label anchor restored', Math.abs(w.labelT - start.labelT) < 0.001,
     `t ${start.labelT} → ${w.labelT}`);
 

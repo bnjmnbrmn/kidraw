@@ -14,9 +14,11 @@ model Ben partly liked; its weakness was blind direction commitment).
 
 ## The split
 
-- **`i` (tap) = insert text.** Enter label edit (vim insert mode) on the
+- **`i` (tap) = insert text.** Enter label edit on the
   thing under the crosshairs: node → its label; label → itself; edge → its
   label (created empty if none); nothing → hint. `i` never grows the graph.
+  Over a node, editing starts in vim normal mode (Ben, 2026-09-24; ledger
+  row 1).
 - **`a` (held) = add structure.** Context-dependent, commit-on-release:
   - over a **node** → the grow flow (below);
   - over an **edge** → add label / waypoint (label treated as its edge);
@@ -160,7 +162,7 @@ built behaviour followed the prose.
 
 | # | Case | Behavior | Status |
 |---|------|----------|--------|
-| 1 | tap `i` over node | edit node text (vim insert) | ✅ built 2026-07-19 |
+| 1 | tap `i` over node | edit node text, starting in **vim normal** mode | ✅ corrected (Ben, 2026-09-24): the row said vim insert; the code had entered normal mode since `7d19c7f1` (2026-08-06), and Ben ruled the row wrong |
 | 2 | tap `i` over label | edit label text | ✅ built 2026-07-19 |
 | 3 | tap `i` over edge | edits its label; creates an empty one if none (built as such) | ✅ built 2026-07-19 |
 | 4 | tap `i` over nothing | no-op + hint | ✅ built 2026-07-19 |
@@ -177,7 +179,7 @@ built behaviour followed the prose.
 | 14 | directionality in grow flow | `o` cycles 4 states (out/in/undirected/bidi), any time | ✓ settled round 4 |
 | 15 | vim `I`/`A` positional variants for tap-`i` | — | deferred to label-edit overhaul |
 | 18 | cancel semantics | no dedicated key: release-early/on-anchor = no-op, `u` after commit, Esc/`ctrl-[` in sticky (popup) phase where `a` is already released | ✓ settled round 6 |
-| 19 | `v` submenu: `o` cycles directionality of selected edge(s) | built as 3-state (D→U→B); reversing an existing edge is a separate structural op, deferred | ✅ built 2026-07-19 (scope note) |
+| 19 | `v` submenu: `o` cycles directionality of selected edge(s) | **4 states**: reversed → undirected → bidirectional → back to the original direction (the label anchor mirrors with the reversal) | ✅ corrected (Ben, 2026-09-24): the row said 3 states with reversal deferred; the 4-state cycle came from Ben's dogfooding (`9aea32e6`, 2026-07-20), and Ben ruled the row wrong |
 | 20 | placement rule in a+f mode | first press = rough slot throw, then grid steps; s/d tiers | ✅ built 2026-07-19 — awaiting Ben's feel |
 | 16 | u/o connect modifiers (07-18 hub) | **retired 2026-07-20** — grow mode covers connecting; code + `CREATE_NEW_NODE_CONNECTED` deleted (in git history) | ✅ done |
 | 17 | `s`+direction edge picker | **retired 2026-07-20** — superseded by grow targeting; `BEGIN_/SET_/FINALIZE_DIRECTED_EDGE` deleted (in git history). The `s` key returned 2026-08-07 as an Edge-kind submenu (`l` Self Loop), not as the old directional picker. | ✅ done |

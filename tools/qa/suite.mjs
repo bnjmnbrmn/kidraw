@@ -48,8 +48,7 @@ export const SUITE = [
   { script: 'drag-and-grow/coarse-drag.js', region: 'drag-and-grow', status: 'suite', baseline: { passed: 16, failed: 1, code: 1 } },
   { script: 'drag-and-grow/grow-mode.js', region: 'drag-and-grow', status: 'suite', baseline: { passed: 8, failed: 17, code: 1 } },
   { script: 'drag-and-grow/grow-ghost-targets.js', region: 'drag-and-grow', status: 'suite' },
-  { script: 'drag-and-grow/add-insert-taps.js', region: 'drag-and-grow', status: 'suite', baseline: { passed: 11, failed: 6, code: 1 },
-    note: 'cases 1-3, 5 green after the 2026-09-17 rewrite; case 4 (tap i mode) and case 6 (v+o cycle) await a decision' },
+  { script: 'drag-and-grow/add-insert-taps.js', region: 'drag-and-grow', status: 'suite' },
   { script: 'drag-and-grow/add-zoom-ghost.js', region: 'drag-and-grow', status: 'suite' },
   { script: 'drag-and-grow/area-select.js', region: 'drag-and-grow', status: 'suite' },
 

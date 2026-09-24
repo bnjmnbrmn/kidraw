@@ -1,10 +1,16 @@
 ---
 title: Two rows of the add/insert ledger disagree with the code, and add-insert-taps.js follows the ledger
 type: bug
-status: open — Ben's call
+status: resolved 2026-09-24 — the ledger was wrong on both rows (Ben)
 ---
 
 # Two rows of the add/insert ledger disagree with the code
+
+> **Resolved (Ben, 2026-09-24): the ledger is wrong in both cases.** Rows 1
+> and 19 now describe the code: tap `i` over a node starts in vim normal mode,
+> and `v` then `o` cycles four states. `add-insert-taps.js` was rewritten to
+> match, and is clean without a baseline: it starts from the default directed
+> edge and uses a real held Shift for `A`.
 
 `tools/qa/drag-and-grow/add-insert-taps.js` has been below its baseline for
 weeks (7 failures against 6). Most of its failures are not the app breaking:
