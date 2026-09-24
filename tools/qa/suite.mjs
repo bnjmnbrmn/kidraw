@@ -44,7 +44,7 @@ export const SUITE = [
 
   // ── Drag, grow ghosts, quick add (~7424-8753) ──
   { script: 'drag-and-grow/coarse-drag.js', region: 'drag-and-grow', status: 'suite' },
-  { script: 'drag-and-grow/grow-mode.js', region: 'drag-and-grow', status: 'suite', baseline: { passed: 8, failed: 17, code: 1 } },
+  { script: 'drag-and-grow/grow-mode.js', region: 'drag-and-grow', status: 'suite' },
   { script: 'drag-and-grow/grow-ghost-targets.js', region: 'drag-and-grow', status: 'suite' },
   { script: 'drag-and-grow/add-insert-taps.js', region: 'drag-and-grow', status: 'suite' },
   { script: 'drag-and-grow/add-zoom-ghost.js', region: 'drag-and-grow', status: 'suite' },

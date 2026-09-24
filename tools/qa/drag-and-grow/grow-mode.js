@@ -1,346 +1,269 @@
 /*
- * Stage 2 of the a=add / i=insert model: the held-a grow mode over a node
- * (notes/design-add-insert-model.md), vim profile, real keys:
+ * Held-Add grow mode (notes/design-add-insert-model.md, ledger rows 6-10, 13),
+ * vim profile, real keys. Each case starts from the same three nodes (anchor
+ * A, B far to its right, C below-left) and a clean normal mode, so one
+ * failure cannot leave state behind for the next.
  *
- *   1. hold a over a node, release with no keypress → the tap default:
- *      connected node one slot right + labelEdit (pristine release).
- *   2. hold a + l + l → target cycles past the quick-added node to B
- *      on the right (ghost edge);
- *      release → edge anchor→target, NO new node, normal mode.
- *   3. hold a + l + l + o + o → default undirected directionality cycled
- *      twice (bidirectional, directed); release → directed edge.
- *   4. hold a + l + h (come home to the anchor) → release commits nothing.
- *   5. While the grow mode is held, movement keys do NOT move the
- *      crosshairs (keymenu suspended).
+ *   1. Hold a over a node: targeting surface. Release with no keypress is
+ *      the tap: a self-loop, normal mode (row 6, revised 2026-08-09).
+ *   2. a + l…: the aim walks the lattice right and on to B; the crosshairs
+ *      ride the aim (da-551). Release on B wires A→B, no new node.
+ *   3. Release on a lattice spot: a new node there, linked, labelEdit (row 7).
+ *   4. o cycles the direction (row 8): new edges start directed, so o o is
+ *      undirected.
+ *   5. Hop out and back onto the anchor: release commits nothing.
+ *   6. / opens the target search (row 9); releasing a keeps it open;
+ *      Enter commits; Esc Esc cancels the whole add.
+ *   7. a + f: the type popup (row 10); j browses, releasing f picks, l
+ *      places, releasing a commits a linked node. Sticky variant: a released
+ *      first, Enter commits. Escape in placement cancels.
+ *   8. Empty canvas a + f (row 13): a free node of the picked type.
+ *   9. Existing nodes stay reachable through the lattice (Ben, 2026-09-06):
+ *      straight up reaches the near node; up-and-right reaches the diagonal one.
+ *
+ * Rewritten 2026-09-24. The previous version followed the design before
+ * 2026-08-09 (a pristine release added a node to the right, the crosshairs
+ * stayed put, new edges started undirected), and each case built on the
+ * last, so 17 of its 25 checks failed.
  */
-const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
-  overlay: waitForOverlay, waitForDA, checker} = require('../harness');
+const {launch, openApp, settled, checker} = require('../harness');
 
 const check = checker();
+const DA = "window.ng.getComponent(document.querySelector('app-drawing-area'))";
+const KM = "window.ng.getComponent(document.querySelector('app-keymenu'))";
 
 async function main() {
   const browser = await launch();
   const page = await openApp(browser, {width: 1600, height: 1000});
+  const wait = ms => page.waitForTimeout(ms);
 
-  check('header always identifies an unbacked graph as Untitled',
-    (await page.locator('.file-chip').textContent())?.trim() === 'Untitled');
-
-  // Three unconnected nodes: anchor A, B to its right, C below-left.
-  await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const mk = (id, x, y, text) => ({
-      id, x, y, text, width: 120, height: 60, fontSize: 14, isSelected: false,
-    });
-    da.drawingLayer.restoreGraph({
-      nodes: [mk('da-1', 400, 300, 'A'), mk('da-2', 900, 300, 'B'), mk('da-3', 300, 700, 'C')],
-      edges: [],
-    });
-    da.drawingLayer.batchDraw();
-    window.__statuses = [];
-    da.daOut.subscribe(n => { if (n.kind === 'status-message') window.__statuses.push(n.message); });
-  });
-
-  const state = () => page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
+  const state = () => page.evaluate(`(() => { const da = ${DA}; const km = ${KM};
     return {
       mode: km.keyMenu.currentMode.name,
       statuses: window.__statuses ?? [],
       growActive: da.growActive,
-      xh: { x: da.crosshairsLayer.crosshairsX(), y: da.crosshairsLayer.crosshairsY() },
-      nodes: da.drawingLayer.getDANodes().map(n => ({ text: n.label.text(), y: n.konvaGroup.y() })),
+      target: da.growTarget?.label.text() ?? null,
+      insertion: da.growInsertionTarget?.id ?? null,
+      popup: {open: da.navPopupOpen, purpose: da.navPopupPurpose},
+      placing: da.growPlacing, shape: da.growShape,
+      xh: {x: da.crosshairsLayer.crosshairsX(), y: da.crosshairsLayer.crosshairsY()},
+      nodes: da.drawingLayer.getDANodes().map(n => ({text: n.label.text(), shape: n.nodeShape,
+        x: n.konvaGroup.x(), edges: n.connectedEdges.length})),
       edges: da.drawingLayer.getDAEdges().map(e => ({
-        from: e.srcNode.label.text(), to: e.destNode.label.text(), dir: e.directedness,
-      })),
-    };
-  });
+        from: e.srcNode.label.text(), to: e.destNode.label.text(), dir: e.directedness})),
+    }; })()`);
 
-  const parkOnNode = (text) => page.evaluate((t) => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.finishTweens();
-    const dl = da.drawingLayer;
-    const node = dl.getDANodes().find(n => n.label.text() === t);
-    const pos = node.group.position();
-    da.crosshairsLayer.crosshairs.x = (pos.x + node.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
-    da.crosshairsLayer.crosshairs.y = (pos.y + node.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
-  }, text);
-
-  const escapeToNormal = async () => {
+  /** Three unconnected nodes, a clean normal mode, the crosshairs on A. */
+  const reset = async (nodes = [['A', 400, 300], ['B', 900, 300], ['C', 300, 700]], park = 'A') => {
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(120);
+    await page.evaluate(`(() => { const da = ${DA}; da.finishTweens();
+      const dl = da.drawingLayer;
+      dl.restoreGraph({nodes: ${JSON.stringify(nodes)}.map(([text, x, y]) =>
+        ({id: 'n-' + text, x, y, text, width: 120, height: 60, fontSize: 14, isSelected: false})), edges: []});
+      dl.scale({x: 1, y: 1}); dl.position({x: 0, y: 0}); dl.unselectAll(); dl.batchDraw();
+      window.__statuses = []; window.__statusSub?.unsubscribe();
+      window.__statusSub = da.daOut.subscribe(n => { if (n.kind === 'status-message') window.__statuses.push(n.message); });
+      const node = dl.getDANodes().find(n => n.label.text() === ${JSON.stringify(park)});
+      if (node) {
+        da.crosshairsLayer.crosshairs.x = node.group.x() + node.NODE_WIDTH / 2;
+        da.crosshairsLayer.crosshairs.y = node.group.y() + node.NODE_HEIGHT / 2;
+      }
+      da.crosshairsLayer.showCrosshairs(); })()`);
+    await settled(page);
+  };
+  const holdA = async () => { await page.keyboard.down('a'); await wait(250); };
+  const tap = async key => { await page.keyboard.press(key); await wait(120); };
+  const release = async key => { await page.keyboard.up(key); await wait(250); };
+  /** Press `key` until the aim is on the node labelled `label`, at most `max` times. */
+  const hopTo = async (key, label, max = 8) => {
+    for (let i = 0; i < max; i++) {
+      await tap(key);
+      if ((await state()).target === label) return true;
+    }
+    return false;
   };
 
-  // --- 1. pristine release = default add-right ---
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
+  // --- 1. hold, then release untouched: the tap's self-loop ---
+  await reset();
+  await holdA();
   let s = await state();
-  check('holding a over a node shows targeting controls', s.growActive === true
-    && s.mode === 'surfaceGrowTargeting', JSON.stringify({growActive: s.growActive, mode: s.mode}));
-  await page.keyboard.up('a');
-  await page.waitForTimeout(200);
+  check('holding a over a node shows targeting controls',
+    s.growActive && s.mode === 'surfaceGrowTargeting', JSON.stringify({grow: s.growActive, mode: s.mode}));
+  await release('a');
   s = await state();
-  check('pristine release quick-adds right', s.nodes.length === 4 && s.edges.length === 1
-    && s.edges[0].from === 'A', JSON.stringify(s.edges));
-  check('pristine release enters labelEdit', s.mode === 'labelEdit', s.mode);
-  await page.keyboard.type('D', { delay: 25 });
-  await escapeToNormal();
+  check('a release without a keypress adds a self-loop and no node',
+    s.nodes.length === 3 && s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'A',
+    JSON.stringify(s.edges));
+  check('and stays in normal mode', s.mode === 'normal' && !s.growActive, s.mode);
 
-  // --- 2. targeting: hold a + l + l → cycle past D to B; release wires A—B ---
-  await parkOnNode('A');
-  const before = await state();
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('l');
-  await page.keyboard.press('l');
-  await page.waitForTimeout(150);
+  // --- 2. walk right to B; the crosshairs ride the aim ---
+  await reset();
+  const start = (await state()).xh;
+  await holdA();
+  await tap('l');
   s = await state();
-  check('movement keys are captured (crosshairs still)', s.xh.x === before.xh.x && s.xh.y === before.xh.y,
-    JSON.stringify({before: before.xh, after: s.xh}));
-  await page.keyboard.up('a');
-  await page.waitForTimeout(200);
+  check('the first l aims at a lattice spot to the right', s.insertion !== null && s.target === null,
+    JSON.stringify({target: s.target, insertion: s.insertion}));
+  check('the crosshairs ride the aim', s.xh.x > start.x && s.xh.y === start.y,
+    JSON.stringify({start, now: s.xh}));
+  const reachedB = await hopTo('l', 'B');
+  check('further l presses reach B', reachedB, (await state()).target);
+  await release('a');
   s = await state();
-  check('release wires anchor→target, no new node', s.nodes.length === 4
-    && s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'undirected'), JSON.stringify(s.edges));
-  check('stays in normal mode after existing-target commit', s.mode === 'normal', s.mode);
-  check('grow mode exited', (await state()).growActive === false);
+  check('release on B wires A→B, directed, no new node',
+    s.nodes.length === 3 && s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'B'
+      && s.edges[0].dir === 'directed', JSON.stringify(s.edges));
+  check('and stays in normal mode', s.mode === 'normal' && !s.growActive, s.mode);
 
-  // --- 3. o cycles directionality before commit ---
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('l');
-  await page.keyboard.press('l');
-  await page.keyboard.press('o');
-  await page.keyboard.press('o');
-  await page.waitForTimeout(150);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(200);
+  // --- 3. release on a lattice spot: a new linked node, labelEdit ---
+  await reset();
+  await holdA();
+  await tap('l');
+  await release('a');
   s = await state();
-  check('o o before release commits a directed edge',
-    s.edges.some(e => e.from === 'A' && e.to === 'B' && e.dir === 'directed'), JSON.stringify(s.edges));
+  check('release on a spot adds a linked node there', s.nodes.length === 4
+    && s.edges.some(e => e.from === 'A' && e.to === ''), JSON.stringify(s.edges));
+  check('and opens its label for editing', s.mode === 'labelEdit', s.mode);
 
-  // --- 4. come home to cancel ---
-  const edgeCount = s.edges.length;
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('l');
-  await page.waitForTimeout(100);
-  await page.keyboard.press('h');
-  await page.waitForTimeout(100);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(200);
+  // --- 4. o cycles the direction before commit ---
+  await reset();
+  await holdA();
+  await hopTo('l', 'B');
+  await tap('o');
+  await tap('o');
+  await release('a');
   s = await state();
-  check('hopping back onto the anchor commits nothing', s.edges.length === edgeCount
-    && s.nodes.length === 4 && s.mode === 'normal', JSON.stringify({edges: s.edges.length, mode: s.mode}));
+  check('o o before release commits an undirected edge',
+    s.edges.length === 1 && s.edges[0].dir === 'undirected', JSON.stringify(s.edges));
 
-  // --- 5. / fuzzy target search (sticky phase) ---
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('/');
-  await page.waitForTimeout(250);
-  let popup = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return { open: da.navPopupOpen, purpose: da.navPopupPurpose, grow: da.growActive };
-  });
-  const targetMenuMode = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-keymenu')).keyMenu.currentMode.name);
+  // --- 5. come home to cancel ---
+  await reset();
+  await holdA();
+  await tap('l');
+  await tap('h');
+  s = await state();
+  check('hopping back lands on the anchor', s.target === 'A', JSON.stringify({target: s.target, insertion: s.insertion}));
+  await release('a');
+  s = await state();
+  check('release on the anchor commits nothing', s.edges.length === 0 && s.nodes.length === 3
+    && s.mode === 'normal', JSON.stringify({edges: s.edges.length, mode: s.mode}));
+
+  // --- 6. / target search: sticky, Enter commits, Esc Esc cancels ---
+  await reset();
+  await holdA();
+  await tap('/');
+  s = await state();
   check('/ opens the target search popup and updates the keymenu',
-    popup.open && popup.purpose === 'grow-target'
-      && targetMenuMode === 'surfaceGrowTargetPopup',
-    JSON.stringify({...popup, menu: targetMenuMode}));
-  await page.keyboard.up('a'); // sticky: releasing a must not commit
-  await page.waitForTimeout(150);
+    s.popup.open && s.popup.purpose === 'grow-target' && s.mode === 'surfaceGrowTargetPopup',
+    JSON.stringify({...s.popup, mode: s.mode}));
+  await release('a');
   s = await state();
-  const edgesBeforeSearch = s.edges.length;
-  check('releasing a with the popup open commits nothing', s.growActive === true
-    && (await page.evaluate(() => window.ng.getComponent(document.querySelector('app-drawing-area')).navPopupOpen)),
-    JSON.stringify({grow: s.growActive}));
-  await page.keyboard.type('c', { delay: 40 });
-  await page.waitForTimeout(200);
+  check('releasing a with the popup open commits nothing', s.growActive && s.popup.open && s.edges.length === 0,
+    JSON.stringify({grow: s.growActive, popup: s.popup}));
+  await page.keyboard.type('c', {delay: 40});
+  await wait(150);
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(250);
+  await wait(250);
   s = await state();
-  check('Enter commits the edge to the searched node', s.edges.length === edgesBeforeSearch + 1
-    && s.edges.some(e => e.from === 'A' && e.to === 'C'), JSON.stringify(s.edges));
-  check('grow mode fully exited after search commit', s.growActive === false && s.mode === 'normal',
+  check('Enter commits the edge to the searched node',
+    s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'C', JSON.stringify(s.edges));
+  check('grow mode fully exited after the search commit', !s.growActive && s.mode === 'normal',
     JSON.stringify({grow: s.growActive, mode: s.mode}));
 
-  // --- 6. Esc in the search cancels the whole add ---
-  const edgeCount2 = s.edges.length;
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('/');
-  await page.waitForTimeout(250);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(100);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(100);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(250);
+  await reset();
+  await holdA();
+  await tap('/');
+  await release('a');
+  await tap('Escape');
+  await tap('Escape');
+  await wait(150);
   s = await state();
-  check('Esc Esc cancels the add from the search popup', s.edges.length === edgeCount2
-    && s.growActive === false && s.mode === 'normal'
-    && s.statuses.some(m => m.includes('Add canceled')),
+  check('Esc Esc cancels the add from the search popup', s.edges.length === 0 && !s.growActive
+    && s.mode === 'normal' && s.statuses.some(m => m.includes('Add canceled')),
     JSON.stringify({edges: s.edges.length, grow: s.growActive, mode: s.mode}));
 
-  // --- 7. a+f type popup → placement → release commits new node ---
-  const nodesBefore7 = s.nodes.length;
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
+  // --- 7. a + f: type popup, placement, commit ---
+  await reset();
+  await holdA();
   await page.keyboard.down('f');
-  await page.waitForTimeout(300);
-  popup = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return { open: da.navPopupOpen, purpose: da.navPopupPurpose };
-  });
-  const typeMenuMode = await page.evaluate(() =>
-    window.ng.getComponent(document.querySelector('app-keymenu')).keyMenu.currentMode.name);
-  check('a+f opens the type popup and updates the keymenu', popup.open
-    && popup.purpose === 'grow-type' && typeMenuMode === 'surfaceGrowTypePopup',
-    JSON.stringify({...popup, menu: typeMenuMode}));
-  await page.keyboard.press('j'); // highlight Circle
-  await page.waitForTimeout(120);
-  await page.keyboard.up('f');    // release selects → placement mode
-  await page.waitForTimeout(250);
-  let placing = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    return { placing: da.growPlacing, shape: da.growShape, open: da.navPopupOpen,
-      menu: km.keyMenu.currentMode.name };
-  });
-  check('releasing f selects the type and enters placement', placing.placing === true
-    && placing.shape === 'circle' && !placing.open
-    && placing.menu === 'surfaceGrowPlacement', JSON.stringify(placing));
-  await page.keyboard.press('l'); // rough throw right
-  await page.keyboard.press('l'); // grid step right
-  await page.waitForTimeout(120);
-  await page.keyboard.up('a');    // commit
-  await page.waitForTimeout(250);
+  await wait(300);
   s = await state();
-  const circle = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const A = da.drawingLayer.getDANodes().find(n => n.label.text() === 'A');
-    const c = da.drawingLayer.getDANodes().find(n => n.nodeShape === 'circle');
-    return c ? { x: c.konvaGroup.x(), ax: A.konvaGroup.x(), edge: c.connectedEdges.length } : null;
-  });
-  check('release commits a connected circle placed to the right', s.nodes.length === nodesBefore7 + 1
-    && circle && circle.x > circle.ax && circle.edge === 1, JSON.stringify(circle));
+  check('a+f opens the type popup and updates the keymenu',
+    s.popup.open && s.popup.purpose === 'grow-type' && s.mode === 'surfaceGrowTypePopup',
+    JSON.stringify({...s.popup, mode: s.mode}));
+  await tap('j'); // Circle
+  await release('f');
+  s = await state();
+  check('j then releasing f picks Circle and enters placement',
+    s.placing && s.shape === 'circle' && !s.popup.open && s.mode === 'surfaceGrowPlacement',
+    JSON.stringify({placing: s.placing, shape: s.shape, popup: s.popup, mode: s.mode}));
+  await tap('l');
+  await tap('l');
+  await release('a');
+  s = await state();
+  const circle = s.nodes.find(n => n.shape === 'circle');
+  check('release commits a linked circle to the right of A',
+    s.nodes.length === 4 && circle && circle.x > 400 && circle.edges === 1, JSON.stringify(circle));
   check('placement commit enters labelEdit', s.mode === 'labelEdit', s.mode);
-  await page.keyboard.type('E', { delay: 25 });
-  await escapeToNormal();
 
-  // --- 8. sticky placement: a released during popup, Enter commits ---
-  const nodesBefore8 = (await state()).nodes.length;
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
+  await reset();
+  await holdA();
   await page.keyboard.down('f');
-  await page.waitForTimeout(300);
-  await page.keyboard.up('a');   // sticky — popup owns the flow now
-  await page.waitForTimeout(120);
-  await page.keyboard.up('f');   // selects Box (top row)
-  await page.waitForTimeout(250);
-  await page.keyboard.press('h'); // rough throw left
-  await page.waitForTimeout(120);
+  await wait(300);
+  await release('a'); // sticky: the popup owns the flow now
+  await release('f'); // picks Box, the top row
+  await tap('h');
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(250);
+  await wait(250);
   s = await state();
-  check('sticky placement commits on Enter', s.nodes.length === nodesBefore8 + 1
-    && s.mode === 'labelEdit', JSON.stringify({n: s.nodes.length, mode: s.mode}));
-  await escapeToNormal();
+  check('sticky placement commits on Enter', s.nodes.length === 4 && s.mode === 'labelEdit',
+    JSON.stringify({n: s.nodes.length, mode: s.mode}));
 
-  // --- 9. Escape in placement cancels ---
-  const nodesBefore9 = (await state()).nodes.length;
-  await parkOnNode('A');
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
+  await reset();
+  await holdA();
   await page.keyboard.down('f');
-  await page.waitForTimeout(300);
-  await page.keyboard.up('f');
-  await page.waitForTimeout(250);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(150);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(200);
+  await wait(300);
+  await release('f');
+  await tap('Escape');
+  await release('a');
   s = await state();
-  check('Escape in placement cancels without creating', s.nodes.length === nodesBefore9
-    && s.growActive === false && s.mode === 'normal',
+  check('Escape in placement cancels without creating', s.nodes.length === 3 && !s.growActive && s.mode === 'normal',
     JSON.stringify({n: s.nodes.length, grow: s.growActive, mode: s.mode}));
 
-  // --- 10. Empty-canvas a+f uses the type popup and creates a free node ---
-  await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.crosshairsLayer.crosshairs.x = 1450;
-    da.crosshairsLayer.crosshairs.y = 850;
-  });
-  const before10 = await state();
-  await page.keyboard.down('a');
-  await page.waitForTimeout(250);
+  // --- 8. empty canvas a + f: a free node of the picked type ---
+  await reset(undefined, null);
+  await page.evaluate(`(() => { const da = ${DA};
+    da.crosshairsLayer.crosshairs.x = 1300; da.crosshairsLayer.crosshairs.y = 800; })()`);
+  await holdA();
   await page.keyboard.down('f');
-  await page.waitForTimeout(300);
-  popup = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    return {open: da.navPopupOpen, purpose: da.navPopupPurpose, anchor: da.growAnchor,
-      menu: km.keyMenu.currentMode.name};
-  });
-  check('empty-canvas a+f opens the type popup', popup.open
-    && popup.purpose === 'grow-type' && popup.anchor === null
-    && popup.menu === 'surfaceGrowTypePopup', JSON.stringify(popup));
-  await page.keyboard.press('j');
-  await page.keyboard.press('j'); // Diamond
-  await page.keyboard.up('f');
-  await page.waitForTimeout(200);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(250);
+  await wait(300);
   s = await state();
-  const freeDiamond = await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const nodes = da.drawingLayer.getDANodes();
-    const node = nodes[nodes.length - 1];
-    return {shape: node.nodeShape, edges: node.connectedEdges.length};
-  });
-  check('empty-canvas type choice commits a free diamond',
-    s.nodes.length === before10.nodes.length + 1 && s.edges.length === before10.edges.length
-      && freeDiamond.shape === 'diamond' && freeDiamond.edges === 0 && s.mode === 'labelEdit',
-    JSON.stringify({node: freeDiamond, mode: s.mode}));
+  check('empty-canvas a+f opens the type popup',
+    s.popup.open && s.popup.purpose === 'grow-type' && s.mode === 'surfaceGrowTypePopup', JSON.stringify(s.popup));
+  await tap('j');
+  await tap('j'); // Diamond
+  await release('f');
+  await release('a');
+  s = await state();
+  const diamond = s.nodes.find(n => n.shape === 'diamond');
+  check('it commits a free diamond', s.nodes.length === 4 && s.edges.length === 0 && diamond && diamond.edges === 0
+    && s.mode === 'labelEdit', JSON.stringify({diamond, mode: s.mode}));
 
-  // --- 10. grow-mode target hop cycles (reaches an otherwise-shadowed node) ---
-  // Anchor X; U1 straight up (near); U2 up-and-right — in X's up cone but NOT
-  // in U1's up cone, so plain walking dead-ends at U1 while cycling reaches U2.
-  await escapeToNormal();
-  await page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    da.finishTweens();
-    const mk = (id, cx, cy) => ({id, x: cx - 60, y: cy - 30, text: id, width: 120, height: 60, fontSize: 14, isSelected: false});
-    da.drawingLayer.restoreGraph({nodes: [mk('X', 600, 700), mk('U1', 600, 500), mk('U2', 750, 450)], edges: []});
-    const dl = da.drawingLayer, X = dl.getDANodes().find(n => n.id === 'X'), p = X.group.position();
-    da.crosshairsLayer.crosshairs.x = (p.x + X.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
-    da.crosshairsLayer.crosshairs.y = (p.y + X.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
-  });
-  const growTarget = () => page.evaluate(() => {
-    const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    return da.growTarget ? da.growTarget.label.text() : null;
-  });
-  await page.keyboard.down('a');
-  await page.waitForTimeout(260);
-  await page.keyboard.press('k'); // up
-  await page.waitForTimeout(160);
-  check('grow up #1 targets the near node U1', await growTarget() === 'U1', `target ${await growTarget()}`);
-  await page.keyboard.press('k'); // up again — cycles past U1 to U2
-  await page.waitForTimeout(160);
-  check('grow up #2 cycles to U2 (shadowed from U1, unreachable by walking)',
-    await growTarget() === 'U2', `target ${await growTarget()}`);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(100);
-  await page.keyboard.up('a');
-  await page.waitForTimeout(150);
+  // --- 9. existing nodes stay reachable through the lattice ---
+  // X, U1 straight above it, U2 above and to the right.
+  await reset([['X', 540, 670], ['U1', 540, 470], ['U2', 690, 420]], 'X');
+  await holdA();
+  check('up reaches the near node straight above', await hopTo('k', 'U1', 4), (await state()).target);
+  await tap('Escape');
+  await release('a');
+
+  await reset([['X', 540, 670], ['U1', 540, 470], ['U2', 690, 420]], 'X');
+  await holdA();
+  await tap('l');
+  check('up and right reaches the node on the diagonal', await hopTo('k', 'U2', 5), (await state()).target);
+  await tap('Escape');
+  await release('a');
 
   await browser.close();
   console.log(check.failures === 0 ? 'ALL CHECKS PASSED' : `${check.failures} CHECK(S) FAILED`);
