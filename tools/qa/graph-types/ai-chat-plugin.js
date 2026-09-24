@@ -1,6 +1,6 @@
 /*
- * AI Chat as a plugin (Ben, 2026-09-23: "an AI chat plugin, encapsulating the
- * AI work we've already done"), switched in Settings > Plugins.
+ * AI Chat as a plugin (Ben, 2026-09-23: "an AI chat plugin (encapsulated the
+ * AI work that we've already done)"), switched in Settings > Plugins.
  *
  * Off: `m` and `o` leave the keymenu, Shift's O and M with them; pressing `m`
  * opens nothing; an agent command that still arrives says the chat is off.
