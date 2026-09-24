@@ -267,7 +267,6 @@ export class DrawingLayer extends Konva.Layer {
     });
   }
 
-
   getSelectedItems() {
     return (this.getSelectedDANodes() as (DANode|DAEdge)[]).concat(this.getSelectedDAEdges());
   }

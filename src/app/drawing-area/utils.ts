@@ -26,7 +26,6 @@ class LineSegment {
     const y3 = other.p1.y;
     const y4 = other.p2.y
 
-
     const A2 = y4 - y3;
     const B2 = x3 - x4;
     const C2 = A2 * x3 + B2 * y3; // or x3 * y4 - x4 * y3;
@@ -176,9 +175,6 @@ function closest(points: Point[], p1: Point) {
   return closestPoint;
 }
 
-/**
- * Checks if a Konva.Line intersects the bounding box of a Konva.Group.
- */
 /**
  * Liang-Barsky line-rect intersection: checks if line segment (x1,y1)-(x2,y2)
  * intersects axis-aligned rectangle [minX,minY]-[maxX,maxY].

@@ -72,7 +72,6 @@ export interface FileHost {
   updateEdgesForResizedNodes(nodes: DANode[]): void;
 }
 
-
 function defaultGraphFilename(): string {
   const stamp = new Date().toISOString().slice(0, 10);
   // YAML is the default save format.
@@ -493,6 +492,9 @@ export class FileController {
     );
   }
 
+  /** Run one ex-line command (da-165). An initial vocabulary: `:w` saves,
+   *  `:e` switches files, `:ls` lists the vault. Unknown commands report
+   *  themselves rather than failing silently, the way vim does. */
   async runExCommand(text: string): Promise<void> {
     const [name, ...rest] = text.trim().split(/\s+/);
     const arg = rest.join(' ').trim();

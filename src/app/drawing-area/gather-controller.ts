@@ -115,9 +115,6 @@ export class GatherController {
     this.gatherAround(anchorNode, true);
   }
 
-
-
-
   /** Everything the gather view needs to know about one neighbor. */
   private collectGatherNeighbors(anchorNode: DANode):
       Map<DANode, {direction: 'in' | 'out'; kind: string; edges: DAEdge[]}> {
@@ -696,11 +693,4 @@ export class GatherController {
     restoreEdgeWiring();
   }
 
-  /** Auto-select the first edge of the given direction on a node, if any. */
-  /** Anchor priority: the node you're on (crosshairs), then the traversal's
-   *  current node — an in-progress journey continues from where it is — and
-   *  only then the selection. A selection is a way to START a journey; it
-   *  must not keep hijacking the anchor after the traversal moves on
-   *  (checking it first made every Go re-anchor at the selected node,
-   *  2026-07-16 dogfood bug). */
 }

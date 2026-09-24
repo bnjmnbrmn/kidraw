@@ -14,8 +14,6 @@ export function applyExclusiveTag(
   return choice ? [...kept, choice.tag] : kept;
 }
 
-/** The first tag-group choice of `plugin` present in `tags`, or null.
- *  Drives badge rendering: at most one badge per node. */
 /** The numbers in a node's numbered tags (`step/3`, `step/7` for prefix
  *  `step/`), ascending. Anything else after the prefix is ignored. */
 export function numberedTags(tags: readonly string[], prefix: string): number[] {
@@ -26,6 +24,8 @@ export function numberedTags(tags: readonly string[], prefix: string): number[] 
     .sort((a, b) => a - b);
 }
 
+/** The first tag-group choice of `plugin` present in `tags`, or null.
+ *  Drives badge rendering: at most one badge per node. */
 export function activeTagChoice(
   plugin: KidrawPlugin,
   tags: string[],

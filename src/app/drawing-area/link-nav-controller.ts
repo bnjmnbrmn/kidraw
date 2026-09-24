@@ -75,7 +75,6 @@ export class LinkNavController {
     return this.source !== null;
   }
 
-  /** Begin a held session at the node under the crosshairs. */
   /** Move by Link's commands: hold, step toward a quadrant, release. */
   commands() {
     return {
@@ -88,6 +87,7 @@ export class LinkNavController {
     } satisfies CommandSlice;
   }
 
+  /** Begin a held session at the node under the crosshairs. */
   enter(): void {
     this.host.finishTweens();
     const underCrosshairs = topmost(this.host.probe.nodes());

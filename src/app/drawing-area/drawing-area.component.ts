@@ -79,7 +79,6 @@ import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-p
 import {navPopupRows, orderNavCandidates} from './nav-popup-model';
 import {placePopup, popupSize} from './nav-popup-layout';
 
-
 /** What the crosshairs are resting on, and the trace drawn around it.
  *  `trace` is null when the item is shown by a navigation landing ghost. */
 interface CrosshairHover {
@@ -150,7 +149,6 @@ import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { StyleController, StyleHost } from './style-controller';
-
 
 /** A node as plugins see it: plain data, not the Konva object. */
 function pluginNodeOf(node: DANode): PluginNode {
@@ -268,16 +266,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly TEXT_SIZE_STEP = 2;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
   public readonly RESIZE_REFLOW_GAP = 16;
-  /** Nominal size of a ghosted node — the box stands in for a node that does
-   *  not exist yet and so cannot be measured. */
   /** Preserve closer views, but never label a new node below natural scale. */
   private static readonly NODE_EDIT_MIN_ZOOM = 1;
   /** Where the camera goes when a label is opened for editing: natural size,
    *  so the text is readable without losing the graph around it. A closer
    *  view is kept. (Was 400%, which Ben found too close, 2026-09-19.) */
   private static readonly NODE_EDIT_ZOOM = 1;
-  /** Stage-pixel radius within which the crosshairs count as standing on a
-   *  traversal stop (label/waypoint pseudo-node). */
   private headingRadians = -Math.PI / 2;
   private steeringMoveDistance = this.CROSSHAIRS_MOVEMENT_DISTANCE;
   /** Where traversal has been and which way it was going: momentum, the
@@ -315,9 +309,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Initial row highlighting is only a preview; the first directional key
    *  establishes the geometric edge focus. */
   private navDirectionalFocus = false;
-  /** Translucent dashed preview of the highlighted candidate (copies of the
-   *  source node, a straightened edge + labels, and the destination node
-   *  pulled into the viewport). The view itself never moves while browsing. */
   /** The popup's jump preview (nav-ghost.ts). */
   private readonly navGhost = new NavGhost(this.navGhostHost());
 
@@ -768,7 +759,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-
   // ── File, vault, named graphs, display: delegated to FileController ──
   // Lifecycle hooks enter the controller here; its commands reach it through
   // its own slice of the command table (FileController.commands).
@@ -840,8 +830,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     item.isSelected = next(item.isSelected);
     this.drawingLayer.batchDraw();
   }
-
-
 
   /** Select the item under the crosshairs and nothing else — the item the
    *  hover trace is on, so the edit keys act on what is highlighted. */
@@ -1120,9 +1108,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.daOut.emit({ kind: 'status-message', message });
   }
 
-  /** Run one ex-line command (da-165). An initial vocabulary: `:w` saves,
-   *  `:e` switches files, `:ls` lists the vault. Unknown commands report
-   *  themselves rather than failing silently, the way vim does. */
   /** Pin the crosshairs and movement indicators up for the duration of a
    *  held view key (da-257). */
   private holdCrosshairsVisible(): void {
@@ -2358,12 +2343,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // --- Move-by-graph traversal (see graph-nav.ts for the geometry) ---
 
-
-
-
-
-
-
   private setGraphNavEdge(edge: DAEdge | null): void {
     if (this.journey.focusEdge(edge)) this.drawingLayer.batchDraw();
   }
@@ -2396,7 +2375,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.openNavPopup(source, candidates, this.journey.direction ?? 'out',
       candidates.length === 1);
   }
-
 
   private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in',
                        concealed = false): void {
@@ -2607,9 +2585,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupHidden = false;
   }
 
-  /** Record a nav landing. A new jump truncates any forward history (vim
-   *  jumplist semantics); the source is stitched in when the chain broke
-   *  (free crosshairs movement between jumps). */
   /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist. */
   private navHistoryGo(delta: -1 | 1): void {
     const node = this.journey.stepHistory(
@@ -2635,7 +2610,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private renderNavGhost(cand: NavCandidate): void {
     if (this.navSource) this.navGhost.show(this.navSource, cand);
   }
-
 
   /** Beside the source node, on the opposite horizontal side from the
    *  highlighted destination (destination east → popup west), so the popup
@@ -2693,17 +2667,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navSourceEmphasis = null;
   }
 
-
   /** `graphNavLastNode`, validated against the live graph (undo/redo,
    *  delete, and load rebuild nodes — a stale reference clears). */
   private validGraphNavLastNode(): DANode | null {
     return this.journey.lastNodeAmong(this.drawingLayer.getDANodes());
   }
 
-
-
-  /** Pan the view (no rescale) so the layer point sits at the stage center,
-   *  tweening the crosshairs onto it in step. */
   /** Vim-`zz` for the canvas: pan the view so the graph point under the
    *  crosshairs lands at screen center. The crosshairs ride along (still
    *  over the same graph point) and the zoom level is untouched. */
@@ -2926,6 +2895,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Pan the view (no rescale) so the layer point sits at the stage center,
+   *  tweening the crosshairs onto it in step. */
   private centerViewOnLayerPoint(
     p: Point,
     targetScale = this.drawingLayer.scaleX(),
@@ -2955,10 +2926,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       onFinish: () => this.checkResizeHandleProximity(),
     });
   }
-
-
-
-
 
   private snapToNearestNode() {
     const nodes = this.drawingLayer.getDANodes();
@@ -3045,8 +3012,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
   }
 
-  /** The node a traversal or gather should treat as its centre: under the
-   *  crosshairs, else the single selected node. */
+  /** The node a traversal or gather should treat as its centre. Priority:
+   *  the node you're on (the crosshairs — where nodes overlap, the one on
+   *  top), then the traversal's current node — an in-progress journey
+   *  continues from where it is — and only then the selection. A selection
+   *  is a way to START a journey; it must not keep hijacking the anchor after
+   *  the traversal moves on (checking it first made every Go re-anchor at
+   *  the selected node, 2026-07-16 dogfood bug). */
   private getTraversalAnchorNode(): DANode | null {
     const underCrosshairs = this.nodeUnderCrosshairs();
     if (underCrosshairs) {
@@ -3267,7 +3239,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
     return newNode;
   }
-
 
   private getCrosshairsBBoxInDrawingLayer(): ProbeBounds {
     return this.probe.bounds;
@@ -3941,8 +3912,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.redrawGrowGhost();
   }
 
-
-
   /**
    * A hop between placement spots is a step on the lattice (grow-lattice.ts).
    *
@@ -3993,7 +3962,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private nodeById(id: string): DANode | null {
     return this.drawingLayer.getDANodes().find(node => node.id === id) ?? null;
   }
-
 
   /** Put the aim on a spot or a node: the ghost follows, the crosshairs ride
    *  it, and Move by Node's memory is kept in step so a later hop off the
@@ -4270,18 +4238,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  /** Add an edge using the user's current defaults. Labels are absent by
-   *  default because DAEdge starts with an empty label list. */
-  /** After connecting two nodes, leave the crosshairs sitting on the new
-   *  link near its destination end, so holding the select key picks the edge
-   *  up straight away and its direction can be cycled without navigating
-   *  back to it (da-345). The destination end is the meaningful one: that is
-   *  where the arrowhead is, so which way the link points is what you are
-   *  looking at while you change it.
-   *
-   *  A connect can land off-screen (the crosshairs were over a node at the
-   *  viewport edge); in that case leave them where they are rather than
-   *  parking them somewhere invisible. */
   /** After a link is drawn, the crosshairs rest on the node it reached,
    *  hidden until the next move, as they are after sitting idle. (They used
    *  to land on the link itself, da-345/da-509; Ben preferred this,
@@ -4308,6 +4264,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.scheduleCrosshairHoverRefresh(20);
   }
 
+  /** Add an edge using the user's current defaults. Labels are absent by
+   *  default because DAEdge starts with an empty label list. */
   private addDefaultEdge(src: DANode, dest: DANode): DAEdge {
     const edge = this.drawingLayer.addEdge(src, dest);
     edge.directedness = this.style.defaults.edgeDirectedness;
@@ -4378,7 +4336,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
   }
 
-
   /** The dashed preview of what the held Add key is about to create
    *  (grow-ghost.ts). Rebuilt from scratch on every aim change. */
   private redrawGrowGhost(): void {
@@ -4446,7 +4403,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.daOut.emit({kind: 'status-message', message: 'Nothing to edit here — tap the add key to create a node.'});
   }
-
 
   private getSelectedLabels(): DALabel[] {
     const selectedLabels: DALabel[] = [];
@@ -4674,6 +4630,5 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     // Quick tap vv on unselected item: leave it selected (ensureTopItemSelected already did it)
   }
-
 
 }

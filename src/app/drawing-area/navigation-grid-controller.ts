@@ -44,6 +44,12 @@ export interface NavigationGridHost {
   navStopCenter(id: string, kind: 'node' | 'label' | 'waypoint'): {x: number; y: number} | null;
 }
 
+/** Which stops a move-by-node command steps between: nodes and labels unless
+ *  it says otherwise. */
+function navTargetsOf(command: {targets?: NavTargetKind}): NavTargetKind {
+  return command.targets ?? 'labels';
+}
+
 /**
  * Move-by-node: stepping the crosshairs between graph items, and the overlay
  * that shows what a step will do.
@@ -60,12 +66,6 @@ export interface NavigationGridHost {
  *
  * Covered by `tools/qa/grid-overlay/` — six scripts, 65 checks.
  */
-/** Which stops a move-by-node command steps between: nodes and labels unless
- *  it says otherwise. */
-function navTargetsOf(command: {targets?: NavTargetKind}): NavTargetKind {
-  return command.targets ?? 'labels';
-}
-
 export class NavigationGridController {
   constructor(private readonly host: NavigationGridHost) {}
 
