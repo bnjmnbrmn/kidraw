@@ -51,6 +51,15 @@ describe('the plugin library', () => {
     expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([]);
   });
 
+  it('keeps a stored plugin that no longer loads, rather than dropping it on the next save', () => {
+    const clash = 'id: explanation\nname: Mine\n';
+    localStorage.setItem(KEY, JSON.stringify([clash]));
+    const fresh = TestBed.runInInjectionContext(() => new PluginLibraryService());
+    fresh.add(KANBAN);
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual([KANBAN, clash]);
+    fresh.remove('kanban-test');
+  });
+
   it('lets its menu set its tags, through the core tags.set command', () => {
     library.add(KANBAN);
     const applied: GraphOperation[][] = [];

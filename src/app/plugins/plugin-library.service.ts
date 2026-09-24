@@ -18,11 +18,16 @@ export type AddResult = {plugin: KidrawPlugin; errors?: never} | {plugin?: never
 export class PluginLibraryService {
   private readonly log = inject(DebugLogService);
   private readonly sources = new Map<string, string>();
+  /** Stored plugins that no longer load (a newer built-in took the id, say):
+   *  kept in storage untouched, never thrown away by a later write. */
+  private readonly unloadable: string[] = [];
 
   constructor() {
     for (const source of readLibrary()) {
       const result = this.register(source);
-      if (result.errors) this.log.log('[plugins] a stored plugin no longer loads:', result.errors.join('; '));
+      if (!result.errors) continue;
+      this.unloadable.push(source);
+      this.log.log('[plugins] a stored plugin no longer loads:', result.errors.join('; '));
     }
   }
 
@@ -30,7 +35,7 @@ export class PluginLibraryService {
    *  whose id is taken, saying why. */
   add(source: string): AddResult {
     const result = this.register(source);
-    if (result.plugin) writeLibrary([...this.sources.values()]);
+    if (result.plugin) this.save();
     return result;
   }
 
@@ -38,7 +43,11 @@ export class PluginLibraryService {
   remove(id: string): void {
     if (!this.sources.delete(id)) return;
     unregisterPlugin(id);
-    writeLibrary([...this.sources.values()]);
+    this.save();
+  }
+
+  private save(): void {
+    writeLibrary([...this.sources.values(), ...this.unloadable]);
   }
 
   /** Whether the user added this plugin (and so may remove it). */
