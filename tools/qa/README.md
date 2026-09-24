@@ -57,14 +57,15 @@ run.
 The failures are a mix, and the mix matters:
 
 - *Stale* — the app changed on purpose and the script was never updated.
-  `nav-popup/nav-popup.js` (30 checks) looks like this: the key it presses does
-  nothing at all now.
+  `nav-popup/nav-popup.js` (30 checks) looked like this: the key it pressed did
+  nothing at all. (It was retired with `TRAVERSE_SMART` on 2026-09-24.)
 - *Intended change, untold test* — `search/search-recenter.js` expects a match
   to land at the stage centre; it now lands 102px high, consistently, which
   looks deliberate.
-- *Real regression* — `drag-and-grow/coarse-drag.js` finds that Increase Node Size no
-  longer resizes anything, and `drag-and-grow/grow-mode.js` finds held-Add wiring a
-  node to itself.
+- *Real regression* — `drag-and-grow/coarse-drag.js` found that Increase Node Size no
+  longer resized anything (the command was retired on 2026-09-24, since no key
+  sent it), and `drag-and-grow/grow-mode.js` finds held-Add wiring a node to
+  itself.
 
 Only the third kind is a bug, but all three read identically in the output,
 so none can be waved away without looking.

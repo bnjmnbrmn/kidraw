@@ -32,7 +32,6 @@ export const SUITE = [
   { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite' },
 
   // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
-  { script: 'nav-popup/nav-popup.js', region: 'nav-popup', status: 'suite', baseline: { passed: 7, failed: 30, code: 1 } },
   { script: 'nav-popup/nav-margin.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-view.js', region: 'nav-popup', status: 'suite' },

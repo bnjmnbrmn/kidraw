@@ -38,7 +38,6 @@ import {
 } from './command-policy';
 import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
 import { clamp, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
-import { boxEdgePoint, ghostLandingPoint } from './nav-ghost-geometry';
 import { Axis, AxisKey } from './axis';
 import { Camera } from './camera';
 import { Overlay } from './overlay';
@@ -48,7 +47,6 @@ import { Animations } from './animations';
 import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage } from './node-geometry';
 import { projectPointToPath } from './edge-label-anchor';
-import { linkDirectionsFrom, LinkCardinalDirection, moveLinkQuadrant, NavCandidate, navCandidatesFor, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
 import { GraphOperationApplier } from './graph-operation-applier';
 import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
@@ -67,10 +65,8 @@ import {HopDirection, planGrowHop} from './grow-lattice';
 import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
-import {NavGhost, NavGhostHost} from './nav-ghost';
 import {GrowAim, GrowGhost, GrowGhostHost} from './grow-ghost';
 import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-placement';
-import {navPopupRows, orderNavCandidates} from './nav-popup-model';
 import {placePopup, popupSize} from './nav-popup-layout';
 
 /** The grid a movement step measures itself against, at the current zoom. */
@@ -239,30 +235,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   navPopupLeft = 0;
   navPopupTop = 0;
   navPopupDark = false;
-  /** Physical key that fired Go, if still held — releasing it over the
-   *  popup's search pseudo-item starts filtering. */
+  /** The key that opened the popup, while it is still held — releasing it
+   *  selects the highlighted row (grow's `f` type list). */
   navPopupHoldKey: string | null = null;
   navPopupStartFilter = false;
-  navPopupSelectedId: string | null = null;
-  navPopupDirectionKeys = {up: 'k', left: 'h', down: 'j', right: 'l'};
-  /** Who owns the popup right now: graph navigation or the grow-target search. */
-  private navPopupPurpose: 'nav' | 'grow-target' | 'grow-type' = 'nav';
-  /** True while a single-candidate popup is concealed (first 500 ms of a
-   *  hold — a quick tap walks the chain without flashing UI). */
-  navPopupHidden = false;
-  private navPopupRevealTimer: number | null = null;
-  private navCandidates = new Map<string, NavCandidate>();
-  private navSource: DANode | null = null;
-  /** Original transform of the popup's enlarged source node. */
-  private navSourceEmphasis: {node: DANode; scaleX: number; scaleY: number; x: number; y: number} | null = null;
-  /** The candidate currently highlighted in the popup — drives the ghost
-   *  preview and which side of the source the popup sits on. */
-  private navHighlightCand: NavCandidate | null = null;
-  /** Initial row highlighting is only a preview; the first directional key
-   *  establishes the geometric edge focus. */
-  private navDirectionalFocus = false;
-  /** The popup's jump preview (nav-ghost.ts). */
-  private readonly navGhost = new NavGhost(this.navGhostHost());
+  /** Which grow popup is open, if any: the target search or the node types.
+   *  (It was also graph navigation's until TRAVERSE_SMART was retired on
+   *  2026-09-24.) */
+  private navPopupPurpose: 'grow-target' | 'grow-type' | null = null;
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -532,7 +512,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  own commands.) */
   private graphNavigationCommands() {
     return {
-      [DACommandType.TRAVERSE_SMART]: c => this.traverseSmart(c.keys),
       [DACommandType.NAV_HISTORY_BACK]: () => this.navHistoryGo(-1),
       [DACommandType.NAV_HISTORY_FORWARD]: () => this.navHistoryGo(1),
     } satisfies CommandSlice;
@@ -976,19 +955,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       coarseModifierHeld: () => da.growMods.has(da.growKeys?.coarse ?? 'coarse'),
       fineModifierHeld: () => da.growMods.has(da.growKeys?.fine ?? 'fine'),
       redraw: () => da.redrawGrowGhost(),
-    };
-  }
-
-  /** The nav ghost needs the zoom, the viewport and the palette; nothing else. */
-  private navGhostHost(): NavGhostHost {
-    const da = this;
-    return {
-      get drawingLayer() { return da.drawingLayer; },
-      get camera() { return da.camera; },
-      get stage() { return da.stage; },
-      get palette() {
-        return da.visualConfigService.getEffectivePalette(da.themeService.theme);
-      },
     };
   }
 
@@ -1672,240 +1638,30 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // ── Move by Link (held NSEW quadrants): delegated to LinkNavController ──
 
-  // --- Nav popup (TRAVERSE_SMART): IntelliJ-style go-to for the graph ---
+  // --- The popup: grow mode's target search (`/`) and node-type list (`f`) ---
 
-  /** Enter the sticky Move by Link surface. Every candidate is available;
-   *  momentum only decides the initial preview row. Directional movement or
-   *  an explicit Enter/Tab performs traversal — opener release never does. */
-  private traverseSmart(keys?: {up: string; left: string; down: string; right: string}): void {
-    // Move by Link is sticky: releasing its opener does not accidentally
-    // traverse whichever row happened to be first.
-    this.navPopupHoldKey = null;
-    if (keys) this.navPopupDirectionKeys = {...keys};
-    this.finishTweens();
-    const source = this.getTraversalAnchorNode();
-    if (!source) {
-      this.emitStatus('Move the crosshairs onto a node to navigate.');
-      return;
-    }
-    // Free movement to a different node is a cold start.
-    this.journey.coldStartUnlessAt(source);
-    const candidates = navCandidatesFor(source);
-    if (candidates.length === 0) {
-      this.emitStatus('No edges here.');
-      return;
-    }
-    this.openNavPopup(source, candidates, this.journey.direction ?? 'out',
-      candidates.length === 1);
-  }
-
-  private openNavPopup(source: DANode, candidates: NavCandidate[], forwardDir: 'out' | 'in',
-                       concealed = false): void {
-    this.clearNavPopupRevealTimer();
-    this.navPopupHidden = concealed;
-    if (concealed) {
-      this.navPopupRevealTimer = window.setTimeout(() => {
-        this.navPopupRevealTimer = null;
-        this.navPopupHidden = false;
-        // The ghost preview is suppressed while concealed (a tap-walk
-        // shouldn't flash canvas UI either) — paint it on reveal. The
-        // crosshairs go with it: they'd occlude the source ghost.
-        this.crosshairsLayer.hideCrosshairs();
-        this.crosshairsLayer.batchDraw();
-        if (this.navHighlightCand) {
-          this.renderNavGhost(this.navHighlightCand);
-          this.drawingLayer.batchDraw();
-        }
-      }, 500);
-    } else {
-      // Graph navigation owns the canvas: the crosshairs would sit right on
-      // the source node, occluding it and the ghost — hide until the
-      // popup closes.
-      this.crosshairsLayer.hideCrosshairs();
-      this.crosshairsLayer.batchDraw();
-    }
-    const sC = this.getNodeCenterInLayerCoordinates(source);
-    const bearing = (c: NavCandidate) => {
-      const oC = this.getNodeCenterInLayerCoordinates(c.other);
-      const a = Math.atan2(oC.x - sC.x, -(oC.y - sC.y)); // clockwise from 12
-      return a < 0 ? a + Math.PI * 2 : a;
-    };
-    const ordered = orderNavCandidates(candidates, forwardDir, bearing);
-    this.navCandidates = new Map(ordered.map(c => [c.edge.id, c]));
-    this.navSource = source;
-    this.navDirectionalFocus = false;
-    // The popup opens with the top row selected; its highlight emit is
-    // deferred, so seed the candidate now for the initial popup placement.
-    this.navHighlightCand = ordered[0];
-    this.navPopupSelectedId = ordered[0].edge.id;
-    this.navPopupRows = navPopupRows(ordered, forwardDir);
-    this.navPopupDark = this.themeService.theme === 'dark';
-    this.emphasizeNavSource(source);
-    if (!this.navPopupOpen) {
-      this.navPopupPurpose = 'nav';
-      this.navPopupStartFilter = false;
-      this.navPopupOpen = true;
-      this.daOut.emit({kind: 'popup-state', open: true, surface: 'nav-popup'});
-    }
-    this.positionNavPopup();
-    this.drawingLayer.batchDraw();
-  }
-
-  /** Selection moved in the popup: glow the candidate edge and paint the
-   *  ghost preview of where it leads. The view (pan and zoom) never moves —
-   *  offscreen destinations are represented by the ghost copy instead. */
-  onNavPopupHighlight(edgeId: string): void {
-    if (this.navPopupPurpose === 'grow-type') return;
-    if (this.navPopupPurpose === 'grow-target') {
-      const node = this.drawingLayer.getDANodes().find(n => n.id === edgeId);
-      if (node && node !== this.growAnchor) {
-        this.growTarget = node;
-        this.redrawGrowGhost();
-      }
-      return;
-    }
-    const cand = this.navCandidates.get(edgeId);
-    if (!cand || !this.navSource) return;
-    this.navHighlightCand = cand;
-    this.navPopupSelectedId = edgeId;
-    this.setGraphNavEdge(cand.edge);
-    if (!this.navPopupHidden) this.renderNavGhost(cand);
-    this.positionNavPopup();
-    this.drawingLayer.batchDraw();
-  }
-
-  /** NSEW movement among the incident links. A unique link in the requested
-   *  quadrant walks immediately; otherwise the first press focuses and
-   *  subsequent perpendicular presses scan before an along-link press walks. */
-  onNavPopupDirection(direction: LinkCardinalDirection): void {
-    if (this.navPopupPurpose !== 'nav' || !this.navSource) return;
-    const source = this.navSource;
-    const move = moveLinkQuadrant(
-      linkDirectionsFrom(source, [...this.navCandidates.values()]),
-      this.navDirectionalFocus ? this.navHighlightCand?.edge.id ?? null : null,
-      direction,
-      true,
-    );
-    if (!move.id) {
-      this.emitStatus(`No link in the ${direction} quadrant.`);
-      return;
-    }
-    this.navDirectionalFocus = true;
-    if (move.traverse) {
-      this.onNavPopupCommit({id: move.id, walk: true});
-    } else {
-      this.navPopupSelectedId = move.id;
-      this.onNavPopupHighlight(move.id);
+  /** Selection moved in the popup: in the target search, the ghost edge
+   *  follows the highlighted node. */
+  onNavPopupHighlight(nodeId: string): void {
+    if (this.navPopupPurpose !== 'grow-target') return;
+    const node = this.drawingLayer.getDANodes().find(n => n.id === nodeId);
+    if (node && node !== this.growAnchor) {
+      this.growTarget = node;
+      this.redrawGrowGhost();
     }
   }
 
-  onNavPopupCommit(event: {id: string; walk: boolean}): void {
-    if (this.navPopupPurpose === 'grow-target') {
-      this.growCommitToNodeId(event.id);
-      return;
-    }
-    if (this.navPopupPurpose === 'grow-type') {
-      this.enterGrowPlacement(event.id);
-      return;
-    }
-    const cand = this.navCandidates.get(event.id);
-    const source = this.navSource;
-    this.clearNavGhost();
-    this.navHighlightCand = null;
-    this.navPopupSelectedId = null;
-    this.restoreNavSourceEmphasis();
-    if (!cand || !source) {
-      this.closeNavPopup();
-      return;
-    }
-    if (!event.walk) {
-      this.navPopupOpen = false;
-      this.navSource = null;
-      this.clearNavPopupRevealTimer();
-      this.daOut.emit({kind: 'popup-state', open: false});
-      this.crosshairsLayer.showCrosshairs();
-    }
-    this.navCommitTo(source, cand, event.walk);
+  onNavPopupCommit(event: {id: string}): void {
+    if (this.navPopupPurpose === 'grow-target') this.growCommitToNodeId(event.id);
+    else if (this.navPopupPurpose === 'grow-type') this.enterGrowPlacement(event.id);
   }
 
-  /** Escape / backdrop: close without moving. The crosshairs return to the
-   *  source node so the traversal anchor stays meaningful. */
+  /** Escape / backdrop: a grow popup closing cancels the whole add. */
   closeNavPopup(): void {
-    if (this.navPopupPurpose === 'grow-target' || this.navPopupPurpose === 'grow-type') {
-      // Esc out of a grow popup cancels the whole add.
-      this.navPopupOpen = false;
-      this.navPopupPurpose = 'nav';
-      this.exitGrowMode();
-      this.emitStatus('Add canceled');
-      return;
-    }
-    this.clearNavGhost();
-    this.navHighlightCand = null;
-    this.navPopupSelectedId = null;
-    this.restoreNavSourceEmphasis();
-    this.crosshairsLayer.showCrosshairs();
-    this.setGraphNavEdge(null);
-    const source = this.navSource;
-    this.navSource = null;
-    this.clearNavPopupRevealTimer();
-    if (this.navPopupOpen) {
-      this.navPopupOpen = false;
-      this.daOut.emit({kind: 'popup-state', open: false});
-    }
-    if (source) {
-      const c = this.getNodeCenterInLayerCoordinates(source);
-      const scale = this.drawingLayer.scaleX();
-      const sx = this.drawingLayer.x() + c.x * scale;
-      const sy = this.drawingLayer.y() + c.y * scale;
-      if (sx >= 0 && sx <= this.stage.width() && sy >= 0 && sy <= this.stage.height()) {
-        this.crosshairsLayer.crosshairs.x = sx;
-        this.crosshairsLayer.crosshairs.y = sy;
-      } else {
-        this.centerViewOnLayerPoint(c);
-      }
-    }
-    this.drawingLayer.batchDraw();
-  }
-
-  /** The jump itself. Non-walk: animated recenter onto the destination; the
-   *  glow clears — it marks where you're headed, never where you've been.
-   *  Walk: snap the view and immediately reopen the popup at the landing
-   *  node. Every landing is recorded in the nav history (Ctrl+O / Ctrl+I). */
-  private navCommitTo(source: DANode, cand: NavCandidate, walk: boolean): void {
-    const dest = cand.other;
-    this.journey.arrive(source, dest, cand.direction);
-    const dC = this.getNodeCenterInLayerCoordinates(dest);
-    const destLabel = (dest.label?.text() ?? '').trim() || '(unlabeled)';
-    this.emitStatus(`${cand.direction === 'out' ? '→' : '←'} ${destLabel}`);
-    if (!walk) {
-      this.setGraphNavEdge(null);
-      this.centerViewOnLayerPoint(dC);
-      return;
-    }
-    // Walk mode: land, then keep browsing from the new node.
-    const scale = this.drawingLayer.scaleX();
-    this.drawingLayer.position({
-      x: this.viewport.centerX - dC.x * scale,
-      y: this.viewport.centerY - dC.y * scale,
-    });
-    this.crosshairsLayer.crosshairs.x = this.viewport.centerX;
-    this.crosshairsLayer.crosshairs.y = this.viewport.centerY;
-    const candidates = navCandidatesFor(dest);
-    if (candidates.length === 0) {
-      this.emitStatus(`${destLabel}: dead end.`);
-      this.closeNavPopup();
-      return;
-    }
-    this.setGraphNavEdge(null);
-    this.openNavPopup(dest, candidates, this.journey.direction ?? 'out');
-  }
-
-  private clearNavPopupRevealTimer(): void {
-    if (this.navPopupRevealTimer !== null) {
-      window.clearTimeout(this.navPopupRevealTimer);
-      this.navPopupRevealTimer = null;
-    }
-    this.navPopupHidden = false;
+    this.navPopupOpen = false;
+    this.navPopupPurpose = null;
+    this.exitGrowMode();
+    this.emitStatus('Add canceled');
   }
 
   /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist. */
@@ -1925,39 +1681,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
   }
 
-  // ── The nav popup's jump preview: delegated to NavGhost ──
-  private clearNavGhost(): void {
-    this.navGhost.clear();
-  }
-
-  private renderNavGhost(cand: NavCandidate): void {
-    if (this.navSource) this.navGhost.show(this.navSource, cand);
-  }
-
-  /** Beside the source node, on the opposite horizontal side from the
-   *  highlighted destination (destination east → popup west), so the popup
-   *  never sits between you and where you're going. */
-  private positionNavPopup(): void {
-    if (!this.navSource) return;
-    const scale = this.drawingLayer.scaleX();
-    const n = this.navSource;
-    const rect = {
-      x: this.drawingLayer.x() + n.group.x() * scale,
-      y: this.drawingLayer.y() + n.group.y() * scale,
-      w: n.NODE_WIDTH * scale,
-    };
-    let destEast = true;
-    if (this.navHighlightCand) {
-      const sC = this.getNodeCenterInLayerCoordinates(n);
-      const dC = this.getNodeCenterInLayerCoordinates(this.navHighlightCand.other);
-      destEast = dC.x >= sC.x;
-    }
-    const position = placePopup(
-      rect, this.popupViewport(), popupSize(this.navPopupRows.length), destEast ? 'left' : 'right');
-    this.navPopupLeft = position.left;
-    this.navPopupTop = position.top;
-  }
-
   private popupViewport(): {minX: number; maxX: number; minY: number; maxY: number} {
     return {
       minX: this.viewport.minX,
@@ -1965,35 +1688,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       minY: this.viewport.minY,
       maxY: this.viewport.maxY,
     };
-  }
-
-  /** The popup's source node grows a little so it reads as "you are here";
-   *  transform restored on close/commit. */
-  private emphasizeNavSource(source: DANode): void {
-    this.restoreNavSourceEmphasis();
-    const g = source.group;
-    this.navSourceEmphasis = {node: source, scaleX: g.scaleX(), scaleY: g.scaleY(), x: g.x(), y: g.y()};
-    const f = 1.12;
-    g.x(g.x() - source.NODE_WIDTH * (f - 1) / 2);
-    g.y(g.y() - source.NODE_HEIGHT * (f - 1) / 2);
-    g.scaleX(g.scaleX() * f);
-    g.scaleY(g.scaleY() * f);
-  }
-
-  private restoreNavSourceEmphasis(): void {
-    if (!this.navSourceEmphasis) return;
-    const e = this.navSourceEmphasis;
-    e.node.group.scaleX(e.scaleX);
-    e.node.group.scaleY(e.scaleY);
-    e.node.group.x(e.x);
-    e.node.group.y(e.y);
-    this.navSourceEmphasis = null;
-  }
-
-  /** `graphNavLastNode`, validated against the live graph (undo/redo,
-   *  delete, and load rebuild nodes — a stale reference clears). */
-  private validGraphNavLastNode(): DANode | null {
-    return this.journey.lastNodeAmong(this.drawingLayer.getDANodes());
   }
 
   /** Vim-`zz` for the canvas: pan the view so the graph point under the
@@ -2155,36 +1849,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const w = this.drawingLayer.getDAWaypoints().find(w => w.id === id);
     return w ? {x: lx + w.x * scale, y: ly + w.y * scale} : null;
-  }
-
-  /** The node a traversal should treat as its centre. Priority:
-   *  the node you're on (the crosshairs — where nodes overlap, the one on
-   *  top), then the traversal's current node — an in-progress journey
-   *  continues from where it is — and only then the selection. A selection
-   *  is a way to START a journey; it must not keep hijacking the anchor after
-   *  the traversal moves on (checking it first made every Go re-anchor at
-   *  the selected node, 2026-07-16 dogfood bug). */
-  private getTraversalAnchorNode(): DANode | null {
-    const underCrosshairs = this.nodeUnderCrosshairs();
-    if (underCrosshairs) {
-      this.log.log('[getTraversalAnchorNode] under crosshairs:', underCrosshairs.id);
-      return underCrosshairs;
-    }
-
-    const navNode = this.validGraphNavLastNode();
-    if (navNode) {
-      this.log.log('[getTraversalAnchorNode] traversal current node:', navNode.id);
-      return navNode;
-    }
-
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    if (selectedNodes.length > 0) {
-      this.log.log('[getTraversalAnchorNode] selected:', selectedNodes[0].id);
-      return selectedNodes[0];
-    }
-
-    this.log.log('[getTraversalAnchorNode] no anchor node found');
-    return null;
   }
 
   private focusNode(node: DANode) {
@@ -3102,7 +2766,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupPurpose = 'grow-target';
     this.navPopupStartFilter = true;
     this.navPopupHoldKey = null;
-    this.navPopupHidden = false;
     this.navPopupDark = this.themeService.theme === 'dark';
     this.positionGrowPopup();
     this.navPopupOpen = true;
@@ -3144,7 +2807,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.navPopupPurpose = 'grow-type';
     this.navPopupStartFilter = false;
     this.navPopupHoldKey = this.growKeys?.newNode ?? 'f';
-    this.navPopupHidden = false;
     this.navPopupDark = this.themeService.theme === 'dark';
     this.positionGrowPopup();
     this.navPopupOpen = true;
@@ -3182,7 +2844,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  still-held add key commits; Enter commits the sticky variant. */
   private enterGrowPlacement(shapeId: string): void {
     this.navPopupOpen = false;
-    this.navPopupPurpose = 'nav';
+    this.navPopupPurpose = null;
     this.growPlacement.enter(shapeId as NodeShape);
     this.growTarget = null;
     this.growInsertionTarget = null;
@@ -3231,7 +2893,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const dirState = this.growDirState;
     const target = this.drawingLayer.getDANodes().find(n => n.id === nodeId);
     this.navPopupOpen = false;
-    this.navPopupPurpose = 'nav';
+    this.navPopupPurpose = null;
     this.exitGrowMode();
     if (!target || target === anchor) return;
     this.commitGrowEdgeTo(anchor, target, dirState);

@@ -47,10 +47,10 @@ explanation graphs on `explanation-graphs`._
 >   geometry they cause), `nav-journey.ts` (where the walk has been and which
 >   way it was going — shared by both navigation surfaces),
 >   `link-nav-controller.ts` (the held NSEW Move by Link mode),
->   `nav-ghost.ts` (the popup's jump preview), `grow-ghost.ts` (the held-Add
+>   `nav-ghost.ts` (the popup's jump preview; retired 2026-09-24), `grow-ghost.ts` (the held-Add
 >   preview, driven by a named `GrowAim`), `grow-placement.ts` (the free
 >   placement sub-state after choosing a node shape), `nav-popup-layout.ts`
->   (shared popup sizing and viewport clamping), `nav-popup-model.ts`
+>   (shared popup sizing and viewport clamping), `nav-popup-model.ts` (retired 2026-09-24)
 >   (candidate ordering and row mapping), `area-select.ts` (the keyboard
 >   rubber band, da-195), `keyboard-drag.ts` (one press of a drag key
 >   moves the selection) and `graph-search.ts` (`/`, `n`, `N` — the first
@@ -62,7 +62,7 @@ explanation graphs on `explanation-graphs`._
 >   hold) and `crosshairs-hover.ts` (the hover trace and landing ghost; all
 >   five 2026-09-24, each checked by a browser script run before and after
 >   the move). Plus the pure pieces:
->   `axis.ts`, `nav-ghost-geometry.ts`, `quick-add-spacing.ts`,
+>   `axis.ts`, `nav-ghost-geometry.ts` (retired 2026-09-24), `quick-add-spacing.ts`,
 >   `grow-lattice.ts` (walking the placement lattice that
 >   `grow-ghost-targets.ts` builds), and `navCandidatesFor` /
 >   `linkDirectionsFrom` in `graph-nav.ts`.

@@ -56,7 +56,6 @@ export enum DACommandType {
   MOVE_CROSSHAIRS_RIGHT = 'MOVE_CROSSHAIRS_RIGHT',
   MOVE_CROSSHAIRS_UP = 'MOVE_CROSSHAIRS_UP',
   MOVE_CROSSHAIRS_DOWN = 'MOVE_CROSSHAIRS_DOWN',
-  TRAVERSE_SMART = 'TRAVERSE_SMART',
   ENTER_LINK_NAV = 'ENTER_LINK_NAV',
   MOVE_LINK_LEFT = 'MOVE_LINK_LEFT',
   MOVE_LINK_RIGHT = 'MOVE_LINK_RIGHT',
@@ -160,8 +159,6 @@ export type DACommand =
   | {kind: DACommandType.MOVE_CROSSHAIRS_RIGHT; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.MOVE_CROSSHAIRS_UP; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.MOVE_CROSSHAIRS_DOWN; distance?: number; gridTier?: GridTier}
-  | {kind: DACommandType.TRAVERSE_SMART;
-     keys?: {up: string; left: string; down: string; right: string}}
   | {kind: DACommandType.ENTER_LINK_NAV}
   | {kind: DACommandType.MOVE_LINK_LEFT}
   | {kind: DACommandType.MOVE_LINK_RIGHT}

@@ -66,7 +66,6 @@ const TOOLS_FACING_FIELDS = [
   'goalLine',
   'labelEditGhost',
   'navigationLandingGhost',
-  'navGhost',
 ];
 
 /**
@@ -82,7 +81,8 @@ const RETIRED_FIELDS = {
   tweens: 'call finishTweens() instead',
   currentDragRafId: 'the drag loop is owned by Animations',
   crosshairHoverHighlight: 'use hoverTrace.node',
-  navGhostGroup: 'use navGhost.node',
+  navGhostGroup: 'the nav popup\'s jump preview was retired with TRAVERSE_SMART (2026-09-24)',
+  navGhost: 'the nav popup\'s jump preview was retired with TRAVERSE_SMART (2026-09-24)',
   normalMovementGoalLine: 'use goalLine.node',
   linkNavSource: 'use linkNav.active; the source is the controller\'s own',
   linkNavQuadrantLines: 'the overlay moved into LinkNavController',
