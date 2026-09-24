@@ -20,7 +20,7 @@ import {DETAIL_LEVELS, DetailLevel} from './agent/agent-protocol';
 const NOTES_KEY = 'kidraw_notes_v1';
 import {ReadingModeService} from './reading/reading-mode.service';
 import {getPlugin} from './plugins/plugin-registry';
-import {PluginSettingsService} from './plugins/plugin-settings.service';
+import {describePluginChange, PluginSettingsService} from './plugins/plugin-settings.service';
 import {PluginLibraryService} from './plugins/plugin-library.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
@@ -562,16 +562,20 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Keep the keymenu told of the graph's type. A graph whose type is a
-   *  plugin that is turned off still opens and saves as itself; say so when
-   *  one arrives (notes/design-plugins.md). */
+   *  plugin that is turned off offers to turn it back on (Ben, 2026-09-24);
+   *  declined, it still opens and saves as itself, and says so
+   *  (notes/design-plugins.md). */
   private noticeTypeChange(typeId: string): void {
     if (typeId === this.diagramTypeId) return;
     this.diagramTypeId = typeId;
     const plugin = getPlugin(typeId);
-    if (plugin && !this.pluginSettings.isEnabled(plugin.id)) {
-      this.headerComponent?.showStatusMessage(
-        `This graph's type, ${plugin.name}, is turned off in Settings: its commands and menu are off`, 6000);
-    }
+    if (!plugin || this.pluginSettings.isEnabled(plugin.id)) return;
+    const change = window.confirm(`This graph's type, ${plugin.name}, is turned off in Settings. Turn it back on?`)
+      ? this.pluginSettings.setEnabled(plugin.id, true)
+      : null;
+    this.headerComponent?.showStatusMessage(change
+      ? describePluginChange(change)
+      : `This graph's type, ${plugin.name}, is turned off in Settings: its commands and menu are off`, 6000);
   }
 
   onZoomLevelChange(level: number) {

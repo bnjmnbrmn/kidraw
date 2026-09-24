@@ -201,8 +201,8 @@ the selection is root `c` (Ben, 2026-09-23).
 - **A graph whose type is switched off** (3 meets activation-by-file): the
   graph still opens and saves losslessly (its tags survive), the plugin's
   behaviour stays off, and a notification says so ("This graph is an
-  Explanation; Explanation is off in Settings"). Whether it should instead
-  offer to turn the plugin back on is Ben's call.
+  Explanation; Explanation is off in Settings"). **Decided: it offers to
+  turn the plugin back on** (Ben, 2026-09-24); declined, it opens as above.
 - **Notifications** (5): switching a plugin on that needs another says what
   it switched on too ("Math needs Markdown — switched Markdown on"), and
   switching off one that others need says what stops working.
@@ -233,8 +233,9 @@ browser checks (inferred, 2026-09-24 — what was built, not new decisions):
    i In Progress, k Blocked, l Done, n No Status.
 3. **Settings → Plugins** turns non-core plugins off (`2345d7c1`). Off
    means: commands say so, the menu goes, `:type` stops offering it; its
-   data still renders, and a graph of its type opens as itself with a
-   notice (the proposal above — still Ben's call). On the way, every graph
+   data still renders, and a graph of its type asks whether to turn its
+   plugin back on; declined, it opens as itself with a notice (Ben,
+   2026-09-24). On the way, every graph
    load now emits the context update (some never did).
 4. **Markdown and Math are plugins** (`013a343e`): features, not types.
    `requires` / `uses`, followed automatically both ways with notices
