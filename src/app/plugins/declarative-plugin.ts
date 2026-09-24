@@ -1,8 +1,8 @@
 /**
  * Plugins written as data — YAML — rather than code (notes/design-plugins.md).
  *
- * What a user can add without a rebuild, share as a file, or (later) an agent
- * can write: a diagram type's node defaults, its label format, its tag
+ * What a user can add without a rebuild, share as a file, or an agent can
+ * write (define_plugin): a diagram type's node defaults, its label format, its tag
  * groups, node kinds and edge kinds, what it requires and uses, and a menu
  * for root `t` whose entries set its tags. Nothing in it runs: a menu entry
  * names a tag, and the core `tags.set` command does the setting.
@@ -105,9 +105,13 @@ function readPlugin(raw: unknown, errors: string[]): KidrawPlugin | undefined {
   const at = new Reader(errors, 'plugin');
   const record = at.object(raw, FIELDS);
   if (!record) return undefined;
-  const tagGroups = at.list(record['tagGroups'])?.map((group, i) => readTagGroup(group, at.child('tagGroups').child(i))) ?? [];
-  const groups = tagGroups.filter((group): group is PluginTagGroup => group !== undefined);
-  const plugin: KidrawPlugin = {
+  return withoutEmpty({...readIdentity(record, at), ...readContributions(record, at)});
+}
+
+/** What the plugin is: its name, what it depends on, how its labels are
+ *  written and how its nodes start out. */
+function readIdentity(record: Record<string, unknown>, at: Reader): Omit<KidrawPlugin, keyof Contributions> {
+  return {
     id: at.child('id').text(record['id'], {required: true, max: 40, pattern: ID}) ?? '',
     name: at.child('name').text(record['name'], {required: true, max: 40}) ?? '',
     description: at.child('description').text(record['description']),
@@ -115,12 +119,23 @@ function readPlugin(raw: unknown, errors: string[]): KidrawPlugin | undefined {
     uses: readIds(record['uses'], at.child('uses')),
     labelFormat: at.child('labels').oneOf(record['labels'], ['plain', 'markdown'] as const),
     nodeDefaults: readNodeDefaults(record['nodes'], at.child('nodes')),
-    tagGroups: groups,
-    edgeKinds: definedOnly(at.list(record['edgeKinds'])?.map((kind, i) => readKind(kind, at.child('edgeKinds').child(i), true))),
-    nodeKinds: definedOnly(at.list(record['nodeKinds'])?.map((kind, i) => readKind(kind, at.child('nodeKinds').child(i), false))),
-    menu: definedOnly(at.list(record['menu'])?.map((entry, i) => readMenuEntry(entry, at.child('menu').child(i), groups))),
   };
-  return withoutEmpty(plugin);
+}
+
+type Contributions = Pick<KidrawPlugin, 'tagGroups' | 'edgeKinds' | 'nodeKinds' | 'menu'>;
+
+/** What the plugin adds to its graphs: tag groups, kinds, and a menu that
+ *  sets its own tags. */
+function readContributions(record: Record<string, unknown>, at: Reader): Contributions {
+  const each = <T>(field: string, read: (value: unknown, at: Reader) => T | undefined) =>
+    definedOnly(at.list(record[field])?.map((value, i) => read(value, at.child(field).child(i))));
+  const tagGroups = each('tagGroups', readTagGroup);
+  return {
+    tagGroups,
+    edgeKinds: each('edgeKinds', (value, where) => readKind(value, where, true)),
+    nodeKinds: each('nodeKinds', (value, where) => readKind(value, where, false)),
+    menu: each('menu', (value, where) => readMenuEntry(value, where, tagGroups)),
+  };
 }
 
 function readIds(value: unknown, at: Reader): string[] | undefined {
