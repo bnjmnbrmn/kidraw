@@ -15,7 +15,7 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
     wireDrawingAreaCollaborators(component);
     component.log = {log: () => {}};
     component.daOut = jasmine.createSpyObj('daOut', ['emit']);
-    component._defaultNodeShape = overrides.defaultNodeShape ?? 'circle';
+    component.style.defaults.nodeShape = overrides.defaultNodeShape ?? 'circle';
     component.drawingLayer = {
       getSelectedDANodes: () => overrides.selectedNodes ?? [],
       changeNodeShape: jasmine.createSpy('changeNodeShape'),
@@ -33,36 +33,36 @@ describe('DrawingAreaComponent shape toggle and vertical slot', () => {
   describe('toggleNodeShape', () => {
     it('turns a box into a circle', () => {
       const c = build({selectedNodes: [node('box')]});
-      c.toggleNodeShape();
+      c.style.toggleNodeShape();
       expect(c.drawingLayer.changeNodeShape)
         .toHaveBeenCalledWith(jasmine.anything(), 'circle');
     });
 
     it('turns a circle into a box', () => {
       const c = build({selectedNodes: [node('circle')]});
-      c.toggleNodeShape();
+      c.style.toggleNodeShape();
       expect(c.drawingLayer.changeNodeShape)
         .toHaveBeenCalledWith(jasmine.anything(), 'box');
     });
 
     it('falls back to the node under the crosshairs when nothing is selected', () => {
       const c = build({nodesUnderCrosshairs: [node('box')]});
-      c.toggleNodeShape();
+      c.style.toggleNodeShape();
       expect(c.drawingLayer.changeNodeShape)
         .toHaveBeenCalledWith(jasmine.anything(), 'circle');
     });
 
     it('converges a mixed selection on circle rather than splitting it', () => {
       const c = build({selectedNodes: [node('box'), node('circle')]});
-      c.toggleNodeShape();
+      c.style.toggleNodeShape();
       const shapes = c.drawingLayer.changeNodeShape.calls.allArgs().map((a: unknown[]) => a[1]);
       expect(shapes).toEqual(['circle', 'circle']);
     });
 
     it('flips the default for new nodes when no node is addressed', () => {
       const c = build({defaultNodeShape: 'circle'});
-      c.toggleNodeShape();
-      expect(c._defaultNodeShape).toBe('box');
+      c.style.toggleNodeShape();
+      expect(c.style.defaults.nodeShape).toBe('box');
       expect(c.drawingLayer.changeNodeShape).not.toHaveBeenCalled();
     });
   });

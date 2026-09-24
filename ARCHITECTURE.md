@@ -53,7 +53,7 @@ the same code with different tables.
 
 ## Inside the drawing area
 
-`drawing-area.component.ts` is still ~5,600 lines and is the part of the
+`drawing-area.component.ts` is still ~4,700 lines and is the part of the
 codebase most worth knowing your way around. It is the orchestrator: Angular
 lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
 movement.
@@ -88,7 +88,9 @@ These two are the pattern to follow when more comes out: the component lends a
 collaborator only what it needs, through getters, and keeps its own members
 private. A collaborator that handles commands brings its own slice of the
 command table (`commands()`, see `command-handlers.ts`) — search, files,
-Move by Link, move by node, text editing and gather do — so the component
+Move by Link, move by node, text editing, gather, the clipboard
+(`clipboard-controller.ts`) and the style commands (`style-controller.ts`)
+do — so the component
 does not keep one-line delegates for it. That is also the shape plugins will
 have ([`notes/design-plugins.md`](notes/design-plugins.md)).
 

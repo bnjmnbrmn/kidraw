@@ -28,7 +28,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, EdgeDirectedness, GridTier, ItemColor, LayoutType, LineStyle, NavTargetKind, NodeShape, RoutingAlgorithm, TextCursorMode, TextOverflowMode } from './command.model';
+import { DACommand, DACommandType, GridTier, LayoutType, NavTargetKind, NodeShape, RoutingAlgorithm, TextCursorMode } from './command.model';
 import {
   affectsContextState,
   endsNormalMovementGoal,
@@ -114,7 +114,6 @@ import type { TweenConfig } from 'konva/lib/Tween';
 import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { applyLayout, isClearLayout, layoutSpacingFor } from './graph-layout';
-import { resolveBoxOverlaps } from './overlap-resolution';
 import {
   applyDesiderataRouteEdges,
   DEFAULT_OPTIONS as DESIDERATA_DEFAULTS,
@@ -150,6 +149,7 @@ import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
+import { StyleController, StyleHost } from './style-controller';
 
 
 /** A node as plugins see it: plain data, not the Konva object. */
@@ -203,9 +203,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private undoRedoService = new UndoRedoService();
   private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
-  private _defaultNodeShape: NodeShape = 'box';
-  private _defaultEdgeDirectedness: EdgeDirectedness = 'directed';
-  private _defaultLineStyle: LineStyle = 'solid';
   private resizeTargetNode: DANode | null = null;
   /** The fisheye gather view (gather-controller.ts). Its state lives with it;
    *  the drawing area only lends it the layer, the tweens and the nav context. */
@@ -223,6 +220,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly search = new GraphSearch(this.graphSearchHost());
   /** Yank, cut and paste of subgraphs (clipboard-controller.ts). */
   private readonly clipboard = new ClipboardController(this.clipboardHost());
+  /** Sizes, shapes, edge styles, colour, and the defaults new nodes and
+   *  edges take (style-controller.ts). */
+  private readonly style = new StyleController(this.styleHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -577,7 +577,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
-      this.styleCommands(), this.layoutCommands(), this.gather.commands(), this.fileController.commands(),
+      this.style.commands(), this.layoutCommands(), this.gather.commands(), this.fileController.commands(),
       this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -682,26 +682,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
       [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
       [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
-    } satisfies CommandSlice;
-  }
-
-  /** Styling what is selected or under the crosshairs, and the defaults new
-   *  edges take. */
-  private styleCommands() {
-    return {
-      [DACommandType.INCREASE_SELECTED_NODE_SIZE]: () => this.increaseSelectedNodeSize(),
-      [DACommandType.DECREASE_SELECTED_NODE_SIZE]: () => this.decreaseSelectedNodeSize(),
-      [DACommandType.INCREASE_SELECTED_TEXT_SIZE]: () => this.increaseSelectedTextSize(),
-      [DACommandType.DECREASE_SELECTED_TEXT_SIZE]: () => this.decreaseSelectedTextSize(),
-      [DACommandType.SET_TEXT_OVERFLOW_MODE]: c => this.setTextOverflowMode(c.mode),
-      [DACommandType.SET_NODE_SHAPE]: c => this.setNodeShape(c.shape),
-      [DACommandType.TOGGLE_NODE_SHAPE]: () => this.toggleNodeShape(),
-      [DACommandType.CYCLE_EDGE_DIRECTEDNESS]: () => this.cycleEdgeDirectedness(),
-      [DACommandType.SET_EDGE_DIRECTEDNESS]: c => this.setEdgeDirectedness(c.directedness),
-      [DACommandType.SET_LINE_STYLE]: c => this.setLineStyle(c.lineStyle),
-      [DACommandType.SET_ITEM_COLOR]: c => this.setItemColor(c.color),
-      [DACommandType.SET_DEFAULT_EDGE_DIRECTEDNESS]: c => this.setDefaultEdgeDirectedness(c.directedness),
-      [DACommandType.SET_DEFAULT_LINE_STYLE]: c => this.setDefaultLineStyle(c.lineStyle),
     } satisfies CommandSlice;
   }
 
@@ -921,6 +901,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
       checkAndEmitEditState: () => da.checkAndEmitEditState(),
       emitStatus: message => da.emitStatus(message),
+    };
+  }
+
+  /** Lends the style commands what they need, through getters so the layer
+   *  can still be assigned later in ngAfterViewInit. */
+  private styleHost(): StyleHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get nodeSizeStep() { return da.NODE_SIZE_STEP; },
+      get textSizeStep() { return da.TEXT_SIZE_STEP; },
+      get resizeReflowGap() { return da.RESIZE_REFLOW_GAP; },
+      targetNodes: only => da.targetNodes(only),
+      nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
+      edgesUnderCrosshairs: () => da.getDAEdgesContainingCrosshairs(),
+      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
+      getSelectedLabels: () => da.getSelectedLabels(),
+      updateEdgePoints: edge => da.updateEdgePoints(edge),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      finishTweens: () => da.finishTweens(),
+      emitStatus: message => da.emitStatus(message),
+      log: (...parts) => da.log.log(...parts),
     };
   }
 
@@ -1488,18 +1490,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.textEditor.settleCaretResizes(resized);
   }
 
-  private setTextOverflowMode(mode: TextOverflowMode) {
-    const targets = this.targetNodes(n => n.nodeShape !== 'junction');
-
-    const resized: DANode[] = [];
-    targets.forEach(node => {
-      node.textOverflowMode = mode;
-      resized.push(node);
-    });
-    this.updateEdgesForResizedNodes(resized);
-    this.drawingLayer.batchDraw();
-  }
-
   /**
    * The nodes a command means: the selection if there is one, else the topmost
    * node under the crosshairs. Empty means "no node addressed" — the shape
@@ -1513,35 +1503,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return selected.length > 0
       ? selected
       : topmostSelection(this.getDANodesContainingCrosshairs().filter(only));
-  }
-
-  /** Flip between the two shapes that carry a label, leaving diamond and the
-   *  two markers alone. Temporary: the intent is that shape follows a tag or
-   *  class rather than being set per node, and this goes when that lands.
-   *  Anything that is not a circle becomes a circle, so a mixed selection
-   *  converges instead of splitting further. */
-  private toggleNodeShape() {
-    const targets = this.targetNodes();
-    if (targets.length === 0) {
-      this._defaultNodeShape = this._defaultNodeShape === 'circle' ? 'box' : 'circle';
-      this.daOut.emit({kind: 'status-message',
-        message: `Default node shape: ${this._defaultNodeShape}`});
-      return;
-    }
-    const toCircle = targets.some(n => n.nodeShape !== 'circle');
-    this.setNodeShape(toCircle ? 'circle' : 'box');
-  }
-
-  private setNodeShape(shape: NodeShape) {
-    const targets = this.targetNodes();
-
-    if (targets.length > 0) {
-      targets.forEach(node => this.drawingLayer.changeNodeShape(node, shape));
-      targets.forEach(node => node.connectedEdges.forEach(e => this.updateEdgePoints(e)));
-      this.drawingLayer.batchDraw();
-    } else {
-      this._defaultNodeShape = shape;
-    }
   }
 
   private updateEdgesForResizedNodes(nodes: DANode[]) {
@@ -2372,9 +2333,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       selectionSummary: parts.join(', '),
       totalNodes: this.drawingLayer.getDANodes().length,
       totalEdges: this.drawingLayer.getDAEdges().length,
-      defaultNodeShape: this._defaultNodeShape,
-      defaultEdgeDirectedness: this._defaultEdgeDirectedness,
-      defaultLineStyle: this._defaultLineStyle,
+      defaultNodeShape: this.style.defaults.nodeShape,
+      defaultEdgeDirectedness: this.style.defaults.edgeDirectedness,
+      defaultLineStyle: this.style.defaults.lineStyle,
       canUndo: this.undoRedoService.canUndo,
       canRedo: this.undoRedoService.canRedo,
       diagramTypeId: this.drawingLayer.diagramType,
@@ -3129,91 +3090,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return nodeCenterInLayer(node);
   }
 
-  private increaseSelectedNodeSize() {
-    this.adjustSelectedNodeSize(this.NODE_SIZE_STEP);
-  }
-
-  private decreaseSelectedNodeSize() {
-    this.adjustSelectedNodeSize(-this.NODE_SIZE_STEP);
-  }
-
-  private adjustSelectedNodeSize(delta: number) {
-    const targetNodes = this.targetNodes();
-    if (targetNodes.length === 0) {
-      return;
-    }
-
-    const resized = targetNodes.filter((node) => node.resizeBy(delta));
-    if (resized.length === 0) {
-      return;
-    }
-
-    // A grown node may now sit on top of its neighbors: push them out of the
-    // way (chains included), keeping the resized nodes themselves anchored.
-    // Shrinking creates no new overlaps, so the pass is a no-op then.
-    const moved = this.resolveOverlapsAround(resized);
-    this.updateEdgesForResizedNodes([...resized, ...moved]);
-    this.drawingLayer.batchDraw();
-  }
-
-  /** Push movable nodes apart until nothing overlaps, treating `anchored` and
-   *  pinned nodes as immovable obstacles. Returns the nodes that moved. */
-  private resolveOverlapsAround(anchored: DANode[]): DANode[] {
-    const all = this.drawingLayer.getDANodes();
-    const anchoredSet = new Set(anchored);
-    const boxes = all.map(n => ({
-      x: n.group.x(),
-      y: n.group.y(),
-      w: n.NODE_WIDTH,
-      h: n.NODE_HEIGHT,
-      movable: !anchoredSet.has(n) && !n.pinned,
-    }));
-    const moved: DANode[] = [];
-    for (const i of resolveBoxOverlaps(boxes, this.RESIZE_REFLOW_GAP)) {
-      all[i].group.position({x: boxes[i].x, y: boxes[i].y});
-      moved.push(all[i]);
-    }
-    return moved;
-  }
-
-  private increaseSelectedTextSize() {
-    this.adjustSelectedTextSize(this.TEXT_SIZE_STEP);
-  }
-
-  private decreaseSelectedTextSize() {
-    this.adjustSelectedTextSize(-this.TEXT_SIZE_STEP);
-  }
-
-  private adjustSelectedTextSize(delta: number) {
-    let changed = false;
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const selectedLabels = this.getSelectedLabels();
-
-    if (selectedNodes.length === 0 && selectedLabels.length === 0) {
-      const nodeUnderCrosshairs = this.nodeUnderCrosshairs();
-      if (nodeUnderCrosshairs) {
-        changed = nodeUnderCrosshairs.adjustLabelFontSizeBy(delta) || changed;
-      }
-
-      const labelUnderCrosshairs = this.getLabelUnderCrosshairs();
-      if (labelUnderCrosshairs) {
-        changed = labelUnderCrosshairs.adjustFontSizeBy(delta) || changed;
-      }
-    } else {
-      selectedNodes.forEach((node) => {
-        changed = node.adjustLabelFontSizeBy(delta) || changed;
-      });
-
-      selectedLabels.forEach((label) => {
-        changed = label.adjustFontSizeBy(delta) || changed;
-      });
-    }
-
-    if (changed) {
-      this.drawingLayer.batchDraw();
-    }
-  }
-
   // Kept as a method because tools/qa scripts call it; see
   // tools/qa/contract/component-api.js.
   private finishTweens() {
@@ -3367,7 +3243,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
 
-    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this._defaultNodeShape);
+    const newNode = this.drawingLayer.createNewNode(this.crosshairsLayer.crosshairsX(), this.crosshairsLayer.crosshairsY(), nodeShape ?? this.style.defaults.nodeShape);
 
     // Create edges from each previously selected node to the new node. When
     // exactly one link was drawn, that is the one the crosshairs land on once
@@ -4368,7 +4244,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
     const at = this.camera.toStage(insertion);
-    const newNode = this.drawingLayer.createNewNode(at.x, at.y, this._defaultNodeShape);
+    const newNode = this.drawingLayer.createNewNode(at.x, at.y, this.style.defaults.nodeShape);
     this.wireGrowEdge(anchor, newNode, dirState);
     this.newNodeArrivedByLink = true;
 
@@ -4387,7 +4263,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  directed state is always outgoing from the anchor; explicit user
    *  defaults (undirected/bidirectional) are still respected. */
   private defaultGrowDirection(_anchor: DANode | null): number {
-    switch (this._defaultEdgeDirectedness) {
+    switch (this.style.defaults.edgeDirectedness) {
       case 'undirected': return 2;
       case 'bidirectional': return 3;
       default: return 0;
@@ -4434,8 +4310,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private addDefaultEdge(src: DANode, dest: DANode): DAEdge {
     const edge = this.drawingLayer.addEdge(src, dest);
-    edge.directedness = this._defaultEdgeDirectedness;
-    edge.lineStyle = this._defaultLineStyle;
+    edge.directedness = this.style.defaults.edgeDirectedness;
+    edge.lineStyle = this.style.defaults.lineStyle;
     this.autoRouteNewEdge(edge);
     return edge;
   }
@@ -4469,7 +4345,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const edge = this.drawingLayer.addEdge(src, dest);
     edge.directedness = dirState === 2 ? 'undirected'
       : dirState === 3 ? 'bidirectional' : 'directed';
-    edge.lineStyle = this._defaultLineStyle;
+    edge.lineStyle = this.style.defaults.lineStyle;
     this.autoRouteNewEdge(edge);
     return edge;
   }
@@ -4516,8 +4392,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       origin: this.growOrigin!,
       placing: this.growPlacing,
       placePos: this.growPlacePos,
-      newNodeShape: this.growShape ?? this._defaultNodeShape,
-      slotShape: this._defaultNodeShape,
+      newNodeShape: this.growShape ?? this.style.defaults.nodeShape,
+      slotShape: this.style.defaults.nodeShape,
       target: this.growTarget,
       insertionTarget: this.growInsertionTarget,
       targets: this.growGhostTargets,
@@ -4570,60 +4446,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.daOut.emit({kind: 'status-message', message: 'Nothing to edit here — tap the add key to create a node.'});
   }
-
-  /** v+o: cycle directedness of the selected edge(s) — directed →
-   *  undirected → bidirectional → directed. (Reversing a directed edge is a
-   *  future structural op; in the grow mode the pre-commit `o` covers it.) */
-  /** Transient cursor into the four-state directionality cycle, per edge id:
-   *  0 forward · 1 reversed · 2 undirected · 3 bidirectional. The endpoint
-   *  swap happens entering 1 and wrapping 3→0, so four presses land the edge
-   *  exactly where it started. */
-  private edgeDirCycle = new Map<string, number>();
-  private static readonly DIR_CYCLE: {directedness: EdgeDirectedness; label: string}[] = [
-    {directedness: 'directed',      label: 'forward →'},
-    {directedness: 'directed',      label: 'reversed ←'},
-    {directedness: 'undirected',    label: 'undirected —'},
-    {directedness: 'bidirectional', label: 'bidirectional ↔'},
-  ];
-
-  /** Where an edge sits in the cycle. The stored cursor wins only while it
-   *  still agrees with the live directedness — undo, reload and the style
-   *  submenu can all change an edge behind our back. */
-  private dirCycleIndex(edge: DAEdge): number {
-    const stored = this.edgeDirCycle.get(edge.id);
-    if (stored !== undefined
-        && DrawingAreaComponent.DIR_CYCLE[stored].directedness === edge.directedness) {
-      return stored;
-    }
-    return edge.directedness === 'undirected' ? 2
-      : edge.directedness === 'bidirectional' ? 3 : 0;
-  }
-
-  private cycleEdgeDirectedness(): void {
-    const edges = this.drawingLayer.getSelectedDAEdges();
-    if (edges.length === 0) {
-      this.daOut.emit({kind: 'status-message', message: '⚠ Select an edge first (hold v over it).'});
-      return;
-    }
-    this.finishTweens();
-    let lastLabel = '';
-    for (const edge of edges) {
-      const from = this.dirCycleIndex(edge);
-      const to = (from + 1) % DrawingAreaComponent.DIR_CYCLE.length;
-      // Entering 'reversed', or wrapping back to 'forward': flip the endpoints.
-      if (to === 1 || from === DrawingAreaComponent.DIR_CYCLE.length - 1) {
-        edge.reverseDirection();
-      }
-      const next = DrawingAreaComponent.DIR_CYCLE[to];
-      edge.directedness = next.directedness;
-      this.edgeDirCycle.set(edge.id, to);
-      lastLabel = next.label;
-    }
-    this.drawingLayer.batchDraw();
-    const suffix = edges.length > 1 ? ` (${edges.length} edges)` : '';
-    this.emitStatus(`Direction: ${lastLabel}${suffix}`);
-  }
-
 
 
   private getSelectedLabels(): DALabel[] {
@@ -4853,92 +4675,5 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // Quick tap vv on unselected item: leave it selected (ensureTopItemSelected already did it)
   }
 
-
-  /** The edges a style command means: the selection, else whatever the
-   *  crosshairs are over. */
-  private targetEdges(): DAEdge[] {
-    const selected = this.drawingLayer.getSelectedDAEdges();
-    return selected.length > 0 ? selected : this.getDAEdgesContainingCrosshairs();
-  }
-
-  /** Restyle those edges, or say why nothing happened — naming the thing the
-   *  user was trying to change, since the command is otherwise silent. */
-  private restyleTargetEdges(noun: string, apply: (edge: DAEdge) => void): void {
-    const edges = this.targetEdges();
-    if (edges.length === 0) {
-      this.emitStatus(`Select or hover an edge to change ${noun}`);
-      return;
-    }
-    edges.forEach(apply);
-    this.drawingLayer.batchDraw();
-  }
-
-  private setEdgeDirectedness(directedness: EdgeDirectedness): void {
-    this.log.log('[style] setEdgeDirectedness:', directedness);
-    this.restyleTargetEdges('directedness', edge => edge.directedness = directedness);
-  }
-
-  private setLineStyle(lineStyle: LineStyle): void {
-    this.log.log('[style] setLineStyle:', lineStyle);
-    this.restyleTargetEdges('line style', edge => edge.lineStyle = lineStyle);
-  }
-
-  private setDefaultEdgeDirectedness(directedness: EdgeDirectedness): void {
-    this.log.log('[style] setDefaultEdgeDirectedness:', directedness);
-    this._defaultEdgeDirectedness = directedness;
-  }
-
-  private setDefaultLineStyle(lineStyle: LineStyle): void {
-    this.log.log('[style] setDefaultLineStyle:', lineStyle);
-    this._defaultLineStyle = lineStyle;
-  }
-
-  private setItemColor(color: ItemColor): void {
-    this.log.log('[style] setItemColor:', color);
-    const COLOR_MAP: Record<ItemColor, {node: {fill: string; stroke: string; text: string}; edge: {stroke: string; fill: string}}> = {
-      'default': {node: this.drawingLayer.nodeColors()!, edge: this.drawingLayer.edgeColors()!},
-      'red': {node: {fill: '#ffcccc', stroke: '#cc0000', text: '#660000'}, edge: {stroke: '#cc0000', fill: '#cc0000'}},
-      'blue': {node: {fill: '#cce0ff', stroke: '#0066cc', text: '#003366'}, edge: {stroke: '#0066cc', fill: '#0066cc'}},
-      'green': {node: {fill: '#ccffcc', stroke: '#009900', text: '#004d00'}, edge: {stroke: '#009900', fill: '#009900'}},
-      'orange': {node: {fill: '#ffe0cc', stroke: '#cc6600', text: '#663300'}, edge: {stroke: '#cc6600', fill: '#cc6600'}},
-      'purple': {node: {fill: '#e0ccff', stroke: '#6600cc', text: '#330066'}, edge: {stroke: '#6600cc', fill: '#6600cc'}},
-    };
-    const colors = COLOR_MAP[color];
-    if (!colors) return;
-
-    // Selection first, then whatever the crosshairs are over — the same
-    // priority copy/cut (da-272) and the shape commands use. Without the
-    // fallback the natural gesture (hover a node, pick a colour) either did
-    // nothing or, worse, recoloured a stale selection somewhere off-screen;
-    // a thin edge restyled at 50% zoom reads as "nothing happened".
-    let nodes = this.drawingLayer.getSelectedDANodes();
-    let edges = this.drawingLayer.getSelectedDAEdges();
-
-    if (nodes.length === 0 && edges.length === 0) {
-      nodes = topmostSelection(this.getDANodesContainingCrosshairs());
-      if (nodes.length === 0) {
-        edges = this.getDAEdgesContainingCrosshairs();
-      }
-    }
-
-    if (nodes.length === 0 && edges.length === 0) {
-      this.daOut.emit({kind: 'status-message',
-        message: 'Select or point at a node or edge to change color'});
-      return;
-    }
-
-    nodes.forEach(n => n.applyColors(colors.node));
-    edges.forEach(e => e.applyColors(colors.edge));
-
-    this.drawingLayer.batchDraw();
-
-    // Always say what was recoloured. The command is otherwise silent, and
-    // its effect can be genuinely hard to see.
-    const parts: string[] = [];
-    if (nodes.length) parts.push(`${nodes.length} node${nodes.length === 1 ? '' : 's'}`);
-    if (edges.length) parts.push(`${edges.length} link${edges.length === 1 ? '' : 's'}`);
-    const name = color.charAt(0).toUpperCase() + color.slice(1);
-    this.daOut.emit({kind: 'status-message', message: `${name}: ${parts.join(' + ')}`});
-  }
 
 }

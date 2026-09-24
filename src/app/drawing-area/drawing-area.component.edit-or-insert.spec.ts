@@ -36,10 +36,10 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.getDANodesContainingCrosshairs = () => overrides.nodesUnderCrosshairs ?? [];
     component.getWaypointUnderCrosshairs = () => overrides.waypointUnderCrosshairs ?? undefined;
     component.getDAEdgesContainingCrosshairs = () => overrides.edgesUnderCrosshairs ?? [];
-    component._defaultNodeShape = overrides.defaultNodeShape ?? 'box';
-    component._defaultEdgeDirectedness = 'directed';
+    component.style.defaults.nodeShape = overrides.defaultNodeShape ?? 'box';
+    component.style.defaults.edgeDirectedness = 'directed';
     component.pushUndoSnapshot = jasmine.createSpy('pushUndoSnapshot');
-    const createdNode = {nodeShape: component._defaultNodeShape};
+    const createdNode = {nodeShape: component.style.defaults.nodeShape};
     component.createNewNode = jasmine.createSpy('createNewNode').and.returnValue(createdNode);
     component.beginNewNodeLabelEdit = jasmine.createSpy('beginNewNodeLabelEdit')
       .and.callFake((node: {nodeShape: string}) => {
@@ -139,13 +139,13 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('starts connected adds as outgoing directed edges by default', () => {
       const component = buildComponent();
 
-      expect(component._defaultEdgeDirectedness).toBe('directed');
+      expect(component.style.defaults.edgeDirectedness).toBe('directed');
       expect(component.defaultGrowDirection({nodeShape: 'box', tags: []})).toBe(0);
     });
 
     it('starts ordinary connected adds with the configured undirected default', () => {
       const component = buildComponent();
-      component._defaultEdgeDirectedness = 'undirected';
+      component.style.defaults.edgeDirectedness = 'undirected';
 
       expect(component.defaultGrowDirection({
         nodeShape: 'box',
@@ -155,7 +155,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
 
     it('does not reverse outgoing adds for todo category nodes', () => {
       const component = buildComponent({diagramType: 'todo-graph'});
-      component._defaultEdgeDirectedness = 'directed';
+      component.style.defaults.edgeDirectedness = 'directed';
 
       expect(component.defaultGrowDirection({
         nodeShape: 'circle',
@@ -534,20 +534,20 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('cycles forward → reversed → undirected → bidirectional → forward', () => {
       const edge = edgeStub();
       const component = buildComponent({selectedEdges: [edge]});
-      component.edgeDirCycle = new Map();
+      component.style.edgeDirCycle = new Map();
 
-      component.cycleEdgeDirectedness();
+      component.style.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('directed');
       expect([edge.src, edge.dest]).toEqual(['B', 'A']);  // reversed
 
-      component.cycleEdgeDirectedness();
+      component.style.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('undirected');
       expect([edge.src, edge.dest]).toEqual(['B', 'A']);  // endpoints untouched
 
-      component.cycleEdgeDirectedness();
+      component.style.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('bidirectional');
 
-      component.cycleEdgeDirectedness();
+      component.style.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('directed');
       expect([edge.src, edge.dest]).toEqual(['A', 'B']);  // back where it started
       // Each press is one undo step, taken by the command policy before the
@@ -560,20 +560,19 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('re-derives its place in the cycle when the edge changed behind its back', () => {
       const edge = edgeStub();
       const component = buildComponent({selectedEdges: [edge]});
-      component.edgeDirCycle = new Map([['e1', 3]]);  // stale: says bidirectional
+      component.style.edgeDirCycle = new Map([['e1', 3]]);  // stale: says bidirectional
       // Live state says directed, so the cursor is rebuilt as 'forward' and
       // the press reverses rather than wrapping.
-      component.cycleEdgeDirectedness();
+      component.style.cycleEdgeDirectedness();
       expect(edge.directedness).toBe('directed');
       expect([edge.src, edge.dest]).toEqual(['B', 'A']);
     });
 
     it('warns when no edge is selected', () => {
       const component = buildComponent();
-      component.edgeDirCycle = new Map();
-      component.cycleEdgeDirectedness();
-      expect(component.daOut.emit).toHaveBeenCalledWith(
-        jasmine.objectContaining({kind: 'status-message'}));
+      component.style.edgeDirCycle = new Map();
+      component.style.cycleEdgeDirectedness();
+      expect(component.emitStatus).toHaveBeenCalledWith(jasmine.stringContaining('Select an edge'));
       expect(component.undoRedoService.pushSnapshot).not.toHaveBeenCalled();
     });
   });
