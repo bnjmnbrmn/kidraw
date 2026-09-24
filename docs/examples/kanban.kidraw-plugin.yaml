@@ -1,0 +1,31 @@
+# A diagram type written as data: add it in Settings > Plugins >
+# "Add a plugin from a file…", then `:type kanban` in a graph.
+# The format is described in docs/plugins.md.
+id: kanban
+name: Kanban
+description: Cards moving through columns, with a lane for who is on it
+nodes:
+  shape: box
+  width: 240
+  height: 60
+  fontSize: 14
+  textOverflow: fit
+tagGroups:
+  - id: column
+    name: Column
+    choices:
+      - {tag: column/backlog, label: BACKLOG, color: '#64748b'}
+      - {tag: column/doing, label: DOING, color: '#d97706'}
+      - {tag: column/review, label: REVIEW, color: '#7c3aed'}
+      - {tag: column/done, label: DONE, color: '#16a34a', dims: true}
+edgeKinds:
+  - tag: kanban/blocks
+    name: Blocks
+    color: '#dc2626'
+    description: The source card has to be done before the target can move on.
+menu:
+  - {label: Backlog, set: column/backlog}
+  - {label: Doing, set: column/doing}
+  - {label: Review, set: column/review}
+  - {label: Done, set: column/done}
+  - {label: No Column, clear: column, key: n}

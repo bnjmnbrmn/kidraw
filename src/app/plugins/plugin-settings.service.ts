@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 import { KidrawPlugin } from './plugin.model';
-import { PLUGIN_REGISTRY } from './plugin-registry';
+import { onRegistryChange, PLUGIN_REGISTRY } from './plugin-registry';
 
 const DISABLED_KEY = 'kidraw-plugins-disabled';
 
@@ -36,6 +36,12 @@ export class PluginSettingsService {
 
   /** The plugins it knows; a spec may give it others. */
   private readonly plugins: ReadonlyMap<string, KidrawPlugin> = PLUGIN_REGISTRY;
+
+  constructor() {
+    // A plugin added or taken out changes what is on, as far as anyone
+    // listening is concerned.
+    onRegistryChange(() => this.changed.next());
+  }
 
   isEnabled(id: string): boolean {
     const plugin = this.plugins.get(id);

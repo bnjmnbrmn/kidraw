@@ -111,17 +111,27 @@
           <summary>Plugins</summary>
           <div class="settings-group">
             @for (plugin of pluginSettings.optionalPlugins(); track plugin.id) {
-              <label class="swap-label plugin-toggle" [title]="plugin.description ?? ''">
-                <input type="checkbox"
-                       [attr.data-plugin]="plugin.id"
-                       [checked]="pluginSettings.isEnabled(plugin.id)"
-                       (change)="onPluginToggle(plugin, $event)">
-                {{ plugin.name }}
-                @if (dependencyHint(plugin); as hint) {
-                  <span class="plugin-hint">{{ hint }}</span>
+              <div class="plugin-row">
+                <label class="swap-label plugin-toggle" [title]="plugin.description ?? ''">
+                  <input type="checkbox"
+                         [attr.data-plugin]="plugin.id"
+                         [checked]="pluginSettings.isEnabled(plugin.id)"
+                         (change)="onPluginToggle(plugin, $event)">
+                  {{ plugin.name }}
+                  @if (dependencyHint(plugin); as hint) {
+                    <span class="plugin-hint">{{ hint }}</span>
+                  }
+                </label>
+                @if (pluginLibrary.isAdded(plugin.id)) {
+                  <button class="plugin-remove" [attr.data-remove-plugin]="plugin.id"
+                          (click)="onPluginRemove(plugin)" title="Remove this plugin you added">Remove</button>
                 }
-              </label>
+              </div>
             }
+            <label class="plugin-add">
+              <input type="file" accept=".yaml,.yml,text/yaml" class="plugin-file" (change)="onPluginFile($event)">
+              <span>Add a plugin from a file…</span>
+            </label>
           </div>
         </details>
 

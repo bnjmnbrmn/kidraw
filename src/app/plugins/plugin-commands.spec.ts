@@ -4,6 +4,7 @@ import {KidrawPlugin} from './plugin.model';
 import {PluginCommandCall, PluginCommands} from './plugin-commands';
 import {PluginHost, PluginNode} from './plugin-host';
 import {TaskStatus, TODO_GRAPH_PLUGIN} from './todo-graph.plugin';
+import {resolveIdentity} from './plugin-registry';
 
 /** A host with a scripted graph, recording what a plugin asks of it. */
 function fakeHost(options: {type?: string; targets?: Partial<PluginNode>[]; conflict?: string} = {}) {
@@ -11,6 +12,7 @@ function fakeHost(options: {type?: string; targets?: Partial<PluginNode>[]; conf
   const statuses: string[] = [];
   const host: PluginHost = {
     diagramType: () => options.type ?? 'todo-graph',
+    identity: () => resolveIdentity(options.type ?? 'todo-graph'),
     targetNodes: () => (options.targets ?? [{}]).map((node, i) =>
       ({id: `n${i}`, label: `node ${i}`, tags: [], shape: 'box' as NodeShape, ...node})),
     apply: (label, operations) => {

@@ -1,5 +1,6 @@
 import type {NodeShape} from '../drawing-area/command.model';
 import type {GraphOperation} from '../drawing-area/graph-operations';
+import type {KidrawPlugin} from './plugin.model';
 
 /** A node as a plugin sees it: plain data, never the Konva object. */
 export interface PluginNode {
@@ -20,6 +21,8 @@ export interface PluginNode {
 export interface PluginHost {
   /** The graph's diagram type: the id of the plugin bound as its identity. */
   diagramType(): string;
+  /** That plugin itself (the default one when the type is unknown). */
+  identity(): KidrawPlugin;
   /** What a command acts on: the selected nodes, else the node under the crosshairs. */
   targetNodes(): PluginNode[];
   /** Apply operations as one undo group, all or nothing, before returning.

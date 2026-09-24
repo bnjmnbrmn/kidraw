@@ -12,6 +12,7 @@ import { DAFileState } from '../drawing-area/da-notification.model';
 import { AgentStore } from '../agent/agent-store';
 import { KidrawPlugin } from '../plugins/plugin.model';
 import { dependencyHint, describePluginChange, PluginSettingsService } from '../plugins/plugin-settings.service';
+import { PluginLibraryService } from '../plugins/plugin-library.service';
 
 /** Palette fields that are simple hex colors (not arrays or rgba). */
 const SIMPLE_COLOR_FIELDS: { key: keyof ThemePalette; label: string }[] = [
@@ -141,6 +142,7 @@ export class HeaderComponent {
   graphStorage = inject(GraphStorageService);
   agent = inject(AgentStore);
   pluginSettings = inject(PluginSettingsService);
+  pluginLibrary = inject(PluginLibraryService);
 
   get agentChipTitle(): string {
     const keys = this.agent.keyLabels();
@@ -165,6 +167,24 @@ export class HeaderComponent {
   }
 
   readonly dependencyHint = dependencyHint;
+
+  /** "Add a plugin from a file…": read the YAML, add it, and say how it went. */
+  async onPluginFile(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const result = this.pluginLibrary.add(await file.text());
+    this.showStatusMessage(result.plugin
+      ? `Added the ${result.plugin.name} plugin`
+      : `Couldn't add ${file.name}: ${result.errors[0]}${result.errors.length > 1 ? ` (and ${result.errors.length - 1} more)` : ''}`,
+      8000);
+  }
+
+  onPluginRemove(plugin: KidrawPlugin): void {
+    this.pluginLibrary.remove(plugin.id);
+    this.showStatusMessage(`Removed the ${plugin.name} plugin`);
+  }
 
   showStatusMessage(message: string, durationMs = 2500): void {
     this.statusMessage = message;

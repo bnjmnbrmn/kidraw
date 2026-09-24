@@ -166,3 +166,28 @@ button:focus-visible,
   opacity: 0.6;
   font-size: 0.7rem;
 }
+
+.plugin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plugin-remove {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+
+.plugin-add {
+  display: block;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0.85;
+  text-decoration: underline;
+}
+
+.plugin-add .plugin-file {
+  display: none;
+}

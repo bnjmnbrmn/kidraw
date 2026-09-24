@@ -21,6 +21,7 @@ const NOTES_KEY = 'kidraw_notes_v1';
 import {ReadingModeService} from './reading/reading-mode.service';
 import {getPlugin} from './plugins/plugin-registry';
 import {PluginSettingsService} from './plugins/plugin-settings.service';
+import {PluginLibraryService} from './plugins/plugin-library.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
 
@@ -52,6 +53,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly agent = inject(AgentStore);
   readonly reading = inject(ReadingModeService);
   private readonly pluginSettings = inject(PluginSettingsService);
+  /** Created first, so the plugins a user added are registered before any
+   *  graph of their type is opened. */
+  private readonly pluginLibrary = inject(PluginLibraryService);
 
   @ViewChild(KeymenuComponent) keymenuComponent!: KeymenuComponent;
   @ViewChild(ExLineComponent) exLineComponent?: ExLineComponent;

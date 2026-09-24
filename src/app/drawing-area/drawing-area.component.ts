@@ -461,6 +461,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  (Markdown, Math), and so take a different size. */
   private onPluginsChanged(): void {
     this.updateEdgesForResizedNodes(this.drawingLayer.refreshLabelSyntax());
+    // A plugin added for this graph's type brings its badges and kind colours.
+    this.drawingLayer.refreshTagBadges();
+    this.drawingLayer.reapplyTheme();
     this.drawingLayer.batchDraw();
     this.refreshLabelEditGhost();
   }
@@ -744,6 +747,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private pluginHost(): PluginHost {
     return {
       diagramType: () => this.drawingLayer.diagramType,
+      identity: () => resolveIdentity(this.drawingLayer.diagramType),
       targetNodes: () => this.targetNodes().map(pluginNodeOf),
       apply: (label, ops) => this.applyOperationsNow({author: 'user', label, ops}),
       status: message => this.emitStatus(message),

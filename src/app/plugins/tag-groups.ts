@@ -1,4 +1,6 @@
+import type { GraphOperation } from '../drawing-area/graph-operations';
 import { PluginTagChoice, PluginTagGroup, KidrawPlugin } from './plugin.model';
+import type { PluginNode } from './plugin-host';
 
 /** Tags with every choice of `group` removed, then `choice` (if any) added.
  *  Pure — returns a new array; order of unrelated tags is preserved. */
@@ -33,4 +35,28 @@ export function activeTagChoice(
     if (choice) return choice;
   }
   return null;
+}
+
+/** Junctions and invisible nodes carry no text, so no tags either. */
+export function carriesTags(node: PluginNode): boolean {
+  return node.shape !== 'junction' && node.shape !== 'invisible';
+}
+
+/** The operations that give each node `choice` from `group` (or clear the
+ *  group, for null), leaving out nodes that already have it: no undo step
+ *  for nothing. */
+export function exclusiveTagOperations(
+  nodes: readonly PluginNode[],
+  group: PluginTagGroup,
+  choice: PluginTagChoice | null,
+): GraphOperation[] {
+  return nodes
+    .map(node => ({node, after: applyExclusiveTag([...node.tags], group, choice)}))
+    .filter(({node, after}) => after.join('\n') !== node.tags.join('\n'))
+    .map(({node, after}): GraphOperation => ({op: 'update_node', id: node.id, before: {tags: [...node.tags]}, after: {tags: after}}));
+}
+
+/** " (3 nodes)" after a status message, when there was more than one. */
+export function countSuffix(nodes: readonly unknown[]): string {
+  return nodes.length > 1 ? ` (${nodes.length} nodes)` : '';
 }

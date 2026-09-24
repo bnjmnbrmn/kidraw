@@ -1,7 +1,6 @@
-import type { GraphOperation } from '../drawing-area/graph-operations';
 import { KidrawPlugin, PluginMenuEntry, PluginTagChoice, PluginTagGroup } from './plugin.model';
-import type { PluginHost, PluginNode } from './plugin-host';
-import { applyExclusiveTag } from './tag-groups';
+import type { PluginHost } from './plugin-host';
+import { carriesTags, countSuffix, exclusiveTagOperations } from './tag-groups';
 
 const TODO_GRAPH_ID = 'todo-graph';
 
@@ -68,24 +67,11 @@ function setTaskStatus(host: PluginHost, status: TaskStatus): void {
   if (host.diagramType() !== TODO_GRAPH_ID) return host.status('⚠ Task statuses need a Todo Graph (:type todo-graph)');
   const choice = status === 'none' ? null : STATUS_GROUP.choices.find(c => c.tag === `status/${status}`);
   if (choice === undefined) return host.status(`⚠ Unknown task status: ${status}`);
-  const targets = host.targetNodes().filter(carriesStatus);
+  const targets = host.targetNodes().filter(carriesTags);
   if (targets.length === 0) return host.status('⚠ Select or hover a node to set its status');
-  const operations = targets.map(node => statusOperation(node, choice)).filter(changesTags);
+  const operations = exclusiveTagOperations(targets, STATUS_GROUP, choice);
   const conflict = operations.length > 0 ? host.apply(statusText(choice), operations) : null;
-  host.status(conflict ?? statusText(choice) + (targets.length > 1 ? ` (${targets.length} nodes)` : ''));
+  host.status(conflict ?? statusText(choice) + countSuffix(targets));
 }
-
-/** Junctions and invisible nodes carry no text, so no status either. */
-const carriesStatus = (node: PluginNode) => node.shape !== 'junction' && node.shape !== 'invisible';
 
 const statusText = (choice: PluginTagChoice | null) => choice ? `Status: ${choice.label}` : 'Status cleared';
-
-function statusOperation(node: PluginNode, choice: PluginTagChoice | null): GraphOperation {
-  const tags = [...node.tags];
-  return {op: 'update_node', id: node.id, before: {tags}, after: {tags: applyExclusiveTag(tags, STATUS_GROUP, choice)}};
-}
-
-/** False for a status a node already has: no undo step for nothing. */
-function changesTags(operation: GraphOperation): boolean {
-  return operation.op !== 'update_node' || operation.before.tags?.join('\n') !== operation.after.tags?.join('\n');
-}

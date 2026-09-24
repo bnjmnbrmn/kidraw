@@ -89,6 +89,7 @@ export const SUITE = [
   { script: 'graph-types/task-status.js', region: 'graph-types', status: 'suite' },
   { script: 'graph-types/plugin-settings.js', region: 'graph-types', status: 'suite' },
   { script: 'graph-types/markdown-math-plugins.js', region: 'graph-types', status: 'suite' },
+  { script: 'graph-types/plugin-library.js', region: 'graph-types', status: 'suite' },
 
   // ── Undo: one step per change ──
   { script: 'undo/one-step-per-change.js', region: 'undo', status: 'suite' },
