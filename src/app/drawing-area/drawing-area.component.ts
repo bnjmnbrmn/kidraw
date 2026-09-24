@@ -50,14 +50,9 @@ import { nodeCenterInLayer, nodeCenterInStage, nodeStageRect } from './node-geom
 import { projectPointToPath } from './edge-label-anchor';
 import { linkDirectionsFrom, LinkCardinalDirection, moveLinkQuadrant, NavCandidate, navCandidatesFor, pickEntryCandidate } from './graph-nav';
 import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
-import type {
-  AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
-} from '../agent/agent-canvas';
 import { GraphOperationApplier } from './graph-operation-applier';
 import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
-import { nextId } from './id-generator';
 import { onMathImageLoaded, onMathReady } from './math-images';
-import { layeredLayout } from './layered-layout';
 import { GatherController, GatherHost } from './gather-controller';
 import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
 import { NavigationGridStop } from './navigation-grid';
@@ -130,6 +125,7 @@ import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { StyleController, StyleHost } from './style-controller';
 import { LayoutController, LayoutHost } from './layout-controller';
+import { AgentCanvasSurface, AgentCanvasHost } from './agent-canvas-surface';
 
 /** A node as plugins see it: plain data, not the Konva object. */
 function pluginNodeOf(node: DANode): PluginNode {
@@ -142,7 +138,7 @@ function pluginNodeOf(node: DANode): PluginNode {
   templateUrl: './drawing-area.component.html',
   styleUrl: './drawing-area.component.css'
 })
-export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy, AgentCanvasTarget {
+export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   @Input({required: true}) commands!: Observable<DACommand>;
   /** Screen-space strip on each edge that a DOM overlay covers: the compact
@@ -205,6 +201,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Layouts and edge routing, and the routing run in flight
    *  (layout-controller.ts). */
   private readonly layout = new LayoutController(this.layoutHost());
+  /** What an agent sees of the canvas and may do to it; the shell hands
+   *  this to agent mode and reading mode (agent-canvas-surface.ts). */
+  readonly agentCanvas = new AgentCanvasSurface(this.agentCanvasHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -333,7 +332,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.crosshairsLayer?.batchDraw();
       }),
     ];
-    this.watchUserViewChanges();
+    this.agentCanvas.watchUserViewChanges();
     this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
@@ -875,6 +874,26 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       finishTweens: () => da.finishTweens(),
       emitStatus: message => da.emitStatus(message),
       log: (...parts) => da.log.log(...parts),
+    };
+  }
+
+  /** Lends the agent's surface what it needs, through getters so the stage
+   *  and layer can still be assigned later in ngAfterViewInit. */
+  private agentCanvasHost(): AgentCanvasHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get viewport() { return da.viewport; },
+      get stage() { return da.stage; },
+      get recenterDuration() { return da.RECENTER_DURATION; },
+      nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
+      nodeCenter: node => da.getNodeCenterInLayerCoordinates(node),
+      finishTweens: () => da.finishTweens(),
+      centerViewOnLayerPoint: point => da.centerViewOnLayerPoint(point),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      applyOperations: group => da.applyOperations(group),
+      revertChangeSet: changeSetId => da.revertChangeSet(changeSetId),
+      viewChangedByUser: () => da.daOut.emit({kind: 'view-changed-by-user'}),
     };
   }
 
@@ -2468,155 +2487,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
     this.scheduleVaultAutoSave();
-  }
-
-  // ─── Agent mode canvas surface (AgentCanvasTarget; notes/idea-mcp-server.md) ──
-  // Read-only inspection plus view guidance. Nothing here mutates the graph
-  // or touches the undo stack.
-
-  agentNodes(): AgentNodeInfo[] {
-    return this.drawingLayer.getDANodes().map(node => ({
-      id: node.id, label: node.label.text(), tags: [...node.tags],
-    }));
-  }
-
-  agentEdges(): AgentEdgeInfo[] {
-    return this.drawingLayer.getDAEdges().map(edge => ({
-      id: edge.id,
-      from: edge.srcNode.id,
-      to: edge.destNode.id,
-      labels: edge.labels.map(label => label.label),
-      tags: [...edge.tags],
-    }));
-  }
-
-  agentSelection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null} {
-    return {
-      nodeIds: this.drawingLayer.getSelectedDANodes().map(n => n.id),
-      edgeIds: this.drawingLayer.getSelectedDAEdges().map(e => e.id),
-      underCrosshairsId: this.nodeUnderCrosshairs()?.id ?? null,
-    };
-  }
-
-  agentZoomPercent(): number {
-    return Math.round(this.drawingLayer.scaleX() * 100);
-  }
-
-  agentVisibleNodeIds(): string[] {
-    const scale = this.drawingLayer.scaleX();
-    const minX = this.viewport.minX, maxX = this.viewport.maxX, minY = this.viewport.minY, maxY = this.viewport.maxY;
-    return this.drawingLayer.getDANodes().filter(node => {
-      const x = this.drawingLayer.x() + node.group.x() * scale;
-      const y = this.drawingLayer.y() + node.group.y() * scale;
-      return x + node.NODE_WIDTH * scale > minX && x < maxX && y + node.NODE_HEIGHT * scale > minY && y < maxY;
-    }).map(node => node.id);
-  }
-
-  /** Until this time (performance.now()), view changes are the agent's own focus animation. */
-  private agentViewMoveUntil = 0;
-  private lastUserViewChangeEmit = 0;
-
-  /**
-   * Tell the shell whenever the user, not the agent, pans or zooms the view,
-   * however it happened: pan and zoom keys, crosshairs pushing at the edge,
-   * a jump, the mouse. Agent mode uses this to switch to "You lead"; a plain
-   * crosshairs move that leaves the view where it is doesn't count.
-   */
-  private watchUserViewChanges(): void {
-    this.drawingLayer.on('xChange.agentView yChange.agentView scaleXChange.agentView', () => {
-      const now = performance.now();
-      // A tween changes the view every frame; one notification per burst is plenty.
-      if (now < this.agentViewMoveUntil || now - this.lastUserViewChangeEmit < 250) return;
-      this.lastUserViewChangeEmit = now;
-      this.daOut.emit({kind: 'view-changed-by-user'});
-    });
-  }
-
-  /** Pan the view onto the node. The agent only points: it never changes the
-   *  user's selection, so nothing the user is doing gets redirected. */
-  agentFocusNode(id: string): boolean {
-    const node = this.drawingLayer.getDANodes().find(n => n.id === id);
-    if (!node) return false;
-    this.agentViewMoveUntil = performance.now() + this.RECENTER_DURATION * 1000 + 150;
-    this.finishTweens();
-    this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
-    this.drawingLayer.batchDraw();
-    return true;
-  }
-
-  agentDiagramTypeId(): string {
-    return this.drawingLayer.diagramType;
-  }
-
-  async agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult> {
-    const planner = await import('./agent-change-planner');
-    return planner.applyAgentChanges(
-      this.drawingLayer.serializeGraph(), changes, meta, nextId, group => this.applyOperations(group),
-      () => this.agentArrange(meta));
-  }
-
-  /** The agent's "arrange": lay the graph out top-down along its links
-   *  (layered-layout.ts), as moves in the agent's change set, so undoing its
-   *  turn puts the nodes back. Pinned nodes stay where they are. */
-  private async agentArrange(meta: AgentEditMeta): Promise<string | null> {
-    const nodes = this.drawingLayer.getDANodes();
-    const edges = this.drawingLayer.getDAEdges();
-    const positions = layeredLayout(
-      nodes.map(node => ({id: node.id, x: node.group.x(), y: node.group.y(), width: node.NODE_WIDTH, height: node.NODE_HEIGHT})),
-      edges.map(edge => ({from: edge.srcNode.id, to: edge.destNode.id})),
-    );
-    const ops: GraphOperation[] = [];
-    for (const node of nodes) {
-      const to = positions.get(node.id);
-      const from = {x: node.group.x(), y: node.group.y()};
-      if (!to || node.pinned || (Math.abs(to.x - from.x) < 0.5 && Math.abs(to.y - from.y) < 0.5)) continue;
-      ops.push({op: 'update_node', id: node.id, before: from, after: {x: to.x, y: to.y}});
-    }
-    if (ops.length === 0) return null;
-    const conflict = await this.applyOperations({
-      author: meta.author, label: `${meta.label} (arrange)`, ops, changeSetId: meta.changeSetId,
-    });
-    // Routes drawn around the old positions would loop around the new ones.
-    for (const edge of edges) edge.setControlPoints([]);
-    this.updateEdgesForResizedNodes(nodes);
-    this.drawingLayer.batchDraw();
-    return conflict;
-  }
-
-  agentRevertChangeSet(changeSetId: string): Promise<string | null> {
-    return this.revertChangeSet(changeSetId);
-  }
-
-  agentSetHighlights(ids: string[]): void {
-    const wanted = new Set(ids);
-    for (const node of this.drawingLayer.getDANodes()) {
-      if (wanted.has(node.id) || node.agentHighlighted) node.setAgentHighlight(wanted.has(node.id));
-    }
-    for (const edge of this.drawingLayer.getDAEdges()) edge.setEmphasized(wanted.has(edge.id));
-    this.drawingLayer.batchDraw();
-  }
-
-  agentNodeClientRect(id: string): ClientRect | null {
-    const node = this.drawingLayer.getDANodes().find(n => n.id === id);
-    if (!node) return null;
-    const scale = this.drawingLayer.scaleX();
-    const container = this.stage.container().getBoundingClientRect();
-    return {
-      left: container.left + this.drawingLayer.x() + node.group.x() * scale,
-      top: container.top + this.drawingLayer.y() + node.group.y() * scale,
-      width: node.NODE_WIDTH * scale,
-      height: node.NODE_HEIGHT * scale,
-    };
-  }
-
-  agentViewClientRect(): ClientRect {
-    const container = this.stage.container().getBoundingClientRect();
-    return {
-      left: container.left + this.viewport.minX,
-      top: container.top + this.viewport.minY,
-      width: this.viewport.width,
-      height: this.viewport.height,
-    };
   }
 
   /** Pan the view (no rescale) so the layer point sits at the stage center,

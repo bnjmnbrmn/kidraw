@@ -120,7 +120,8 @@ decisions: [`notes/design-plugins.md`](notes/design-plugins.md).
 
 `src/app/agent/` is the tab side: `AgentService` holds the session, the panel
 and overlay render it, and canvas tools reach the canvas only through
-`AgentCanvasTarget` (implemented by `DrawingAreaComponent`). It talks to
+`AgentCanvasTarget` (implemented by `AgentCanvasSurface`,
+`drawing-area/agent-canvas-surface.ts`). It talks to
 `kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that you
 run yourself. Nothing connects anywhere until you configure an endpoint.
 

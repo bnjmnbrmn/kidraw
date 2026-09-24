@@ -97,6 +97,9 @@ export const SUITE = [
   // ── Style: sizes, shapes, edge styles, colour, and the defaults ──
   { script: 'style/style-commands.js', region: 'style', status: 'suite' },
 
+  // ── Agent mode: the canvas surface, without an agent server ──
+  { script: 'agent/canvas-surface.js', region: 'agent', status: 'suite' },
+
   // ── Undo: one step per change ──
   { script: 'undo/one-step-per-change.js', region: 'undo', status: 'suite' },
 

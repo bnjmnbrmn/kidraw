@@ -1,7 +1,8 @@
 /**
- * What agent mode needs from the drawing area. DrawingAreaComponent implements
- * this; the agent tools and caption overlay use only this surface, so the
- * canvas internals stay behind it.
+ * What agent mode needs from the drawing area. AgentCanvasSurface
+ * (drawing-area/agent-canvas-surface.ts) implements this; the agent tools and
+ * caption overlay use only this surface, so the canvas internals stay behind
+ * it.
  *
  * Most of it reads the graph or guides the view. Agent edits come in through
  * `agentApplyChanges` only, which plans graph operations and applies them
