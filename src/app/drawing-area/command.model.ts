@@ -82,7 +82,6 @@ export enum DACommandType {
   MULTI_ITEM_SELECT = 'MULTI_ITEM_SELECT',
   ZOOM_IN = 'ZOOM_IN',
   ZOOM_OUT = 'ZOOM_OUT',
-  CONNECT_SELECTED_NODES = 'CONNECT_SELECTED_NODES',
   RECENTER_VIEW = 'RECENTER_VIEW',
   RECENTER_CROSSHAIRS = 'RECENTER_CROSSHAIRS',
   RECENTER_VIEW_ON_CROSSHAIRS = 'RECENTER_VIEW_ON_CROSSHAIRS',
@@ -93,10 +92,7 @@ export enum DACommandType {
   DRAG_SELECTED_UP = 'DRAG_SELECTED_UP',
   DRAG_SELECTED_DOWN = 'DRAG_SELECTED_DOWN',
   EXIT_DRAG_MODE = 'EXIT_DRAG_MODE',
-  DELETE = 'DELETE',
   ADD_LABEL = 'ADD_LABEL',
-  OPEN_INSERT_SUBMENU = 'OPEN_INSERT_SUBMENU',
-  EDIT_SELECTED = 'EDIT_SELECTED',
   DELETE_LAST_CHAR = 'DELETE_LAST_CHAR',
   UNDO = 'UNDO',
   REDO = 'REDO',
@@ -109,14 +105,8 @@ export enum DACommandType {
   SET_LINE_STYLE = 'SET_LINE_STYLE',
   SET_ITEM_COLOR = 'SET_ITEM_COLOR',
   LOAD_SAMPLE_GRAPH = 'LOAD_SAMPLE_GRAPH',
-  SAVE_GRAPH_AS = 'SAVE_GRAPH_AS',
   LOAD_NAMED_GRAPH = 'LOAD_NAMED_GRAPH',
   NEW_GRAPH = 'NEW_GRAPH',
-  OPEN_FILE = 'OPEN_FILE',
-  SAVE_FILE_AS = 'SAVE_FILE_AS',
-  EXPORT_ZIP = 'EXPORT_ZIP',
-  CYCLE_DISPLAY = 'CYCLE_DISPLAY',
-  SET_DIAGRAM_TYPE = 'SET_DIAGRAM_TYPE',
   /** A command a plugin brought, by its namespaced id (plugin-commands.ts). */
   PLUGIN_COMMAND = 'PLUGIN_COMMAND',
   SHOW_CROSSHAIRS = 'SHOW_CROSSHAIRS',
@@ -141,7 +131,6 @@ export enum DACommandType {
   SEARCH_PREV_MATCH = 'SEARCH_PREV_MATCH',
   TOGGLE_PIN_SELECTED = 'TOGGLE_PIN_SELECTED',
   APPLY_LAYOUT = 'APPLY_LAYOUT',
-  APPLY_EDGE_ROUTING = 'APPLY_EDGE_ROUTING',
   QUICK_ADD = 'QUICK_ADD',
   BEGIN_NEW_NODE_LABEL_EDIT = 'BEGIN_NEW_NODE_LABEL_EDIT',
   ENTER_ADD_MODE = 'ENTER_ADD_MODE',
@@ -201,7 +190,6 @@ export type DACommand =
   | {kind: DACommandType.MULTI_ITEM_SELECT}
   | {kind: DACommandType.ZOOM_IN}
   | {kind: DACommandType.ZOOM_OUT}
-  | {kind: DACommandType.CONNECT_SELECTED_NODES}
   | {kind: DACommandType.RECENTER_VIEW}
   | {kind: DACommandType.RECENTER_CROSSHAIRS}
   | {kind: DACommandType.RECENTER_VIEW_ON_CROSSHAIRS}
@@ -212,9 +200,7 @@ export type DACommand =
   | {kind: DACommandType.DRAG_SELECTED_UP; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.DRAG_SELECTED_DOWN; distance?: number; gridTier?: GridTier}
   | {kind: DACommandType.EXIT_DRAG_MODE}
-  | {kind: DACommandType.DELETE}
   | {kind: DACommandType.ADD_LABEL}
-  | {kind: DACommandType.EDIT_SELECTED}
   | {kind: DACommandType.DELETE_LAST_CHAR}
   | {kind: DACommandType.UNDO}
   | {kind: DACommandType.REDO}
@@ -227,14 +213,8 @@ export type DACommand =
   | {kind: DACommandType.SET_LINE_STYLE; lineStyle: LineStyle}
   | {kind: DACommandType.SET_ITEM_COLOR; color: ItemColor}
   | {kind: DACommandType.LOAD_SAMPLE_GRAPH; graphId: string}
-  | {kind: DACommandType.SAVE_GRAPH_AS; name: string}
   | {kind: DACommandType.LOAD_NAMED_GRAPH; graphSnapshot: GraphSnapshot}
   | {kind: DACommandType.NEW_GRAPH}
-  | {kind: DACommandType.OPEN_FILE}
-  | {kind: DACommandType.SAVE_FILE_AS}
-  | {kind: DACommandType.EXPORT_ZIP}
-  | {kind: DACommandType.CYCLE_DISPLAY}
-  | {kind: DACommandType.SET_DIAGRAM_TYPE; typeId: string}
   | {kind: DACommandType.PLUGIN_COMMAND; call: PluginCommandCall}
   | {kind: DACommandType.SHOW_CROSSHAIRS}
   | {kind: DACommandType.RELEASE_CROSSHAIRS}
@@ -256,7 +236,6 @@ export type DACommand =
   | {kind: DACommandType.SEARCH_PREV_MATCH}
   | {kind: DACommandType.TOGGLE_PIN_SELECTED}
   | {kind: DACommandType.APPLY_LAYOUT; layout: LayoutType}
-  | {kind: DACommandType.APPLY_EDGE_ROUTING; algorithm: RoutingAlgorithm}
   // Tap of the add key: default node at the crosshairs on empty canvas, or a
   // self-loop on the node under the crosshairs.
   | {kind: DACommandType.QUICK_ADD}

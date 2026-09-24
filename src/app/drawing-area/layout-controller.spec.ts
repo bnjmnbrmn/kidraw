@@ -5,15 +5,12 @@ import { LayoutController, LayoutHost } from './layout-controller';
  *  (tools/qa/edges/layout-routing.js, layout-clear.js): the routing needs its
  *  Web Worker. */
 describe('LayoutController', () => {
-  it('takes Apply Layout and Apply Edge Routing from the command table', () => {
+  it('takes Apply Layout from the command table', () => {
     const layout = new LayoutController({} as LayoutHost);
     const apply = spyOn(layout, 'applyLayout');
-    const route = spyOn(layout, 'applyEdgeRouting');
     const commands = layout.commands();
     commands[DACommandType.APPLY_LAYOUT]({kind: DACommandType.APPLY_LAYOUT, layout: 'grid'});
-    commands[DACommandType.APPLY_EDGE_ROUTING]({kind: DACommandType.APPLY_EDGE_ROUTING, algorithm: 'desiderata'});
     expect(apply).toHaveBeenCalledWith('grid');
-    expect(route).toHaveBeenCalledWith('desiderata');
   });
 
   it('is not running until a routing pass starts, and stopping when idle is harmless', () => {

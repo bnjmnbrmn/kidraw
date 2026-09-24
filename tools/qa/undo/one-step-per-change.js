@@ -39,12 +39,12 @@ const selectOnly = (page, which) => run(page, `
 const CASES = [
   {
     name: 'diagram type',
-    act: `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph'});`,
+    act: `da.handleCommand({kind: 'EX_COMMAND', text: 'type todo-graph'});`,
     state: `da.drawingLayer.diagramType`,
   },
   {
     name: 'task status',
-    before: `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph'}); da.undoRedoService.clear();`,
+    before: `da.handleCommand({kind: 'EX_COMMAND', text: 'type todo-graph'}); da.undoRedoService.clear();`,
     target: `da.drawingLayer.getDANodes()[0]`,
     act: `da.handleCommand({kind: 'PLUGIN_COMMAND', call: {id: 'todo.setStatus', args: {status: 'done'}}});`,
     state: `da.drawingLayer.getDANodes()[0].tags.join(',')`,
@@ -66,7 +66,7 @@ const CASES = [
 
     const nodesAtStart = await nodeCount(page);
     await selectOnly(page, `da.drawingLayer.getDANodes().slice(-1)[0]`);
-    await run(page, `da.handleCommand({kind: 'DELETE'});`);
+    await run(page, `da.handleCommand({kind: 'CUT_SELECTION'});`);
 
     if (c.target) await selectOnly(page, c.target);
     const unchanged = await da(page, c.state);
@@ -91,7 +91,7 @@ const CASES = [
     await loadSample(page);
     const nodesAtStart = await nodeCount(page);
     await selectOnly(page, `da.drawingLayer.getDANodes().slice(-1)[0]`);
-    await run(page, `da.handleCommand({kind: 'DELETE'});`);
+    await run(page, `da.handleCommand({kind: 'CUT_SELECTION'});`);
     await run(page, `da.drawingLayer.getDANodes().forEach(n => n.isSelected = false);
       da.drawingLayer.getDAEdges().forEach(e => e.isSelected = false);`);
     const message = await da(page, `(() => { let said = '';

@@ -65,7 +65,6 @@ export class LayoutController {
   commands() {
     return {
       [DACommandType.APPLY_LAYOUT]: c => this.applyLayout(c.layout),
-      [DACommandType.APPLY_EDGE_ROUTING]: c => this.applyEdgeRouting(c.algorithm),
     } satisfies CommandSlice;
   }
 

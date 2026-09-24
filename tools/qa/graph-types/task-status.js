@@ -85,7 +85,7 @@ async function main() {
   // --- 3. Todo graph: real-key status marking ---
   await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
-    km.keyMenuOut.emit({ kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph' });
+    km.keyMenuOut.emit({ kind: 'EX_COMMAND', text: 'type todo-graph' });
   });
   await page.waitForTimeout(120);
 

@@ -1,15 +1,15 @@
 /*
  * The file region, which had no cover at all.
  *
- * Loading a sample, starting a new graph, saving and reloading a named graph,
- * and the diagram-type command are ~700 lines of drawing-area.component.ts and
+ * Loading a sample, starting a new graph, reloading a named graph, and the
+ * diagram type (`:type`) are ~700 lines of drawing-area.component.ts and
  * were guarded by nothing — no unit spec, no browser script. This is the
  * minimum net to refactor that region behind: it drives the flows a user
  * actually reaches from the keymenu and checks the graph and the file state
  * that results.
  *
- * Not covered here: anything needing the File System Access API. Open, Save As,
- * Export Zip and the whole vault surface all begin with a picker that requires
+ * Not covered here: anything needing the File System Access API. The vault
+ * surface begins with a picker that requires
  * a real user gesture, so they cannot be driven headlessly. That remains a
  * hole, and a deliberate one.
  */
@@ -45,16 +45,9 @@ const loadSample = async (page, id) => {
   check('loading a sample graph populates the canvas',
     loaded.nodes > 0 && loaded.edges > 0, JSON.stringify(loaded));
 
-  // ---- save it under a name, then change the graph ------------------------
-  await run(page, `da.handleCommand({kind: 'SAVE_GRAPH_AS', name: 'qa-file-flows'});`);
-  await afterFrame(page);
-  const savedMessage = await da(page,
-    `(window.__daOut.filter(n => n.kind === 'status-message').pop() || {}).message`);
-  check('saving under a name says so', /qa-file-flows/.test(savedMessage || ''), String(savedMessage));
-
-  const stored = await da(page,
-    `da.graphStorage.graphs().some(g => g.name === 'qa-file-flows')`);
-  check('the named graph reaches storage', stored, stored ? 'found' : 'not in the list');
+  // Saving under a name had no key and was retired on 2026-09-24; a named
+  // graph already in storage still loads, so the reload below uses a snapshot.
+  const saved = await da(page, `da.drawingLayer.serializeGraph()`);
 
   // ---- new graph clears it ------------------------------------------------
   await page.evaluate(() => { window.confirm = () => true; });
@@ -68,8 +61,7 @@ const loadSample = async (page, id) => {
     JSON.stringify(emptied));
 
   // ---- and reloading the named graph brings it back -----------------------
-  const snapshot = await da(page,
-    `da.graphStorage.graphs().filter(g => g.name === 'qa-file-flows').pop().data`);
+  const snapshot = saved;
   await page.evaluate(`(() => {
     const da = ${DA};
     da.handleCommand({kind: 'LOAD_NAMED_GRAPH', graphSnapshot: ${JSON.stringify(snapshot)}});
@@ -91,14 +83,14 @@ const loadSample = async (page, id) => {
 
   // ---- diagram type ------------------------------------------------------
   await loadSample(page, 'basic');
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'explanation'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type explanation'});`);
   await afterFrame(page);
   const typed = await da(page,
     `(window.__daOut.filter(n => n.kind === 'status-message').pop() || {}).message`);
   check('setting the diagram type reports the type it chose',
     /Diagram type:/.test(typed || ''), String(typed));
 
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'no-such-type'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type no-such-type'});`);
   await afterFrame(page);
   const refused = await da(page,
     `(window.__daOut.filter(n => n.kind === 'status-message').pop() || {}).message`);

@@ -44,7 +44,7 @@ async function toggleTodoGraph(page) {
 
   await run(page, `const sel = document.querySelector('select.sample-graph-select');
     sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true}));`);
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type todo-graph'});`);
   check('a todo graph offers its menu on t', await hasTypeMenu(page));
 
   await toggleTodoGraph(page);
@@ -58,7 +58,7 @@ async function toggleTodoGraph(page) {
     await statusText(page));
   check('and changes nothing', tags === '', tags);
 
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'default'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type default'});`);
   await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type'});`);
   const listed = await statusText(page);
   check(':type stops offering it', !listed.includes('todo-graph') && listed.includes('explanation'), listed);
@@ -87,12 +87,12 @@ async function toggleTodoGraph(page) {
   check('the choice survives a reload',
     !(await page.evaluate(() => JSON.parse(localStorage.getItem('kidraw-plugins-disabled') ?? '[]').length === 0)));
 
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'default'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type default'});`);
   await run(page, `const sel = document.querySelector('select.sample-graph-select');
     sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true}));`);
   await toggleTodoGraph(page);
   check('turning it back on says so', /Todo Graph: on/.test(await statusText(page)), await statusText(page));
-  await run(page, `da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'todo-graph'});`);
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type todo-graph'});`);
   check('and its menu is back on t', await hasTypeMenu(page));
 
   await toggleTodoGraph(page);

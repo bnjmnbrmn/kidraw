@@ -40,7 +40,7 @@ async function toggle(page, pluginId) {
   await page.evaluate(`(() => { const da = ${DA};
     const sel = document.querySelector('select.sample-graph-select');
     sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true}));
-    da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'explanation'}); })()`);
+    da.handleCommand({kind: 'EX_COMMAND', text: 'type explanation'}); })()`);
   await settled(page);
   check('an explanation writes its labels in markdown, with math', (await syntax(page)) === 'markdown+math',
     await syntax(page));

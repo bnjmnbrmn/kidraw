@@ -87,13 +87,13 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
 
   nodes = await overlapped(page);
   const before = await labels(page);
-  await run(page, {kind: 'DELETE'});
+  await run(page, {kind: 'CUT_SELECTION'});
   const after = await labels(page);
   const deleted = before.filter(label => !after.includes(label));
-  check('Delete removes the highlighted node, not the one beneath it',
+  check('Cut removes the highlighted node, not the one beneath it',
     JSON.stringify(deleted) === JSON.stringify([nodes.onTop]), JSON.stringify(deleted));
 
-  for (const kind of ['EDIT_TEXT_AT_CROSSHAIRS', 'EDIT_SELECTED']) {
+  for (const kind of ['EDIT_TEXT_AT_CROSSHAIRS']) {
     await page.evaluate(`(() => { const sel = document.querySelector('select.sample-graph-select');
       sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true})); })()`);
     await settled(page);
@@ -109,7 +109,7 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
       da.handleCommand({kind: '${kind}'});
       return {hover, editing: dl.getDANodes().filter(n => n.isEditingText).map(n => n.label.text()),
         waypointSelected: dl.getSelectedDAWaypoints().length > 0}; })()`);
-    check(`${kind === 'EDIT_SELECTED' ? 'Edit Selected' : 'Edit Text'} over a node, with a waypoint in reach, edits the node`,
+    check('Edit Text over a node, with a waypoint in reach, edits the node',
       edited.hover === 'waypoint' && JSON.stringify(edited.editing) === '["Process"]' && !edited.waypointSelected,
       JSON.stringify(edited));
     await page.keyboard.press('Escape');

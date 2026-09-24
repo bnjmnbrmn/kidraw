@@ -46,7 +46,7 @@ const said = (page, command, spot) => page.evaluate(`(() => { const da = ${DA};
   await settled(page);
   const added = await page.evaluate(`${APP}.pluginLibrary.add(${JSON.stringify(ROUNDS)}).errors ?? null`);
   await page.evaluate(`(() => { const da = ${DA};
-    da.handleCommand({kind: 'NEW_GRAPH'}); da.handleCommand({kind: 'SET_DIAGRAM_TYPE', typeId: 'rounds'}); })()`);
+    da.handleCommand({kind: 'NEW_GRAPH'}); da.handleCommand({kind: 'EX_COMMAND', text: 'type rounds'}); })()`);
   await settled(page);
   check('the type is in place', added === null && await page.evaluate(`${DA}.drawingLayer.diagramType`) === 'rounds',
     JSON.stringify(added));

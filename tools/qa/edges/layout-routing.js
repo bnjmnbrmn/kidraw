@@ -1,8 +1,9 @@
 /*
  * Layout and routing through the real app: a layout moves the nodes and
  * routes the edges it moved in the worker, and graph edits wait while it
- * runs; undo walks back to where the nodes were; routing with an edge
- * selected routes that edge alone; a new edge is routed as it is drawn.
+ * runs; undo walks back to where the nodes were; a new edge is routed as it
+ * is drawn. (Routing one selected edge had no key, and was retired on
+ * 2026-09-24.)
  *
  * Written 2026-09-24 when layout and routing moved out of the drawing area
  * into a unit of their own, and run against the code before and after.
@@ -47,7 +48,7 @@ const edges = page => page.evaluate(`${DA}.drawingLayer.getDAEdges().map(e => ({
   const during = await page.evaluate(`(() => { const da = ${DA};
     da.handleCommand({kind: 'APPLY_LAYOUT', layout: 'force-directed'});
     const running = da.layout.running;
-    da.handleCommand({kind: 'DELETE'});
+    da.handleCommand({kind: 'CUT_SELECTION'});
     return {running, nodes: da.drawingLayer.getDANodes().length}; })()`);
   check('a layout routes in the worker, and a graph edit waits for it',
     during.running && during.nodes === 6 && (await said(page)).includes('Layout is running; graph edits are locked.'),
@@ -70,25 +71,6 @@ const edges = page => page.evaluate(`${DA}.drawingLayer.getDAEdges().map(e => ({
   }
   check('undo brings the nodes back to where they were', JSON.stringify(await positions(page)) === JSON.stringify(before),
     `after ${presses} press(es)`);
-
-  // ── Routing one selected edge ──
-  // A→B runs straight through C, so routing it has to bend it; A→D, not
-  // selected, must stay as it is.
-  await page.evaluate(`(() => { const dl = ${DA}.drawingLayer;
-    const node = (id, x, y, text) => ({id, x, y, text, width: 120, height: 60, fontSize: 14, isSelected: false});
-    const edge = (id, srcNodeId, destNodeId, isSelected) => ({id, srcNodeId, destNodeId, isSelected, labels: []});
-    dl.restoreGraph({
-      nodes: [node('da-1', 100, 300, 'A'), node('da-2', 400, 300, 'C'), node('da-3', 700, 300, 'B'), node('da-4', 400, 600, 'D')],
-      edges: [edge('da-5', 'da-1', 'da-3', true), edge('da-6', 'da-1', 'da-4', false)],
-    });
-    dl.batchDraw(); })()`);
-  const unrouted = await edges(page);
-  await command(page, {kind: 'APPLY_EDGE_ROUTING', algorithm: 'incremental-desiderata-v3'});
-  await routed(page);
-  const one = await edges(page);
-  const changed = one.filter((edge, i) => JSON.stringify(edge) !== JSON.stringify(unrouted[i])).map(edge => edge.name);
-  check('with an edge selected, routing bends that edge round what is in its way, and no other',
-    JSON.stringify(changed) === '["A→B"]', `${JSON.stringify(unrouted)} → ${JSON.stringify(one)}`);
 
   // ── A new edge, routed as it is drawn ──
   // From Start to a new node beyond End: the straight line would run through

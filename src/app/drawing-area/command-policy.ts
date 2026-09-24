@@ -15,9 +15,9 @@
 import { DACommand, DACommandType } from './command.model';
 
 /** Commands that change the graph: each takes an undo snapshot first and
- *  schedules a vault auto-save afterwards. SET_DIAGRAM_TYPE changes the graph
- *  but is not here: `:type` reaches the same change without a command, so
- *  FileController.setDiagramType snapshots and saves for itself. A command
+ *  schedules a vault auto-save afterwards. Changing the diagram type is not a
+ *  command: `:type` reaches it directly, so FileController.setDiagramType
+ *  snapshots and saves for itself. A command
  *  listed here must not also snapshot for itself, or undo gets a spare step
  *  (tools/qa/undo/one-step-per-change.js). PLUGIN_COMMAND is not here either:
  *  plugins change the graph through operations, which record their own undo
@@ -27,9 +27,7 @@ const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.ADD_SELF_EDGE,
   DACommandType.CYCLE_EDGE_DIRECTEDNESS,
   DACommandType.INSERT_WAYPOINT,
-  DACommandType.CONNECT_SELECTED_NODES,
   DACommandType.ADD_LABEL,
-  DACommandType.DELETE,
   DACommandType.TOGGLE_PIN_SELECTED,
   DACommandType.INSERT_CHAR,
   DACommandType.DELETE_LAST_CHAR,
@@ -51,14 +49,11 @@ const ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
   DACommandType.CREATE_NEW_NODE,
   DACommandType.ADD_SELF_EDGE,
   DACommandType.INSERT_WAYPOINT,
-  DACommandType.CONNECT_SELECTED_NODES,
   DACommandType.ADD_LABEL,
-  DACommandType.EDIT_SELECTED,
   DACommandType.QUICK_ADD,
   DACommandType.CYCLE_EDGE_DIRECTEDNESS,
   DACommandType.INSERT_CHAR,
   DACommandType.DELETE_LAST_CHAR,
-  DACommandType.DELETE,
   DACommandType.CUT_SELECTION,
   DACommandType.PASTE_CLIPBOARD,
   DACommandType.UNDO,
@@ -74,13 +69,9 @@ const ROUTING_LOCKED_COMMANDS = new Set<DACommandType>([
   DACommandType.LOAD_SAMPLE_GRAPH,
   DACommandType.LOAD_NAMED_GRAPH,
   DACommandType.NEW_GRAPH,
-  DACommandType.OPEN_FILE,
   DACommandType.VAULT_OPEN,
-  DACommandType.CYCLE_DISPLAY,
   DACommandType.TOGGLE_PIN_SELECTED,
   DACommandType.APPLY_LAYOUT,
-  DACommandType.APPLY_EDGE_ROUTING,
-  DACommandType.SET_DIAGRAM_TYPE,
   DACommandType.PLUGIN_COMMAND,
 ]);
 
@@ -104,7 +95,6 @@ const TEXT_ENTRY_COMMANDS = new Set<DACommandType>([
   DACommandType.INSERT_CHAR,
   DACommandType.DELETE_LAST_CHAR,
   DACommandType.EXIT_LABEL_EDIT_MODE,
-  DACommandType.EDIT_SELECTED,
   DACommandType.QUICK_ADD,
   DACommandType.BEGIN_NEW_NODE_LABEL_EDIT,
   DACommandType.ENTER_ADD_MODE,
@@ -117,11 +107,9 @@ const TEXT_ENTRY_COMMANDS = new Set<DACommandType>([
 const CONTEXT_AFFECTING_COMMANDS = new Set<DACommandType>([
   DACommandType.CREATE_NEW_NODE,
   DACommandType.ADD_SELF_EDGE,
-  DACommandType.CONNECT_SELECTED_NODES,
   DACommandType.ADD_LABEL,
   DACommandType.MULTI_ITEM_SELECT,
   DACommandType.UNSELECT_ALL,
-  DACommandType.DELETE,
   DACommandType.UNDO,
   DACommandType.REDO,
   DACommandType.SNAP_TO_NODE_LEFT,

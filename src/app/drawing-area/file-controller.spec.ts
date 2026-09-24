@@ -60,12 +60,12 @@ describe('FileController vault lifecycle', () => {
 describe('FileController commands', () => {
   it('handles the file commands itself, payload and all', () => {
     const files = new FileController({} as FileHost);
-    const saveGraphAs = spyOn(files, 'saveGraphAs');
+    const loadSampleGraph = spyOn(files, 'loadSampleGraph');
     const runExCommand = spyOn(files, 'runExCommand').and.resolveTo();
     const commands = files.commands();
-    commands[DACommandType.SAVE_GRAPH_AS]({kind: DACommandType.SAVE_GRAPH_AS, name: 'plan'});
+    commands[DACommandType.LOAD_SAMPLE_GRAPH]({kind: DACommandType.LOAD_SAMPLE_GRAPH, graphId: 'basic'});
     commands[DACommandType.EX_COMMAND]({kind: DACommandType.EX_COMMAND, text: 'w'});
-    expect(saveGraphAs).toHaveBeenCalledOnceWith('plan');
+    expect(loadSampleGraph).toHaveBeenCalledOnceWith('basic');
     expect(runExCommand).toHaveBeenCalledOnceWith('w');
   });
 });

@@ -91,14 +91,12 @@ import { DebugLogService } from '../services/debug-log.service';
 import { UndoRedoService } from './undo-redo.service';
 import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
-import { FileIoService } from '../services/file-io.service';
 import { VaultService } from '../services/vault.service';
 import { resolveIdentity } from '../plugins/plugin-registry';
 import { PLUGIN_REGISTRY } from '../plugins/plugin-registry';
 import { PluginCommandCall, PluginCommands } from '../plugins/plugin-commands';
 import type { PluginHost, PluginNode } from '../plugins/plugin-host';
 import { PluginSettingsService } from '../plugins/plugin-settings.service';
-import { GraphStorageService } from '../services/graph-storage.service';
 import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
 import { AreaSelect, AreaSelectHost } from './area-select';
@@ -148,8 +146,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private visualConfigService = inject(VisualConfigService);
   private metrics = inject(RoutingMetricsService);
   private draftStorage = inject(DraftStorageService);
-  private fileIo = inject(FileIoService);
-  private graphStorage = inject(GraphStorageService);
   private vaultService = inject(VaultService);
   private pluginSettings = inject(PluginSettingsService);
   private themeSub?: Subscription;
@@ -585,11 +581,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       [DACommandType.ENTER_ADD_MODE]: c => this.maybeEnterGrowMode(c.holdKey, c.keys),
       [DACommandType.BEGIN_NEW_NODE_LABEL_EDIT]: () => this.beginPendingNodeLabelEdit(),
       [DACommandType.ADD_SELF_EDGE]: () => this.addSelfEdge(),
-      [DACommandType.CONNECT_SELECTED_NODES]: this.thenEmitEditState(() => this.connectSelectedNodes()),
       [DACommandType.ADD_LABEL]: () => this.addLabel(),
       [DACommandType.INSERT_WAYPOINT]: this.thenEmitEditState(() => this.insertWaypointAtCrosshairs()),
       [DACommandType.TOGGLE_PIN_SELECTED]: () => this.togglePinSelected(),
-      [DACommandType.DELETE]: () => this.deleteSelected(),
     } satisfies CommandSlice;
   }
 
@@ -597,7 +591,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  moving the caret are the TextEditingController's own commands.) */
   private textEditingCommands() {
     return {
-      [DACommandType.EDIT_SELECTED]: () => this.handleEditSelected(),
       [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
       [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
       [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
@@ -616,7 +609,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  the plugin that owns it (plugins/plugin-commands.ts). */
   private diagramTypeCommands() {
     return {
-      [DACommandType.SET_DIAGRAM_TYPE]: c => this.fileController.setDiagramType(c.typeId),
       [DACommandType.PLUGIN_COMMAND]: c => this.runPluginCommand(c.call),
     } satisfies CommandSlice;
   }
@@ -1047,8 +1039,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       get daOut() { return da.daOut; },
 
       get vaultService() { return da.vaultService; },
-      get fileIo() { return da.fileIo; },
-      get graphStorage() { return da.graphStorage; },
       get demoDataService() { return da.demoDataService; },
       get draftStorage() { return da.draftStorage; },
       get undoRedoService() { return da.undoRedoService; },
@@ -1213,41 +1203,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // sitting next to its node instead of around it (2026-08-29). This is the
     // common exit for every one of those paths.
     if (this.crosshairsLayer?.crosshairs) this.hover.refresh();
-  }
-
-  private connectSelectedNodes() {
-    this.finishTweens();
-
-    const selectedDAEdges = this.drawingLayer.getSelectedDAEdges();
-    if (selectedDAEdges.length != 0) {
-      return;
-    }
-
-    const selectedDANodes = this.drawingLayer.getSelectedDANodes();
-    const daNodesContainingCrosshairs = this.getDANodesContainingCrosshairs();
-
-    if (selectedDANodes.length == 2) {
-      if(daNodesContainingCrosshairs.length == 1) {
-        const destNode = daNodesContainingCrosshairs[0];
-        const srcNode = selectedDANodes[0] == destNode ? selectedDANodes[1] : selectedDANodes[0];
-        this.addDefaultEdge(srcNode, destNode);
-        this.unselectAll();
-        this.restCrosshairsOn(destNode);
-      } else {
-        return;
-      }
-    } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 1) {
-      const destNode = daNodesContainingCrosshairs[0];
-      const srcNode = selectedDANodes[0];
-      this.addDefaultEdge(srcNode, destNode);
-      this.unselectAll();
-      this.restCrosshairsOn(destNode);
-      return;
-    } else if (selectedDANodes.length == 1 && daNodesContainingCrosshairs.length == 0) {
-      //todo: create new connected node
-    } else {
-      return;
-    }
   }
 
   private zoomIn() {
@@ -2731,50 +2686,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   private clearLabelEditGhost(draw = true): void {
     this.labelEditGhost.clear(draw);
-  }
-
-  private handleEditSelected() {
-    const selectedNodes = this.drawingLayer.getSelectedDANodes();
-    const selectedLabels = this.getSelectedLabels();
-    this.log.log(`handleEditSelected: Nodes=${selectedNodes.length}, Labels=${selectedLabels.length}`);
-
-    // 1. If selection exists (and is editable), edit it.
-    if (selectedNodes.length > 0 ||
-        selectedLabels.length > 0) {
-       this.log.log('  -> Entering edit mode due to existing selection.');
-       this.crosshairsLayer.hideCrosshairs();
-       this.showEditCarets();
-       this.drawingLayer.batchDraw();
-       this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
-       return;
-    }
-
-    // 2. If no selection, check under crosshairs for editable items.
-    const label = this.getLabelUnderCrosshairs();
-    if (label) {
-      this.log.log('  -> Found label under crosshairs. Selecting and editing.');
-      this.selectTextUnderCrosshairs();
-      this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets(this.crosshairsInLayerCoords());
-      this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
-      return;
-    }
-
-    const nodes = this.getDANodesContainingCrosshairs();
-    this.log.log(`  -> Nodes under crosshairs: ${nodes.length}`);
-    if (nodes.length > 0) {
-      this.log.log('  -> Found node under crosshairs. Selecting and editing.');
-      this.selectTextUnderCrosshairs();
-      this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets(this.crosshairsInLayerCoords());
-      this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: "started-label-editing-mode", mode: 'vimNormal'});
-      return;
-    }
-
-    // 3. Nothing selected or hovered -> no-op (user should use insert key instead)
-    this.log.log('  -> Nothing targeted. Edit command ignored.');
   }
 
   /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):

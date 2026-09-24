@@ -20,8 +20,6 @@ import type { ThemeService } from '../services/theme.service';
 import type { VisualConfigService } from '../services/visual-config.service';
 import type { DebugLogService } from '../services/debug-log.service';
 import type { DraftStorageService } from '../services/draft-storage.service';
-import { FileIoService } from '../services/file-io.service';
-import type { GraphStorageService } from '../services/graph-storage.service';
 import type { DrawingLayer } from './drawing.layer';
 import type { CrosshairsLayer } from './crosshairs.layer';
 import type { UndoRedoService } from './undo-redo.service';
@@ -33,11 +31,10 @@ import type { PluginSettingsService } from '../plugins/plugin-settings.service';
 import { DACommandType } from './command.model';
 import type { CommandSlice } from './command-handlers';
 import { diagramTypes, getPlugin, resolveIdentity } from '../plugins/plugin-registry';
-import { isYamlFilename, parseGraphDocByFilename, parseStyleSetByFilename, serializeGraphDocByFilename, serializeStyleSetByFilename } from '../lib/file-format/parser';
+import { parseGraphDocByFilename, parseStyleSetByFilename, serializeGraphDocByFilename } from '../lib/file-format/parser';
 import { ImportResolver, resolveAndApplyToGraph } from '../lib/file-format/resolver';
 import { filesToSnapshot, snapshotToFiles } from '../lib/file-format/snapshot-mapping';
 import { InlineStyleSet, KidrawGraphDoc, KidrawStyleSet, styleRefId } from '../lib/file-format/types';
-import { PackedFile, findManifest, packZip, unpackZip } from '../lib/file-format/zip-bundle';
 import { Vault, VaultService, ensureKidrawFilename, normalizeVaultPath } from '../services/vault.service';
 
 /** What the file region needs from the drawing area that owns it. */
@@ -50,8 +47,6 @@ export interface FileHost {
 
   // --- services it shares with the component ---
   readonly vaultService: VaultService;
-  readonly fileIo: FileIoService;
-  readonly graphStorage: GraphStorageService;
   readonly demoDataService: DemoDataService;
   readonly draftStorage: DraftStorageService;
   readonly undoRedoService: UndoRedoService;
@@ -72,12 +67,6 @@ export interface FileHost {
   updateEdgesForResizedNodes(nodes: DANode[]): void;
 }
 
-function defaultGraphFilename(): string {
-  const stamp = new Date().toISOString().slice(0, 10);
-  // YAML is the default save format.
-  return `kidraw-${stamp}.kidraw.yaml`;
-}
-
 /** Strip leading "./" and normalize separators for archive-relative paths. */
 function normalizeArchivePath(p: string): string {
   return p.replace(/^\.\//, '').replace(/^\/+/, '').replace(/\\/g, '/');
@@ -91,21 +80,15 @@ const VAULT_POLL_INTERVAL_MS = 1500;
 export class FileController {
   constructor(private readonly host: FileHost) {}
 
-  /** The file commands: files, the vault, named and sample graphs, the
-   *  display cycle, and ex commands. */
+  /** The file commands: the vault, named and sample graphs, and ex commands. */
   commands() {
     return {
       [DACommandType.NEW_GRAPH]: () => this.newGraph(),
-      [DACommandType.OPEN_FILE]: () => void this.openFile(),
-      [DACommandType.SAVE_FILE_AS]: () => this.saveFileAs(),
-      [DACommandType.EXPORT_ZIP]: () => this.exportZip(),
       [DACommandType.CONNECT_VAULT]: () => void this.connectVault(),
       [DACommandType.VAULT_OPEN]: () => void this.vaultOpen(),
       [DACommandType.VAULT_SAVE_AS]: () => void this.vaultSaveAs(),
-      [DACommandType.SAVE_GRAPH_AS]: c => this.saveGraphAs(c.name),
       [DACommandType.LOAD_NAMED_GRAPH]: c => this.loadNamedGraph(c.graphSnapshot),
       [DACommandType.LOAD_SAMPLE_GRAPH]: c => this.loadSampleGraph(c.graphId),
-      [DACommandType.CYCLE_DISPLAY]: () => this.cycleDisplay(),
       [DACommandType.EX_COMMAND]: c => void this.runExCommand(c.text),
     } satisfies CommandSlice;
   }
@@ -144,14 +127,6 @@ export class FileController {
 
   /** lastModified of the vault file as of our most recent read/write. */
   private vaultLastModified = 0;
-
-  /** The graph doc + style resolver from the most-recent Open. Used to
-   *  switch between top-level displays after the file is loaded. */
-  private openedDoc: KidrawGraphDoc | null = null;
-
-  private openedStyleResolver: ImportResolver | null = null;
-
-  private activeStyleIndex = 0;
 
   private lastFileStateKey: string | undefined;
 
@@ -196,88 +171,9 @@ export class FileController {
     return true;
   }
 
-  async openFile(): Promise<void> {
-    const accept = FileIoService.KIDRAW_ACCEPT;
-    const opened = await this.host.fileIo.openBinaryFile(accept);
-    if (!opened) return;
-
-    const lower = opened.name.toLowerCase();
-    const isZip = lower.endsWith('.zip');
-
-    let manifestText: string;
-    let manifestName: string;
-    let styleResolver: ImportResolver;
-
-    if (isZip) {
-      let unpacked: PackedFile[];
-      try {
-        unpacked = unpackZip(opened.bytes);
-      } catch (e) {
-        window.alert(`Could not unpack ${opened.name}:\n\n${(e as Error).message}`);
-        return;
-      }
-      const manifest = findManifest(unpacked);
-      if (!manifest) {
-        window.alert(`${opened.name} doesn't contain a .kidraw.{json,yaml} manifest file.`);
-        return;
-      }
-      manifestText = manifest.content;
-      manifestName = manifest.name;
-      const byPath = new Map<string, PackedFile>();
-      for (const f of unpacked) byPath.set(normalizeArchivePath(f.name), f);
-      styleResolver = (path: string) => {
-        const found = byPath.get(normalizeArchivePath(path));
-        if (!found) return null;
-        const parsed = parseStyleSetByFilename(found.content, found.name);
-        return parsed.ok ? parsed.value : null;
-      };
-    } else {
-      manifestText = new TextDecoder().decode(opened.bytes);
-      manifestName = opened.name;
-      styleResolver = (_path: string) => null; // pre-populated cache below
-    }
-
-    const parsed = parseGraphDocByFilename(manifestText, manifestName);
-    if (!parsed.ok) {
-      window.alert(`Could not open ${manifestName}:\n\n${parsed.error}`);
-      return;
-    }
-
-    // For plain (non-zip) opens, prompt-on-miss to gather any external
-    // style files referenced by the graph (top-level + transitive imports).
-    if (!isZip) {
-      const cache = new Map<string, KidrawStyleSet>();
-      const declined = new Set<string>();
-      await this.gatherExternalStyles(parsed.value.styles, cache, declined);
-      styleResolver = (path: string) => cache.get(normalizeArchivePath(path)) ?? null;
-    }
-
-    const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, styleResolver);
-    if (resolvedStyle === null) return;
-
-    // A picker-opened file is not vault-backed; stop auto-saving to the
-    // previously-open vault file.
-    this.detachVaultFile();
-
-    // Save open-state so the user can cycle through other displays later.
-    this.openedDoc = parsed.value;
-    this.openedStyleResolver = styleResolver;
-    this.activeStyleIndex = 0;
-
-    this.replaceGraph(filesToSnapshot(parsed.value, resolvedStyle));
-    this.host.fitViewToContent();
-    this.host.recenterCrosshairs();
-    this.host.emitZoomLevel();
-    this.announceGraph();
-    this.emitFileState({storage: 'external', path: manifestName});
-
-    this.emitDisplayStatus(parsed.value);
-  }
-
   /** Apply a registered plugin undoably; its defaults also govern new nodes.
    *  Takes its own undo snapshot and saves, because `:type` reaches it without
-   *  a command — which is why SET_DIAGRAM_TYPE is missing from the mutating
-   *  commands in command-policy.ts. */
+   *  a command (command-policy.ts). */
   setDiagramType(typeId: string): void {
     const plugin = getPlugin(typeId);
     if (!plugin) {
@@ -302,28 +198,6 @@ export class FileController {
     this.scheduleVaultAutoSave();
   }
 
-  cycleDisplay(): void {
-    if (!this.openedDoc || !this.openedStyleResolver) {
-      this.host.daOut.emit({ kind: 'status-message', message: 'Open a graph file first to cycle displays.' });
-      return;
-    }
-    const styles = this.openedDoc.styles;
-    if (styles.length <= 1) {
-      this.host.daOut.emit({ kind: 'status-message', message: `Only one display in this graph (${styleRefId(styles[0])}).` });
-      return;
-    }
-    this.activeStyleIndex = (this.activeStyleIndex + 1) % styles.length;
-    const resolvedStyle = this.resolveStyleAtIndex(this.openedDoc, this.activeStyleIndex, this.openedStyleResolver);
-    if (resolvedStyle === null) return;
-
-    this.replaceGraph(filesToSnapshot(this.openedDoc, resolvedStyle));
-    this.host.fitViewToContent();
-    this.host.emitZoomLevel();
-    this.announceGraph();
-
-    this.emitDisplayStatus(this.openedDoc);
-  }
-
   /** Resolve styles[index] into a cascaded KidrawStyleSet (or null if it errors). */
   private resolveStyleAtIndex(
     doc: KidrawGraphDoc,
@@ -341,102 +215,6 @@ export class FileController {
       return null;
     }
     return resolved.value;
-  }
-
-  private emitDisplayStatus(doc: KidrawGraphDoc): void {
-    if (doc.styles.length === 0) return;
-    const name = styleRefId(doc.styles[this.activeStyleIndex]);
-    const total = doc.styles.length;
-    const message = total > 1
-      ? `Display: ${name} (${this.activeStyleIndex + 1}/${total})`
-      : `Display: ${name}`;
-    this.host.daOut.emit({ kind: 'status-message', message });
-  }
-
-  /**
-   * For every external (path-string) style reference in `styles[]` —
-   * top-level and recursive imports — prompt the user to locate the file
-   * via the OS picker. Builds out `cache` keyed by normalized requested path.
-   * If the user declines a prompt, the path is added to `declined` so we
-   * don't ask again in the same open.
-   */
-  private async gatherExternalStyles(
-    refs: ReadonlyArray<string | InlineStyleSet>,
-    cache: Map<string, KidrawStyleSet>,
-    declined: Set<string>,
-  ): Promise<void> {
-    for (const ref of refs) {
-      if (typeof ref === 'string') {
-        await this.gatherExternalPath(ref, cache, declined);
-      } else {
-        // Inline style — still recurse into its imports (paths inside it).
-        for (const importPath of ref.imports ?? []) {
-          await this.gatherExternalPath(importPath, cache, declined);
-        }
-      }
-    }
-  }
-
-  private async gatherExternalPath(
-    path: string,
-    cache: Map<string, KidrawStyleSet>,
-    declined: Set<string>,
-  ): Promise<void> {
-    const key = normalizeArchivePath(path);
-    if (cache.has(key) || declined.has(key)) return;
-
-    const ok = window.confirm(`Locate referenced style file "${path}"?`);
-    if (!ok) {
-      declined.add(key);
-      return;
-    }
-    const file = await this.host.fileIo.openTextFile(FileIoService.STYLE_ACCEPT);
-    if (!file) {
-      declined.add(key);
-      return;
-    }
-    const parsed = parseStyleSetByFilename(file.content, file.name);
-    if (!parsed.ok) {
-      window.alert(`Could not parse ${file.name}:\n\n${parsed.error}`);
-      declined.add(key);
-      return;
-    }
-    cache.set(key, parsed.value);
-
-    // Recurse into this style's own imports.
-    for (const importPath of parsed.value.imports ?? []) {
-      await this.gatherExternalPath(importPath, cache, declined);
-    }
-  }
-
-  exportZip(): void {
-    this.host.finishTweens();
-    const snapshot = this.host.drawingLayer.serializeGraph();
-    const { doc, style } = snapshotToFiles(snapshot);
-
-    // Multi-file zip: one .kidraw.yaml manifest + one .kd-style.yaml sibling.
-    const stylePath = './graph.kd-style.yaml';
-    doc.styles = [stylePath];
-
-    const manifestName = 'graph.kidraw.yaml';
-    const styleName = 'graph.kd-style.yaml';
-
-    const files: PackedFile[] = [
-      { name: manifestName, content: serializeGraphDocByFilename(doc, manifestName) },
-      { name: styleName, content: serializeStyleSetByFilename(style, styleName) },
-    ];
-
-    const bytes = packZip(files);
-    const stamp = new Date().toISOString().slice(0, 10);
-    this.host.fileIo.saveBinary(`kidraw-${stamp}.kidraw.zip`, bytes, 'application/zip');
-  }
-
-  saveFileAs(): void {
-    this.host.finishTweens();
-    const filename = defaultGraphFilename();
-    const content = this.serializeCurrentGraphSingleFile(filename);
-    const mime = isYamlFilename(filename) ? 'text/yaml' : 'application/json';
-    this.host.fileIo.saveAs(filename, content, mime);
   }
 
   /**
@@ -735,10 +513,6 @@ export class FileController {
     const resolvedStyle = this.resolveStyleAtIndex(parsed.value, 0, resolver);
     if (resolvedStyle === null) return false;
 
-    this.openedDoc = parsed.value;
-    this.openedStyleResolver = resolver;
-    this.activeStyleIndex = 0;
-
     this.cancelVaultAutoSave();
     this.replaceGraph(filesToSnapshot(parsed.value, resolvedStyle));
     if (opts.restoreView && this.restoreViewport(opts.restoreView)) {
@@ -877,13 +651,6 @@ export class FileController {
     this.emitFileState(null);
   }
 
-  saveGraphAs(name: string): void {
-    this.host.finishTweens();
-    const snapshot = this.host.drawingLayer.serializeGraph();
-    this.host.graphStorage.save(name, snapshot);
-    this.host.daOut.emit({ kind: 'status-message', message: `Saved as "${name}"` });
-  }
-
   loadNamedGraph(snapshot: GraphSnapshot): void {
     this.detachVaultFile();
     this.replaceGraph(snapshot);
@@ -891,9 +658,6 @@ export class FileController {
     this.host.recenterCrosshairs();
     this.host.emitZoomLevel();
     this.announceGraph();
-    this.openedDoc = null;
-    this.openedStyleResolver = null;
-    this.activeStyleIndex = 0;
   }
 
   newGraph(): void {
@@ -901,11 +665,6 @@ export class FileController {
     if (hasContent && !window.confirm('Start a new graph? This will clear the current diagram.')) return;
     this.detachVaultFile();
     this.replaceGraph({ nodes: [], edges: [] });
-    // Drop any open-file context so display cycling doesn't reference the
-    // previously-loaded doc after a fresh-start.
-    this.openedDoc = null;
-    this.openedStyleResolver = null;
-    this.activeStyleIndex = 0;
     this.host.recenterCrosshairs();
     this.host.emitZoomLevel();
     this.announceGraph();

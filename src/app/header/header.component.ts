@@ -133,7 +133,6 @@ export class HeaderComponent {
   }
 
   @Output() loadSampleGraph = new EventEmitter<string>();
-  @Output() saveGraphAs = new EventEmitter<string>();
   @Output() loadNamedGraph = new EventEmitter<{graphId: string; graphSnapshot: GraphSnapshot}>();
 
   themeService = inject(ThemeService);

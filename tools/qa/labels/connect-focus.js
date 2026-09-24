@@ -2,9 +2,10 @@
  * Where the crosshairs land after a link is drawn.
  *
  * They rest on the node the link reached, hidden until the next move, as
- * they are after sitting idle (Ben, 2026-09-19 — c1c866ff). Three flows get
- * that landing: connecting two existing nodes, held-Add to an existing node,
- * and a new node added on a link once its label is written.
+ * they are after sitting idle (Ben, 2026-09-19 — c1c866ff). Two flows get
+ * that landing: held-Add to an existing node, and a new node added on a link
+ * once its label is written. (A third, connecting two selected nodes, had no
+ * key and was retired on 2026-09-24.)
  *
  * History: da-345 and da-509 used to land the crosshairs on the new link
  * itself, near its destination, so that hold-v + cycle could change its
@@ -25,34 +26,6 @@ async function main() {
     if (sel) { sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true})); }
   });
   await page.waitForTimeout(600);
-
-  const edgeCount = () => page.evaluate(() => {
-    const dl = window.ng.getComponent(document.querySelector('app-drawing-area')).drawingLayer;
-    return dl.getDAEdges().length;
-  });
-
-  /* Pick two nodes that are not already connected, select one, put the
-     crosshairs on the other, and connect them via the command the keymenu
-     sends. */
-  const connect = () => page.evaluate(() => {
-    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const dl = c.drawingLayer;
-    const nodes = dl.getDANodes();
-    const linked = (a, b) => dl.getDAEdges().some(e =>
-      (e.srcNode === a && e.destNode === b) || (e.srcNode === b && e.destNode === a));
-    let src = null, dest = null;
-    for (const a of nodes) for (const b of nodes) {
-      if (a !== b && !linked(a, b)) { src = a; dest = b; break; }
-      if (src) break;
-    }
-    dl.unselectAll();
-    src.isSelected = true;
-    c.crosshairsLayer.crosshairs.x = (dest.group.x() + dest.NODE_WIDTH / 2) * dl.scaleX() + dl.x();
-    c.crosshairsLayer.crosshairs.y = (dest.group.y() + dest.NODE_HEIGHT / 2) * dl.scaleY() + dl.y();
-    dl.batchDraw();
-    c.handleCommand({kind: 'CONNECT_SELECTED_NODES'});
-    return {srcId: src.id, destId: dest.id};
-  });
 
   /* Where did the crosshairs end up, relative to the new edge? */
   const crosshairReport = ids => page.evaluate(ids => {
@@ -100,22 +73,8 @@ async function main() {
     };
   }, ids);
 
-  const before = await edgeCount();
-  const ids = await connect();
-  await page.waitForTimeout(400);
-  check('the connect made an edge', (await edgeCount()) === before + 1,
-    `${before} -> ${await edgeCount()}`);
-
-  const r = await crosshairReport(ids);
-  console.log('  crosshairs vs new edge:', JSON.stringify(r));
-  check('the crosshairs rest on the node the link reached', r.found && r.onNodes.includes(ids.destId),
-    `on ${JSON.stringify(r.onNodes)}, ${r.distToDest}px from its centre`);
-  check('at its centre', r.found && r.distToDest <= 2, `${r.distToDest}px`);
-  check('hidden until the next move', r.found && r.hidden, `hidden=${r.hidden}`);
-
   /* ---------------------------------------------------------------------
-   * The same landing, through the flow the link actually gets drawn with:
-   * hold Add over a node, cycle to an existing one, release.
+   * Held Add over a node, cycled to an existing one, released.
    * ------------------------------------------------------------------- */
   const addKey = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
