@@ -83,12 +83,14 @@ component:
   stepping the crosshairs between graph items, and the overlay that explains
   the rule being applied.
 - `clipboard-controller.ts` — the graph's own clipboard: yank, cut, paste.
+- `grow-controller.ts` — grow mode, the held add key: aiming on the placement
+  lattice, the target search and type popups, placement, and the commits.
 
 These are the pattern to follow when more comes out: the component lends a
 collaborator only what it needs, through getters, and keeps its own members
 private. A collaborator that handles commands brings its own slice of the
 command table (`commands()`, see `command-handlers.ts`) — search, files,
-Move by Link, move by node, text editing, the clipboard, the style commands (`style-controller.ts`) and
+Move by Link, move by node, text editing, grow mode, the clipboard, the style commands (`style-controller.ts`) and
 layout and routing (`layout-controller.ts`) do — so the component
 does not keep one-line delegates for it. That is also the shape plugins will
 have ([`notes/design-plugins.md`](notes/design-plugins.md)).

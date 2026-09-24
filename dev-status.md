@@ -82,13 +82,14 @@ explanation graphs on `explanation-graphs`._
 >   (Now 5,586, after the dispatch change below.)
 > - **Commands dispatch through a table, not a switch** (2026-09-23).
 >   `command-handlers.ts`: each owner contributes a slice mapping command
->   kinds to handlers. Eight units now bring their own slice —
+>   kinds to handlers. Nine units now bring their own slice —
 >   `GraphSearch`, `FileController`, `LinkNavController`,
 >   `NavigationGridController`, `TextEditingController`,
 >   `ClipboardController`, `StyleController`,
->   `LayoutController` — and the component keeps slices only for what it
->   still does itself (crosshairs, view, selection, structure…).
->   **3,965 lines** on 2026-09-24.
+>   `LayoutController`, `GrowController` — and the component keeps slices
+>   only for what it still does itself (crosshairs, view, selection,
+>   structure…). **3,965 lines** on the morning of 2026-09-24, **2,710** by
+>   its afternoon (31 unsent commands retired, grow mode moved out).
 >   A mapped type keeps the old `assertNever`'s compile-time exhaustiveness
 >   (a missing kind fails the build; probed), and `mergeCommandSlices` refuses
 >   a kind claimed twice. This is the seam plugins register into: Ben's
@@ -131,6 +132,12 @@ explanation graphs on `explanation-graphs`._
 >   grow mode's fields by name about 200 times. Worth a word with Ben before
 >   moving any of them; `grow-mode.js` (8/25) needs bringing up to the
 >   current design first to be a net for it.
+>   *Done (2026-09-24, Ben asked for grow mode to move and the tests to
+>   follow):* `grow-mode.js` was rewritten to the current design (28/28),
+>   then grow mode moved to `grow-controller.ts` with the popup's state; the
+>   nav popup's navigation half was retired with `TRAVERSE_SMART`, so the
+>   popup is grow's alone. **2,710 lines** after the day's retirements and
+>   this move.
 > - **Findings go to `notes/` as atomic `bug-` files**, not into this block.
 >   Two so far, each "the code does X, is that wanted?", each written up with
 >   what happens, why, and the options, and each ending at Ben's call rather
