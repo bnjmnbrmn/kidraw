@@ -36,7 +36,6 @@ import {
   mutatesGraph,
   showsMovementIndicators,
 } from './command-policy';
-import { DEFAULT_BOX_SIZE, PlacementAxis, quickAddSpacing } from './quick-add-spacing';
 import { clamp, Point, topmost, topmostSelection, closestPointOnSegment as closestPointOnSeg } from './utils';
 import { Axis, AxisKey } from './axis';
 import { Camera } from './camera';
@@ -47,7 +46,7 @@ import { Animations } from './animations';
 import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage } from './node-geometry';
 import { projectPointToPath } from './edge-label-anchor';
-import { NavPopupComponent, PopupRow } from '../nav-popup/nav-popup.component';
+import { NavPopupComponent } from '../nav-popup/nav-popup.component';
 import { GraphOperationApplier } from './graph-operation-applier';
 import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
 import { onMathImageLoaded, onMathReady } from './math-images';
@@ -60,14 +59,10 @@ import {
   startNormalMovementGoal,
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
-import {buildGrowGhostTargets, GrowGhostNodeCenter, GrowGhostTarget} from './grow-ghost-targets';
-import {HopDirection, planGrowHop} from './grow-lattice';
+import {GrowController, GrowHost} from './grow-controller';
 import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
-import {GrowAim, GrowGhost, GrowGhostHost} from './grow-ghost';
-import {GrowPlacement, GrowPlacementDirection, GrowPlacementHost} from './grow-placement';
-import {placePopup, popupSize} from './nav-popup-layout';
 
 /** The grid a movement step measures itself against, at the current zoom. */
 interface MovementGrid {
@@ -229,22 +224,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The held, popup-free Move by Link mode (link-nav-controller.ts). */
   private readonly linkNav = new LinkNavController(this.linkNavHost());
 
-  // --- Nav popup state (template bindings + open-session bookkeeping) ---
-  navPopupOpen = false;
-  navPopupRows: PopupRow[] = [];
-  navPopupLeft = 0;
-  navPopupTop = 0;
-  navPopupDark = false;
-  /** The key that opened the popup, while it is still held — releasing it
-   *  selects the highlighted row (grow's `f` type list). */
-  navPopupHoldKey: string | null = null;
-  navPopupStartFilter = false;
-  /** The profile's up and down keys, for browsing the popup's list. */
-  navPopupListKeys = {up: 'k', down: 'j'};
-  /** Which grow popup is open, if any: the target search or the node types.
-   *  (It was also graph navigation's until TRAVERSE_SMART was retired on
-   *  2026-09-24.) */
-  private navPopupPurpose: 'grow-target' | 'grow-type' | null = null;
+  /** Grow mode, the held add key (grow-controller.ts). The template binds
+   *  its popup. */
+  protected readonly grow = new GrowController(this.growHost());
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -483,7 +465,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
       this.search.commands(), this.viewCommands(), this.selectionCommands(),
       this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
-      this.style.commands(), this.layout.commands(), this.fileController.commands(),
+      this.style.commands(), this.layout.commands(), this.grow.commands(), this.fileController.commands(),
       this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
     );
   }
@@ -559,7 +541,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {
       [DACommandType.CREATE_NEW_NODE]: c => this.createNewNode(c.nodeShape),
       [DACommandType.QUICK_ADD]: () => this.handleQuickAdd(),
-      [DACommandType.ENTER_ADD_MODE]: c => this.maybeEnterGrowMode(c.holdKey, c.keys),
       [DACommandType.BEGIN_NEW_NODE_LABEL_EDIT]: () => this.beginPendingNodeLabelEdit(),
       [DACommandType.ADD_SELF_EDGE]: () => this.addSelfEdge(),
       [DACommandType.ADD_LABEL]: () => this.addLabel(),
@@ -916,6 +897,43 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Grow mode reads the canvas and the crosshairs, and hands every change
+   *  back through here. Getters, because the layers arrive in ngAfterViewInit. */
+  private growHost(): GrowHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get stage() { return da.stage; },
+      get camera() { return da.camera; },
+      get viewport() { return da.viewport; },
+      get navGrid() { return da.navGrid; },
+      get style() { return da.style; },
+      get ghostStroke() { return da.visualConfigService.getEffectivePalette(da.themeService.theme).nodeStroke; },
+      get dark() { return da.themeService.theme === 'dark'; },
+      nodesUnderCrosshairs: () => da.getDANodesContainingCrosshairs(),
+      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
+      edgesUnderCrosshairs: () => da.getDAEdgesContainingCrosshairs(),
+      waypointUnderCrosshairs: () => da.getWaypointUnderCrosshairs(),
+      crosshairsInLayerCoords: () => da.crosshairsInLayerCoords(),
+      nodeCenter: node => da.getNodeCenterInLayerCoordinates(node),
+      finishTweens: () => da.finishTweens(),
+      emitStatus: message => da.emitStatus(message),
+      emitPopupState: surface => da.daOut.emit(surface === null
+        ? {kind: 'popup-state', open: false}
+        : {kind: 'popup-state', open: true, surface}),
+      pushUndoSnapshot: command => da.pushUndoSnapshot(command),
+      pushSnapshot: () => da.undoRedoService.pushSnapshot(da.drawingLayer.serializeGraph()),
+      scheduleVaultAutoSave: () => da.scheduleVaultAutoSave(),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      unselectAllLabels: () => da.unselectAllLabels(),
+      autoRouteNewEdge: edge => da.layout.autoRouteNewEdge(edge),
+      restCrosshairsOn: node => da.restCrosshairsOn(node),
+      handleQuickAdd: () => da.handleQuickAdd(),
+      quickAddSelfLoop: (anchor, dirState) => da.quickAddSelfLoop(anchor, dirState),
+      settleNewNode: (node, arrivedByLink) => da.settleNewNode(node, arrivedByLink),
+    };
+  }
+
   /** Lends move-by-node what it needs, through getters so the layers can
    *  still be assigned later in ngAfterViewInit. */
   private navigationGridHost(): NavigationGridHost {
@@ -926,37 +944,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       get stage() { return da.stage; },
       get themeService() { return da.themeService; },
       get visualConfigService() { return da.visualConfigService; },
-      get growActive() { return da.growActive; },
+      get growActive() { return da.grow.active; },
       emitStatus: message => da.emitStatus(message),
       finishTweens: () => da.finishTweens(),
       moveCrosshairsBy: (dx, dy, tier, showGrid) => da.moveCrosshairsBy(dx, dy, tier, showGrid),
       navStops: targets => da.navStops(targets),
       navStopCenter: (id, kind) => da.navStopCenter(id, kind),
-    };
-  }
-
-  /** The grow ghost needs the layer it draws on and one colour. */
-  private growGhostHost(): GrowGhostHost {
-    const da = this;
-    return {
-      get drawingLayer() { return da.drawingLayer; },
-      get stroke() {
-        return da.visualConfigService.getEffectivePalette(da.themeService.theme).nodeStroke;
-      },
-    };
-  }
-
-  /** Free grow placement reads the session's anchor and origin, and gives
-   *  every move back to the same ghost renderer the rest of grow mode uses. */
-  private growPlacementHost(): GrowPlacementHost {
-    const da = this;
-    return {
-      get anchor() { return da.growAnchor; },
-      get origin() { return da.growOrigin!; },
-      spacing: axis => da.quickAddSpacingFrom(axis),
-      coarseModifierHeld: () => da.growMods.has(da.growKeys?.coarse ?? 'coarse'),
-      fineModifierHeld: () => da.growMods.has(da.growKeys?.fine ?? 'fine'),
-      redraw: () => da.redrawGrowGhost(),
     };
   }
 
@@ -1640,32 +1633,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   // ── Move by Link (held NSEW quadrants): delegated to LinkNavController ──
 
-  // --- The popup: grow mode's target search (`/`) and node-type list (`f`) ---
-
-  /** Selection moved in the popup: in the target search, the ghost edge
-   *  follows the highlighted node. */
-  onNavPopupHighlight(nodeId: string): void {
-    if (this.navPopupPurpose !== 'grow-target') return;
-    const node = this.drawingLayer.getDANodes().find(n => n.id === nodeId);
-    if (node && node !== this.growAnchor) {
-      this.growTarget = node;
-      this.redrawGrowGhost();
-    }
-  }
-
-  onNavPopupCommit(event: {id: string}): void {
-    if (this.navPopupPurpose === 'grow-target') this.growCommitToNodeId(event.id);
-    else if (this.navPopupPurpose === 'grow-type') this.enterGrowPlacement(event.id);
-  }
-
-  /** Escape / backdrop: a grow popup closing cancels the whole add. */
-  closeNavPopup(): void {
-    this.navPopupOpen = false;
-    this.navPopupPurpose = null;
-    this.exitGrowMode();
-    this.emitStatus('Add canceled');
-  }
-
   /** Ctrl+O (delta -1) / Ctrl+I (delta +1): step through the jumplist. */
   private navHistoryGo(delta: -1 | 1): void {
     const node = this.journey.stepHistory(
@@ -1681,15 +1648,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.centerViewOnLayerPoint(this.getNodeCenterInLayerCoordinates(node));
     const label = (node.label?.text() ?? '').trim() || '(unlabeled)';
     this.emitStatus(`${delta < 0 ? '⟨O⟩ back:' : '⟨I⟩ forward:'} ${label}`);
-  }
-
-  private popupViewport(): {minX: number; maxX: number; minY: number; maxY: number} {
-    return {
-      minX: this.viewport.minX,
-      maxX: this.viewport.maxX,
-      minY: this.viewport.minY,
-      maxY: this.viewport.maxY,
-    };
   }
 
   /** Vim-`zz` for the canvas: pan the view so the graph point under the
@@ -1807,9 +1765,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       const c = this.getNodeCenterInStageCoordinates(n);
       stops.push({id: n.id, kind: 'node', cx: c.x, cy: c.y});
     }
-    if (targets === 'nodes' && this.growActive && this.growAnchor &&
-        !this.growPlacing && !this.growEdgeMenuActive) {
-      for (const target of this.growGhostTargets) {
+    if (targets === 'nodes') {
+      for (const target of this.grow.aimableSpots()) {
         stops.push({
           id: target.id,
           kind: 'node',
@@ -1837,8 +1794,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const scale = this.drawingLayer.scaleX();
     const lx = this.drawingLayer.x(), ly = this.drawingLayer.y();
     if (kind === 'node') {
-      const ghost = this.growGhostTargets.find(target => target.id === id);
-      if (ghost && this.growActive) {
+      const ghost = this.grow.spot(id);
+      if (ghost) {
         return {x: lx + ghost.x * scale, y: ly + ghost.y * scale};
       }
       const n = this.drawingLayer.getDANodes().find(n => n.id === id);
@@ -2384,123 +2341,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.scheduleVaultAutoSave();
   }
 
-  // ---------------------------------------------------------------------
-  // Grow mode (held add key over a node or empty canvas) —
-  // notes/design-add-insert-model.md.
-  // Drawing-area-owned: the keymenu is suspended (popup-state) and keys are
-  // handled by the document-level listeners below, because stage-3/4 popups
-  // must be able to open mid-hold without flushing our state.
-  // ---------------------------------------------------------------------
-
-  private growActive = false;
-  private growAnchor: DANode | null = null;
-  /** Start point for an empty-canvas add, in drawing-layer coordinates. */
-  private growOrigin: Point | null = null;
-  /** Existing-node landing selected through the Move-by-Node engine. */
-  private growTarget: DANode | null = null;
-  /** Empty insertion landing selected through the same navigation engine. */
-  private growInsertionTarget: GrowGhostTarget | null = null;
-  /** All midpoint and source-grid insertion stops for this Add hold. */
-  private growGhostTargets: GrowGhostTarget[] = [];
   /** Whether the node being labelled arrived on a link a quick-add just drew;
    *  if so the crosshairs rest on it, hidden, once the label is done. */
   private newNodeArrivedByLink = false;
-  /** 0: anchor→target, 1: target→anchor, 2: undirected, 3: bidirectional. */
-  private growDirState = 0;
-  private growHoldKey = 'a';
-  private growKeys: {up: string; left: string; down: string; right: string; cycle: string; newNode: string; search: string; coarse: string; fine: string; edgeSubmenu: string; selfLoop: string} | null = null;
-  private growEdgeMenuActive = false;
-  private growSelfLoopPending = false;
-  /** Edge kinds are a small sticky choice surface: once opened, releasing the
-   *  Add hold does not discard it before the user can press its leaf key. */
-  private growHoldReleased = false;
-  /** Physical keys held during grow mode. This makes nested add chords
-   *  tolerant of normal human key overlap instead of turning a rolled Self
-   *  Loop into a rightward edge hop. */
-  private growPressedKeys = new Set<string>();
-  /** Free placement after the type popup picked a kind for a new node. */
-  private readonly growPlacement = new GrowPlacement(this.growPlacementHost());
-  /** The held-Add preview (grow-ghost.ts). */
-  private readonly growGhost = new GrowGhost(this.growGhostHost());
-
-  // These accessors keep the browser-facing names stable while placement
-  // state lives with GrowPlacement. The tools and existing white-box specs
-  // intentionally reach through TypeScript's private boundary.
-  private get growPlacing(): boolean { return this.growPlacement.placing; }
-  private set growPlacing(value: boolean) { this.growPlacement.placing = value; }
-  private get growShape(): NodeShape | undefined { return this.growPlacement.shape; }
-  private set growShape(value: NodeShape | undefined) { this.growPlacement.shape = value; }
-  private get growPlacePos(): Point | null { return this.growPlacement.position; }
-  private set growPlacePos(value: Point | null) { this.growPlacement.position = value; }
-  private get growPlacedRough(): boolean { return this.growPlacement.rough; }
-  private set growPlacedRough(value: boolean) { this.growPlacement.rough = value; }
-  private get growMods(): Set<string> { return this.growPlacement.modifiers; }
-  private set growMods(value: Set<string>) { this.growPlacement.modifiers = value; }
-
-  /** ENTER_ADD_MODE: take the hold as grow mode over a node or genuinely
-   *  empty canvas. Edges/labels retain the classic label/waypoint hub. */
-  private maybeEnterGrowMode(holdKey: string, keys: NonNullable<DrawingAreaComponent['growKeys']>): void {
-    const nodes = this.getDANodesContainingCrosshairs();
-    const hasLabel = !!this.getLabelUnderCrosshairs();
-    const hasEdge = this.getDAEdgesContainingCrosshairs().length > 0;
-    const hasWaypoint = !!this.getWaypointUnderCrosshairs();
-    if (hasLabel || (nodes.length === 0 && (hasEdge || hasWaypoint))) return;
-    this.finishTweens();
-    this.growActive = true;
-    this.growAnchor = topmost(nodes);
-    this.growOrigin = this.growAnchor
-      ? this.getNodeCenterInLayerCoordinates(this.growAnchor)
-      : this.crosshairsInLayerCoords();
-    this.growTarget = null;
-    this.growInsertionTarget = null;
-    this.growGhostTargets = this.growAnchor
-      ? this.buildCurrentGrowGhostTargets(this.growAnchor)
-      : [];
-    this.growDirState = this.defaultGrowDirection(this.growAnchor);
-    this.growPlacing = false;
-    this.growShape = undefined;
-    this.growPlacePos = null;
-    this.growPlacedRough = false;
-    this.growMods.clear();
-    this.growEdgeMenuActive = false;
-    this.growSelfLoopPending = false;
-    this.growHoldReleased = false;
-    this.growHoldKey = holdKey;
-    this.growKeys = keys;
-    this.daOut.emit({
-      kind: 'popup-state',
-      open: true,
-      surface: this.growAnchor ? 'grow-targeting' : 'grow-empty',
-    });
-    if (this.growAnchor) this.navGrid.showNodeGrid('nodes');
-    this.redrawGrowGhost();
-  }
-
-  private buildCurrentGrowGhostTargets(anchor: DANode): GrowGhostTarget[] {
-    const scale = this.drawingLayer.scaleX();
-    const lx = this.drawingLayer.x();
-    const ly = this.drawingLayer.y();
-    const nodes = this.nodeBoxes();
-    const source = nodes.find(node => node.id === anchor.id)!;
-    const bounds = {
-      minX: -lx / scale,
-      minY: -ly / scale,
-      maxX: (this.stage.width() - lx) / scale,
-      maxY: (this.stage.height() - ly) / scale,
-    };
-    return buildGrowGhostTargets(
-      nodes,
-      source,
-      bounds,
-      // The lattice's rows and columns get their own step, so placing above is
-      // as close as the vertical slot says while placing beside still clears
-      // a wide anchor box (da-559). Each is rounded up to a whole cell of the
-      // major drawing grid: the spots then read as a grid — a coarse one, well
-      // above the background's fine squares — rather than as free positions.
-      this.growLatticeStep(anchor),
-      this.growAnchorHalf(anchor),
-    );
-  }
 
   /** Paste text from the system clipboard into the label being edited, e.g.
    *  markdown copied from the agent chat. Text fields handle their own pastes. */
@@ -2517,441 +2360,28 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.insertChar(text);
   }
 
+  // ── Grow mode (held add): grow-controller.ts owns it; keys reach it here ──
+
   @HostListener('document:keydown', ['$event'])
   handleGrowKeyDown(event: KeyboardEvent): void {
-    const key = event.key.toLowerCase();
-    if (!this.growActive || !this.growKeys) return;
-    this.growPressedKeys.add(key);
-    if (this.navPopupOpen) return; // the popup owns the keyboard (sticky phase)
-    if (event.repeat && key === this.growHoldKey) return;
-    const k = this.growKeys;
-    const dir = key === k.left ? 'left' : key === k.right ? 'right'
-      : key === k.up ? 'up' : key === k.down ? 'down' : null;
-    if (this.growEdgeMenuActive) {
-      if (key === k.selfLoop) {
-        event.preventDefault();
-        this.growSelfLoopPending = true;
-      } else if (key === 'escape') {
-        event.preventDefault();
-        if (this.growHoldReleased) {
-          this.exitGrowMode();
-          this.emitStatus('Add canceled');
-          return;
-        }
-        this.growEdgeMenuActive = false;
-        this.growSelfLoopPending = false;
-        this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-targeting'});
-        this.navGrid.showNodeGrid('nodes');
-        this.redrawGrowGhost();
-      }
-      return;
-    }
-    if (!this.growPlacing && key === k.edgeSubmenu) {
-      event.preventDefault();
-      this.openGrowEdgeMenu();
-      return;
-    }
-    if (key === k.cycle) {
-      if (!this.growAnchor) return;
-      event.preventDefault();
-      this.growDirState = (this.growDirState + 1) % 4;
-      this.redrawGrowGhost();
-      return;
-    }
-    if (key === 'escape') {
-      this.exitGrowMode();
-      this.emitStatus('Add canceled');
-      return;
-    }
-    if (this.growPlacing) {
-      if (dir) {
-        event.preventDefault();
-        this.growPlaceMove(dir);
-        return;
-      }
-      if (key === k.coarse || key === k.fine) {
-        this.growPlacement.addModifier(key);
-        return;
-      }
-      if (key === 'enter') {
-        // Sticky commit: the hold key was released during the type popup.
-        event.preventDefault();
-        this.commitGrowPlacement();
-      }
-      return;
-    }
-    if (dir) {
-      if (!this.growAnchor) return;
-      event.preventDefault();
-      this.growHop(dir);
-      return;
-    }
-    if (key === k.search) {
-      if (!this.growAnchor) return;
-      event.preventDefault();
-      this.openGrowTargetPopup();
-      return;
-    }
-    if (key === k.newNode) {
-      event.preventDefault();
-      this.openGrowTypePopup();
-    }
+    this.grow.keyDown(event);
   }
 
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
-    const key = event.key.toLowerCase();
-    this.growPressedKeys.delete(key);
-    if (!this.growActive) return;
-    this.growPlacement.removeModifier(key);
-    if (this.growEdgeMenuActive && this.growSelfLoopPending && key === this.growKeys?.selfLoop) {
-      this.growSelfLoopPending = false;
-      this.commitGrowSelfLoop();
-      return;
-    }
-    // Sticky phase: with a popup open the hold key is expected to be
-    // released (typing needs both hands) — Enter/Esc resolve the flow.
-    if (this.navPopupOpen) return;
-    if (key !== this.growHoldKey) return;
-    if (this.growEdgeMenuActive) {
-      this.growHoldReleased = true;
-      this.emitStatus('Choose an edge kind, or Esc to cancel');
-      return;
-    }
-    if (this.growPlacing) {
-      this.commitGrowPlacement();
-      return;
-    }
-    this.commitGrowMode();
+    this.grow.keyUp(event);
   }
 
-  private openGrowEdgeMenu(): void {
-    if (!this.growActive || !this.growKeys ||
-        this.growPlacing || this.growEdgeMenuActive) return;
-    if (!this.growAnchor) {
-      const selected = this.drawingLayer.getSelectedDANodes();
-      if (selected.length !== 1) {
-        this.emitStatus('⚠ Edge kind needs one node under the crosshairs or selected');
-        return;
-      }
-      this.growAnchor = selected[0];
-      this.growOrigin = this.getNodeCenterInLayerCoordinates(this.growAnchor);
-      this.growGhostTargets = this.buildCurrentGrowGhostTargets(this.growAnchor);
-    }
-    this.growEdgeMenuActive = true;
-    // If the leaf key arrived just before its submenu key, remember that
-    // overlap and commit when the leaf is released.
-    this.growSelfLoopPending = this.growPressedKeys.has(this.growKeys.selfLoop);
-    this.growGhost.clear(false);
-    this.navGrid.hideNodeGrid();
-    this.drawingLayer.batchDraw();
-    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-edge'});
-  }
-
-  /** Choose a real-node or insertion-ghost target through the actual Move by
-   *  Node engine. The augmented node tier shares its selected strategy,
-   *  overlay, crosshair landing, viewport panning, same-direction run, and
-   *  turn re-origin semantics. */
-  private growHop(direction: HopDirection): void {
-    if (!this.growAnchor) return;
-    if (this.growHopOnLattice(direction)) return;
-    // The crosshairs ride the candidate: Move-by-Node moves them to whatever
-    // the hop landed on, and that is the thing being aimed. Pinning them to
-    // the anchor instead (da-448) made the pin itself the problem — "it seems
-    // to bounce back to the originating node" — so da-551 puts them back on
-    // the selection.
-    this.navGrid.snapToNodeInDirection(direction, 'nodes');
-    const last = this.navGrid.lastStop;
-    if (!last || last.kind !== 'node') return;
-    const target = this.drawingLayer.getDANodes().find(node => node.id === last.id) ?? null;
-    const insertion = this.growGhostTargets.find(item => item.id === last.id) ?? null;
-    if (!target && !insertion) return;
-    this.growTarget = target;
-    this.growInsertionTarget = insertion;
-    this.redrawGrowGhost();
-  }
-
-  /**
-   * A hop between placement spots is a step on the lattice (grow-lattice.ts).
-   *
-   * Returns whether the lattice handled it. It does not when the press walks
-   * off the end, and the caller falls through to Move by Node, which knows
-   * about the real nodes beyond.
-   */
-  private growHopOnLattice(direction: HopDirection): boolean {
-    const anchorCentre = this.growOrigin;
-    if (!anchorCentre) return false;
-    const hop = planGrowHop({
-      direction,
-      fromTargetId: this.growInsertionTarget?.id ?? null,
-      fromNodeCentre: this.growTarget
-        ? this.getNodeCenterInLayerCoordinates(this.growTarget)
-        : null,
-      anchorCentre,
-      step: this.growLatticeStep(),
-      targets: this.growGhostTargets,
-      nodes: this.nodeBoxes(node => node !== this.growAnchor),
-      newNodeHalf: this.growAnchorHalf(),
-    });
-    if (!hop) return false;
-    this.landGrowAim(hop.kind === 'cell' ? hop.target : this.nodeById(hop.id)!);
-    return true;
-  }
-
-  /** Every node as a plain box, for the Konva-free placement modules. */
-  private nodeBoxes(keep: (node: DANode) => boolean = () => true): GrowGhostNodeCenter[] {
-    return this.drawingLayer.getDANodes().filter(keep).map(node => ({
-      id: node.id,
-      ...this.getNodeCenterInLayerCoordinates(node),
-      halfW: node.NODE_WIDTH / 2,
-      halfH: node.NODE_HEIGHT / 2,
-    }));
-  }
-
-  /** The anchor's own box stands in for the node a spot would create — it is
-   *  also what the placement ghost is drawn at, so what the lattice refuses is
-   *  exactly what you would have seen land on something (da-510). */
-  private growAnchorHalf(anchor: DANode | null = this.growAnchor): {w: number; h: number} {
-    return {
-      w: (anchor?.NODE_WIDTH ?? DEFAULT_BOX_SIZE) / 2,
-      h: (anchor?.NODE_HEIGHT ?? DEFAULT_BOX_SIZE) / 2,
-    };
-  }
-
-  private nodeById(id: string): DANode | null {
-    return this.drawingLayer.getDANodes().find(node => node.id === id) ?? null;
-  }
-
-  /** Put the aim on a spot or a node: the ghost follows, the crosshairs ride
-   *  it, and Move by Node's memory is kept in step so a later hop off the
-   *  lattice carries on from what the reader is looking at. */
-  private landGrowAim(aim: GrowGhostTarget | DANode): void {
-    this.finishTweens();
-    const ghost = 'source' in aim ? aim : null;
-    const node = ghost ? null : aim as DANode;
-    this.growTarget = node;
-    this.growInsertionTarget = ghost;
-    // The lattice of spots *is* the overlay while the aim is on it; the bands
-    // and rings the engine draws describe a decision that is not being made.
-    this.navGrid.hideNodeGrid();
-    this.navGrid.hideQuadrantGoalRay();
-    const id = ghost ? ghost.id : node!.id;
-    this.navGrid.adoptStop({id, kind: 'node'});
-    const centre = ghost
-      ? {x: ghost.x, y: ghost.y}
-      : this.getNodeCenterInLayerCoordinates(node!);
-    const scale = this.drawingLayer.scaleX();
-    this.navGrid.jumpCrosshairsToStopCenter({
-      x: this.drawingLayer.x() + centre.x * scale,
-      y: this.drawingLayer.y() + centre.y * scale,
-    });
-    this.redrawGrowGhost();
-  }
-
-  /** `/` in grow mode: fuzzy-search the target by label (sticky phase —
-   *  the hold key is naturally released to type; Enter commits the edge,
-   *  Esc backs out to the list then cancels the whole add). */
-  private openGrowTargetPopup(): void {
-    const anchor = this.growAnchor!;
-    this.navPopupRows = this.drawingLayer.getDANodes()
-      .filter(n => n !== anchor)
-      .map(n => ({
-        id: n.id,
-        title: n.label.text() || n.nodeShape,
-        tags: n.tags.length > 0 ? n.tags : undefined,
-      }));
-    if (this.navPopupRows.length === 0) {
-      this.emitStatus('⚠ No other nodes to connect to');
-      return;
-    }
-    this.navGrid.hideNodeGrid();
-    this.navPopupPurpose = 'grow-target';
-    this.navPopupStartFilter = true;
-    this.navPopupHoldKey = null;
-    this.navPopupDark = this.themeService.theme === 'dark';
-    if (this.growKeys) this.navPopupListKeys = {up: this.growKeys.up, down: this.growKeys.down};
-    this.positionGrowPopup();
-    this.navPopupOpen = true;
-    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-target-popup'});
-  }
-
-  /** Beside the anchor node, east unless clamped. */
-  private positionGrowPopup(): void {
-    const scale = this.drawingLayer.scaleX();
-    const n = this.growAnchor;
-    const origin = this.growOrigin!;
-    const rect = n ? {
-      x: this.drawingLayer.x() + n.group.x() * scale,
-      y: this.drawingLayer.y() + n.group.y() * scale,
-      w: n.NODE_WIDTH * scale,
-    } : {
-      x: this.drawingLayer.x() + origin.x * scale,
-      y: this.drawingLayer.y() + origin.y * scale,
-      w: 0,
-    };
-    const position = placePopup(rect, this.popupViewport(), popupSize(this.navPopupRows.length), 'right');
-    this.navPopupLeft = position.left;
-    this.navPopupTop = position.top;
-  }
-
-  /** `f` in grow mode: the node-type popup (v1 list = the raw shapes; the
-   *  plugin node-kinds slot slots in here later). Held-f rhythm: browse
-   *  with j/k while f is down, releasing f selects (the popup's holdKey
-   *  machinery); Enter also selects. */
-  private openGrowTypePopup(): void {
-    this.navGrid.hideNodeGrid();
-    this.navPopupRows = [
-      {id: 'box',       title: 'Box'},
-      {id: 'circle',    title: 'Circle'},
-      {id: 'diamond',   title: 'Diamond'},
-      {id: 'junction',  title: 'Junction'},
-      {id: 'invisible', title: 'Invisible'},
-    ];
-    this.navPopupPurpose = 'grow-type';
-    this.navPopupStartFilter = false;
-    this.navPopupHoldKey = this.growKeys?.newNode ?? 'f';
-    this.navPopupDark = this.themeService.theme === 'dark';
-    if (this.growKeys) this.navPopupListKeys = {up: this.growKeys.up, down: this.growKeys.down};
-    this.positionGrowPopup();
-    this.navPopupOpen = true;
-    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-type-popup'});
-  }
-
-  /** The cell of the held-Add lattice: the placement spacing on each axis,
-   *  rounded up to a whole major grid cell so every candidate spot sits a whole
-   *  number of coarse squares from the anchor. */
-  private growLatticeStep(anchor: DANode | null = this.growAnchor): Point {
-    const cell = Math.max(1, this.drawingLayer.getGridSpacing());
-    const onGrid = (spacing: number) => Math.max(cell, Math.ceil(spacing / cell) * cell);
-    return {
-      x: onGrid(this.quickAddSpacingFrom('x', anchor)),
-      y: onGrid(this.quickAddSpacingFrom('y', anchor)),
-    };
-  }
-
-  /** Centre-to-centre distance for a node placed beside `anchor` along `axis`.
-   *  Measures the two boxes involved and hands them to the spacing rule. */
-  private quickAddSpacingFrom(axis: PlacementAxis, anchor: DANode | null = this.growAnchor): number {
-    const fresh = this.drawingLayer?.newNodeDefaultSize?.()
-      ?? {w: DEFAULT_BOX_SIZE, h: DEFAULT_BOX_SIZE};
-    const anchorBox = {
-      w: anchor?.NODE_WIDTH ?? DEFAULT_BOX_SIZE,
-      h: anchor?.NODE_HEIGHT ?? DEFAULT_BOX_SIZE,
-    };
-    return quickAddSpacing(axis, anchorBox, fresh);
-  }
-
-  /** Type picked: enter the placement sub-mode — ghost node of that shape
-   *  at the right-of-anchor default (or at the crosshairs on empty canvas);
-   *  hjkl places (first press = rough throw of one full spacing,
-   *  then grid steps, coarse/fine tier keys held). Release of the
-   *  still-held add key commits; Enter commits the sticky variant. */
-  private enterGrowPlacement(shapeId: string): void {
-    this.navPopupOpen = false;
-    this.navPopupPurpose = null;
-    this.growPlacement.enter(shapeId as NodeShape);
-    this.growTarget = null;
-    this.growInsertionTarget = null;
-    this.daOut.emit({kind: 'popup-state', open: true, surface: 'grow-placement'});
-    this.redrawGrowGhost();
-  }
-
-  /** Placement steering. Rough first (a full spacing thrown in the pressed
-   *  direction, replacing the below default), grid steps after; `s`/`d` tier
-   *  chords scale the step (coarse = a full spacing, fine = a tenth-grid). */
-  private growPlaceMove(direction: GrowPlacementDirection): void {
-    this.growPlacement.move(direction);
-  }
-
-  private commitGrowPlacement(): void {
-    const anchor = this.growAnchor;
-    const dirState = this.growDirState;
-    const shape = this.growShape;
-    const pos = this.growPlacePos!;
-    this.exitGrowMode();
-
-    this.finishTweens();
-    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-    const at = this.camera.toStage(pos);
-    const newNode = this.drawingLayer.createNewNode(at.x, at.y, shape);
-    if (anchor) this.wireGrowEdge(anchor, newNode, dirState);
-    this.newNodeArrivedByLink = !!anchor;
-
-    const labelable = newNode.nodeShape !== 'junction' && newNode.nodeShape !== 'invisible';
-    if (labelable) {
-      this.beginNewNodeLabelEdit(newNode);
+  /** A node grow mode just added: open its label, or settle it if it has
+   *  none (junctions and invisibles). */
+  private settleNewNode(node: DANode, arrivedByLink: boolean): void {
+    this.newNodeArrivedByLink = arrivedByLink;
+    if (node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
+      this.beginNewNodeLabelEdit(node);
     } else {
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();
     }
-    this.scheduleVaultAutoSave();
-  }
-
-  /** Popup commit for the grow-target search: wire the edge right away
-   *  (sticky semantics — Enter is the commit gesture once the popup owns
-   *  the flow). */
-  private growCommitToNodeId(nodeId: string): void {
-    const anchor = this.growAnchor!;
-    const dirState = this.growDirState;
-    const target = this.drawingLayer.getDANodes().find(n => n.id === nodeId);
-    this.navPopupOpen = false;
-    this.navPopupPurpose = null;
-    this.exitGrowMode();
-    if (!target || target === anchor) return;
-    this.commitGrowEdgeTo(anchor, target, dirState);
-  }
-
-  /** Wire the grow edge and rest the crosshairs on the target. Shared by every
-   *  way of choosing an existing node as the target: walking the ghosts with
-   *  hjkl, and the `/` search popup. Only the old select-then-connect path
-   *  did this before (`249e6e0`) — held-Add, which is how a link actually
-   *  gets drawn, was left out (2026-08-29). */
-  private commitGrowEdgeTo(anchor: DANode, target: DANode, dirState: number): void {
-    this.finishTweens();
-    this.undoRedoService.pushSnapshot(this.drawingLayer.serializeGraph());
-    this.wireGrowEdge(anchor, target, dirState);
-    this.drawingLayer.batchDraw();
-    this.restCrosshairsOn(target);
-    this.checkAndEmitEditState();
-    this.scheduleVaultAutoSave();
-    this.emitStatus(`Edge added: ${this.growEdgeDescription(anchor, target, dirState)}`);
-  }
-
-  private commitGrowMode(): void {
-    const anchor = this.growAnchor;
-    const target = this.growTarget;
-    const insertion = this.growInsertionTarget;
-    const dirState = this.growDirState;
-    this.exitGrowMode();
-
-    if (!anchor) {
-      // A plain tap on empty canvas keeps the established quick-add behavior.
-      this.handleQuickAdd();
-      return;
-    }
-    if (insertion) {
-      this.commitGrowInsertion(anchor, insertion, dirState);
-      return;
-    }
-    if (target === null) {
-      // A press and release without navigation is the node-context tap:
-      // add an edge from the source back to itself.
-      this.quickAddSelfLoop(anchor, dirState);
-      return;
-    }
-    if (target === anchor) return; // came home to cancel
-
-    this.commitGrowEdgeTo(anchor, target, dirState);
-  }
-
-  private commitGrowSelfLoop(): void {
-    const anchor = this.growAnchor;
-    const dirState = this.growDirState;
-    this.exitGrowMode();
-    if (!anchor) return;
-    this.quickAddSelfLoop(anchor, dirState);
   }
 
   private quickAddSelfLoop(anchor: DANode, dirState?: number): void {
@@ -2959,42 +2389,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     this.addSelfEdge(anchor, dirState);
     this.scheduleVaultAutoSave();
-  }
-
-  private commitGrowInsertion(
-    anchor: DANode,
-    insertion: GrowGhostTarget,
-    dirState: number,
-  ): void {
-    this.finishTweens();
-    this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-    const at = this.camera.toStage(insertion);
-    const newNode = this.drawingLayer.createNewNode(at.x, at.y, this.style.defaults.nodeShape);
-    this.wireGrowEdge(anchor, newNode, dirState);
-    this.newNodeArrivedByLink = true;
-
-    const labelable = newNode.nodeShape !== 'junction' &&
-      newNode.nodeShape !== 'invisible';
-    if (labelable) {
-      this.beginNewNodeLabelEdit(newNode);
-    } else {
-      this.drawingLayer.batchDraw();
-      this.checkAndEmitEditState();
-    }
-    this.scheduleVaultAutoSave();
-  }
-
-  /** Directionality state used when a grow/add gesture begins. The default
-   *  directed state is always outgoing from the anchor; explicit user
-   *  defaults (undirected/bidirectional) are still respected. */
-  private defaultGrowDirection(_anchor: DANode | null): number {
-    switch (this.style.defaults.edgeDirectedness) {
-      case 'undirected': return 2;
-      case 'bidirectional': return 3;
-      default: return 0;
-    }
   }
 
   /** After a link is drawn, the crosshairs rest on the node it reached,
@@ -3048,73 +2442,11 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     const edge = dirState === undefined
       ? this.addDefaultEdge(anchor, anchor)
-      : this.wireGrowEdge(anchor, anchor, dirState);
+      : this.grow.wireEdge(anchor, anchor, dirState);
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
     this.emitStatus(`Self loop added to ${anchor.label.text() || anchor.nodeShape}`);
     return edge;
-  }
-
-  /** Create the edge for a grow commit per the directionality state. */
-  private wireGrowEdge(anchor: DANode, target: DANode, dirState: number): DAEdge {
-    const src = dirState === 1 ? target : anchor;
-    const dest = dirState === 1 ? anchor : target;
-    const edge = this.drawingLayer.addEdge(src, dest);
-    edge.directedness = dirState === 2 ? 'undirected'
-      : dirState === 3 ? 'bidirectional' : 'directed';
-    edge.lineStyle = this.style.defaults.lineStyle;
-    this.layout.autoRouteNewEdge(edge);
-    return edge;
-  }
-
-  private growEdgeDescription(anchor: DANode, target: DANode, dirState: number): string {
-    const a = anchor.label.text() || anchor.nodeShape;
-    const t = target.label.text() || target.nodeShape;
-    switch (dirState) {
-      case 1: return `${t} → ${a}`;
-      case 2: return `${a} — ${t}`;
-      case 3: return `${a} ↔ ${t}`;
-      default: return `${a} → ${t}`;
-    }
-  }
-
-  /** Dashed outline for the placement ghost, per shape. */
-  private exitGrowMode(): void {
-    this.growActive = false;
-    this.growEdgeMenuActive = false;
-    this.growSelfLoopPending = false;
-    this.growHoldReleased = false;
-    this.growPressedKeys.clear();
-    this.growGhost.clear(false);
-    this.growOrigin = null;
-    this.growTarget = null;
-    this.growInsertionTarget = null;
-    this.growGhostTargets = [];
-    this.navGrid.hideNodeGrid();
-    this.daOut.emit({kind: 'popup-state', open: false});
-    this.drawingLayer.batchDraw();
-  }
-
-  /** The dashed preview of what the held Add key is about to create
-   *  (grow-ghost.ts). Rebuilt from scratch on every aim change. */
-  private redrawGrowGhost(): void {
-    this.growGhost.show(this.growAim());
-  }
-
-  /** The nine fields of grow state the preview draws from, and no others. */
-  private growAim(): GrowAim {
-    return {
-      anchor: this.growAnchor,
-      origin: this.growOrigin!,
-      placing: this.growPlacing,
-      placePos: this.growPlacePos,
-      newNodeShape: this.growShape ?? this.style.effectiveNodeShape(),
-      slotShape: this.style.effectiveNodeShape(),
-      target: this.growTarget,
-      insertionTarget: this.growInsertionTarget,
-      targets: this.growGhostTargets,
-      dirState: this.growDirState,
-    };
   }
 
   /** Tap of the edit-text key: enter label edit on whatever text-bearing

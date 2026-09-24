@@ -41,11 +41,11 @@ async function main() {
     return {
       mode: km.keyMenu.currentMode.name,
       statuses: window.__statuses ?? [],
-      growActive: da.growActive,
-      target: da.growTarget?.label.text() ?? null,
-      insertion: da.growInsertionTarget?.id ?? null,
-      popup: {open: da.navPopupOpen, purpose: da.navPopupPurpose},
-      placing: da.growPlacing, shape: da.growShape,
+      growing: da.grow.active,
+      target: da.grow.target?.label.text() ?? null,
+      insertion: da.grow.insertionTarget?.id ?? null,
+      popup: {open: da.grow.popup.open, purpose: da.grow.popup.purpose},
+      placing: da.grow.placement.placing, shape: da.grow.placement.shape,
       xh: {x: da.crosshairsLayer.crosshairsX(), y: da.crosshairsLayer.crosshairsY()},
       nodes: da.drawingLayer.getDANodes().map(n => ({text: n.label.text(), shape: n.nodeShape,
         x: n.konvaGroup.x(), edges: n.connectedEdges.length})),
@@ -89,13 +89,13 @@ async function main() {
   await holdA();
   let s = await state();
   check('holding a over a node shows targeting controls',
-    s.growActive && s.mode === 'surfaceGrowTargeting', JSON.stringify({grow: s.growActive, mode: s.mode}));
+    s.growing && s.mode === 'surfaceGrowTargeting', JSON.stringify({grow: s.growing, mode: s.mode}));
   await release('a');
   s = await state();
   check('a release without a keypress adds a self-loop and no node',
     s.nodes.length === 3 && s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'A',
     JSON.stringify(s.edges));
-  check('and stays in normal mode', s.mode === 'normal' && !s.growActive, s.mode);
+  check('and stays in normal mode', s.mode === 'normal' && !s.growing, s.mode);
 
   // --- 2. walk right to B; the crosshairs ride the aim ---
   await reset();
@@ -114,7 +114,7 @@ async function main() {
   check('release on B wires A→B, directed, no new node',
     s.nodes.length === 3 && s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'B'
       && s.edges[0].dir === 'directed', JSON.stringify(s.edges));
-  check('and stays in normal mode', s.mode === 'normal' && !s.growActive, s.mode);
+  check('and stays in normal mode', s.mode === 'normal' && !s.growing, s.mode);
 
   // --- 3. release on a lattice spot: a new linked node, labelEdit ---
   await reset();
@@ -159,8 +159,8 @@ async function main() {
     JSON.stringify({...s.popup, mode: s.mode}));
   await release('a');
   s = await state();
-  check('releasing a with the popup open commits nothing', s.growActive && s.popup.open && s.edges.length === 0,
-    JSON.stringify({grow: s.growActive, popup: s.popup}));
+  check('releasing a with the popup open commits nothing', s.growing && s.popup.open && s.edges.length === 0,
+    JSON.stringify({grow: s.growing, popup: s.popup}));
   await page.keyboard.type('c', {delay: 40});
   await wait(150);
   await page.keyboard.press('Enter');
@@ -168,8 +168,8 @@ async function main() {
   s = await state();
   check('Enter commits the edge to the searched node',
     s.edges.length === 1 && s.edges[0].from === 'A' && s.edges[0].to === 'C', JSON.stringify(s.edges));
-  check('grow mode fully exited after the search commit', !s.growActive && s.mode === 'normal',
-    JSON.stringify({grow: s.growActive, mode: s.mode}));
+  check('grow mode fully exited after the search commit', !s.growing && s.mode === 'normal',
+    JSON.stringify({grow: s.growing, mode: s.mode}));
 
   await reset();
   await holdA();
@@ -179,9 +179,9 @@ async function main() {
   await tap('Escape');
   await wait(150);
   s = await state();
-  check('Esc Esc cancels the add from the search popup', s.edges.length === 0 && !s.growActive
+  check('Esc Esc cancels the add from the search popup', s.edges.length === 0 && !s.growing
     && s.mode === 'normal' && s.statuses.some(m => m.includes('Add canceled')),
-    JSON.stringify({edges: s.edges.length, grow: s.growActive, mode: s.mode}));
+    JSON.stringify({edges: s.edges.length, grow: s.growing, mode: s.mode}));
 
   // --- 7. a + f: type popup, placement, commit ---
   await reset();
@@ -228,8 +228,8 @@ async function main() {
   await tap('Escape');
   await release('a');
   s = await state();
-  check('Escape in placement cancels without creating', s.nodes.length === 3 && !s.growActive && s.mode === 'normal',
-    JSON.stringify({n: s.nodes.length, grow: s.growActive, mode: s.mode}));
+  check('Escape in placement cancels without creating', s.nodes.length === 3 && !s.growing && s.mode === 'normal',
+    JSON.stringify({n: s.nodes.length, grow: s.growing, mode: s.mode}));
 
   // --- 8. empty canvas a + f: a free node of the picked type ---
   await reset(undefined, null);

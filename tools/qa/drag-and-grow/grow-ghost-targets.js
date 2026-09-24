@@ -57,12 +57,12 @@ async function main() {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     return {
       mode: km.keyMenu.currentMode.name,
-      growActive: da.growActive,
-      insertion: da.growInsertionTarget && {...da.growInsertionTarget},
-      target: da.growTarget?.id ?? null,
-      ghosts: da.growGhostTargets.map(target => ({...target})),
-      renderedGhosts: da.growGhost.node?.find('.grow-insertion-target').length ?? 0,
-      augmentedStops: da.growActive ? da.navStops('nodes').length : 0,
+      growActive: da.grow.active,
+      insertion: da.grow.insertionTarget && {...da.grow.insertionTarget},
+      target: da.grow.target?.id ?? null,
+      ghosts: da.grow.ghostTargets.map(target => ({...target})),
+      renderedGhosts: da.grow.ghost.node?.find('.grow-insertion-target').length ?? 0,
+      augmentedStops: da.grow.active ? da.navStops('nodes').length : 0,
       nodes: da.drawingLayer.getDANodes().map(node => ({
         id: node.id,
         text: node.label.text(),

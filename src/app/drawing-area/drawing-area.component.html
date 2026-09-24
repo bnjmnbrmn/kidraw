@@ -1,13 +1,13 @@
 <div id="mainDrawingArea" #mainDrawingArea></div>
-@if (navPopupOpen) {
-  <app-nav-popup [rows]="navPopupRows"
-                 [left]="navPopupLeft"
-                 [top]="navPopupTop"
-                 [dark]="navPopupDark"
-                 [holdKey]="navPopupHoldKey"
-                 [startFilter]="navPopupStartFilter"
-                 [listKeys]="navPopupListKeys"
-                 (highlightRow)="onNavPopupHighlight($event)"
-                 (commitRow)="onNavPopupCommit($event)"
-                 (closed)="closeNavPopup()" />
+@if (grow.popup.open) {
+  <app-nav-popup [rows]="grow.popup.rows"
+                 [left]="grow.popup.left"
+                 [top]="grow.popup.top"
+                 [dark]="grow.popup.dark"
+                 [holdKey]="grow.popup.holdKey"
+                 [startFilter]="grow.popup.startFilter"
+                 [listKeys]="grow.popup.listKeys"
+                 (highlightRow)="grow.onPopupHighlight($event)"
+                 (commitRow)="grow.onPopupCommit($event)"
+                 (closed)="grow.onPopupClosed()" />
 }

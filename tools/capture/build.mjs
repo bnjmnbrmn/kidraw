@@ -374,8 +374,8 @@ export const nodeCentre = (page, label) => page.evaluate(text => {
 /** Which spot the held-Add aim is on: a lattice cell, a node, or nothing. */
 export const growAim = page => page.evaluate(() => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
-  if (component.growTarget) return {kind: 'node'};
-  const id = component.growInsertionTarget?.id ?? '';
+  if (component.grow.target) return {kind: 'node'};
+  const id = component.grow.insertionTarget?.id ?? '';
   const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(id);
   return match ? {kind: 'cell', ix: Number(match[1]), iy: Number(match[2])} : {kind: 'none'};
 });
@@ -394,7 +394,7 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
   page.evaluate(([aim, preferred, grown, outward]) => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
   const layer = component.drawingLayer;
-  const anchor = component.growAnchor;
+  const anchor = component.grow.anchor;
   if (!anchor) return [];
   const centreOf = node => {
     const box = node.group.getClientRect({relativeTo: layer});
@@ -438,7 +438,7 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
   // could not stop that — a crowded arc costs more than a wrong direction —
   // so this is a refusal, not a preference.
   const away = outward ? Math.hypot(from.x - outward.x, from.y - outward.y) : 0;
-  return component.growGhostTargets
+  return component.grow.ghostTargets
     .map(target => {
       const match = /^grow-ghost:grid:(-?\d+):(-?\d+)$/.exec(target.id);
       if (!match) return null;

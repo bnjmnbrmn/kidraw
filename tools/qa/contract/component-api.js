@@ -60,12 +60,12 @@ const TOOLS_FACING = [
  * that compiled cleanly broke a browser script.
  */
 const TOOLS_FACING_FIELDS = [
-  'growGhost',
   'hoverTrace',
   'layout',
   'goalLine',
   'labelEditGhost',
   'navigationLandingGhost',
+  'grow',
 ];
 
 /**
@@ -93,6 +93,37 @@ const RETIRED_FIELDS = {
   navDirection: 'use journey.direction',
   navHistory: 'the jumplist is private to NavJourney',
   routingWorker: 'use layout.running (LayoutController)',
+  growActive: 'use grow.active (grow-controller.ts, 2026-09-24)',
+  growAnchor: 'use grow.anchor (grow-controller.ts, 2026-09-24)',
+  growOrigin: 'use grow.origin (grow-controller.ts, 2026-09-24)',
+  growTarget: 'use grow.target (grow-controller.ts, 2026-09-24)',
+  growInsertionTarget: 'use grow.insertionTarget (grow-controller.ts, 2026-09-24)',
+  growGhostTargets: 'use grow.ghostTargets (grow-controller.ts, 2026-09-24)',
+  growDirState: 'use grow.dirState (grow-controller.ts, 2026-09-24)',
+  growHoldKey: 'use grow.holdKey (grow-controller.ts, 2026-09-24)',
+  growKeys: 'use grow.keys (grow-controller.ts, 2026-09-24)',
+  growEdgeMenuActive: 'use grow.edgeMenuActive (grow-controller.ts, 2026-09-24)',
+  growSelfLoopPending: 'use grow.selfLoopPending (grow-controller.ts, 2026-09-24)',
+  growHoldReleased: 'use grow.holdReleased (grow-controller.ts, 2026-09-24)',
+  growPressedKeys: 'use grow.pressedKeys (grow-controller.ts, 2026-09-24)',
+  growMods: 'use grow.placement.modifiers (grow-controller.ts, 2026-09-24)',
+  growPlacing: 'use grow.placement.placing (grow-controller.ts, 2026-09-24)',
+  growPlacePos: 'use grow.placement.position (grow-controller.ts, 2026-09-24)',
+  growPlacedRough: 'use grow.placement.rough (grow-controller.ts, 2026-09-24)',
+  growShape: 'use grow.placement.shape (grow-controller.ts, 2026-09-24)',
+  navPopupOpen: 'use grow.popup.open (grow-controller.ts, 2026-09-24)',
+  navPopupPurpose: 'use grow.popup.purpose (grow-controller.ts, 2026-09-24)',
+  navPopupRows: 'use grow.popup.rows (grow-controller.ts, 2026-09-24)',
+  growHop: 'use grow.hop (grow-controller.ts, 2026-09-24)',
+  redrawGrowGhost: 'use grow.redrawGhost (grow-controller.ts, 2026-09-24)',
+  growLatticeStep: 'use grow.latticeStep (grow-controller.ts, 2026-09-24)',
+  growPlaceMove: 'use grow.placeMove (grow-controller.ts, 2026-09-24)',
+  commitGrowMode: 'use grow.commit (grow-controller.ts, 2026-09-24)',
+  commitGrowSelfLoop: 'use grow.commitSelfLoop (grow-controller.ts, 2026-09-24)',
+  exitGrowMode: 'use grow.exit (grow-controller.ts, 2026-09-24)',
+  openGrowEdgeMenu: 'use grow.openEdgeMenu (grow-controller.ts, 2026-09-24)',
+  maybeEnterGrowMode: 'use grow.enter (grow-controller.ts, 2026-09-24)',
+  growGhost: 'use grow.ghost (grow-controller.ts, 2026-09-24)',
 };
 
 /** Receivers the scripts use for the component, for the reverse check. */
@@ -151,7 +182,8 @@ const retired = [];
 for (const file of jsFilesUnder(join(REPO, 'tools'))) {
   const text = readFileSync(file, 'utf8');
   for (const [name, advice] of Object.entries(RETIRED_FIELDS)) {
-    if (new RegExp(`\\.${name}\\b`).test(text)) {
+    // Bracket reads too: connect-focus.js read ['growTarget'] and slipped past.
+    if (new RegExp(`\\.${name}\\b|\\[['"]${name}['"]\\]`).test(text)) {
       retired.push(`${file.slice(REPO.length + 1)}: .${name} — ${advice}`);
     }
   }

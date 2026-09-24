@@ -102,7 +102,7 @@ async function main() {
   let steps = 0;
   for (; steps < 12; steps++) {
     const onB = await page.evaluate(() => {
-      const t = window.ng.getComponent(document.querySelector('app-drawing-area'))['growTarget'];
+      const t = window.ng.getComponent(document.querySelector('app-drawing-area')).grow.target;
       return !!t && t.id === 'da-902';
     });
     if (onB) break;

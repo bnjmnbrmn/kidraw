@@ -62,10 +62,6 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     };
     component.checkAndEmitEditState = jasmine.createSpy('checkAndEmitEditState');
     component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
-    component.growMods = new Set<string>();
-    component.growPressedKeys = new Set<string>();
-    component.growGhostTargets = [];
-    component.growInsertionTarget = null;
     // Object.create skips field initialisers, so this collaborator is absent.
     // A spy, not the real controller: these are unit tests of the component,
     // and the real one would drag in layers this spec never set up.
@@ -140,14 +136,14 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent();
 
       expect(component.style.defaults.edgeDirectedness).toBe('directed');
-      expect(component.defaultGrowDirection({nodeShape: 'box', tags: []})).toBe(0);
+      expect(component.grow.defaultDirection({nodeShape: 'box', tags: []})).toBe(0);
     });
 
     it('starts ordinary connected adds with the configured undirected default', () => {
       const component = buildComponent();
       component.style.defaults.edgeDirectedness = 'undirected';
 
-      expect(component.defaultGrowDirection({
+      expect(component.grow.defaultDirection({
         nodeShape: 'box',
         tags: [],
       })).toBe(2);
@@ -157,7 +153,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({diagramType: 'todo-graph'});
       component.style.defaults.edgeDirectedness = 'directed';
 
-      expect(component.defaultGrowDirection({
+      expect(component.grow.defaultDirection({
         nodeShape: 'circle',
         tags: [],
       })).toBe(0);
@@ -190,110 +186,110 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('opens Add > Edge from grow targeting and commits Self Loop', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
-      component.growActive = true;
-      component.growAnchor = node;
-      component.growEdgeMenuActive = false;
-      component.growHoldKey = 'a';
-      component.growKeys = {
+      component.grow.active = true;
+      component.grow.anchor = node;
+      component.grow.edgeMenuActive = false;
+      component.grow.holdKey = 'a';
+      component.grow.keys = {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
-      component.navPopupOpen = false;
-      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+      component.grow.popup.open = false;
+      component.grow.commitSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
-      expect(component.growEdgeMenuActive).toBeTrue();
+      expect(component.grow.edgeMenuActive).toBeTrue();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'popup-state', open: true, surface: 'grow-edge'});
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
-      expect(component.commitGrowSelfLoop).not.toHaveBeenCalled();
+      expect(component.grow.commitSelfLoop).not.toHaveBeenCalled();
       component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
-      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+      expect(component.grow.commitSelfLoop).toHaveBeenCalled();
     });
 
     it('keeps the Edge submenu open when Add is released before its leaf', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
-      component.growActive = true;
-      component.growAnchor = node;
-      component.growEdgeMenuActive = true;
-      component.growSelfLoopPending = false;
-      component.growHoldReleased = false;
-      component.growHoldKey = 'a';
-      component.growKeys = {
+      component.grow.active = true;
+      component.grow.anchor = node;
+      component.grow.edgeMenuActive = true;
+      component.grow.selfLoopPending = false;
+      component.grow.holdReleased = false;
+      component.grow.holdKey = 'a';
+      component.grow.keys = {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
-      component.navPopupOpen = false;
-      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
-      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+      component.grow.popup.open = false;
+      component.grow.exit = jasmine.createSpy('exit');
+      component.grow.commitSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
 
       component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'a'}));
 
-      expect(component.growHoldReleased).toBeTrue();
-      expect(component.exitGrowMode).not.toHaveBeenCalled();
+      expect(component.grow.holdReleased).toBeTrue();
+      expect(component.grow.exit).not.toHaveBeenCalled();
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
       component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
-      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+      expect(component.grow.commitSelfLoop).toHaveBeenCalled();
     });
 
     it('opens Edge for the sole selected node from blank-canvas grow mode', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent({selectedNodes: [node]});
-      component.growActive = true;
-      component.growAnchor = null;
-      component.growPlacing = false;
-      component.growEdgeMenuActive = false;
-      component.growKeys = {
+      component.grow.active = true;
+      component.grow.anchor = null;
+      component.grow.placement.placing = false;
+      component.grow.edgeMenuActive = false;
+      component.grow.keys = {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
       component.getNodeCenterInLayerCoordinates = () => ({x: 100, y: 200});
-      component.buildCurrentGrowGhostTargets = () => [];
+      component.grow.buildGhostTargets = () => [];
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
 
-      expect(component.growAnchor).toBe(node);
-      expect(component.growOrigin).toEqual({x: 100, y: 200});
-      expect(component.growEdgeMenuActive).toBeTrue();
+      expect(component.grow.anchor).toBe(node);
+      expect(component.grow.origin).toEqual({x: 100, y: 200});
+      expect(component.grow.edgeMenuActive).toBeTrue();
     });
 
     it('accepts a Self Loop leaf rolled just before its Edge submenu key', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
-      component.growActive = true;
-      component.growAnchor = node;
-      component.growEdgeMenuActive = false;
-      component.growHoldKey = 'a';
-      component.growKeys = {
+      component.grow.active = true;
+      component.grow.anchor = node;
+      component.grow.edgeMenuActive = false;
+      component.grow.holdKey = 'a';
+      component.grow.keys = {
         up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f',
         search: '/', coarse: 's', fine: 'd', edgeSubmenu: 's', selfLoop: 'l',
       };
-      component.navPopupOpen = false;
-      component.growHop = jasmine.createSpy('growHop');
-      component.commitGrowSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
+      component.grow.popup.open = false;
+      component.grow.hop = jasmine.createSpy('growHop');
+      component.grow.commitSelfLoop = jasmine.createSpy('commitGrowSelfLoop');
 
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 'l'}));
-      expect(component.growHop).toHaveBeenCalledWith('right');
+      expect(component.grow.hop).toHaveBeenCalledWith('right');
       component.handleGrowKeyDown(new KeyboardEvent('keydown', {key: 's'}));
-      expect(component.growSelfLoopPending).toBeTrue();
+      expect(component.grow.selfLoopPending).toBeTrue();
 
       component.handleGrowKeyUp(new KeyboardEvent('keyup', {key: 'l'}));
-      expect(component.commitGrowSelfLoop).toHaveBeenCalled();
+      expect(component.grow.commitSelfLoop).toHaveBeenCalled();
     });
 
     it('routes the grow Edge submenu through the same self-loop commit', () => {
       const node = {zIndex: () => 1, label: {text: () => 'A'}, nodeShape: 'box'};
       const component = buildComponent();
-      component.growAnchor = node;
-      component.growDirState = 0;
-      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+      component.grow.anchor = node;
+      component.grow.dirState = 0;
+      component.grow.exit = jasmine.createSpy('exit');
 
-      component.commitGrowSelfLoop();
+      component.grow.commitSelfLoop();
 
-      expect(component.exitGrowMode).toHaveBeenCalled();
+      expect(component.grow.exit).toHaveBeenCalled();
       expect(component.quickAddSelfLoop).toHaveBeenCalledWith(node, 0);
     });
 
@@ -320,28 +316,28 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const component = buildComponent({
         allNodes: [anchor, target],
       });
-      component.growAnchor = anchor;
-      component.growTarget = null;
+      component.grow.anchor = anchor;
+      component.grow.target = null;
       component.navGrid.lastStop = null;
       component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
         .and.callFake(() => {
           component.navGrid.lastStop = {id: 'target', kind: 'node'};
         });
-      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
-      component.growHop('right');
+      component.grow.redrawGhost = jasmine.createSpy('redrawGrowGhost');
+      component.grow.hop('right');
 
       expect(component.navGrid.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
-      expect(component.growTarget).toBe(target);
-      expect(component.redrawGrowGhost).toHaveBeenCalled();
+      expect(component.grow.target).toBe(target);
+      expect(component.grow.redrawGhost).toHaveBeenCalled();
     });
 
     /** The lattice hop needs a little more of the canvas stubbed than the
      *  engine one: it works in layer coordinates and lands the crosshairs
      *  itself. Cells are 400 across and 100 down, anchored at the origin. */
     const withLattice = (component: any, ghosts: unknown[]) => {
-      component.growGhostTargets = ghosts;
-      component.growOrigin = {x: 0, y: 0};
-      component.growLatticeStep = () => ({x: 400, y: 100});
+      component.grow.ghostTargets = ghosts;
+      component.grow.origin = {x: 0, y: 0};
+      component.grow.latticeStep = () => ({x: 400, y: 100});
       component.getNodeCenterInLayerCoordinates = (node: any) => node.centre ?? {x: 0, y: 0};
       component.drawingLayer.x = () => 0;
       component.drawingLayer.y = () => 0;
@@ -349,7 +345,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.navGrid.hideNodeGrid = jasmine.createSpy('hideNodeGrid');
       component.hideQuadrantGoalRay = jasmine.createSpy('hideQuadrantGoalRay');
       component.navGrid.jumpCrosshairsToStopCenter = jasmine.createSpy('jumpCrosshairsToStopCenter');
-      component.redrawGrowGhost = jasmine.createSpy('redrawGrowGhost');
+      component.grow.redrawGhost = jasmine.createSpy('redrawGrowGhost');
       component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection');
       return component;
     };
@@ -361,18 +357,18 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
       const northEast = {id: 'grow-ghost:grid:1:-1', x: 400, y: -100, source: 'grid'};
       const component = withLattice(buildComponent({allNodes: [anchor]}), [east, northEast]);
-      component.growAnchor = anchor;
+      component.grow.anchor = anchor;
 
-      component.growHop('right');
-      expect(component.growInsertionTarget).toBe(east);
-      expect(component.growTarget).toBeNull();
+      component.grow.hop('right');
+      expect(component.grow.insertionTarget).toBe(east);
+      expect(component.grow.target).toBeNull();
 
       // A turn from there is the neighbouring cell, not a rethink of the field.
-      component.growHop('up');
-      expect(component.growInsertionTarget).toBe(northEast);
+      component.grow.hop('up');
+      expect(component.grow.insertionTarget).toBe(northEast);
       expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
       expect(component.navGrid.jumpCrosshairsToStopCenter).toHaveBeenCalledTimes(2);
-      expect(component.redrawGrowGhost).toHaveBeenCalledTimes(2);
+      expect(component.grow.redrawGhost).toHaveBeenCalledTimes(2);
     });
 
     it('falls through to Move by Node where the lattice has no cell', () => {
@@ -383,22 +379,22 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
       const component = withLattice(
         buildComponent({allNodes: [anchor, target]}), [east]);
-      component.growAnchor = anchor;
+      component.grow.anchor = anchor;
       component.navGrid.lastStop = null;
       component.navGrid.snapToNodeInDirection = jasmine.createSpy('snapToNodeInDirection')
         .and.callFake(() => {
           component.navGrid.lastStop = {id: 'target', kind: 'node'};
         });
 
-      component.growHop('right');
-      expect(component.growInsertionTarget).toBe(east);
+      component.grow.hop('right');
+      expect(component.grow.insertionTarget).toBe(east);
 
       // Nothing further east on the lattice: the engine takes the next hop and
       // the real node beyond it stays reachable.
-      component.growHop('right');
+      component.grow.hop('right');
       expect(component.navGrid.snapToNodeInDirection).toHaveBeenCalledWith('right', 'nodes');
-      expect(component.growTarget).toBe(target);
-      expect(component.growInsertionTarget).toBeNull();
+      expect(component.grow.target).toBe(target);
+      expect(component.grow.insertionTarget).toBeNull();
     });
 
     it('takes an existing node standing between the aim and the next cell', () => {
@@ -408,12 +404,12 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const east = {id: 'grow-ghost:grid:1:0', x: 400, y: 0, source: 'grid'};
       const component = withLattice(
         buildComponent({allNodes: [anchor, between]}), [east]);
-      component.growAnchor = anchor;
+      component.grow.anchor = anchor;
 
-      component.growHop('right');
+      component.grow.hop('right');
 
-      expect(component.growTarget).toBe(between);
-      expect(component.growInsertionTarget).toBeNull();
+      expect(component.grow.target).toBe(between);
+      expect(component.grow.insertionTarget).toBeNull();
       expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
     });
 
@@ -423,24 +419,24 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const sitting = box('sitting', 400, 0);
       const component = withLattice(
         buildComponent({allNodes: [anchor, sitting]}), []);
-      component.growAnchor = anchor;
+      component.grow.anchor = anchor;
 
-      component.growHop('right');
+      component.grow.hop('right');
 
-      expect(component.growTarget).toBe(sitting);
+      expect(component.grow.target).toBe(sitting);
       expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();
     });
 
     it('turns a pristine release over a node into a self-loop', () => {
       const anchor = {id: 'anchor'};
       const component = buildComponent();
-      component.growAnchor = anchor;
-      component.growTarget = null;
-      component.growInsertionTarget = null;
-      component.growDirState = 0;
-      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
+      component.grow.anchor = anchor;
+      component.grow.target = null;
+      component.grow.insertionTarget = null;
+      component.grow.dirState = 0;
+      component.grow.exit = jasmine.createSpy('exit');
 
-      component.commitGrowMode();
+      component.grow.commit();
 
       expect(component.quickAddSelfLoop).toHaveBeenCalledWith(anchor, 0);
     });
@@ -449,15 +445,15 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const anchor = {id: 'anchor'};
       const ghost = {id: 'grow-ghost:grid:1:1', x: 250, y: 300, source: 'grid'};
       const component = buildComponent();
-      component.growAnchor = anchor;
-      component.growInsertionTarget = ghost;
-      component.growDirState = 3;
-      component.exitGrowMode = jasmine.createSpy('exitGrowMode');
-      component.commitGrowInsertion = jasmine.createSpy('commitGrowInsertion');
+      component.grow.anchor = anchor;
+      component.grow.insertionTarget = ghost;
+      component.grow.dirState = 3;
+      component.grow.exit = jasmine.createSpy('exit');
+      component.grow.addNodeAt = jasmine.createSpy('addNodeAt');
 
-      component.commitGrowMode();
+      component.grow.commit();
 
-      expect(component.commitGrowInsertion).toHaveBeenCalledWith(anchor, ghost, 3);
+      expect(component.grow.addNodeAt).toHaveBeenCalledWith(ghost, 'box', anchor, 3);
     });
   });
 

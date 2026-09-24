@@ -145,12 +145,12 @@ export const growPoint = page => page.evaluate(() => {
     if (!value) return '';
     return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
   };
-  if (component.growTarget) {
-    const box = component.growTarget.group.getClientRect({relativeTo: component.drawingLayer});
-    return {kind: 'node', label: read(component.growTarget),
+  if (component.grow.target) {
+    const box = component.grow.target.group.getClientRect({relativeTo: component.drawingLayer});
+    return {kind: 'node', label: read(component.grow.target),
             x: box.x + box.width / 2, y: box.y + box.height / 2};
   }
-  const target = component.growInsertionTarget;
+  const target = component.grow.insertionTarget;
   return target ? {kind: 'cell', x: target.x, y: target.y} : {kind: 'none'};
 });
 
@@ -178,7 +178,7 @@ export async function connect(page, from, to) {
   await settle(page, 280);
   const anchored = await page.evaluate(() => {
     const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const value = component.growAnchor && component.growAnchor.label;
+    const value = component.grow.anchor && component.grow.anchor.label;
     if (!value) return null;
     return typeof value === 'string' ? value : (value.text ? value.text() : '') ?? '';
   });
@@ -466,13 +466,13 @@ export async function latticeStep(page, label) {
   await settle(page, 300);
   const step = await page.evaluate(() => {
     const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const anchor = component.growAnchor;
+    const anchor = component.grow.anchor;
     if (!anchor) return null;
     const box = anchor.group.getClientRect({relativeTo: component.drawingLayer});
     const from = {x: box.x + box.width / 2, y: box.y + box.height / 2};
     let x = Infinity;
     let y = Infinity;
-    for (const target of component.growGhostTargets ?? []) {
+    for (const target of component.grow.ghostTargets ?? []) {
       const dx = Math.abs(target.x - from.x);
       const dy = Math.abs(target.y - from.y);
       if (dy < 1 && dx > 1) x = Math.min(x, dx);
