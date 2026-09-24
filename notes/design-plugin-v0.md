@@ -20,6 +20,12 @@ id. First plugin: `todo-graph` (wide 280×70 rectangular cards, fontSize 14,
 - **While active**: `createNewNode` applies the plugin defaults to new nodes.
   An explicitly requested shape (insert-with-shape submenu) wins over the
   plugin's default shape; sizes still apply.
+  *Until 2026-09-24 the plugin's shape never applied:* the drawing area passed
+  its own default shape along as though requested (unseen while every plugin
+  declared a box). Now the default shape you set with the shape toggle or Set
+  Shape over empty canvas also counts as asking, and before you set one the
+  plugin's shape applies (inferred, 2026-09-24 — the reading of "explicitly
+  requested" that keeps the toggle working on typed graphs; `2b965649`).
 - **Persistence**: `plugins: [id]` on the graph doc (`KidrawGraphDoc.plugins`
   ↔ `GraphSnapshot.plugins`), round-trips through save/reopen and undo/redo.
   Unknown ids are preserved but inert (no registry hit → no defaults).
