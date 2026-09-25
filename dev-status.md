@@ -1,8 +1,28 @@
 # dev-status
 
-_Updated 2026-09-24. Branch: `refactor/readability` (built on explanation
+_Updated 2026-09-25. Branch: `refactor/readability` (built on explanation
 graphs, which is built on agent mode). Agent mode on `agent-mode-v0`;
 explanation graphs on `explanation-graphs`._
+
+> ## ✅ 2026-09-25: Ben's ranked list, all seven items (branch `refactor/readability`)
+>
+> Ben: "Fix the bugs", American spelling, then items 2–7, best guesses
+> recorded as inferred. Brief: `meta-project/notes/kidraw-worker-brief-2026-09-25.md`.
+> 1. **Bugs.** Chosen colors survive theme toggles, reloads and undo; style
+>    file colors show ([bug note](notes/bug-style-colors-not-persisted.md)).
+>    The header mode badge was already gone; its dead field removed.
+> 2. **American spelling** everywhere (`8f1791f8`). "Interaction modes" are
+>    now **gestures** (`gestures.ts`), so they aren't confused with keymenu modes.
+> 3. **Browser scripts:** four stale scripts updated; force-clear's
+>    edge-to-box gap fixed; the fan-crossings check stays baselined, Ben's call
+>    ([note](notes/bug-tree-fan-crossings.md)).
+> 4. **Drawing area 2,737 → ~2,230 lines:** `history-controller.ts`,
+>    `label-edit-session.ts`, `select-drag.ts`.
+> 5. **Center menus:** Open, Save As, Diagram Type (`q` `y`)
+>    ([note](notes/idea-center-menus.md)).
+> 6. **Gather v2:** `b` `h` toggles ([note](notes/idea-gather-recursive.md)).
+> 7. **Load size:** Math was already lazy; router removed, 1.03 MB → 955 kB
+>    ([note](notes/analysis-load-size.md)). **README** with a GIF.
 
 > ## 🧩 IN PROGRESS: plugins (2026-09-23/24, branch `refactor/readability`)
 >

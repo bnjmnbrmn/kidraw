@@ -25,7 +25,15 @@ const run = async (page, body) => {
 const statusText = page => page.evaluate(() => document.querySelector('.status-message')?.textContent ?? '');
 const typeMenu = page => da(page, `(t => t ? {label: t.submenuLabel, entries: Object.entries(t.submenuConfig)
   .filter(([k]) => k !== '_repeatConfig').map(([k, v]) => k + ' ' + v.actionLabel)} : null)(km.buildRootSubmenuConfig()['t'])`);
-const exType = async page => { await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type'});`); return statusText(page); };
+/** What the Diagram Type menu (`:type` on its own) offers, by id; closes it after. */
+const offeredTypes = async page => {
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type'});`);
+  await page.waitForSelector('.center-menu .row');
+  const ids = await page.evaluate(`${DA}.centerMenus.current()?.list.visible.map(item => item.value) ?? []`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  return ids.join(', ');
+};
 
 async function reload(page) {
   await page.reload({waitUntil: 'networkidle'});
@@ -47,7 +55,8 @@ async function reload(page) {
 
   await run(page, `const sel = document.querySelector('select.sample-graph-select');
     sel.value = 'basic'; sel.dispatchEvent(new Event('change', {bubbles: true}));`);
-  check(':type offers it', (await exType(page)).includes('kanban'), await statusText(page));
+  const offered = await offeredTypes(page);
+  check(':type offers it', offered.includes('kanban'), offered);
   await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type kanban'});`);
   check('a graph becomes a Kanban board', (await da(page, 'da.drawingLayer.diagramType')) === 'kanban');
 
@@ -67,7 +76,8 @@ async function reload(page) {
   check('and says so', (await statusText(page)) === 'Column: DOING', await statusText(page));
 
   await reload(page);
-  check('the plugin survives a reload', (await exType(page)).includes('kanban'), await statusText(page));
+  const afterReload = await offeredTypes(page);
+  check('the plugin survives a reload', afterReload.includes('kanban'), afterReload);
   check('so does the board', (await da(page, 'da.drawingLayer.diagramType')) === 'kanban');
   check('with its menu', (await typeMenu(page))?.label === 'Kanban');
 
@@ -82,7 +92,8 @@ async function reload(page) {
   await settled(page);
   check('removing it says so', (await statusText(page)) === 'Removed the Kanban plugin', await statusText(page));
   check('its menu leaves t', (await typeMenu(page)) === null);
-  check(':type stops offering it', !(await exType(page)).includes('kanban'), await statusText(page));
+  const stillOffered = await offeredTypes(page);
+  check(':type stops offering it', !stillOffered.includes('kanban'), stillOffered);
   check('and the graph keeps its type, for when it comes back', (await da(page, 'da.drawingLayer.diagramType')) === 'kanban');
 
   await page.evaluate(() => localStorage.removeItem('kidraw-user-plugins'));

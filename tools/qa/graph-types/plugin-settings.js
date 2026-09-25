@@ -22,6 +22,15 @@ const run = async (page, body) => {
     window.ng.applyChanges(window.ng.getComponent(document.querySelector('app-root'))); })()`);
   await settled(page);
 };
+/** What the Diagram Type menu (`:type` on its own) offers, by id; closes it after. */
+const offeredTypes = async page => {
+  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type'});`);
+  await page.waitForSelector('.center-menu .row');
+  const ids = await page.evaluate(`${DA}.centerMenus.current()?.list.visible.map(item => item.value) ?? []`);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(150);
+  return ids.join(', ');
+};
 const statusText = page => page.evaluate(() => document.querySelector('.status-message')?.textContent ?? '');
 const hasTypeMenu = page => da(page, `!!km.buildRootSubmenuConfig()['t']`);
 
@@ -59,8 +68,7 @@ async function toggleTodoGraph(page) {
   check('and changes nothing', tags === '', tags);
 
   await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type default'});`);
-  await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type'});`);
-  const listed = await statusText(page);
+  const listed = await offeredTypes(page);
   check(':type stops offering it', !listed.includes('todo-graph') && listed.includes('explanation'), listed);
   await run(page, `da.handleCommand({kind: 'EX_COMMAND', text: 'type todo-graph'});`);
   check(':type todo-graph is refused', /turned off/.test(await statusText(page)), await statusText(page));

@@ -3,7 +3,7 @@
  * quote I have to enter twice to make visible. Doesn't always seem to
  * happen — maybe some sort of timing issue?"
  *
- * A `"` is Shift(held) + Quote: holding Shift pushes the "Misc 2" submenu,
+ * A `"` is Shift(held) + Quote: holding Shift pushes the Shift submenu,
  * Quote fires insertChar('"'). Typed at speed, in the release orders a real
  * typist produces.
  *

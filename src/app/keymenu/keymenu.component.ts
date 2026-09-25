@@ -419,8 +419,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.keyMenuOut.emit({kind: DACommandType.INSERT_CHAR, value: ' '}));
 
     // Shift submenu for shifted characters
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', this.buildShiftSubmenuConfig(capsMode));
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', this.buildShiftSubmenuConfig(capsMode));
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift', this.buildShiftSubmenuConfig(capsMode));
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift', this.buildShiftSubmenuConfig(capsMode));
 
     // CapsLock toggles uppercase/lowercase mode
     // With capsLockCtrlSwap: physical CapsLock sends 'Control', physical Ctrl sends 'CapsLock'
@@ -516,8 +516,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       this.clearVimOperator();
       this.keyMenuOut.emit({kind: DACommandType.CHANGE_TEXT_AT_CURSOR, motion: 'line-end'});
     }, false);
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', shift);
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', shift);
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift', shift);
 
     return config;
   }
@@ -596,8 +596,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     } as SubmenuConfig;
     (shift as any)['4'] = new LabeledAction('$ line end', emit(DACommandType.CURSOR_LINE_END));
     (shift as any)['6'] = new LabeledAction('^ line start', emit(DACommandType.CURSOR_LINE_START));
-    (config as any)['Shift'] = new LabeledSubmenuConfig('Misc 2', shift);
-    (config as any)['RShift'] = new LabeledSubmenuConfig('Misc 2', shift);
+    (config as any)['Shift'] = new LabeledSubmenuConfig('Shift', shift);
+    (config as any)['RShift'] = new LabeledSubmenuConfig('Shift', shift);
     return config;
   }
 
