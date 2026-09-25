@@ -874,11 +874,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       // Circle, and the four "Route:" entries — those were development
       // experiments, new edges auto-route, and layouts route their own
       // cross-links. The routing-eval harness is where routers get compared.
-      // Gather / Ungather went with da-529.
+      // Gather / Ungather went with da-529 and came back as one toggle on
+      // 2026-09-25 (gather-controller.ts).
       [layout.forceClear]:     new LabeledAction('Force',  emit('force-clear')),
       [layout.treeDownClear]:  new LabeledAction('Tree ↓', emit('tree-down-clear')),
       [layout.treeRightClear]: new LabeledAction('Tree →', emit('tree-right-clear')),
       [layout.radial]:         new LabeledAction('Radial', emit('radial')),
+      [layout.gather]:         new LabeledAction('Gather', () => this.keyMenuOut.emit({kind: DACommandType.GATHER})),
     } as SubmenuConfig;
   }
 

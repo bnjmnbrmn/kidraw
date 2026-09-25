@@ -90,6 +90,7 @@ import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { HistoryController, HistoryHost } from './history-controller';
+import { GatherController, GatherHost } from './gather-controller';
 import { CenterMenuService } from '../center-menu/center-menu.service';
 import { SelectDrag, SelectDragHost } from './select-drag';
 import { StyleController, StyleHost } from './style-controller';
@@ -157,6 +158,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly history = new HistoryController(this.historyHost());
   /** The held select key: select, drag, resize, area select (select-drag.ts). */
   private readonly selectDrag = new SelectDrag(this.selectDragHost());
+  /** Gather a node's neighbors around it, and put them back
+   *  (gather-controller.ts). */
+  private readonly gather = new GatherController(this.gatherHost());
   /** Yank, cut and paste of subgraphs (clipboard-controller.ts). */
   private readonly clipboard = new ClipboardController(this.clipboardHost());
   /** Sizes, shapes, edge styles, color, and the defaults new nodes and
@@ -448,7 +452,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.search.commands(), this.viewCommands(), this.selectionCommands(), this.selectDrag.commands(),
       this.structureCommands(), this.labelEdit.commands(), this.textEditor.commands(),
       this.style.commands(), this.layout.commands(), this.grow.commands(), this.fileController.commands(),
-      this.history.commands(), this.clipboard.commands(), this.shellCommands(),
+      this.history.commands(), this.clipboard.commands(), this.gather.commands(), this.shellCommands(),
     );
   }
 
@@ -759,6 +763,21 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
+  /** Lends Gather what it needs; getters, because the layers arrive in
+   *  ngAfterViewInit. */
+  private gatherHost(): GatherHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      nodeUnderCrosshairs: () => da.nodeUnderCrosshairs(),
+      finishTweens: () => da.finishTweens(),
+      rerouteIncidentEdges: nodes => da.layout.rerouteIncidentEdges(nodes),
+      frame: box => da.centerViewOnLayerPoint(
+        {x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2}, da.fitScale(box)),
+      emitStatus: message => da.emitStatus(message),
+    };
+  }
+
   /** Lends the history what it needs, through a getter so the layer can
    *  still be assigned later in ngAfterViewInit. */
   private historyHost(): HistoryHost {
@@ -776,6 +795,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       emitStatus: message => da.emitStatus(message),
       beforeGraphReplaced: () => {
         da.gestures.cancelAll();
+        da.gather.forget();
         da.labelEdit.clearLens();
       },
       afterGraphReplaced: () => {
@@ -995,7 +1015,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private fileHost(): FileHost {
     const da = this;
     return {
-      cancelGestures: () => da.gestures.cancelAll(),
+      cancelGestures: () => {
+        da.gestures.cancelAll();
+        da.gather.forget();
+      },
       choose: spec => da.centerMenus.open(spec),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },

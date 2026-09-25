@@ -22,6 +22,7 @@ import { KeyboardDrag } from './keyboard-drag';
 import { GraphSearch } from './graph-search';
 import { ClipboardController } from './clipboard-controller';
 import { HistoryController } from './history-controller';
+import { GatherController } from './gather-controller';
 import { SelectDrag } from './select-drag';
 import { StyleController } from './style-controller';
 import { LayoutController } from './layout-controller';
@@ -63,6 +64,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.keyboardDrag = new KeyboardDrag(component.keyboardDragHost());
   component.search = new GraphSearch(component.graphSearchHost());
   component.history = new HistoryController(component.historyHost());
+  component.gather = new GatherController(component.gatherHost());
   component.selectDrag = new SelectDrag(component.selectDragHost());
   component.clipboard = new ClipboardController(component.clipboardHost());
   component.style = new StyleController(component.styleHost());

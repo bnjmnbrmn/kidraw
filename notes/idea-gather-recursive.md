@@ -5,6 +5,43 @@ type: idea
 
 # Gather feature
 
+## v2, built 2026-09-25
+
+Ben asked for Gather to come back, working from the wishlist below, with best
+guesses on design (Ben, 2026-09-25). Every call here is **inferred,
+2026-09-25**, and his to overturn.
+
+What you see: hold **Layout** (`b`) and tap **`h`** (Gather) with the
+crosshairs on a node. Its neighbors, incoming and outgoing, move in around
+it. Tap it again (anywhere, or on the same node) and everything goes back,
+bends included. Tapping it on a different node puts the first gathering back
+and gathers around the new one.
+
+- **One persistent toggle**, as the 2026-07-15 section asked: no timer, no
+  separate Ungather key.
+- **"Ungathered, sucked in."** Each neighbor keeps its bearing from the
+  anchor and moves in to a ring whose radius is measured between box edges
+  (anchor, widest neighbor, a 36px gap), not center to center. Neighbors that
+  would overlap on the ring are spread around it just enough, in order.
+  (`gather-plan.ts`, pure and unit-tested.)
+- **Recursive when small.** A node with fewer than three neighbors also
+  brings its neighbors' neighbors, on a second ring outside the first.
+- **Push away.** Nodes that aren't part of it but sit inside the gathered
+  circle are pushed straight out past it, then apart from each other.
+- **Edges.** Edges within the gathering run straight; the moved nodes'
+  other edges are re-routed around what now stands in their way.
+- **It is a real change.** A gathering takes an undo step and saves if left
+  in place, like a layout, and putting back is another step. The first
+  version's automatic restore after 5 seconds and its gathering during
+  navigation are not in v2.
+- **Not yet:** animation (nodes jump), a marker that the view is gathered
+  (only the status line says so), the meta-node piles for big fans, the
+  navigation corridor, gathering around labels or waypoints, and "layout
+  this subgraph" as a general operation.
+
+Checks: `gather-plan.spec.ts`, `tools/qa/edges/gather.js`.
+
+
 > **Status (Ben, 2026-09-24):** the first implementation is being retired: its
 > commands had no key since 2026-08-29, and `gather-controller.ts` goes with
 > them. Ben wants to **return to Gather soon**. The first version "didn't

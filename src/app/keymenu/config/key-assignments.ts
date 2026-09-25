@@ -165,6 +165,8 @@ export interface KeymenuKeyAssignments {
     readonly treeDownClear: KeyString;
     readonly treeRightClear: KeyString;
     readonly radial: KeyString;
+    /** Gather the neighbors of the node under the crosshairs; again, put back. */
+    readonly gather: KeyString;
   };
   /** Agent mode (notes/idea-mcp-server.md). `chat` (open or focus the chat)
    *  and `askAboutSelection` are root taps, chosen from keys free at root in
@@ -297,7 +299,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   clipboard: {paste: 'p'},
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
-  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
+  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u', gather: 'h'},
   // m = message the agent, o = open a question about the selection;
   // Shift+O = the reverse (the agent shows you something), Shift+M = close the chat.
   agent: {chat: 'm', askAboutSelection: 'o', follow: 'o'},
@@ -405,7 +407,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   clipboard: {paste: 'p'},
   // The Layout hub is `b` (left index), so its children are right-hand keys:
   // see notes/design-chord-ergonomics.md.
-  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u'},
+  layout: {forceClear: 'k', treeDownClear: 'j', treeRightClear: 'l', radial: 'u', gather: 'h'},
   // m = message the agent, o = open a question about the selection;
   // Shift+O = the reverse (the agent shows you something), Shift+M = close the chat.
   agent: {chat: 'm', askAboutSelection: 'o', follow: 'o'},

@@ -59,6 +59,7 @@ export const SUITE = [
   { script: 'edges/arrowhead-placement.js', region: 'edges', status: 'suite' },
   { script: 'edges/layout-routing.js', region: 'edges', status: 'suite' },
   { script: 'edges/layout-clear.js', region: 'edges', status: 'suite' },
+  { script: 'edges/gather.js', region: 'edges', status: 'suite' },
   // Open, Ben's call: notes/bug-tree-fan-crossings.md.
   { script: 'edges/tree-crossings.js', region: 'edges', status: 'suite', baseline: { passed: 0, failed: 1, code: 1 } },
 

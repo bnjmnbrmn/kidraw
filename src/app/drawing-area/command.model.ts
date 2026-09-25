@@ -126,6 +126,7 @@ export enum DACommandType {
   VAULT_OPEN = 'VAULT_OPEN',
   VAULT_SAVE_AS = 'VAULT_SAVE_AS',
   CHOOSE_DIAGRAM_TYPE = 'CHOOSE_DIAGRAM_TYPE',
+  GATHER = 'GATHER',
   SEARCH_GRAPH = 'SEARCH_GRAPH',
   SEARCH_NEXT_MATCH = 'SEARCH_NEXT_MATCH',
   SEARCH_PREV_MATCH = 'SEARCH_PREV_MATCH',
@@ -230,6 +231,7 @@ export type DACommand =
   | {kind: DACommandType.VAULT_OPEN}
   | {kind: DACommandType.VAULT_SAVE_AS}
   | {kind: DACommandType.CHOOSE_DIAGRAM_TYPE}
+  | {kind: DACommandType.GATHER}
   | {kind: DACommandType.SEARCH_GRAPH}
   | {kind: DACommandType.SEARCH_NEXT_MATCH}
   | {kind: DACommandType.SEARCH_PREV_MATCH}

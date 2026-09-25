@@ -41,6 +41,7 @@ const MUTATING_COMMANDS = new Set<DACommandType>([
   DACommandType.SET_NODE_SHAPE,
   DACommandType.SET_LINE_STYLE,
   DACommandType.SET_ITEM_COLOR,
+  DACommandType.GATHER,
   DACommandType.CUT_SELECTION,
   DACommandType.PASTE_CLIPBOARD,
 ]);
