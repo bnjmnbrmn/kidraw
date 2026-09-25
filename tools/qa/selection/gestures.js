@@ -1,5 +1,5 @@
 /*
- * At most one interaction mode is on (notes/idea-interaction-modes-list.md,
+ * At most one gesture is on (notes/idea-gestures-list.md,
  * built 2026-09-24 at Ben's request): starting one stops the one that was on,
  * and replacing the graph (a load, an undo) stops whatever is on, since the
  * nodes it was aiming at are gone.
@@ -16,7 +16,7 @@ const KEYS = {up: 'k', left: 'h', down: 'j', right: 'l', cycle: 'o', newNode: 'f
 const run = (page, command) => page.evaluate(`${DA}.handleCommand(${JSON.stringify(command)})`);
 const on = page => page.evaluate(`(() => { const da = ${DA};
   return {grow: da.grow.active, link: da.linkNav.active, area: da.areaSelect.active, grid: da.navGrid.visible,
-    active: da.modes.active?.name ?? null}; })()`);
+    active: da.gestures.active?.name ?? null}; })()`);
 
 /** The basic sample, the crosshairs on its first node. */
 async function onNode(page) {

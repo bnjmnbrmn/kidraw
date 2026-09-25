@@ -67,7 +67,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.linkNav = new LinkNavController(component.linkNavHost());
   component.navGrid = new NavigationGridController(component.navigationGridHost());
   component.grow = new GrowController(component.growHost());
-  component.modes = component.interactionModes();
+  component.gestures = component.allGestures();
 
   component.goalLine = new Overlay(drawingLayer);
   component.hoverTrace = new Overlay(drawingLayer);

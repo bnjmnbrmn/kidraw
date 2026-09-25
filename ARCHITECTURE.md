@@ -85,9 +85,9 @@ component:
 - `clipboard-controller.ts` — the graph's own clipboard: yank, cut, paste.
 - `grow-controller.ts` — grow mode, the held add key: aiming on the placement
   lattice, the target search and type popups, placement, and the commits.
-- `interaction-modes.ts` — the list of interaction modes (grow, Move by Link,
-  Move by Node's held session, area select): at most one on, and all canceled
-  when the graph is replaced.
+- `gestures.ts` — the list of gestures (grow, Move by Link, Move by Node's
+  held session, area select): at most one on, and all canceled when the graph
+  is replaced. Distinct from the keymenu's modes.
 
 These are the pattern to follow when more comes out: the component lends a
 collaborator only what it needs, through getters, and keeps its own members

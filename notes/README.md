@@ -45,7 +45,7 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)
 - [Left-hand-dominant profile](idea-left-hand-profile.md)
 - [Visualize grayed-out submenu options](idea-grayed-submenu-options.md)
-- [A list of interaction modes on the drawing area](idea-interaction-modes-list.md): Ben's question whether grow, Move by Link and Move by Node should be a list of "overlays"; built 2026-09-24 as `interaction-modes.ts`
+- [A list of gestures on the drawing area](idea-gestures-list.md): Ben's question whether grow, Move by Link and Move by Node should be a list of "overlays"; built 2026-09-24, renamed from "interaction modes" to gestures 2026-09-25 (`gestures.ts`)
 - [Centered menus, and whether ex mode stays](idea-center-menus.md): Ben wants keyboard menus centered over the drawing (vault, styles, file type, Save As, settings, search placed lower), with more affordances than the ex line; needs new terminology
 - [Quick settings panel (orthogonal to keymenu modes)](idea-quick-settings-panel.md)
 - [Keymenu visual polish](idea-keymenu-visual-polish.md)

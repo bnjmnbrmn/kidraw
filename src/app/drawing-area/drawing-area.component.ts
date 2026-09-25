@@ -60,7 +60,7 @@ import {
 } from './normal-movement';
 import {caretVisibilityPanDelta} from './edit-viewport';
 import {GrowController, GrowHost} from './grow-controller';
-import {InteractionMode, InteractionModes} from './interaction-modes';
+import {Gesture, Gestures} from './gestures';
 import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
@@ -228,9 +228,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Grow mode, the held add key (grow-controller.ts). The template binds
    *  its popup. */
   protected readonly grow = new GrowController(this.growHost());
-  /** The interaction modes, at most one on (interaction-modes.ts). Move by
-   *  Node's is its held session, not the grid grow borrows while aiming. */
-  private readonly modes = this.interactionModes();
+  /** The gestures, at most one on (gestures.ts). Move by Node's is its held
+   *  session, not the grid grow borrows while aiming. */
+  private readonly gestures = this.allGestures();
 
   ngAfterViewInit(): void {
     this.stage = new Konva.Stage({
@@ -888,7 +888,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private areaSelectHost(): AreaSelectHost {
     const da = this;
     return {
-      beginMode: () => da.modes.begin(da.areaSelect.name),
+      beginGesture: () => da.gestures.begin(da.areaSelect.name),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get viewport() { return da.viewport; },
@@ -902,14 +902,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
-  /** Every interaction mode, in one list so at most one is on. */
-  private interactionModes(): InteractionModes {
-    return new InteractionModes([this.grow, this.linkNav, this.areaSelect, this.moveByNodeSession()]);
+  /** Every gesture, in one list so at most one is on. */
+  private allGestures(): Gestures {
+    return new Gestures([this.grow, this.linkNav, this.areaSelect, this.moveByNodeSession()]);
   }
 
-  /** Move by Node's held session as a mode. The grid it shows is also what
+  /** Move by Node's held session as a gesture. The grid it shows is also what
    *  grow aims across, so while grow is on this session is not. */
-  private moveByNodeSession(): InteractionMode {
+  private moveByNodeSession(): Gesture {
     const da = this;
     return {
       name: 'move-by-node',
@@ -923,7 +923,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private growHost(): GrowHost {
     const da = this;
     return {
-      beginMode: () => da.modes.begin(da.grow.name),
+      beginGesture: () => da.gestures.begin(da.grow.name),
       get drawingLayer() { return da.drawingLayer; },
       get stage() { return da.stage; },
       get camera() { return da.camera; },
@@ -961,7 +961,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private navigationGridHost(): NavigationGridHost {
     const da = this;
     return {
-      beginMode: () => da.modes.begin('move-by-node'),
+      beginGesture: () => da.gestures.begin('move-by-node'),
       get crosshairsLayer() { return da.crosshairsLayer; },
       get drawingLayer() { return da.drawingLayer; },
       get stage() { return da.stage; },
@@ -981,7 +981,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private linkNavHost(): LinkNavHost {
     const da = this;
     return {
-      beginMode: () => da.modes.begin(da.linkNav.name),
+      beginGesture: () => da.gestures.begin(da.linkNav.name),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get stage() { return da.stage; },
@@ -1018,7 +1018,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private fileHost(): FileHost {
     const da = this;
     return {
-      cancelModes: () => da.modes.cancelAll(),
+      cancelGestures: () => da.gestures.cancelAll(),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get viewport() { return da.viewport; },
@@ -2390,12 +2390,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Raw keys, for a mode that has suspended the keymenu (today, grow). */
   @HostListener('document:keydown', ['$event'])
   handleGrowKeyDown(event: KeyboardEvent): void {
-    this.modes.keyDown(event);
+    this.gestures.keyDown(event);
   }
 
   @HostListener('document:keyup', ['$event'])
   handleGrowKeyUp(event: KeyboardEvent): void {
-    this.modes.keyUp(event);
+    this.gestures.keyUp(event);
   }
 
   /** A node grow mode just added: open its label, or settle it if it has
@@ -2605,7 +2605,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private restoreHistorySnapshot(snapshot: GraphSnapshot): void {
-    this.modes.cancelAll();
+    this.gestures.cancelAll();
     this.clearLabelEditGhost();
     this.drawingLayer.restoreGraph(snapshot);
     this.drawingLayer.batchDraw();

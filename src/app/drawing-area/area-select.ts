@@ -10,7 +10,7 @@
  * The anchor is kept in drawing-layer coordinates and the marquee is drawn on
  * the crosshairs layer, so panning part-way through stays true.
  */
-import type { InteractionMode } from './interaction-modes';
+import type { Gesture } from './gestures';
 import Konva from 'konva';
 import { Axis } from './axis';
 import type { CrosshairsLayer } from './crosshairs.layer';
@@ -26,8 +26,8 @@ import type { Viewport } from './viewport';
 
 /** What area select needs from the drawing area. */
 export interface AreaSelectHost {
-  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
-  beginMode(): void;
+  /** This gesture is starting: whichever other gesture is on stops (gestures.ts). */
+  beginGesture(): void;
   readonly drawingLayer: DrawingLayer;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly viewport: Viewport;
@@ -55,7 +55,7 @@ interface LayerRect {
  *  view pans instead. */
 const EDGE_MARGIN = 60;
 
-export class AreaSelect implements InteractionMode {
+export class AreaSelect implements Gesture {
   readonly name = 'area-select';
   private anchor: Point | null = null;
   private readonly captured = new Set<Selectable>();
@@ -70,7 +70,7 @@ export class AreaSelect implements InteractionMode {
 
   /** Anchor a new box at the crosshairs. */
   begin(): void {
-    this.host.beginMode();
+    this.host.beginGesture();
     this.anchor = this.host.crosshairsInLayerCoords();
     this.captured.clear();
     this.refreshMarquee();

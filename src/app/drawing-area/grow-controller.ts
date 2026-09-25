@@ -26,7 +26,7 @@ import type { DAEdge } from './da-edge';
 import type { DALabel } from './da-label';
 import type { DANode } from './da-node';
 import type { DAWaypoint } from './da-waypoint';
-import type { InteractionMode } from './interaction-modes';
+import type { Gesture } from './gestures';
 import type { KeyboardSurface } from './da-notification.model';
 import type { DrawingLayer } from './drawing.layer';
 import { buildGrowGhostTargets, GrowGhostNodeCenter, GrowGhostTarget } from './grow-ghost-targets';
@@ -50,8 +50,8 @@ export interface GrowKeys {
 
 /** What grow mode needs from the drawing area. */
 export interface GrowHost {
-  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
-  beginMode(): void;
+  /** This gesture is starting: whichever other gesture is on stops (gestures.ts). */
+  beginGesture(): void;
   readonly drawingLayer: DrawingLayer;
   readonly stage: Konva.Stage;
   readonly camera: Camera;
@@ -101,7 +101,7 @@ export interface GrowPopup {
   listKeys: {up: string; down: string};
 }
 
-export class GrowController implements InteractionMode {
+export class GrowController implements Gesture {
   readonly name = 'grow';
   active = false;
   anchor: DANode | null = null;
@@ -165,7 +165,7 @@ export class GrowController implements InteractionMode {
     const hasEdge = this.host.edgesUnderCrosshairs().length > 0;
     const hasWaypoint = !!this.host.waypointUnderCrosshairs();
     if (hasLabel || (nodes.length === 0 && (hasEdge || hasWaypoint))) return;
-    this.host.beginMode();
+    this.host.beginGesture();
     this.host.finishTweens();
     this.active = true;
     this.anchor = topmost(nodes);

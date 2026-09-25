@@ -1,4 +1,4 @@
-import type {InteractionMode} from './interaction-modes';
+import type {Gesture} from './gestures';
 import Konva from 'konva';
 import {DACommandType} from './command.model';
 import type {CommandSlice} from './command-handlers';
@@ -25,8 +25,8 @@ import {
 } from './graph-nav';
 
 export interface LinkNavHost {
-  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
-  beginMode(): void;
+  /** This gesture is starting: whichever other gesture is on stops (gestures.ts). */
+  beginGesture(): void;
   readonly drawingLayer: DrawingLayer;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly stage: Konva.Stage;
@@ -59,7 +59,7 @@ export interface LinkNavHost {
  * Where it has been lives in `NavJourney`, not here: the nav popup is the
  * other surface onto the same walk.
  */
-export class LinkNavController implements InteractionMode {
+export class LinkNavController implements Gesture {
   readonly name = 'move-by-link';
   /** The node the held session is scanning from; null when not held. */
   private source: DANode | null = null;
@@ -93,7 +93,7 @@ export class LinkNavController implements InteractionMode {
 
   /** Begin a held session at the node under the crosshairs. */
   enter(): void {
-    this.host.beginMode();
+    this.host.beginGesture();
     this.host.finishTweens();
     const underCrosshairs = topmost(this.host.probe.nodes());
     const source = underCrosshairs ?? this.nearestNodeToCrosshairs();

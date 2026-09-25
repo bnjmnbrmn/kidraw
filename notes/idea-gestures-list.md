@@ -1,12 +1,26 @@
 ---
-title: A list of interaction modes on the drawing area
+title: A list of gestures on the drawing area
 type: idea
 status: built 2026-09-24 (Ben: "go ahead and build this")
 ---
 
-# A list of interaction modes on the drawing area
+# A list of gestures on the drawing area
 
-> **Built (Ben, 2026-09-24: "go ahead and build this").** `interaction-modes.ts`
+> **Renamed 2026-09-25: "interaction modes" → "gestures".** Ben asked
+> whether "interaction modes" would be confused with the keymenu's modes
+> (Ben, 2026-09-25). It would: `lib/keymenu/keyMenuMode.ts` already defines
+> `KeyMenuMode` (normal, label edit, caps), and "mode" is what the keymenu's
+> caption shows. The name "gestures" was picked by the agent (inferred,
+> 2026-09-25), Ben's to overturn: each of these is something you start that
+> outlives a keystroke, and "gesture" is not used for anything else in the
+> code. `interaction-modes.ts` → `gestures.ts`, `InteractionMode` →
+> `Gesture`, `InteractionModes` → `Gestures`, the hosts' `beginMode` →
+> `beginGesture`, and `tools/qa/selection/interaction-modes.js` →
+> `gestures.js`. Controllers keep their own names ("grow mode" is still what
+> the grow controller calls itself). Text below keeps the old name where it
+> records what was said at the time.
+
+> **Built (Ben, 2026-09-24: "go ahead and build this").** `interaction-modes.ts` (now `gestures.ts`)
 > holds the list: grow, Move by Link, area select, and Move by Node's held
 > session. A mode starting cancels the one that is on; a load, a sample and
 > an undo or redo cancel whatever is on; raw keys go to the active mode.

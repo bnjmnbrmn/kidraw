@@ -30,8 +30,8 @@ export interface NavStopRef {
 
 /** What move-by-node needs from the drawing area that owns it. */
 export interface NavigationGridHost {
-  /** This mode is starting: whichever other mode is on stops (interaction-modes.ts). */
-  beginMode(): void;
+  /** This gesture is starting: whichever other gesture is on stops (gestures.ts). */
+  beginGesture(): void;
   readonly crosshairsLayer: CrosshairsLayer;
   readonly drawingLayer: DrawingLayer;
   readonly stage: Konva.Stage;
@@ -89,7 +89,7 @@ export class NavigationGridController {
   /** The held Move by Node session, as its key starts it. Grow shows the same
    *  grid while aiming, directly, and is not a session of this mode. */
   private beginSession(targets: NavTargetKind): void {
-    this.host.beginMode();
+    this.host.beginGesture();
     this.showNodeGrid(targets);
   }
 
