@@ -42,13 +42,13 @@ async function main() {
     da.drawingLayer.position({x: 0, y: 0});
     da.drawingLayer.scale({x: 1, y: 1});
     // Start on where the origin node actually renders, not the fixture's
-    // nominal centre: nodes auto-size to their labels, so parking on the
+    // nominal center: nodes auto-size to their labels, so parking on the
     // nominal coordinate captures a quadrant origin a few pixels off every
     // real stop.
     const originNode = da.drawingLayer.getDANodes().find(n => n.id === 'origin');
-    const originCentre = da.getNodeCenterInStageCoordinates(originNode);
-    da.crosshairsLayer.crosshairs.x = originCentre.x;
-    da.crosshairsLayer.crosshairs.y = originCentre.y;
+    const originCenter = da.getNodeCenterInStageCoordinates(originNode);
+    da.crosshairsLayer.crosshairs.x = originCenter.x;
+    da.crosshairsLayer.crosshairs.y = originCenter.y;
     da.drawingLayer.batchDraw();
   });
 
@@ -178,20 +178,20 @@ async function main() {
     `${first} → ${second}`);
   const allStartAt = (starts, x, y) => starts.length === 4 &&
     starts.every(([sx, sy]) => Math.abs(sx - x) < 2 && Math.abs(sy - y) < 2);
-  const ghostCentres = await page.evaluate(() => {
+  const ghostCenters = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const centre = id => {
+    const center = id => {
       const n = da.drawingLayer.getDANodes().find(n => n.id === id);
       return n ? da.getNodeCenterInStageCoordinates(n) : null;
     };
-    return {east1: centre('east-1'), east2: centre('east-2')};
+    return {east1: center('east-1'), east2: center('east-2')};
   });
   check('only the pronounced ghost diagonals follow the crosshairs',
-    allStartAt(firstFrames.ghost, ghostCentres.east1.x, ghostCentres.east1.y) &&
-      allStartAt(secondFrames.ghost, ghostCentres.east2.x, ghostCentres.east2.y) &&
+    allStartAt(firstFrames.ghost, ghostCenters.east1.x, ghostCenters.east1.y) &&
+      allStartAt(secondFrames.ghost, ghostCenters.east2.x, ghostCenters.east2.y) &&
       firstFrames.activeBoundaries.length === 0 &&
       secondFrames.activeBoundaries.length === 0,
-    JSON.stringify({firstFrames, secondFrames, ghostCentres}));
+    JSON.stringify({firstFrames, secondFrames, ghostCenters}));
   check('the active quadrant wash remains above the faint movement grid',
     firstFrames.activeQuadrants.length === 1 &&
       secondFrames.activeQuadrants.length === 1 &&
@@ -232,22 +232,22 @@ async function main() {
   const originAfterTurn = await page.evaluate(() =>
     window.ng.getComponent(document.querySelector('app-drawing-area')).navGrid.quadrantOriginInStage());
   // Compare against where those nodes actually render, not the fixture's
-  // nominal centres — they auto-size to their labels.
-  const originCentres = await page.evaluate(() => {
+  // nominal centers — they auto-size to their labels.
+  const originCenters = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const centre = id => {
+    const center = id => {
       const n = da.drawingLayer.getDANodes().find(n => n.id === id);
       return n ? da.getNodeCenterInStageCoordinates(n) : null;
     };
-    return {origin: centre('origin'), west3: centre('west-3')};
+    return {origin: center('origin'), west3: center('west-3')};
   });
-  const nearCentre = (a, b) => a && b && Math.abs(a.x - b.x) < 2 && Math.abs(a.y - b.y) < 2;
+  const nearCenter = (a, b) => a && b && Math.abs(a.x - b.x) < 2 && Math.abs(a.y - b.y) < 2;
   check('h h h j re-origins at the third landing, then moves down',
     left1 === 'west-1' && left2 === 'west-2' && left3 === 'west-3' &&
       downAfterTurn === 'turn-down' &&
-      nearCentre(originBeforeTurn, originCentres.origin) &&
-      nearCentre(originAfterTurn, originCentres.west3),
-    JSON.stringify({left1, left2, left3, downAfterTurn, originBeforeTurn, originAfterTurn, originCentres}));
+      nearCenter(originBeforeTurn, originCenters.origin) &&
+      nearCenter(originAfterTurn, originCenters.west3),
+    JSON.stringify({left1, left2, left3, downAfterTurn, originBeforeTurn, originAfterTurn, originCenters}));
 
   const beforePan = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));

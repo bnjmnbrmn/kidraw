@@ -290,7 +290,7 @@ export class VaultService {
       await idbPutHandle(handle);
       this.setStatus('connected');
     } catch {
-      // User cancelled the picker — status unchanged.
+      // User canceled the picker — status unchanged.
     }
     return this._status;
   }

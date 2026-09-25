@@ -1,6 +1,6 @@
 import type {GrowGhostNodeCenter, GrowGhostTarget} from './grow-ghost-targets';
 import {
-  cellCentre,
+  cellCenter,
   GrowHopRequest,
   latticeCellOfId,
   latticeCellOfNode,
@@ -16,7 +16,7 @@ const ANCHOR = {x: 1000, y: 1000};
 function spot(ix: number, iy: number): GrowGhostTarget {
   return {
     id: `grow-ghost:grid:${ix}:${iy}`,
-    ...cellCentre(ANCHOR, {ix, iy}, STEP),
+    ...cellCenter(ANCHOR, {ix, iy}, STEP),
     source: 'grid',
   };
 }
@@ -30,8 +30,8 @@ function request(over: Partial<GrowHopRequest> = {}): GrowHopRequest {
   return {
     direction: 'right',
     fromTargetId: null,
-    fromNodeCentre: null,
-    anchorCentre: ANCHOR,
+    fromNodeCenter: null,
+    anchorCenter: ANCHOR,
     step: STEP,
     targets: [spot(1, 0), spot(-1, 0), spot(0, 1), spot(0, -1), spot(1, 1)],
     nodes: [],
@@ -56,23 +56,23 @@ describe('grow lattice', () => {
 
   describe('which cell a node stands on', () => {
     it('takes a node sitting on a cell', () => {
-      const centre = cellCentre(ANCHOR, {ix: 2, iy: -1}, STEP);
-      expect(latticeCellOfNode(centre, ANCHOR, STEP)).toEqual({ix: 2, iy: -1});
+      const center = cellCenter(ANCHOR, {ix: 2, iy: -1}, STEP);
+      expect(latticeCellOfNode(center, ANCHOR, STEP)).toEqual({ix: 2, iy: -1});
     });
 
     it('still takes one a little off it', () => {
-      const centre = cellCentre(ANCHOR, {ix: 1, iy: 0}, STEP);
-      expect(latticeCellOfNode({x: centre.x + 90, y: centre.y}, ANCHOR, STEP))
+      const center = cellCenter(ANCHOR, {ix: 1, iy: 0}, STEP);
+      expect(latticeCellOfNode({x: center.x + 90, y: center.y}, ANCHOR, STEP))
         .toEqual({ix: 1, iy: 0});
     });
 
     // The ON_CELL_TOLERANCE guard cannot currently reject: rounding already
     // bounds each axis at half a step. A node well off the lattice is still
-    // assigned its nearest cell, which this pins as the behaviour that is —
-    // not as the behaviour that is wanted. See the constant's comment.
+    // assigned its nearest cell, which this pins as the behavior that is —
+    // not as the behavior that is wanted. See the constant's comment.
     it('assigns the nearest cell however far off the lattice the node is', () => {
-      const centre = cellCentre(ANCHOR, {ix: 1, iy: 0}, STEP);
-      expect(latticeCellOfNode({x: centre.x + 140, y: centre.y + 95}, ANCHOR, STEP))
+      const center = cellCenter(ANCHOR, {ix: 1, iy: 0}, STEP);
+      expect(latticeCellOfNode({x: center.x + 140, y: center.y + 95}, ANCHOR, STEP))
         .toEqual({ix: 1, iy: 0});
     });
 
@@ -100,7 +100,7 @@ describe('grow lattice', () => {
       expect(hop).toEqual({kind: 'cell', target: spot(2, 0)});
     });
 
-    it('reaches a diagonal spot from its orthogonal neighbour', () => {
+    it('reaches a diagonal spot from its orthogonal neighbor', () => {
       const hop = planGrowHop(request({
         fromTargetId: spot(1, 0).id,
         direction: 'down',
@@ -112,7 +112,7 @@ describe('grow lattice', () => {
 
     it('takes a node standing on the cell the lattice therefore withheld', () => {
       const occupier = box('occupier', ...Object.values(
-        cellCentre(ANCHOR, {ix: 1, iy: 0}, STEP)) as [number, number]);
+        cellCenter(ANCHOR, {ix: 1, iy: 0}, STEP)) as [number, number]);
 
       const hop = planGrowHop(request({direction: 'right', targets: [], nodes: [occupier]}));
 
@@ -145,7 +145,7 @@ describe('grow lattice', () => {
     it('gives up when the aim is on a node sitting in the anchor\'s own cell', () => {
       const onTopOfTheAnchor = {x: ANCHOR.x + 137, y: ANCHOR.y + 93};
 
-      expect(planGrowHop(request({fromNodeCentre: onTopOfTheAnchor}))).toBeNull();
+      expect(planGrowHop(request({fromNodeCenter: onTopOfTheAnchor}))).toBeNull();
     });
   });
 

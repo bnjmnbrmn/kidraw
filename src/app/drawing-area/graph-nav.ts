@@ -274,7 +274,7 @@ export function navCandidatesFor(source: DANode): NavCandidate[] {
 /** Each candidate as the direction it leaves `source` in — what the quadrant
  *  keys steer by, on both navigation surfaces. The edge's own end stub is the
  *  truth, since a routed edge can leave at an angle nothing else predicts; a
- *  straight line between the two centres is the fallback for an edge with no
+ *  straight line between the two centers is the fallback for an edge with no
  *  usable path, and null when the two sit on each other. */
 export function linkDirectionsFrom(
   source: DANode,

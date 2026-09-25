@@ -1,7 +1,7 @@
 /**
  * The caret must sit where the text is painted.
  *
- * This is the 2026-08-30 bug generalised: the label moved inside the box
+ * This is the 2026-08-30 bug generalized: the label moved inside the box
  * (padding, and the inscribed rectangle for circles) and the caret model
  * kept measuring against the node's width, so the caret drew mid-word and
  * would not walk past the end of a line that only the measurement believed
@@ -45,7 +45,7 @@ describe('caret geometry follows the painted text', () => {
           if (!line) return;                       // nothing painted, nothing to check
           const l = node.label;
           // An unbreakable word wider than the label overflows its box; the
-          // centring maths cannot put the caret at its end and still be
+          // centering maths cannot put the caret at its end and still be
           // inside. Out of scope here, like clipping.
           if (line.width > l.width()) return;
           const expected = l.x() + (l.width() - line.width) / 2 + line.width;

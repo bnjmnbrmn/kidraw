@@ -20,7 +20,7 @@
  *       - {label: Done, set: column/done, key: l}
  *       - {label: No Column, clear: column}
  *
- * Checked strictly — unknown fields, bad colours and tags that no group has
+ * Checked strictly — unknown fields, bad colors and tags that no group has
  * are errors, all of them reported at once — because the file comes from
  * outside the build.
  */

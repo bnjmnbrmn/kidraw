@@ -13,7 +13,7 @@ an edge first", "⚠ Task statuses need a Todo Graph"), the snapshot stays on th
 stack, and the next undo restores a graph identical to the current one.
 
 Seen in the browser (inferred, 2026-09-23 — from a probe that counted undo
-entries and compared the serialised graph before and after):
+entries and compared the serialized graph before and after):
 
 | Command, refused | Graph changed | Undo entries added |
 |---|---|---|
@@ -33,7 +33,7 @@ net. This note is what that fix deliberately left alone.
 
 1. **Drop a snapshot that changed nothing.** After the command runs, compare
    the graph with the snapshot just taken and pop it if they match. General
-   and small; costs a second serialisation per mutating command (text edits
+   and small; costs a second serialization per mutating command (text edits
    and drags already coalesce to one snapshot per session).
 2. **Let each command say whether it acted.** Handlers return whether they
    changed anything, and the policy snapshots lazily. Precise, but touches
@@ -51,7 +51,7 @@ Option 1 is the cheapest now, and option 3 makes it unnecessary later
 
 ## What was done
 
-Ben left it to judgement (Ben, 2026-09-23: "Use your best judgement"). Done
+Ben left it to judgment (Ben, 2026-09-23: "Use your best judgment"). Done
 as a fourth option, **skip at undo time**: `UndoRedoService.undo` and `redo`
 drop snapshot steps identical to the graph as it is before taking a step, so
 one press always reverts something (inferred, 2026-09-23 — chosen over option

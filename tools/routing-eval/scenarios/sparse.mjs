@@ -23,7 +23,7 @@ import { placeNode, connect } from './_helpers.mjs';
 // (We considered keeping the original "long-span corner-to-corner"
 // edges, but at 4x3 the full diagonal slope 2/3 passes through both
 // middle-row node bboxes regardless of grid spacing, since the geometric
-// centre of the diagonal coincides with the centre of the grid. The
+// center of the diagonal coincides with the center of the grid. The
 // knight-move alternative gives medium-length spans that are genuinely
 // unobstructed.)
 

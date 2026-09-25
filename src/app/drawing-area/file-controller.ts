@@ -462,7 +462,7 @@ export class FileController {
     const listing = files.map((f, i) => `${i + 1}. ${f}`).join('\n');
     const entered = window.prompt(`Open from vault (number or name):\n${listing}`, files[0]);
     if (!entered || entered.trim() === '') {
-      this.host.log.log('[vault] open cancelled');
+      this.host.log.log('[vault] open canceled');
       return;
     }
     const trimmed = entered.trim();
@@ -674,7 +674,7 @@ export class FileController {
   }
 
   /** Put a whole new graph on the canvas: nothing left in flight, no undo
-   *  history from the last one, the theme's colours. */
+   *  history from the last one, the theme's colors. */
   private replaceGraph(snapshot: GraphSnapshot): void {
     this.host.cancelModes();
     this.host.finishTweens();

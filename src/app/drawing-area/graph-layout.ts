@@ -1058,7 +1058,7 @@ function radialLayout(
   cx /= allNodes.length;
   cy /= allNodes.length;
 
-  // Only use the centre point when there's a single root; otherwise shift every
+  // Only use the center point when there's a single root; otherwise shift every
   // level out by one ring so multiple level-0 nodes don't stack at (cx, cy).
   const hasUniqueCenter = (levels.get(0)?.length ?? 0) === 1;
 

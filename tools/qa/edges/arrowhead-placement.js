@@ -36,7 +36,7 @@ async function main() {
     const dx = dest.group.x() + dest.NODE_WIDTH / 2;
     const dy = dest.group.y() + dest.NODE_HEIGHT / 2;
 
-    // One waypoint, `offset` px to the left of the destination centre.
+    // One waypoint, `offset` px to the left of the destination center.
     edge.setControlPoints([{x: dx + offset, y: dy}]);
     edge.refreshGeometry();
     dl.batchDraw();
@@ -71,7 +71,7 @@ async function main() {
     };
   }, offset);
 
-  console.log('waypoint offset from destination centre → geometry:');
+  console.log('waypoint offset from destination center → geometry:');
   const results = [];
   for (const offset of [-300, -200, -120, -60, -30, -10, 0, 10, 30]) {
     const r = await probe(offset);

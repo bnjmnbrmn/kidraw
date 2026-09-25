@@ -62,7 +62,7 @@ describe('DANode markdown labels', () => {
     expect(richTexts(node).map(t => t.text())).toEqual(['a ', 'b', ' c']);
   });
 
-  it('draws math as an image that makes its line taller, and colours the TeX while editing', async () => {
+  it('draws math as an image that makes its line taller, and colors the TeX while editing', async () => {
     await loadMath();
     // A larger font, so one line of text clears the node's minimum height.
     const markdownNode = (text: string) => {

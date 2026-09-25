@@ -18,17 +18,17 @@ A plugin written this way is a **diagram type**: switch a graph to it with
 | `labels` | `plain` (the default) or `markdown` — markdown labels need the Markdown plugin, and get math when Math is on. |
 | `nodes` | Defaults for the nodes you add: `shape` (box, circle, diamond) — unless you pick another with the insert-with-shape submenu, or set your own default by choosing a shape with nothing selected and nothing under the crosshairs — `width`, `height`, `fontSize`, `textOverflow` (clip, shrink-font, ellipsis, widen-h, widen-v, widen-both, fit). With `fit`, the default, `width` is the widest a node grows before its text wraps, not a fixed size. |
 | `tagGroups` | Families of tags a node carries at most one of, each drawn as a badge: `id`, `name`, and `choices` of `{tag, label, color, dims?}`. `dims: true` fades the node and strikes its label through. |
-| `edgeKinds` | Kinds of edge, drawn in their own colour: `{tag, name, color, description, faint?}`. |
-| `nodeKinds` | Kinds of node, drawn with their colour and name: `{tag, name, color, description}`. |
+| `edgeKinds` | Kinds of edge, drawn in their own color: `{tag, name, color, description, faint?}`. |
+| `nodeKinds` | Kinds of node, drawn with their color and name: `{tag, name, color, description}`. |
 | `menu` | Its menu on root `t`: entries `{label, set: <tag>}` to give the selected nodes a tag (replacing the rest of its group), or `{label, clear: <group>}` to take the group's tag off. `key` suggests a key. |
 
-Tags are `family/name` (`column/doing`); colours are `#rgb` or `#rrggbb`.
+Tags are `family/name` (`column/doing`); colors are `#rgb` or `#rrggbb`.
 
 **Keys** follow one rule: never clash, be ergonomic, be memorable — in that
 order. Menu entries take the right hand's keys under `t` (home row first), and
 a suggested `key` is used when it is one of those and free.
 
-**Checked strictly.** A field KiDraw does not know, a bad colour, or a menu
+**Checked strictly.** A field KiDraw does not know, a bad color, or a menu
 entry naming a tag no group has is an error, and every error is reported
 together — the file comes from outside the app.
 

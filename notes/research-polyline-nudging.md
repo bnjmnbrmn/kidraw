@@ -23,7 +23,7 @@ When you shift a segment perpendicularly, both its endpoints move, deforming adj
 
 ## Hard part 2 — iterative instability
 
-Nudging one segment can cause a formerly non-overlapping neighbour to now overlap something else. Naive single-pass nudging doesn't converge.
+Nudging one segment can cause a formerly non-overlapping neighbor to now overlap something else. Naive single-pass nudging doesn't converge.
 
 **Plan.** Explore both:
 
@@ -37,7 +37,7 @@ True collinear overlap is rare; more often you have near-parallel visually-clutt
 **Plan:**
 
 - Ensure a reasonable maximum distance between any two segments (hard upper bound on crowding).
-- **Dynamic spacing in navigate-by-graph mode.** When an edge is selected, angular neighbours (edges adjacent in clockwise order around the shared node) get more space; distant edges get compressed — a focus + context distortion applied to angular spacing. Example: 10 edges numbered 0–9 clockwise; edge 3 selected → spread 2 / 3 / 4 apart, compress 7 / 8 / 9 together. Prioritises legibility where the user's attention is at the cost of compressing the far side.
+- **Dynamic spacing in navigate-by-graph mode.** When an edge is selected, angular neighbors (edges adjacent in clockwise order around the shared node) get more space; distant edges get compressed — a focus + context distortion applied to angular spacing. Example: 10 edges numbered 0–9 clockwise; edge 3 selected → spread 2 / 3 / 4 apart, compress 7 / 8 / 9 together. Prioritizes legibility where the user's attention is at the cost of compressing the far side.
 
 ## Performance
 

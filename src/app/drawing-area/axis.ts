@@ -60,7 +60,7 @@ export class Axis {
     if (this.horizontal) node.group.x(to); else node.group.y(to);
   }
 
-  /** Half the node's extent along this axis: centre minus corner. */
+  /** Half the node's extent along this axis: center minus corner. */
   halfExtent(node: DANode): number {
     return this.pick(node.NODE_WIDTH, node.NODE_HEIGHT) / 2;
   }

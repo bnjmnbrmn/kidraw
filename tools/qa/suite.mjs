@@ -31,7 +31,7 @@ export const SUITE = [
   { script: 'grid-overlay/nav-tiers.js', region: 'grid-overlay', status: 'suite' },
   { script: 'grid-overlay/normal-movement-goal.js', region: 'grid-overlay', status: 'suite' },
 
-  // ── Nav popup and view centring (~365-1667, ~3979-4518) ──
+  // ── Nav popup and view centering (~365-1667, ~3979-4518) ──
   { script: 'nav-popup/nav-margin.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-crosshairs.js', region: 'nav-popup', status: 'suite' },
   { script: 'nav-popup/recenter-view.js', region: 'nav-popup', status: 'suite' },
@@ -96,7 +96,7 @@ export const SUITE = [
   { script: 'graph-types/ai-chat-plugin.js', region: 'graph-types', status: 'suite' },
   { script: 'graph-types/type-node-defaults.js', region: 'graph-types', status: 'suite' },
 
-  // ── Style: sizes, shapes, edge styles, colour, and the defaults ──
+  // ── Style: sizes, shapes, edge styles, color, and the defaults ──
   { script: 'style/style-commands.js', region: 'style', status: 'suite' },
 
   // ── Agent mode: the canvas surface, without an agent server ──

@@ -16,7 +16,7 @@ function hostFor(drawingLayer: DrawingLayer, resizeReflowGap = 16): TextEditingH
 }
 
 describe('TextEditingController growth geometry', () => {
-  it('grows an edited node about its centre and off its neighbours', () => {
+  it('grows an edited node about its center and off its neighbors', () => {
     const drawingLayer = new DrawingLayer();
     const anchorNode = new DANode(400, 400, 'anchor');
     const editing = new DANode(400, 200, 'x');
@@ -24,7 +24,7 @@ describe('TextEditingController growth geometry', () => {
     drawingLayer.addRawNode(editing);
     const text = new TextEditingController(hostFor(drawingLayer));
 
-    const centre = {
+    const center = {
       x: editing.konvaGroup.x() + editing.NODE_WIDTH / 2,
       y: editing.konvaGroup.y() + editing.NODE_HEIGHT / 2,
     };
@@ -32,7 +32,7 @@ describe('TextEditingController growth geometry', () => {
     // enough to swallow the node below it.
     editing.resizeBy(300);
 
-    text.settleGrowingNodes([editing], new Map([[editing, centre]]));
+    text.settleGrowingNodes([editing], new Map([[editing, center]]));
 
     const box = (n: DANode) => ({
       x: n.konvaGroup.x(), y: n.konvaGroup.y(), w: n.NODE_WIDTH, h: n.NODE_HEIGHT,
@@ -52,14 +52,14 @@ describe('TextEditingController growth geometry', () => {
     drawingLayer.addRawNode(editing);
     const text = new TextEditingController(hostFor(drawingLayer));
 
-    const centre = {
+    const center = {
       x: editing.konvaGroup.x() + editing.NODE_WIDTH / 2,
       y: editing.konvaGroup.y() + editing.NODE_HEIGHT / 2,
     };
     const before = {x: editing.konvaGroup.x(), y: editing.konvaGroup.y()};
     editing.resizeBy(300);
 
-    text.settleGrowingNodes([editing], new Map([[editing, centre]]));
+    text.settleGrowingNodes([editing], new Map([[editing, center]]));
 
     expect(editing.konvaGroup.x()).toBe(before.x);
     expect(editing.konvaGroup.y()).toBe(before.y);

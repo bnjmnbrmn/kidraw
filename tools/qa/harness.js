@@ -13,7 +13,7 @@
  * state instead and return the moment it stops moving.
  *
  * Sleeps that remain in a script should be the ones *testing* time-based
- * behaviour — a key-repeat cadence, a fade timeout, a reveal delay. Those are
+ * behavior — a key-repeat cadence, a fade timeout, a reveal delay. Those are
  * the subject of the test, not a guess about scheduling.
  */
 const { chromium } = require('@playwright/test');

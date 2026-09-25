@@ -32,11 +32,11 @@ export interface GrowHopRequest {
   direction: HopDirection;
   /** The lattice target the aim is on, if it is on one. */
   fromTargetId: string | null;
-  /** The centre of the node the aim is on, if it is on one. Neither set means
+  /** The center of the node the aim is on, if it is on one. Neither set means
    *  the aim is still on the anchor itself. */
-  fromNodeCentre: Point | null;
-  anchorCentre: Point;
-  /** Centre-to-centre distance of one cell, per axis. */
+  fromNodeCenter: Point | null;
+  anchorCenter: Point;
+  /** Center-to-center distance of one cell, per axis. */
   step: Point;
   targets: readonly GrowGhostTarget[];
   /** Every node except the anchor. */
@@ -78,25 +78,25 @@ export function latticeCellOfId(id: string | null | undefined): LatticeCell | nu
  *  walking from. The anchor's own cell does not count: it is where the walk
  *  started, not a spot it can step off again. */
 export function latticeCellOfNode(
-  centre: Point,
-  anchorCentre: Point,
+  center: Point,
+  anchorCenter: Point,
   step: Point,
 ): LatticeCell | null {
-  const ix = Math.round((centre.x - anchorCentre.x) / step.x);
-  const iy = Math.round((centre.y - anchorCentre.y) / step.y);
+  const ix = Math.round((center.x - anchorCenter.x) / step.x);
+  const iy = Math.round((center.y - anchorCenter.y) / step.y);
   if (!ix && !iy) return null;
   const off = Math.max(
-    Math.abs(centre.x - anchorCentre.x - ix * step.x) / step.x,
-    Math.abs(centre.y - anchorCentre.y - iy * step.y) / step.y,
+    Math.abs(center.x - anchorCenter.x - ix * step.x) / step.x,
+    Math.abs(center.y - anchorCenter.y - iy * step.y) / step.y,
   );
   return off <= ON_CELL_TOLERANCE ? {ix, iy} : null;
 }
 
 /** Where a cell sits, whether or not the lattice offered it. */
-export function cellCentre(anchorCentre: Point, cell: LatticeCell, step: Point): Point {
+export function cellCenter(anchorCenter: Point, cell: LatticeCell, step: Point): Point {
   return {
-    x: anchorCentre.x + cell.ix * step.x,
-    y: anchorCentre.y + cell.iy * step.y,
+    x: anchorCenter.x + cell.ix * step.x,
+    y: anchorCenter.y + cell.iy * step.y,
   };
 }
 
@@ -113,18 +113,18 @@ export function cellCentre(anchorCentre: Point, cell: LatticeCell, step: Point):
  *
  * Aiming at a node is not the end of the walk: the node stands on (or near) a
  * cell of the same lattice, so pressing on from it carries on across the grid.
- * Otherwise a spot behind a neighbour could not be reached at all, and a
- * diagonal one only ever through its orthogonal neighbours.
+ * Otherwise a spot behind a neighbor could not be reached at all, and a
+ * diagonal one only ever through its orthogonal neighbors.
  */
 export function planGrowHop(request: GrowHopRequest): GrowHop | null {
-  const {direction, anchorCentre, step, targets, nodes, newNodeHalf} = request;
+  const {direction, anchorCenter, step, targets, nodes, newNodeHalf} = request;
   const from = currentCell(request);
   if (!from) return null;
 
   const unit = UNIT[direction];
   const to = {ix: from.ix + unit.x, iy: from.iy + unit.y};
-  const at = cellCentre(anchorCentre, to, step);
-  const here = aimCentre(request);
+  const at = cellCenter(anchorCenter, to, step);
+  const here = aimCenter(request);
 
   // A node between here and there wins: connecting two nodes must not mean
   // walking past one of them because a placement spot lay beyond it.
@@ -145,19 +145,19 @@ export function planGrowHop(request: GrowHopRequest): GrowHop | null {
  *  lattice spot nor a node. */
 function currentCell(request: GrowHopRequest): LatticeCell | null {
   if (request.fromTargetId) return latticeCellOfId(request.fromTargetId);
-  if (request.fromNodeCentre) {
-    return latticeCellOfNode(request.fromNodeCentre, request.anchorCentre, request.step);
+  if (request.fromNodeCenter) {
+    return latticeCellOfNode(request.fromNodeCenter, request.anchorCenter, request.step);
   }
   return {ix: 0, iy: 0};
 }
 
 /** Where the aim is, in layer coordinates. */
-function aimCentre(request: GrowHopRequest): Point {
+function aimCenter(request: GrowHopRequest): Point {
   if (request.fromTargetId) {
     const target = request.targets.find(t => t.id === request.fromTargetId);
     if (target) return {x: target.x, y: target.y};
   }
-  return request.fromNodeCentre ?? request.anchorCentre;
+  return request.fromNodeCenter ?? request.anchorCenter;
 }
 
 /**

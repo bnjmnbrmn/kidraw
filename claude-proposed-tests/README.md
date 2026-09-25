@@ -18,7 +18,7 @@ There is a companion set of runnable tests in this folder — see
 | Shift+U did Undo (2026-08-29) | Submenu opens on a ~350ms hold; a fast chord fell through to the root binding | **Timing-dependent input semantics** |
 | Placement "feels too far" (da-369, da-559) | Absolute slot constants, blind to node size, plus grid rounding | **Absolute numbers in a relative world** |
 | `z` untypeable in a label (2026-08-29) | A global intercept ahead of every binding | **Global interception with no mode guard** |
-| da-345 "missed" | Implemented for one of two paths; the repro drove that path | **Two routes to one behaviour, one tested** |
+| da-345 "missed" | Implemented for one of two paths; the repro drove that path | **Two routes to one behavior, one tested** |
 | Three crossings | Layout's own objective skips edge pairs sharing an endpoint | **The measurement excluded the failure** |
 | `tree-down` crash in `repro-layout-clear.js` | Layout removed 2026-08-28; script never re-run | **Regression evidence that nobody runs** |
 

@@ -179,7 +179,7 @@ describe('GrowGhost', () => {
       f.ghost.show(aim({anchor, target}));
 
       const [x1, , x2] = f.ghost.node!.findOne<Konva.Arrow>('Arrow')!.points();
-      // Clear of the anchor's right edge and short of the target's centre.
+      // Clear of the anchor's right edge and short of the target's center.
       expect(x1).toBeGreaterThan(160);
       expect(x2).toBeLessThan(660);
     });

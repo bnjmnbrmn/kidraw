@@ -117,7 +117,7 @@ async function main() {
   console.log('  held-Add: crosshairs vs new edge:', JSON.stringify(g));
   check('held-Add makes the edge', g.found === true, JSON.stringify(g));
   check('held-Add rests the crosshairs on the node it reached', g.found && g.onNodes.includes(growIds.destId),
-    `on ${JSON.stringify(g.onNodes)}, ${g.distToDest}px from its centre`);
+    `on ${JSON.stringify(g.onNodes)}, ${g.distToDest}px from its center`);
   check('held-Add hides them until the next move', g.found && g.hidden, `hidden=${g.hidden}`);
 
   /* ---------------------------------------------------------------------
@@ -151,7 +151,7 @@ async function main() {
   });
   const n = await crosshairReport(newIds);
   console.log('  new connected node: crosshairs vs its link:', JSON.stringify(n));
-  check('a new node on a link: the crosshairs rest on it once labelled', n.found && n.onNodes.includes(newIds.childId),
+  check('a new node on a link: the crosshairs rest on it once labeled', n.found && n.onNodes.includes(newIds.childId),
     `on ${JSON.stringify(n.onNodes)}, new node ${newIds.childId}`);
   check('hidden until the next move there too', n.found && n.hidden, `hidden=${n.hidden}`);
 

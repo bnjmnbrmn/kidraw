@@ -174,13 +174,13 @@ export class KeyboardDrag {
   }
 
   /**
-   * Put the crosshairs `travelled` layer units from where they started, and
+   * Put the crosshairs `traveled` layer units from where they started, and
    * push the view by however much of that overshoots the margin. Returns the
    * running overshoot, so the next frame pans only the difference.
    */
-  private followCrosshairs(axis: Axis, origin: Point, travelled: number, pannedSoFar: number): number {
+  private followCrosshairs(axis: Axis, origin: Point, traveled: number, pannedSoFar: number): number {
     const {viewport} = this.host;
-    const wanted = axis.of(origin) + travelled * this.host.drawingLayer.scaleX();
+    const wanted = axis.of(origin) + traveled * this.host.drawingLayer.scaleX();
     const reached = clamp(wanted,
       axis.pick(viewport.minX, viewport.minY) + PAN_MARGIN,
       axis.pick(viewport.maxX, viewport.maxY) - PAN_MARGIN);
@@ -190,7 +190,7 @@ export class KeyboardDrag {
   }
 }
 
-/** A node's centre snaps to the grid, then advances one step from there. */
+/** A node's center snaps to the grid, then advances one step from there. */
 function nodeDragTarget(node: DANode, axis: Axis, sign: 1 | -1, {spacing, steps}: DragStep): NodeDragTarget {
   const initial = axis.nodePosition(node);
   const offset = axis.halfExtent(node);

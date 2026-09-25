@@ -73,7 +73,7 @@ export class DrawingLayer extends Konva.Layer {
 
     // Extend well beyond the visible area — but around the *view*, not around
     // the origin. Built as a square on (0,0), the mesh ran out as soon as the
-    // camera had travelled far enough from it: a box out at the edge of a
+    // camera had traveled far enough from it: a box out at the edge of a
     // diagram, looked at from 400%, sat with grid down one side of the screen
     // and plain black down the other.
     const viewLeft = -this.x() / scale;
@@ -484,7 +484,7 @@ export class DrawingLayer extends Konva.Layer {
   }
 
   /** Re-derive what the bound identity draws from tags: every node's badges
-   *  (task status, feedback marks, reading steps) and every edge's colour
+   *  (task status, feedback marks, reading steps) and every edge's color
    *  (a mark on it, else its kind). */
   refreshTagBadges(): void {
     const identity = resolveIdentity(this._diagramType);
@@ -559,7 +559,7 @@ export class DrawingLayer extends Konva.Layer {
     };
   }
 
-  /** Paste a subgraph under fresh ids, its bounding box centred on
+  /** Paste a subgraph under fresh ids, its bounding box centered on
    *  (centerX, centerY) in layer coordinates. The pasted nodes become the
    *  only selection, so a paste can be dragged straight away. Returns them. */
   pasteSubgraph(sub: GraphSnapshot, centerX: number, centerY: number): DANode[] {

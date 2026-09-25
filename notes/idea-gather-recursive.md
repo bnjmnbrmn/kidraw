@@ -17,9 +17,9 @@ The current `gather` ( `g → h` ) animates immediate connected nodes close to t
 
 Wanted:
 
-- **Recursive at least one level deeper** — gather neighbours-of-neighbours when the immediate set is small.
-- **Push away.** When pulling neighbours in, push *other* nodes out of the way so the gathered set is actually visible. Today nearby unrelated nodes can occlude.
-- **General layout application.** Gather is one specialised layout; the underlying primitives (force-directed, push-away) should be reusable as a "layout this subgraph" operation.
+- **Recursive at least one level deeper** — gather neighbors-of-neighbors when the immediate set is small.
+- **Push away.** When pulling neighbors in, push *other* nodes out of the way so the gathered set is actually visible. Today nearby unrelated nodes can occlude.
+- **General layout application.** Gather is one specialized layout; the underlying primitives (force-directed, push-away) should be reusable as a "layout this subgraph" operation.
 
 ## Focus distance feels wrong (Ben, 2026-07-13)
 

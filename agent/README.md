@@ -111,7 +111,7 @@ before anything leaves the browser.
   log`/`show`/`diff` and the like, with no redirection, substitution or paths
   outside `/workspace`). It refuses everything else: edits, other commands,
   fetches, requests for extra sandbox permissions, and anything it doesn't
-  recognise (`src/permissions.ts`).
+  recognize (`src/permissions.ts`).
 
 ## Setup (Linux host with Docker)
 
@@ -160,7 +160,7 @@ is remembered for the next.
 the server: the agent gives a page to open and a one-time code, the chat shows
 both, and the login finishes once the code is entered. "Use a different
 account" signs out first, which is the only way to reach another account —
-cancelling after that leaves the server signed out until a sign-in finishes. A
+canceling after that leaves the server signed out until a sign-in finishes. A
 login made this way is kept in `KIDRAW_AGENT_CODEX_HOME` for later sessions.
 
 Anyone holding the access token can do this, and it moves which account the

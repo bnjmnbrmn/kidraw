@@ -2,7 +2,7 @@ import { applyLayout, layoutSpacingFor } from './graph-layout';
 import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 
-/** Build nodes labelled by the given names, all starting at (0, 0). */
+/** Build nodes labeled by the given names, all starting at (0, 0). */
 function makeNodes(...names: string[]): Map<string, DANode> {
   const map = new Map<string, DANode>();
   for (const name of names) {
@@ -105,7 +105,7 @@ describe('graph-layout treeLayout', () => {
 
   it('keeps each subtree in a contiguous interval so tree edges cannot cross', () => {
     // root → A, B; A → a1, a2, a3; B → b1. The old level-based layout spread
-    // all four grandchildren evenly around the global centre, putting b1 far
+    // all four grandchildren evenly around the global center, putting b1 far
     // from B and crossing A's edges.
     const nodes = makeNodes('root', 'A', 'B', 'a1', 'a2', 'a3', 'b1');
     const edges = makeEdges(nodes, [

@@ -34,7 +34,7 @@ ways — see "In the app" below.
    incident-angle, above aesthetics.
 
 3. **Symmetric-arc collapse.** After an edge converges, a one-sided detour
-   (all waypoints on one side of the chord) is replaced by a single centred
+   (all waypoints on one side of the chord) is replaced by a single centered
    waypoint at the shallowest clearing depth, kept only if it compares no-worse.
    Fewer bends rank above length/curvature, so an equally-clear single waypoint
    wins — escaping the greedy plateau where IDv2's one-at-a-time REMOVE left
@@ -57,7 +57,7 @@ ways — see "In the app" below.
    unpenalised (dense n8→n10 skimming n9 by 1.6px). IDv3 samples clearance along
    the whole rendered path at 8px spacing, skipping a 55px radius
    (`endpointClearanceRadius`) around each endpoint so an edge isn't dinged for
-   leaving its own perimeter beside a neighbour. Because node clearance already
+   leaving its own perimeter beside a neighbor. Because node clearance already
    outranks crossings in the comparator, seeing the graze is enough: the router
    pulls the edge clear of the node even at the cost of a bend or a crossing —
    the priority the user asked for (visible separation from a near-touched node
@@ -67,7 +67,7 @@ ways — see "In the app" below.
    at least 16px from every non-incident node scores as fully satisfied. Without
    it, the 36px saturation made compact layouts bow chords that were already
    visually unambiguous — petersen's inner pentagram runs 19.8–28px from its
-   neighbouring boxes and was being warped into hooks and bunched waypoints.
+   neighboring boxes and was being warped into hooks and bunched waypoints.
    Routes that bend anyway get no exemption, so detours still prefer the full
    36px berth (the approved tangent-grazing / converge / bypass shapes are
    unchanged by the exemption — verified byte-identical). Straight chords under
@@ -108,7 +108,7 @@ through the same worker + sync fallback with unclean-edge reporting.
 **Drag rerouting.** `rerouteIncidentEdges(nodes)` re-routes every edge incident
 to the dragged node(s) with the same single-edge pipeline, firing at drag-step
 granularity (once per grid step when the tween completes, plus on
-EXIT_DRAG_MODE to cover a cancelled mid-tween step) — not per animation frame.
+EXIT_DRAG_MODE to cover a canceled mid-tween step) — not per animation frame.
 Pinned user waypoints survive via `setControlPoints`' merge. Unclean routes are
 logged, not surfaced — a status message per repeat tick would spam.
 **Known limit:** only the dragged node's *incident* edges re-route; dragging an

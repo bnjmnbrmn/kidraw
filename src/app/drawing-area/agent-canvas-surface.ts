@@ -23,7 +23,7 @@ export interface AgentCanvasHost {
   readonly drawingLayer: DrawingLayer;
   readonly viewport: Viewport;
   readonly stage: Konva.Stage;
-  /** How long the view takes to recentre, in seconds. */
+  /** How long the view takes to recenter, in seconds. */
   readonly recenterDuration: number;
   nodeUnderCrosshairs(): DANode | null;
   nodeCenter(node: DANode): Point;

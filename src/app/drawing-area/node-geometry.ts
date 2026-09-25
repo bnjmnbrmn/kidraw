@@ -9,7 +9,7 @@ import { Camera, Rect } from './camera';
 import { DANode } from './da-node';
 import { Point } from './utils';
 
-/** The node's centre in layer units — where the graph says it is. */
+/** The node's center in layer units — where the graph says it is. */
 export function nodeCenterInLayer(node: DANode): Point {
   return {
     x: node.group.x() + node.NODE_WIDTH / 2,
@@ -17,7 +17,7 @@ export function nodeCenterInLayer(node: DANode): Point {
   };
 }
 
-/** The node's centre in stage pixels — where it is on screen right now. */
+/** The node's center in stage pixels — where it is on screen right now. */
 export function nodeCenterInStage(node: DANode, camera: Camera): Point {
   return camera.toStage(nodeCenterInLayer(node));
 }

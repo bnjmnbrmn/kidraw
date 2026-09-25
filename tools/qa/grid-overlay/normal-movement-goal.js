@@ -209,9 +209,9 @@ async function main() {
     };
     // Hover the node where it actually renders. The old fixed (160,160) drifted
     // onto an edge once nodes started auto-sizing to their labels.
-    const nodeCentre = c.getNodeCenterInStageCoordinates(dl.getDANodes()[0]);
+    const nodeCenter = c.getNodeCenterInStageCoordinates(dl.getDANodes()[0]);
     return {
-      node: place(nodeCentre),
+      node: place(nodeCenter),
       edge: place(edgePoint),
       waypoint: place({x: waypoint.x, y: waypoint.y}),
       label: place({x: label.x, y: label.y}),
@@ -228,7 +228,7 @@ async function main() {
     const dl = c.drawingLayer;
     const node = dl.getDANodes()[0];
     const xh = c.crosshairsLayer.crosshairs;
-    // Ask for the centre after each rescale rather than deriving it from the
+    // Ask for the center after each rescale rather than deriving it from the
     // NODE_WIDTH/HEIGHT constants: nodes auto-size, and at 0.25 zoom the
     // resulting offset used to drop the crosshairs off the node entirely, so
     // there was no hover trace left to measure.
@@ -247,9 +247,9 @@ async function main() {
     };
     const inspectAt = (scale) => {
       dl.scale({x: scale, y: scale});
-      const centre = c.getNodeCenterInStageCoordinates(node);
-      xh.x = centre.x;
-      xh.y = centre.y;
+      const center = c.getNodeCenterInStageCoordinates(node);
+      xh.x = center.x;
+      xh.y = center.y;
       c.refreshCrosshairHoverHighlight();
       const {carrier, shape} = dashedTrace();
       return {

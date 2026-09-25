@@ -12,7 +12,7 @@ describe('layeredLayout', () => {
     expect(Math.min(...[...at.values()].map(p => p.y))).toBe(300);
   });
 
-  it('sets premises side by side, with their conclusion centred below them', () => {
+  it('sets premises side by side, with their conclusion centered below them', () => {
     const at = layeredLayout([box('p1'), box('p2'), box('c')], [link('p1', 'c'), link('p2', 'c')]);
     expect(at.get('p1')!.y).toBe(at.get('p2')!.y);
     expect(Math.abs(at.get('p1')!.x - at.get('p2')!.x)).toBeGreaterThanOrEqual(140);

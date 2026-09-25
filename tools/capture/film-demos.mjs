@@ -330,7 +330,7 @@ const DEMOS = {
     return rec.take({name: 'coarsefine'});
   },
 
-  /* ---- colour, shape, and a dashed arrow ---- */
+  /* ---- color, shape, and a dashed arrow ---- */
   async styling(page, rec) {
     await chain(page, ['a', 'b', 'c'], {preferred: 320});
     await goTo(page, 'a');

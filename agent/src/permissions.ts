@@ -19,7 +19,7 @@ export interface PermissionDecision {
  * isReadOnlyCommand). Everything else is refused, including edits, other
  * commands, network access,
  * requests for extra sandbox permissions (codex-acp sends those as kind
- * "other"), and any kind this policy doesn't recognise.
+ * "other"), and any kind this policy doesn't recognize.
  *
  * `titleOf` looks up an earlier tool call's title, for approvals that refer to
  * a call by id instead of naming the MCP server.

@@ -129,7 +129,7 @@ describe('LinkNavController', () => {
     // link focused elsewhere, moveLinkQuadrant's corner-crossing branch falls
     // back to the focused edge, so a north press on a lone east link re-reports
     // it as "north: east" and "No link in the north quadrant." never fires.
-    // Whether that is the wanted behaviour is Ben's call, so nothing here pins
+    // Whether that is the wanted behavior is Ben's call, so nothing here pins
     // it either way. Written up in
     // notes/bug-empty-quadrant-announced-as-a-move.md.
 

@@ -57,9 +57,9 @@ export class TextEditingController {
 
   insertChar(key: string): void {
     this.host.finishTweens();
-    const centres = this.selectedNodeCentres();
+    const centers = this.selectedNodeCenters();
     const resized = this.host.drawingLayer.appendTextToSelected(key);
-    this.settleGrowingNodes(resized, centres);
+    this.settleGrowingNodes(resized, centers);
     this.refreshResizedNodes(resized);
     this.editLabels(label => label.insertAtCursor(key));
     this.finishEdit();
@@ -110,9 +110,9 @@ export class TextEditingController {
   }
 
   /** Show or hide a node's caret. A markdown label resizes as it switches
-   *  between its rendered and source views; record where its centre was.
+   *  between its rendered and source views; record where its center was.
    *  Showing or hiding the caret never moves the node, so the size read
-   *  beforehand gives that centre. */
+   *  beforehand gives that center. */
   toggleNodeCaret(
     node: DANode,
     toggle: () => boolean,
@@ -123,7 +123,7 @@ export class TextEditingController {
     if (toggle()) resized.set(node, {x: node.group.x() + width / 2, y: node.group.y() + height / 2});
   }
 
-  /** Keep caret-resized nodes on their centres and their edges attached,
+  /** Keep caret-resized nodes on their centers and their edges attached,
    *  the same as when typing grows a node. */
   settleCaretResizes(resized: Map<DANode, Point>): void {
     if (resized.size === 0) return;
@@ -132,8 +132,8 @@ export class TextEditingController {
     this.refreshResizedNodes(nodes);
   }
 
-  /** Box centres of the nodes being edited, read before their text changes. */
-  selectedNodeCentres(): Map<DANode, Point> {
+  /** Box centers of the nodes being edited, read before their text changes. */
+  selectedNodeCenters(): Map<DANode, Point> {
     return new Map(this.host.drawingLayer.getSelectedDANodes().map(node => [node, {
       x: node.group.x() + node.NODE_WIDTH / 2,
       y: node.group.y() + node.NODE_HEIGHT / 2,
@@ -143,11 +143,11 @@ export class TextEditingController {
   /** Typing grows a box from its top-left corner, so a node walks down and
    *  right over whatever is there — usually the node it was just connected
    *  to (da-446). Two rules keep it out of the way: it grows about its own
-   *  centre, and if it still lands on a neighbour it is the one that moves,
-   *  not the neighbour. The rest of the graph holds still while you type. */
-  settleGrowingNodes(grown: DANode[], centres: Map<DANode, Point>): void {
+   *  center, and if it still lands on a neighbor it is the one that moves,
+   *  not the neighbor. The rest of the graph holds still while you type. */
+  settleGrowingNodes(grown: DANode[], centers: Map<DANode, Point>): void {
     if (grown.length === 0) return;
-    this.restoreCentres(grown, centres);
+    this.restoreCenters(grown, centers);
     const all = this.host.drawingLayer.getDANodes();
     const movable = new Set(grown);
     const boxes = all.map(node => ({
@@ -161,13 +161,13 @@ export class TextEditingController {
     }
   }
 
-  /** Re-place each grown node on the centre it had before it grew. */
-  private restoreCentres(nodes: DANode[], centres: Map<DANode, Point>): void {
+  /** Re-place each grown node on the center it had before it grew. */
+  private restoreCenters(nodes: DANode[], centers: Map<DANode, Point>): void {
     for (const node of nodes) {
-      const centre = centres.get(node);
-      if (!centre || node.pinned) continue;
-      node.group.x(centre.x - node.NODE_WIDTH / 2);
-      node.group.y(centre.y - node.NODE_HEIGHT / 2);
+      const center = centers.get(node);
+      if (!center || node.pinned) continue;
+      node.group.x(center.x - node.NODE_WIDTH / 2);
+      node.group.y(center.y - node.NODE_HEIGHT / 2);
     }
   }
 

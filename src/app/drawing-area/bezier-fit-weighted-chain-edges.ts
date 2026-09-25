@@ -121,7 +121,7 @@ export const DEFAULT_WC_OPTIONS: WeightedChainOptions = {
  *  Catmull-Rom-derived curve through the surviving cps.
  *
  *  Mirrors the bezier-fit-charged-spring pattern but with weighted-chain
- *  as the physics base. The two flavours differ in their underlying
+ *  as the physics base. The two flavors differ in their underlying
  *  physics character — charged-spring's beads obey continuous spring
  *  forces, while weighted-chain's beads are rigidly linked via PBD
  *  constraint projection. The fit step is the same on either base. */
@@ -372,7 +372,7 @@ function runsParallelClose(
 /** Spread the attach points of bent edges that leave/enter a shared node at
  *  nearly the same angle, so they don't bunch where they touch the node. For
  *  each node, the incident *bent* (≥1 cp), non-sibling edges are sorted by the
- *  angle from the node centre to their nearest control point; any run within
+ *  angle from the node center to their nearest control point; any run within
  *  `minAngleDeg` of each other is fanned out to exactly that spacing by giving
  *  each a near-node control point in the re-spread direction. Straight edges
  *  (0 cps) are skipped, so clean radial fans (hub-spoke, k3-3) are untouched. */
@@ -383,7 +383,7 @@ function separateFanAttachments(
   log?: (msg: string) => void,
 ): void {
   const minAngle = (minAngleDeg * Math.PI) / 180;
-  const SHOULDER = 75; // px from node centre to the inserted control point
+  const SHOULDER = 75; // px from node center to the inserted control point
 
   // Sibling edges are already laned by the symmetrize pass; exclude them.
   const pairCount = new Map<string, number>();
@@ -395,7 +395,7 @@ function separateFanAttachments(
 
   // True if the polyline through [srcCenter, ...cps, destCenter] clears every
   // non-incident node box (small margin) — used to reject a shoulder that would
-  // push the attachment into a neighbouring node.
+  // push the attachment into a neighboring node.
   const polyClears = (e: DAEdge, cps: Pt[]): boolean => {
     const a = centerOf(e.srcNode), b = centerOf(e.destNode);
     const path = [a, ...cps, b];
@@ -404,8 +404,8 @@ function separateFanAttachments(
       const x = nd.konvaGroup.x(), y = nd.konvaGroup.y();
       const bx0 = x - 4, by0 = y - 4, bx1 = x + nd.NODE_WIDTH + 4, by1 = y + nd.NODE_HEIGHT + 4;
       // Skip the first and last segments: those run to the incident node
-      // *centres*, so they pass through the node interior (and sometimes a
-      // neighbour) even though the real edge stops at the perimeter. The
+      // *centers*, so they pass through the node interior (and sometimes a
+      // neighbor) even though the real edge stops at the perimeter. The
       // shoulder we're testing always sits on an interior segment.
       for (let i = 1; i < path.length - 2; i++) {
         if (segIntersectsRect(path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, bx0, by0, bx1, by1)) return false;

@@ -162,7 +162,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private readonly search = new GraphSearch(this.graphSearchHost());
   /** Yank, cut and paste of subgraphs (clipboard-controller.ts). */
   private readonly clipboard = new ClipboardController(this.clipboardHost());
-  /** Sizes, shapes, edge styles, colour, and the defaults new nodes and
+  /** Sizes, shapes, edge styles, color, and the defaults new nodes and
    *  edges take (style-controller.ts). */
   private readonly style = new StyleController(this.styleHost());
   /** Layouts and edge routing, and the routing run in flight
@@ -353,7 +353,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  (Markdown, Math), and so take a different size. */
   private onPluginsChanged(): void {
     this.updateEdgesForResizedNodes(this.drawingLayer.refreshLabelSyntax());
-    // A plugin added for this graph's type brings its badges and kind colours.
+    // A plugin added for this graph's type brings its badges and kind colors.
     this.drawingLayer.refreshTagBadges();
     this.drawingLayer.reapplyTheme();
     this.drawingLayer.batchDraw();
@@ -462,7 +462,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private _commandHandlers?: CommandHandlers;
 
   /** Every command's handler. Built on first use rather than by a field
-   *  initialiser, which specs that build the component with `Object.create`
+   *  initializer, which specs that build the component with `Object.create`
    *  would skip. */
   private get commandHandlers(): CommandHandlers {
     return this._commandHandlers ??= mergeCommandSlices(
@@ -505,7 +505,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     } satisfies CommandSlice;
   }
 
-  /** The view: zoom, pan, and recentring. */
+  /** The view: zoom, pan, and recentering. */
   private viewCommands() {
     return {
       [DACommandType.ZOOM_IN]: () => this.zoomIn(),
@@ -1000,7 +1000,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     };
   }
 
-  /** Text editing owns mutations and keeps resized boxes centred. */
+  /** Text editing owns mutations and keeps resized boxes centered. */
   private textEditingHost(): TextEditingHost {
     const da = this;
     return {
@@ -1970,7 +1970,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   }
 
   /** Enter label editing for a node that has just been added. Every label edit
-   *  now takes the same focus — at least 100% and centred on the box — since what
+   *  now takes the same focus — at least 100% and centered on the box — since what
    *  you are typing is the thing you want to be looking at. */
   private beginNewNodeLabelEdit(node: DANode): void {
     this.pendingNodeLabelEdit = null;
@@ -1983,7 +1983,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.checkAndEmitEditState();
     this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
     // After the mode is out: typing hides the keyboard, and the viewport it
-    // was occupying is the difference between "centred" and "in the top
+    // was occupying is the difference between "centered" and "in the top
     // third". The inset lands on the next turn, so the camera waits for it.
     setTimeout(() => this.focusNodeForLabelEdit(node));
   }
@@ -2052,8 +2052,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.recenterCrosshairs();
   }
 
-  /** Centre the usable view on the selection at the same zoom; with nothing
-   *  selected, this is the rescue command — fit the whole graph and centre
+  /** Center the usable view on the selection at the same zoom; with nothing
+   *  selected, this is the rescue command — fit the whole graph and center
    *  it, so it always brings everything on screen. */
   private recenterView() {
     this.finishTweens();
@@ -2061,14 +2061,14 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const selected = this.drawingLayer.getSelectedDANodes();
     const hasSelection = selected.length > 0;
     // The selection's own nodes; the whole graph's edges would pull the
-    // centre towards the whole graph (they did, from 2026-02 to 09-24).
+    // center towards the whole graph (they did, from 2026-02 to 09-24).
     const box = hasSelection
       ? this.contentBoundingBox(selected, [])
       : this.contentBoundingBox(this.drawingLayer.getDANodes(), this.drawingLayer.getDAEdges());
     if (!box) return;
 
     const targetScale = hasSelection ? this.drawingLayer.scaleX() : this.fitScale(box);
-    // The usable view's centre, below the header: half its size from the top
+    // The usable view's center, below the header: half its size from the top
     // of the stage put the graph higher by the header's height (to 09-24).
     this.animations.startSelfRemoving({
       node: this.drawingLayer,
@@ -2366,7 +2366,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.scheduleVaultAutoSave();
   }
 
-  /** Whether the node being labelled arrived on a link a quick-add just drew;
+  /** Whether the node being labeled arrived on a link a quick-add just drew;
    *  if so the crosshairs rest on it, hidden, once the label is done. */
   private newNodeArrivedByLink = false;
 
@@ -2721,7 +2721,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.resizeTargetNode = null;
     }
     if (this.hasDragged) {
-      // A cancelled mid-tween step leaves nodes at their final (part-way)
+      // A canceled mid-tween step leaves nodes at their final (part-way)
       // position without the step-completion reroute having fired.
       this.layout.rerouteIncidentEdges(this.drawingLayer.getSelectedDANodes());
       this.unselectAll();

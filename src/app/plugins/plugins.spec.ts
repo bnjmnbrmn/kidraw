@@ -18,7 +18,7 @@ describe('plugins (identity slot)', () => {
     return dl;
   }
 
-  it('colours edges by kind, a marked edge by its mark, and clears both under an identity without them', () => {
+  it('colors edges by kind, a marked edge by its mark, and clears both under an identity without them', () => {
     const premise = new DANode(0, 0, 'All men are mortal');
     const conclusion = new DANode(300, 0, 'Socrates is mortal');
     const dl = layerWithNodes(premise, conclusion);
@@ -45,7 +45,7 @@ describe('plugins (identity slot)', () => {
     expect(stroke(marked)).not.toBe(mark.color);
   });
 
-  it('marks node kinds with a border colour and a badge, and clears them under an identity without them', () => {
+  it('marks node kinds with a border color and a badge, and clears them under an identity without them', () => {
     const definition = new DANode(0, 0, 'A token is a piece of text');
     definition.tags = ['kind/definition'];
     const dl = layerWithNodes(definition);

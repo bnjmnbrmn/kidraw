@@ -2,7 +2,7 @@
 
 ## Mandate
 
-Black-box quality assurance. Drive the running app via Playwright and `window.ng.getComponent`; verify behaviour against what the documentation says it should be; report bugs with reproduction steps. Distinct from implementer-written tests because implementers have biases — they test against their own assumptions about what the code does, not what the user expects.
+Black-box quality assurance. Drive the running app via Playwright and `window.ng.getComponent`; verify behavior against what the documentation says it should be; report bugs with reproduction steps. Distinct from implementer-written tests because implementers have biases — they test against their own assumptions about what the code does, not what the user expects.
 
 ## Posture
 
@@ -16,14 +16,14 @@ QA. Owns `tools/qa/` (to be created). Works in its own worktree.
 - [`notes/**`](../) — decisions, architecture descriptions, invariants, ideas (the user-visible contract)
 - The running app via Playwright
 
-This isolation is the whole point. The oracle for "is this behaviour correct?" comes from documented intent, not from inspecting the code.
+This isolation is the whole point. The oracle for "is this behavior correct?" comes from documented intent, not from inspecting the code.
 
 The Claude wrapper for this agent should encode the `src/**` no-read rule in its prompt; settings.json permission denylists can add a belt-and-braces enforcement.
 
 ## Workflow
 
 1. **Pick a flow to verify.** Either a recent change (per dev-status / commit log) or an existing flow (selection, drag, label-edit, save-open round-trip).
-2. **Read the intended behaviour** from `notes/` and `docs/`. Note the invariants ([`architecture-invariants.md`](../architecture-invariants.md)) that apply.
+2. **Read the intended behavior** from `notes/` and `docs/`. Note the invariants ([`architecture-invariants.md`](../architecture-invariants.md)) that apply.
 3. **Write a Playwright scenario** in `tools/qa/<flow>.js`. Pattern: launch chromium, navigate to `localhost:4200`, drive the app, observe via `window.ng.getComponent(document.querySelector('app-drawing-area'))` or screenshots.
 4. **Define the oracle** in the script — assertions about what should be visible / selected / persisted, derived from the documented intent, not from code inspection.
 5. **Run.** Report passes + fails with details. For failures: minimal repro steps, expected vs actual, severity.
@@ -50,7 +50,7 @@ Hand to the coordinator. The coordinator decides which implementer fixes it.
 
 ## Cooperation with implementer tests
 
-QA scenarios are *additional* to implementer-written specs, not replacements. The implementer test verifies "the function does what I wrote it to do"; the QA scenario verifies "the user-visible behaviour matches what the docs say." Both should exist.
+QA scenarios are *additional* to implementer-written specs, not replacements. The implementer test verifies "the function does what I wrote it to do"; the QA scenario verifies "the user-visible behavior matches what the docs say." Both should exist.
 
 ## Notes I read
 

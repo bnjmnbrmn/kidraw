@@ -12,7 +12,7 @@
 //      share one endpoint apart along their interiors, not just at the hub, so
 //      fan-out arcs stop grazing (converge-circular Out→D3/D4).
 //   3. SYMMETRIC-ARC COLLAPSE. After an edge converges, a one-sided detour is
-//      collapsed to a single centred waypoint at the shallowest clearing depth —
+//      collapsed to a single centered waypoint at the shallowest clearing depth —
 //      escaping the greedy plateau that left v2 with multi-waypoint wiggles
 //      (bypass-obstacle's 3-point kink). Tries BOTH sides of the chord.
 //   4. CLUSTER-AWARE BYPASS. v2's bypass offsets around each clipped node
@@ -60,7 +60,7 @@ export type { IncrementalBudgets } from './incremental-routing-common';
 export interface IncrementalDesiderataV3Options extends IncrementalRouteOptions {
   local: LocalScoreOptions;
   /** Number of Gauss-Seidel relaxation sweeps after the initial placement. Each
-   *  sweep re-routes every edge against all the others. 0 = v2 behaviour. */
+   *  sweep re-routes every edge against all the others. 0 = v2 behavior. */
   relaxationPasses: number;
   /** Obstacles whose mutual box-gap is below this (px) are treated as one
    *  cluster and routed around together rather than threaded between. */
@@ -284,10 +284,10 @@ function routeOneEdgeV3(
   return best;
 }
 
-/** Try replacing a one-sided multi-waypoint detour with a single centred
+/** Try replacing a one-sided multi-waypoint detour with a single centered
  *  waypoint. The greedy hill-climb can get stuck removing waypoints one at a
  *  time through asymmetric intermediates that re-clip; synthesising a fresh
- *  centred waypoint jumps straight to the clean symmetric arc. Kept only if it
+ *  centered waypoint jumps straight to the clean symmetric arc. Kept only if it
  *  compares no-worse — and since fewer bends rank above length/curvature, an
  *  equally-clear single waypoint wins.
  *

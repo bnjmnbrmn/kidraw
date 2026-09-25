@@ -35,7 +35,7 @@ export interface ControlsHost {
  * device-code method starts a login. The agent then asks *us* to put a page
  * and a one-time code in front of the user (`elicitation/create` in URL mode),
  * which is why this holds an open request: it is not answered until the user
- * has finished signing in or has cancelled.
+ * has finished signing in or has canceled.
  */
 export class AgentControls {
   private options: AgentOption[] = [];
@@ -178,7 +178,7 @@ export class AgentControls {
       this.signIn = {
         prompt,
         // Held open until the login completes (the agent notifies us) or the
-        // user cancels; cancelling tells the agent to drop the device code.
+        // user cancels; canceling tells the agent to drop the device code.
         settle: accepted => {
           this.signIn = null;
           resolve(accepted ? { action: 'accept', content: null } : { action: 'cancel', content: null });

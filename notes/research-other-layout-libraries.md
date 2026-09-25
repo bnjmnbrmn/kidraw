@@ -13,7 +13,7 @@ Eclipse Layout Kernel — the most configurable open-source layout system. Java 
 
 - Supports `ORTHOGONAL`, `POLYLINE`, and `SPLINES` edge routing.
 - Layered Sugiyama-style algorithm good for DAGs and hierarchical graphs.
-- Handles crossing minimisation, bend minimisation, node-overlap removal.
+- Handles crossing minimization, bend minimization, node-overlap removal.
 
 `SPLINES` has two modes: `CONSERVATIVE` (proper node avoidance, slightly stiff) and `SLOPPY` (curvier, may occasionally clip nodes).
 
@@ -53,21 +53,21 @@ Unmaintained (last development 2018). Occasional inexplicable routing decisions.
 
 Comprehensive commercial library with excellent routing. Very expensive licensing. Not suitable for an open / indie project.
 
-## Crossing minimisation
+## Crossing minimization
 
 NP-hard in general. Practical approaches in active use:
 
-- **Sugiyama layered crossing minimisation** — reorder nodes within layers. ELK, Graphviz DOT.
+- **Sugiyama layered crossing minimization** — reorder nodes within layers. ELK, Graphviz DOT.
 - **Force-directed nudging** — repulsive forces push edges apart. cola.js, organic layouts.
-- **libavoid's `crossingPenalty`** — penalty per crossing during routing; router tries to minimise. Directly applicable to kidraw.
+- **libavoid's `crossingPenalty`** — penalty per crossing during routing; router tries to minimize. Directly applicable to kidraw.
 - **Edge bundling** — group similar edges into bundles. Reduces clutter; trades crossings for bundles.
 
-## Bend minimisation
+## Bend minimization
 
 NP-hard in general; polynomial-time only for planar orthogonal with a fixed embedding (Tamassia 1987, network flow). Practical approaches:
 
-- **libavoid's `segmentPenalty`** — A* router finds routes minimising total penalty.
-- **Orthogonal layout algorithms** — some ELK algorithms explicitly minimise bends.
+- **libavoid's `segmentPenalty`** — A* router finds routes minimizing total penalty.
+- **Orthogonal layout algorithms** — some ELK algorithms explicitly minimize bends.
 - **Visibility graph routing** — route through the visibility graph (lines of sight between node corners); naturally low-bend.
 
 For kidraw, libavoid handles this automatically. Tuning `segmentPenalty` against `crossingPenalty` gives the bends-vs-crossings knob.

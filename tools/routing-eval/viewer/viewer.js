@@ -294,7 +294,7 @@ function downloadFeedback() {
 }
 
 /** Tint the viewer by the server port. Each worktree serves on its own stable
- *  port (see tools/worktree-port.sh), so the colour is a per-worktree marker —
+ *  port (see tools/worktree-port.sh), so the color is a per-worktree marker —
  *  it keeps you from confusing one worktree's results with another's when two
  *  viewers are open. Golden-angle hue spreads adjacent ports to distinct hues. */
 function applyWorktreeTheme() {

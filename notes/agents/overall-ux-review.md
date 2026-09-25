@@ -4,7 +4,7 @@
 
 Audit cross-area user experience — the flows that span keymenu + drawing-area + header. Mode-transition correctness, status-message clarity, header chip accuracy under state changes, the held-key → drag → label-edit pipeline, error / no-op feedback, "what just happened?" comprehensibility.
 
-Also covers the header itself when changes are localised there (since menu-ux and graph-ux don't reach it).
+Also covers the header itself when changes are localized there (since menu-ux and graph-ux don't reach it).
 
 ## Posture
 
@@ -12,7 +12,7 @@ Reviewer. Read-only across all implementer worktrees. Personal scratch worktree 
 
 ## Rubric
 
-For changes that touch behaviour the user can observe across surfaces:
+For changes that touch behavior the user can observe across surfaces:
 
 1. **Mode badge.** Does the header reflect the active mode (`normal`, `capslock / normal`, `edit`, `capslock / edit`) correctly after every transition? Severity: blocker if mismatched.
 2. **Selection summary.** When the user selects / deselects, does the header chip update immediately? See [`architecture-invariants`](../architecture-invariants.md) — selection visual is invariant.

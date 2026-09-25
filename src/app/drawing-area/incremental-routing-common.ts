@@ -8,7 +8,7 @@
 // The routers keep what differs — v2 is a single frozen-order pass; v3 adds
 // relaxation sweeps, cluster-aware bypass, and symmetric-arc collapse.
 //
-// Extracted verbatim from incremental-desiderata-route-edges.ts; behaviour
+// Extracted verbatim from incremental-desiderata-route-edges.ts; behavior
 // must not change (the routing-eval harness verifies both routers'
 // geometry is byte-identical across the extraction).
 
@@ -275,7 +275,7 @@ export interface Insertion { point: Pt; index: number; }
 
 /** Where to grow a new waypoint: at the longest control-polygon gap (offset
  *  perpendicular both ways) and, if the rendered curve clips a node, near that
- *  clip pushed away from the node's centre. */
+ *  clip pushed away from the node's center. */
 export function insertionCandidates(
   edge: DAEdge, cp: Pt[], nodes: DANode[], perp: Pt, step: number,
 ): Insertion[] {

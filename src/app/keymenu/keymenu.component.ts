@@ -67,7 +67,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   /** Whether a free-typing label mode owns the keyboard. The shell needs it
    *  to word the "how do I get the menu back" hint correctly. */
   @Output() textEntryChange = new EventEmitter<boolean>();
-  /** Current mode (with its submenu breadcrumb) and the colour that names it.
+  /** Current mode (with its submenu breadcrumb) and the color that names it.
    *  Rendered as DOM chrome by the shell rather than inside the keymenu
    *  stage, so it survives the modes that hide the keyboard (da-432). */
   @Output() modeLabelOut = new EventEmitter<{text: string; color: string}>();
@@ -898,13 +898,13 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
    *  right. Two hands alternate, so nothing needs one hand to travel twice.
    *
    *  Categories are a 2x2 block under the middle and ring fingers —
-   *  e Shape / r Colour over d Line Style / f Overflow. Values run along the
+   *  e Shape / r Color over d Line Style / f Overflow. Values run along the
    *  right-hand home row (h j k l ;) in rough frequency order, spilling up to
    *  u/i/o only where a category has more values than the row holds.
    *
    *  This replaces direct per-item styling only in the sense of arrangement:
    *  tags/classes are still the plan for plugin-driven diagrams, but generic
-   *  diagrams want the shapes, colours and line styles reachable directly. */
+   *  diagrams want the shapes, colors and line styles reachable directly. */
   private buildStyleSubmenuConfig(): SubmenuConfig {
     const style = this.keyAssignments.style;
     return {
@@ -1416,7 +1416,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   /** Geometry of the floating host, mirrored in keymenu.component.css. The
-   *  card is centred in a host taller than itself, so the card's top edge —
+   *  card is centered in a host taller than itself, so the card's top edge —
    *  the only part the drawing area cares about — has to be derived rather
    *  than read off the host. */
   private static readonly HOST_HEIGHT_PX = 300;

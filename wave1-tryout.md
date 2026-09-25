@@ -111,7 +111,7 @@ git -C /home/bnjmnbrmn/projects/kidraw branch -D worktree-agent-a63b2b668683dc43
 Today every submenu is a *held-key* submenu: hold `f`, see Insert; release `f`,
 exit. The proposal explored four reorgs (A pure-sticky-modes, B hybrid, C
 spatial pages, D emacs chords) and recommended **B**: keep the held-key submenu
-for short tasks (style, layout, pan/zoom, etc.) and add **sticky** behaviour to
+for short tasks (style, layout, pan/zoom, etc.) and add **sticky** behavior to
 the genuinely-sustained ones (Insert, eventually Drag). The same trigger key
 serves both: **hold** = legacy submenu, **tap** = sticky mode.
 

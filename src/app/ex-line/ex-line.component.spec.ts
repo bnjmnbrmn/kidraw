@@ -31,38 +31,38 @@ describe('ExLineComponent', () => {
 
   it('should cancel rather than submit an empty line', () => {
     let submitted = 0;
-    let cancelled = 0;
+    let canceled = 0;
     component.submitCommand.subscribe(() => submitted++);
-    component.cancel.subscribe(() => cancelled++);
+    component.cancel.subscribe(() => canceled++);
 
     component.text = '   ';
     press('Enter');
 
     expect(submitted).toBe(0);
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
   });
 
   it('should cancel on Escape', () => {
-    let cancelled = 0;
-    component.cancel.subscribe(() => cancelled++);
+    let canceled = 0;
+    component.cancel.subscribe(() => canceled++);
 
     press('Escape');
 
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
   });
 
   it('should close when Backspace is pressed on an empty line', () => {
-    let cancelled = 0;
-    component.cancel.subscribe(() => cancelled++);
+    let canceled = 0;
+    component.cancel.subscribe(() => canceled++);
 
     component.text = '';
     press('Backspace');
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
 
     // With text present, Backspace is ordinary editing and must not close.
     component.text = 'w';
     press('Backspace');
-    expect(cancelled).toBe(1);
+    expect(canceled).toBe(1);
   });
 
   it('should walk history newest-first with Up and back down with Down', () => {

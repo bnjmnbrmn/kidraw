@@ -7,7 +7,7 @@
  * than a cut, putting a box down at a spot chosen by hand.
  */
 import {keys} from './driver.mjs';
-import {goTo, mode, settle, graphShape, nodeCentre, undo, edges} from './build.mjs';
+import {goTo, mode, settle, graphShape, nodeCenter, undo, edges} from './build.mjs';
 
 /** The keymenu's box on screen, in CSS pixels. */
 const keymenuBox = page => page.locator('app-keymenu').boundingBox();
@@ -170,7 +170,7 @@ export async function connect(page, from, to) {
   // whatever *is* under them — which is how a graph ended up with an edge
   // drawn from the box that happened to be under the camera.
   await aimCamera(page, from, 100);
-  const end = await nodeCentre(page, to);
+  const end = await nodeCenter(page, to);
   if (!end) throw new Error(`cannot connect ${from} to ${to}`);
   await page.keyboard.down('a');
   await settle(page, 320);
@@ -189,7 +189,7 @@ export async function connect(page, from, to) {
     await settle(page, 250);
     throw new Error(`held Add anchored on ${JSON.stringify(anchored)}, not ${JSON.stringify(from)}`);
   }
-  const start = await nodeCentre(page, from);
+  const start = await nodeCenter(page, from);
   let landed = false;
   let last = null;
   for (let press = 0; press < 10 && !landed; press++) {
@@ -308,8 +308,8 @@ export async function typeFilm(page, text, {perChar = 45, leaveOpen = false} = {
 export async function walkLinks(page, chain) {
   for (const [from, to] of chain) {
     await goTo(page, from);
-    const a = await nodeCentre(page, from);
-    const b = await nodeCentre(page, to);
+    const a = await nodeCenter(page, from);
+    const b = await nodeCenter(page, to);
     if (!a || !b) return false;
     const key = Math.abs(b.x - a.x) >= Math.abs(b.y - a.y)
       ? (b.x > a.x ? 'l' : 'h')
@@ -327,10 +327,10 @@ export async function walkLinks(page, chain) {
 /**
  * Put the camera on a box at a chosen zoom, in as few moves as it takes.
  *
- * `focus` in build.mjs recentres before it zooms and again afterwards, which is
+ * `focus` in build.mjs recenters before it zooms and again afterwards, which is
  * right when the next thing to happen is a measurement. Here the next thing is
- * a reader watching, and two recentres either side of a zoom read as a wobble —
- * so this zooms, then centres, once.
+ * a reader watching, and two recenters either side of a zoom read as a wobble —
+ * so this zooms, then centers, once.
  */
 export async function aimCamera(page, label, target = 100) {
   // Pull back first, then go. Reaching for the box before zooming out could not

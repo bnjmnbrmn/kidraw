@@ -69,7 +69,7 @@ export class PluginCommands {
   }
 }
 
-/** A plugin's handlers, each labelled with the plugin. */
+/** A plugin's handlers, each labeled with the plugin. */
 function ownedBy(plugin: KidrawPlugin, handlers: PluginCommandHandlers): Record<string, unknown> {
   return Object.fromEntries(Object.entries(handlers).map(([id, run]) => [id, {plugin, run}]));
 }

@@ -71,7 +71,7 @@ export class ClipboardController {
     this.host.checkAndEmitEditState();
   }
 
-  /** Drop the clipboard subgraph centred on the crosshairs, selected so it
+  /** Drop the clipboard subgraph centered on the crosshairs, selected so it
    *  can be dragged straight away. */
   paste(): void {
     if (!this.contents) return this.host.emitStatus('Clipboard is empty.');

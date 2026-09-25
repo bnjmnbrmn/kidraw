@@ -36,7 +36,7 @@ export interface AreaSelectHost {
   panLayerAlong(axis: Axis, delta: number): void;
   /** How far one press of a drag key moves the crosshairs, in stage pixels. */
   stepDistance(tier: GridTier): number;
-  /** The marquee's colour: the crosshairs', in the current theme. */
+  /** The marquee's color: the crosshairs', in the current theme. */
   marqueeColor(): string;
   checkAndEmitEditState(): void;
 }

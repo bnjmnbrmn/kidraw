@@ -16,7 +16,7 @@ describe('math images', () => {
     expect(small.ascent).toBeGreaterThan(small.descent);
   });
 
-  it('makes one coloured, oversampled image per formula, size and colour', () => {
+  it('makes one colored, oversampled image per formula, size and color', () => {
     const image = mathImage('x^2', 16, '#123456')!;
     expect(mathImage('x^2', 16, '#123456')).toBe(image);
     expect(mathImage('x^2', 16, '#654321')).not.toBe(image);

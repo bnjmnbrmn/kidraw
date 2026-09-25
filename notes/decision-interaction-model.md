@@ -33,6 +33,6 @@ They share an edge as their parent but have separate insert keys and separate se
 
 ## Open questions
 
-- How to visualize greyed-out submenu options when an action isn't applicable (e.g. "edge" requires two selected nodes). [idea-greyed-submenu-options](idea-greyed-submenu-options.md).
+- How to visualize grayed-out submenu options when an action isn't applicable (e.g. "edge" requires two selected nodes). [idea-grayed-submenu-options](idea-grayed-submenu-options.md).
 - Should multi-select persist across Select+Drag holds? Probably not initially — kept single-select for now.
 - Edge label positioning algorithm (currently simple; can be richer).

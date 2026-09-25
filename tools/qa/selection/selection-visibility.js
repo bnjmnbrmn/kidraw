@@ -105,7 +105,7 @@ async function main() {
     const e = dl.getDAEdges()[0];
     return {sel: e._selectionUnderlay?.stroke(), line: e._line.stroke()};
   });
-  check('the selection band uses the accent colour, not the edge colour',
+  check('the selection band uses the accent color, not the edge color',
     !!colors.sel && colors.sel !== colors.line, JSON.stringify(colors));
 
   await selectEdge(false);

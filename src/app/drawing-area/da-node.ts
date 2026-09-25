@@ -88,7 +88,7 @@ export class DANode {
   private readonly _stepBadge: Konva.Group;
   private readonly _stepBadgeRect: Konva.Rect;
   private readonly _stepBadgeText: Konva.Text;
-  /** Node kind (e.g. definition): its colour on the border, its name in a pill above the top-left corner. */
+  /** Node kind (e.g. definition): its color on the border, its name in a pill above the top-left corner. */
   private _kindColor: string | null = null;
   private _themeStroke: string | undefined;
   /** The theme's colors, kept so a custom color can be laid over them again. */
@@ -635,7 +635,7 @@ export class DANode {
     return this._customColors?.stroke ?? this._kindColor ?? this._themeStroke ?? 'black';
   }
 
-  /** Show the node's kind (e.g. a definition) as a border colour and a name
+  /** Show the node's kind (e.g. a definition) as a border color and a name
    *  badge; null for an ordinary node. */
   setNodeKind(kind: { label: string; color: string } | null): void {
     const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
@@ -1163,7 +1163,7 @@ export class DANode {
     return {math: this._labelMath};
   }
 
-  /** Editing a markdown label: monospace source with its markers coloured. */
+  /** Editing a markdown label: monospace source with its markers colored. */
   private get sourceView(): boolean {
     return this._labelFormat === 'markdown' && this._editingText;
   }
@@ -1406,7 +1406,7 @@ export class DANode {
     const prefix = text.substr(line.start, i - line.start);
     const prefixWidth = prefix.length === 0 ? 0 : measure.measureSize(prefix).width;
 
-    // Centre-aligned lines inside the LABEL box, which is itself inset in the
+    // Center-aligned lines inside the LABEL box, which is itself inset in the
     // node — so both offsets are the label's, not the node's.
     const cursorX = this._label.x() + (this._label.width() - lineWidth) / 2 + prefixWidth;
     // verticalAlign: 'middle' → the text block starts at (labelHeight - H)/2.
@@ -1593,7 +1593,7 @@ export class DANode {
   }
 
   /** The raw text on `_label`'s own line breaks (so the caret lines up), in
-   *  monospace, with markers faded, code coloured and bold/italic shown. */
+   *  monospace, with markers faded, code colored and bold/italic shown. */
   private drawSourceText(text: string): void {
     const measure = this.configuredMeasureText();
     const textArr: { text: string; width: number; lastInParagraph: boolean }[] =

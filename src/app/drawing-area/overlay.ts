@@ -4,7 +4,7 @@
  * The drawing area carries seven of these — the hover trace, the label-edit
  * lens, the navigation landing ghost, the nav-popup ghost, the grow ghost, the
  * link-nav quadrant lines, the movement goal line. None is part of the graph;
- * none is serialised; each exists to answer "what would happen if you did that"
+ * none is serialized; each exists to answer "what would happen if you did that"
  * and disappears when the answer changes.
  *
  * Each had grown its own nullable field and its own clear method, and those
@@ -14,7 +14,7 @@
  *
  * What stays with the caller is what is genuinely particular: the link-nav
  * lines own a debounce timer, and the hover trace tears down the landing ghost
- * with it. Those are behaviours, not lifecycle.
+ * with it. Those are behaviors, not lifecycle.
  */
 import Konva from 'konva';
 

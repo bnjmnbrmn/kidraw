@@ -54,7 +54,7 @@ test('allows approvals for KiDraw\'s own MCP tools, and only those', () => {
   assert.equal(chosen(decidePermission(unmarked, noTitles)), 'no');
 });
 
-test('recognises a KiDraw approval that refers to an earlier call by id', () => {
+test('recognizes a KiDraw approval that refers to an earlier call by id', () => {
   const meta = { _meta: { is_mcp_tool_approval: true } };
   const correlated = request({ kind: 'execute', toolCallId: 'call-7' }, meta);
   assert.equal(chosen(decidePermission(correlated, id => (id === 'call-7' ? 'mcp__kidraw__get_outline' : undefined))), 'yes');

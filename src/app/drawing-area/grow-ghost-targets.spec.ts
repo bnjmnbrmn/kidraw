@@ -56,7 +56,7 @@ describe('held-Add ghost targets', () => {
     const nodes = [
       {id: 'anchor', x: 360, y: 360, halfW: 60, halfH: 60},
       // Off-lattice, so its *box* covers the grid point at (760, 360) while
-      // its centre does not (da-510).
+      // its center does not (da-510).
       {id: 'occupier', x: 800, y: 380, halfW: 60, halfH: 60},
     ];
     const bounds = {minX: 0, minY: 0, maxX: 1400, maxY: 900};

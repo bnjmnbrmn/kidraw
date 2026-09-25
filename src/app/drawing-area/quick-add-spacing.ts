@@ -2,7 +2,7 @@
  * How far from its anchor a quick-added node lands.
  *
  * One question, asked on one axis at a time: given the box you are growing
- * from and the box about to appear, what centre-to-centre distance puts them
+ * from and the box about to appear, what center-to-center distance puts them
  * side by side without touching and without a chasm between them? The held-Add
  * lattice, the rough directional throw, and the coarse placement step all
  * measure themselves in this unit.
@@ -41,7 +41,7 @@ const GAP_MAX_V = 90;
 export const DEFAULT_BOX_SIZE = 120;
 
 /**
- * Centre-to-centre distance for a node of size `fresh` placed beside a node
+ * Center-to-center distance for a node of size `fresh` placed beside a node
  * of size `anchor`, along `axis`.
  *
  * Half of each box, not one box twice: growing a small node next to the

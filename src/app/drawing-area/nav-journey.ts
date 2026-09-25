@@ -43,7 +43,7 @@ export class NavJourney {
     return this.lastNode;
   }
 
-  /** Begin from `node` without claiming to have travelled there. */
+  /** Begin from `node` without claiming to have traveled there. */
   startAt(node: DANode): void {
     this.lastNode = node;
   }
@@ -55,7 +55,7 @@ export class NavJourney {
   }
 
   /** Land on the far end of a link: record the jump, and take the heading
-   *  from the two node centres so the next hop can continue onward. */
+   *  from the two node centers so the next hop can continue onward. */
   arrive(source: DANode, dest: DANode, direction: NavDirection): void {
     this.recordVisit(source.id, dest.id);
     this.lastNode = dest;

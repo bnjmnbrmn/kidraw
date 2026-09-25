@@ -5,7 +5,7 @@
  * produces: two edges leaving the same node and crossing each other well
  * away from it.
  *
- * Intersections within a node's own half-diagonal (+40px) of its centre are
+ * Intersections within a node's own half-diagonal (+40px) of its center are
  * ignored: that is the fan-out itself, not a crossing anyone objects to.
  */
 const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,

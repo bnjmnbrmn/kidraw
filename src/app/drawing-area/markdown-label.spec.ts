@@ -45,7 +45,7 @@ describe('markdown labels', () => {
       expect(rendered('`a*b*c`')).toBe('C[a*b*c]');
     });
 
-    it('honours backslash escapes', () => {
+    it('honors backslash escapes', () => {
       expect(rendered('\\*not italic\\*')).toBe('[*not italic*]');
     });
 
@@ -78,7 +78,7 @@ describe('markdown labels', () => {
     // Every character is 10 wide, bold ones 12, so widths are easy to check.
     const measure = (text: string, style: InlineStyle) => text.length * (style.bold ? 12 : 10);
 
-    it('wraps at spaces and centres by width without trailing spaces', () => {
+    it('wraps at spaces and centers by width without trailing spaces', () => {
       const lines = layoutSpans(parseInlineMarkdown('aaa bbb ccc').spans, 75, measure);
       expect(lines.map(l => l.runs.map(r => r.text).join(''))).toEqual(['aaa bbb', 'ccc']);
       expect(lines[0].width).toBe(70);

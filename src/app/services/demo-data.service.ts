@@ -281,7 +281,7 @@ export class DemoDataService {
 
   private buildModeDiagram(dl: DrawingLayer): void {
     // Concrete Vim-profile state-transition slice. Named nodes are visible
-    // menus; the two deliberately-unlabelled nodes mean "zoom key held".
+    // menus; the two deliberately-unlabeled nodes mean "zoom key held".
     // Edges carry physical events and emitted actions. The parallel return
     // routes make release ordering explicit: release i/o to return to the
     // Pan/Zoom submenu, or release the prefix r to pop straight to the root.

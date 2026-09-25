@@ -10,7 +10,7 @@ With `bezier-route-edges` (`b → ;`), two anti-parallel edges between the same 
 
 ## Root cause
 
-The lane-offset logic in `bezier-route-edges.ts` already grouped edges by an unordered key, but `routeOneEdge` then applied the scalar offset along each edge's *local* perpendicular (`-dy/len, dx/len` computed from that edge's own src→end direction). For A→B the local perp pointed one way; for B→A it pointed the opposite way. Combined with opposite-sign offsets from `idx - (N-1)/2`, the two effects cancelled and both edges landed on the same side of the chord.
+The lane-offset logic in `bezier-route-edges.ts` already grouped edges by an unordered key, but `routeOneEdge` then applied the scalar offset along each edge's *local* perpendicular (`-dy/len, dx/len` computed from that edge's own src→end direction). For A→B the local perp pointed one way; for B→A it pointed the opposite way. Combined with opposite-sign offsets from `idx - (N-1)/2`, the two effects canceled and both edges landed on the same side of the chord.
 
 ## Fix
 

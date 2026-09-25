@@ -165,7 +165,7 @@ export class CrosshairsHover {
     this.clear(false);
   }
 
-  /** Dash, colour and glow shared by every hover trace, plus the zoom-corrected
+  /** Dash, color and glow shared by every hover trace, plus the zoom-corrected
    *  padding that keeps the trace clear of the thing it traces. */
   private traceStyle(): HoverTraceStyle {
     const scale = Math.max(this.host.drawingLayer.scaleX(), 0.001);
@@ -265,7 +265,7 @@ export class CrosshairsHover {
     });
     group.setAttr('targetId', node.id);
     group.setAttr('reasons', reasons);
-    // Ground the clone on the canvas colour so anything behind the ghost is
+    // Ground the clone on the canvas color so anything behind the ghost is
     // occluded even where the node's own fill is translucent.
     group.add(ghostOutline(node, {
       fill: palette.drawingStageBackground,

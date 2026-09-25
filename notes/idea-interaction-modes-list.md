@@ -75,7 +75,7 @@ What it would buy:
   a check per mode at each site.
 - **One-at-a-time becomes a rule.** Starting a mode cancels the active one,
   instead of relying on gestures not overlapping.
-- **A place for what is coming.** The centred menus Ben wants
+- **A place for what is coming.** The centered menus Ben wants
   ([`idea-center-menus.md`](idea-center-menus.md)) are another keyboard owner
   with a surface, and would slot in as a mode rather than as a new special case.
   Plugins may want to contribute one too ([`design-plugins.md`](design-plugins.md)).

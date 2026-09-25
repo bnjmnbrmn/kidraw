@@ -97,7 +97,7 @@ export interface LocalScoreOptions {
    *  least `satisfiedGrazeClearance` counts as fully satisfied. A straight,
    *  visually unambiguous chord needs no clearance improvement — without the
    *  exemption, compact layouts bow edges that were already fine (petersen's
-   *  inner star runs 20-28px from its neighbours and should stay straight).
+   *  inner star runs 20-28px from its neighbors and should stay straight).
    *  Routes that bend anyway get no exemption, so a detour still prefers the
    *  full `satisfiedNodeClearance` berth around the nodes it dodges. */
   wholePathClearance?: boolean;
@@ -108,7 +108,7 @@ export interface LocalScoreOptions {
    *  1.6px graze). */
   satisfiedGrazeClearance?: number;
   /** Radius (px) around each edge endpoint excluded from whole-path clearance,
-   *  so an edge isn't penalised for leaving its own perimeter beside a neighbour
+   *  so an edge isn't penalized for leaving its own perimeter beside a neighbor
    *  of its incident node. Only used when `wholePathClearance` is on. */
   endpointClearanceRadius?: number;
 }
@@ -140,8 +140,8 @@ export interface LocalScore {
   minNodeClearance: number; // raw px (not clamped); clamp happens in compare
   minEdgeClearance: number; // raw px
   minSiblingSeparation: number; // raw px; interior gap to nearest sibling
-  minIncidentAngleDeg: number; // smallest approach-angle gap to a fan neighbour
-  minFanSeparation: number; // raw px; interior gap to nearest fan neighbour (v3)
+  minIncidentAngleDeg: number; // smallest approach-angle gap to a fan neighbor
+  minFanSeparation: number; // raw px; interior gap to nearest fan neighbor (v3)
   nonSiblingCrossCount: number;
   maxBulgeRatio: number;
   maxCurvature: number; // largest single interior turn angle (radians)
@@ -327,7 +327,7 @@ export function compareLocalScores(a: LocalScore, b: LocalScore, opts: LocalScor
 
   // Soft tier 4b (v3, gated): fan-in/fan-out interior separation (higher is
   // better, clamped). Ranked alongside the other fan/sibling terms — above
-  // aesthetics so a fan edge will take a bend to pull out of its neighbour's
+  // aesthetics so a fan edge will take a bend to pull out of its neighbor's
   // path, but below crossings so it won't cross to do so. Off for IDv2.
   if (opts.fanSeparationEnabled) {
     const cap = opts.satisfiedFanSeparation ?? 28;
@@ -397,7 +397,7 @@ function computeMinNodeClearance(
     if (node === src || node === dest) continue;
     const box = bboxOf(node);
     // Interior points only — the endpoints sit on incident perimeters and a
-    // non-incident node near an endpoint shouldn't be penalised here.
+    // non-incident node near an endpoint shouldn't be penalized here.
     for (let i = 1; i < poly.length - 1; i++) {
       const d = pointBoxDistance(poly[i], box);
       if (d < min) min = d;
@@ -410,7 +410,7 @@ function computeMinNodeClearance(
 /** (IDv3) Graze clearance measured along the whole rendered path, sampled at a
  *  fixed spacing so a STRAIGHT edge (no interior vertices) is measured too.
  *  Samples within `endR` of either endpoint are skipped — an edge leaving its
- *  own incident perimeter beside a neighbour shouldn't count as a graze. */
+ *  own incident perimeter beside a neighbor shouldn't count as a graze. */
 function wholePathNodeClearance(
   poly: Pt[], src: ScoreNode, dest: ScoreNode, nodes: ScoreNode[], cap: number, endR: number,
 ): number {
@@ -497,7 +497,7 @@ function sideSign(a: Pt, b: Pt, p: Pt): number {
   return v > 1e-6 ? 1 : v < -1e-6 ? -1 : 0;
 }
 
-/** True if vertex `v` (with neighbours `prev`/`next`) lies on segment s1→s2 and
+/** True if vertex `v` (with neighbors `prev`/`next`) lies on segment s1→s2 and
  *  the path passes through to the other side there — a crossing the strict
  *  segment test misses because it sits at a vertex. */
 function vertexPassesThrough(prev: Pt, v: Pt, next: Pt, s1: Pt, s2: Pt): boolean {
@@ -515,7 +515,7 @@ function vertexPassesThrough(prev: Pt, v: Pt, next: Pt, s1: Pt, s2: Pt): boolean
   return sp !== 0 && sn !== 0 && sp !== sn;
 }
 
-/** Centre of the single node two edges share (the fan hub), or null if they
+/** Center of the single node two edges share (the fan hub), or null if they
  *  don't share exactly one endpoint. */
 function sharedHubCenter(src: ScoreNode, dest: ScoreNode, other: ContextEdge): Pt | null {
   let shared: ScoreNode | null = null;

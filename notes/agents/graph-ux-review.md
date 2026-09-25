@@ -2,7 +2,7 @@
 
 ## Mandate
 
-Audit the user experience of the *canvas* — how it feels to navigate, select, drag, and manipulate nodes / edges / waypoints / labels. Tween snappiness, selection feedback, crosshairs behaviour, label-edit comfort, mode transitions on the drawing side.
+Audit the user experience of the *canvas* — how it feels to navigate, select, drag, and manipulate nodes / edges / waypoints / labels. Tween snappiness, selection feedback, crosshairs behavior, label-edit comfort, mode transitions on the drawing side.
 
 Read across the drawing-area + graph-auto-layout implementers' worktrees. Don't edit production code; return findings.
 
@@ -19,8 +19,8 @@ For each change touching `src/app/drawing-area/**` (or the routing modules):
 3. **Tween hygiene.** Is `finishTweens` called before any mutation that would race a tween? Past bugs have been tween-lifecycle issues. Severity: blocker if a race exists.
 4. **Mode-transition correctness.** Does entering / exiting label-edit hide / show crosshairs cleanly? Does double-Shift return to `normal`? See [`architecture-mode-hierarchy.md`](../architecture-mode-hierarchy.md). Severity: blocker if broken.
 5. **Routing visual quality.** For graph-auto-layout changes: do edges feel resolved? Crossings / clearance / curvature reasonable on benchmark graphs? See [`idea-routing-auto-tune.md`](../idea-routing-auto-tune.md).
-6. **Snap & grid.** Does grid-snap behaviour match the user's expectation at the current zoom? Half-cell normal movement (post-2026-05-21) should feel snappy, not floaty.
-7. **Waypoint targeting.** Generous tolerance per invariant #11 — but no over-eager grabs that prevent selecting an edge near a waypoint. The 2026-05-23 `vv`-toggle behaviour must round-trip.
+6. **Snap & grid.** Does grid-snap behavior match the user's expectation at the current zoom? Half-cell normal movement (post-2026-05-21) should feel snappy, not floaty.
+7. **Waypoint targeting.** Generous tolerance per invariant #11 — but no over-eager grabs that prevent selecting an edge near a waypoint. The 2026-05-23 `vv`-toggle behavior must round-trip.
 
 ## Output format
 

@@ -6,7 +6,7 @@ type: process
 # What "more readable" means here
 
 Recorded from four side-by-side choices Ben made on real `drawing-area.component.ts`
-code (Ben, 2026-09-17). Each was a genuine judgement call with a defensible
+code (Ben, 2026-09-17). Each was a genuine judgment call with a defensible
 answer on both sides; these are the ones he picked.
 
 ## The four calls
@@ -28,7 +28,7 @@ inlined version was shortest and lost, because it repeated the formula.
 **Remove duplication with a higher-order helper.** For the three style
 setters sharing a selection-else-hover-else-complain shape, Ben chose
 `withTargetEdges(noun, apply)` over merely sharing the target lookup, and over
-leaving them separate. Passing behaviour as a parameter is welcome.
+leaving them separate. Passing behavior as a parameter is welcome.
 
 **Prefer a named method to a named local.** For a once-used
 `const hasSelection = ...`, Ben chose folding it into a `hasSelection()`

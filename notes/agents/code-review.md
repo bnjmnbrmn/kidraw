@@ -2,7 +2,7 @@
 
 ## Mandate
 
-Audit code quality on changes from any implementer. Idiom match against the surrounding code, dead code / dead imports, naming clarity, complexity, type-safety hygiene, error paths, test coverage of new behaviour. Posture-tagged, region-agnostic.
+Audit code quality on changes from any implementer. Idiom match against the surrounding code, dead code / dead imports, naming clarity, complexity, type-safety hygiene, error paths, test coverage of new behavior. Posture-tagged, region-agnostic.
 
 Read across implementer worktrees. Don't edit production code; return findings.
 
@@ -17,7 +17,7 @@ Reviewer. Read-only. Personal scratch worktree for "would this refactor read bet
 3. **Naming.** Are types / variables / functions self-evident? Avoid abbreviations the surrounding code doesn't use. Severity: minor.
 4. **Complexity.** Methods over ~50 lines; functions with 5+ parameters; nested ternaries; deeply nested conditionals. Severity: warning; suggest extraction.
 5. **Type safety.** Avoid `any` and `as` unless justified. Discriminated unions over loose objects. Severity: major if a non-null assertion can produce a runtime error.
-6. **Test coverage.** New public behaviour should have at least one test. State-machine transitions especially — see [`process-workflow-lessons`](../process-workflow-lessons.md) and [`idea-test-coverage-gaps`](../idea-test-coverage-gaps.md). Severity: major if a new path is untested.
+6. **Test coverage.** New public behavior should have at least one test. State-machine transitions especially — see [`process-workflow-lessons`](../process-workflow-lessons.md) and [`idea-test-coverage-gaps`](../idea-test-coverage-gaps.md). Severity: major if a new path is untested.
 7. **Error paths.** Async functions return rejections appropriately; UI doesn't swallow errors silently; status messages explain failure to the user.
 8. **TODO / FIXME / temp markers.** Any new temp instrumentation (debug logs, `console.log`, `xfail`) should be flagged for removal or made permanent. Severity: nit unless it pollutes output.
 

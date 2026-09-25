@@ -20,7 +20,7 @@ export interface PluginChange {
  *
  * Core plugins are always on; the rest can be turned off in Settings (Ben,
  * 2026-09-23). A plugin that is off keeps its data working — a graph of its
- * type still opens, renders and saves losslessly — but its behaviour stops:
+ * type still opens, renders and saves losslessly — but its behavior stops:
  * its commands say it is off, its menu goes, and `:type` stops offering it.
  *
  * Dependencies are followed automatically, with a notice (Ben, 2026-09-23):

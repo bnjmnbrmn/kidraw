@@ -25,7 +25,7 @@ const LINE_HEIGHT = 17.5;
 const CAPTION_CHROME_HEIGHT = 16;
 /** A caption may cover up to this share of its own area in other nodes; past that it docks. */
 const MAX_COVERED_FRACTION = 0.1;
-/** Docked captions shown at once; the rest are summarised. */
+/** Docked captions shown at once; the rest are summarized. */
 const MAX_DOCKED = 3;
 /** Docked captions are wider (up to 560px), so more text fits per line. */
 const DOCKED_CHARS_PER_LINE = 75;
@@ -174,7 +174,7 @@ export class AgentOverlayComponent implements OnDestroy {
   }
 
   /**
-   * The clearest spot beside the node: centred on the right, left, below or
+   * The clearest spot beside the node: centered on the right, left, below or
    * above, then aligned with the node's edges on each side. A spot must lie in
    * the view and clear of other captions; the first that hides no other node
    * wins, otherwise the one hiding least, as long as that is a small share of
@@ -191,14 +191,14 @@ export class AgentOverlayComponent implements OnDestroy {
     const below = node.top + node.height + CAPTION_GAP;
     const above = node.top - CAPTION_GAP - height;
     const middleTop = node.top + node.height / 2 - height / 2;
-    const centreLeft = node.left + node.width / 2 - width / 2;
+    const centerLeft = node.left + node.width / 2 - width / 2;
     const topAligned = node.top;
     const bottomAligned = node.top + node.height - height;
     const leftAligned = node.left;
     const rightAligned = node.left + node.width - width;
     const candidates = [
       {left: right, top: middleTop}, {left, top: middleTop},
-      {left: centreLeft, top: below}, {left: centreLeft, top: above},
+      {left: centerLeft, top: below}, {left: centerLeft, top: above},
       {left: right, top: topAligned}, {left: right, top: bottomAligned},
       {left, top: topAligned}, {left, top: bottomAligned},
       {left: leftAligned, top: below}, {left: rightAligned, top: below},

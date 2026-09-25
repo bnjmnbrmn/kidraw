@@ -86,7 +86,7 @@ component:
 - `grow-controller.ts` — grow mode, the held add key: aiming on the placement
   lattice, the target search and type popups, placement, and the commits.
 - `interaction-modes.ts` — the list of interaction modes (grow, Move by Link,
-  Move by Node's held session, area select): at most one on, and all cancelled
+  Move by Node's held session, area select): at most one on, and all canceled
   when the graph is replaced.
 
 These are the pattern to follow when more comes out: the component lends a
@@ -100,7 +100,7 @@ have ([`notes/design-plugins.md`](notes/design-plugins.md)).
 
 ## State that outlives a keystroke
 
-**Undo/redo** is whole-graph snapshot serialisation — `graph-snapshot.ts` plus
+**Undo/redo** is whole-graph snapshot serialization — `graph-snapshot.ts` plus
 `undo-redo.service.ts`. Coarse, and deliberately so. Agent edits get authored
 undo groups so one agent turn undoes as one step.
 
@@ -146,7 +146,7 @@ Three tiers, and they catch different things:
 
 Many unit specs build the component with
 `Object.create(DrawingAreaComponent.prototype)`, which skips field
-initialisers. That is worth knowing before you move anything onto a
+initializers. That is worth knowing before you move anything onto a
 collaborator field: prototype methods survive it, fields do not.
 
 ## A reading order
@@ -167,6 +167,6 @@ If you want to understand the whole thing, roughly this order:
    (`gather-controller.ts` was the example until it was retired on 2026-09-24.)
 8. [`agent/README.md`](agent/README.md) — if agent mode interests you.
 
-Then pick a behaviour you know from using the app, find its `DACommand`, and
+Then pick a behavior you know from using the app, find its `DACommand`, and
 follow it through. That is faster than reading `drawing-area.component.ts` top
 to bottom, which nobody should do.

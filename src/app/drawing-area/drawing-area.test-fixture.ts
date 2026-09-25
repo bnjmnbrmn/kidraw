@@ -4,7 +4,7 @@
  * Most of the drawing area's white-box specs skip Angular and fabricate a
  * component with `Object.create(DrawingAreaComponent.prototype)`. That gives
  * them the methods without a TestBed, a stage or a real DOM — but it also skips
- * every field initialiser, so each collaborator the class builds for itself
+ * every field initializer, so each collaborator the class builds for itself
  * (`camera`, `viewport`, the seven overlays) comes out `undefined`, and a spec
  * that touches one dies on `Cannot read properties of undefined`.
  *
@@ -40,7 +40,7 @@ import { Viewport } from './viewport';
 const NO_INSET = {left: 0, right: 0, top: 0, bottom: 0};
 
 /**
- * Give `component` the collaborators its field initialisers would have.
+ * Give `component` the collaborators its field initializers would have.
  *
  * Deliberately typed `any`: these specs are already reaching past `private`,
  * and pretending otherwise would just add casts at every call site.

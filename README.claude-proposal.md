@@ -116,7 +116,7 @@ maths over Konva shapes, testable without a browser.
 | `drawing-area/drawing-area.component.ts` | **8,518** | Everything on the canvas: commands, navigation, grow mode, overlays, label editing, viewport. Too big; see cleanup. |
 | `keymenu/keymenu.component.ts` | 2,033 | Builds the menu tree from key assignments; intercepts chords; mirrors the menu into the compact panel |
 | `drawing-area/da-node.ts` | 1,241 | A node: box, label, text overflow modes, the caret model |
-| `drawing-area/graph-layout.ts` | 1,084 | Force / tree / radial layouts, ordering optimiser, pierce repair. **Pure functions** |
+| `drawing-area/graph-layout.ts` | 1,084 | Force / tree / radial layouts, ordering optimizer, pierce repair. **Pure functions** |
 | `drawing-area/da-edge.ts` | 885 | An edge: path, arrowheads, waypoints, labels |
 | `drawing-area/drawing.layer.ts` | 667 | The node/edge collection, snapshots, identity defaults |
 | `keymenu/config/key-assignments.ts` | — | **Every key binding, both profiles.** Start here for anything keyboard |

@@ -4,7 +4,7 @@
 // Routes edges ONE AT A TIME in a deterministic order. Each edge is scored as
 // the SMOOTH CURVE its waypoints define (Konva tension 0.5, replicated by
 // routing-curve.ts) — i.e. waypoints act as Bézier/Catmull-Rom control points,
-// so we optimise what the user actually sees, not a straight control polygon.
+// so we optimize what the user actually sees, not a straight control polygon.
 //
 // Per edge:
 //   1. Seed — pick the best of a small fixed candidate set (straight, doglegs,

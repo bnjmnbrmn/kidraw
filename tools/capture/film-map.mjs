@@ -19,7 +19,7 @@ import {writeFileSync, mkdirSync, rmSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {open, keys, overlaysSeen} from './driver.mjs';
-import {goTo, growAtCell, findGrowCell, nodeCentre, grownHalfExtents, park, select,
+import {goTo, growAtCell, findGrowCell, nodeCenter, grownHalfExtents, park, select,
         frameAbove, settle, labels, edges, boxesOnEdges} from './build.mjs';
 import {typeFilm, walkLinks, aimCamera, pullBackTo, vimEdit} from './gestures.mjs';
 import {startRecorder} from './record.mjs';
@@ -35,8 +35,8 @@ const VIEWPORT = {width: 820, height: 700};
 /**
  * The build happens at 200%, not 100%.
  *
- * Editing a label takes the camera to 400% and centres it there — the app's own
- * behaviour, not something the film arranges — so every box costs one trip out
+ * Editing a label takes the camera to 400% and centers it there — the app's own
+ * behavior, not something the film arranges — so every box costs one trip out
  * to the building zoom and one back. From 100% that trip is three or four rungs
  * of the ladder each way, thirty-four times over, which is a great deal of
  * zooming for a reader to watch and none of it is about anything. From 200% it
@@ -77,8 +77,8 @@ async function aimFor(node, parent, grandparent) {
   const index = kin.indexOf(node);
   const fan = FAN * (index - (kin.length - 1) / 2) / Math.max(kin.length, 2);
   if (!grandparent) return QUARTERS[index % QUARTERS.length];
-  const from = await nodeCentre(page, plain(grandparent.t));
-  const to = await nodeCentre(page, plain(parent.t));
+  const from = await nodeCenter(page, plain(grandparent.t));
+  const to = await nodeCenter(page, plain(parent.t));
   if (!from || !to) return fan;
   return Math.atan2(to.y - from.y, to.x - from.x) + fan;
 }
@@ -143,9 +143,9 @@ async function showLayoutFinale() {
 
 /** Fit the whole diagram on screen, as keypresses a reader can follow. */
 async function showRecenter() {
-  // Nothing selected first. Recenter View centres on the *selection* when
+  // Nothing selected first. Recenter View centers on the *selection* when
   // there is one and only fits the whole diagram when there is not — and the
-  // box just made is still selected, so this was centring on it at 400% and
+  // box just made is still selected, so this was centering on it at 400% and
   // leaving the branch shot to be salvaged by panning that could not reach.
   await keys(page, 'c');
   await settle(page, 200);
@@ -205,7 +205,7 @@ for (const [at, {node, parent, depth}] of entries.entries()) {
   // has room to grow without reaching into the arrows of the one beside it.
   const preferred = (depth === 1 ? 430 : 260) + 25 * Math.max(0, parent.c.length - 3);
   const grown = grownHalfExtents(label);
-  const outward = await nodeCentre(page, plain((grandparent ?? parent).t));
+  const outward = await nodeCenter(page, plain((grandparent ?? parent).t));
   // Find a reachable spot with the camera off, so the walk that is filmed can
   // go straight there.
   await rec.off();

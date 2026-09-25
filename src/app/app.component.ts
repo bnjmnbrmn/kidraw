@@ -79,7 +79,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   keymenuDisplay: KeymenuDisplay = 'keyboard';
   compactRows: CompactMenuRow[] = [];
   compactHint = '';
-  /** The keymenu's current mode and its colour, shown as a chip below the
+  /** The keymenu's current mode and its color, shown as a chip below the
    *  full menu and as the compact panel's header (da-432). */
   modeLabelText = '';
   modeLabelColor = '#888888';
@@ -116,11 +116,11 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
    *  isn't showing. Same contract as the compact panel: the canvas still
    *  spans the full area, but the crosshairs stop at the card's top edge
    *  and the view pans instead of sliding them underneath. Applied across
-   *  the full width even though the card is centred — a viewport with a
+   *  the full width even though the card is centered — a viewport with a
    *  notch in it is not worth the complexity. */
   get keymenuInset(): number {
     // Typing hides the keyboard, so the graph gets that room back: the inset is
-    // just the hint and the mode chip, and the box being edited is centred in
+    // just the hint and the mode chip, and the box being edited is centered in
     // the window rather than in the band above a keyboard that is not there.
     if (this.keymenuTyping) return KeymenuComponent.typingOccludedHeightPx();
     return this.keymenuDisplay === 'keyboard' ? KeymenuComponent.occludedHeightPx() : 0;

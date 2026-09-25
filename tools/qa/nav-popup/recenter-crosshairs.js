@@ -25,9 +25,9 @@ async function main() {
     const cy = da.crosshairsLayer.crosshairsY();
     return {
       stage: { w: da.stage.width(), h: da.stage.height() },
-      // Centre on Xhairs targets the *usable* viewport, which the shell insets
-      // for the keymenu and panels — not the raw stage centre.
-      viewCentre: { x: da.viewCenterX(), y: da.viewCenterY() },
+      // Center on Xhairs targets the *usable* viewport, which the shell insets
+      // for the keymenu and panels — not the raw stage center.
+      viewCenter: { x: da.viewCenterX(), y: da.viewCenterY() },
       scale: dl.scaleX(),
       xh: { x: cx, y: cy },
       // graph point currently under the crosshairs
@@ -55,9 +55,9 @@ async function main() {
   await page.waitForTimeout(700); // let the recenter tween finish
 
   const after = await state();
-  check('crosshairs land at the usable viewport centre',
-    Math.abs(after.xh.x - after.viewCentre.x) < 1.5 && Math.abs(after.xh.y - after.viewCentre.y) < 1.5,
-    `(${after.xh.x.toFixed(1)},${after.xh.y.toFixed(1)}) vs centre (${after.viewCentre.x},${after.viewCentre.y})`);
+  check('crosshairs land at the usable viewport center',
+    Math.abs(after.xh.x - after.viewCenter.x) < 1.5 && Math.abs(after.xh.y - after.viewCenter.y) < 1.5,
+    `(${after.xh.x.toFixed(1)},${after.xh.y.toFixed(1)}) vs center (${after.viewCenter.x},${after.viewCenter.y})`);
   const drift = Math.hypot(after.layerPt.x - before.layerPt.x, after.layerPt.y - before.layerPt.y);
   check('same graph point stays under the crosshairs', drift < 1, `drift=${drift.toFixed(2)}px`);
   check('zoom unchanged', Math.abs(after.scale - before.scale) < 1e-9, `${before.scale} → ${after.scale}`);

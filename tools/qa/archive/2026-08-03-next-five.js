@@ -261,7 +261,7 @@ async function main() {
   });
   // The ellipsis went with da-527; the chamfered corner is what says "has
   // children" now.
-  check('Move by Link is a labelled hub', label === 'Move by Link', label);
+  check('Move by Link is a labeled hub', label === 'Move by Link', label);
 
   // Add-edge target selection uses the same W scan and corner flow.
   await page.keyboard.down('a');

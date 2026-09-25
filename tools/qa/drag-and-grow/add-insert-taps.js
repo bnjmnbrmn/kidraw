@@ -159,7 +159,7 @@ async function main() {
 
   // --- 3. tap a over a bare edge: new label, straight into Insert ---
   // Ledger row 6b said "no-op + hint" until 2026-09-17; it contradicted the
-  // prose in the same design note, and the built behaviour followed the prose.
+  // prose in the same design note, and the built behavior followed the prose.
   await reset(twoNodes());
   await parkOnEdge();
   const before3 = (await state()).nodes.length;
@@ -212,7 +212,7 @@ async function main() {
     da.drawingLayer.unselectAll();
     const edge = da.drawingLayer.getDAEdges()[0];
     edge.isSelected = true;
-    // Off-centre anchor so the t → 1-t mirroring is actually observable.
+    // Off-center anchor so the t → 1-t mirroring is actually observable.
     if (edge.labels[0]) edge.setLabelAnchor(edge.labels[0], 0.2, edge.labels[0].side);
     da.drawingLayer.batchDraw();
   });

@@ -8,7 +8,7 @@ import { placeNode, connect } from './_helpers.mjs';
 // adjacent boxes — small enough that chord/anti-parallel edges had to
 // thread through narrow slots near the ring, producing the visual mess.
 //
-// Fix: widen the ring (radius 460 around a 560,560 centre) so the
+// Fix: widen the ring (radius 460 around a 560,560 center) so the
 // minimum axis-aligned gap between adjacent boxes is ~110 px. Edge
 // topology is unchanged — still 24 edges with a mix of ring,
 // long-haul chords, anti-parallel pairs, a near-parallel duplicate,

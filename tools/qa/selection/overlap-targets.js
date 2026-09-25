@@ -120,10 +120,10 @@ const selected = page => page.evaluate(`${DA}.drawingLayer.getDANodes().filter(n
   check('the crosshairs are on both edges, and the hover trace on one of them',
     edges.under.length === 2 && edges.highlighted !== null, JSON.stringify(edges));
   await run(page, {kind: 'EDIT_TEXT_AT_CROSSHAIRS'});
-  const labelled = await page.evaluate(`${DA}.drawingLayer.getDAEdges().filter(e => e.labels.length > 0)
+  const labeled = await page.evaluate(`${DA}.drawingLayer.getDAEdges().filter(e => e.labels.length > 0)
     .map(e => e.srcNode.label.text() + e.destNode.label.text())`);
-  check('Edit Text labels the highlighted edge', JSON.stringify(labelled) === JSON.stringify([edges.highlighted]),
-    JSON.stringify(labelled));
+  check('Edit Text labels the highlighted edge', JSON.stringify(labeled) === JSON.stringify([edges.highlighted]),
+    JSON.stringify(labeled));
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
 

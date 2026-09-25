@@ -2,7 +2,7 @@
  * The usable viewport: the stage, minus whatever the UI covers its edges with.
  *
  * The header, the keymenu and the agent panel are DOM overlays sitting on top
- * of the canvas. The canvas is still full-size underneath them, so "centre this
+ * of the canvas. The canvas is still full-size underneath them, so "center this
  * node" or "keep the crosshairs off the edge" measured against the stage puts
  * things under a panel where nobody can see them. Everything that reasons about
  * where the user can actually look measures against this instead.

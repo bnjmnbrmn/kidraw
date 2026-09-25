@@ -14,7 +14,7 @@ The first-milestone scaffold is in place (Claude session). What exists now:
 
 - `src/app/drawing-area/routing-geometry.ts` — shared pure-geometry primitives.
   The production `desiderata-route-edges.ts` was refactored to import these
-  (verified behaviour-preserving: dense `geometry.json` byte-identical before/
+  (verified behavior-preserving: dense `geometry.json` byte-identical before/
   after). Production routing is unchanged.
 - `src/app/drawing-area/routing-local-score.ts` — the local single-edge scorer.
   Scores one edge's candidate against nodes + a small context set, never the
@@ -86,7 +86,7 @@ route: it must sample the curve of the current *best* control points, not
 whatever candidate the edge was last left on.) Result: tangent-grazing AD routes
 cleanly below B and C; converge S3→In takes a single-waypoint route left of S4;
 the whole battery is now **33/33** with no curve clips. The two issues were NOT
-caused by fan separation (verified by neutralising it).
+caused by fan separation (verified by neutralizing it).
 
 (Considered extending the trigger to tight near-misses so BD's ~10px graze
 would re-route wider, but the bypass mis-handles obstacles that sit off to one
@@ -127,7 +127,7 @@ Surfaced by inspecting the comparison page:
 The comparison page (`compare-page.mjs`) revealed v2 collapsing parallel /
 anti-parallel siblings onto one overlapping line. Cause: siblings share both
 endpoints, so the edge-edge clearance check skipped them, and two collinear
-straights don't register as a crossing — nothing penalised the overlap. Fix: a
+straights don't register as a crossing — nothing penalized the overlap. Fix: a
 `minSiblingSeparation` desideratum in `routing-local-score.ts` — for sibling
 context edges, measure the gap at this candidate's interior sample points (away
 from the shared endpoints they must converge at), clamped at

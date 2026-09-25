@@ -1,7 +1,7 @@
 /**
  * Inline markdown for node labels: **bold**, *italic* (or _italic_), `code`
  * and $math$ (TeX), with backslash escapes. Pure: parsing, the source-view
- * colouring and line layout live here; DANode draws the result with Konva,
+ * coloring and line layout live here; DANode draws the result with Konva,
  * and math-renderer.ts turns TeX into images.
  *
  * Deliberately small. Anything that doesn't form a closed pair stays literal,
@@ -211,7 +211,7 @@ export interface LaidRun extends RunMetrics {
 
 export interface LaidLine {
   runs: LaidRun[];
-  /** Without trailing spaces, for centring. */
+  /** Without trailing spaces, for centering. */
   width: number;
   /** The tallest run's reach above and below the baseline: a line with a
    *  fraction on it is taller than one without. */

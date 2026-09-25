@@ -56,7 +56,7 @@ move, and the dashed quadrant overlay already shows that the quadrant is empty.
 What is hard to defend is *announcing* it as `north: …`, which reads as if the
 walk went north. Three ways out, in increasing order of change:
 
-1. Keep the behaviour, fix the message — say nothing, or say the quadrant is
+1. Keep the behavior, fix the message — say nothing, or say the quadrant is
    empty. Smallest change; makes the existing unreachable message reachable.
 2. Distinguish the cases in `LinkQuadrantMove` — a `stayed: true` flag, or
    returning null id, so the caller knows the difference between "crossed a

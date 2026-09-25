@@ -12,7 +12,7 @@
 /** A menu entry: its label, and perhaps a key it would like. */
 export interface KeyedEntry {
   label: string;
-  /** A memorable key for this entry. Honoured only if it is ergonomic here
+  /** A memorable key for this entry. Honored only if it is ergonomic here
    *  and free. */
   key?: string;
 }

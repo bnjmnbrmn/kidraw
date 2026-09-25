@@ -21,7 +21,7 @@ export interface GrowAim {
   /** The node being grown from. Null on an empty-canvas add, which therefore
    *  previews a node but no edge. */
   anchor: DANode | null;
-  /** The anchor's centre in layer coordinates, fixed when the gesture began. */
+  /** The anchor's center in layer coordinates, fixed when the gesture began. */
   origin: Point;
   /** Placement sub-mode: the new node is being positioned freely rather than
    *  aimed at one of the lattice spots. */
@@ -45,13 +45,13 @@ export interface GrowAim {
 export interface GrowGhostHost {
   /** Both the layer the preview is drawn on and the zoom it reads. */
   readonly drawingLayer: DrawingLayer;
-  /** The one palette colour the preview draws with. */
+  /** The one palette color the preview draws with. */
   readonly stroke: string;
 }
 
 /** Where the trimmed ghost edge ends, and how big the thing there is. */
 interface GhostEnd {
-  centre: Point;
+  center: Point;
   half: {w: number; h: number};
 }
 
@@ -150,12 +150,12 @@ export class GrowGhost {
     if (aim.placing && aim.placePos) {
       ghost.add(this.shapeOf(
         aim.newNodeShape, aim.placePos, GROW_GHOST_BOX.w, GROW_GHOST_BOX.h, scale));
-      return {centre: aim.placePos, half};
+      return {center: aim.placePos, half};
     }
 
     // The slot marker is already drawn, by addSlots.
     if (aim.anchor && aim.insertionTarget) {
-      return {centre: aim.insertionTarget, half};
+      return {center: aim.insertionTarget, half};
     }
 
     if (aim.anchor && aim.target && aim.target !== aim.anchor) {
@@ -163,15 +163,15 @@ export class GrowGhost {
       const pos = target.group.position();
       ghost.add(this.outline(target, scale));
       return {
-        centre: {x: pos.x + target.NODE_WIDTH / 2, y: pos.y + target.NODE_HEIGHT / 2},
+        center: {x: pos.x + target.NODE_WIDTH / 2, y: pos.y + target.NODE_HEIGHT / 2},
         half: {w: target.NODE_WIDTH / 2, h: target.NODE_HEIGHT / 2},
       };
     }
 
-    const centre = {...aim.origin};
+    const center = {...aim.origin};
     ghost.add(new Konva.Rect({
-      x: centre.x - half.w,
-      y: centre.y - half.h,
+      x: center.x - half.w,
+      y: center.y - half.h,
       width: GROW_GHOST_BOX.w,
       height: GROW_GHOST_BOX.h,
       stroke: this.host.stroke,
@@ -179,7 +179,7 @@ export class GrowGhost {
       strokeWidth: 2 / scale,
       cornerRadius: 4,
     }));
-    return {centre, half};
+    return {center, half};
   }
 
   /** The arrow from anchor to ghosted node, trimmed at both boundaries so it
@@ -191,8 +191,8 @@ export class GrowGhost {
     end: GhostEnd,
     scale: number,
   ): void {
-    const dx = end.centre.x - aim.origin.x;
-    const dy = end.centre.y - aim.origin.y;
+    const dx = end.center.x - aim.origin.x;
+    const dy = end.center.y - aim.origin.y;
     const length = Math.hypot(dx, dy) || 1;
     const ux = dx / length, uy = dy / length;
     // Trim by the smaller half-extent of each box: an axis-aligned
@@ -202,7 +202,7 @@ export class GrowGhost {
     ghost.add(new Konva.Arrow({
       points: [
         aim.origin.x + ux * trimFrom, aim.origin.y + uy * trimFrom,
-        end.centre.x - ux * trimTo, end.centre.y - uy * trimTo,
+        end.center.x - ux * trimTo, end.center.y - uy * trimTo,
       ],
       stroke: this.host.stroke, fill: this.host.stroke, dash: [8, 6],
       strokeWidth: 3 / scale,
@@ -260,10 +260,10 @@ export class GrowGhost {
     });
   }
 
-  /** A dashed outline of the given node shape, centred on a point. */
+  /** A dashed outline of the given node shape, centered on a point. */
   private shapeOf(
     shape: NodeShape,
-    centre: Point,
+    center: Point,
     w: number,
     h: number,
     scale: number,
@@ -272,16 +272,16 @@ export class GrowGhost {
     switch (shape) {
       case 'circle':
         return new Konva.Ellipse(
-          {x: centre.x, y: centre.y, radiusX: w / 2, radiusY: h / 2, ...common});
+          {x: center.x, y: center.y, radiusX: w / 2, radiusY: h / 2, ...common});
       case 'diamond':
         return new Konva.Line({closed: true, ...common, points: [
-          centre.x, centre.y - h / 2, centre.x + w / 2, centre.y,
-          centre.x, centre.y + h / 2, centre.x - w / 2, centre.y]});
+          center.x, center.y - h / 2, center.x + w / 2, center.y,
+          center.x, center.y + h / 2, center.x - w / 2, center.y]});
       case 'junction':
       case 'invisible':
-        return new Konva.Circle({x: centre.x, y: centre.y, radius: 10, ...common});
+        return new Konva.Circle({x: center.x, y: center.y, radius: 10, ...common});
       default:
-        return new Konva.Rect({x: centre.x - w / 2, y: centre.y - h / 2,
+        return new Konva.Rect({x: center.x - w / 2, y: center.y - h / 2,
           width: w, height: h, cornerRadius: 4, ...common});
     }
   }

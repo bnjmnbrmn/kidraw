@@ -37,7 +37,7 @@ export interface ProbeCrosshairs {
   };
 }
 
-/** The crosshairs' hit box in layer units, with its centre. */
+/** The crosshairs' hit box in layer units, with its center. */
 export interface ProbeBounds extends Bounds {
   cx: number;
   cy: number;

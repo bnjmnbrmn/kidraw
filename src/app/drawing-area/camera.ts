@@ -4,7 +4,7 @@
  * **Stage pixels** are what the user points at: the crosshairs, the viewport
  * edges, a mouse position, a margin measured in screen pixels. **Layer units**
  * are where the graph lives: node positions, edge paths, waypoints — the
- * numbers that get serialised, and that do not change when you zoom.
+ * numbers that get serialized, and that do not change when you zoom.
  *
  * Converting between them is `(v - origin) / scale` one way and
  * `v * scale + origin` the other. That arithmetic was written out twenty-two

@@ -6,7 +6,7 @@
  * - Every node sits below everything it depends on (longest-path layers).
  *   A node nothing points into, such as a definition, sits just above its
  *   first use rather than at the very top.
- * - Within a layer, nodes are ordered by where their neighbours are, to cut
+ * - Within a layer, nodes are ordered by where their neighbors are, to cut
  *   crossings, then placed as close above or below them as the layer allows.
  * - Links that close a cycle are ignored for layering.
  *
@@ -28,7 +28,7 @@ export interface LayoutLink {
 }
 
 export interface LayeredSpacing {
-  /** Between neighbours in a layer. */
+  /** Between neighbors in a layer. */
   horizontal: number;
   /** Between layers; leaves room for badges above a node. */
   vertical: number;
@@ -96,13 +96,13 @@ export function layeredLayout(
   }
   const rows = layers.filter(row => row && row.length > 0);
 
-  // Order each layer by the average position of its neighbours, sweeping down then up.
+  // Order each layer by the average position of its neighbors, sweeping down then up.
   const position = new Map<string, number>();
   const renumber = () => rows.forEach(row => row.forEach((id, i) => position.set(id, row.length > 1 ? i / (row.length - 1) : 0.5)));
   renumber();
-  const barycenter = (id: string, neighbours: string[]) => neighbours.length === 0
+  const barycenter = (id: string, neighbors: string[]) => neighbors.length === 0
     ? position.get(id)!
-    : neighbours.reduce((sum, n) => sum + position.get(n)!, 0) / neighbours.length;
+    : neighbors.reduce((sum, n) => sum + position.get(n)!, 0) / neighbors.length;
   for (let sweep = 0; sweep < SWEEPS; sweep++) {
     const down = sweep % 2 === 0;
     const sequence = down ? rows : [...rows].reverse();
@@ -116,13 +116,13 @@ export function layeredLayout(
   // Coordinates: each layer packed left to right, pulled toward the nodes above.
   const originX = Math.min(...boxes.map(box => box.x));
   const originY = Math.min(...boxes.map(box => box.y));
-  const centre = new Map<string, number>();
+  const center = new Map<string, number>();
   let top = originY;
   for (const row of rows) {
     const widths = row.map(id => byId.get(id)!.width);
     const desired = row.map((id, i) => {
-      const above = into.get(id)!.filter(from => centre.has(from));
-      return above.length > 0 ? above.reduce((sum, from) => sum + centre.get(from)!, 0) / above.length : NaN;
+      const above = into.get(id)!.filter(from => center.has(from));
+      return above.length > 0 ? above.reduce((sum, from) => sum + center.get(from)!, 0) / above.length : NaN;
     });
     // Without anything above, pack around the layer's own middle.
     const total = widths.reduce((sum, w) => sum + w, 0) + spacing.horizontal * (row.length - 1);
@@ -140,14 +140,14 @@ export function layeredLayout(
     });
     // Shift the layer so, on average, nodes sit where they wanted to be.
     const drift = xs.reduce((sum, x, i) => sum + (x - wanted[i]), 0) / xs.length;
-    row.forEach((id, i) => centre.set(id, xs[i] - drift));
+    row.forEach((id, i) => center.set(id, xs[i] - drift));
     const height = Math.max(...row.map(id => byId.get(id)!.height));
     row.forEach(id => result.set(id, {x: 0, y: top + (height - byId.get(id)!.height) / 2}));
     top += height + spacing.vertical;
   }
-  const left = Math.min(...order.map(id => centre.get(id)! - byId.get(id)!.width / 2));
+  const left = Math.min(...order.map(id => center.get(id)! - byId.get(id)!.width / 2));
   for (const id of order) {
-    result.get(id)!.x = originX + centre.get(id)! - byId.get(id)!.width / 2 - left;
+    result.get(id)!.x = originX + center.get(id)! - byId.get(id)!.width / 2 - left;
   }
   return result;
 }

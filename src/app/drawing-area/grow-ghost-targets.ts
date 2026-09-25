@@ -2,7 +2,7 @@ export interface GrowGhostNodeCenter {
   id: string;
   x: number;
   y: number;
-  /** Box half-extents. Optional for callers that only care about centres;
+  /** Box half-extents. Optional for callers that only care about centers;
    *  without them a node can only block a target it sits exactly on. */
   halfW?: number;
   halfH?: number;

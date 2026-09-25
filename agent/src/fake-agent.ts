@@ -95,7 +95,7 @@ acp.agent({ name: 'fake-agent' })
     if (process.env['FAKE_AGENT_SIGNIN'] !== 'wait') {
       await ctx.client.notify(acp.methods.client.elicitation.complete, { elicitationId });
     }
-    if ((await answer).action !== 'accept') throw new Error('sign-in was cancelled');
+    if ((await answer).action !== 'accept') throw new Error('sign-in was canceled');
     return {};
   })
   .onRequest(acp.methods.agent.session.prompt, async ctx => {

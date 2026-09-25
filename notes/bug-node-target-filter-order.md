@@ -89,7 +89,7 @@ selection. Left alone for the same reason (inferred, 2026-09-18).
 ## A third: edges under the crosshairs
 
 With nothing selected, the style commands for edges — directedness, line
-style (`targetEdges`) and colour (`setItemColor`) — act on **every** edge under
+style (`targetEdges`) and color (`setItemColor`) — act on **every** edge under
 the crosshairs, where the hover trace, Delete, Edit Text and a new label all
 mean the one drawn on top (inferred, 2026-09-24 — from the code, while fixing
 the commands that took the edge underneath). Where two edges cross under the

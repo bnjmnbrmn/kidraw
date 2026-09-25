@@ -12,7 +12,7 @@
  * Two ways of getting keys stay as they were: grow suspends the keymenu and
  * takes raw keys (keyDown/keyUp here), while the held-chord modes keep
  * receiving the keymenu's commands. The list does not route commands; it
- * knows which mode is on, starts one by cancelling the other, and cancels
+ * knows which mode is on, starts one by canceling the other, and cancels
  * whatever is on when the graph under it is replaced.
  */
 export interface InteractionMode {

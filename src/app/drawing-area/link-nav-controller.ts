@@ -36,8 +36,8 @@ export interface LinkNavHost {
   /** Shared with the nav popup, so either surface continues the other's walk. */
   readonly journey: NavJourney;
   /** Crosshairs travel; link nav jumps them onto each node it lands on. */
-  readonly navGrid: {jumpCrosshairsToStopCenter(centre: Point): void};
-  /** The one palette colour the quadrant overlay draws with. */
+  readonly navGrid: {jumpCrosshairsToStopCenter(center: Point): void};
+  /** The one palette color the quadrant overlay draws with. */
   readonly crosshairsStroke: string;
   /** Seconds a crosshairs jump takes; the overlay redraws once it settles. */
   readonly crosshairMovementDuration: number;
@@ -106,7 +106,7 @@ export class LinkNavController implements InteractionMode {
     }
     const snappedToNearest = underCrosshairs === null;
     if (snappedToNearest) {
-      this.host.navGrid.jumpCrosshairsToStopCenter(this.centreInStage(source));
+      this.host.navGrid.jumpCrosshairsToStopCenter(this.centerInStage(source));
     }
     const continuingJourney = source === this.lastNode();
     this.host.journey.startAt(source);
@@ -186,7 +186,7 @@ export class LinkNavController implements InteractionMode {
     this.host.journey.arrive(source, dest, candidate.direction);
     this.source = dest;
     this.focusEntry(dest, this.host.journey.momentum);
-    this.host.navGrid.jumpCrosshairsToStopCenter(this.centreInStage(dest));
+    this.host.navGrid.jumpCrosshairsToStopCenter(this.centerInStage(dest));
     this.redraw();
     this.scheduleRefresh(dest);
     this.host.emitStatus(
@@ -218,7 +218,7 @@ export class LinkNavController implements InteractionMode {
    *  coordinates so their dash and stroke stay screen-stable at every zoom. */
   private redrawQuadrantLines(source: DANode): void {
     const group = new Konva.Group({name: 'move-by-link-quadrants', listening: false});
-    const origin = this.centreInStage(source);
+    const origin = this.centerInStage(source);
     const focused = this.host.journey.focusedEdge;
     const geometry = linkDirectionsFrom(source, navCandidatesFor(source));
     const focusedDirection = focused
@@ -285,7 +285,7 @@ export class LinkNavController implements InteractionMode {
     const x = this.host.crosshairsLayer.crosshairsX();
     const y = this.host.crosshairsLayer.crosshairsY();
     const distance = (node: DANode) => {
-      const c = this.centreInStage(node);
+      const c = this.centerInStage(node);
       return Math.hypot(c.x - x, c.y - y);
     };
     return nodes.reduce((best, node) => distance(node) < distance(best) ? node : best);
@@ -295,7 +295,7 @@ export class LinkNavController implements InteractionMode {
     return this.host.journey.lastNodeAmong(this.host.drawingLayer.getDANodes());
   }
 
-  private centreInStage(node: DANode): Point {
+  private centerInStage(node: DANode): Point {
     return nodeCenterInStage(node, this.host.camera);
   }
 }

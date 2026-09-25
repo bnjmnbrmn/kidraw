@@ -39,7 +39,7 @@
 }
 
 /* Same treatment as the mode chip under the full menu (da-432): opaque, so
- * it stays readable over the diagram, and named by the same colour dot. */
+ * it stays readable over the diagram, and named by the same color dot. */
 .mode-line {
   display: flex;
   align-items: center;

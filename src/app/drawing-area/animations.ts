@@ -9,7 +9,7 @@
  * holding them all.
  *
  * The same goes for the drag loop, which is a requestAnimationFrame chain
- * rather than a tween: cancelling it needs the id, so the id lives here too.
+ * rather than a tween: canceling it needs the id, so the id lives here too.
  *
  * Seven regions of the component call `finishAll` — more than share anything
  * else in the file.
@@ -45,7 +45,7 @@ export class Animations {
    * Start a tween that takes itself out of the list when it lands.
    *
    * For animations long enough that a later command should be free to start
-   * its own without first snapping this one to its end — a recentre, say,
+   * its own without first snapping this one to its end — a recenter, say,
    * which the user can interrupt by simply moving.
    */
   startSelfRemoving(config: TweenConfig): Konva.Tween {
@@ -62,7 +62,7 @@ export class Animations {
   /**
    * Snap everything to its end state and forget it.
    *
-   * Snapping rather than cancelling: a half-finished move leaves a node
+   * Snapping rather than canceling: a half-finished move leaves a node
    * between grid cells, and the next command would measure from there.
    */
   finishAll(): void {

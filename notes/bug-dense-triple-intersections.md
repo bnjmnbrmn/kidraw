@@ -34,7 +34,7 @@ isolation:
   obstacle penalty but no inter-edge crossing penalty.
 
 So the fix is structural: a routing layer that's aware of the *union*
-of all edges' geometry and can optimise for:
+of all edges' geometry and can optimize for:
 
 1. Crossing angles in the comfortable 30°-150° range.
 2. Crossing positions spaced apart rather than clustered.

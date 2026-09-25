@@ -21,7 +21,7 @@ async function main() {
   const browser = await launch();
   const page = await openApp(browser);
 
-  // 3×3 grid at rows y=200,400,600 and cols x=300,650,1000, minus the centre
+  // 3×3 grid at rows y=200,400,600 and cols x=300,650,1000, minus the center
   // (r1c1) so the middle column has a gap.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));

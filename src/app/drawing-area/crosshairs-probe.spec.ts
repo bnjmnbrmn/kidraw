@@ -37,7 +37,7 @@ describe('CrosshairsProbe', () => {
     expect(probe.position).toEqual({x: 60, y: 40});
   });
 
-  it('reports its hit box and centre in layer units', () => {
+  it('reports its hit box and center in layer units', () => {
     const probe = new CrosshairsProbe(() => layer(), () => crosshairsAt(100, 50, 10), camera());
     expect(probe.bounds).toEqual({minX: 90, minY: 40, maxX: 110, maxY: 60, cx: 100, cy: 50});
   });

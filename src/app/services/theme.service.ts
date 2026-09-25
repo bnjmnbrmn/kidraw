@@ -43,7 +43,7 @@ export const DEFAULT_DARK_PALETTE: ThemePalette = {
   // Each submenu depth gets its own hue, so "how deep am I" is readable at a
   // glance rather than needing the breadcrumb. Mirrors the light palette's
   // slate -> blue -> indigo -> violet -> purple -> magenta progression; the
-  // dark set used to be pure greys, which made every level look identical.
+  // dark set used to be pure grays, which made every level look identical.
   // Lightness still climbs with depth, so the old depth cue survives.
   cardBackgrounds: ['#2b2f36','#28374a','#303356','#3b2f5c','#492d55','#522d45'],
   keyFills: ['#1a1d22','#182534','#1e2040','#271c44','#331b3f','#3a1b32'],

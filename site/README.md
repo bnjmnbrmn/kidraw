@@ -197,7 +197,7 @@ account for is worse than no move at all. Three sources of that:
 - **Parking.** `park` moves the crosshairs off the label so the box reads. It
   took the emptiest point on the canvas, which at 400% is a far corner, close
   enough to the edge that the app panned to keep the crosshairs clear of it —
-  sliding the box that had just been framed off centre. It takes the nearest
+  sliding the box that had just been framed off center. It takes the nearest
   clear point now, well inside the band.
 - **Parking on an arrow.** Whatever the crosshairs come to rest on gets a
   hover trace, and an edge's is a fat white line drawn the length of it. `park`
@@ -213,15 +213,15 @@ account for is worse than no move at all. Three sources of that:
 
 In order: the crosshairs riding the links from the box just finished up to the
 one this one grows from (Move by Link held, the arrows it can follow lit, the
-view travelling with it); the camera pulling back to 100% where the placement
+view traveling with it); the camera pulling back to 100% where the placement
 lattice has room, the whole zoom ladder inside a single hold of Pan/Zoom so it
 reads as one movement of the camera rather than four; Add held, the grid of
 spots showing, and the aim stepping across it; the release, which opens the
-label editor — the app takes the camera to 400% and centres the box by itself,
-which is the behaviour being shown — and the label typed into it; then the box
+label editor — the app takes the camera to 400% and centers the box by itself,
+which is the behavior being shown — and the label typed into it; then the box
 sits, selected, with the crosshairs parked somewhere empty.
 
-There is no separate "frame the box" move any more. The box is already centred
+There is no separate "frame the box" move any more. The box is already centered
 at 400% when its label is done, and the zoom back out to 100% for the next box
 doubles as the shot that puts it in its place in the diagram.
 
@@ -263,7 +263,7 @@ and throws out any cell that is not further from it than the parent already is.
 The walk to a chosen cell checks after every press what the app thinks is aimed
 at. A node standing in the way takes the aim — that is the connect-two-nodes
 gesture — and the walk carries on through it, counting cells itself, because a
-diagonal spot is only ever reached through its orthogonal neighbours.
+diagonal spot is only ever reached through its orthogonal neighbors.
 
 Layout runs **once**, as the finale: after the last box the camera pulls back,
 Force runs on the whole diagram, and the reader watches it tidy the thing they

@@ -129,10 +129,10 @@ Esc / Ctrl-[ / double-Shift exits any surface to its parent (same as `edit`
 today). Picker: Enter/leaf commits+exits, Esc cancels+exits. Command: Enter
 runs+exits, Esc cancels. CapsLock-state preservation rule still applies.
 
-### 6. Validity conditions tie into greyed-options
+### 6. Validity conditions tie into grayed-options
 
 An "apply palette style" picker is only valid when something is selected — this
-is exactly [idea-greyed-submenu-options](idea-greyed-submenu-options.md). The
+is exactly [idea-grayed-submenu-options](idea-grayed-submenu-options.md). The
 picker can render the set but disable commit, or the mode reverts if selection
 clears (Mode validity condition from the keymenu model).
 
@@ -281,7 +281,7 @@ That is *exactly* the proposed model, already shipping — in the label-edit cor
 - **`kidraw-style`** (palette picker): target = picker widget, with graph
   **selection as context**. Enter from normal's Style… leaf "palette…".
   Arrow-nav; Enter applies + → normal; Esc cancels + → normal. Validity: requires
-  a selection ([idea-greyed-submenu-options](idea-greyed-submenu-options.md)).
+  a selection ([idea-grayed-submenu-options](idea-grayed-submenu-options.md)).
 - **`vim-normal` / `vim-insert` (graph-scoped)** — *optional/future*. Distinct
   from the existing text-scoped `labelEditVimNormal`. **Name-collision flag:** the
   existing vim-normal edits *text*; a graph vim-normal edits the *graph*. Don't

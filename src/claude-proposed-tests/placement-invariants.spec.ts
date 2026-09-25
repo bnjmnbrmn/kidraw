@@ -3,7 +3,7 @@
  *
  * The quick-add spacing was derived from the anchor's box alone, so growing
  * from a 50px node in a graph whose new nodes are 120px placed them
- * overlapping (measured 2026-08-29: centre-to-centre 60 for boxes that need
+ * overlapping (measured 2026-08-29: center-to-center 60 for boxes that need
  * 85). The spacing has to clear half of EACH box — the one you are growing
  * from and the one about to land — plus a gap.
  */

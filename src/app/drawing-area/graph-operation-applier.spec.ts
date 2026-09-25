@@ -28,7 +28,7 @@ describe('GraphOperationApplier', () => {
 
   const texts = () => layer.serializeGraph().nodes.map(n => n.text).sort();
 
-  it('adds nodes and a labelled edge, keeping ids, and undoes them', () => {
+  it('adds nodes and a labeled edge, keeping ids, and undoes them', () => {
     const ops: GraphOperation[] = [
       {op: 'add_node', node: nodeSnapshot('da-101', 'All men are mortal')},
       {op: 'add_node', node: nodeSnapshot('da-102', 'Socrates is mortal', 300)},

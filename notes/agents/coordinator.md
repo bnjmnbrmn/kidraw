@@ -27,7 +27,7 @@ For a typical user request:
 2. **Decompose.** Identify which regions the work touches. Split into per-implementer chunks where possible.
 3. **Dispatch implementers.** Spawn each in its own git worktree (`isolation: "worktree"`). For non-trivial implementer work, prefer running them in the background so they can proceed in parallel.
 4. **Wait for completion.** Implementers report a branch + a short summary.
-5. **Dispatch reviewers** appropriate to the work: `code-review` and `architectural-review` always; the relevant ux-review agent(s); QA if user-visible behaviour changed.
+5. **Dispatch reviewers** appropriate to the work: `code-review` and `architectural-review` always; the relevant ux-review agent(s); QA if user-visible behavior changed.
 6. **Integrate.** If reviewers flagged issues, hand back to the relevant implementer with the findings. Iterate until reviewers are clean.
 7. **Land.** Merge implementer branches into `main` in a coherent order; verify build + tests; commit the integration. Update `dev-status.md` with the new state.
 8. **Memory.** If the session produced a non-obvious lesson, write or update a zettel note. See `notes/process-workflow-lessons.md`.

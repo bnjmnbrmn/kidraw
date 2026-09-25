@@ -75,7 +75,7 @@ async function main() {
   const holdA = async () => { await page.keyboard.down('a'); await wait(250); };
   const tap = async key => { await page.keyboard.press(key); await wait(120); };
   const release = async key => { await page.keyboard.up(key); await wait(250); };
-  /** Press `key` until the aim is on the node labelled `label`, at most `max` times. */
+  /** Press `key` until the aim is on the node labeled `label`, at most `max` times. */
   const hopTo = async (key, label, max = 8) => {
     for (let i = 0; i < max; i++) {
       await tap(key);

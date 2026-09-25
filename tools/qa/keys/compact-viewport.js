@@ -97,7 +97,7 @@ async function main() {
   check('crosshairs never travel under the panel',
     stopped.x < panelLeft, `x=${Math.round(stopped.x)} panelLeft=${Math.round(panelLeft)}`);
 
-  // 5. Fit-to-content centres in the usable area, not the whole stage.
+  // 5. Fit-to-content centers in the usable area, not the whole stage.
   await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.finishTweens();
@@ -123,7 +123,7 @@ async function main() {
       maxRight: toStage(Math.max(...xs)),
     };
   });
-  check('fitted content centres on the usable area',
+  check('fitted content centers on the usable area',
     Math.abs(fitted.contentCenterX - fitted.usableCenterX) < 2,
     JSON.stringify({content: Math.round(fitted.contentCenterX), usable: Math.round(fitted.usableCenterX)}));
   check('fitted content clears the panel',

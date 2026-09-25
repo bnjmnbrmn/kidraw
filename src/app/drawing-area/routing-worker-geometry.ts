@@ -42,7 +42,7 @@ export class RoutingNode {
   }
 
   /** Perimeter point intersected by the ray from (fromX,fromY) toward the node
-   *  centre. Mirrors DANode.getEdgePoint exactly. */
+   *  center. Mirrors DANode.getEdgePoint exactly. */
   getEdgePoint(fromX: number, fromY: number): { x: number; y: number } {
     const hw = this.NODE_WIDTH / 2;
     const hh = this.NODE_HEIGHT / 2;

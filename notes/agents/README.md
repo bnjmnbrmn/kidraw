@@ -35,4 +35,4 @@ Each writes its own white-box tests alongside the code it edits. Each works in i
 
 ### QA (black-box)
 
-- [qa](qa.md) — drives the app via Playwright; reads only docs / notes / dev-status to know what behaviour *should* be; never reads `src/**`. Owns `tools/qa/`.
+- [qa](qa.md) — drives the app via Playwright; reads only docs / notes / dev-status to know what behavior *should* be; never reads `src/**`. Owns `tools/qa/`.

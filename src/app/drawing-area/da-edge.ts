@@ -62,7 +62,7 @@ export class DAEdge {
   public readonly NAV_FOCUS_UNDERLAY_WIDTH = 18;
   public readonly NAV_FOCUS_UNDERLAY_OPACITY = 0.4;
   /** Selection band (da-243). Narrower than the nav band and in the shared
-   *  selection accent rather than the edge's own colour, so "selected" and
+   *  selection accent rather than the edge's own color, so "selected" and
    *  "being navigated" stay tellable apart when both are on one edge. */
   public readonly SELECTION_UNDERLAY_WIDTH = 11;
   public readonly SELECTION_UNDERLAY_OPACITY = 0.55;
@@ -161,8 +161,8 @@ export class DAEdge {
 
   private _kindColor: string | null = null;
 
-  /** The colour of this edge's kind in the bound diagram type (e.g. a
-   *  reading-path edge). It outranks directedness and theme colours. Null
+  /** The color of this edge's kind in the bound diagram type (e.g. a
+   *  reading-path edge). It outranks directedness and theme colors. Null
    *  for a plain edge. */
   setKindColor(color: string | null): void {
     if (color === this._kindColor) return;
@@ -557,10 +557,10 @@ export class DAEdge {
    *  puts the attachment on an arbitrary side, and the stroke then has to
    *  double back across the node to reach it — the arrowhead ends up
    *  somewhere the line never arrives from. A control point exactly on the
-   *  centre is worse still and flips the arrowhead 180° (da-259).
+   *  center is worse still and flips the arrowhead 180° (da-259).
    *
    *  So walk outwards to the first control point that is genuinely outside
-   *  the node, and fall back to the far node's centre if none is.
+   *  the node, and fall back to the far node's center if none is.
    *
    *  `candidates` must run from the endpoint outwards. */
   private aimTarget(node: DANode, candidates: readonly {x: number; y: number}[],

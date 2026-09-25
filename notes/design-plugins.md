@@ -8,7 +8,7 @@ status: direction and seven decisions by Ben, 2026-09-23; the rest is inferred
 
 Grows the extension model in [`idea-diagram-types.md`](idea-diagram-types.md)
 (declarative contribution points, 2026-07-12) into plugins that contribute
-behaviour as well: commands, keys, rendering, agent tools.
+behavior as well: commands, keys, rendering, agent tools.
 
 ## Ben's direction (Ben, 2026-09-23)
 
@@ -124,7 +124,7 @@ Versioning, multiplayer and per-participant undo depend on it. Keymenu edits
 still use snapshot undo today, so core is exempt until it moves over.
 
 Rendering contributions should be pure functions of model data (a node's
-tags → badges, border colour, faintness), not Konva access, so plugins stay
+tags → badges, border color, faintness), not Konva access, so plugins stay
 testable and the renderer stays replaceable.
 
 ### Plugin by plugin
@@ -200,7 +200,7 @@ the selection is root `c` (Ben, 2026-09-23).
   ones cannot be switched off; the settings list the rest.
 - **A graph whose type is switched off** (3 meets activation-by-file): the
   graph still opens and saves losslessly (its tags survive), the plugin's
-  behaviour stays off, and a notification says so ("This graph is an
+  behavior stays off, and a notification says so ("This graph is an
   Explanation; Explanation is off in Settings"). **Decided: it offers to
   turn the plugin back on** (Ben, 2026-09-24); declined, it opens as above.
 - **Notifications** (5): switching a plugin on that needs another says what
@@ -321,7 +321,7 @@ Checked: 819 unit specs; `task-status.js` 16/16 with two new real-key checks
 
 ## Sequencing (inferred, 2026-09-23)
 
-1. Dispatch as typed handler tables, grouped by owner — behaviour-neutral.
+1. Dispatch as typed handler tables, grouped by owner — behavior-neutral.
 2. A spike: todo-graph's task status as a plugin contributing its command
    and submenu, to test the API on a real case.
 3. Explanation's reading surface and agent tools behind contribution points.

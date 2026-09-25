@@ -14,7 +14,7 @@ status: done 2026-09-24 — all 31 retired (Ben's call)
 > `drawing-area.component.ts` went from 3,965 to 3,374 lines. Features that
 > left with no other way in: opening a file from disk (zip import too),
 > downloading one, exporting a zip, cycling displays, routing one selected
-> edge. Save As and the others are candidates for the centred menus
+> edge. Save As and the others are candidates for the centered menus
 > ([`idea-center-menus.md`](idea-center-menus.md)); `lib/file-format/zip-bundle`
 > was kept for that.
 

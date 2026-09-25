@@ -587,7 +587,7 @@ describe('DrawingArea Unit Tests', () => {
       const lines: {text: string; width: number}[] = (label as any).textArr ?? [];
       expect(lines.length).toBeGreaterThan(1);
       const last = lines[lines.length - 1];
-      // Centre-aligned inside the LABEL box, which is inset in the node: the
+      // Center-aligned inside the LABEL box, which is inset in the node: the
       // caret rides the label's geometry, not the node's (2026-08-30). Before
       // that fix the caret was measured against the node width and landed
       // mid-word, tens of pixels short of the end of the text.

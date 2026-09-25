@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { decidePermission, isReadOnlyCommand, isReadOnlyCommandRequest } from '../permissions.js';
 
-test('commands that only read the workspace are recognised', () => {
+test('commands that only read the workspace are recognized', () => {
   for (const command of [
     `"head -n 5 dev-status.md; echo '---DEBUG---'; cat tools/debug.log"`,
     'rg -n "readingPath" src/app | head -20',

@@ -13,7 +13,7 @@ function fakeLabel(label: string, x = 0, y = 0) {
  *  with `answer`. */
 function setUp(nodes: ReturnType<typeof fakeNode>[], labels: ReturnType<typeof fakeLabel>[] = [], answer: string | null = 'a') {
   const statuses: string[] = [];
-  const centred: {x: number; y: number}[] = [];
+  const centered: {x: number; y: number}[] = [];
   const host = {
     drawingLayer: {
       getDANodes: () => nodes,
@@ -25,24 +25,24 @@ function setUp(nodes: ReturnType<typeof fakeNode>[], labels: ReturnType<typeof f
     finishTweens: () => undefined,
     unselectAllLabels: () => labels.forEach(label => label.isSelected = false),
     nodeCenter: (node: ReturnType<typeof fakeNode>) => node.center,
-    centerViewOnLayerPoint: (point: {x: number; y: number}) => centred.push(point),
+    centerViewOnLayerPoint: (point: {x: number; y: number}) => centered.push(point),
     checkAndEmitEditState: () => undefined,
     emitStatus: (message: string) => statuses.push(message),
   } as unknown as GraphSearchHost;
-  return {search: new GraphSearch(host), host, statuses, centred};
+  return {search: new GraphSearch(host), host, statuses, centered};
 }
 
 describe('GraphSearch', () => {
   it('goes to the first match, ignoring case, and says where it is', () => {
     const [alpha, beta] = [fakeNode('Alpha', 10), fakeNode('beta', 20)];
-    const {search, statuses, centred} = setUp([alpha, beta], [], ' A ');
+    const {search, statuses, centered} = setUp([alpha, beta], [], ' A ');
     search.open();
     expect(alpha.isSelected).toBeTrue();
-    expect(centred).toEqual([{x: 10, y: 0}]);
+    expect(centered).toEqual([{x: 10, y: 0}]);
     expect(statuses).toEqual(['Match 1/2: "Alpha"']);
   });
 
-  it('does nothing when the prompt is cancelled or left blank', () => {
+  it('does nothing when the prompt is canceled or left blank', () => {
     const node = fakeNode('alpha');
     for (const answer of [null, '   ']) {
       const {search, statuses} = setUp([node], [], answer);
@@ -55,13 +55,13 @@ describe('GraphSearch', () => {
   it('steps through nodes, then edge labels, wrapping both ways', () => {
     const [alpha, beta] = [fakeNode('alpha'), fakeNode('beta')];
     const label = fakeLabel('an edge', 7, 8);
-    const {search, statuses, centred} = setUp([alpha, beta], [label]);
+    const {search, statuses, centered} = setUp([alpha, beta], [label]);
     search.open();
     search.step(1);
     search.step(1);
     search.step(-1);
     expect(statuses).toEqual(['Match 1/3: "alpha"', 'Match 2/3: "beta"', 'Match 3/3: "an edge"', 'Match 2/3: "beta"']);
-    expect(centred[2]).toEqual({x: 7, y: 8});
+    expect(centered[2]).toEqual({x: 7, y: 8});
   });
 
   it('recomputes the matches on every step, so edits in between count', () => {

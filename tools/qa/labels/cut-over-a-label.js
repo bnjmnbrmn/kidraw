@@ -15,7 +15,7 @@ const check = checker();
 /** Two nodes 500px apart, a label at the middle of the edge between them
  *  (the sample's edges are too short to point beside a label), nothing
  *  selected, and the crosshairs at `t` along the edge. */
-async function labelledEdge(page, t) {
+async function labeledEdge(page, t) {
   await page.evaluate(`(() => { const da = ${DA}; const dl = da.drawingLayer;
     const node = (id, x, y, text) => ({id, x, y, text, width: 120, height: 60, fontSize: 14, isSelected: false});
     dl.restoreGraph({nodes: [node('da-1', 100, 300, 'A'), node('da-2', 700, 300, 'B')],
@@ -52,13 +52,13 @@ const cut = page => page.evaluate(`(() => { const da = ${DA}; const dl = da.draw
   const browser = await launch();
   const page = await openApp(browser);
 
-  let before = await labelledEdge(page, 0.5);
+  let before = await labeledEdge(page, 0.5);
   check('the hover trace is around the label', before.hover === 'label', JSON.stringify(before));
   let after = await cut(page);
   check('Cut over the label removes the label', after.labels === before.labels - 1, JSON.stringify({before, after}));
   check('…and leaves its edge', after.edges === before.edges, JSON.stringify({before, after}));
 
-  before = await labelledEdge(page, 0.1);
+  before = await labeledEdge(page, 0.1);
   check('away from the label, the hover trace is around the edge', before.hover === 'edge', JSON.stringify(before));
   after = await cut(page);
   check('Cut over the edge removes the edge', after.edges === before.edges - 1, JSON.stringify({before, after}));

@@ -51,7 +51,7 @@ columns, and keep them off `e d c` (middle).
   when sent directly, so it was the chord. The style tree is three levels
   (`w` → category → value) and the first two are *both held*, so a category on
   `e` meant holding ring and middle together and tapping a third key. Every
-  category is now pinky or index under the ring-finger hub: Shape `g`, Colour
+  category is now pinky or index under the ring-finger hub: Shape `g`, Color
   `r`, Overflow `f` (index), Line Style `q` (pinky). Worth re-checking any
   future three-level menu against this: the deeper the tree, the more fingers
   are already committed.

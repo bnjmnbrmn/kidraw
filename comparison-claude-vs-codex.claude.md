@@ -19,7 +19,7 @@ is the more urgent one.
 | Review document | `claude-proposed-tests/README.md`, 253 lines | `codex-proposed-tests/README.md`, 671 lines |
 | Proposed README | `README.claude-proposal.md`, 238 lines — a replacement for the CLI boilerplate | (the review doubles as the handoff) |
 | Tests | 4 karma specs (76 assertions) + 2 node scripts | 2 node scripts (6 assertions) |
-| Test state | **64 green**, guarding contracts | **6 red by design**, characterising gaps |
+| Test state | **64 green**, guarding contracts | **6 red by design**, characterizing gaps |
 | Method | Reproduce the bug in the running app, then encode the invariant | Read the source, extract the policy sets, diff them against intent |
 | Production code touched | one key rebinding (`g`-`r` → `g`-`u`) | none |
 
@@ -54,7 +54,7 @@ This is the interesting part. Mapped by bug class:
 | Stale async results (routing worker answering for an older graph) | — | **yes** |
 | Persistence: draft only on `beforeunload`, dirty state inferred from a timer | — | **yes** |
 | Lifecycle: timers, observers, Konva stages not disposed | — | **yes** |
-| Per-item colour not surviving a snapshot round trip | — | **yes** |
+| Per-item color not surviving a snapshot round trip | — | **yes** |
 | File-open conflating cancel with failure | — | **yes** |
 | Accessibility: `tabindex="-1"` on settings, global key guard too narrow | — | **yes** |
 | Chord ergonomics (a chord the hand cannot make) | **yes** | — |
@@ -70,7 +70,7 @@ all of which were visible on screen. Codex's inputs were the invariants the
 source cannot enforce, most of which are invisible until you lose work.
 
 **Codex's half contains the worse bugs.** A caret drawn 40px off is annoying;
-a colour that silently does not survive undo is data loss.
+a color that silently does not survive undo is data loss.
 
 ---
 
@@ -82,7 +82,7 @@ independently rather than take them on faith.
 
 | Claim | Verdict | Evidence |
 | :--- | :--- | :--- |
-| Per-item colour does not round-trip through `GraphSnapshot` | **Confirmed** | Set a node red (`#ffcccc`), serialize, restore → `#ffffff`; the snapshot JSON contains no colour at all |
+| Per-item color does not round-trip through `GraphSnapshot` | **Confirmed** | Set a node red (`#ffcccc`), serialize, restore → `#ffffff`; the snapshot JSON contains no color at all |
 | `SET_LINE_STYLE` is missing from the undo policy | **Confirmed** | solid → dashed, then Undo → **still dashed**. The change is not undoable |
 | Caret blink intervals leak when a node is removed | **Confirmed by reading** | `DrawingLayer.removeNode` calls `konvaGroup.remove()` and splices the array; it never calls `hideCursor()`, and `_cursorBlinkTimer` is a `window.setInterval` |
 | `CYCLE_EDGE_DIRECTEDNESS` takes two snapshots → "two Undo operations" | **Real but milder** | Cycling reversed the edge; **one** Undo restored it; the second Undo did nothing. The duplicate costs a wasted undo step, not an un-undoable change |
@@ -117,7 +117,7 @@ The phased sequence and "definition of done" are directly usable as a plan.
   four undo claims overstates the symptom.
 - **Volume.** Nine findings, five phases, seven pull requests, a definition of
   done and a not-to-do list is a lot to hold. The single most important
-  sentence — colour silently does not persist — is on line 380 of 671.
+  sentence — color silently does not persist — is on line 380 of 671.
 
 ### My review
 
@@ -160,7 +160,7 @@ Not the plan itself — that comes next — but the shape is already clear:
   `notes/` where the project's memory already is.
 
 The immediate items, on which I do not think there is any disagreement worth
-having: **colour round-trip or remove the colour command**, **`SET_LINE_STYLE`
+having: **color round-trip or remove the color command**, **`SET_LINE_STYLE`
 into the undo policy**, **dispose caret timers on removal**, and **CI**.
 
 ---

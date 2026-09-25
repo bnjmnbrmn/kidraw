@@ -6,17 +6,17 @@ const camera = (x: number, y: number, scale: number) =>
   new Camera(() => ({x: () => x, y: () => y, scaleX: () => scale} as CameraLayer));
 
 describe('node geometry', () => {
-  it('centres a node in layer units from its corner and size', () => {
+  it('centers a node in layer units from its corner and size', () => {
     const node = new DANode(100, 200, '');
     expect(nodeCenterInLayer(node))
       .toEqual({x: 100 + node.NODE_WIDTH / 2, y: 200 + node.NODE_HEIGHT / 2});
   });
 
-  it('centres a node in stage pixels through the camera', () => {
+  it('centers a node in stage pixels through the camera', () => {
     const node = new DANode(100, 200, '');
-    const layerCentre = nodeCenterInLayer(node);
+    const layerCenter = nodeCenterInLayer(node);
     expect(nodeCenterInStage(node, camera(30, -10, 2)))
-      .toEqual({x: layerCentre.x * 2 + 30, y: layerCentre.y * 2 - 10});
+      .toEqual({x: layerCenter.x * 2 + 30, y: layerCenter.y * 2 - 10});
   });
 
   it('puts the stage rect at the node corner, scaled by the zoom', () => {

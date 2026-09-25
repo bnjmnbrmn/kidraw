@@ -9,9 +9,9 @@ _Original research 2026-04-19 (async)._
 
 Kidraw is keyboard-driven, so a demo needs to show *which keys are being pressed* alongside the canvas. Two complementary tracks:
 
-## Short-term: manual recording with keyboard visualisation
+## Short-term: manual recording with keyboard visualization
 
-**FocuSee.** $69.99 lifetime, Mac + Windows. Automatically captures and displays every keypress on screen with customisable style. Adds auto-zoom into areas of activity, plus general editing polish (spotlight, captions, backgrounds). The right pick for a first demo — Ben records 2–3 minutes; FocuSee handles production.
+**FocuSee.** $69.99 lifetime, Mac + Windows. Automatically captures and displays every keypress on screen with customizable style. Adds auto-zoom into areas of activity, plus general editing polish (spotlight, captions, backgrounds). The right pick for a first demo — Ben records 2–3 minutes; FocuSee handles production.
 
 **Screen Studio.** $229 one-time or $108/year. macOS only. Higher-quality output but overkill for initial demos.
 

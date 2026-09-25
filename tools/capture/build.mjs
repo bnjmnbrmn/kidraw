@@ -183,7 +183,7 @@ export async function park(page) {
  */
 export async function frameAbove(page) {
   let steppedBack = 0;
-  let centred = 0;
+  let centered = 0;
   for (let attempt = 0; attempt < 8; attempt++) {
     const view = await page.evaluate(() => {
       const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
@@ -216,10 +216,10 @@ export async function frameAbove(page) {
       // otherwise, with nothing under it.
       const height = view.bottom - view.top;
       const middle = (view.ceiling + view.floor) / 2;
-      const centre = (view.top + view.bottom) / 2;
-      if (centred < 3 && height < band - 90 && Math.abs(centre - middle) > 45) {
-        centred++;
-        await keys(page, centre < middle ? '[r k]' : '[r j]');
+      const center = (view.top + view.bottom) / 2;
+      if (centered < 3 && height < band - 90 && Math.abs(center - middle) > 45) {
+        centered++;
+        await keys(page, center < middle ? '[r k]' : '[r j]');
         await settle(page, 380);
         continue;
       }
@@ -248,7 +248,7 @@ export async function frameAbove(page) {
 
 /** Recenter view: zooms out until the whole graph fits. */
 export async function fit(page) {
-  // With something selected, Recenter centres on the selection without changing
+  // With something selected, Recenter centers on the selection without changing
   // the zoom; the whole-graph fit only happens with nothing selected.
   await keys(page, 'c');
   await settle(page, 150);
@@ -294,19 +294,19 @@ export async function goTo(page, text) {
     if (!node) return {found: false};
     const layer = component.crosshairsLayer;
     const box = node.group.getClientRect({relativeTo: component.stage});
-    const centre = {x: box.x + box.width / 2, y: box.y + box.height / 2};
+    const center = {x: box.x + box.width / 2, y: box.y + box.height / 2};
     const stage = component.stage;
     // The crosshairs cannot leave the viewport, so an off-screen node needs the
     // camera pulled back before this can work at all.
     const margin = 40;
-    const onScreen = centre.x > margin && centre.y > margin &&
-      centre.x < stage.width() - margin && centre.y < stage.height() - margin;
+    const onScreen = center.x > margin && center.y > margin &&
+      center.x < stage.width() - margin && center.y < stage.height() - margin;
     if (!onScreen) return {found: true, onScreen: false};
-    component.moveCrosshairsBy(centre.x - layer.crosshairsX(), centre.y - layer.crosshairsY());
+    component.moveCrosshairsBy(center.x - layer.crosshairsX(), center.y - layer.crosshairsY());
     component.refreshCrosshairHoverHighlight();
     return {found: true, onScreen: true};
   }, text);
-  if (!result.found) throw new Error(`no node labelled ${JSON.stringify(text)}`);
+  if (!result.found) throw new Error(`no node labeled ${JSON.stringify(text)}`);
   if (!result.onScreen) return false;
   await settle(page, 220);
   return true;
@@ -357,8 +357,8 @@ export function grownHalfExtents(text) {
   return {w: width / 2, h: height / 2};
 }
 
-/** The centre of a node, in drawing-layer coordinates. */
-export const nodeCentre = (page, label) => page.evaluate(text => {
+/** The center of a node, in drawing-layer coordinates. */
+export const nodeCenter = (page, label) => page.evaluate(text => {
   const component = window.ng.getComponent(document.querySelector('app-drawing-area'));
   const read = node => {
     const value = node.label;
@@ -396,11 +396,11 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
   const layer = component.drawingLayer;
   const anchor = component.grow.anchor;
   if (!anchor) return [];
-  const centreOf = node => {
+  const centerOf = node => {
     const box = node.group.getClientRect({relativeTo: layer});
     return {x: box.x + box.width / 2, y: box.y + box.height / 2};
   };
-  const from = centreOf(anchor);
+  const from = centerOf(anchor);
   const others = layer.getDANodes().filter(node => node !== anchor);
   const boxes = others.map(node => node.group.getClientRect({relativeTo: layer}));
   const toLayer = layer.getAbsoluteTransform().copy().invert();
@@ -470,7 +470,7 @@ export const rankGrowCells = (page, aim, preferred = 280, grown = null, outward 
       // Getting there matters as much as being there: the aim walks the
       // lattice cell by cell, and a box sitting on one of those cells takes
       // the aim (that is the connect-two-nodes gesture). A spot behind a
-      // neighbour is a spot the walk will not reach.
+      // neighbor is a spot the walk will not reach.
       const ix = Number(match[1]);
       const iy = Number(match[2]);
       const stepX = ix === 0 ? 0 : (target.x - from.x) / ix;
@@ -527,7 +527,7 @@ export async function growAtCell(page, {parentIndex, aim = 0, preferred, grown, 
     await settle(page, 300);
     // A cell found by a rehearsal is walked to directly. Ranking again here
     // would repeat the search on camera, and the search is a walk that tries
-    // one spot, finds a neighbour in the way, and backs out to try another —
+    // one spot, finds a neighbor in the way, and backs out to try another —
     // which is not how anyone would say they got there.
     const ranked = round === 0 && preferCell
       ? [preferCell]
@@ -680,7 +680,7 @@ export async function findGrowCell(page, {aim = 0, preferred, grown, outward} = 
  * Boxes with an arrow drawn through them.
  *
  * The placement scorer refuses a spot whose box would cover an arrow, but that
- * is a judgement made when the box goes down: an arrow can be re-routed later,
+ * is a judgment made when the box goes down: an arrow can be re-routed later,
  * and a layout can move everything. So this asks the finished diagram, which
  * is the only thing that settles it.
  */
@@ -741,7 +741,7 @@ export const arrowThrough = (page, label, margin = 6) => page.evaluate(([text, p
   const node = layer.getDANodes().find(candidate => read(candidate) === text);
   if (!node) return null;
   const box = node.group.getClientRect({relativeTo: layer});
-  const centre = {x: box.x + box.width / 2, y: box.y + box.height / 2};
+  const center = {x: box.x + box.width / 2, y: box.y + box.height / 2};
   const inside = point => point.x > box.x - pad && point.x < box.x + box.width + pad &&
     point.y > box.y - pad && point.y < box.y + box.height + pad;
   const toLayer = layer.getAbsoluteTransform().copy().invert();
@@ -762,7 +762,7 @@ export const arrowThrough = (page, label, margin = 6) => page.evaluate(([text, p
         // Which side of the segment the box's middle is on, so the move
         // carries on that way instead of crossing over it.
         const along = {x: to.x - from.x, y: to.y - from.y};
-        const side = Math.sign(along.x * (centre.y - from.y) - along.y * (centre.x - from.x)) || 1;
+        const side = Math.sign(along.x * (center.y - from.y) - along.y * (center.x - from.x)) || 1;
         return {along, side};
       }
     }

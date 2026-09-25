@@ -7,7 +7,7 @@ describe('NavJourney', () => {
 
   beforeEach(() => journey = new NavJourney());
 
-  it('takes its heading from the two node centres', () => {
+  it('takes its heading from the two node centers', () => {
     const a = new DANode(0, 0, 'a');
     const b = new DANode(300, 0, 'b');
 

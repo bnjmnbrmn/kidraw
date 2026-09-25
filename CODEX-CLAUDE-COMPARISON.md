@@ -179,7 +179,7 @@ Claude’s “every command has a handler” invariant cannot answer those quest
 ### Persistence as state, not timers
 
 The Codex review proposes documentRevision, savedRevision, and draftRevision.
-This is stronger than debouncing alone because failed, cancelled, superseded,
+This is stronger than debouncing alone because failed, canceled, superseded,
 and cross-document saves remain representable.
 
 ### Asynchronous correctness

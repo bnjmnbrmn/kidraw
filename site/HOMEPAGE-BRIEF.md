@@ -90,9 +90,9 @@ playback mechanism, not just the content.
 `site/current-homepage-criticism.org`, third round. Two of these are app
 changes, not page ones.
 
-- **Editing a label takes the camera in to 400% and centres the box** (app), and
+- **Editing a label takes the camera in to 400% and centers the box** (app), and
   the graph gets back the room the keyboard was occupying while it is hidden, so
-  the box is centred in the window rather than in the band above a keyboard that
+  the box is centered in the window rather than in the band above a keyboard that
   is not there. The typing hint moved down beside the mode chip: the gaps hint →
   chip and chip → edge are equal, the same rule the keyboard card follows.
 - **The animation starts where the reader is.** A box's run now opens with the
@@ -115,7 +115,7 @@ changes, not page ones.
 - **The card is filled by the capture.** `object-fit: cover` rather than
   `contain`: the letterboxed strips down each side had no grid in them, and
   being transparent they let the frame underneath show its own edges through —
-  the "weird coloured pixels".
+  the "weird colored pixels".
 
 ## September 6, 2026 — ninth revision (placed, not laid out; and the cards slide)
 
@@ -235,10 +235,10 @@ than a description. The fixes, in the order they were raised:
   description of KiDraw uses actual screenshots of KiDraw" — and a frame.
 - **The author's own bullets, verbatim**, instead of paraphrases of them.
 - **Boxes fit their text** (`Style > Overflow > Fit`), the box a step is about
-  is **selected**, **centred between the header and the keymenu** rather than in
+  is **selected**, **centered between the header and the keymenu** rather than in
   the middle of the frame, and the whole thing is captured at **200%**.
 - **Less auto-layout.** It runs when a branch finishes, or when there is
-  actually no room — no free slot, or a long label overlapping a neighbour —
+  actually no room — no free slot, or a long label overlapping a neighbor —
   and the Layout and Recenter keypresses are in the frames rather than applied
   between them.
 - **More like a video.** One frame per character, at a fast typist's speed.
@@ -352,7 +352,7 @@ the bottom of the page; the diagram is drawn from it, and it is what a reader
 without JavaScript gets. The frame-sequence widgets from the August 31 version
 are gone — the diagram carries the motion now, and the captures are static.
 
-Two spellings were normalised from the org file for a public page: *Geneology*
+Two spellings were normalized from the org file for a public page: *Geneology*
 to *Genealogy*. *Discover-able* was left as written.
 
 Everything below is the August 31 record and still governs voice, audience, and

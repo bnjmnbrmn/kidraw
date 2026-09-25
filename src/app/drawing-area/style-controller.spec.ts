@@ -1,6 +1,6 @@
 import { StyleController, StyleHost } from './style-controller';
 
-/** Shape toggling, colour and the direction cycle are covered through the
+/** Shape toggling, color and the direction cycle are covered through the
  *  component, where their targeting lives (drawing-area.component.*.spec.ts). */
 describe('StyleController', () => {
   it('gives new nodes the shape you chose, else the diagram type\'s, else a box', () => {

@@ -9,11 +9,11 @@ _Original research: 2026-04-17 (async)._
 
 ## Terminology
 
-What kidraw calls **waypoints** is **bends** or **bend points** in graph-drawing literature. Edges are described as **polylines** (sequences of straight segments connected at bends). Minimising bend count is **bend minimisation**. "Control points" is reserved for Bezier / spline curves.
+What kidraw calls **waypoints** is **bends** or **bend points** in graph-drawing literature. Edges are described as **polylines** (sequences of straight segments connected at bends). Minimizing bend count is **bend minimization**. "Control points" is reserved for Bezier / spline curves.
 
 **Obstacle avoidance** or **node-obstacle routing** is the formal name for routing edges around nodes they don't connect to, maintaining a **clearance distance**. Well-studied; the core feature of libavoid.
 
-Both bend minimisation and crossing minimisation are NP-hard in the general case. Real-world tools use heuristics with tunable penalty weights for each.
+Both bend minimization and crossing minimization are NP-hard in the general case. Real-world tools use heuristics with tunable penalty weights for each.
 
 ## Edge routing types
 

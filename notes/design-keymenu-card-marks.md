@@ -23,7 +23,7 @@ Nobody read it — including the person who designed the menu:
 > I don't understand why some items in the key menu have rounded corners and
 > some are squared off. For example, "Layout..." vs "Pan/Zoom..."
 
-A 4px difference in radius is not a legible way to name a behaviour. Every card
+A 4px difference in radius is not a legible way to name a behavior. Every card
 uses the same corner radius now.
 
 The first attempt at rehousing that meaning gave action-submenus the `↑` badge.
@@ -49,7 +49,7 @@ The root card still does not pretend that every action-submenu has the same
 release behavior: `v`, `a`, `r`, and `g` remain different animals. Once `a`
 has actually opened a drawing-area-owned grow surface, however, the UI knows
 the concrete gesture. The upper card therefore uses a release slot at `a`
-instead of the old duplicate key labelled “Release: …”.
+instead of the old duplicate key labeled “Release: …”.
 
 This makes both facts visible at once:
 

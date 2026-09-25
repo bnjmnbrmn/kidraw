@@ -97,7 +97,7 @@ The project work is divided across specialist agents. Each has a canonical home 
 
 **QA (black-box):**
 
-- [qa](notes/agents/qa.md) — drives the app via Playwright / `window.ng.getComponent`. Reads only `dev-status.md`, `docs/`, and `notes/` to know what behaviour *should* be. **Never reads `src/**`.** Owns `tools/qa/`.
+- [qa](notes/agents/qa.md) — drives the app via Playwright / `window.ng.getComponent`. Reads only `dev-status.md`, `docs/`, and `notes/` to know what behavior *should* be. **Never reads `src/**`.** Owns `tools/qa/`.
 
 ### How to invoke
 
@@ -125,7 +125,7 @@ This repo *is* the memory. Anything that should outlive a single session goes in
 ### Provenance: mark what Ben decided vs what an agent inferred
 
 Most of `notes/` was committed by an agent, and agents have committed under
-both identities, so **`git blame` cannot tell you whose judgement a line
+both identities, so **`git blame` cannot tell you whose judgment a line
 records.** That matters: a design note is used as the source of truth for what
 the code *should* do, and an agent's plausible inference reads exactly like a
 decision Ben made.
@@ -134,13 +134,13 @@ So every claim that could settle a later argument carries its source:
 
 - `(Ben, YYYY-MM-DD)` — Ben said this. Already used in ~13 places; keep it.
 - `(inferred, YYYY-MM-DD)` — an agent concluded this from the code, from
-  observed behaviour, or from reasoning. Not authority. Say what it was
+  observed behavior, or from reasoning. Not authority. Say what it was
   inferred *from* when it is not obvious.
 
-Unmarked older text stays unmarked: relabelling it now would be one more
+Unmarked older text stays unmarked: relabeling it now would be one more
 inference. Mark what you add or change.
 
-**Never record observed behaviour as intent.** "The app does X" is evidence;
+**Never record observed behavior as intent.** "The app does X" is evidence;
 "X is correct" is a decision, and it is Ben's. When a note and the code
 disagree, say so and ask — that disagreement is the interesting part, and
 resolving it by writing down whatever the code happens to do destroys the only

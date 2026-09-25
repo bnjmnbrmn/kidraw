@@ -51,9 +51,9 @@ async function main() {
     return {
       sel,
       nodeStage,
-      // The usable viewport centre, not the stage centre: the shell reserves
-      // room for the keymenu and panels through viewportInset, so recentring
-      // targets viewCenterX/Y. The old stage-centre assumption was 102px out.
+      // The usable viewport center, not the stage center: the shell reserves
+      // room for the keymenu and panels through viewportInset, so recentering
+      // targets viewCenterX/Y. The old stage-center assumption was 102px out.
       stageCenter: { x: da.viewCenterX(), y: da.viewCenterY() },
       cross: { x: da.crosshairsLayer.crosshairsX(), y: da.crosshairsLayer.crosshairsY() },
     };
@@ -80,9 +80,9 @@ async function main() {
   await search('apple');
   let s = await probe();
   check('search selects the matching node', s.sel.includes('apple'), JSON.stringify(s.sel));
-  check('match is recentered to the usable viewport centre', near(s.nodeStage, s.stageCenter, 4),
+  check('match is recentered to the usable viewport center', near(s.nodeStage, s.stageCenter, 4),
     `node@(${s.nodeStage?.x.toFixed(0)},${s.nodeStage?.y.toFixed(0)}) center@(${s.stageCenter.x},${s.stageCenter.y})`);
-  check('crosshairs sit on the match (viewport centre)', near(s.cross, s.stageCenter, 4),
+  check('crosshairs sit on the match (viewport center)', near(s.cross, s.stageCenter, 4),
     `xh@(${s.cross.x.toFixed(0)},${s.cross.y.toFixed(0)})`);
 
   // 2. Cycle to the next match (banana, far away) — recenters again.
@@ -90,7 +90,7 @@ async function main() {
   await next();       // → banana
   s = await probe();
   check('cycling to the far match selects it', s.sel.includes('banana'), JSON.stringify(s.sel));
-  check('far match is recentered to the viewport centre', near(s.nodeStage, s.stageCenter, 4),
+  check('far match is recentered to the viewport center', near(s.nodeStage, s.stageCenter, 4),
     `node@(${s.nodeStage?.x.toFixed(0)},${s.nodeStage?.y.toFixed(0)})`);
   check('crosshairs land on the far match', near(s.cross, s.stageCenter, 4),
     `xh@(${s.cross.x.toFixed(0)},${s.cross.y.toFixed(0)})`);

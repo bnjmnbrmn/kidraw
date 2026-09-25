@@ -62,7 +62,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     };
     component.checkAndEmitEditState = jasmine.createSpy('checkAndEmitEditState');
     component.scheduleVaultAutoSave = jasmine.createSpy('scheduleVaultAutoSave');
-    // Object.create skips field initialisers, so this collaborator is absent.
+    // Object.create skips field initializers, so this collaborator is absent.
     // A spy, not the real controller: these are unit tests of the component,
     // and the real one would drag in layers this spec never set up.
     component.navGrid = (() => {
@@ -338,7 +338,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.grow.ghostTargets = ghosts;
       component.grow.origin = {x: 0, y: 0};
       component.grow.latticeStep = () => ({x: 400, y: 100});
-      component.getNodeCenterInLayerCoordinates = (node: any) => node.centre ?? {x: 0, y: 0};
+      component.getNodeCenterInLayerCoordinates = (node: any) => node.center ?? {x: 0, y: 0};
       component.drawingLayer.x = () => 0;
       component.drawingLayer.y = () => 0;
       component.drawingLayer.scaleX = () => 1;
@@ -350,7 +350,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       return component;
     };
     const box = (id: string, cx: number, cy: number) =>
-      ({id, centre: {x: cx, y: cy}, NODE_WIDTH: 120, NODE_HEIGHT: 60});
+      ({id, center: {x: cx, y: cy}, NODE_WIDTH: 120, NODE_HEIGHT: 60});
 
     it('steps one cell along the lattice, without asking Move by Node', () => {
       const anchor = box('anchor', 0, 0);
@@ -363,7 +363,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       expect(component.grow.insertionTarget).toBe(east);
       expect(component.grow.target).toBeNull();
 
-      // A turn from there is the neighbouring cell, not a rethink of the field.
+      // A turn from there is the neighboring cell, not a rethink of the field.
       component.grow.hop('up');
       expect(component.grow.insertionTarget).toBe(northEast);
       expect(component.navGrid.snapToNodeInDirection).not.toHaveBeenCalled();

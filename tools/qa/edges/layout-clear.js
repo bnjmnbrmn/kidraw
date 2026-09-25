@@ -58,7 +58,7 @@ async function main() {
     dl.batchDraw();
   });
 
-  // Count pierces along the PAINTED path, not the centre-to-centre chord: a
+  // Count pierces along the PAINTED path, not the center-to-center chord: a
   // tree-clear layout is allowed to hand its few clipping chords to the
   // router (da-531), and a routed edge that goes around a node is not a
   // pierce even though its chord would be.

@@ -17,7 +17,7 @@ Distilled retrospective rules from past sessions. Useful for the coordinator age
 
 - **Write a state-machine test before implementing an animation / mode transition.** The ghost-card and x-drift bugs were tween-lifecycle issues; the tests don't need Konva — just verify `push → pop → push` leaves the stack clean.
 - **Small commits.** Don't accumulate a large batch across 20+ files without committing — rollback gets painful. Commit after each working milestone.
-- **Visual regression snapshots.** Many bugs were visual (cards behind parents, ghost cards, colour mismatches). A screenshot workflow — even manual screenshots in `tools/screenshots/` with notes — would catch regressions earlier.
+- **Visual regression snapshots.** Many bugs were visual (cards behind parents, ghost cards, color mismatches). A screenshot workflow — even manual screenshots in `tools/screenshots/` with notes — would catch regressions earlier.
 - **Try the UI during implementation.** Some bugs (z-ordering, ghost cards) were visible on first interaction. Quick manual test after each phase saves re-work.
 - **Design palettes upfront.** Themes that grow organically end up with adjustment passes. Designing the typed interface with placeholder values up-front avoids "toned-down green" rounds.
 

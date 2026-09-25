@@ -348,7 +348,7 @@ potential persistence omissions.
 
 The vault polling code treats the presence of a pending debounce timer as the
 dirty signal. A timer is an implementation detail, not document state. Once a
-timer fires, fails, is cancelled, or is replaced during another document
+timer fires, fails, is canceled, or is replaced during another document
 operation, it is no longer a trustworthy answer to “does memory differ from
 disk?”
 
@@ -397,7 +397,7 @@ style token or semantic tag. Persist the intent and derive the display value.
 ## Finding 7: file opening conflates cancellation and failure
 
 FileIoService’s portable picker fallback waits for window focus to return and
-then settles as cancelled after 200 ms. On a slow device, file selection and
+then settles as canceled after 200 ms. On a slow device, file selection and
 reading can race that timer. Read errors are also converted to null, the same
 result as deliberate cancellation.
 
@@ -407,7 +407,7 @@ Recommended changes:
 
 - prefer the picker’s cancel event where supported;
 - treat change as ownership of the operation and disable the focus fallback;
-- represent results as selected, cancelled, or failed rather than value/null;
+- represent results as selected, canceled, or failed rather than value/null;
 - show parse, permission, and read errors in the application status surface;
 - add browser tests with delayed file reads and repeated open/cancel cycles.
 

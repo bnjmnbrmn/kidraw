@@ -11,11 +11,11 @@ the grid from there. It rounds to the nearest cell, then rejects the answer if
 the node is more than `ON_CELL_TOLERANCE` (0.6) of a step off it:
 
 ```ts
-const ix = Math.round((centre.x - anchorCentre.x) / step.x);
-const iy = Math.round((centre.y - anchorCentre.y) / step.y);
+const ix = Math.round((center.x - anchorCenter.x) / step.x);
+const iy = Math.round((center.y - anchorCenter.y) / step.y);
 const off = Math.max(
-  Math.abs(centre.x - anchorCentre.x - ix * step.x) / step.x,
-  Math.abs(centre.y - anchorCentre.y - iy * step.y) / step.y,
+  Math.abs(center.x - anchorCenter.x - ix * step.x) / step.x,
+  Math.abs(center.y - anchorCenter.y - iy * step.y) / step.y,
 );
 return off <= ON_CELL_TOLERANCE ? {ix, iy} : null;
 ```
@@ -48,8 +48,8 @@ through to Move by Node instead of pretending to be on it — then the threshold
 has to be below 0.5, and what it should be is a feel question.
 
 Left working exactly as it does, with the arithmetic written down at the
-constant. `grow-lattice.spec.ts` pins the current behaviour explicitly as the
-behaviour that *is*, not the behaviour that is wanted.
+constant. `grow-lattice.spec.ts` pins the current behavior explicitly as the
+behavior that *is*, not the behavior that is wanted.
 
 Related: [Drawing-area refactor](idea-drawing-area-refactor.md),
 [move-by-node reachability analysis](analysis-move-by-node-reachability.md).

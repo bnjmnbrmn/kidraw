@@ -44,9 +44,9 @@ _Things we'd like to do, not yet scheduled. One per file, prefixed `idea-`._
 - [Graph nav — maybe swap n/p and j/k roles](idea-graph-nav-key-swap.md) — siblings on n/p, in/out of edges on j/k; undecided, dogfood first.
 - [Diagonal-movement profile (2×2 cluster)](idea-diagonal-movement-profile.md)
 - [Left-hand-dominant profile](idea-left-hand-profile.md)
-- [Visualize greyed-out submenu options](idea-greyed-submenu-options.md)
+- [Visualize grayed-out submenu options](idea-grayed-submenu-options.md)
 - [A list of interaction modes on the drawing area](idea-interaction-modes-list.md): Ben's question whether grow, Move by Link and Move by Node should be a list of "overlays"; built 2026-09-24 as `interaction-modes.ts`
-- [Centred menus, and whether ex mode stays](idea-center-menus.md): Ben wants keyboard menus centred over the drawing (vault, styles, file type, Save As, settings, search placed lower), with more affordances than the ex line; needs new terminology
+- [Centered menus, and whether ex mode stays](idea-center-menus.md): Ben wants keyboard menus centered over the drawing (vault, styles, file type, Save As, settings, search placed lower), with more affordances than the ex line; needs new terminology
 - [Quick settings panel (orthogonal to keymenu modes)](idea-quick-settings-panel.md)
 - [Keymenu visual polish](idea-keymenu-visual-polish.md)
 - [Keymenu discoverability](idea-keymenu-discoverability.md)
@@ -161,4 +161,4 @@ _Workflow rules and retrospective lessons._
 
 ## Agents
 
-See [`agents/README.md`](agents/README.md) for the agent roster (two-axis framing + full list with links). Each agent's home file under [`agents/`](agents/) carries its mandate, scope, invariants/rubric, workflow, and pointers into the shared zettelkasten. [`AGENTS.md`](../AGENTS.md) at the repo root summarises the roster with one-line descriptions and shows how to invoke each from Claude Code or Codex.
+See [`agents/README.md`](agents/README.md) for the agent roster (two-axis framing + full list with links). Each agent's home file under [`agents/`](agents/) carries its mandate, scope, invariants/rubric, workflow, and pointers into the shared zettelkasten. [`AGENTS.md`](../AGENTS.md) at the repo root summarizes the roster with one-line descriptions and shows how to invoke each from Claude Code or Codex.

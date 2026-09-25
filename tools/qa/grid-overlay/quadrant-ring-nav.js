@@ -47,13 +47,13 @@ async function main() {
     da.drawingLayer.position({x: 0, y: 0});
     da.drawingLayer.scale({x: 1, y: 1});
     // Start on where the origin node actually renders, not the fixture's
-    // nominal centre: nodes auto-size to their labels, so parking on the
+    // nominal center: nodes auto-size to their labels, so parking on the
     // nominal coordinate captures a quadrant origin a few pixels off every
     // real stop.
     const originNode = da.drawingLayer.getDANodes().find(n => n.id === 'origin');
-    const originCentre = da.getNodeCenterInStageCoordinates(originNode);
-    da.crosshairsLayer.crosshairs.x = originCentre.x;
-    da.crosshairsLayer.crosshairs.y = originCentre.y;
+    const originCenter = da.getNodeCenterInStageCoordinates(originNode);
+    da.crosshairsLayer.crosshairs.x = originCenter.x;
+    da.crosshairsLayer.crosshairs.y = originCenter.y;
     da.drawingLayer.batchDraw();
   });
 
@@ -147,21 +147,21 @@ async function main() {
   });
   // The origin re-anchors on the stop you turned at, so compare against where
   // those nodes actually render: they auto-size to their labels, and the
-  // fixture's nominal centres are a few pixels out (notably in y).
-  const centres = await page.evaluate(() => {
+  // fixture's nominal centers are a few pixels out (notably in y).
+  const centers = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
-    const centre = id => {
+    const center = id => {
       const n = da.drawingLayer.getDANodes().find(n => n.id === id);
       return n ? da.getNodeCenterInStageCoordinates(n) : null;
     };
-    return {origin: centre('origin'), eastFar: centre('east-far')};
+    return {origin: center('origin'), eastFar: center('east-far')};
   });
   const near = (a, b) => a && b && Math.abs(a.x - b.x) < 2 && Math.abs(a.y - b.y) < 2;
   check('a direction change re-origins, then enters the new quadrant',
     afterTurn === 'turn-south' &&
-      near(originBeforeTurn, centres.origin) &&
-      near(originAfterTurn, centres.eastFar),
-    JSON.stringify({afterTurn, originBeforeTurn, originAfterTurn, centres}));
+      near(originBeforeTurn, centers.origin) &&
+      near(originAfterTurn, centers.eastFar),
+    JSON.stringify({afterTurn, originBeforeTurn, originAfterTurn, centers}));
 
   await page.keyboard.up('g');
   await page.waitForTimeout(120);

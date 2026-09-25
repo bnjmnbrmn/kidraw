@@ -39,9 +39,9 @@ When the user reports "the header doesn't show X" or "the zoom chip is wrong":
 ## Notes I read
 
 - [`architecture-invariants.md`](../architecture-invariants.md) — the `mode-exclusive` and `label-edit-hides-crosshairs` invariants affect what the badge shows.
-- [`idea-quick-settings-panel.md`](../idea-quick-settings-panel.md) — the upcoming persistent settings surface lives in the header's neighbourhood.
+- [`idea-quick-settings-panel.md`](../idea-quick-settings-panel.md) — the upcoming persistent settings surface lives in the header's neighborhood.
 - [`vim-is-canonical-profile.md`](../vim-is-canonical-profile.md) — header's key-profile dropdown lists vim first.
 
 ## Notes I own
 
-- Header-specific UX decisions (chip ordering, badge colours) — propose new `notes/decision-header-*.md` entries as they arise.
+- Header-specific UX decisions (chip ordering, badge colors) — propose new `notes/decision-header-*.md` entries as they arise.

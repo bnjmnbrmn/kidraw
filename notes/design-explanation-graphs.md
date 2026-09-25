@@ -69,11 +69,11 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
    `findConflict` checks a whole batch before anything is applied (all or
    nothing), and inverses make selective undo possible. `UndoRedoService`
    holds both snapshot entries (keymenu edits) and operation groups. Undoing a
-   group that no longer applies cleanly is cancelled with a status message.
+   group that no longer applies cleanly is canceled with a status message.
 2. **Plugins**. The header's type chip shows the graph's plugin (diagram
    type). `:type` lists the plugins, `:type explanation` switches (`:plugin`
-   works too). Plugins can declare **edge kinds** (tag, name, colour); an
-   edge kind's colour wins over directedness and theme colours. The
+   works too). Plugins can declare **edge kinds** (tag, name, color); an
+   edge kind's color wins over directedness and theme colors. The
    Explanation plugin declares the two kinds above and box nodes sized for a
    sentence.
 3. **Agent edits** (`agent-change-planner.ts`, the `apply_changes` tool).
@@ -98,7 +98,7 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      back at the statement. A mark key then applies to that link.
    - `d` ("doesn't follow") and `t` ("too detailed") mark the current
      statement with a badge, as an undoable edit. On a link, `d` marks the
-     link, which is then drawn in the mark's colour. Each has at most one
+     link, which is then drawn in the mark's color. Each has at most one
      mark, and the same key again clears it. `s` opens the chat with every
      marked statement and link attached, in reading order, and a
      ready-to-edit request.
@@ -119,7 +119,7 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      in blue, bold and italic shown. The caret and vim motions work on the raw
      text as before, since the raw `Konva.Text` still does the layout.
    - Fit sizing measures what is drawn: markers don't widen a box. A node can
-     change size as editing starts or ends; it keeps its centre and its edges
+     change size as editing starts or ends; it keeps its center and its edges
      follow, the same as when typing grows it.
    - **Plugins opt in** (`labelFormat: 'markdown'`); Explanation does.
      Other graphs, including todo graphs, draw and edit labels exactly as
@@ -149,8 +149,8 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
      deprecated, and it pulled in an `@xmldom/xmldom` with known issues.
 8. **Assumptions, definitions and examples** are node kinds
    (`kind/assumption`, `kind/definition`, `kind/example`), drawn with a
-   coloured border and a name badge.
-   - Each has a link kind in the same colour. Like supports, links run from
+   colored border and a name badge.
+   - Each has a link kind in the same color. Like supports, links run from
      what the reader needs first to what builds on it: assumption → statement,
      definition → statement, statement → example.
    - Reading mode warns when a step comes before something it depends on.
@@ -247,7 +247,7 @@ which premises are used together, or by what rule.
      could be a junction, or a small pill showing the rule.
    - The reading order stays on statements. "Why?" shows the rule and its
      premises together.
-2. **Labelled edge bundle.** Keep one edge per premise, and group a
+2. **Labeled edge bundle.** Keep one edge per premise, and group a
    conclusion's edges with a shared tag and a rule label where they meet.
    Lighter on the canvas, but there is nothing to point at for "the step as a
    whole", and a conclusion reached two ways gets confusing.

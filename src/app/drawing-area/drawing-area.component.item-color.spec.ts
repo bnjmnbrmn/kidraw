@@ -2,9 +2,9 @@ import {DrawingAreaComponent} from './drawing-area.component';
 import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 
 /** setItemColor used to act only on the selection, silently. Hovering a node
- *  and picking a colour then either did nothing or recoloured a stale
+ *  and picking a color then either did nothing or recolored a stale
  *  selection elsewhere — and a thin edge restyled at 50% zoom reads as
- *  "colour doesn't work". It now falls back to the crosshairs and always
+ *  "color doesn't work". It now falls back to the crosshairs and always
  *  reports what it touched. */
 describe('DrawingAreaComponent setItemColor targeting', () => {
   function build(overrides: {
@@ -34,7 +34,7 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     c.daOut.emit.calls.allArgs().map((a: any[]) => a[0])
       .filter((n: any) => n.kind === 'status-message').pop()?.message;
 
-  it('colours the selection when there is one', () => {
+  it('colors the selection when there is one', () => {
     const n = node();
     const c = build({selectedNodes: [n]});
     c.style.setItemColor('red');

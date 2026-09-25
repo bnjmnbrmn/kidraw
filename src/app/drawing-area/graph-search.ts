@@ -17,7 +17,7 @@ import type { Point } from './utils';
 /** What search needs from the drawing area. */
 export interface GraphSearchHost {
   readonly drawingLayer: DrawingLayer;
-  /** Ask for a query; null when cancelled. (`window.prompt` stands in until
+  /** Ask for a query; null when canceled. (`window.prompt` stands in until
    *  the large-menu overlay lands.) */
   prompt(message: string, initial: string): string | null;
   finishTweens(): void;
@@ -75,8 +75,8 @@ export class GraphSearch {
     return null;
   }
 
-  /** Select the match, recentre the view on it (pan only, no rescale — it
-   *  lands at screen centre under the crosshairs), and say where it is. */
+  /** Select the match, recenter the view on it (pan only, no rescale — it
+   *  lands at screen center under the crosshairs), and say where it is. */
   private focus(matches: SearchMatch[], index: number): void {
     // Land any in-flight tween BEFORE reading positions — a rapid n/N
     // sequence would otherwise pan from a mid-tween layer offset.
@@ -97,7 +97,7 @@ export class GraphSearch {
       this.host.centerViewOnLayerPoint(this.host.nodeCenter(match.node));
     } else {
       match.label.isSelected = true;
-      // Label x/y are already drawing-layer coordinates (the label's centre).
+      // Label x/y are already drawing-layer coordinates (the label's center).
       this.host.centerViewOnLayerPoint({x: match.label.x, y: match.label.y});
     }
   }

@@ -39,7 +39,7 @@ export class CompactKeymenuComponent implements AfterViewInit, OnChanges, OnDest
   @Input() maxWidthPx = 268;
   /** Current mode, in the same words the full menu's chip uses. */
   @Input() modeName = '';
-  /** Accent colour naming that mode, shown as a dot beside it. */
+  /** Accent color naming that mode, shown as a dot beside it. */
   @Input() modeColor = '#888888';
   /** Shown instead of rows when the full menu would not be listing keys
    *  either — free typing, where every key is just a character. */

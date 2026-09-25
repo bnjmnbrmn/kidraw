@@ -1,6 +1,6 @@
 /**
  * How things look: node shape and text overflow, an edge's direction, line
- * style and colour — for the selection, else whatever the crosshairs are on —
+ * style and color — for the selection, else whatever the crosshairs are on —
  * and the defaults new nodes and edges start with, which a shape command
  * changes when there is nothing to act on.
  */
@@ -179,8 +179,8 @@ export class StyleController {
 
     // Selection first, then whatever the crosshairs are over — the same
     // priority copy/cut (da-272) and the shape commands use. Without the
-    // fallback the natural gesture (hover a node, pick a colour) either did
-    // nothing or, worse, recoloured a stale selection somewhere off-screen;
+    // fallback the natural gesture (hover a node, pick a color) either did
+    // nothing or, worse, recolored a stale selection somewhere off-screen;
     // a thin edge restyled at 50% zoom reads as "nothing happened".
     let nodes = layer.getSelectedDANodes();
     let edges = layer.getSelectedDAEdges();
@@ -203,7 +203,7 @@ export class StyleController {
 
     layer.batchDraw();
 
-    // Always say what was recoloured. The command is otherwise silent, and
+    // Always say what was recolored. The command is otherwise silent, and
     // its effect can be genuinely hard to see.
     const parts: string[] = [];
     if (nodes.length) parts.push(`${nodes.length} node${nodes.length === 1 ? '' : 's'}`);

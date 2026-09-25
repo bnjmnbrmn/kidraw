@@ -39,12 +39,12 @@ export interface PluginTagGroup {
 }
 
 /** A kind of edge a plugin contributes, marked by a semantic tag and
- *  drawn in its own colour (outranking directedness and theme colours). */
+ *  drawn in its own color (outranking directedness and theme colors). */
 export interface PluginEdgeKind {
   /** The semantic tag edges of this kind carry (e.g. `explanation/supports`). */
   tag: string;
   name: string;
-  /** Stroke colour: a mid tone that reads on both themes. */
+  /** Stroke color: a mid tone that reads on both themes. */
   color: string;
   /** What the kind means, for help text and agents. */
   description: string;
@@ -54,11 +54,11 @@ export interface PluginEdgeKind {
 }
 
 /** A kind of node a plugin contributes (e.g. a definition), marked by a
- *  semantic tag: drawn with its colour on the border and its name in a badge. */
+ *  semantic tag: drawn with its color on the border and its name in a badge. */
 export interface PluginNodeKind {
   tag: string;
   name: string;
-  /** Border and badge colour: a mid tone that reads on both themes. */
+  /** Border and badge color: a mid tone that reads on both themes. */
   color: string;
   /** What the kind is for, for help text and agents. */
   description: string;

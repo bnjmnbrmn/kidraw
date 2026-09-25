@@ -23,7 +23,7 @@ describe('Animations', () => {
     expect(animations.count).toBe(1);
   });
 
-  it('snaps everything to its end state, rather than cancelling it', () => {
+  it('snaps everything to its end state, rather than canceling it', () => {
     animations.start(move(120));
     animations.finishAll();
     expect(node.x()).toBe(120);

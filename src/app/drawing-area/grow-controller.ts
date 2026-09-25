@@ -58,7 +58,7 @@ export interface GrowHost {
   readonly viewport: Viewport;
   readonly navGrid: NavigationGridController;
   readonly style: StyleController;
-  /** The node outline colour the preview is drawn in. */
+  /** The node outline color the preview is drawn in. */
   readonly ghostStroke: string;
   readonly dark: boolean;
   nodesUnderCrosshairs(): DANode[];
@@ -381,13 +381,13 @@ export class GrowController implements InteractionMode {
    * about the real nodes beyond.
    */
   private hopOnLattice(direction: HopDirection): boolean {
-    const anchorCentre = this.origin;
-    if (!anchorCentre) return false;
+    const anchorCenter = this.origin;
+    if (!anchorCenter) return false;
     const hop = planGrowHop({
       direction,
       fromTargetId: this.insertionTarget?.id ?? null,
-      fromNodeCentre: this.target ? this.host.nodeCenter(this.target) : null,
-      anchorCentre,
+      fromNodeCenter: this.target ? this.host.nodeCenter(this.target) : null,
+      anchorCenter,
       step: this.latticeStep(),
       targets: this.ghostTargets,
       nodes: this.nodeBoxes(node => node !== this.anchor),
@@ -437,12 +437,12 @@ export class GrowController implements InteractionMode {
     navGrid.hideNodeGrid();
     navGrid.hideQuadrantGoalRay();
     navGrid.adoptStop({id: ghost ? ghost.id : node!.id, kind: 'node'});
-    const centre = ghost ? {x: ghost.x, y: ghost.y} : this.host.nodeCenter(node!);
+    const center = ghost ? {x: ghost.x, y: ghost.y} : this.host.nodeCenter(node!);
     const layer = this.host.drawingLayer;
     const scale = layer.scaleX();
     navGrid.jumpCrosshairsToStopCenter({
-      x: layer.x() + centre.x * scale,
-      y: layer.y() + centre.y * scale,
+      x: layer.x() + center.x * scale,
+      y: layer.y() + center.y * scale,
     });
     this.redrawGhost();
   }
@@ -556,7 +556,7 @@ export class GrowController implements InteractionMode {
     };
   }
 
-  /** Centre-to-centre distance for a node placed beside `anchor` along `axis`.
+  /** Center-to-center distance for a node placed beside `anchor` along `axis`.
    *  Measures the two boxes involved and hands them to the spacing rule. */
   private spacingFrom(axis: PlacementAxis, anchor: DANode | null = this.anchor): number {
     const fresh = this.host.drawingLayer?.newNodeDefaultSize?.()

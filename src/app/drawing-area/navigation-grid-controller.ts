@@ -572,7 +572,7 @@ export class NavigationGridController {
   // ── Move-by-node grid overlay (design-grid-navigation.md, stage 2) ──
   // While the move-by-node key is held, the row/column bands the navigation
   // uses are drawn over the viewport so the grid is visible; the band the
-  // crosshairs sit in is emphasised. Redrawn on every step (the view pans).
+  // crosshairs sit in is emphasized. Redrawn on every step (the view pans).
   private nodeGridVisible = false;
   private nodeGridGroup: Konva.Group | null = null;
   private nodeGridTargets: NavTargetKind = 'labels';

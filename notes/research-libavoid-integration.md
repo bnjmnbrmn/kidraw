@@ -17,9 +17,9 @@ libavoid is a C++ library built specifically for interactive diagram editors (In
 
 ## Key configurable penalties
 
-- `segmentPenalty` — penalises each bend (minimises bends).
-- `anglePenalty` — penalises non-orthogonal turns.
-- `crossingPenalty` — penalises edge crossings.
+- `segmentPenalty` — penalizes each bend (minimizes bends).
+- `anglePenalty` — penalizes non-orthogonal turns.
+- `crossingPenalty` — penalizes edge crossings.
 - `shapeBufferDistance` — minimum clearance around nodes.
 
 Tuning these gives the bends-vs-crossings tradeoff knob.

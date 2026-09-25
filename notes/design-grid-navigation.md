@@ -15,7 +15,7 @@ tested. The current default is
 available with `g → o`. The strategy choice is session state, not graph
 content.
 
-Ben's model (2026-07-21), replacing the cone / cycling / connected-neighbour
+Ben's model (2026-07-21), replacing the cone / cycling / connected-neighbor
 approaches. Supersedes the reachability analysis fixes for move-by-node
 (`notes/analysis-move-by-node-reachability.md`) — **explicitly no edge
 awareness**: navigation is purely spatial.
@@ -58,7 +58,7 @@ movement use the same membership. Each occupied cell has one stop, except for
 truly co-located stops with identical centers: no purely spatial model can
 distinguish those without inventing a non-spatial ordering.
 
-## Viewport behaviour
+## Viewport behavior
 
 - The grid is built from **visible** stops only.
 - Moving past the grid edge **shifts the viewport**: if no visible stop lies
@@ -88,13 +88,13 @@ gets a small **band-membership crosshair**. Its horizontal arm uses the light
 or dark cadence of the stop's row, while its vertical arm uses the cadence of
 its column. The arms have a node-fill halo so they remain legible on top of an
 item. This is static rather than blinking: it gives the same membership cue
-without adding a viewport-wide animation or synchronisation burden.
+without adding a viewport-wide animation or synchronization burden.
 
 ## Build stages
 
 1. **Core (done):** viewport-relative grid step + goal-column memory
    (both axes) + basic viewport pan to off-screen stops. Revert the
-   connected-neighbour / cone / cycling selection.
+   connected-neighbor / cone / cycling selection.
 2. **Spreadsheet-band overlay (done):** filled bands and midpoint boundaries
    shared with the navigation model while `g` is held.
 3. **Cell disambiguation + goal guide (done):** locally split ambiguous cells
