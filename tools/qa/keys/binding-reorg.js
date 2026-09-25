@@ -5,8 +5,9 @@
  *   1. Held `a` is the unified insert hub (2026-07-18 final round; root `i`
  *      unbound): hold a → tap d creates a node and releasing a drops into
  *      label-edit mode.
- *   2. Root `f` is the one-shot Go action (nav popup, 2026-07-16); the
- *      traversal checks below drive it with real key events.
+ *   2. Root `f` is Move by Link, held (it was the one-shot Go action until
+ *      the nav popup's keymenu surface was retired, 2026-09-24); the
+ *      traversal check below walks a link with real key events.
  *   3. Root `g` toggles the keyboard.
  *   4. The `m` File submenu has the new shape: n New, o Open… (vault),
  *      s Save As… (vault), i Import File…, e Export File…, and no
@@ -52,8 +53,10 @@ async function main() {
   // Renamed 'Edit/Insert...' → 'Add' when a=add / i=insert landed; the
   // trailing ellipsis went with da-527 (the chamfer already says "has children").
   check('root a is the Add hub', menu.a?.label === 'Add', JSON.stringify(menu.a));
-  // 2026-07-16: f became the one-shot Go action (nav popup rework).
-  check('root f is Go', menu.f?.label === 'Go' && menu.f?.ctor === 'LabeledAction', JSON.stringify(menu.f));
+  // 2026-07-16: f became the one-shot Go action (nav popup rework); since
+  // the nav popup's keymenu surface was retired (df1228f8, 2026-09-24) root f
+  // is Move by Link, held.
+  check('root f is Move by Link', menu.f?.label === 'Move by Link' && menu.f?.ctor === 'LabeledActionSubmenuConfig', JSON.stringify(menu.f));
   // 2026-07-18: Move by node → g, Hide Keyboard → z.
   // 2026-08-15: z cycles keyboard → compact tree → hidden (da-200), so the
   // label broadened from 'Hide Keyboard' to 'Cycle Menu View'.
@@ -98,31 +101,38 @@ async function main() {
   s = await state();
   check('escape escape returns to normal mode', s.mode === 'normal', s.mode);
 
-  // --- 2. Hold f → tap n jumps along the graph ---
-  // Put the crosshairs on a node that has an outgoing edge.
-  await page.evaluate(() => {
+  // --- 2. Hold f (Move by Link) → the direction key toward a link walks it ---
+  // Put the crosshairs on a node that has an outgoing edge, and find which
+  // hjkl key points from it toward the edge's other end.
+  const toward = await page.evaluate(() => {
     const da = window.ng.getComponent(document.querySelector('app-drawing-area'));
     da.finishTweens();
     const dl = da.drawingLayer;
-    const src = dl.getDAEdges()[0].srcNode;
-    const pos = src.group.position();
-    const cx = pos.x + src.NODE_WIDTH / 2;
-    const cy = pos.y + src.NODE_HEIGHT / 2;
-    da.crosshairsLayer.crosshairs.x = cx * dl.scaleX() + dl.x();
-    da.crosshairsLayer.crosshairs.y = cy * dl.scaleY() + dl.y();
+    const edge = dl.getDAEdges()[0];
+    const center = n => ({x: n.group.x() + n.NODE_WIDTH / 2, y: n.group.y() + n.NODE_HEIGHT / 2});
+    const a = center(edge.srcNode), b = center(edge.destNode);
+    da.crosshairsLayer.crosshairs.x = a.x * dl.scaleX() + dl.x();
+    da.crosshairsLayer.crosshairs.y = a.y * dl.scaleY() + dl.y();
+    const dx = b.x - a.x, dy = b.y - a.y;
+    return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'l' : 'h') : (dy > 0 ? 'j' : 'k');
   });
   before = await state();
   await page.keyboard.down('f');
   await page.waitForTimeout(250);
-  await page.keyboard.press('n'); // first press selects an outgoing edge
+  // One press walks a quadrant with a single link; an ambiguous quadrant
+  // focuses first and a second press commits.
+  await page.keyboard.press(toward);
   await page.waitForTimeout(200);
-  await page.keyboard.press('n'); // second press walks along it
-  await page.waitForTimeout(400);
+  let s1 = await state();
+  if (Math.hypot(s1.xh.x - before.xh.x, s1.xh.y - before.xh.y) <= 5) {
+    await page.keyboard.press(toward);
+    await page.waitForTimeout(400);
+  }
   await page.keyboard.up('f');
   await page.waitForTimeout(400);
   s = await state();
   const moved = Math.hypot(s.xh.x - before.xh.x, s.xh.y - before.xh.y) > 5;
-  check('hold f + n,n selects an edge then traverses along it (crosshairs moved)', moved,
+  check(`hold f + ${toward} walks a link (crosshairs moved)`, moved,
     `(${before.xh.x.toFixed(0)},${before.xh.y.toFixed(0)}) → (${s.xh.x.toFixed(0)},${s.xh.y.toFixed(0)})`);
   check('node count unchanged by traversal', s.nodeCount === before.nodeCount, `${s.nodeCount}`);
 

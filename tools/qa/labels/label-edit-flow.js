@@ -10,8 +10,8 @@
  *   4. A label left empty on exit is pruned, not left as an invisible target.
  *   5. Select+Drag (hold v + hjkl) over a label selects it and slides it
  *      along the edge / cycles its side.
- *   6. There is no label size limit: long text grows the box and the grown
- *      box stays selectable at its far edge.
+ *   6. There is no label size limit: long text typed at the end of a label
+ *      grows the box, and the grown box stays selectable at its far edge.
  *   7. a→f over empty canvas adds nothing and does NOT enter label edit.
  */
 const {launch, openApp, settled, movedAndSettled, crosshairsOf, afterFrame,
@@ -143,6 +143,17 @@ async function main() {
     JSON.stringify(s.labels.map(l => l.text)));
 
   // 5. Select+Drag over the label: hold v, slide with l, change side with k.
+  //    A label stops short of its end nodes (notes/design-edge-label-drag.md),
+  //    and "Hello world" nearly fills the sample's gap, so give the edge room
+  //    to slide first.
+  await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const edge = c.drawingLayer.getDAEdges()[0];
+    edge.destNode.konvaGroup.x(edge.destNode.konvaGroup.x() + 400);
+    edge.setControlPoints([]);
+    edge.refreshGeometry();
+    c.drawingLayer.batchDraw();
+  });
   await placeOverLabel(0);
   const tBefore = (await state()).labels[0].t;
   await page.keyboard.down('v');
@@ -165,14 +176,25 @@ async function main() {
 
   // 6. No size limit: long text grows the box, and the grown box is still
   //    hit-testable at its edge (select via v works out there).
-  await placeOverLabel(0);
+  // The edit key puts the caret where the crosshairs are, in vim normal mode
+  // for existing text (notes/design-label-edit-targeting.md), so aim at the
+  // end of the text and append with `a`.
+  await page.evaluate(() => {
+    const c = window.ng.getComponent(document.querySelector('app-drawing-area'));
+    const dl = c.drawingLayer;
+    const label = dl.getDAEdges()[0].labels[0];
+    c.crosshairsLayer.crosshairs.x = (label.x + label.width / 2 - 2) * dl.scaleX() + dl.x();
+    c.crosshairsLayer.crosshairs.y = label.y * dl.scaleY() + dl.y();
+  });
   await page.keyboard.press('i');           // tap the edit-text key over the label
   await page.waitForTimeout(150);
+  await page.keyboard.press('a');
+  await page.waitForTimeout(80);
   await page.keyboard.type(' and quite a lot more text to stretch the box', { delay: 10 });
   s = await state();
   const grownW = s.labels[0].w;
   check('long text grows the label box', grownW > 200, `w=${grownW}`);
-  check('long text fully stored', s.labels[0].text.endsWith('stretch the box'),
+  check('long text fully stored', s.labels[0].text === 'Hello world and quite a lot more text to stretch the box',
     JSON.stringify(s.labels[0].text));
   await page.keyboard.down('Shift');
   await page.keyboard.press('Enter');

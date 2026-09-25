@@ -58,13 +58,14 @@ export const SUITE = [
   { script: 'edges/arrowhead-placement.js', region: 'edges', status: 'suite' },
   { script: 'edges/layout-routing.js', region: 'edges', status: 'suite' },
   { script: 'edges/layout-clear.js', region: 'edges', status: 'suite' },
+  // Open, Ben's call: notes/bug-tree-fan-crossings.md.
   { script: 'edges/tree-crossings.js', region: 'edges', status: 'suite', baseline: { passed: 0, failed: 1, code: 1 } },
 
   // ── Keymenu and key handling ──
-  { script: 'keys/binding-reorg.js', region: 'keys', status: 'suite', baseline: { passed: 13, failed: 2, code: 1 } },
+  { script: 'keys/binding-reorg.js', region: 'keys', status: 'suite' },
   { script: 'keys/compact-keymenu.js', region: 'keys', status: 'suite' },
   { script: 'keys/compact-viewport.js', region: 'keys', status: 'suite' },
-  { script: 'keys/clipboard-yank-paste.js', region: 'keys', status: 'suite', baseline: { passed: 2, failed: 0, code: 1 } },
+  { script: 'keys/clipboard-yank-paste.js', region: 'keys', status: 'suite' },
   { script: 'keys/quote-key.js', region: 'keys', status: 'suite' },
   { script: 'keys/quote-key-shift-release.js', region: 'keys', status: 'diagnostic' },
   { script: 'keys/ex-line.js', region: 'keys', status: 'suite' },
@@ -76,7 +77,7 @@ export const SUITE = [
   { script: 'keys/repeat-release-order.js', region: 'keys', status: 'suite' },
 
   // ── Labels and editing ──
-  { script: 'labels/label-edit-flow.js', region: 'labels', status: 'suite', baseline: { passed: 16, failed: 2, code: 1 } },
+  { script: 'labels/label-edit-flow.js', region: 'labels', status: 'suite' },
   { script: 'labels/connect-focus.js', region: 'labels', status: 'suite' },
   { script: 'labels/cut-over-a-label.js', region: 'labels', status: 'suite' },
 

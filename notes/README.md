@@ -118,6 +118,7 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 - [Bezier-route anti-parallel edges overlap](bug-bezier-antiparallel-overlap.md) — `b → ;` renders A→B and B→A as one line; lane key needs to switch to unordered.
 - ["Next edge out" doesn't seem to work](bug-next-edge-out.md) — resolved: superseded by the 2026-07-13 move-by-graph traversal rework.
 - [Header mode chip goes stale after exiting label edit](bug-header-mode-chip-stale.md) — obsolete 2026-09-25: the header lost its badge on 2026-08-31; the dead field is gone.
+- [A wide fan in the horizontal tree draws crossing edges](bug-tree-fan-crossings.md) — open, Ben's call: a tall fan of narrow children leaves a 31px gap, so lines clip siblings and the router's bends cross.
 - [Custom node/edge colors never reach the canvas](bug-style-colors-not-persisted.md) — fixed 2026-09-25: chosen colors sit over the theme, round-trip through files, and are undoable.
 - [Node target filter order](bug-node-target-filter-order.md) — setTaskStatus and setTextOverflowMode filter at different moments, so the same gesture acts or refuses depending on the command.
 - [An empty quadrant is announced as a move in that direction](bug-empty-quadrant-announced-as-a-move.md) — Move by Link says `north: <east node>` when nothing is north; the "no link in that quadrant" message is unreachable.

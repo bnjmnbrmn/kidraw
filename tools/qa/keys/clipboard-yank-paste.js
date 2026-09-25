@@ -1,11 +1,12 @@
 /*
- * Repro for da-161: copy/paste, held on the vim yank key (y), with the task
- * Status menu moved off y to t.
+ * Repro for da-161, rewritten 2026-09-25 for the keys since da-473: a tap of
+ * the yank key (y) copies, the delete key (x) cuts, and root p pastes. The
+ * held copy/paste submenu is gone. What cut-copy.js does not cover:
  *
- *   1. y is "Copy/Paste..." and t is "Status..." at the root.
- *   2. Hold y, tap y over a selected node → the node is copied.
- *   3. Move the crosshairs, hold y + tap p → a fresh copy lands there, with
- *      new ids, and the pasted node is the selection.
+ *   1. y is Copy at the root and the task Status menu is not on y.
+ *   2. Tap y over a selected node → the node is copied.
+ *   3. Move the crosshairs, tap p → a fresh copy lands there, with new ids,
+ *      and the pasted node is the selection.
  *   4. Copying two connected nodes carries the edge between them.
  *   5. Cut removes the original; paste puts it back.
  *   6. Paste is undoable.
@@ -27,10 +28,11 @@ async function main() {
   const keys = await page.evaluate(() => {
     const km = window.ng.getComponent(document.querySelector('app-keymenu'));
     return {root: JSON.parse(JSON.stringify(km.keyAssignments.root)),
-            clipboard: JSON.parse(JSON.stringify(km.keyAssignments.clipboard))};
+            clipboard: JSON.parse(JSON.stringify(km.keyAssignments.clipboard)),
+            cut: km.keyAssignments.shared.delete};
   });
   console.log('root:', JSON.stringify(keys.root), 'clipboard:', JSON.stringify(keys.clipboard));
-  check('copy/paste is on y', keys.root.clipboardSubmenu === 'y', keys.root.clipboardSubmenu);
+  check('copy is on y', keys.root.clipboardSubmenu === 'y', keys.root.clipboardSubmenu);
   check('status moved off y', keys.root.statusSubmenu !== 'y', keys.root.statusSubmenu);
 
   const graph = () => page.evaluate(() => {
@@ -54,24 +56,23 @@ async function main() {
     c.crosshairsLayer.crosshairs.y = ly * dl.scaleY() + dl.y();
   }, [lx, ly]);
 
-  // Hold the clipboard key, tap the child, release.
-  const chord = async child => {
-    await page.keyboard.down(keys.root.clipboardSubmenu);
-    await page.waitForTimeout(80);
-    await page.keyboard.press(child);
-    await page.waitForTimeout(80);
-    await page.keyboard.up(keys.root.clipboardSubmenu);
-    await page.waitForTimeout(200);
+  /** Tap a root key and let the app react. */
+  const tap = async key => {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(250);
   };
+  const copy = () => tap(keys.root.clipboardSubmenu);
+  const paste = () => tap(keys.clipboard.paste);
+  const cut = () => tap(keys.cut);
 
   const before = await graph();
   const first = before.nodes[0];
   console.log(`copying node ${first.id} ${JSON.stringify(first.text)}`);
 
   await selectNodes([first.id]);
-  await chord(keys.clipboard.copy);
+  await copy();
   await placeCrosshairs(first.x + 400, first.y + 300);
-  await chord(keys.clipboard.paste);
+  await paste();
 
   let after = await graph();
   check('paste added exactly one node',
@@ -101,9 +102,9 @@ async function main() {
   const edge = before.edges[0];
   if (edge) {
     await selectNodes([edge.src, edge.dest]);
-    await chord(keys.clipboard.copy);
+    await copy();
     await placeCrosshairs(first.x, first.y + 700);
-    await chord(keys.clipboard.paste);
+    await paste();
     const withPair = await graph();
     check('copying a connected pair carries the edge',
       withPair.nodes.length === before.nodes.length + 2 &&
@@ -117,12 +118,12 @@ async function main() {
   const base = await graph();
   const victim = base.nodes[base.nodes.length - 1];
   await selectNodes([victim.id]);
-  await chord(keys.clipboard.cut);
+  await cut();
   const afterCut = await graph();
   check('cut removes the node', afterCut.nodes.length === base.nodes.length - 1,
     `${base.nodes.length} -> ${afterCut.nodes.length}`);
   await placeCrosshairs(victim.x, victim.y);
-  await chord(keys.clipboard.paste);
+  await paste();
   const afterRepaste = await graph();
   check('paste after cut restores it', afterRepaste.nodes.length === base.nodes.length,
     `${afterRepaste.nodes.length} nodes`);
