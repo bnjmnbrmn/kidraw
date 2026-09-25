@@ -6,7 +6,7 @@
  *
  * Most of it reads the graph or guides the view. Agent edits come in through
  * `agentApplyChanges` only, which plans graph operations and applies them
- * through the same path as undo (DrawingAreaComponent.applyOperations); add no
+ * through the same path as undo (HistoryController.apply); add no
  * other agent-specific setters.
  */
 

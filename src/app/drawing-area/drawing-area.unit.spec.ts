@@ -412,9 +412,9 @@ describe('DrawingArea Unit Tests', () => {
       component.stage = {width: () => 800, height: () => 400};
       component.getNodeCenterInStageCoordinates = () => ({x: 400, y: 200});
 
-      component.refreshLabelEditGhost();
+      component.labelEdit.refreshLens();
 
-      const ghost = component.labelEditGhost.node as Konva.Group;
+      const ghost = component.labelEdit.lens.node as Konva.Group;
       expect(ghost).not.toBeNull();
       expect(ghost.scaleX()).toBe(1);
       expect(ghost.scaleY()).toBe(1);
@@ -422,8 +422,8 @@ describe('DrawingArea Unit Tests', () => {
       expect(ghost.find('Text').some((text: Konva.Node) =>
         text.getAttr('text') === 'read me')).toBeTrue();
 
-      component.clearLabelEditGhost();
-      expect(component.labelEditGhost.node).toBeNull();
+      component.labelEdit.clearLens();
+      expect(component.labelEdit.lens.node).toBeNull();
     });
 
     it('leaves a zoomed-in box alone, and stands in only where it cannot be read', () => {
@@ -474,7 +474,7 @@ describe('DrawingArea Unit Tests', () => {
       component.crosshairsLayer = {add: () => undefined, batchDraw: () => undefined};
       component.stage = {width: () => 800, height: () => 400};
 
-      component.refreshLabelEditGhost();
+      component.labelEdit.refreshLens();
 
       expect(drawingLayer.y()).toBeLessThan(0);
       const caret = node.caretViewportBox();
@@ -495,7 +495,7 @@ describe('DrawingArea Unit Tests', () => {
       component.stage = {width: () => 800, height: () => 400};
       component.getSelectedLabels = () => [label];
 
-      component.refreshLabelEditGhost();
+      component.labelEdit.refreshLens();
 
       expect(drawingLayer.y()).toBeLessThan(0);
       const caret = label.caretViewportBox();

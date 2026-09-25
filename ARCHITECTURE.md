@@ -53,7 +53,7 @@ the same code with different tables.
 
 ## Inside the drawing area
 
-`drawing-area.component.ts` is still ~4,000 lines and is the part of the
+`drawing-area.component.ts` is ~2,200 lines (2026-09-25) and is the part of the
 codebase most worth knowing your way around. It is the orchestrator: Angular
 lifecycle, Konva wiring, command dispatch, selection and mode state, crosshairs
 movement.
@@ -83,6 +83,13 @@ component:
   stepping the crosshairs between graph items, and the overlay that explains
   the rule being applied.
 - `clipboard-controller.ts` — the graph's own clipboard: yank, cut, paste.
+- `history-controller.ts` — undo and redo, and the operations agent edits and
+  plugin commands change the graph with (all or nothing, one undo group each).
+- `label-edit-session.ts` — opening and closing a text edit (which vim mode,
+  where the caret goes), and the view while typing: the zoom, the pan that
+  keeps the caret on screen, and the zoomed-out lens.
+- `select-drag.ts` — the held select key: select, drag, resize through a
+  node's corner handle, or area select over empty canvas.
 - `grow-controller.ts` — grow mode, the held add key: aiming on the placement
   lattice, the target search and type popups, placement, and the commits.
 - `gestures.ts` — the list of gestures (grow, Move by Link, Move by Node's

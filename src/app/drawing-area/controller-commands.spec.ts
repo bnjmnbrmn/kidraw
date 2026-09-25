@@ -33,7 +33,7 @@ describe('controller command slices', () => {
     const textEditor = new TextEditingController({
       drawingLayer: {getSelectedDANodes: () => [node], batchDraw: () => undefined},
       getSelectedLabels: () => [label],
-      refreshLabelEditGhost: () => undefined,
+      refreshEditLens: () => undefined,
     } as unknown as TextEditingHost);
     const commands = textEditor.commands();
     commands[DACommandType.CURSOR_LEFT]();

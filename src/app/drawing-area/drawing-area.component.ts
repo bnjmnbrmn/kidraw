@@ -28,7 +28,7 @@ import { DANode } from './da-node';
 import { DAEdge } from './da-edge';
 import { DALabel } from './da-label';
 import { DAWaypoint } from './da-waypoint';
-import { DACommand, DACommandType, GridTier, NavTargetKind, NodeShape, TextCursorMode } from './command.model';
+import { DACommand, DACommandType, GridTier, NavTargetKind, NodeShape } from './command.model';
 import {
   affectsContextState,
   endsNormalMovementGoal,
@@ -47,8 +47,6 @@ import { FileController, FileHost } from './file-controller';
 import { nodeCenterInLayer, nodeCenterInStage } from './node-geometry';
 import { projectPointToPath } from './edge-label-anchor';
 import { NavPopupComponent } from '../nav-popup/nav-popup.component';
-import { GraphOperationApplier } from './graph-operation-applier';
-import { GraphOperation, UndoGroup, invertOperations } from './graph-operations';
 import { onMathImageLoaded, onMathReady } from './math-images';
 import { NavigationGridController, NavigationGridHost, navigationRayEnd } from './navigation-grid-controller';
 import { NavigationGridStop } from './navigation-grid';
@@ -58,9 +56,9 @@ import {
   NormalMovementGoal,
   startNormalMovementGoal,
 } from './normal-movement';
-import {caretVisibilityPanDelta} from './edit-viewport';
 import {GrowController, GrowHost} from './grow-controller';
 import {Gesture, Gestures} from './gestures';
+import { LabelEditSession, LabelEditHost } from './label-edit-session';
 import {TextEditingController, TextEditingHost} from './text-editing-controller';
 import {NavJourney} from './nav-journey';
 import {LinkNavController, LinkNavHost} from './link-nav-controller';
@@ -85,25 +83,18 @@ import { RoutingMetricsService } from '../services/routing-metrics.service';
 import { DraftStorageService } from '../services/draft-storage.service';
 import { VaultService } from '../services/vault.service';
 import { resolveIdentity } from '../plugins/plugin-registry';
-import { PLUGIN_REGISTRY } from '../plugins/plugin-registry';
-import { PluginCommandCall, PluginCommands } from '../plugins/plugin-commands';
-import type { PluginHost, PluginNode } from '../plugins/plugin-host';
 import { PluginSettingsService } from '../plugins/plugin-settings.service';
-import { GraphSnapshot } from './graph-snapshot';
 import { CommandHandlers, CommandSlice, mergeCommandSlices, runCommand } from './command-handlers';
 import { AreaSelect, AreaSelectHost } from './area-select';
 import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
+import { HistoryController, HistoryHost } from './history-controller';
+import { SelectDrag, SelectDragHost } from './select-drag';
 import { StyleController, StyleHost } from './style-controller';
 import { LayoutController, LayoutHost } from './layout-controller';
 import { AgentCanvasSurface, AgentCanvasHost } from './agent-canvas-surface';
 import { CrosshairHover, CrosshairsHover, CrosshairsHoverHost } from './crosshairs-hover';
-
-/** A node as plugins see it: plain data, not the Konva object. */
-function pluginNodeOf(node: DANode): PluginNode {
-  return {id: node.id, label: node.label.text(), tags: [...node.tags], shape: node.nodeShape};
-}
 
 @Component({
   selector: 'app-drawing-area',
@@ -143,12 +134,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private pluginSub?: Subscription;
-  private hasDragged = false;
-  private wasAlreadySelectedBeforeDrag = false;
   private undoRedoService = new UndoRedoService();
-  private dragSnapshotCaptured = false;
   private textEditSnapshotCaptured = false;
-  private resizeTargetNode: DANode | null = null;
   /** The stage↔layer transform (camera.ts). Reads the drawing layer
    *  lazily, because that layer is built in ngAfterViewInit. */
   private readonly camera = new Camera(() => this.drawingLayer);
@@ -157,9 +144,17 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Files, the vault, named graphs and display (file-controller.ts). */
   private readonly fileController = new FileController(this.fileHost());
   private readonly textEditor = new TextEditingController(this.textEditingHost());
+  /** Opening and closing a text edit, and the view while typing
+   *  (label-edit-session.ts). */
+  private readonly labelEdit = new LabelEditSession(this.labelEditHost());
   private readonly areaSelect = new AreaSelect(this.areaSelectHost());
   private readonly keyboardDrag = new KeyboardDrag(this.keyboardDragHost());
   private readonly search = new GraphSearch(this.graphSearchHost());
+  /** Undo and redo, and the operations agents and plugins change the graph
+   *  with (history-controller.ts). */
+  private readonly history = new HistoryController(this.historyHost());
+  /** The held select key: select, drag, resize, area select (select-drag.ts). */
+  private readonly selectDrag = new SelectDrag(this.selectDragHost());
   /** Yank, cut and paste of subgraphs (clipboard-controller.ts). */
   private readonly clipboard = new ClipboardController(this.clipboardHost());
   /** Sizes, shapes, edge styles, color, and the defaults new nodes and
@@ -176,10 +171,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
   /** Move-by-node and its overlay (navigation-grid-controller.ts). */
   private readonly navGrid = new NavigationGridController(this.navigationGridHost());
-  /** Labelable node created by the held insert hub. It is focused only when
-   *  the hold ends, after the optional drag phase has established its final
-   *  position. */
-  private pendingNodeLabelEdit: DANode | null = null;
   private gridFadeTimeout: number | null = null;
   private gridInitialized = false;
   /** Ordinary hjkl movement follows this fixed line until the axis changes
@@ -190,12 +181,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  currently under the crosshairs. This is intentionally separate from
    *  selection state and is never serialized. */
   private readonly hoverTrace = new Overlay<Konva.Shape>(() => this.drawingLayer);
-  /** Screen-space copy of one edited node at low graph zoom. The real node
-   *  remains in place; this lens keeps its text and caret readable. */
-  private readonly labelEditGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
-  /** Destination scale of an in-flight focus zoom (da-198): the edit lens
-   *  evaluates legibility against this rather than the animating scale. */
-  private focusZoomTargetScale: number | null = null;
   /** Natural-scale copy of the node currently reached by crosshair
    *  navigation, shown only when the real node is not fully readable. */
   private readonly navigationLandingGhost = new Overlay<Konva.Group>(() => this.crosshairsLayer);
@@ -212,12 +197,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   public readonly NODE_SIZE_STEP = 20;
   /** Clearance kept between boxes when a resize pushes neighbors aside. */
   public readonly RESIZE_REFLOW_GAP = 16;
-  /** Preserve closer views, but never label a new node below natural scale. */
-  private static readonly NODE_EDIT_MIN_ZOOM = 1;
-  /** Where the camera goes when a label is opened for editing: natural size,
-   *  so the text is readable without losing the graph around it. A closer
-   *  view is kept. (Was 400%, which Ben found too close, 2026-09-19.) */
-  private static readonly NODE_EDIT_ZOOM = 1;
   /** Where traversal has been and which way it was going: momentum, the
    *  current node, the focused edge and the jumplist (nav-journey.ts).
    *  Move by Link and the nav popup share it, so one continues the other. */
@@ -341,7 +320,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.fileController.dispose();
     this.linkNav.clear();
-    this.clearLabelEditGhost(false);
+    this.labelEdit.clearLens(false);
     this.hover.dispose();
     this.areaSelect.dispose();
     this.mathUnsubscribes.forEach(unsubscribe => unsubscribe());
@@ -357,7 +336,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.drawingLayer.refreshTagBadges();
     this.drawingLayer.reapplyTheme();
     this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+    this.labelEdit.refreshLens();
   }
 
   /** MathJax has loaded: labels with math take their real size. */
@@ -370,7 +349,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
     this.updateEdgesForResizedNodes(resized);
     this.drawingLayer.batchDraw();
-    this.refreshLabelEditGhost();
+    this.labelEdit.refreshLens();
   }
 
   private canEdit = false;
@@ -406,11 +385,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         kind === DACommandType.DRAG_SELECTED_RIGHT ||
         kind === DACommandType.DRAG_SELECTED_UP ||
         kind === DACommandType.DRAG_SELECTED_DOWN) {
-      // Area-select steps only change selection state, never geometry —
-      // they don't belong in the undo history.
-      if (this.areaSelect.active) return;
-      if (this.dragSnapshotCaptured) return;
-      this.dragSnapshotCaptured = true;
+      // One snapshot per hold, and none for an area select (select-drag.ts).
+      if (!this.selectDrag.takesUndoSnapshot()) return;
     }
 
     // Text edit coalescing: only snapshot on first text edit per session
@@ -467,10 +443,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private get commandHandlers(): CommandHandlers {
     return this._commandHandlers ??= mergeCommandSlices(
       this.crosshairsCommands(), this.graphNavigationCommands(), this.linkNav.commands(), this.navGrid.commands(),
-      this.search.commands(), this.viewCommands(), this.selectionCommands(),
-      this.structureCommands(), this.textEditingCommands(), this.textEditor.commands(),
+      this.search.commands(), this.viewCommands(), this.selectionCommands(), this.selectDrag.commands(),
+      this.structureCommands(), this.labelEdit.commands(), this.textEditor.commands(),
       this.style.commands(), this.layout.commands(), this.grow.commands(), this.fileController.commands(),
-      this.historyCommands(), this.clipboard.commands(), this.diagramTypeCommands(), this.shellCommands(),
+      this.history.commands(), this.clipboard.commands(), this.shellCommands(),
     );
   }
 
@@ -529,14 +505,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Selecting, and dragging what is selected. */
   private selectionCommands() {
     return {
-      [DACommandType.MULTI_ITEM_SELECT]: this.thenEmitEditState(() => this.multiItemSelect()),
       [DACommandType.UNSELECT_ALL]: this.thenEmitEditState(() => this.unselectAll()),
-      [DACommandType.ENTER_DRAG_MODE]: () => this.enterDragMode(),
-      [DACommandType.DRAG_SELECTED_LEFT]: c => this.dragKey(Axis.X, -1, c.gridTier),
-      [DACommandType.DRAG_SELECTED_RIGHT]: c => this.dragKey(Axis.X, 1, c.gridTier),
-      [DACommandType.DRAG_SELECTED_UP]: c => this.dragKey(Axis.Y, -1, c.gridTier),
-      [DACommandType.DRAG_SELECTED_DOWN]: c => this.dragKey(Axis.Y, 1, c.gridTier),
-      [DACommandType.EXIT_DRAG_MODE]: () => this.exitDragMode(),
     } satisfies CommandSlice;
   }
 
@@ -545,59 +514,12 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return {
       [DACommandType.CREATE_NEW_NODE]: c => this.createNewNode(c.nodeShape),
       [DACommandType.QUICK_ADD]: () => this.handleQuickAdd(),
-      [DACommandType.BEGIN_NEW_NODE_LABEL_EDIT]: () => this.beginPendingNodeLabelEdit(),
+      [DACommandType.BEGIN_NEW_NODE_LABEL_EDIT]: () => this.labelEdit.beginPending(),
       [DACommandType.ADD_SELF_EDGE]: () => this.addSelfEdge(),
       [DACommandType.ADD_LABEL]: () => this.addLabel(),
       [DACommandType.INSERT_WAYPOINT]: this.thenEmitEditState(() => this.insertWaypointAtCrosshairs()),
       [DACommandType.TOGGLE_PIN_SELECTED]: () => this.togglePinSelected(),
     } satisfies CommandSlice;
-  }
-
-  /** Starting and leaving a text edit, and typing. (Changing the text and
-   *  moving the caret are the TextEditingController's own commands.) */
-  private textEditingCommands() {
-    return {
-      [DACommandType.EDIT_TEXT_AT_CROSSHAIRS]: () => this.editTextAtCrosshairs(),
-      [DACommandType.EXIT_LABEL_EDIT_MODE]: () => this.exitLabelEditMode(),
-      [DACommandType.INSERT_CHAR]: c => this.insertChar(c.value),
-    } satisfies CommandSlice;
-  }
-
-  /** Undo and redo. (Cut, copy and paste are the clipboard's.) */
-  private historyCommands() {
-    return {
-      [DACommandType.UNDO]: () => this.handleUndo(),
-      [DACommandType.REDO]: () => this.handleRedo(),
-    } satisfies CommandSlice;
-  }
-
-  /** The graph's diagram type, and the commands plugins bring — each goes to
-   *  the plugin that owns it (plugins/plugin-commands.ts). */
-  private diagramTypeCommands() {
-    return {
-      [DACommandType.PLUGIN_COMMAND]: c => this.runPluginCommand(c.call),
-    } satisfies CommandSlice;
-  }
-
-  private _pluginCommands?: PluginCommands;
-
-  /** Run a plugin's command. The table of them is built on first use, with
-   *  what plugins may use of the canvas. */
-  private runPluginCommand(call: PluginCommandCall): void {
-    this._pluginCommands ??= new PluginCommands(this.pluginHost(), PLUGIN_REGISTRY.values(),
-      id => this.pluginSettings.isEnabled(id));
-    if (!this._pluginCommands.run(call)) this.emitStatus(`No plugin has the command ${call.id}`);
-  }
-
-  /** Lends plugins what their commands may use (plugins/plugin-host.ts). */
-  private pluginHost(): PluginHost {
-    return {
-      diagramType: () => this.drawingLayer.diagramType,
-      identity: () => resolveIdentity(this.drawingLayer.diagramType),
-      targetNodes: () => this.targetNodes().map(pluginNodeOf),
-      apply: (label, ops) => this.applyOperationsNow({author: 'user', label, ops}),
-      status: message => this.emitStatus(message),
-    };
   }
 
   /** Commands AppComponent handles and never forwards: the ex line, agent
@@ -656,12 +578,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     this.fileController.scheduleVaultAutoSave();
   }
 
-  private multiItemSelect() {
-    this.finishTweens();
-    this.wasAlreadySelectedBeforeDrag = this.isTopItemSelected();
-    this.ensureTopItemSelected();
-  }
-
   /** What the select+drag gesture acts on: whatever is under the crosshairs,
    *  a label winning over everything, then a waypoint overlapping the
    *  crosshairs circle (over the edge beneath it), then the topmost node,
@@ -683,30 +599,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** The edge the crosshairs are on, the same way. */
   private edgeUnderCrosshairs(): DAEdge | null {
     return topmost(this.getDAEdgesContainingCrosshairs());
-  }
-
-  private hasItemUnderCrosshairs(): boolean {
-    return this.topItemUnderCrosshairs() !== null;
-  }
-
-  private isTopItemSelected(): boolean {
-    return this.topItemUnderCrosshairs()?.isSelected ?? false;
-  }
-
-  private ensureTopItemSelected(): void {
-    this.reselectTopItem(() => true);
-  }
-
-  /** The quick tap of the select key on an item already selected. */
-  private toggleTopItemSelection(): void {
-    this.reselectTopItem(selected => !selected);
-  }
-
-  private reselectTopItem(next: (selected: boolean) => boolean): void {
-    const item = this.topItemUnderCrosshairs();
-    if (!item) return;
-    item.isSelected = next(item.isSelected);
-    this.drawingLayer.batchDraw();
   }
 
   /** Select the text the edit keys mean, and nothing else: the label under
@@ -838,9 +730,57 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       finishTweens: () => da.finishTweens(),
       centerViewOnLayerPoint: point => da.centerViewOnLayerPoint(point),
       updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
-      applyOperations: group => da.applyOperations(group),
-      revertChangeSet: changeSetId => da.revertChangeSet(changeSetId),
+      applyOperations: async group => da.history.apply(group),
+      revertChangeSet: async changeSetId => da.history.revertChangeSet(changeSetId),
       viewChangedByUser: () => da.daOut.emit({kind: 'view-changed-by-user'}),
+    };
+  }
+
+  /** Lends the held select key what it needs; getters, because the layers
+   *  arrive in ngAfterViewInit. */
+  private selectDragHost(): SelectDragHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get camera() { return da.camera; },
+      get resizeStep() { return da.NODE_SIZE_STEP; },
+      get areaSelect() { return da.areaSelect; },
+      dragStep: (axis, sign, tier) => da.keyboardDrag.step(axis, sign, tier),
+      topItemUnderCrosshairs: () => da.topItemUnderCrosshairs(),
+      getSelectedLabels: () => da.getSelectedLabels(),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      rerouteIncidentEdges: nodes => da.layout.rerouteIncidentEdges(nodes),
+      unselectAll: () => da.unselectAll(),
+      finishTweens: () => da.finishTweens(),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+    };
+  }
+
+  /** Lends the history what it needs, through a getter so the layer can
+   *  still be assigned later in ngAfterViewInit. */
+  private historyHost(): HistoryHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get undoRedo() { return da.undoRedoService; },
+      targetNodes: () => da.targetNodes(),
+      isPluginEnabled: id => da.pluginSettings.isEnabled(id),
+      updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
+      autoRouteNewEdge: edge => da.layout.autoRouteNewEdge(edge),
+      finishTweens: () => da.finishTweens(),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      scheduleVaultAutoSave: () => da.scheduleVaultAutoSave(),
+      emitStatus: message => da.emitStatus(message),
+      beforeGraphReplaced: () => {
+        da.gestures.cancelAll();
+        da.labelEdit.clearLens();
+      },
+      afterGraphReplaced: () => {
+        da.daOut.emit({kind: "exit-label-editing-mode"});
+        da.crosshairsLayer.showCrosshairs();
+        da.crosshairsLayer.batchDraw();
+      },
     };
   }
 
@@ -1010,7 +950,42 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       getEdgeForLabel: label => da.getEdgeForLabel(label),
       finishTweens: () => da.finishTweens(),
       updateEdgesForResizedNodes: nodes => da.updateEdgesForResizedNodes(nodes),
-      refreshLabelEditGhost: () => da.refreshLabelEditGhost(),
+      refreshEditLens: () => da.labelEdit.refreshLens(),
+    };
+  }
+
+  /** Lends a text edit what it needs; getters, because the layers arrive in
+   *  ngAfterViewInit. */
+  private labelEditHost(): LabelEditHost {
+    const da = this;
+    return {
+      get drawingLayer() { return da.drawingLayer; },
+      get crosshairsLayer() { return da.crosshairsLayer; },
+      get stage() { return da.stage; },
+      get viewport() { return da.viewport; },
+      get maxZoom() { return da.MAX_ZOOM; },
+      get textEditor() { return da.textEditor; },
+      emit: notification => da.daOut.emit(notification),
+      log: message => da.log.log(message),
+      finishTweens: () => da.finishTweens(),
+      checkAndEmitEditState: () => da.checkAndEmitEditState(),
+      scheduleVaultAutoSave: () => da.scheduleVaultAutoSave(),
+      pushUndoSnapshot: command => da.pushUndoSnapshot(command),
+      addLabel: notifyHeldAdd => da.addLabel(notifyHeldAdd),
+      getAllLabels: () => da.getAllLabels(),
+      getSelectedLabels: () => da.getSelectedLabels(),
+      unselectAllLabels: () => da.unselectAllLabels(),
+      getEdgesContainingLabel: label => da.getEdgesContainingLabel(label),
+      labelUnderCrosshairs: () => da.getLabelUnderCrosshairs(),
+      nodesUnderCrosshairs: () => da.getDANodesContainingCrosshairs(),
+      edgeUnderCrosshairs: () => da.edgeUnderCrosshairs(),
+      crosshairsInLayerCoords: () => da.crosshairsInLayerCoords(),
+      selectTextUnderCrosshairs: () => da.selectTextUnderCrosshairs(),
+      nodeCenterInLayer: node => da.getNodeCenterInLayerCoordinates(node),
+      nodeCenterInStage: node => da.getNodeCenterInStageCoordinates(node),
+      centerViewOnLayerPoint: (point, scale, onFinish) => da.centerViewOnLayerPoint(point, scale, onFinish),
+      parkCrosshairsAt: point => da.parkCrosshairsAt(point),
+      hideCrosshairsUntilMoved: () => da.hideCrosshairsUntilMoved(),
     };
   }
 
@@ -1091,63 +1066,13 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     }
   }
 
-  private exitLabelEditMode() {
-    this.finishTweens();
-    this.log.log("case exit-label-edit-mode")
-    this.clearLabelEditGhost();
-    this.crosshairsLayer.showCrosshairs();
-    // Deliberately every node and label, not just the selected ones. A cursor
-    // is shown before selection settles -- a freshly created node awaiting its
-    // label gets one while unselected (beginNewNodeLabelEdit) -- so keying the
-    // teardown off selection left that node's blink timer running for the rest
-    // of the session, with a caret visible on a node nobody was editing.
-    // hideCursor on a node without one is a no-op.
-    const resized = new Map<DANode, Point>();
-    this.drawingLayer.getDANodes().forEach(n => this.toggleNodeCaret(n, () => n.hideCursor(), resized));
-    this.settleCaretResizes(resized);
-    this.getAllLabels().forEach(l => l.hideCursor());
-    // A label left empty has no visible content — drop it rather than leave
-    // an invisible hit-target on the edge.
-    const editedNodes = this.drawingLayer.getSelectedDANodes();
-    const editedLabels = this.getSelectedLabels().filter(label => label.label.trim() !== '');
-    this.getSelectedLabels()
-      .filter(label => label.label.trim() === '')
-      .forEach(label => {
-        this.getEdgesContainingLabel(label).forEach(edge => edge.removeLabel(label));
-      });
-    this.drawingLayer.unselectAll();
-    this.unselectAllLabels();
-    this.drawingLayer.batchDraw();
-    const drewLink = this.newNodeArrivedByLink;
-    this.newNodeArrivedByLink = false;
-    // Keeping the caret in view pans the graph under the hidden crosshairs,
-    // so editing could end with them off the thing just edited, and the edit
-    // key then found nothing there. Put them back on it.
-    if (editedNodes.length === 1 && !this.getDANodesContainingCrosshairs().includes(editedNodes[0])) {
-      this.parkCrosshairsAt(this.getNodeCenterInLayerCoordinates(editedNodes[0]));
-    } else if (editedNodes.length === 0 && editedLabels.length === 1
-        && this.getLabelUnderCrosshairs() !== editedLabels[0]) {
-      this.parkCrosshairsAt({x: editedLabels[0].x, y: editedLabels[0].y});
-    }
-    // A node that arrived on a new link rests the crosshairs on it, the same
-    // landing as connecting two existing nodes.
-    if (drewLink) this.hideCrosshairsUntilMoved();
-  }
-
   private unselectAll() {
     this.finishTweens();
-    this.clearLabelEditGhost();
+    this.labelEdit.clearLens();
     this.drawingLayer.unselectAll();
     this.unselectAllLabels();
     // Escape also ends the traversal: drop the navigation focus glow.
     this.setGraphNavEdge(null);
-  }
-
-  // ── Text edits and the geometry they cause: delegated to TextEditingController ──
-  // Command dispatch and the caret show/hide passes enter the controller here.
-  private insertChar(key: string): void {
-    this.crosshairsLayer.hideCrosshairs();
-    this.textEditor.insertChar(key);
   }
 
   private toggleNodeCaret(node: DANode, toggle: () => boolean,
@@ -1572,45 +1497,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    * If so, show the resize handle on that node.
    * Called after crosshairs movement completes (on tween finish).
    */
+  /** Tools-facing (tools/qa/contract/component-api.js). */
   private checkResizeHandleProximity(): void {
-    const PROXIMITY_THRESHOLD = 25; // in drawing-layer units
-
-    const {x: crosshairsX, y: crosshairsY} = this.camera.toLayer({
-      x: this.crosshairsLayer.crosshairs.x,
-      y: this.crosshairsLayer.crosshairs.y,
-    });
-
-    let closestNode: DANode | null = null;
-    let closestDist = Infinity;
-
-    // The handle is only offered when the drag gesture would have nothing
-    // else to act on — same stand-down rule as enterDragMode, so a visible
-    // handle always means "v will resize" (da-193).
-    if (!this.hasItemUnderCrosshairs() && !this.hasDragSelection()) {
-      for (const node of this.drawingLayer.getDANodes()) {
-        if (node.nodeShape === 'junction') continue;
-        const br = node.getBottomRightAbsolute();
-        const dx = crosshairsX - br.x;
-        const dy = crosshairsY - br.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < PROXIMITY_THRESHOLD && dist < closestDist) {
-          closestDist = dist;
-          closestNode = node;
-        }
-      }
-    }
-
-    // Update state
-    if (closestNode !== this.resizeTargetNode) {
-      if (this.resizeTargetNode) {
-        this.resizeTargetNode.hideResizeHandle();
-      }
-      this.resizeTargetNode = closestNode;
-      if (this.resizeTargetNode) {
-        this.resizeTargetNode.showResizeHandle();
-      }
-      this.drawingLayer.batchDraw();
-    }
+    this.selectDrag.refreshResizeHandle();
   }
 
   private panViewport(deltaX: number, deltaY: number) {
@@ -1681,71 +1570,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private recenterViewOnCrosshairs(): void {
     this.finishTweens();
     this.centerViewOnLayerPoint(this.crosshairsInLayerCoords());
-  }
-
-  // ─── Operations: the write path for changes that aren't keymenu commands ──
-
-  private operationsRuntime: {
-    applier: GraphOperationApplier;
-    invert: (ops: readonly GraphOperation[]) => GraphOperation[];
-  } | null = null;
-
-  /** The operations code loads with the app. It was a lazy chunk while only
-   *  agent edits used it; plugin commands edit through it from the keyboard,
-   *  where waiting for the chunk let a second key press plan against a graph
-   *  the first had not changed yet (+1.5 kB, 2026-09-23). */
-  private loadOperations() {
-    return Promise.resolve(this.operationsNow());
-  }
-
-  private operationsNow() {
-    return this.operationsRuntime ??= {
-      applier: new GraphOperationApplier(this.drawingLayer, {
-        nodesChanged: nodes => this.updateEdgesForResizedNodes(nodes),
-        edgeAdded: edge => this.layout.autoRouteNewEdge(edge),
-      }),
-      invert: invertOperations,
-    };
-  }
-
-  /**
-   * Apply an undo group (today: agent edits) all-or-nothing, record it for
-   * undo, and save. Resolves to a conflict message instead, having changed
-   * nothing, when the graph no longer matches what the operations expect.
-   */
-  async applyOperations(group: UndoGroup): Promise<string | null> {
-    return this.applyOperationsNow(group);
-  }
-
-  /** `applyOperations` within the current keystroke, for plugin commands: a
-   *  command that reads the graph and writes it in one go leaves no gap for a
-   *  second key press to plan against a graph the first has not changed. */
-  private applyOperationsNow(group: UndoGroup): string | null {
-    this.finishTweens();
-    const conflict = this.operationsNow().applier.apply(group.ops);
-    if (conflict) return conflict;
-    this.undoRedoService.pushGroup(group);
-    this.afterOperations();
-    return null;
-  }
-
-  /** Undo every group of a change set (e.g. one agent turn) as one new undo
-   *  group, even if other changes came after it. */
-  async revertChangeSet(changeSetId: string, author = 'user'): Promise<string | null> {
-    const groups = this.undoRedoService.changeSetGroups(changeSetId);
-    if (groups.length === 0) return `Nothing left to revert in ${changeSetId}`;
-    const {invert} = await this.loadOperations();
-    return this.applyOperations({
-      author,
-      label: `Revert ${groups[0].label}`,
-      ops: invert(groups.flatMap(group => group.ops)),
-    });
-  }
-
-  private afterOperations(): void {
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    this.scheduleVaultAutoSave();
   }
 
   /** Pan the view (no rescale) so the layer point sits at the stage center,
@@ -1941,60 +1765,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     return best;
   }
 
-  private focusNodeForLabelEdit(node: DANode): void {
-    this.finishTweens();
-    const targetScale = Math.min(
-      this.MAX_ZOOM,
-      Math.max(
-        this.drawingLayer.scaleX(),
-        DrawingAreaComponent.NODE_EDIT_ZOOM,
-      ),
-    );
-    // While the focus zoom is in flight, the edit lens must judge legibility
-    // by where the zoom is going, not the mid-tween scale — otherwise a lens
-    // built during the tween survives at full zoom as a phantom second copy
-    // of the freshly added node (da-198).
-    this.focusZoomTargetScale = targetScale;
-    // And take down any lens built a moment ago, while the graph was still
-    // zoomed out: it would otherwise sit there for the whole flight in, a
-    // small copy of the node laid over the big one it is becoming.
-    this.refreshLabelEditGhost();
-    this.centerViewOnLayerPoint(
-      this.getNodeCenterInLayerCoordinates(node),
-      targetScale,
-      () => {
-        this.focusZoomTargetScale = null;
-        this.refreshLabelEditGhost();
-      },
-    );
-  }
-
-  /** Enter label editing for a node that has just been added. Every label edit
-   *  now takes the same focus — at least 100% and centered on the box — since what
-   *  you are typing is the thing you want to be looking at. */
-  private beginNewNodeLabelEdit(node: DANode): void {
-    this.pendingNodeLabelEdit = null;
-    this.clearLabelEditGhost();
-    if (node.nodeShape === 'junction' || node.nodeShape === 'invisible') return;
-    node.setCursorToEnd();
-    node.showCursor();
-    this.crosshairsLayer.hideCrosshairs();
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
-    // After the mode is out: typing hides the keyboard, and the viewport it
-    // was occupying is the difference between "centered" and "in the top
-    // third". The inset lands on the next turn, so the camera waits for it.
-    setTimeout(() => this.focusNodeForLabelEdit(node));
-  }
-
-  private beginPendingNodeLabelEdit(): void {
-    const node = this.pendingNodeLabelEdit;
-    this.pendingNodeLabelEdit = null;
-    if (!node || !this.drawingLayer.getDANodes().includes(node)) return;
-    this.beginNewNodeLabelEdit(node);
-  }
-
   private createNewNode(
     nodeShape?: NodeShape,
     notifyHeldInsert = true,
@@ -2014,19 +1784,19 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     // exactly one link was drawn, that is the one the crosshairs land on once
     // the label is written (da-509).
     const drawn = selectedNodes.map(srcNode => this.addDefaultEdge(srcNode, newNode));
-    this.newNodeArrivedByLink = drawn.length > 0;
+    this.labelEdit.arrivedByLink = drawn.length > 0;
 
     const labelable = newNode.nodeShape !== 'junction' &&
       newNode.nodeShape !== 'invisible';
     if (notifyHeldInsert) {
-      this.pendingNodeLabelEdit = labelable ? newNode : null;
+      this.labelEdit.pendingNode = labelable ? newNode : null;
       if (labelable) {
         newNode.showCursor();
         this.crosshairsLayer.hideCrosshairs();
       }
       this.daOut.emit({kind: 'node-inserted', labelable});
     } else {
-      this.pendingNodeLabelEdit = null;
+      this.labelEdit.pendingNode = null;
     }
     this.drawingLayer.batchDraw();
     this.checkAndEmitEditState();
@@ -2154,31 +1924,10 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     });
   }
 
-  /** One press of a drag key. The held gesture decides what it moves: the
-   *  area-select corner, a node being resized, or the selection. */
-  private dragKey(axis: Axis, sign: 1 | -1, tier?: GridTier): void {
-    if (this.areaSelect.active) this.areaSelect.step(axis, sign, tier);
-    else if (this.resizeTargetNode) this.resizeSelected(sign);
-    else this.dragSelected(axis, sign, tier);
-  }
-
-  private resizeSelected(sign: 1 | -1) {
-    const node = this.resizeTargetNode;
-    if (!node) return;
-    this.hasDragged = true;
-    const delta = sign * this.NODE_SIZE_STEP;
-    node.resizeBy(delta);
-    this.updateEdgesForResizedNodes([node]);
-    this.drawingLayer.batchDraw();
-  }
-
-  /** Move whatever is selected one step along `axis` (KeyboardDrag).
-   *  Tools-facing: the tools/qa scripts drive this directly, and since `Axis`
-   *  is not reachable from a page.evaluate they pass 'x' or 'y'. Accept both
-   *  here and nowhere else. */
+  /** Tools-facing: the tools/qa scripts drive a drag step through here
+   *  (select-drag.ts). */
   private dragSelected(axis: Axis | AxisKey, sign: 1 | -1, tier?: GridTier) {
-    this.hasDragged = true;
-    this.keyboardDrag.step(axis instanceof Axis ? axis : Axis.of(axis), sign, tier);
+    this.selectDrag.drag(axis, sign, tier);
   }
 
   private placeCrosshairs(at: Point): void {
@@ -2230,112 +1979,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Show carets on everything about to be edited. A crosshairs point places
    *  the caret spatially for the single target under `i`; selection-driven
    *  editing retains the established end-of-text behavior. */
-  private showEditCarets(point?: Point): void {
-    const resized = new Map<DANode, Point>();
-    this.drawingLayer.getSelectedDANodes().forEach(n => {
-      if (point) {
-        n.setCursorFromLocalPoint({
-          x: point.x - n.group.x(),
-          y: point.y - n.group.y(),
-        });
-      } else {
-        n.setCursorToEnd();
-      }
-      this.toggleNodeCaret(n, () => n.showCursor(), resized);
-    });
-    this.settleCaretResizes(resized);
-    this.getSelectedLabels().forEach(l => {
-      if (point) {
-        l.setCursorFromLocalPoint({x: point.x - l.x, y: point.y - l.y});
-      } else {
-        l.setCursorToEnd();
-      }
-      l.showCursor();
-    });
-    this.refreshLabelEditGhost();
-  }
-
-  /** Rebuild the low-zoom edit lens from the live node so text, selection,
-   *  and caret changes appear immediately without zooming the graph. */
-  private refreshLabelEditGhost(): void {
-    this.keepEditCaretVisible();
-    this.clearLabelEditGhost(false);
-    const effectiveScale = this.focusZoomTargetScale ?? this.drawingLayer?.scaleX() ?? 1;
-    if (!this.crosshairsLayer || !this.drawingLayer ||
-        effectiveScale >= DrawingAreaComponent.NODE_EDIT_MIN_ZOOM) {
-      return;
-    }
-    const selected = this.drawingLayer.getSelectedDANodes();
-    if (selected.length !== 1) return;
-    const node = selected[0];
-    const center = this.getNodeCenterInStageCoordinates(node);
-    const padding = 12;
-    const x = Math.max(this.viewport.minX + padding, Math.min(
-      center.x - node.NODE_WIDTH / 2,
-      this.viewport.maxX - node.NODE_WIDTH - padding,
-    ));
-    const y = Math.max(this.viewport.minY + padding, Math.min(
-      center.y - node.NODE_HEIGHT / 2,
-      this.viewport.maxY - node.NODE_HEIGHT - padding,
-    ));
-    const ghost = node.konvaGroup.clone({
-      name: 'label-edit-ghost',
-      x,
-      y,
-      scaleX: 1,
-      scaleY: 1,
-      opacity: 0.92,
-      listening: false,
-    });
-    ghost.getChildren().forEach(child => child.listening(false));
-    this.labelEditGhost.show(() => ghost);
-    this.crosshairsLayer.batchDraw();
-  }
-
-  /** Pan without zooming whenever the one active text caret approaches a
-   * viewport edge. Three rendered lines remain available above and below. */
-  private keepEditCaretVisible(): void {
-    if (!this.stage || !this.drawingLayer) return;
-    const nodes = this.drawingLayer.getSelectedDANodes();
-    const labels = this.getSelectedLabels();
-    if (nodes.length + labels.length !== 1) return;
-
-    const layerScaleX = this.drawingLayer.scaleX();
-    const layerScaleY = this.drawingLayer.scaleY();
-    let local: {x: number; y: number; width: number; height: number; lineHeight: number};
-    let targetGroup: Konva.Group;
-    if (nodes.length === 1) {
-      local = nodes[0].caretViewportBox();
-      targetGroup = nodes[0].group;
-    } else {
-      local = labels[0].caretViewportBox();
-      targetGroup = labels[0].group;
-    }
-    const caret = {
-      x: this.drawingLayer.x() +
-        (targetGroup.x() + local.x * targetGroup.scaleX()) * layerScaleX,
-      y: this.drawingLayer.y() +
-        (targetGroup.y() + local.y * targetGroup.scaleY()) * layerScaleY,
-      width: local.width * targetGroup.scaleX() * layerScaleX,
-      height: local.height * targetGroup.scaleY() * layerScaleY,
-    };
-    const delta = caretVisibilityPanDelta(
-      caret,
-      {width: this.viewport.width, height: this.viewport.height},
-      local.lineHeight * targetGroup.scaleY() * layerScaleY,
-    );
-    if (delta.x === 0 && delta.y === 0) return;
-    this.drawingLayer.position({
-      x: this.drawingLayer.x() + delta.x,
-      y: this.drawingLayer.y() + delta.y,
-    });
-    this.drawingLayer.batchDraw();
-  }
-
-  private clearLabelEditGhost(draw = true): void {
-    this.labelEditGhost.clear(draw);
-  }
-
   /** Tap of the add key (a=add / i=insert model, notes/design-add-insert-model.md):
    *  quick-add based on what the crosshairs are over. Empty (or waypoint) →
    *  default node at the crosshairs; node → self-loop; edge → editable label;
@@ -2355,20 +1998,16 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
       this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
       const label = this.addLabel(false);
       if (!label) return;
-      this.showEditCarets();
+      this.labelEdit.showCarets();
       this.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
       this.scheduleVaultAutoSave();
       return;
     }
     this.pushUndoSnapshot({kind: DACommandType.QUICK_ADD});
     const newNode = this.createNewNode(undefined, false);
-    this.beginNewNodeLabelEdit(newNode);
+    this.labelEdit.beginForNewNode(newNode);
     this.scheduleVaultAutoSave();
   }
-
-  /** Whether the node being labeled arrived on a link a quick-add just drew;
-   *  if so the crosshairs rest on it, hidden, once the label is done. */
-  private newNodeArrivedByLink = false;
 
   /** Paste text from the system clipboard into the label being edited, e.g.
    *  markdown copied from the agent chat. Text fields handle their own pastes. */
@@ -2377,12 +2016,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const target = event.target;
     if (target instanceof HTMLElement && target.closest('input, textarea, [contenteditable="true"]')) return;
     const text = event.clipboardData?.getData('text/plain');
-    if (!text) return;
-    const editing = this.drawingLayer.getDANodes().some(node => node.isEditingText)
-      || this.getAllLabels().some(label => label.isEditingText);
-    if (!editing) return;
-    event.preventDefault();
-    this.insertChar(text);
+    if (text && this.labelEdit.paste(text)) event.preventDefault();
   }
 
   // ── Grow mode (held add): grow-controller.ts owns it; keys reach it here ──
@@ -2401,9 +2035,9 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** A node grow mode just added: open its label, or settle it if it has
    *  none (junctions and invisibles). */
   private settleNewNode(node: DANode, arrivedByLink: boolean): void {
-    this.newNodeArrivedByLink = arrivedByLink;
+    this.labelEdit.arrivedByLink = arrivedByLink;
     if (node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
-      this.beginNewNodeLabelEdit(node);
+      this.labelEdit.beginForNewNode(node);
     } else {
       this.drawingLayer.batchDraw();
       this.checkAndEmitEditState();
@@ -2478,47 +2112,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   /** Tap of the edit-text key: enter label edit on whatever text-bearing
    *  thing is under the crosshairs. Never grows the graph — except that an
    *  edge with no label gets an empty one to type into. */
-  private editTextAtCrosshairs(): void {
-    const label = this.getLabelUnderCrosshairs();
-    const node = this.getDANodesContainingCrosshairs().length > 0;
-    if (label || node) {
-      const cursorPoint = this.crosshairsInLayerCoords();
-      this.selectTextUnderCrosshairs();
-      this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets(cursorPoint);
-      this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: 'started-label-editing-mode', mode: 'vimNormal'});
-      // The same focus a new box gets: editing a label is close work. It waits
-      // a turn for the keyboard's viewport inset to go away.
-      const editing = this.drawingLayer.getSelectedDANodes();
-      if (editing.length === 1) setTimeout(() => this.focusNodeForLabelEdit(editing[0]));
-      return;
-    }
-    const edge = this.edgeUnderCrosshairs();
-    if (edge) {
-      let mode: Extract<TextCursorMode, 'insert' | 'vimNormal'> = 'vimNormal';
-      this.drawingLayer.unselectAll();
-      this.unselectAllLabels();
-      if (edge.labels.length > 0) {
-        edge.labels[0].isSelected = true;
-      } else {
-        // No label yet: create an empty one at the crosshairs projection
-        // (addLabel selects it), then type straight into it.
-        this.pushUndoSnapshot({kind: DACommandType.ADD_LABEL});
-        this.addLabel(false);
-        if (edge.labels.length === 0) return; // addLabel failed; stay put
-        mode = 'insert';
-        this.scheduleVaultAutoSave();
-      }
-      this.crosshairsLayer.hideCrosshairs();
-      this.showEditCarets();
-      this.drawingLayer.batchDraw();
-      this.daOut.emit({kind: 'started-label-editing-mode', mode});
-      return;
-    }
-    this.daOut.emit({kind: 'status-message', message: 'Nothing to edit here — tap the add key to create a node.'});
-  }
-
   private getSelectedLabels(): DALabel[] {
     const selectedLabels: DALabel[] = [];
     const edges = this.drawingLayer.getDAEdges();
@@ -2565,54 +2158,6 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private getEdgesContainingLabel(label: DALabel): DAEdge[] {
     const edges = this.drawingLayer.getDAEdges();
     return edges.filter(edge => edge.labels.includes(label));
-  }
-
-  private handleUndo(): void {
-    this.finishTweens();
-    const entry = this.undoRedoService.undo(this.drawingLayer.serializeGraph());
-    if (!entry) return;
-    if (entry.kind === 'group') {
-      void this.applyHistoryGroup(entry.group, 'undo');
-      return;
-    }
-    this.restoreHistorySnapshot(entry.snapshot);
-  }
-
-  private handleRedo(): void {
-    this.finishTweens();
-    const entry = this.undoRedoService.redo(this.drawingLayer.serializeGraph());
-    if (!entry) return;
-    if (entry.kind === 'group') {
-      void this.applyHistoryGroup(entry.group, 'redo');
-      return;
-    }
-    this.restoreHistorySnapshot(entry.snapshot);
-  }
-
-  /** Undo a group from history (apply its inverse) or redo it, putting it
-   *  back on its stack if the graph has changed in a way that conflicts. */
-  private async applyHistoryGroup(group: UndoGroup, direction: 'undo' | 'redo'): Promise<void> {
-    const {applier, invert} = await this.loadOperations();
-    const conflict = applier.apply(direction === 'undo' ? invert(group.ops) : group.ops);
-    if (conflict) {
-      if (direction === 'undo') this.undoRedoService.cancelUndo();
-      else this.undoRedoService.cancelRedo();
-      this.emitStatus(`Can't ${direction} "${group.label}": ${conflict}`);
-      return;
-    }
-    this.afterOperations();
-    this.emitStatus(`${direction === 'undo' ? 'Undid' : 'Redid'}: ${group.label}`);
-  }
-
-  private restoreHistorySnapshot(snapshot: GraphSnapshot): void {
-    this.gestures.cancelAll();
-    this.clearLabelEditGhost();
-    this.drawingLayer.restoreGraph(snapshot);
-    this.drawingLayer.batchDraw();
-    this.checkAndEmitEditState();
-    this.daOut.emit({kind: "exit-label-editing-mode"});
-    this.crosshairsLayer.showCrosshairs();
-    this.crosshairsLayer.batchDraw();
   }
 
   private deleteSelected(): void {
@@ -2668,70 +2213,4 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     else if (item instanceof DANode) this.drawingLayer.removeNode(item);
     else this.drawingLayer.removeEdge(item);
   }
-
-  private enterDragMode() {
-    // Crosshairs stay visible during drag
-    this.hasDragged = false;
-    this.dragSnapshotCaptured = false;
-    // The resize handle only captures the gesture when there is nothing to
-    // drag: no item under the crosshairs and no current selection. Without
-    // this guard a node corner inside the proximity band silently turned
-    // every select+drag into a barely visible resize — three coarse drags
-    // that "did nothing" in Ben's 2026-08-14 session (da-193).
-    if (this.resizeTargetNode &&
-        (this.hasItemUnderCrosshairs() || this.hasDragSelection())) {
-      this.resizeTargetNode.hideResizeHandle();
-      this.resizeTargetNode = null;
-      this.drawingLayer.batchDraw();
-      return;
-    }
-    // If resize handle is active, select that node and enter resize drag
-    if (this.resizeTargetNode) {
-      this.drawingLayer.unselectAll();
-      this.resizeTargetNode.isSelected = true;
-      return;
-    }
-    // Held v over genuinely empty canvas starts an area select (da-195):
-    // the crosshairs anchor one corner of a marquee, the drag keys move the
-    // opposite corner, and everything the box touches joins the selection —
-    // the keyboard version of a mouse rubber band. Dragging an existing
-    // multi-selection now requires the crosshairs to be over a selected
-    // item, matching the mouse convention.
-    if (!this.hasItemUnderCrosshairs()) {
-      this.areaSelect.begin();
-    }
-  }
-
-  private hasDragSelection(): boolean {
-    return this.drawingLayer.getSelectedDANodes().length > 0 ||
-      this.drawingLayer.getSelectedDAWaypoints().length > 0 ||
-      this.drawingLayer.getSelectedDAEdges().length > 0 ||
-      this.getSelectedLabels().length > 0;
-  }
-
-  private exitDragMode() {
-    if (this.areaSelect.active) {
-      // Release keeps whatever the marquee gathered; the quick-tap toggle
-      // below must not fire for an area-select gesture.
-      this.areaSelect.finish();
-      return;
-    }
-    if (this.resizeTargetNode) {
-      this.resizeTargetNode.hideResizeHandle();
-      this.resizeTargetNode = null;
-    }
-    if (this.hasDragged) {
-      // A canceled mid-tween step leaves nodes at their final (part-way)
-      // position without the step-completion reroute having fired.
-      this.layout.rerouteIncidentEdges(this.drawingLayer.getSelectedDANodes());
-      this.unselectAll();
-      this.checkAndEmitEditState();
-    } else if (this.wasAlreadySelectedBeforeDrag) {
-      // Quick tap vv on already-selected item: toggle it off
-      this.toggleTopItemSelection();
-      this.checkAndEmitEditState();
-    }
-    // Quick tap vv on unselected item: leave it selected (ensureTopItemSelected already did it)
-  }
-
 }

@@ -20,7 +20,7 @@ const GAP_X = 40;
 /**
  * Turn an agent's changes into graph operations against the current graph.
  * Nothing is applied here: the result is checked and applied as one undo group
- * (DrawingAreaComponent.applyOperations). Fails, with a message the agent can
+ * (HistoryController.apply). Fails, with a message the agent can
  * act on, on the first change that refers to something that doesn't exist.
  *
  * New nodes get the bound diagram type's defaults and are placed below the
@@ -250,7 +250,7 @@ export function planAgentChanges(
 }
 
 /** Plan an agent's changes and apply them as one undo group through `apply`
- *  (DrawingAreaComponent.applyOperations), reporting failures in terms the
+ *  (HistoryController.apply), reporting failures in terms the
  *  agent can act on. Lives here so the drawing area's own bundle stays small. */
 export async function applyAgentChanges(
   graph: GraphSnapshot,

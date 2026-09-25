@@ -27,7 +27,7 @@ export interface TextEditingHost {
   getEdgeForLabel(label: DALabel): {refreshGeometry(): void} | null;
   finishTweens(): void;
   updateEdgesForResizedNodes(nodes: DANode[]): void;
-  refreshLabelEditGhost(): void;
+  refreshEditLens(): void;
 }
 
 /** Owns text mutations and the geometry they cause while labels are edited. */
@@ -106,7 +106,7 @@ export class TextEditingController {
     this.host.drawingLayer.getSelectedDANodes().forEach(apply);
     this.host.getSelectedLabels().forEach(apply);
     this.host.drawingLayer.batchDraw();
-    this.host.refreshLabelEditGhost();
+    this.host.refreshEditLens();
   }
 
   /** Show or hide a node's caret. A markdown label resizes as it switches
@@ -186,6 +186,6 @@ export class TextEditingController {
 
   private finishEdit(): void {
     this.host.drawingLayer.batchDraw();
-    this.host.refreshLabelEditGhost();
+    this.host.refreshEditLens();
   }
 }

@@ -11,7 +11,7 @@ function hostFor(drawingLayer: DrawingLayer, resizeReflowGap = 16): TextEditingH
     getEdgeForLabel: () => null,
     finishTweens: () => {},
     updateEdgesForResizedNodes: () => {},
-    refreshLabelEditGhost: () => {},
+    refreshEditLens: () => {},
   } as unknown as TextEditingHost;
 }
 

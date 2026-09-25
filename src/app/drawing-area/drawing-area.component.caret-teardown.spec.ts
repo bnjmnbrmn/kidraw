@@ -4,7 +4,7 @@ import {wireDrawingAreaCollaborators} from './drawing-area.test-fixture';
 /** Leaving label-edit mode must stop every caret, not just the ones on
  *  selected items.
  *
- *  A node is given a caret before selection settles -- beginNewNodeLabelEdit
+ *  A node is given a caret before selection settles -- LabelEditSession.beginForNewNode
  *  shows one on a freshly created node that is not selected yet -- so a
  *  teardown keyed off the selection left that node's blink interval running
  *  for the rest of the session, painting a caret on a node nobody was
@@ -34,10 +34,8 @@ describe('DrawingAreaComponent caret teardown', () => {
       showCrosshairs: jasmine.createSpy('showCrosshairs'),
     };
     component.finishTweens = jasmine.createSpy('finishTweens');
-    component.clearLabelEditGhost = jasmine.createSpy('clearLabelEditGhost');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.getEdgesContainingLabel = () => [];
-    component.newNodeArrivedByLink = false;
     component.getDANodesContainingCrosshairs = () => [];
     component.getLabelUnderCrosshairs = () => undefined;
     component.getNodeCenterInLayerCoordinates = () => ({x: 10, y: 20});
@@ -50,7 +48,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     const unselectedNode = fakeItem(false);
     const component = buildComponent([selectedNode, unselectedNode], []);
 
-    component.exitLabelEditMode();
+    component.labelEdit.exit();
 
     expect(selectedNode.hideCursor).toHaveBeenCalled();
     // The regression: this one used to keep blinking forever.
@@ -62,7 +60,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     const unselectedLabel = fakeItem(false);
     const component = buildComponent([], [selectedLabel, unselectedLabel]);
 
-    component.exitLabelEditMode();
+    component.labelEdit.exit();
 
     expect(selectedLabel.hideCursor).toHaveBeenCalled();
     expect(unselectedLabel.hideCursor).toHaveBeenCalled();
@@ -74,7 +72,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     const node = fakeItem(true);
     const component = buildComponent([node], []);
 
-    component.exitLabelEditMode();
+    component.labelEdit.exit();
 
     expect(component.parkCrosshairsAt).toHaveBeenCalledWith({x: 10, y: 20});
   });
@@ -84,7 +82,7 @@ describe('DrawingAreaComponent caret teardown', () => {
     const component = buildComponent([node], []);
     component.getDANodesContainingCrosshairs = () => [node];
 
-    component.exitLabelEditMode();
+    component.labelEdit.exit();
 
     expect(component.parkCrosshairsAt).not.toHaveBeenCalled();
   });

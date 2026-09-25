@@ -104,7 +104,7 @@ async function main() {
     node.isSelected = true;
     node.setCursorToEnd();
     node.showCursor();
-    da.refreshLabelEditGhost();
+    da.labelEdit.refreshLens();
   });
   await page.waitForTimeout(100);
   const lens = await ghostCensus();

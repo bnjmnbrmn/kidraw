@@ -41,7 +41,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.pushUndoSnapshot = jasmine.createSpy('pushUndoSnapshot');
     const createdNode = {nodeShape: component.style.defaults.nodeShape};
     component.createNewNode = jasmine.createSpy('createNewNode').and.returnValue(createdNode);
-    component.beginNewNodeLabelEdit = jasmine.createSpy('beginNewNodeLabelEdit')
+    component.labelEdit.beginForNewNode = jasmine.createSpy('beginForNewNode')
       .and.callFake((node: {nodeShape: string}) => {
         if (node.nodeShape !== 'junction' && node.nodeShape !== 'invisible') {
           component.daOut.emit({kind: 'started-label-editing-mode', mode: 'insert'});
@@ -50,7 +50,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     component.quickAddSelfLoop = jasmine.createSpy('quickAddSelfLoop');
     component.unselectAllLabels = jasmine.createSpy('unselectAllLabels');
     component.selectTextUnderCrosshairs = jasmine.createSpy('selectTextUnderCrosshairs');
-    component.showEditCarets = jasmine.createSpy('showEditCarets');
+    component.labelEdit.showCarets = jasmine.createSpy('showCarets');
     component.crosshairsInLayerCoords = () => ({x: 10, y: 20});
     component.addLabel = jasmine.createSpy('addLabel').and.returnValue({});
     component.finishTweens = jasmine.createSpy('finishTweens');
@@ -83,7 +83,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.handleQuickAdd();
       expect(component.pushUndoSnapshot).toHaveBeenCalledWith({kind: DACommandType.QUICK_ADD});
       expect(component.createNewNode).toHaveBeenCalledWith(undefined, false);
-      expect(component.beginNewNodeLabelEdit).toHaveBeenCalled();
+      expect(component.labelEdit.beginForNewNode).toHaveBeenCalled();
       expect(component.daOut.emit).toHaveBeenCalledWith({kind: 'started-label-editing-mode', mode: 'insert'});
     });
 
@@ -107,7 +107,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.handleQuickAdd();
       expect(component.pushUndoSnapshot).toHaveBeenCalledWith({kind: DACommandType.ADD_LABEL});
       expect(component.addLabel).toHaveBeenCalledOnceWith(false);
-      expect(component.showEditCarets).toHaveBeenCalled();
+      expect(component.labelEdit.showCarets).toHaveBeenCalled();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'insert'});
       expect(component.scheduleVaultAutoSave).toHaveBeenCalled();
@@ -457,21 +457,21 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     });
   });
 
-  describe('editTextAtCrosshairs (tap i)', () => {
+  describe('labelEdit.editAtCrosshairs (tap i)', () => {
     it('edits the node under the crosshairs', () => {
       const component = buildComponent({nodesUnderCrosshairs: [{}]});
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(component.selectTextUnderCrosshairs).toHaveBeenCalled();
-      expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
+      expect(component.labelEdit.showCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'vimNormal'});
     });
 
     it('edits a label under the crosshairs', () => {
       const component = buildComponent({labelUnderCrosshairs: {}});
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(component.selectTextUnderCrosshairs).toHaveBeenCalled();
-      expect(component.showEditCarets).toHaveBeenCalledWith({x: 10, y: 20});
+      expect(component.labelEdit.showCarets).toHaveBeenCalledWith({x: 10, y: 20});
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'vimNormal'});
     });
@@ -480,7 +480,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       const label = {isSelected: false};
       const edge = {labels: [label]};
       const component = buildComponent({edgesUnderCrosshairs: [edge]});
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(label.isSelected).toBeTrue();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'vimNormal'});
@@ -493,7 +493,7 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
       component.addLabel = jasmine.createSpy('addLabel').and.callFake(() => {
         edge.labels.push({isSelected: true});
       });
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(component.addLabel).toHaveBeenCalled();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         {kind: 'started-label-editing-mode', mode: 'insert'});
@@ -502,17 +502,17 @@ describe('DrawingAreaComponent add/insert tap semantics', () => {
     it('stays put when addLabel fails on the edge', () => {
       const edge = {labels: [] as unknown[]};
       const component = buildComponent({edgesUnderCrosshairs: [edge]});
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(component.daOut.emit).not.toHaveBeenCalledWith(
         jasmine.objectContaining({kind: 'started-label-editing-mode'}));
     });
 
     it('hints over blank canvas', () => {
       const component = buildComponent();
-      component.editTextAtCrosshairs();
+      component.labelEdit.editAtCrosshairs();
       expect(component.daOut.emit).toHaveBeenCalledWith(
         jasmine.objectContaining({kind: 'status-message'}));
-      expect(component.showEditCarets).not.toHaveBeenCalled();
+      expect(component.labelEdit.showCarets).not.toHaveBeenCalled();
     });
   });
 

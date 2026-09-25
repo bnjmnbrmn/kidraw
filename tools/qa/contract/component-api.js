@@ -42,7 +42,6 @@ const TOOLS_FACING = [
   'insertWaypointAtCrosshairs',
   'moveCrosshairsBy',
   'refreshCrosshairHoverHighlight',
-  'refreshLabelEditGhost',
   'refreshNavigationLandingGhost',
   'unselectAllLabels',
   'viewCenterX',
@@ -63,7 +62,7 @@ const TOOLS_FACING_FIELDS = [
   'hoverTrace',
   'layout',
   'goalLine',
-  'labelEditGhost',
+  'labelEdit',
   'navigationLandingGhost',
   'grow',
 ];
@@ -124,6 +123,8 @@ const RETIRED_FIELDS = {
   openGrowEdgeMenu: 'use grow.openEdgeMenu (grow-controller.ts, 2026-09-24)',
   maybeEnterGrowMode: 'use grow.enter (grow-controller.ts, 2026-09-24)',
   growGhost: 'use grow.ghost (grow-controller.ts, 2026-09-24)',
+  labelEditGhost: 'use labelEdit.lens (label-edit-session.ts, 2026-09-25)',
+  refreshLabelEditGhost: 'use labelEdit.refreshLens() (label-edit-session.ts, 2026-09-25)',
 };
 
 /** Receivers the scripts use for the component, for the reverse check. */
