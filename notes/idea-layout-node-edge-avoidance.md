@@ -99,6 +99,19 @@ Still open:
   not crossings.
 - Grid stays out of scope (and is now unbound in the menu).
 
+## Force-clear left chords grazing boxes (fixed 2026-09-25)
+
+`tools/qa/edges/layout-clear.js` had failed since it was first run as a set
+(2026-09-16): after force-clear, two straight edges on the wide-fan tree
+passed 2-3px from a box, inside the pass's own clearance (spacing / 8, about
+12px there). Cause (inferred, 2026-09-25, reproduced in a unit spec): the
+pass estimated each push from the box's reach along the push direction,
+which is exact only when the push is square to the chord. For a box off the
+chord's end, or one escaping radially, it called the box clear while the
+chord still grazed it, and the pass settled. It now measures the push
+(`clearingPush`, a bisection). No edge had gone *through* a box; the margin
+was what fell short.
+
 ## Typed tree + cross-link composition (2026-07-15, `02da288`)
 
 The non-tree half now ships: semantic edge tags survive in runtime snapshots;

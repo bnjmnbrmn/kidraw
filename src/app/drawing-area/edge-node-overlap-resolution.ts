@@ -20,10 +20,31 @@ const MAX_SWEEPS = 20;
  *  clear of the chord instead of exactly tangent to it. */
 const OVERSHOOT = 0.1;
 
-/** Half-extent of an axis-aligned box in direction `dir` (the AABB support
- *  radius): how far the box reaches from its center along that direction. */
-function supportRadius(box: OverlapBox, dirX: number, dirY: number): number {
-  return (box.w / 2) * Math.abs(dirX) + (box.h / 2) * Math.abs(dirY);
+/** How far `box` must move along `dir` before the chord clears it by
+ *  `clearance`. Measured rather than estimated: the AABB support radius
+ *  along `dir` is exact only when the push is square to the chord, and a
+ *  radial escape or a box off the chord's end is not, so the estimate could
+ *  call a box clear while the chord still grazed it — the pass then settled
+ *  with chords a few pixels from boxes it had promised to keep them off. The
+ *  positions along `dir` where the box touches the chord form one interval
+ *  containing 0 (both are convex), so bisection finds its end. */
+function clearingPush(box: OverlapBox, dirX: number, dirY: number, clearance: number,
+                      x1: number, y1: number, x2: number, y2: number): number {
+  const touches = (s: number) => {
+    const x = box.x + dirX * s;
+    const y = box.y + dirY * s;
+    return lineSegmentIntersectsRect(x1, y1, x2, y2,
+      x - clearance, y - clearance, x + box.w + clearance, y + box.h + clearance);
+  };
+  if (!touches(0)) return 0;
+  let clear = Math.hypot(x2 - x1, y2 - y1) + box.w + box.h + 2 * clearance;
+  while (touches(clear)) clear *= 2;
+  let touching = 0;
+  for (let i = 0; i < 30; i++) {
+    const mid = (touching + clear) / 2;
+    if (touches(mid)) touching = mid; else clear = mid;
+  }
+  return clear;
 }
 
 /**
@@ -106,7 +127,7 @@ export function resolveEdgeNodeOverlaps(
           dirY = (x2 - x1) / chordLen;
         }
 
-        const penetration = supportRadius(box, dirX, dirY) + clearance - dist;
+        const penetration = clearingPush(box, dirX, dirY, clearance, x1, y1, x2, y2);
         if (penetration <= EPS) continue;
 
         const push = penetration * (1 + OVERSHOOT);

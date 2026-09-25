@@ -4,8 +4,9 @@
  *   1. the label anchors at the projected t on the line ('on'),
  *   2. moving a node re-places the label on the new path (same t),
  *   3. re-routing (new control points) re-places it too,
- *   4. label-only movement keys slide t (x-axis), snap between the
- *      start/middle/end stops (coarse), and cycle above/on/below (y-axis),
+ *   4. on a straight left-to-right edge, label-only movement keys slide t
+ *      (x-axis), snap between the start/middle/end stops (coarse), and step
+ *      above/on/below (y-axis),
  *   5. anchors survive a serialize/restore round trip,
  *   6. a legacy snapshot (absolute x/y, no anchor) restores by projection.
  */
@@ -83,7 +84,16 @@ async function main() {
     edge.setControlPoints([{ x: mid.x + 80, y: mid.y - 60 }]);
     r.rerouteOnPath = distToPathAt(label, label.edgeT);
 
-    // 4. Label-only movement: slide, coarse snap, side cycle.
+    // 4. Label-only movement: slide, coarse snap, side cycle. Keys follow
+    //    screen direction (notes/design-edge-label-drag.md, 2026-08-09): on
+    //    the bent edge above, "right" may rightly move the label to a side
+    //    instead. So lay the edge out straight, left to right, where
+    //    right/left slide and up/down change side.
+    const src = edge.srcNode.konvaGroup, dest = edge.destNode.konvaGroup;
+    dest.x(src.x() + 700); dest.y(src.y());
+    edge.setControlPoints([]);
+    edge.refreshGeometry();
+    edge.setLabelAnchor(label, 0.3, 'on');
     dl.getDANodes().forEach(n => n.isSelected = false);
     dl.getDAEdges().forEach(e => { e.isSelected = false; e.labels.forEach(l => l.isSelected = false); });
     label.isSelected = true;

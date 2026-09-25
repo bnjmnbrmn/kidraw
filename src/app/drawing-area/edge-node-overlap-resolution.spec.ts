@@ -104,4 +104,16 @@ describe('resolveEdgeNodeOverlaps', () => {
     const moved = resolveEdgeNodeOverlaps(boxes, edges, 8, 20);
     expect(moved).toEqual([]);
   });
+
+  it('clears a box the chord only grazes past its end', () => {
+    // The chord ends at (100, 0); the box sits diagonally beyond that end, so
+    // the old push estimate (the box's reach toward the chord's end) called
+    // it clear while the chord still came within 1px of the clearance. The
+    // force-clear layout settled with chords 2-3px off boxes this way.
+    const boxes = [box(-2, -2, 4, 4), box(98, -2, 4, 4), box(111, 11, 20, 20)];
+    const edges: EdgeIndexPair[] = [{ a: 0, b: 1 }];
+    expect(anyPierce(boxes, edges, 12)).toBeTrue();
+    resolveEdgeNodeOverlaps(boxes, edges, 12, 4);
+    expect(anyPierce(boxes, edges, 12)).toBeFalse();
+  });
 });

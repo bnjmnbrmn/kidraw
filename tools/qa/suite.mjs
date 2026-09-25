@@ -53,11 +53,11 @@ export const SUITE = [
   // ── Edges, waypoints, routing ──
   { script: 'edges/second-waypoint.js', region: 'edges', status: 'diagnostic' },
   { script: 'edges/waypoint-select.js', region: 'edges', status: 'diagnostic' },
-  { script: 'edges/edge-label-anchors.js', region: 'edges', status: 'suite', baseline: { passed: 12, failed: 3, code: 1 } },
+  { script: 'edges/edge-label-anchors.js', region: 'edges', status: 'suite' },
   { script: 'edges/edge-direction-colors.js', region: 'edges', status: 'suite' },
   { script: 'edges/arrowhead-placement.js', region: 'edges', status: 'suite' },
   { script: 'edges/layout-routing.js', region: 'edges', status: 'suite' },
-  { script: 'edges/layout-clear.js', region: 'edges', status: 'suite', baseline: { passed: 6, failed: 1, code: 1 } },
+  { script: 'edges/layout-clear.js', region: 'edges', status: 'suite' },
   { script: 'edges/tree-crossings.js', region: 'edges', status: 'suite', baseline: { passed: 0, failed: 1, code: 1 } },
 
   // ── Keymenu and key handling ──
