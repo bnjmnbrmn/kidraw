@@ -1,0 +1,38 @@
+@if (menus.current(); as menu) {
+  <div class="center-menu-backdrop" (mousedown)="menus.close()"></div>
+  <div class="center-menu" role="dialog" [attr.aria-label]="menu.spec.title"
+       [class.dark]="dark" [class.lower]="menu.spec.placement === 'lower'">
+    <div class="title">{{ menu.spec.title }}</div>
+    <input #field
+           class="field"
+           type="text"
+           spellcheck="false"
+           autocomplete="off"
+           [placeholder]="menu.spec.placeholder ?? 'Type to filter'"
+           [value]="menu.list.text"
+           [class.chosen]="menu.list.highlighted < 0 && menu.spec.acceptsText"
+           (input)="onInput($any($event.target).value)"
+           (keydown)="onKeyDown($event)"/>
+    <div class="rows" role="listbox">
+      @for (item of menu.list.visible; track $index) {
+        <div class="row" role="option"
+             [class.highlighted]="$index === menu.list.highlighted"
+             [attr.aria-selected]="$index === menu.list.highlighted"
+             (mousedown)="$event.preventDefault(); choose($index)">
+          <span class="label">{{ item.label }}</span>
+          @if (item.detail) {
+            <span class="detail">{{ item.detail }}</span>
+          }
+        </div>
+      } @empty {
+        <div class="empty">{{ menu.spec.emptyText ?? 'Nothing matches' }}</div>
+      }
+    </div>
+    <div class="keys">
+      <kbd>↑</kbd><kbd>↓</kbd> or <kbd>^K</kbd><kbd>^J</kbd> move ·
+      <kbd>Enter</kbd> choose ·
+      @if (menu.spec.acceptsText) { <kbd>Tab</kbd> copy the row · }
+      <kbd>Esc</kbd> close
+    </div>
+  </div>
+}

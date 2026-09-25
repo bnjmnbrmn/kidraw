@@ -7,12 +7,13 @@ share; **Remove** takes it out. An agent connected through AI Chat can write
 one too (its `define_plugin` tool), and it lands in the same list.
 
 A plugin written this way is a **diagram type**: switch a graph to it with
-`:type <id>`, and its menu appears on root `t`. What it can declare:
+File → Diagram Type… (`q` then `y`) or `:type <id>`, and its menu appears on
+root `t`. What it can declare:
 
 | Field | What it is |
 |---|---|
 | `id` | Lower-case letters, digits and dashes, 2–40 long. Must not be taken. |
-| `name` | What Settings, `:type` and the header call it. |
+| `name` | What Settings, the Diagram Type menu and the header call it. |
 | `description` | One line on what it is for. |
 | `requires` / `uses` | Other plugins: ones it cannot work without (switched on with it), and ones it makes use of when they are on. |
 | `labels` | `plain` (the default) or `markdown` — markdown labels need the Markdown plugin, and get math when Math is on. |

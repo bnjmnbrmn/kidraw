@@ -27,6 +27,7 @@ import type { Viewport } from './viewport';
 import type { DAFileState, DANotification } from './da-notification.model';
 import type { DANode } from './da-node';
 import type { GraphSnapshot } from './graph-snapshot';
+import type { CenterMenuChoice, CenterMenuSpec } from '../center-menu/center-menu.model';
 import type { PluginSettingsService } from '../plugins/plugin-settings.service';
 import { DACommandType } from './command.model';
 import type { CommandSlice } from './command-handlers';
@@ -67,6 +68,9 @@ export interface FileHost {
   fitViewToContent(): void;
   recenterCrosshairs(): void;
   updateEdgesForResizedNodes(nodes: DANode[]): void;
+  /** Ask with a center menu (center-menu.model.ts); null when it was closed
+   *  without a choice. */
+  choose<T>(spec: CenterMenuSpec<T>): Promise<CenterMenuChoice<T> | null>;
 }
 
 /** Strip leading "./" and normalize separators for archive-relative paths. */
@@ -89,6 +93,7 @@ export class FileController {
       [DACommandType.CONNECT_VAULT]: () => void this.connectVault(),
       [DACommandType.VAULT_OPEN]: () => void this.vaultOpen(),
       [DACommandType.VAULT_SAVE_AS]: () => void this.vaultSaveAs(),
+      [DACommandType.CHOOSE_DIAGRAM_TYPE]: () => void this.chooseDiagramType(),
       [DACommandType.LOAD_NAMED_GRAPH]: c => this.loadNamedGraph(c.graphSnapshot),
       [DACommandType.LOAD_SAMPLE_GRAPH]: c => this.loadSampleGraph(c.graphId),
       [DACommandType.EX_COMMAND]: c => void this.runExCommand(c.text),
@@ -309,16 +314,12 @@ export class FileController {
     }
   }
 
-  /** `:type` lists the plugins (diagram types) that are on; `:type <id>`
+  /** `:type` opens the Diagram Type menu; `:type <id>`
    *  binds one to this graph, restyling it undoably. */
   private exType(arg: string): void {
     const current = this.host.drawingLayer.diagramType;
     if (arg === '') {
-      const list = diagramTypes()
-        .filter(plugin => plugin.id === current || this.host.pluginSettings.isEnabled(plugin.id))
-        .map(plugin => plugin.id === current ? `${plugin.id} (current)` : plugin.id)
-        .join(', ');
-      this.host.emitStatus(`Plugins: ${list}. :type <name> switches.`);
+      void this.chooseDiagramType();
       return;
     }
     if (arg === current) {
@@ -432,8 +433,16 @@ export class FileController {
       return;
     }
     const suggestion = this.host.vaultService.currentFilePath ?? 'graph.kidraw.yaml';
-    const entered = window.prompt('Save in vault as:', suggestion);
-    if (!entered || entered.trim() === '') return;
+    const choice = await this.host.choose({
+      title: 'Save in vault as',
+      items: (await this.vaultGraphFiles()).map(file => ({label: file, detail: 'replace', value: file})),
+      acceptsText: true,
+      initialText: suggestion,
+      placeholder: 'File name',
+      emptyText: 'No graph files in the vault yet',
+    });
+    if (!choice) return;
+    const entered = choice.kind === 'text' ? choice.text : choice.value;
     let path: string;
     try {
       path = ensureKidrawFilename(entered.trim());
@@ -452,36 +461,51 @@ export class FileController {
       this.host.emitStatus('Connect a vault first (file menu → Vault: Connect).');
       return;
     }
-    const vault = this.host.vaultService.vault!;
-    const files = (await vault.list()).filter(f => /\.kidraw\./i.test(f));
+    const files = await this.vaultGraphFiles();
     if (files.length === 0) {
       this.host.emitStatus('No graph files in the vault yet — use Vault: Save As first.');
       return;
     }
     this.host.log.log('[vault] open picker,', files.length, 'files:', files.join(', '));
-    const listing = files.map((f, i) => `${i + 1}. ${f}`).join('\n');
-    const entered = window.prompt(`Open from vault (number or name):\n${listing}`, files[0]);
-    if (!entered || entered.trim() === '') {
+    const current = this.host.vaultService.currentFilePath ?? undefined;
+    const choice = await this.host.choose({
+      title: 'Open from vault',
+      items: files.map(file => ({label: file, detail: file === current ? 'open now' : undefined, value: file})),
+      initialValue: current,
+    });
+    if (choice?.kind !== 'item') {
       this.host.log.log('[vault] open canceled');
       return;
     }
-    const trimmed = entered.trim();
-    let path: string | undefined;
-    try {
-      path = /^\d+$/.test(trimmed)
-        ? files[parseInt(trimmed, 10) - 1]
-        : files.find(f => f === normalizeVaultPath(trimmed)) ?? normalizeVaultPath(trimmed);
-    } catch (e) {
-      this.host.emitStatus((e as Error).message);
-      return;
-    }
-    if (!path) {
-      this.host.emitStatus(`No such vault file: ${trimmed}`);
-      return;
-    }
+    const path = choice.value;
     if (await this.loadVaultFile(path, { recenter: true })) {
       this.host.emitStatus(`Opened from vault: ${path} — auto-save is on`);
     }
+  }
+
+  /** The graph files in the connected vault. */
+  private async vaultGraphFiles(): Promise<string[]> {
+    const files = await this.host.vaultService.vault?.list() ?? [];
+    return files.filter(file => /\.kidraw\./i.test(file));
+  }
+
+  /** The Diagram Type menu: the types that are on, the current one first
+   *  highlighted. Choosing one restyles the graph undoably. */
+  async chooseDiagramType(): Promise<void> {
+    const current = this.host.drawingLayer.diagramType;
+    const types = diagramTypes()
+      .filter(plugin => plugin.id === current || this.host.pluginSettings.isEnabled(plugin.id));
+    const choice = await this.host.choose({
+      title: 'Diagram type',
+      items: types.map(plugin => ({
+        label: plugin.name,
+        detail: plugin.id === current ? 'current' : plugin.description,
+        value: plugin.id,
+      })),
+      initialValue: current,
+    });
+    if (choice?.kind !== 'item' || choice.value === current) return;
+    this.setDiagramType(choice.value);
   }
 
   /**

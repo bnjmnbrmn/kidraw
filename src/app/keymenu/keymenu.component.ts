@@ -273,6 +273,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
         // opening over the menu you were in, so no card shows underneath.
         surfaceAgentPanel: new USQwertyModeConfig(this.buildAgentPanelSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceReading: new USQwertyModeConfig(this.buildReadingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
+        surfaceCenterMenu: new USQwertyModeConfig(this.buildCenterMenuSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config),
         surfaceGrowTargeting: new USQwertyModeConfig(this.buildGrowTargetingSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEdge: new USQwertyModeConfig(this.buildGrowEdgeSurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
         surfaceGrowEmpty: new USQwertyModeConfig(this.buildGrowEmptySurfaceConfig(), this.visualConfig.getEffectivePalette(this.themeService.theme), this.keyboardConfig.hideFingerBlockedKeys, this.keyboardConfig.keyboardLayout, this.keyboardConfig.capsLockCtrlSwap, this.visualConfig.config, 1, true),
@@ -1257,6 +1258,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [misc.vaultOpen]: new LabeledAction('Open…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_OPEN})),
       [misc.vaultSaveAs]: new LabeledAction('Save As…', () => this.keyMenuOut.emit({kind: DACommandType.VAULT_SAVE_AS})),
       [misc.connectVault]: new LabeledAction('Vault: Connect…', () => this.keyMenuOut.emit({kind: DACommandType.CONNECT_VAULT})),
+      [misc.diagramType]: new LabeledAction('Diagram Type…', () => this.keyMenuOut.emit({kind: DACommandType.CHOOSE_DIAGRAM_TYPE})),
       [misc.reload]: new LabeledAction('Reload Page', () => window.location.reload()),
     } as SubmenuConfig;
   }
@@ -1294,6 +1296,15 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       [r.send]: this.surfaceAction('Send marks'),
       [r.link]: this.surfaceAction('Next link'),
       '[': this.surfaceAction('Esc: Stop reading'),
+    } as SubmenuConfig;
+  }
+
+  /** Shown while a center menu is open (center-menu.component.ts). */
+  private buildCenterMenuSurfaceConfig(): SubmenuConfig {
+    return {
+      'Enter': this.surfaceAction('Choose'),
+      'Tab': this.surfaceAction('Copy row to field'),
+      '[': this.surfaceAction('Esc: Close'),
     } as SubmenuConfig;
   }
 
@@ -1378,6 +1389,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     'grow-placement': 'surfaceGrowPlacement',
     'agent-panel': 'surfaceAgentPanel',
     'reading': 'surfaceReading',
+    'center-menu': 'surfaceCenterMenu',
   };
 
   /** While another interaction surface owns the keyboard, render that
@@ -1551,6 +1563,7 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
     surfaceGrowPlacement: '#00a6a6',
     surfaceAgentPanel: '#f59e0b',
     surfaceReading: '#34d399',
+    surfaceCenterMenu: '#3b82f6',
   };
 
   private updateModeLabel() {
@@ -1589,6 +1602,8 @@ export class KeymenuComponent implements AfterViewInit, OnChanges, OnDestroy {
       displayName = 'agent chat';
     } else if (modeName === 'surfaceReading') {
       displayName = 'reading';
+    } else if (modeName === 'surfaceCenterMenu') {
+      displayName = 'menu';
     } else {
       displayName = modeName;
     }

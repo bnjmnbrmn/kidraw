@@ -148,6 +148,7 @@ export interface KeymenuKeyAssignments {
   readonly misc: {
     readonly submenu: KeyString;
     readonly reload: KeyString;
+    readonly diagramType: KeyString;
     readonly newGraph: KeyString;
     readonly connectVault: KeyString;
     readonly vaultOpen: KeyString;
@@ -285,6 +286,7 @@ export const IJKL_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   misc: {
     submenu: 'q',
     reload: 'u',
+    diagramType: 'y',
     newGraph: 'n',
     connectVault: 'l',
     vaultOpen: 'o',
@@ -394,6 +396,7 @@ export const VIM_KEYMENU_KEY_ASSIGNMENTS: KeymenuKeyAssignments = {
   misc: {
     submenu: 'q',
     reload: 'u',
+    diagramType: 'y',
     newGraph: 'n',
     connectVault: 'l',
     vaultOpen: 'o',

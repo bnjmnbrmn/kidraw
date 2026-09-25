@@ -4,6 +4,8 @@ import {DrawingAreaComponent} from './drawing-area/drawing-area.component';
 import {KeymenuComponent} from './keymenu/keymenu.component';
 import {CompactKeymenuComponent, CompactMenuRow} from './keymenu/compact/compact-keymenu.component';
 import {ExLineComponent} from './ex-line/ex-line.component';
+import { CenterMenuComponent } from './center-menu/center-menu.component';
+import { CenterMenuService } from './center-menu/center-menu.service';
 import {Subject, Subscription} from 'rxjs';
 import {DACommand, DACommandType, TextCursorMode} from './drawing-area/command.model';
 import {DANotification} from './drawing-area/da-notification.model';
@@ -45,7 +47,7 @@ const UNTITLED_GRAPH_REVISION_KEY = 'kidraw_untitled_graph_revision_v1';
 
 @Component({
   selector: 'app-root',
-  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent,
+  imports: [HeaderComponent, DrawingAreaComponent, KeymenuComponent, CompactKeymenuComponent, CenterMenuComponent,
             ExLineComponent, AgentPanelComponent, AgentOverlayComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
@@ -173,6 +175,24 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     const chatHasKeyboard = this.agent.keyboardInPanel() && this.agent.panelOpen();
     this.agent.composable();
     untracked(() => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
+  });
+
+  private readonly centerMenus = inject(CenterMenuService);
+
+  /** A center menu takes the keyboard while it is open: the keymenu flushes
+   *  the keys held to open it and shows the menu's keys. Closing gives it
+   *  back to reading mode if that was on. */
+  private readonly centerMenuKeyboardSync = effect(() => {
+    const open = this.centerMenus.current() !== null;
+    untracked(() => {
+      if (!this.keymenuComponent) return;
+      if (open) {
+        this.keymenuComponent.setSuspended(true, 'center-menu');
+        return;
+      }
+      this.keymenuComponent.setSuspended(false);
+      if (this.reading.active()) this.keymenuComponent.setSuspended(true, 'reading');
+    });
   });
 
   private enterReadingMode(): void {

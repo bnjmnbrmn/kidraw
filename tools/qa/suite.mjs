@@ -38,6 +38,7 @@ export const SUITE = [
 
   // ── File, named graphs, diagram type (~1169-2139) ──
   { script: 'file/file-flows.js', region: 'file', status: 'suite' },
+  { script: 'file/center-menus.js', region: 'file', status: 'suite' },
 
   // ── In-graph search (~2126-3724) ──
   { script: 'search/search-recenter.js', region: 'search', status: 'suite' },

@@ -90,6 +90,7 @@ import { KeyboardDrag, KeyboardDragHost } from './keyboard-drag';
 import { GraphSearch, GraphSearchHost } from './graph-search';
 import { ClipboardController, ClipboardHost } from './clipboard-controller';
 import { HistoryController, HistoryHost } from './history-controller';
+import { CenterMenuService } from '../center-menu/center-menu.service';
 import { SelectDrag, SelectDragHost } from './select-drag';
 import { StyleController, StyleHost } from './style-controller';
 import { LayoutController, LayoutHost } from './layout-controller';
@@ -131,6 +132,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
   private draftStorage = inject(DraftStorageService);
   private vaultService = inject(VaultService);
   private pluginSettings = inject(PluginSettingsService);
+  private centerMenus = inject(CenterMenuService);
   private themeSub?: Subscription;
   private visualSub?: Subscription;
   private pluginSub?: Subscription;
@@ -994,6 +996,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
     const da = this;
     return {
       cancelGestures: () => da.gestures.cancelAll(),
+      choose: spec => da.centerMenus.open(spec),
       get drawingLayer() { return da.drawingLayer; },
       get crosshairsLayer() { return da.crosshairsLayer; },
       get viewport() { return da.viewport; },

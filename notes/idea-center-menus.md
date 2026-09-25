@@ -1,10 +1,52 @@
 ---
 title: Centered menus, and whether ex mode stays
 type: idea
-status: open — direction set by Ben, design not started
+status: first version built 2026-09-25 (Open, Save As, Diagram Type); settings, styles, search not yet
 ---
 
 # Centered menus, and whether ex mode stays
+
+## Built, first version (2026-09-25)
+
+Ben asked for the ranked list to be worked through and for best guesses on
+design (Ben, 2026-09-25: "Make your best guess for design decisions — we will
+come back and refine"). Every call below is **inferred, 2026-09-25**, and his
+to overturn.
+
+What you see: **File → Open…** and **File → Save As…** no longer use the
+browser's prompt box. They open a list in the middle of the window, with a
+field at the top. **File → Diagram Type…** (`q` then `y`) is new, and `:type`
+on its own opens the same list.
+
+- **Name: "center menu".** Ben's own words ("menus that pop up in the
+  center"). Plain, and it names where the thing is, which the keymenu and the
+  nav popup don't. Code: `src/app/center-menu/`.
+- **Keys.** Typing filters (the same fuzzy matcher as the nav popup). Down /
+  Up, Ctrl-J / Ctrl-K, and Ctrl-N / Ctrl-P where the browser passes them on
+  (Chrome keeps Ctrl-N for itself) move. Enter chooses, Escape or Ctrl-[
+  closes, Tab copies the highlighted row into the field. The mouse works too.
+- **Modality: no normal/insert split.** The field always has the keyboard;
+  there is nothing to type that isn't a filter or a name. The keymenu stands
+  aside while a menu is open, flushes the key you held to open it, and shows
+  the menu's keys with the caption "menu".
+- **Save As is a text menu.** The field starts with the current file's name,
+  selected. Enter saves under what is typed, unless you have moved onto one of
+  the listed files, which means "replace that one". Tab puts a file's name in
+  the field to edit it.
+- **Placement is a per-menu property** (`placement: 'lower'`), for search.
+  Search itself has not moved; it is still the bottom input.
+- **Ex mode stays** for now, as the typed path into the same menus (`:type`
+  opens the menu; `:w name` still saves without one).
+- **Not a gesture** (`gestures.ts`). Gestures belong to the drawing area; a
+  center menu belongs to the whole window and opens from the keymenu or the ex
+  line, never mid-gesture. The keymenu's suspension is what keeps other keys
+  out.
+- **Not yet:** the settings menu, style sets, the vault as a browsable tree
+  (Open lists every graph file by path), and moving search into one.
+
+Checks: `center-menu.model.spec.ts` (list behavior),
+`tools/qa/file/center-menus.js` (the three menus in the running app).
+
 
 ## What Ben said (Ben, 2026-09-24)
 

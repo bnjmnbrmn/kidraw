@@ -11,7 +11,8 @@ export type KeyboardSurface =
   | 'grow-type-popup'
   | 'grow-placement'
   | 'agent-panel'
-  | 'reading';
+  | 'reading'
+  | 'center-menu';
 
 /** The backing location of the graph currently on the canvas. Vault identity
  * stays structured so a directory name is never guessed by splitting a path. */

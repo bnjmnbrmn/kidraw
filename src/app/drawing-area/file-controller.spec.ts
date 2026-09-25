@@ -71,19 +71,24 @@ describe('FileController commands', () => {
 });
 
 describe('FileController :type with a plugin turned off', () => {
+  let offered: string[] = [];
   const files = (statuses: string[]) => new FileController({
     drawingLayer: {diagramType: 'default'},
     pluginSettings: {isEnabled: (id: string) => id !== 'explanation'},
     emitStatus: (message: string) => statuses.push(message),
     emitContextState: () => {},
     log: {log: () => {}},
+    choose: async (spec: {items: {value: string}[]}) => {
+      offered = spec.items.map(item => item.value);
+      return null;
+    },
   } as unknown as FileHost);
 
-  it('does not offer it', async () => {
-    const statuses: string[] = [];
-    await files(statuses).runExCommand('type');
-    expect(statuses[0]).toContain('todo-graph');
-    expect(statuses[0]).not.toContain('explanation');
+  it('does not offer it in the Diagram Type menu', async () => {
+    await files([]).runExCommand('type');
+    await Promise.resolve();
+    expect(offered).toContain('todo-graph');
+    expect(offered).not.toContain('explanation');
   });
 
   it('refuses to switch to it, and says why', async () => {
