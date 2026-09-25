@@ -78,7 +78,6 @@ export function headerFileIdentity(fileState: DAFileState): HeaderFileIdentity {
 export class HeaderComponent {
   readonly showSampleGraphs = sampleGraphsEnabled(window.location.search);
   zoomLevel: number = 100;
-  mode: 'normal' | 'labelEdit' | 'labelEditVimNormal' | 'labelEditVimVisual' = 'normal';
   statusMessage: string = '';
   private statusMessageTimer?: number;
   selectionSummary: string = '';

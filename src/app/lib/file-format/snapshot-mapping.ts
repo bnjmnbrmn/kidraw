@@ -6,7 +6,7 @@
  *   - semantics (graph doc): node label + tags + description, edge from/to/
  *     directedness/labels (text only) + tags.
  *   - style (style set): positions, sizes, fonts, shape, line style,
- *     waypoints, label offsets, text-overflow mode.
+ *     colors, waypoints, label offsets, text-overflow mode.
  *
  * Node style props resolve through the cascade
  *   app defaults -> identity plugin defaults -> per-node file props,
@@ -25,6 +25,8 @@ import {
   DALabelSnapshot,
   DANodeSnapshot,
   GraphSnapshot,
+  edgeColorFields,
+  pickNodeColors,
 } from '../../drawing-area/graph-snapshot';
 import {
   EdgeSemantics,
@@ -106,6 +108,7 @@ export function snapshotToFiles(
     if (n.textOverflowMode && n.textOverflowMode !== def.textOverflow) {
       sp.textOverflow = n.textOverflowMode;
     }
+    Object.assign(sp, pickNodeColors(n));
     styleNodes[n.id] = sp;
   }
 
@@ -123,6 +126,7 @@ export function snapshotToFiles(
 
     const sp: EdgeStyleProps = {};
     if (e.lineStyle) sp.lineStyle = e.lineStyle;
+    Object.assign(sp, edgeColorFields(e));
     if (e.controlPoints && e.controlPoints.length > 0) {
       sp.waypoints = e.controlPoints.map(p => ({
         x: p.x,
@@ -191,6 +195,7 @@ export function filesToSnapshot(
       nodeShape: sp.shape ?? def.shape,
       textOverflowMode: sp.textOverflow ?? def.textOverflow,
       ...(sem.tags && sem.tags.length > 0 ? { tags: [...sem.tags] } : {}),
+      ...pickNodeColors(sp),
     };
     nodes.push(node);
   }
@@ -242,6 +247,7 @@ export function filesToSnapshot(
     }
     if (sem.directed) edge.directedness = sem.directed;
     if (sp.lineStyle) edge.lineStyle = sp.lineStyle;
+    Object.assign(edge, edgeColorFields(sp));
     edges.push(edge);
   }
 

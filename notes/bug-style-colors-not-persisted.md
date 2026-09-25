@@ -1,6 +1,7 @@
 ---
 title: Custom node/edge colors (fill/stroke/textColor) never reach the canvas
 type: bug
+status: fixed 2026-09-25
 ---
 
 # Custom node/edge colors never reach the canvas
@@ -56,3 +57,45 @@ shape + size to differentiate root/category/leaf, which is unaffected.
 **Relates to:** the unimplemented "Expanded styling" post-MVP item; tags
 just became real content (this file) for the first time, which is what
 surfaced this.
+
+## Fixed 2026-09-25
+
+Ben asked for the fix (Ben, 2026-09-25: "Fix the bugs."). What changed, as
+seen in the app:
+
+- A color picked with the Color command stays through a theme toggle, a
+  reload, save/open, copy/paste and a shape change. **Default** puts the
+  item back on the theme's colors.
+- Picking a color (or a line style) is now one undo step and triggers
+  auto-save, like the other style commands. Before, neither was undoable
+  and a reload could lose it.
+- `fill`/`stroke`/`textColor` in a style file, directly or through
+  `tagStyles`, now show on the canvas.
+- A blue or red edge is drawn in that color. Before, a directed edge kept
+  the theme's gradient, so picking a color on it seemed to do nothing.
+
+How: `DANode`/`DAEdge` hold a "custom colors" layer over the theme's
+(`setCustomColors`); the theme is re-applied underneath it. Snapshots carry
+`fill`/`stroke`/`textColor` under the style-file names, and
+`snapshot-mapping.ts` reads and writes them. No existing persisted key was
+renamed; old drafts simply have no colors.
+
+Calls made without Ben, his to overturn (inferred, 2026-09-25):
+
+- **A color you choose beats the diagram type's kind color** (e.g. a
+  definition's border) and the direction colors on edges. It is the most
+  explicit choice, so it wins.
+- **Colors from a tag are written onto each node on save.** Tags are folded
+  into per-node rules on load, so a saved file repeats the tag's color on
+  every tagged node; changing the tag's color later won't recolor them. Shape
+  already works this way. Keeping them apart would mean remembering which
+  props came from a tag, which nothing does yet.
+- Picking a color with nothing to color still records an undo step (a
+  harmless no-op), as Set Shape already did.
+
+Checks: `da-item-colors.spec.ts`, `snapshot-mapping.spec.ts` (round trip),
+`drawing-area.component.item-color.spec.ts`, and
+`tools/qa/style/style-commands.js` (theme toggle, undo, reload, Default).
+
+Still not honored (inferred, 2026-09-25): `strokeWidth` and `opacity`, which
+`docs/file-format.md` also lists. They parse and are ignored, as before.

@@ -31,6 +31,10 @@ export interface DANodeSnapshot {
   /** Semantic tags from the graph document. Kept in the runtime snapshot so
    *  save/undo/layout operations do not erase type information. */
   tags?: string[];
+  /** Colors chosen for this node, over the theme's. Named as in a style file. */
+  fill?: string;
+  stroke?: string;
+  textColor?: string;
 }
 
 /** A bend point on an edge's polyline. `waypointId` is set on editable bend
@@ -57,6 +61,9 @@ export interface DAEdgeSnapshot {
    *  `depends-on`). Layout uses these to distinguish hierarchy edges from
    *  cross-links. */
   tags?: string[];
+  /** Colors chosen for this edge, over the theme's. Named as in a style file. */
+  stroke?: string;
+  fill?: string;
 }
 
 export interface GraphSnapshot {
@@ -68,4 +75,46 @@ export interface GraphSnapshot {
   /** Legacy (plugin v0): identity was recorded as plugins: ['todo-graph'].
    *  Read for migration on restore/load; no longer written. */
   plugins?: string[];
+}
+
+/** A node's chosen colors in snapshot form: only the ones it has. */
+export function nodeColorFields(colors: {fill?: string; stroke?: string; text?: string} | null):
+    Pick<DANodeSnapshot, 'fill' | 'stroke' | 'textColor'> {
+  return {
+    ...(colors?.fill ? {fill: colors.fill} : {}),
+    ...(colors?.stroke ? {stroke: colors.stroke} : {}),
+    ...(colors?.text ? {textColor: colors.text} : {}),
+  };
+}
+
+/** The colors a node snapshot chose, or null for none. */
+export function nodeColorsOf(n: Pick<DANodeSnapshot, 'fill' | 'stroke' | 'textColor'>):
+    {fill?: string; stroke?: string; text?: string} | null {
+  if (!n.fill && !n.stroke && !n.textColor) return null;
+  return {
+    ...(n.fill ? {fill: n.fill} : {}),
+    ...(n.stroke ? {stroke: n.stroke} : {}),
+    ...(n.textColor ? {text: n.textColor} : {}),
+  };
+}
+
+/** An edge's chosen colors in snapshot form: only the ones it has. */
+export function edgeColorFields(colors: {stroke?: string; fill?: string} | null):
+    Pick<DAEdgeSnapshot, 'stroke' | 'fill'> {
+  return {
+    ...(colors?.stroke ? {stroke: colors.stroke} : {}),
+    ...(colors?.fill ? {fill: colors.fill} : {}),
+  };
+}
+
+/** Just the color fields that are set; a style file names them the same way. */
+export function pickNodeColors(n: Pick<DANodeSnapshot, 'fill' | 'stroke' | 'textColor'>):
+    Pick<DANodeSnapshot, 'fill' | 'stroke' | 'textColor'> {
+  return nodeColorFields(nodeColorsOf(n));
+}
+
+/** The colors an edge snapshot chose, or null for none. */
+export function edgeColorsOf(e: Pick<DAEdgeSnapshot, 'stroke' | 'fill'>): {stroke?: string; fill?: string} | null {
+  const fields = edgeColorFields(e);
+  return Object.keys(fields).length > 0 ? fields : null;
 }

@@ -484,11 +484,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
     this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: subMode});
-    if (this.headerComponent) {
-      this.headerComponent.mode = subMode === 'vimNormal'
-        ? 'labelEditVimNormal'
-        : subMode === 'vimVisual' ? 'labelEditVimVisual' : 'labelEdit';
-    }
   }
 
   handleDANotification(daNotification: DANotification) {
@@ -497,11 +492,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       case "started-label-editing-mode":
         this.keymenuComponent.enterLabelEditMode(daNotification.mode);
         this.commandsSubject.next({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: daNotification.mode});
-        if (this.headerComponent) {
-          this.headerComponent.mode = daNotification.mode === 'vimNormal'
-            ? 'labelEditVimNormal'
-            : 'labelEdit';
-        }
         break;
       case "label-added":
         this.keymenuComponent.notifyLabelAdded();
@@ -511,7 +501,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
         break;
       case "exit-label-editing-mode":
         this.keymenuComponent.exitToNormalMode();
-        if (this.headerComponent) this.headerComponent.mode = 'normal';
         break;
       case "context-state-update":
         if (this.headerComponent) {

@@ -1,6 +1,7 @@
 ---
 title: Header mode chip goes stale after exiting label edit
 type: bug
+status: obsolete 2026-09-25
 ---
 
 # Header mode chip goes stale after exiting label edit
@@ -25,3 +26,12 @@ switched itself.
 
 Found 2026-07-05 while verifying the context-sensitive `i` key with a
 Playwright harness that used the header chip as its mode probe.
+
+## Obsolete 2026-09-25 (inferred, 2026-09-25)
+
+The header no longer shows a mode badge: it was dropped in the header
+redesign of 2026-08-31 (`9488060d`), and the mode now shows only as the
+keymenu's caption, which does follow Escape–Escape and Shift+Enter. The
+header's `mode` field was still being written but nothing displayed it, so it
+was removed on 2026-09-25 rather than fixed. If Ben wants a mode badge back in
+the header, it should read the keymenu's mode, not keep its own copy.

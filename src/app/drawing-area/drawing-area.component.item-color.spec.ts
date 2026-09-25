@@ -28,8 +28,8 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     c.getDAEdgesContainingCrosshairs = () => overrides.edgesUnderCrosshairs ?? [];
     return c;
   }
-  const node = () => ({zIndex: () => 1, applyColors: jasmine.createSpy('applyColors')});
-  const edge = () => ({applyColors: jasmine.createSpy('applyColors')});
+  const node = () => ({zIndex: () => 1, setCustomColors: jasmine.createSpy('setCustomColors')});
+  const edge = () => ({setCustomColors: jasmine.createSpy('setCustomColors')});
   const lastMessage = (c: any) =>
     c.daOut.emit.calls.allArgs().map((a: any[]) => a[0])
       .filter((n: any) => n.kind === 'status-message').pop()?.message;
@@ -38,7 +38,7 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     const n = node();
     const c = build({selectedNodes: [n]});
     c.style.setItemColor('red');
-    expect(n.applyColors).toHaveBeenCalled();
+    expect(n.setCustomColors).toHaveBeenCalled();
     expect(lastMessage(c)).toBe('Red: 1 node');
   });
 
@@ -46,7 +46,7 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     const n = node();
     const c = build({nodesUnderCrosshairs: [n]});
     c.style.setItemColor('blue');
-    expect(n.applyColors).toHaveBeenCalled();
+    expect(n.setCustomColors).toHaveBeenCalled();
     expect(lastMessage(c)).toBe('Blue: 1 node');
   });
 
@@ -54,7 +54,7 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     const e = edge();
     const c = build({edgesUnderCrosshairs: [e]});
     c.style.setItemColor('green');
-    expect(e.applyColors).toHaveBeenCalled();
+    expect(e.setCustomColors).toHaveBeenCalled();
     expect(lastMessage(c)).toBe('Green: 1 link');
   });
 
@@ -62,14 +62,24 @@ describe('DrawingAreaComponent setItemColor targeting', () => {
     const n = node(), e = edge();
     const c = build({nodesUnderCrosshairs: [n], edgesUnderCrosshairs: [e]});
     c.style.setItemColor('orange');
-    expect(n.applyColors).toHaveBeenCalled();
-    expect(e.applyColors).not.toHaveBeenCalled();
+    expect(n.setCustomColors).toHaveBeenCalled();
+    expect(e.setCustomColors).not.toHaveBeenCalled();
   });
 
   it('reports both counts for a mixed selection', () => {
     const c = build({selectedNodes: [node(), node()], selectedEdges: [edge()]});
     c.style.setItemColor('purple');
     expect(lastMessage(c)).toBe('Purple: 2 nodes + 1 link');
+  });
+
+  it('lays the chosen colors over the theme, and default clears them', () => {
+    const n = node(), e = edge();
+    const c = build({selectedNodes: [n], selectedEdges: [e]});
+    c.style.setItemColor('red');
+    expect(n.setCustomColors.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({stroke: '#cc0000'}));
+    c.style.setItemColor('default');
+    expect(n.setCustomColors.calls.mostRecent().args[0]).toBeNull();
+    expect(e.setCustomColors.calls.mostRecent().args[0]).toBeNull();
   });
 
   it('says so when nothing is selected or pointed at', () => {

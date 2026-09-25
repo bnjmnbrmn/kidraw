@@ -6,8 +6,8 @@
  */
 import { DACommandType, EdgeDirectedness, ItemColor, LineStyle, NodeShape, TextOverflowMode } from './command.model';
 import type { CommandSlice } from './command-handlers';
-import type { DAEdge } from './da-edge';
-import type { DANode } from './da-node';
+import type { DAEdge, EdgeColors } from './da-edge';
+import type { DANode, NodeColors } from './da-node';
 import type { DrawingLayer } from './drawing.layer';
 
 /** What the style commands need from the drawing area. */
@@ -35,6 +35,15 @@ export interface StyleDefaults {
   edgeDirectedness: EdgeDirectedness;
   lineStyle: LineStyle;
 }
+
+/** What each choice of the Color command paints a node and an edge. */
+const ITEM_COLORS: Record<Exclude<ItemColor, 'default'>, {node: NodeColors; edge: EdgeColors}> = {
+  'red': {node: {fill: '#ffcccc', stroke: '#cc0000', text: '#660000'}, edge: {stroke: '#cc0000', fill: '#cc0000'}},
+  'blue': {node: {fill: '#cce0ff', stroke: '#0066cc', text: '#003366'}, edge: {stroke: '#0066cc', fill: '#0066cc'}},
+  'green': {node: {fill: '#ccffcc', stroke: '#009900', text: '#004d00'}, edge: {stroke: '#009900', fill: '#009900'}},
+  'orange': {node: {fill: '#ffe0cc', stroke: '#cc6600', text: '#663300'}, edge: {stroke: '#cc6600', fill: '#cc6600'}},
+  'purple': {node: {fill: '#e0ccff', stroke: '#6600cc', text: '#330066'}, edge: {stroke: '#6600cc', fill: '#6600cc'}},
+};
 
 /** The four states v+o steps an edge through. */
 const DIR_CYCLE: {directedness: EdgeDirectedness; label: string}[] = [
@@ -159,20 +168,13 @@ export class StyleController {
     this.host.drawingLayer.batchDraw();
   }
 
-  // ── Colour ──
+  // ── Color ──
 
   setItemColor(color: ItemColor): void {
     this.host.log('[style] setItemColor:', color);
     const layer = this.host.drawingLayer;
-    const COLOR_MAP: Record<ItemColor, {node: {fill: string; stroke: string; text: string}; edge: {stroke: string; fill: string}}> = {
-      'default': {node: layer.nodeColors()!, edge: layer.edgeColors()!},
-      'red': {node: {fill: '#ffcccc', stroke: '#cc0000', text: '#660000'}, edge: {stroke: '#cc0000', fill: '#cc0000'}},
-      'blue': {node: {fill: '#cce0ff', stroke: '#0066cc', text: '#003366'}, edge: {stroke: '#0066cc', fill: '#0066cc'}},
-      'green': {node: {fill: '#ccffcc', stroke: '#009900', text: '#004d00'}, edge: {stroke: '#009900', fill: '#009900'}},
-      'orange': {node: {fill: '#ffe0cc', stroke: '#cc6600', text: '#663300'}, edge: {stroke: '#cc6600', fill: '#cc6600'}},
-      'purple': {node: {fill: '#e0ccff', stroke: '#6600cc', text: '#330066'}, edge: {stroke: '#6600cc', fill: '#6600cc'}},
-    };
-    const colors = COLOR_MAP[color];
+    // 'default' clears the choice, handing the item back to the theme.
+    const colors = color === 'default' ? {node: null, edge: null} : ITEM_COLORS[color];
     if (!colors) return;
 
     // Selection first, then whatever the crosshairs are over — the same
@@ -196,8 +198,8 @@ export class StyleController {
       return;
     }
 
-    nodes.forEach(n => n.applyColors(colors.node));
-    edges.forEach(e => e.applyColors(colors.edge));
+    nodes.forEach(n => n.setCustomColors(colors.node));
+    edges.forEach(e => e.setCustomColors(colors.edge));
 
     layer.batchDraw();
 

@@ -117,8 +117,8 @@ _Open issues with reproductions and analysis. One per file, prefixed `bug-`._
 
 - [Bezier-route anti-parallel edges overlap](bug-bezier-antiparallel-overlap.md) — `b → ;` renders A→B and B→A as one line; lane key needs to switch to unordered.
 - ["Next edge out" doesn't seem to work](bug-next-edge-out.md) — resolved: superseded by the 2026-07-13 move-by-graph traversal rework.
-- [Header mode chip goes stale after exiting label edit](bug-header-mode-chip-stale.md) — `exit-label-editing-mode` is only emitted on undo/redo; normal exits never reset the badge.
-- [Custom node/edge colors never reach the canvas](bug-style-colors-not-persisted.md) — `fill`/`stroke`/`textColor` (direct or via `tagStyles`) round-trip nowhere in `snapshot-mapping.ts`, and `applyThemeColors()` clobbers any live custom color on every load/theme-toggle anyway.
+- [Header mode chip goes stale after exiting label edit](bug-header-mode-chip-stale.md) — obsolete 2026-09-25: the header lost its badge on 2026-08-31; the dead field is gone.
+- [Custom node/edge colors never reach the canvas](bug-style-colors-not-persisted.md) — fixed 2026-09-25: chosen colors sit over the theme, round-trip through files, and are undoable.
 - [Node target filter order](bug-node-target-filter-order.md) — setTaskStatus and setTextOverflowMode filter at different moments, so the same gesture acts or refuses depending on the command.
 - [An empty quadrant is announced as a move in that direction](bug-empty-quadrant-announced-as-a-move.md) — Move by Link says `north: <east node>` when nothing is north; the "no link in that quadrant" message is unreachable.
 - [The grow lattice's off-cell tolerance cannot reject anything](bug-lattice-tolerance-cannot-fire.md) — rounding bounds the residual at 0.5, so the 0.6 guard never fires and any node is assigned its nearest cell.

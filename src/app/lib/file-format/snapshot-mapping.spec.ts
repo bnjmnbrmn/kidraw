@@ -357,6 +357,21 @@ describe('snapshot-mapping', () => {
     }
   });
 
+  it('round-trips colors chosen for a node and an edge', () => {
+    const snap = makeSnapshot();
+    Object.assign(snap.nodes[0], {fill: '#ffcccc', stroke: '#cc0000', textColor: '#660000'});
+    Object.assign(snap.edges[0], {stroke: '#0066cc', fill: '#0066cc'});
+    const { doc, style } = snapshotToFiles(snap);
+    expect(style.nodes!['da-1']).toEqual(jasmine.objectContaining({fill: '#ffcccc', stroke: '#cc0000', textColor: '#660000'}));
+    expect(style.nodes!['da-2'].fill).toBeUndefined();
+    expect(style.edges!['da-3']).toEqual(jasmine.objectContaining({stroke: '#0066cc', fill: '#0066cc'}));
+
+    const restored = filesToSnapshot(doc, style);
+    expect(restored.nodes[0]).toEqual(jasmine.objectContaining({fill: '#ffcccc', stroke: '#cc0000', textColor: '#660000'}));
+    expect('fill' in restored.nodes[1]).toBeFalse();
+    expect(restored.edges[0]).toEqual(jasmine.objectContaining({stroke: '#0066cc', fill: '#0066cc'}));
+  });
+
   it('session-only fields (pinned, isSelected) do not appear in the doc/style', () => {
     const snap: GraphSnapshot = {
       nodes: [

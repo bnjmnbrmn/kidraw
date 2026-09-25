@@ -83,6 +83,33 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
   check('Colour paints the node under the crosshairs and says so', red === 'Red: 1 node' && await fillOf(page, 'Action') === '#ffcccc',
     `${red} ${await fillOf(page, 'Action')}`);
 
+  // A chosen colour outlives the theme and is one undo step
+  // (notes/bug-style-colors-not-persisted.md).
+  const setTheme = theme => page.evaluate(`(() => { const sel = [...document.querySelectorAll('select')]
+    .find(s => [...s.options].some(o => o.value === 'light')); sel.value = '${theme}';
+    sel.dispatchEvent(new Event('change', {bubbles: true})); })()`);
+  await setTheme('light');
+  await settled(page);
+  const afterLight = await fillOf(page, 'Action');
+  await setTheme('dark');
+  await settled(page);
+  check('a chosen colour survives a theme toggle', afterLight === '#ffcccc' && await fillOf(page, 'Action') === '#ffcccc',
+    `${afterLight} ${await fillOf(page, 'Action')}`);
+  check('the chosen colour is in the graph', (await nodeNamed(page, 'Action')).fill === '#ffcccc');
+  await run(page, {kind: 'UNDO'});
+  await settled(page);
+  check('undo takes the colour off', !(await nodeNamed(page, 'Action')).fill && await fillOf(page, 'Action') !== '#ffcccc',
+    await fillOf(page, 'Action'));
+  await run(page, {kind: 'REDO'});
+  await settled(page);
+  await page.reload({waitUntil: 'networkidle'});
+  await page.waitForSelector('#mainDrawingArea canvas', {timeout: 15000});
+  await settled(page);
+  check('a chosen colour survives a reload', await fillOf(page, 'Action') === '#ffcccc', await fillOf(page, 'Action'));
+  await onNode(page, 'Action');
+  await run(page, {kind: 'SET_ITEM_COLOR', color: 'default'});
+  check('Default hands the node back to the theme', !(await nodeNamed(page, 'Action')).fill && await fillOf(page, 'Action') !== '#ffcccc');
+
   // ── Edges, under the crosshairs ──
   await aim(page, await edgeMiddle(page, 'Start', 'Process'));
   await run(page, {kind: 'SET_LINE_STYLE', lineStyle: 'dashed'});
@@ -90,6 +117,9 @@ const fillOf = (page, text) => page.evaluate(`${DA}.drawingLayer.getDANodes()
   check('Line Style restyles the edge under the crosshairs', restyled.lineStyle === 'dashed', JSON.stringify(restyled));
   const blue = await run(page, {kind: 'SET_ITEM_COLOR', color: 'blue'});
   check('Colour paints the edge under the crosshairs and says so', blue === 'Blue: 1 link', blue);
+  const edgeStroke = await page.evaluate(`${DA}.drawingLayer.getDAEdges().find(e =>
+    e.srcNode.label.text() === 'Start' && e.destNode.label.text() === 'Process').line.stroke()`);
+  check('the edge is drawn in the chosen colour', edgeStroke === '#0066cc', edgeStroke);
 
   // ── Nothing there: the defaults for what comes next ──
   await aim(page, {x: 1100, y: 700});

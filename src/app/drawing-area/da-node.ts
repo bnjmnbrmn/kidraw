@@ -48,6 +48,13 @@ const _nativeCaf: (id: number) => void =
   (typeof window !== 'undefined' && (window as any).__zone_symbol__cancelAnimationFrame) ??
   (typeof cancelAnimationFrame !== 'undefined' ? cancelAnimationFrame : () => {});
 
+/** The colors a node is painted with. */
+export interface NodeColors {
+  fill: string;
+  stroke: string;
+  text: string;
+}
+
 export class DANode {
   /** Semantic tags loaded from the graph document. */
   public tags: string[] = [];
@@ -84,6 +91,11 @@ export class DANode {
   /** Node kind (e.g. definition): its colour on the border, its name in a pill above the top-left corner. */
   private _kindColor: string | null = null;
   private _themeStroke: string | undefined;
+  /** The theme's colors, kept so a custom color can be laid over them again. */
+  private _themeColors: NodeColors | undefined;
+  /** Colors chosen for this node (the Color command, a style file); each one
+   *  set outranks the theme's and the kind's. Null: the theme decides. */
+  private _customColors: Partial<NodeColors> | null = null;
   private readonly _kindBadge: Konva.Group;
   private readonly _kindBadgeRect: Konva.Rect;
   private readonly _kindBadgeText: Konva.Text;
@@ -328,7 +340,20 @@ export class DANode {
     }
   }
 
-  applyColors(colors: { fill: string; stroke: string; text: string }): void {
+  get customColors(): Partial<NodeColors> | null {
+    return this._customColors;
+  }
+
+  /** Choose this node's own colors, or null to go back to the theme's. */
+  setCustomColors(colors: Partial<NodeColors> | null): void {
+    this._customColors = colors && Object.keys(colors).length > 0 ? {...colors} : null;
+    if (this._themeColors) this.applyColors(this._themeColors);
+  }
+
+  /** Paint with the theme's colors, under any custom ones. */
+  applyColors(themeColors: NodeColors): void {
+    this._themeColors = themeColors;
+    const colors = {...themeColors, ...this._customColors};
     this._themeStroke = colors.stroke;
     if (this.nodeShape === 'junction') {
       (this._shape as Konva.Circle).fill(colors.stroke);
@@ -337,7 +362,7 @@ export class DANode {
       this._shape.stroke(colors.stroke);
     } else {
       this._shape.fill(colors.fill);
-      this._shape.stroke(this._kindColor ?? colors.stroke);
+      this._shape.stroke(this.borderColor());
       this._label.fill(colors.text);
     }
     this.renderLabelView();
@@ -379,7 +404,8 @@ export class DANode {
     this._shape = this.createShape(this._nodeWidth, this._nodeHeight, newShape, colors);
     this.group.add(this._shape);
     this._shape.moveToBottom();
-    if (this._kindColor && !isFixed) this._shape.stroke(this._kindColor);
+    if (this._themeColors) this.applyColors(this._themeColors);
+    else if (this._kindColor && !isFixed) this._shape.stroke(this._kindColor);
 
     this._label.visible(!isFixed);
     if (!isFixed) {
@@ -604,12 +630,17 @@ export class DANode {
     this.updateStepBadgePosition();
   }
 
+  /** A stroke you chose, else the kind's, else the theme's. */
+  private borderColor(): string {
+    return this._customColors?.stroke ?? this._kindColor ?? this._themeStroke ?? 'black';
+  }
+
   /** Show the node's kind (e.g. a definition) as a border colour and a name
    *  badge; null for an ordinary node. */
   setNodeKind(kind: { label: string; color: string } | null): void {
     const eligible = this._nodeShape !== 'junction' && this._nodeShape !== 'invisible';
     this._kindColor = kind && eligible ? kind.color : null;
-    if (eligible) this._shape.stroke(this._kindColor ?? this._themeStroke ?? 'black');
+    if (eligible) this._shape.stroke(this.borderColor());
     const active = kind !== null && this._kindColor !== null;
     this._kindBadge.visible(active);
     if (active) {

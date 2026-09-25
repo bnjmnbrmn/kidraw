@@ -37,8 +37,7 @@ Follow the pattern in `tools/playwright-screenshot.js` and `tools/qa/<region>/*.
   first, or a stale finished tween will snap the position back on the next
   command that calls `finishTweens()`.
 - **Mode probe:** use the keymenu's `keyMenu.currentMode.name` (component
-  `app-keymenu`), NOT the header's `mode` chip — the chip goes stale after
-  label-edit exits (see `notes/bug-header-mode-chip-stale.md`).
+  `app-keymenu`). The header has no mode field any more.
 - **Exit label edit** with Escape, Escape (insert → vimNormal → normal).
 - **Root `c` is Clear Selection**, not select. Select = tap `v`
   (additive MULTI_ITEM_SELECT; tap again on a selected item toggles it off).

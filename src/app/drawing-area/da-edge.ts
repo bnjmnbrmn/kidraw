@@ -31,6 +31,12 @@ export interface EdgeControlPoint {
   pinned?: boolean;
 }
 
+/** The colors an edge is painted with. */
+export interface EdgeColors {
+  stroke: string;
+  fill: string;
+}
+
 export class DAEdge {
   /** Semantic tags loaded from the graph document. */
   public tags: string[] = [];
@@ -217,8 +223,9 @@ export class DAEdge {
       this._line.stroke(color);
       this._line.fill(color);
     };
-    if (this._kindColor) {
-      flat(this._kindColor);
+    const chosen = this._customColors?.stroke ?? this._kindColor;
+    if (chosen) {
+      flat(chosen);
       return;
     }
     if (this._directedness === 'undirected') {
@@ -348,7 +355,27 @@ export class DAEdge {
     this._line.dashEnabled(dash.length > 0);
   }
 
-  applyColors(colors: { stroke: string; fill: string }): void {
+  /** The theme's colors, kept so a custom color can be laid over them again. */
+  private _themeColors: EdgeColors | undefined;
+  /** Colors chosen for this edge (the Color command, a style file); a stroke
+   *  set here outranks the theme's, the kind's and the direction scheme's.
+   *  Null: those decide. */
+  private _customColors: Partial<EdgeColors> | null = null;
+
+  get customColors(): Partial<EdgeColors> | null {
+    return this._customColors;
+  }
+
+  /** Choose this edge's own colors, or null to go back to the theme's. */
+  setCustomColors(colors: Partial<EdgeColors> | null): void {
+    this._customColors = colors && Object.keys(colors).length > 0 ? {...colors} : null;
+    this.applyColors(this._themeColors ?? {stroke: this._strokeColor, fill: this._fillColor});
+  }
+
+  /** Paint with the theme's colors, under any custom ones. */
+  applyColors(themeColors: EdgeColors): void {
+    this._themeColors = themeColors;
+    const colors = {...themeColors, ...this._customColors};
     this._strokeColor = colors.stroke;
     this._fillColor = colors.fill;
     this._line.stroke(this._strokeColor);

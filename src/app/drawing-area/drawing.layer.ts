@@ -11,7 +11,7 @@ import {DAEdge} from './da-edge';
 import {DALabel} from './da-label';
 import {DAWaypoint} from './da-waypoint';
 import {lineIntersectsGroupBoundingRect, rectContainsPoint} from './utils';
-import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot} from './graph-snapshot';
+import {GraphSnapshot, DANodeSnapshot, DAEdgeSnapshot, edgeColorFields, edgeColorsOf, nodeColorFields, nodeColorsOf} from './graph-snapshot';
 import {nextId, resetIdCounter} from './id-generator';
 import {ThemePalette} from '../services/theme.service';
 import {NodeShape, TextOverflowMode} from './command.model';
@@ -433,6 +433,7 @@ export class DrawingLayer extends Konva.Layer {
       baseFontSize: node.BASE_FONT_SIZE,
       pinned: node.pinned,
       tags: node.tags.length > 0 ? [...node.tags] : undefined,
+      ...nodeColorFields(node.customColors),
     }));
 
     const edges: DAEdgeSnapshot[] = this.daEdges.map(edge => ({
@@ -461,6 +462,7 @@ export class DrawingLayer extends Konva.Layer {
       directedness: edge.directedness !== 'directed' ? edge.directedness : undefined,
       lineStyle: edge.lineStyle !== 'solid' ? edge.lineStyle : undefined,
       tags: edge.tags.length > 0 ? [...edge.tags] : undefined,
+      ...edgeColorFields(edge.customColors),
     }));
 
     return {
@@ -581,6 +583,7 @@ export class DrawingLayer extends Konva.Layer {
       node.isSelected = true;
       node.pinned = ns.pinned ?? false;
       node.tags = [...(ns.tags ?? [])];
+      node.setCustomColors(nodeColorsOf(ns));
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);
       nodeMap.set(ns.id, node);
@@ -606,6 +609,7 @@ export class DrawingLayer extends Konva.Layer {
       if (es.directedness) edge.directedness = es.directedness;
       if (es.lineStyle) edge.lineStyle = es.lineStyle;
       edge.tags = [...(es.tags ?? [])];
+      edge.setCustomColors(edgeColorsOf(es));
 
       for (const ls of es.labels) {
         const lbl = new DALabel(ls.x + dx, ls.y + dy, ls.text);
@@ -671,6 +675,7 @@ export class DrawingLayer extends Konva.Layer {
       node.isSelected = ns.isSelected;
       node.pinned = ns.pinned ?? false;
       node.tags = [...(ns.tags ?? [])];
+      node.setCustomColors(nodeColorsOf(ns));
       this.daNodeGroup.add(node.konvaGroup);
       this.daNodes.push(node);
       nodeMap.set(ns.id, node);
@@ -691,6 +696,7 @@ export class DrawingLayer extends Konva.Layer {
       if (es.directedness) edge.directedness = es.directedness;
       if (es.lineStyle) edge.lineStyle = es.lineStyle;
       edge.tags = [...(es.tags ?? [])];
+      edge.setCustomColors(edgeColorsOf(es));
       this.daEdgeGroup.add(edge.konvaGroup);
       this.daEdges.push(edge);
 
