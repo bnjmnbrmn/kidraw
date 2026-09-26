@@ -19,8 +19,10 @@ const sorted = (values: Iterable<string>) => [...new Set(values)].sort();
 
 test('the tab implements exactly the tools the server offers', () => {
   const tabSource = read(join(APP_AGENT_DIR, 'agent-tools.ts'));
-  const executor = tabSource.slice(tabSource.indexOf('export function executeAgentTool'));
-  const implemented = [...executor.matchAll(/case '([a-z_]+)':/g)].map(match => match[1]);
+  const start = tabSource.indexOf('const TOOLS: Record<string, Tool> = {');
+  assert.ok(start >= 0, 'agent-tools.ts no longer has its TOOLS table where this test looks');
+  const table = tabSource.slice(start, tabSource.indexOf('\n};', start));
+  const implemented = [...table.matchAll(/^  ([a-z_]+): /gm)].map(match => match[1]);
   assert.deepEqual(sorted(implemented), sorted(CANVAS_TOOLS.map(tool => tool.name)));
 });
 

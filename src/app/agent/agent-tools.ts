@@ -1,8 +1,19 @@
+/**
+ * The canvas tools, as the tab runs them. The server offers them to the agent
+ * over MCP (agent/src/tools.ts has their schemas and descriptions) and relays
+ * each call here; a test there checks that the two lists match.
+ *
+ * Most tools read the graph or guide the user's view. `apply_changes` and
+ * `define_plugin` change things, and are refused after the user presses Stop.
+ */
 import {resolveIdentity} from '../plugins/plugin-registry';
 import {fuzzyMatch} from '../lib/fuzzy-match';
 import type {CanvasPort, CanvasChange, CanvasChangeResult, CanvasNode} from '../drawing-area/canvas-port';
+import type {KidrawPlugin} from '../plugins/plugin.model';
+import {resolveChanges, resolveNodeRef} from './agent-changes';
 
-/** Hooks the tool executor needs from the agent session (view control, annotations). */
+/** What the tools may do beyond reading the canvas: the session's view
+ *  control, marks and edit turns (AgentService). */
 export interface AgentToolHost {
   canvas: CanvasPort;
   /** 'free' means the user has taken control of the view, or is busy editing. */
@@ -23,121 +34,103 @@ export interface AgentToolHost {
   definePlugin(source: string): {id: string; name: string};
 }
 
-/**
- * Check an apply_changes batch and resolve its node references: a handle
- * declared by an earlier add_node in the batch stays as it is; anything else
- * is resolved like any node reference (id, label, fuzzy) to an id. Edges are
- * referenced by id. Throws with the change number on the first bad entry.
- */
-export function resolveChanges(raw: unknown, nodes: CanvasNode[]): CanvasChange[] {
-  if (!Array.isArray(raw) || raw.length === 0) throw new Error('changes must be a non-empty array');
-  const handles = new Set<string>();
-  return raw.map((item, index): CanvasChange => {
-    const change = (item ?? {}) as Record<string, unknown>;
-    const where = `change ${index + 1}`;
-    const nodeRef = (key: string): string => {
-      const value = String(change[key] ?? '');
-      if (handles.has(value)) return value;
-      const resolution = resolveNodeRef(value, nodes);
-      if ('error' in resolution) throw new Error(`${where} ${key}: ${resolution.error}`);
-      return resolution.node.id;
-    };
-    const text = (key: string) => (change[key] !== undefined ? {[key]: String(change[key])} : {});
-    const tags = Array.isArray(change['tags']) ? {tags: change['tags'].map(String)} : {};
-    switch (change['kind']) {
-      case 'add_node': {
-        const handle = typeof change['handle'] === 'string' ? change['handle'] : undefined;
-        const resolved: CanvasChange = {
-          kind: 'add_node', text: String(change['text'] ?? ''),
-          ...(handle !== undefined ? {handle} : {}),
-          ...(change['near'] !== undefined ? {near: nodeRef('near')} : {}),
-          ...tags,
-          ...text('nodeKind'),
-        };
-        if (handle !== undefined) handles.add(handle);
-        return resolved;
-      }
-      case 'update_node':
-        return {
-          kind: 'update_node', node: nodeRef('node'), ...text('text'), ...tags,
-          ...(change['nodeKind'] === null ? {nodeKind: null} : text('nodeKind')),
-        };
-      case 'arrange':
-        return {kind: 'arrange'};
-      case 'delete_node':
-        return {kind: 'delete_node', node: nodeRef('node')};
-      case 'add_edge':
-        return {kind: 'add_edge', from: nodeRef('from'), to: nodeRef('to'), ...text('edgeKind'), ...text('label')};
-      case 'update_edge':
-        return {
-          kind: 'update_edge', edge: String(change['edge'] ?? ''), ...text('label'),
-          ...(change['edgeKind'] === null ? {edgeKind: null} : text('edgeKind')),
-          ...tags,
-        };
-      case 'delete_edge':
-        return {kind: 'delete_edge', edge: String(change['edge'] ?? '')};
-      case 'set_reading_order': {
-        const refs = change['nodes'];
-        if (!Array.isArray(refs) || refs.length === 0) throw new Error(`${where} nodes: list the statements in reading order`);
-        return {
-          kind: 'set_reading_order',
-          nodes: refs.map((ref, position) => {
-            const value = String(ref ?? '');
-            if (handles.has(value)) return value;
-            const resolution = resolveNodeRef(value, nodes);
-            if ('error' in resolution) throw new Error(`${where} nodes[${position}]: ${resolution.error}`);
-            return resolution.node.id;
-          }),
-        };
-      }
-      default:
-        throw new Error(`${where}: unknown kind "${String(change['kind'])}"`);
-    }
-  });
+type Args = Record<string, unknown>;
+type Tool = (args: Args, host: AgentToolHost) => unknown;
+
+/** Every tool, by the name the agent calls it. */
+const TOOLS: Record<string, Tool> = {
+  get_outline: (_, host) => outline(host.canvas),
+  find_nodes: (args, host) => findNodes(host.canvas, String(args['query'] ?? ''), Number(args['limit'] ?? 10)),
+  get_selection: (_, host) => selection(host.canvas),
+  get_view: (_, host) => view(host),
+  focus: (args, host) => focus(host, requireNode(host, args['node'])),
+  highlight: (args, host) => highlight(host, Array.isArray(args['nodes']) ? args['nodes'] : []),
+  caption: (args, host) => caption(host, requireNode(host, args['node']), String(args['text'] ?? '')),
+  clear_annotations: (_, host) => {
+    host.clearAnnotations();
+    return {cleared: true};
+  },
+  apply_changes: (args, host) => applyChanges(host, args['changes']),
+  define_plugin: (args, host) => definePlugin(host, String(args['source'] ?? '')),
+};
+
+/** Run one canvas tool call. Throws with a message the agent can act on. */
+export function executeAgentTool(name: string, args: Args, host: AgentToolHost): unknown {
+  const tool = TOOLS[name];
+  if (!tool) throw new Error(`Unknown KiDraw tool "${name}"`);
+  return tool(args, host);
 }
 
-export type NodeResolution = {node: CanvasNode} | {error: string};
-
-/**
- * Resolve an agent's node reference: an exact id, an exact label (ignoring
- * case), a unique substring, or a clearly best fuzzy match. Ambiguity is an
- * error that lists candidates, so the agent can retry with an id.
- */
-export function resolveNodeRef(query: string, nodes: CanvasNode[]): NodeResolution {
-  const q = query.trim();
-  if (!q) return {error: 'Empty node reference'};
-  const byId = nodes.find(n => n.id === q);
-  if (byId) return {node: byId};
-
-  const lower = q.toLowerCase();
-  const exact = nodes.filter(n => n.label.trim().toLowerCase() === lower);
-  if (exact.length === 1) return {node: exact[0]};
-  if (exact.length > 1) return {error: ambiguous(q, exact)};
-
-  const containing = nodes.filter(n => n.label.toLowerCase().includes(lower));
-  if (containing.length === 1) return {node: containing[0]};
-
-  const scored = nodes
-    .map(n => ({node: n, match: fuzzyMatch(q, n.label)}))
-    .filter((s): s is {node: CanvasNode; match: NonNullable<typeof s.match>} => s.match !== null)
-    .sort((a, b) => b.match.score - a.match.score);
-  if (scored.length === 1 || (scored.length > 1 && scored[0].match.score >= scored[1].match.score + 8)) {
-    return {node: scored[0].node};
-  }
-  const candidates = (containing.length > 1 ? containing : scored.map(s => s.node)).slice(0, 6);
-  return candidates.length > 0
-    ? {error: ambiguous(q, candidates)}
-    : {error: `No node matches "${q}". Call get_outline or find_nodes for ids.`};
-}
-
-function ambiguous(query: string, nodes: CanvasNode[]): string {
-  const list = nodes.map(n => `${n.id}: "${n.label}"`).join(', ');
-  return `"${query}" matches several nodes (${list}). Use an id.`;
-}
+// ─── Reading ──────────────────────────────────────────────────────────────
 
 const brief = (n: CanvasNode) => ({id: n.id, label: n.label});
 
 const isPresent = <T>(value: T | undefined): value is T => value !== undefined;
+
+/** The whole graph, and the diagram type's vocabulary for changing it. */
+function outline(canvas: CanvasPort) {
+  return {
+    diagramType: describeDiagramType(resolveIdentity(canvas.diagramTypeId())),
+    nodes: canvas.nodes().map(n => (n.tags.length ? {...brief(n), tags: n.tags} : brief(n))),
+    edges: canvas.edges().map(e => ({
+      id: e.id, from: e.from, to: e.to,
+      ...(e.labels.length ? {labels: e.labels} : {}),
+      ...(e.tags.length ? {tags: e.tags} : {}),
+    })),
+  };
+}
+
+/** The kinds of node and edge the type knows, its tag groups, and how it
+ *  records a reading order: what apply_changes can name. */
+function describeDiagramType(identity: KidrawPlugin) {
+  const kind = (k: {tag: string; name: string; description?: string}) =>
+    ({tag: k.tag, name: k.name, description: k.description});
+  return {
+    id: identity.id, name: identity.name,
+    edgeKinds: (identity.edgeKinds ?? []).map(k => ({edgeKind: k.tag.split('/').pop(), ...kind(k)})),
+    nodeKinds: (identity.nodeKinds ?? []).map(k => ({nodeKind: k.tag.split('/').pop(), ...kind(k)})),
+    tagGroups: (identity.tagGroups ?? []).map(group => ({
+      id: group.id, name: group.name, tags: group.choices.map(choice => ({tag: choice.tag, label: choice.label})),
+    })),
+    ...(identity.readingOrder ? {
+      readingOrder: `Nodes carry ${identity.readingOrder.tagPrefix}N tags; set them all with a set_reading_order change.`,
+    } : {}),
+  };
+}
+
+function findNodes(canvas: CanvasPort, query: string, limit: number) {
+  const matches = canvas.nodes()
+    .map(n => ({node: n, match: fuzzyMatch(query, n.label)}))
+    .filter(s => s.match !== null)
+    .sort((a, b) => b.match!.score - a.match!.score)
+    .slice(0, Math.min(Math.max(limit, 1), 50))
+    .map(s => brief(s.node));
+  return {matches};
+}
+
+function selection(canvas: CanvasPort) {
+  const nodes = new Map(canvas.nodes().map(n => [n.id, n]));
+  const edges = new Map(canvas.edges().map(e => [e.id, e]));
+  const current = canvas.selection();
+  const under = current.underCrosshairsId ? nodes.get(current.underCrosshairsId) : undefined;
+  return {
+    selectedNodes: current.nodeIds.map(id => nodes.get(id)).filter(isPresent).map(brief),
+    selectedEdges: current.edgeIds.map(id => edges.get(id)).filter(isPresent)
+      .map(e => ({id: e.id, from: e.from, to: e.to})),
+    underCrosshairs: under ? brief(under) : null,
+  };
+}
+
+function view(host: AgentToolHost) {
+  const nodes = new Map(host.canvas.nodes().map(n => [n.id, n]));
+  return {
+    zoomPercent: host.canvas.zoomPercent(),
+    userHasControl: host.followMode() === 'free',
+    visibleNodes: host.canvas.visibleNodeIds().map(id => nodes.get(id)).filter(isPresent).map(brief),
+  };
+}
+
+// ─── Pointing ─────────────────────────────────────────────────────────────
 
 function requireNode(host: AgentToolHost, ref: unknown): CanvasNode {
   const resolution = resolveNodeRef(String(ref ?? ''), host.canvas.nodes());
@@ -145,117 +138,56 @@ function requireNode(host: AgentToolHost, ref: unknown): CanvasNode {
   return resolution.node;
 }
 
-/** Run one canvas tool call. Throws with a message the agent can act on. */
-export function executeAgentTool(name: string, args: Record<string, unknown>, host: AgentToolHost): unknown {
-  const canvas = host.canvas;
-  switch (name) {
-    case 'get_outline': {
-      const nodes = canvas.nodes();
-      const edges = canvas.edges();
-      const identity = resolveIdentity(canvas.diagramTypeId());
-      return {
-        diagramType: {
-          id: identity.id, name: identity.name,
-          edgeKinds: (identity.edgeKinds ?? []).map(kind => ({
-            edgeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
-          })),
-          nodeKinds: (identity.nodeKinds ?? []).map(kind => ({
-            nodeKind: kind.tag.split('/').pop(), tag: kind.tag, name: kind.name, description: kind.description,
-          })),
-          tagGroups: (identity.tagGroups ?? []).map(group => ({
-            id: group.id, name: group.name, tags: group.choices.map(choice => ({tag: choice.tag, label: choice.label})),
-          })),
-          ...(identity.readingOrder ? {
-            readingOrder: `Nodes carry ${identity.readingOrder.tagPrefix}N tags; set them all with a set_reading_order change.`,
-          } : {}),
-        },
-        nodes: nodes.map(n => (n.tags.length ? {...brief(n), tags: n.tags} : brief(n))),
-        edges: edges.map(e => ({
-          id: e.id, from: e.from, to: e.to,
-          ...(e.labels.length ? {labels: e.labels} : {}),
-          ...(e.tags.length ? {tags: e.tags} : {}),
-        })),
-      };
-    }
-    case 'find_nodes': {
-      const query = String(args['query'] ?? '');
-      const limit = Math.min(Math.max(Number(args['limit'] ?? 10), 1), 50);
-      const matches = canvas.nodes()
-        .map(n => ({node: n, match: fuzzyMatch(query, n.label)}))
-        .filter(s => s.match !== null)
-        .sort((a, b) => b.match!.score - a.match!.score)
-        .slice(0, limit)
-        .map(s => brief(s.node));
-      return {matches};
-    }
-    case 'get_selection': {
-      const nodes = new Map(canvas.nodes().map(n => [n.id, n]));
-      const edges = new Map(canvas.edges().map(e => [e.id, e]));
-      const selection = canvas.selection();
-      const under = selection.underCrosshairsId ? nodes.get(selection.underCrosshairsId) : undefined;
-      return {
-        selectedNodes: selection.nodeIds.map(id => nodes.get(id)).filter(isPresent).map(brief),
-        selectedEdges: selection.edgeIds.map(id => edges.get(id)).filter(isPresent)
-          .map(e => ({id: e.id, from: e.from, to: e.to})),
-        underCrosshairs: under ? brief(under) : null,
-      };
-    }
-    case 'get_view': {
-      const nodes = new Map(canvas.nodes().map(n => [n.id, n]));
-      return {
-        zoomPercent: canvas.zoomPercent(),
-        userHasControl: host.followMode() === 'free',
-        visibleNodes: canvas.visibleNodeIds().map(id => nodes.get(id)).filter(isPresent).map(brief),
-      };
-    }
-    case 'focus': {
-      const node = requireNode(host, args['node']);
-      if (host.followMode() === 'free') {
-        host.showLookHere(node);
-        return {focused: brief(node), viewMoved: false,
-          note: 'The user is leading the view or busy editing; they were shown a "look here" hint instead.'};
-      }
-      host.focus(node);
-      return {focused: brief(node), viewMoved: true};
-    }
-    case 'highlight': {
-      const refs = Array.isArray(args['nodes']) ? args['nodes'] : [];
-      const found: CanvasNode[] = [];
-      const notFound: string[] = [];
-      for (const ref of refs) {
-        const resolution = resolveNodeRef(String(ref), canvas.nodes());
-        if ('node' in resolution) found.push(resolution.node);
-        else notFound.push(`${ref}: ${resolution.error}`);
-      }
-      host.setHighlights(found);
-      return {highlighted: found.map(brief), ...(notFound.length ? {notFound} : {})};
-    }
-    case 'caption': {
-      const node = requireNode(host, args['node']);
-      const text = String(args['text'] ?? '').trim();
-      if (!text) throw new Error('Caption text is empty');
-      host.addCaption(node, text.slice(0, 400));
-      return {captioned: brief(node)};
-    }
-    case 'clear_annotations':
-      host.clearAnnotations();
-      return {cleared: true};
-    case 'apply_changes': {
-      const refused = host.editsRefused();
-      if (refused) throw new Error(refused);
-      const changes = resolveChanges(args['changes'], canvas.nodes());
-      return host.applyChanges(changes).then(result => {
-        if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
-        return {applied: changes.length, created: result.created};
-      });
-    }
-    case 'define_plugin': {
-      const refused = host.editsRefused();
-      if (refused) throw new Error(refused);
-      const {id, name: added} = host.definePlugin(String(args['source'] ?? ''));
-      return {added: id, name: added, next: `Ask the user to run :type ${id} to use it on their graph.`};
-    }
-    default:
-      throw new Error(`Unknown KiDraw tool "${name}"`);
+/** Move the view onto a node, unless the user is leading it: then only hint. */
+function focus(host: AgentToolHost, node: CanvasNode) {
+  if (host.followMode() === 'free') {
+    host.showLookHere(node);
+    return {focused: brief(node), viewMoved: false,
+      note: 'The user is leading the view or busy editing; they were shown a "look here" hint instead.'};
   }
+  host.focus(node);
+  return {focused: brief(node), viewMoved: true};
+}
+
+/** Highlight what can be found, and say what couldn't. */
+function highlight(host: AgentToolHost, refs: unknown[]) {
+  const found: CanvasNode[] = [];
+  const notFound: string[] = [];
+  for (const ref of refs) {
+    const resolution = resolveNodeRef(String(ref), host.canvas.nodes());
+    if ('node' in resolution) found.push(resolution.node);
+    else notFound.push(`${ref}: ${resolution.error}`);
+  }
+  host.setHighlights(found);
+  return {highlighted: found.map(brief), ...(notFound.length ? {notFound} : {})};
+}
+
+function caption(host: AgentToolHost, node: CanvasNode, text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) throw new Error('Caption text is empty');
+  host.addCaption(node, trimmed.slice(0, 400));
+  return {captioned: brief(node)};
+}
+
+// ─── Changing ─────────────────────────────────────────────────────────────
+
+function refuseIfStopped(host: AgentToolHost): void {
+  const refused = host.editsRefused();
+  if (refused) throw new Error(refused);
+}
+
+/** A refused or malformed batch throws at once; the canvas's answer comes later. */
+function applyChanges(host: AgentToolHost, raw: unknown) {
+  refuseIfStopped(host);
+  const changes = resolveChanges(raw, host.canvas.nodes());
+  return host.applyChanges(changes).then(result => {
+    if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
+    return {applied: changes.length, created: result.created};
+  });
+}
+
+function definePlugin(host: AgentToolHost, source: string) {
+  refuseIfStopped(host);
+  const {id, name} = host.definePlugin(source);
+  return {added: id, name, next: `Ask the user to run :type ${id} to use it on their graph.`};
 }

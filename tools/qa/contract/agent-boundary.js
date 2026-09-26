@@ -43,6 +43,7 @@ const DEPENDENCIES = {
   'src/app/lib/fuzzy-match.ts': 'node references by label',
   'src/app/plugins/plugin-library.service.ts': 'the agent may add a diagram type',
   'src/app/plugins/plugin-registry.ts': 'the diagram type\'s vocabulary, for the tools',
+  'src/app/plugins/plugin.model.ts': 'what a diagram type is',
   'src/app/plugins/plugin-settings.service.ts': 'AI Chat can be turned off',
 };
 

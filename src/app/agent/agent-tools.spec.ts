@@ -1,6 +1,7 @@
 import {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
 import {CanvasChange, CanvasChangeResult} from '../drawing-area/canvas-port';
-import {AgentToolHost, executeAgentTool, resolveChanges, resolveNodeRef} from './agent-tools';
+import {resolveChanges, resolveNodeRef} from './agent-changes';
+import {AgentToolHost, executeAgentTool} from './agent-tools';
 
 const NODES: CanvasNode[] = [
   {id: 'n0', label: 'Next', tags: []},
