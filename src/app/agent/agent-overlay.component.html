@@ -5,12 +5,12 @@
   </div>
 }
 
-@if (docked.length || agent.lookHere()) {
+@if (docked.length || store.lookHere()) {
   <div class="dock" [class.dark]="dark"
        [style.bottom.px]="bottomInset + 12" [style.left.px]="leftInset + 12" [style.right.px]="rightInset + 12">
-    @if (agent.lookHere(); as target) {
+    @if (store.lookHere(); as target) {
       <div class="caption look-here">
-        Agent is pointing at <strong>{{ target.label || 'an unlabeled node' }}</strong> — press <kbd>{{ agent.keyLabels().follow }}</kbd> to follow
+        Agent is pointing at <strong>{{ target.label || 'an unlabeled node' }}</strong> — press <kbd>{{ store.keyLabels().follow }}</kbd> to follow
       </div>
     }
     @for (caption of docked; track caption.id) {

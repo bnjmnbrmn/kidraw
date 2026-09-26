@@ -1,6 +1,7 @@
 import {TestBed} from '@angular/core/testing';
 import {AgentCanvasTarget} from './agent-canvas';
-import {AgentService, GraphIdentity} from './agent.service';
+import {AgentService} from './agent.service';
+import {GraphIdentity} from './agent-store';
 
 /** Stands in for the browser WebSocket so tests can open, feed and drop connections. */
 class FakeSocket {
@@ -126,7 +127,7 @@ describe('AgentService', () => {
   it('asks before sharing a graph, and connects only after consent', () => {
     const service = createService();
     service.openPanel();
-    expect(service.state()).toBe('consent');
+    expect(service.store.state()).toBe('consent');
     expect(FakeSocket.instances.length).toBe(0);
 
     service.answerConsent('session');
@@ -135,7 +136,7 @@ describe('AgentService', () => {
     expect(socket.sent[0]).toEqual(jasmine.objectContaining({type: 'hello', token: 't0ken', agent: 'codex'}));
     expect(socket.sent[0]['resume']).toBeUndefined();
     socket.receive(READY);
-    expect(service.state()).toBe('ready');
+    expect(service.store.state()).toBe('ready');
   });
 
   it('does not remember "always" for a graph without a stable identity', () => {
@@ -148,7 +149,7 @@ describe('AgentService', () => {
     service.disconnect();
 
     service.openPanel();
-    expect(service.state()).toBe('consent');
+    expect(service.store.state()).toBe('consent');
   });
 
   it('reconnects after a dropped connection and resumes the same session', () => {
@@ -157,8 +158,8 @@ describe('AgentService', () => {
       const service = createService();
       const first = connect(service);
       first.drop(1006);
-      expect(service.state()).toBe('connecting');
-      expect(service.reconnecting()).toEqual({attempt: 1, of: jasmine.any(Number)});
+      expect(service.store.state()).toBe('connecting');
+      expect(service.store.reconnecting()).toEqual({attempt: 1, of: jasmine.any(Number)});
 
       jasmine.clock().tick(1_100);
       const second = FakeSocket.latest();
@@ -166,9 +167,9 @@ describe('AgentService', () => {
       second.open();
       expect(second.sent[0]['resume']).toEqual({sessionId: 'sess-1', secret: 'shh'});
       second.receive({...READY, resumed: true, history: [{role: 'user', text: 'hi'}, {role: 'agent', text: 'hello'}]});
-      expect(service.state()).toBe('ready');
-      expect(service.reconnecting()).toBeNull();
-      expect(service.messages().map(m => m.text)).toEqual(['hi', 'hello']);
+      expect(service.store.state()).toBe('ready');
+      expect(service.store.reconnecting()).toBeNull();
+      expect(service.store.messages().map(m => m.text)).toEqual(['hi', 'hello']);
     } finally {
       jasmine.clock().uninstall();
     }
@@ -180,11 +181,11 @@ describe('AgentService', () => {
       const service = createService();
       const socket = connect(service);
       socket.drop(4001, 'Session continued in another connection');
-      expect(service.state()).toBe('error');
+      expect(service.store.state()).toBe('error');
       expect(sessionStorage.getItem('kidraw_agent_session_v1')).toBeNull();
       jasmine.clock().tick(120_000);
       expect(FakeSocket.instances.length).toBe(1);
-      expect(service.messages().some(m => /another tab/i.test(m.text))).toBeTrue();
+      expect(service.store.messages().some(m => /another tab/i.test(m.text))).toBeTrue();
     } finally {
       jasmine.clock().uninstall();
     }
@@ -195,8 +196,8 @@ describe('AgentService', () => {
     service.openPanel();
     service.answerConsent('session');
     FakeSocket.latest().drop(1006);
-    expect(service.state()).toBe('error');
-    const errors = service.messages().filter(m => m.role === 'error');
+    expect(service.store.state()).toBe('error');
+    const errors = service.store.messages().filter(m => m.role === 'error');
     expect(errors.length).toBe(1);
     expect(errors[0].text).toContain("Couldn't reach");
     expect(errors[0].text).toContain(ENDPOINT.url);
@@ -212,8 +213,8 @@ describe('AgentService', () => {
     socket.open();
     expect(socket.sent[0]['resume']).toEqual({sessionId: 'old', secret: 'gone'});
     socket.receive(READY);
-    expect(service.panelOpen()).toBeTrue();
-    expect(service.messages().some(m => /earlier conversation/i.test(m.text))).toBeTrue();
+    expect(service.store.panelOpen()).toBeTrue();
+    expect(service.store.messages().some(m => /earlier conversation/i.test(m.text))).toBeTrue();
   });
 
   it('pauses tool calls after the user opens a graph they have not shared', async () => {
@@ -227,10 +228,10 @@ describe('AgentService', () => {
     expect(refused['ok']).toBeFalse();
     expect(refused['error']).toMatch(/not shared/i);
     expect(canvas.agentNodes).not.toHaveBeenCalled();
-    expect(service.graphChange()?.title).toBe('private.kidraw.yaml');
+    expect(service.store.graphChange()?.title).toBe('private.kidraw.yaml');
 
     service.answerGraphChange('session');
-    expect(service.graphChange()).toBeNull();
+    expect(service.store.graphChange()).toBeNull();
     socket.receive({type: 'tool_call', callId: 'c2', name: 'get_outline', args: {}});
     await settle();
     expect(socket.sent.find(m => m['callId'] === 'c2')!['ok']).toBeTrue();
@@ -243,12 +244,12 @@ describe('AgentService', () => {
     await settle();
     socket.receive({type: 'tool_call', callId: 'c1', name: 'caption', args: {node: 'Start', text: 'here'}});
     await settle();
-    expect(service.captions().length).toBe(1);
+    expect(service.store.captions().length).toBe(1);
 
     graph = {key: 'local:Untitled#2', title: 'Untitled', stable: false};
     service.graphMayHaveChanged();
-    expect(service.graphChange()?.key).toBe('local:Untitled#2');
-    expect(service.captions().length).toBe(0);
+    expect(service.store.graphChange()?.key).toBe('local:Untitled#2');
+    expect(service.store.captions().length).toBe(0);
     expect(canvas.agentSetHighlights).toHaveBeenCalledWith([]);
   });
 
@@ -272,8 +273,8 @@ describe('AgentService', () => {
       service.openPanel();
       service.answerConsent('session');
       jasmine.clock().tick(16_000);
-      expect(service.state()).toBe('error');
-      expect(service.messages().some(m => /Timed out/.test(m.text))).toBeTrue();
+      expect(service.store.state()).toBe('error');
+      expect(service.store.messages().some(m => /Timed out/.test(m.text))).toBeTrue();
     } finally {
       jasmine.clock().uninstall();
     }
@@ -287,14 +288,14 @@ describe('AgentService', () => {
     await settle();
     expect(canvas.agentFocusNode).toHaveBeenCalledWith('n1');
     expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['n1']);
-    expect(service.lookHere()).toBeNull();
+    expect(service.store.lookHere()).toBeNull();
 
     canvas.agentFocusNode.calls.reset();
     editing = true;
     socket.receive({type: 'tool_call', callId: 'f2', name: 'focus', args: {node: 'End'}});
     await settle();
     expect(canvas.agentFocusNode).not.toHaveBeenCalled();
-    expect(service.lookHere()?.id).toBe('n2');
+    expect(service.store.lookHere()?.id).toBe('n2');
     expect(socket.sent.find(m => m['callId'] === 'f2')!['result']['viewMoved']).toBeFalse();
   });
 
@@ -314,7 +315,7 @@ describe('AgentService', () => {
     expect(metas.length).toBe(2);
     expect(metas[0]).toEqual(jasmine.objectContaining({author: 'agent:codex', label: 'Agent: explain it'}));
     expect(metas[1].changeSetId).toBe(metas[0].changeSetId);
-    expect(service.agentEditTurn()).toBe(metas[0].changeSetId);
+    expect(service.store.agentEditTurn()).toBe(metas[0].changeSetId);
 
     service.cancel();
     edit('a3');
@@ -338,30 +339,30 @@ describe('AgentService', () => {
     service.sendPrompt('explain it');
     socket.receive({type: 'tool_call', callId: 'a1', name: 'apply_changes', args: {changes: [{kind: 'add_node', text: 'x'}]}});
     await settle();
-    const turn = service.agentEditTurn();
+    const turn = service.store.agentEditTurn();
     expect(turn).not.toBeNull();
 
     await service.revertLastTurn();
     expect(canvas.agentRevertChangeSet).toHaveBeenCalledWith(turn!);
-    expect(service.agentEditTurn()).toBeNull();
+    expect(service.store.agentEditTurn()).toBeNull();
   });
 
   it('asking with nothing selected or under the crosshairs does not open the chat', () => {
     canvas.agentSelection.and.returnValue({nodeIds: [], edgeIds: [], underCrosshairsId: null});
     const service = createService();
     expect(service.askAboutSelection()).toBeFalse();
-    expect(service.panelOpen()).toBeFalse();
+    expect(service.store.panelOpen()).toBeFalse();
   });
 
   it('switches model, shows it at once, and starts the next session on it', () => {
     const service = createService();
     const socket = connect(service);
-    expect(service.agentOptions()[0].current).toBe('fake-small');
+    expect(service.store.agentOptions()[0].current).toBe('fake-small');
 
     service.setOption('model', 'fake-large');
     expect(socket.sent.pop()).toEqual({type: 'set_option', id: 'model', value: 'fake-large'});
     // Shown before the server confirms, so the picker doesn't snap back.
-    expect(service.agentOptions()[0].current).toBe('fake-large');
+    expect(service.store.agentOptions()[0].current).toBe('fake-large');
 
     service.disconnect();
     service.openPanel();
@@ -377,22 +378,22 @@ describe('AgentService', () => {
     const before = socket.sent.length;
     service.setOption('model', 'not-a-model');
     expect(socket.sent.length).toBe(before);
-    expect(service.agentOptions()[0].current).toBe('fake-small');
+    expect(service.store.agentOptions()[0].current).toBe('fake-small');
   });
 
   it('shows the sign-in page and code, and can cancel it', () => {
     const service = createService();
     const socket = connect(service);
-    expect(service.canSignIn()).toBe(true);
+    expect(service.store.canSignIn()).toBe(true);
 
     service.signIn(true);
     expect(socket.sent.pop()).toEqual({type: 'sign_in', switchAccount: true});
     socket.receive({type: 'sign_in_prompt', url: 'https://example.invalid/d', code: 'AB-CD', message: 'Enter this code: AB-CD'});
-    expect(service.signInPrompt()).toEqual({url: 'https://example.invalid/d', code: 'AB-CD', message: 'Enter this code: AB-CD'});
+    expect(service.store.signInPrompt()).toEqual({url: 'https://example.invalid/d', code: 'AB-CD', message: 'Enter this code: AB-CD'});
 
     service.cancelSignIn();
     expect(socket.sent.pop()).toEqual({type: 'cancel_sign_in'});
-    expect(service.signInPrompt()).toBeNull();
+    expect(service.store.signInPrompt()).toBeNull();
   });
 
   it('reports a sign-in that failed in the transcript', () => {
@@ -400,8 +401,8 @@ describe('AgentService', () => {
     const socket = connect(service);
     service.signIn();
     socket.receive({type: 'sign_in_done', ok: false, message: 'Sign-in failed: no code entered'});
-    expect(service.signingIn()).toBe(false);
-    const last = service.messages()[service.messages().length - 1];
+    expect(service.store.signingIn()).toBe(false);
+    const last = service.store.messages()[service.store.messages().length - 1];
     expect(last.role).toBe('error');
     expect(last.text).toContain('Sign-in failed');
   });

@@ -1,5 +1,6 @@
 import {Component, effect, inject, Input, NgZone, OnDestroy} from '@angular/core';
-import {AgentCaption, AgentService} from './agent.service';
+import {AgentService} from './agent.service';
+import {AgentCaption, AgentStore} from './agent-store';
 import {ClientRect} from './agent-canvas';
 
 interface PlacedCaption {
@@ -70,6 +71,7 @@ function overlapArea(a: ClientRect, b: ClientRect): number {
 })
 export class AgentOverlayComponent implements OnDestroy {
   readonly agent = inject(AgentService);
+  readonly store = inject(AgentStore);
   private readonly zone = inject(NgZone);
   @Input() dark = false;
   /** Space the keymenu occupies at the bottom, so the dock sits above it. */
@@ -89,7 +91,7 @@ export class AgentOverlayComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
-      const active = this.agent.captions().length > 0;
+      const active = this.store.captions().length > 0;
       if (active) this.startLoop();
       else this.stopLoop();
     });
@@ -112,7 +114,7 @@ export class AgentOverlayComponent implements OnDestroy {
             this.moreDocked = Math.max(0, layout.docked.length - MAX_DOCKED);
           });
         }
-        this.frame = this.agent.captions().length > 0 ? requestAnimationFrame(tick) : null;
+        this.frame = this.store.captions().length > 0 ? requestAnimationFrame(tick) : null;
       };
       this.frame = requestAnimationFrame(tick);
     });
@@ -128,7 +130,7 @@ export class AgentOverlayComponent implements OnDestroy {
   }
 
   private computeLayout(): Layout {
-    const captions = this.agent.captions();
+    const captions = this.store.captions();
     const view = this.agent.viewClientRect();
     if (!view) {
       return {placed: [], docked: captions, signature: `docked:${captions.map(c => c.id).join(',')}`};
@@ -168,7 +170,7 @@ export class AgentOverlayComponent implements OnDestroy {
       return lines * LINE_HEIGHT + CAPTION_CHROME_HEIGHT;
     });
     if (docked.length > MAX_DOCKED) rows.push(LOOK_HERE_HEIGHT);
-    if (this.agent.lookHere()) rows.push(LOOK_HERE_HEIGHT);
+    if (this.store.lookHere()) rows.push(LOOK_HERE_HEIGHT);
     if (rows.length === 0) return 0;
     return rows.reduce((sum, h) => sum + h, 0) + DOCK_GAP * (rows.length - 1) + DOCK_MARGIN * 2;
   }

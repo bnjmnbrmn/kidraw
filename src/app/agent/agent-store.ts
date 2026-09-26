@@ -4,6 +4,7 @@ import type {AgentOption, CanvasRef, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
 import {ChatDraft} from './chat-draft';
+import {hasStoredSession} from './stored-session';
 
 export type AgentState = 'off' | 'setup' | 'consent' | 'connecting' | 'ready' | 'error';
 
@@ -43,9 +44,6 @@ export interface AgentKeyLabels {
   follow: string;
   close: string;
 }
-
-/** Where AgentService keeps this tab's live session, so a reload can resume it. */
-export const AGENT_SESSION_STORAGE_KEY = 'kidraw_agent_session_v1';
 
 /** Who ends up processing the graph, per agent, for the consent prompt. */
 const AGENT_PROVIDERS: Record<string, string> = {codex: 'Codex (OpenAI)'};
@@ -214,13 +212,5 @@ export class AgentStore {
       return service;
     });
     return this.loading;
-  }
-}
-
-function hasStoredSession(): boolean {
-  try {
-    return sessionStorage.getItem(AGENT_SESSION_STORAGE_KEY) !== null;
-  } catch {
-    return false;
   }
 }

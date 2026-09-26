@@ -1,18 +1,18 @@
-@if (agent.panelOpen()) {
+@if (store.panelOpen()) {
   <aside #panel class="agent-panel" [class.dark]="dark" role="dialog" aria-label="Agent chat" tabindex="-1"
          [style.bottom.px]="bottomInset + 10" [style.right.px]="rightOffset + 10"
          (keydown)="onPanelKeydown($event)" (focusin)="agent.panelFocused()" (focusout)="onFocusOut($event)">
     <header class="panel-header">
-      <span [class]="'state-dot ' + agent.state()"></span>
+      <span [class]="'state-dot ' + store.state()"></span>
       <strong>Agent</strong>
-      @if (agent.endpointName()) {
-        <span class="endpoint" [title]="agent.endpoint()?.url ?? ''">{{ agent.endpointName() }}</span>
+      @if (store.endpointName()) {
+        <span class="endpoint" [title]="store.endpoint()?.url ?? ''">{{ store.endpointName() }}</span>
       }
       <span class="spacer"></span>
-      @if (agent.connected()) {
-        <span class="follow" [class.free]="agent.followMode() === 'free'"
-              [title]="agent.followMode() === 'free' ? 'You lead the view. ' + keys.follow + ' follows the agent.' : 'The agent can move your view. Panning or zooming takes it back.'">
-          {{ agent.followMode() === 'free' ? 'You lead' : 'Following' }}
+      @if (store.connected()) {
+        <span class="follow" [class.free]="store.followMode() === 'free'"
+              [title]="store.followMode() === 'free' ? 'You lead the view. ' + keys.follow + ' follows the agent.' : 'The agent can move your view. Panning or zooming takes it back.'">
+          {{ store.followMode() === 'free' ? 'You lead' : 'Following' }}
         </span>
         <button type="button" class="link" (click)="agent.disconnect()">Disconnect</button>
       }
@@ -20,7 +20,7 @@
               [title]="'Close (' + keys.close + ')'" (click)="agent.closePanel()">×</button>
     </header>
 
-    @switch (agent.state()) {
+    @switch (store.state()) {
       @case ('setup') {
         <form class="setup" (submit)="$event.preventDefault(); saveSetup()">
           <p>Connect KiDraw to an agent server you run. Nothing is sent anywhere until you add one and agree to share a graph.</p>
@@ -42,7 +42,7 @@
           <div class="actions">
             <button type="submit" [disabled]="!setupUrl.trim() || !setupToken.trim()">Save and connect</button>
             <button type="button" class="link" (click)="agent.closePanel()">Cancel</button>
-            @if (agent.endpoint()) {
+            @if (store.endpoint()) {
               <button type="button" class="link" (click)="agent.forgetEndpoint()">Forget this endpoint</button>
             }
           </div>
@@ -50,8 +50,8 @@
       }
       @case ('consent') {
         <div class="consent">
-          <p>Share <strong>{{ agent.graphTitle() }}</strong> with <strong>{{ agent.endpointName() }}</strong>?</p>
-          <p class="muted">The server sends this graph to {{ agent.providerName() }} so the agent can read it and point at things in it. It can't change the graph.</p>
+          <p>Share <strong>{{ store.graphTitle() }}</strong> with <strong>{{ store.endpointName() }}</strong>?</p>
+          <p class="muted">The server sends this graph to {{ store.providerName() }} so the agent can read it and point at things in it. It can't change the graph.</p>
           <div class="actions">
             <button #consentFirst type="button" (click)="agent.answerConsent('session')"><kbd>1</kbd> This session</button>
             @if (agent.currentGraph().stable) {
@@ -66,9 +66,9 @@
         </div>
       }
       @default {
-        @if (agent.graphChange(); as graph) {
+        @if (store.graphChange(); as graph) {
           <div class="graph-change">
-            <p>You opened <strong>{{ graph.title }}</strong>. Share it with {{ agent.endpointName() }}? The agent is paused until you choose.</p>
+            <p>You opened <strong>{{ graph.title }}</strong>. Share it with {{ store.endpointName() }}? The agent is paused until you choose.</p>
             <div class="actions">
               <button #graphChangeFirst type="button" (click)="agent.answerGraphChange('session')"><kbd>1</kbd> This session</button>
               @if (graph.stable) {
@@ -80,17 +80,17 @@
         }
 
         <div class="transcript" #transcript>
-          @if (agent.messages().length === 0) {
+          @if (store.messages().length === 0) {
             <p class="hint">
-              @if (agent.state() === 'connecting') { Connecting… }
-              @else if (agent.state() === 'ready') {
+              @if (store.state() === 'connecting') { Connecting… }
+              @else if (store.state() === 'ready') {
                 The agent can read this graph, point at nodes and change it; you can undo its last turn.
                 Select something and press <kbd>{{ keys.ask }}</kbd> to ask about it.
                 When the agent points somewhere else, <kbd>{{ keys.follow }}</kbd> follows it.
               }
             </p>
           }
-          @for (message of agent.messages(); track message.id) {
+          @for (message of store.messages(); track message.id) {
             <div [class]="'message ' + message.role">
               @if (message.refs?.length) {
                 <div class="refs">
@@ -140,37 +140,37 @@
           }
         </div>
 
-        @if (agent.thinking()) {
+        @if (store.thinking()) {
           <div class="status">Thinking…</div>
-        } @else if (agent.statusText()) {
-          <div class="status">{{ agent.statusText() }}</div>
+        } @else if (store.statusText()) {
+          <div class="status">{{ store.statusText() }}</div>
         }
 
-        @if (agent.agentEditTurn() && agent.state() === 'ready' && !agent.busy()) {
+        @if (store.agentEditTurn() && store.state() === 'ready' && !store.busy()) {
           <div class="actions reconnect">
             <button type="button" class="link small" (click)="agent.revertLastTurn()">Undo the agent's last turn</button>
           </div>
         }
-        @if (agent.reconnecting()) {
+        @if (store.reconnecting()) {
           <div class="actions reconnect">
             <button #retryButton type="button" (click)="agent.retryNow()">Retry now</button>
             <button type="button" class="link" (click)="agent.disconnect()">Stop trying</button>
           </div>
         }
-        @if (agent.state() === 'error') {
+        @if (store.state() === 'error') {
           <div class="actions reconnect">
             <button #retryButton type="button" (click)="agent.retryNow()">Reconnect</button>
             <button type="button" class="link" (click)="agent.editEndpoint()">Edit endpoint…</button>
           </div>
         }
-        @if (agent.state() === 'off' && agent.messages().length > 0) {
+        @if (store.state() === 'off' && store.messages().length > 0) {
           <div class="disconnected">
-            <span>Disconnected from {{ agent.endpointName() }}.</span>
+            <span>Disconnected from {{ store.endpointName() }}.</span>
             <button #retryButton type="button" (click)="agent.retryNow()">Connect</button>
           </div>
         }
 
-        @if (agent.signInPrompt(); as signIn) {
+        @if (store.signInPrompt(); as signIn) {
           <div class="sign-in">
             <p>{{ signIn.message }}</p>
             @if (signIn.code) {
@@ -189,7 +189,7 @@
           </div>
         } @else if (signInChoices()) {
           <div class="sign-in">
-            <p>Sign <strong>{{ agent.endpointName() }}</strong>'s agent in to its model provider. It gives you a
+            <p>Sign <strong>{{ store.endpointName() }}</strong>'s agent in to its model provider. It gives you a
               page to open and a code to type; the account is the server's, not this browser's.</p>
             <div class="actions">
               <button #signInFirst type="button" (click)="startSignIn(false)">Sign in</button>
@@ -202,10 +202,10 @@
         }
 
         <div class="composer">
-          @if (agent.attachedRefs().length) {
+          @if (store.attachedRefs().length) {
             <div class="refs attached">
               <span class="muted">About</span>
-              @for (ref of agent.attachedRefs(); track ref.id) {
+              @for (ref of store.attachedRefs(); track ref.id) {
                 <span class="pill static" [class.edge]="ref.kind === 'edge'">
                   {{ plain(ref.label) }}
                   <button type="button" class="remove" aria-label="Remove reference"
@@ -215,18 +215,18 @@
             </div>
           }
           <div #promptInput class="composer-input" tabindex="0" data-keymenu-text-target role="textbox"
-               aria-multiline="true" [attr.aria-label]="placeholder" [class.readonly]="!agent.composable()"
-               (keydown)="onComposerKeydown($event)" (paste)="onComposerPaste($event)">@for (piece of draftPieces(); track $index) {<span [class.caret]="piece.caret" [class.block]="piece.block" [class.selected]="piece.selected">{{ piece.text }}</span>}@if (agent.draft.state().text.length === 0) {<span class="placeholder">{{ placeholder }}</span>}</div>
-          @if (agent.busy()) {
+               aria-multiline="true" [attr.aria-label]="placeholder" [class.readonly]="!store.composable()"
+               (keydown)="onComposerKeydown($event)" (paste)="onComposerPaste($event)">@for (piece of draftPieces(); track $index) {<span [class.caret]="piece.caret" [class.block]="piece.block" [class.selected]="piece.selected">{{ piece.text }}</span>}@if (store.draft.state().text.length === 0) {<span class="placeholder">{{ placeholder }}</span>}</div>
+          @if (store.busy()) {
             <button type="button" class="stop" (click)="agent.cancel()">Stop</button>
           }
         </div>
-        @if (agent.agentOptions().length && agent.state() === 'ready') {
+        @if (store.agentOptions().length && store.state() === 'ready') {
           <div class="agent-options">
-            @for (option of agent.agentOptions(); track option.id) {
+            @for (option of store.agentOptions(); track option.id) {
               <label class="option">
                 <span class="muted">{{ option.name }}</span>
-                <select [value]="option.current" [disabled]="agent.busy()"
+                <select [value]="option.current" [disabled]="store.busy()"
                         [title]="option.name + ' the agent uses for this chat'"
                         (change)="chooseOption(option.id, $event)">
                   @for (choice of option.choices; track choice.value) {
@@ -239,7 +239,7 @@
         }
 
         <div class="composer-meta">
-          @if (agent.canSignIn() && agent.state() === 'ready' && !agent.signingIn()) {
+          @if (store.canSignIn() && store.state() === 'ready' && !store.signingIn()) {
             <button type="button" class="link small" (click)="signInChoices.set(!signInChoices())"
                     title="Sign the agent server in to its model provider, or move it to another account">
               Account…
@@ -251,7 +251,7 @@
           </button>
           <button type="button" class="link small" (click)="cycleDetail()"
                   [title]="'How much detail the agent puts into explanations (also :detail). Click for ' + nextDetail + '.'">
-            Detail: {{ agent.detailLevel() }}
+            Detail: {{ store.detailLevel() }}
           </button>
         </div>
       }
