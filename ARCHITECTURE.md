@@ -17,7 +17,7 @@ reaching for it.
 | `drawing-area/` | ~23,000 | The canvas and everything on it: nodes, edges, labels, waypoints, crosshairs, layout, edge routing, navigation |
 | `lib/` | ~3,200 | Logic with no Angular in it: the keymenu state machine, the file format, fuzzy matching |
 | `keymenu/` | ~2,600 | The on-screen keyboard overlay (its own Konva canvas) |
-| `agent/` | ~2,400 | Agent mode's tab side — see [`agent/README.md`](agent/README.md) for the server |
+| `agent/` | ~3,600 | Agent mode's tab side — [its README](src/app/agent/README.md); the server's is [`agent/README.md`](agent/README.md) |
 | `services/` | ~1,900 | Storage, theming, vault, config, logging |
 | `plugins/` | ~300 | Plugins: so far the diagram types (explanation, todo), which add node kinds and edge kinds |
 | `nav-popup/`, `reading/`, `header/`, `ex-line/` | ~1,000 | Go-to popup, reading mode, header chips, the vim `:` line |
@@ -128,10 +128,13 @@ decisions: [`notes/design-plugins.md`](notes/design-plugins.md).
 
 ## Agent mode
 
-`src/app/agent/` is the tab side: `AgentService` holds the session, the panel
-and overlay render it, and canvas tools reach the canvas only through
-`CanvasPort` (implemented by `CanvasPortSurface`,
-`drawing-area/canvas-port-surface.ts`). It talks to
+`src/app/agent/` is the tab side ([reading guide](src/app/agent/README.md)):
+`AgentStore` is the small always-loaded part the shell and header use,
+`AgentService` holds the session and loads on first use, and the tools reach
+the canvas only through `CanvasPort` (implemented by `CanvasPortSurface`,
+`drawing-area/canvas-port-surface.ts`), the same interface reading mode uses.
+`tools/qa/contract/agent-boundary.js` checks that nothing else crosses the
+folder's edge. It talks to
 `kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that you
 run yourself. Nothing connects anywhere until you configure an endpoint.
 
@@ -172,7 +175,7 @@ If you want to understand the whole thing, roughly this order:
 7. One extracted subsystem end to end, `clipboard-controller.ts` for preference:
    it is small, self-contained and shows the host-interface pattern.
    (`gather-controller.ts` was the example until it was retired on 2026-09-24.)
-8. [`agent/README.md`](agent/README.md) — if agent mode interests you.
+8. [`src/app/agent/README.md`](src/app/agent/README.md), then [`agent/README.md`](agent/README.md) — if agent mode interests you.
 
 Then pick a behavior you know from using the app, find its `DACommand`, and
 follow it through. That is faster than reading `drawing-area.component.ts` top

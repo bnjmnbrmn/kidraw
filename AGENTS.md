@@ -51,7 +51,7 @@ AppComponent                 # shell: routes commands between keymenu and drawin
 └── AgentOverlayComponent    # agent captions and look-here hint (lazy)
 ```
 
-**Agent mode.** `src/app/agent/` is the tab side: `AgentService`, the panel and overlay, and the canvas tools, which reach the canvas only through `CanvasPort` (implemented by `CanvasPortSurface` in `drawing-area/canvas-port-surface.ts`). It talks to `kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that the user runs and configures; nothing connects until they do. Design: [`notes/idea-mcp-server.md`](notes/idea-mcp-server.md).
+**Agent mode.** `src/app/agent/` is the tab side ([reading guide](src/app/agent/README.md)): `AgentStore`, `AgentService`, the panel and overlay, and the canvas tools, which reach the canvas only through `CanvasPort` (implemented by `CanvasPortSurface` in `drawing-area/canvas-port-surface.ts`). `tools/qa/contract/agent-boundary.js` enforces the folder's edge. It talks to `kidraw-agent`, a separate Node server in [`agent/`](agent/README.md) that the user runs and configures; nothing connects until they do. Design: [`notes/idea-mcp-server.md`](notes/idea-mcp-server.md).
 
 **Communication pattern.** `KeymenuComponent` emits `DACommand` → `AppComponent` → `DrawingAreaComponent` via an RxJS `Subject<DACommand>`. `DrawingAreaComponent` emits `DANotification` back; `AppComponent` calls keymenu methods directly for mode switches.
 

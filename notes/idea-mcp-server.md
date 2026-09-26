@@ -308,3 +308,26 @@ The sketch below is one option — **apply directly and track**:
 - Whether a tour restores the starting view on exit.
 
 Related: [decision-vault-model](decision-vault-model.md), [idea-nav-popup](idea-nav-popup.md), [idea-diagram-types](idea-diagram-types.md), [idea-todo-graph-modeling](idea-todo-graph-modeling.md); file format in [`../docs/file-format.md`](../docs/file-format.md).
+
+## Keeping agent mode apart (2026-09-26)
+
+Ben asked for the agent code to be made readable ahead of reading it, and
+whether it needed better separating from the rest (Ben, 2026-09-26). What was
+done, each call inferred on 2026-09-26 and his to overturn:
+
+- **The canvas interface moved out of `agent/`**, as `CanvasPort` in
+  `drawing-area/canvas-port.ts` (it was `AgentCanvasTarget` in
+  `agent/agent-canvas.ts`). It already had two clients, agent mode and reading
+  mode, so it is the drawing area's interface for non-keyboard clients, not
+  agent mode's. The drawing area no longer imports from `agent/`.
+- **The service was split by job**: socket, transcript, marks, turns, stored
+  session (`src/app/agent/README.md` has the map). Behavior unchanged.
+- **Agent decisions left the shell** (the chat's commands, `:detail`, key
+  hints, graph identity for consent). What stays in `AppComponent` is
+  deciding which of the chat, reading mode and a center menu has the keyboard,
+  because that is between features, not inside one.
+- **The edge is checked** by `tools/qa/contract/agent-boundary.js`.
+- **Not done:** the agent server (`agent/`) was already its own package with
+  its own README, and was only tidied. Reading mode still depends on one agent
+  type (`CanvasRef`, for sending its marks to the agent), which is allowed
+  explicitly rather than hidden.
