@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { after, before, test } from 'node:test';
 import WebSocket from 'ws';
 import { loadConfig, type AgentServerConfig } from '../config.js';
-import type { ServerToTab } from '../protocol.js';
+import type { ServerToTab } from '../shared/messages.js';
 import { startServer, type RunningServer } from '../server.js';
 
 const ORIGIN = 'http://localhost:4200';

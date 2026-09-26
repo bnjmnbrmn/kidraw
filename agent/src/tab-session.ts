@@ -9,7 +9,7 @@ import { tokensMatch, type AgentServerConfig } from './config.js';
 import type { McpBridge, McpEndpoint } from './mcp-bridge.js';
 import { decidePermission } from './permissions.js';
 import { AgentControls } from './agent-controls.js';
-import { type OptionChoice, type PromptMessage, type ServerToTab, type TabToServer } from './protocol.js';
+import { type OptionChoice, type PromptMessage, type ServerToTab, type TabToServer } from './shared/messages.js';
 import { PromptText } from './prompt-text.js';
 import { PendingToolCalls } from './tool-calls.js';
 import { Transcript } from './transcript.js';

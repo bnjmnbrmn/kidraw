@@ -1,6 +1,7 @@
 /**
- * Messages between a KiDraw tab and kidraw-agent, over one WebSocket per tab.
- * Keep in sync with src/app/agent/agent-protocol.ts in the Angular app.
+ * The messages between a KiDraw tab and kidraw-agent, over one WebSocket per
+ * tab: every message the tab may send (`TabToServer`) and every one it may
+ * receive (`ServerToTab`). Both programs compile this same file.
  */
 
 export const PROTOCOL_VERSION = 1;

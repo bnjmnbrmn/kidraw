@@ -175,7 +175,15 @@ describe('executeAgentTool', () => {
   it('points at the bad entry in a change batch', () => {
     expect(() => resolveChanges([{kind: 'add_node', text: 'x'}, {kind: 'add_edge', from: 'zebra', to: 'Next'}], NODES))
       .toThrowError(/change 2 from: No node matches "zebra"/);
-    expect(() => resolveChanges([], NODES)).toThrowError(/non-empty/);
+  });
+
+  it('checks a batch against the schema the agent was given, before anything runs', () => {
+    expect(() => executeAgentTool('apply_changes', {changes: []}, host))
+      .toThrowError(/Invalid arguments for apply_changes: changes: /);
+    expect(() => executeAgentTool('apply_changes', {changes: [{kind: 'paint_it_red', node: 'Next'}]}, host))
+      .toThrowError(/Invalid arguments for apply_changes: changes\.0/);
+    expect(() => executeAgentTool('caption', {node: 'Next'}, host))
+      .toThrowError(/Invalid arguments for caption: text/);
   });
 
   it('rejects unknown tools', () => {

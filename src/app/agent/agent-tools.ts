@@ -1,7 +1,10 @@
 /**
- * The canvas tools, as the tab runs them. The server offers them to the agent
- * over MCP (agent/src/tools.ts has their schemas and descriptions) and relays
- * each call here; a test there checks that the two lists match.
+ * The canvas tools, as the tab runs them. Their names, descriptions and
+ * argument schemas are shared with the server
+ * (shared/agent-protocol/src/tools.ts): the server offers them to the agent
+ * over MCP and relays each call here. `TOOLS` must have exactly one entry per
+ * shared tool, which the compiler checks, and each call's arguments are
+ * checked against the schema the model was given before a tool runs.
  *
  * Most tools read the graph or guide the user's view. `apply_changes` and
  * `define_plugin` change things, and are refused after the user presses Stop.
@@ -10,6 +13,7 @@ import {resolveIdentity} from '../plugins/plugin-registry';
 import {fuzzyMatch} from '../lib/fuzzy-match';
 import type {CanvasPort, CanvasChange, CanvasChangeResult, CanvasNode} from '../drawing-area/canvas-port';
 import type {KidrawPlugin} from '../plugins/plugin.model';
+import {isToolName, parseToolArgs, ToolArgs, ToolName} from '@kidraw/agent-protocol/tools';
 import {resolveChanges, resolveNodeRef} from './agent-changes';
 
 /** What the tools may do beyond reading the canvas: the session's view
@@ -34,31 +38,31 @@ export interface AgentToolHost {
   definePlugin(source: string): {id: string; name: string};
 }
 
-type Args = Record<string, unknown>;
-type Tool = (args: Args, host: AgentToolHost) => unknown;
-
-/** Every tool, by the name the agent calls it. */
-const TOOLS: Record<string, Tool> = {
+/** Every tool, by the name the agent calls it, given its checked arguments. */
+const TOOLS: {[N in ToolName]: (args: ToolArgs<N>, host: AgentToolHost) => unknown} = {
   get_outline: (_, host) => outline(host.canvas),
-  find_nodes: (args, host) => findNodes(host.canvas, String(args['query'] ?? ''), Number(args['limit'] ?? 10)),
+  find_nodes: (args, host) => findNodes(host.canvas, args.query, args.limit ?? 10),
   get_selection: (_, host) => selection(host.canvas),
   get_view: (_, host) => view(host),
-  focus: (args, host) => focus(host, requireNode(host, args['node'])),
-  highlight: (args, host) => highlight(host, Array.isArray(args['nodes']) ? args['nodes'] : []),
-  caption: (args, host) => caption(host, requireNode(host, args['node']), String(args['text'] ?? '')),
+  focus: (args, host) => focus(host, requireNode(host, args.node)),
+  highlight: (args, host) => highlight(host, args.nodes),
+  caption: (args, host) => caption(host, requireNode(host, args.node), args.text),
   clear_annotations: (_, host) => {
     host.clearAnnotations();
     return {cleared: true};
   },
-  apply_changes: (args, host) => applyChanges(host, args['changes']),
-  define_plugin: (args, host) => definePlugin(host, String(args['source'] ?? '')),
+  apply_changes: (args, host) => applyChanges(host, args.changes),
+  define_plugin: (args, host) => definePlugin(host, args.source),
 };
 
 /** Run one canvas tool call. Throws with a message the agent can act on. */
-export function executeAgentTool(name: string, args: Args, host: AgentToolHost): unknown {
-  const tool = TOOLS[name];
-  if (!tool) throw new Error(`Unknown KiDraw tool "${name}"`);
-  return tool(args, host);
+export function executeAgentTool(name: string, args: unknown, host: AgentToolHost): unknown {
+  if (!isToolName(name)) throw new Error(`Unknown KiDraw tool "${name}"`);
+  return runTool(name, parseToolArgs(name, args), host);
+}
+
+function runTool<N extends ToolName>(name: N, args: ToolArgs<N>, host: AgentToolHost): unknown {
+  return TOOLS[name](args, host);
 }
 
 // ─── Reading ──────────────────────────────────────────────────────────────
@@ -132,8 +136,8 @@ function view(host: AgentToolHost) {
 
 // ─── Pointing ─────────────────────────────────────────────────────────────
 
-function requireNode(host: AgentToolHost, ref: unknown): CanvasNode {
-  const resolution = resolveNodeRef(String(ref ?? ''), host.canvas.nodes());
+function requireNode(host: AgentToolHost, ref: string): CanvasNode {
+  const resolution = resolveNodeRef(ref, host.canvas.nodes());
   if ('error' in resolution) throw new Error(resolution.error);
   return resolution.node;
 }
@@ -150,11 +154,11 @@ function focus(host: AgentToolHost, node: CanvasNode) {
 }
 
 /** Highlight what can be found, and say what couldn't. */
-function highlight(host: AgentToolHost, refs: unknown[]) {
+function highlight(host: AgentToolHost, refs: readonly string[]) {
   const found: CanvasNode[] = [];
   const notFound: string[] = [];
   for (const ref of refs) {
-    const resolution = resolveNodeRef(String(ref), host.canvas.nodes());
+    const resolution = resolveNodeRef(ref, host.canvas.nodes());
     if ('node' in resolution) found.push(resolution.node);
     else notFound.push(`${ref}: ${resolution.error}`);
   }
@@ -176,10 +180,11 @@ function refuseIfStopped(host: AgentToolHost): void {
   if (refused) throw new Error(refused);
 }
 
-/** A refused or malformed batch throws at once; the canvas's answer comes later. */
-function applyChanges(host: AgentToolHost, raw: unknown) {
+/** A refused batch, or one naming nodes that aren't there, throws at once;
+ *  the canvas's answer comes later. */
+function applyChanges(host: AgentToolHost, requested: readonly CanvasChange[]) {
   refuseIfStopped(host);
-  const changes = resolveChanges(raw, host.canvas.nodes());
+  const changes = resolveChanges(requested, host.canvas.nodes());
   return host.applyChanges(changes).then(result => {
     if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
     return {applied: changes.length, created: result.created};

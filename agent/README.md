@@ -64,10 +64,10 @@ own rejection — otherwise the turn would hang forever.
 | `tool-calls.ts` | Canvas tool calls waiting on the tab, with their timeouts |
 | `agent-controls.ts` | The model picker and the device-code sign-in, both over stock ACP |
 | `mcp-bridge.ts` | Per-session MCP endpoints; routes a tool call to exactly one tab |
-| `tools.ts` | The canvas tool schemas and the prompt preamble — the agent's whole view of KiDraw |
+| `guidance.ts` | What the agent is told about KiDraw: the session preamble, source-code guidance, detail levels |
 | `permissions.ts` | What the agent is allowed to do, decided server-side |
 | `runners.ts` | How an agent process is started: `docker` (sandboxed), `local`, `fake`; per-session Codex homes |
-| `protocol.ts` | The tab ⇄ server wire format. Mirrored in `src/app/agent/agent-protocol.ts`; a test fails if they drift |
+| `shared/` | A link to [`shared/agent-protocol/`](../shared/agent-protocol/README.md): the wire format and the canvas tool schemas, the one copy the tab compiles too |
 | `config.ts` | Environment configuration and the shared token |
 | `fake-agent.ts` | A scripted ACP agent, so the tests need no model and no credits |
 

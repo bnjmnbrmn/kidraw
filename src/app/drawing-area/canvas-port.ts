@@ -14,23 +14,12 @@
  * Renamed from AgentCanvasTarget on 2026-09-26, when it had two clients.
  */
 
-/** One change a client asks for. Node references are ids of existing nodes,
- *  or the handle of a node added earlier in the same batch. Edges are ids. */
-export type CanvasChange =
-  /** `nodeKind` names one of the diagram type's node kinds (e.g. "definition"); omit for a plain node. */
-  | {kind: 'add_node'; text: string; handle?: string; near?: string; tags?: string[]; nodeKind?: string}
-  /** `nodeKind: null` makes it a plain node. */
-  | {kind: 'update_node'; node: string; text?: string; tags?: string[]; nodeKind?: string | null}
-  | {kind: 'delete_node'; node: string}
-  /** `edgeKind` names one of the diagram type's edge kinds (e.g. "supports", "path"). */
-  | {kind: 'add_edge'; from: string; to: string; edgeKind?: string; label?: string}
-  /** `edgeKind: null` makes it a plain edge; `label: ''` removes its label; `tags` replaces its tags. */
-  | {kind: 'update_edge'; edge: string; label?: string; edgeKind?: string | null; tags?: string[]}
-  | {kind: 'delete_edge'; edge: string}
-  /** The whole reading order: every statement in order, listed again where it is read again. */
-  | {kind: 'set_reading_order'; nodes: string[]}
-  /** Lay the whole graph out top-down along its edges, after the rest of the batch. */
-  | {kind: 'arrange'};
+/** One change a client asks for, in the vocabulary the agent is given
+ *  (shared/agent-protocol/src/tools.ts). Node references are ids of
+ *  existing nodes, or the handle of a node added earlier in the same batch;
+ *  edges are ids. */
+export type {CanvasChange} from '@kidraw/agent-protocol/tools';
+import type {CanvasChange} from '@kidraw/agent-protocol/tools';
 
 export interface CanvasEditMeta {
   /** e.g. 'agent:codex' */

@@ -1,5 +1,5 @@
 import {Injectable} from '@angular/core';
-import {DETAIL_LEVELS, DetailLevel, OptionChoice} from './agent-protocol';
+import {DETAIL_LEVELS, DetailLevel, OptionChoice} from '@kidraw/agent-protocol/messages';
 
 /** A user-configured agent endpoint (notes/idea-mcp-server.md, "Opt-in and configuration"). */
 export interface AgentEndpointSettings {

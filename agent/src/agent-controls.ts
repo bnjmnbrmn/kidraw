@@ -1,5 +1,5 @@
 import * as acp from '@agentclientprotocol/sdk';
-import type { AgentOption, OptionChoice, ServerToTab, SignInPromptMessage } from './protocol.js';
+import type { AgentOption, OptionChoice, ServerToTab, SignInPromptMessage } from './shared/messages.js';
 
 /**
  * Agent settings a KiDraw tab may change.

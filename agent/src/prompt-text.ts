@@ -1,5 +1,5 @@
-import { DETAIL_LEVELS, type CanvasRef, type DetailLevel } from './protocol.js';
-import { DETAIL_GUIDANCE, SESSION_PREAMBLE, SOURCE_GUIDANCE } from './tools.js';
+import { DETAIL_LEVELS, type CanvasRef, type DetailLevel } from './shared/messages.js';
+import { DETAIL_GUIDANCE, SESSION_PREAMBLE, SOURCE_GUIDANCE } from './guidance.js';
 
 /**
  * What the agent is told with each of the user's messages, beyond the

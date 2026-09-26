@@ -1,4 +1,4 @@
-import type { HistoryEntry, ServerToTab } from './protocol.js';
+import type { HistoryEntry, ServerToTab } from './shared/messages.js';
 
 /** Entries kept for a tab that resumes. Older ones fall off the front. */
 const MAX_HISTORY = 300;

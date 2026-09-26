@@ -62,8 +62,10 @@ AppComponent / Header ──▶ AgentStore ──(first use)──▶ AgentServi
    function each. `agent-changes.ts` turns the agent's references ("the node
    called Parser") into ids and checks a batch of changes before anything is
    planned.
-4. **`agent-protocol.ts`**: the messages on the wire. The server keeps a copy
-   (`agent/src/protocol.ts`); a server test fails if they drift.
+4. **The contract with the server**, in
+   [`shared/agent-protocol/`](../../../shared/agent-protocol/README.md): the
+   messages on the wire, and the tools with their argument schemas. Both
+   programs compile that one copy.
 5. The UI: **`agent-panel.component.ts`** (setup, consent, the conversation,
    the message box) and **`agent-overlay.component.ts`** (captions beside
    nodes). Helpers: `chat-draft.ts` (the message box is edited with the same

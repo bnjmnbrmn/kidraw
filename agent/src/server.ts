@@ -18,7 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { loadConfig, loadOrCreateToken, tokensMatch, type AgentServerConfig } from './config.js';
 import { McpBridge } from './mcp-bridge.js';
-import { PROTOCOL_VERSION, type TabToServer } from './protocol.js';
+import { PROTOCOL_VERSION, type TabToServer } from './shared/messages.js';
 import { removeStaleSessionHomes, SUPPORTED_AGENTS } from './runners.js';
 import { TabSession } from './tab-session.js';
 

@@ -1,6 +1,6 @@
 import {Injectable, signal} from '@angular/core';
 import type {CanvasPort, CanvasChange, CanvasEdge} from '../drawing-area/canvas-port';
-import type {CanvasRef} from '../agent/agent-protocol';
+import type {CanvasRef} from '@kidraw/agent-protocol/messages';
 import {
   EXPLANATION_ASSUMPTION_KIND_TAG, EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_KIND_TAG,
   EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_KIND_TAG,

@@ -2,7 +2,7 @@ import {computed, inject, Injectable, Injector, signal} from '@angular/core';
 import type {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
 import {DACommandType} from '../drawing-area/command.model';
 import {PluginSettingsService} from '../plugins/plugin-settings.service';
-import {AgentOption, CanvasRef, DETAIL_LEVELS, DetailLevel} from './agent-protocol';
+import {AgentOption, CanvasRef, DETAIL_LEVELS, DetailLevel} from '@kidraw/agent-protocol/messages';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
 import {ChatDraft} from './chat-draft';

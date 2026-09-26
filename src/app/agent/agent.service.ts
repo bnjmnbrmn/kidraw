@@ -1,7 +1,7 @@
 import {inject, Injectable} from '@angular/core';
 import {CanvasPort, ClientRect} from '../drawing-area/canvas-port';
 import {AgentMarks} from './agent-marks';
-import {AGENT_PROTOCOL_VERSION, CanvasRef, DetailLevel, ReadyMessage, ServerToTab} from './agent-protocol';
+import {PROTOCOL_VERSION, CanvasRef, DetailLevel, ReadyMessage, ServerToTab} from '@kidraw/agent-protocol/messages';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import {afterClose, AgentSocket, RECONNECT_DELAYS_MS, SocketClosed} from './agent-socket';
 import {AgentStore, GraphIdentity} from './agent-store';
@@ -330,7 +330,7 @@ export class AgentService {
   private sayHello(socket: AgentSocket, endpoint: AgentEndpointSettings, stored: StoredSession | null): void {
     const options = this.settings.agentOptions;
     socket.send({
-      type: 'hello', protocol: AGENT_PROTOCOL_VERSION, token: endpoint.token,
+      type: 'hello', protocol: PROTOCOL_VERSION, token: endpoint.token,
       agent: endpoint.agent, graphTitle: this.graphIdentity().title,
       ...(stored ? {resume: {sessionId: stored.sessionId, secret: stored.secret}} : {}),
       ...(options.length > 0 ? {options} : {}),

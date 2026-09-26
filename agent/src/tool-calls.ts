@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ServerToTab } from './protocol.js';
+import type { ServerToTab } from './shared/messages.js';
 
 interface PendingToolCall {
   resolve(result: unknown): void;

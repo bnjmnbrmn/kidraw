@@ -14,7 +14,10 @@
  *      classes, plus a short list of shared pieces.
  *   3. The first download: the store loads with the app, so it may not import
  *      the service, the tools or the panel except as types. They load the
- *      first time agent mode is used.
+ *      first time agent mode is used. Nor may anything but the lazy tools
+ *      import the shared tool schemas as values: they bring zod.
+ *   4. The shared library (shared/agent-protocol/) is the contract between
+ *      the app and kidraw-agent, so it imports neither: only zod.
  *
  * No browser needed: it reads the source. Specs are exempt; they may reach in.
  */
@@ -30,7 +33,6 @@ const ENTRY_POINTS = {
   'src/app/agent/agent-store.ts': 'the always-loaded state and entry points',
   'src/app/agent/agent-panel.component.ts': 'the chat, placed by the shell',
   'src/app/agent/agent-overlay.component.ts': 'captions, placed by the shell',
-  'src/app/agent/agent-protocol.ts': 'wire types (reading mode sends its marks as CanvasRefs)',
 };
 
 /** What agent/ may import from the rest of the app. */
@@ -60,15 +62,31 @@ function tsFiles(dir) {
   });
 }
 
-/** Every relative import in a file: where it points, and whether only types come across. */
+const SHARED = 'shared/agent-protocol/src/';
+/** The shared tool schemas, which bring zod. */
+const SHARED_SCHEMAS = SHARED + 'tools.ts';
+/** The only files that may import them as values. */
+const SCHEMA_USERS = [AGENT + 'agent-tools.ts'];
+
+/** Every import in a file that points into the repo: where it points (a
+ *  `@kidraw/agent-protocol/x` import points at the shared library), whether
+ *  only types come across, and any package it names instead. */
 function importsOf(file) {
   const source = readFileSync(file, 'utf8');
   const found = [];
-  const pattern = /^\s*(import|export)\s+(type\s+)?[^;]*?from\s+'(\.[^']+)'/gms;
+  const pattern = /^\s*(import|export)\s+(type\s+)?[^;]*?from\s+'([^']+)'/gms;
   for (const match of source.matchAll(pattern)) {
-    let target = resolve(dirname(file), match[3]);
-    if (!target.endsWith('.ts')) target += '.ts';
-    found.push({target: relative(REPO, target), typeOnly: Boolean(match[2])});
+    const spec = match[3];
+    const typeOnly = Boolean(match[2]);
+    if (spec.startsWith('@kidraw/agent-protocol/')) {
+      found.push({target: SHARED + spec.slice('@kidraw/agent-protocol/'.length) + '.ts', typeOnly});
+    } else if (spec.startsWith('.')) {
+      let target = resolve(dirname(file), spec).replace(/\.js$/, '');
+      if (!target.endsWith('.ts')) target += '.ts';
+      found.push({target: relative(REPO, target), typeOnly});
+    } else {
+      found.push({pkg: spec, typeOnly});
+    }
   }
   return found;
 }
@@ -80,6 +98,10 @@ for (const path of tsFiles(APP)) {
   const file = relative(REPO, path);
   const inside = file.startsWith(AGENT);
   for (const {target, typeOnly} of importsOf(path)) {
+    if (!target) continue;
+    if (target === SHARED_SCHEMAS && !typeOnly) {
+      check(SCHEMA_USERS.includes(file), `${file} imports the shared tool schemas as values: zod would come with them`);
+    }
     const targetInside = target.startsWith(AGENT);
     if (!inside && targetInside) {
       check(target in ENTRY_POINTS,
@@ -95,10 +117,20 @@ for (const path of tsFiles(APP)) {
   }
 }
 
+for (const path of readdirSync(join(REPO, SHARED)).map(entry => join(REPO, SHARED, entry))) {
+  const file = relative(REPO, path);
+  for (const {target, pkg} of importsOf(path)) {
+    check(pkg === 'zod' || (target && target.startsWith(SHARED)),
+      `${file} imports ${target ?? pkg}: the shared library may use only zod`);
+  }
+}
+
 if (failures.length === 0) {
   console.log('PASS: imports into agent/ use its entry points');
   console.log('PASS: agent/ reaches the app only through CanvasPort and the listed pieces');
   console.log('PASS: the always-loaded store names the lazy parts only as types');
+  console.log('PASS: only the lazy tools bring the shared schemas (and zod)');
+  console.log('PASS: the shared library imports only zod');
 } else {
   for (const failure of failures) console.log(`FAIL: ${failure}`);
 }

@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { tokensMatch, type AgentServerConfig } from './config.js';
-import { CANVAS_TOOLS } from './tools.js';
+import { CANVAS_TOOLS, type CanvasToolDefinition } from './shared/tools.js';
 
 /** Runs a canvas tool in the tab that owns the session and returns its result. */
 export type ToolInvoker = (name: string, args: Record<string, unknown>) => Promise<unknown>;
@@ -110,7 +110,7 @@ export class McpBridge {
 
 function buildMcpServer(invoke: ToolInvoker): McpServer {
   const server = new McpServer({ name: 'kidraw', version: '0.1.0' });
-  for (const tool of CANVAS_TOOLS) {
+  for (const tool of CANVAS_TOOLS as readonly CanvasToolDefinition[]) {
     server.registerTool(
       tool.name,
       {

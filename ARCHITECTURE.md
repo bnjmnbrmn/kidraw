@@ -22,6 +22,11 @@ reaching for it.
 | `plugins/` | ~300 | Plugins: so far the diagram types (explanation, todo), which add node kinds and edge kinds |
 | `nav-popup/`, `reading/`, `header/`, `ex-line/` | ~1,000 | Go-to popup, reading mode, header chips, the vim `:` line |
 
+Outside `src/app/`: [`agent/`](agent/README.md) is the agent server, a
+separate Node program, and [`shared/agent-protocol/`](shared/agent-protocol/README.md)
+is the contract between it and the app (the WebSocket messages and the canvas
+tools), which both compile.
+
 ## How a keystroke becomes a change
 
 This is the spine. Almost everything follows it.

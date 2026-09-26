@@ -4,7 +4,7 @@
  * graph, running a search), and errors.
  */
 import type {WritableSignal} from '@angular/core';
-import type {HistoryEntry} from './agent-protocol';
+import type {HistoryEntry} from '@kidraw/agent-protocol/messages';
 import type {ChatMessage} from './agent-store';
 
 export class ChatTranscript {

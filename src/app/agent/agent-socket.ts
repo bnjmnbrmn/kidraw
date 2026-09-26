@@ -6,7 +6,7 @@
  * try again is `afterClose`'s call, from how it closed and how the session
  * stood; AgentService acts on the answer.
  */
-import type {TabToServer} from './agent-protocol';
+import type {TabToServer} from '@kidraw/agent-protocol/messages';
 
 /** A socket can hang without opening or closing (e.g. an address the page's own server accepts). */
 const CONNECT_TIMEOUT_MS = 15_000;
