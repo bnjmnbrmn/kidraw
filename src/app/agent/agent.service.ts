@@ -1,5 +1,5 @@
 import {inject, Injectable} from '@angular/core';
-import {AgentCanvasTarget, ClientRect} from './agent-canvas';
+import {CanvasPort, ClientRect} from '../drawing-area/canvas-port';
 import {AgentMarks} from './agent-marks';
 import {AGENT_PROTOCOL_VERSION, CanvasRef, DetailLevel, ReadyMessage, ServerToTab} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
@@ -42,7 +42,7 @@ export class AgentService {
   private readonly turns = new AgentTurns(this.store.agentEditTurn);
 
   private socket: AgentSocket | null = null;
-  private canvas: AgentCanvasTarget | null = null;
+  private canvas: CanvasPort | null = null;
   private graphIdentity: () => GraphIdentity = () => ({key: 'untitled', title: 'this graph', stable: false});
   private userIsEditing: () => boolean = () => false;
   private reconnectAttempt = 0;
@@ -58,7 +58,7 @@ export class AgentService {
    * @param userIsEditing true while the user is typing or in a non-normal mode;
    *   the agent then points with a hint instead of moving the view.
    */
-  attachCanvas(canvas: AgentCanvasTarget, graphIdentity: () => GraphIdentity, userIsEditing: () => boolean = () => false): void {
+  attachCanvas(canvas: CanvasPort, graphIdentity: () => GraphIdentity, userIsEditing: () => boolean = () => false): void {
     this.canvas = canvas;
     this.graphIdentity = graphIdentity;
     this.userIsEditing = userIsEditing;
@@ -72,19 +72,19 @@ export class AgentService {
   // ─── Canvas geometry, for the caption overlay ───────────────────────────
 
   nodeClientRect(id: string): ClientRect | null {
-    return this.canvas?.agentNodeClientRect(id) ?? null;
+    return this.canvas?.nodeClientRect(id) ?? null;
   }
 
   viewClientRect(): ClientRect | null {
-    return this.canvas?.agentViewClientRect() ?? null;
+    return this.canvas?.viewClientRect() ?? null;
   }
 
   /** On-screen boxes of the nodes currently in view, so captions can avoid them. */
   visibleNodeRects(): {id: string; rect: ClientRect}[] {
     const canvas = this.canvas;
     if (!canvas) return [];
-    return canvas.agentVisibleNodeIds().flatMap(id => {
-      const rect = canvas.agentNodeClientRect(id);
+    return canvas.visibleNodeIds().flatMap(id => {
+      const rect = canvas.nodeClientRect(id);
       return rect ? [{id, rect}] : [];
     });
   }
@@ -154,7 +154,7 @@ export class AgentService {
   userTookViewControl(): void {
     if (this.store.state() === 'ready' && this.store.followMode() === 'following') this.store.followMode.set('free');
     const target = this.store.lookHere();
-    if (target && this.canvas?.agentVisibleNodeIds().includes(target.id)) this.store.lookHere.set(null);
+    if (target && this.canvas?.visibleNodeIds().includes(target.id)) this.store.lookHere.set(null);
   }
 
   // ─── Endpoint and consent ───────────────────────────────────────────────
@@ -552,7 +552,7 @@ export class AgentService {
   async revertLastTurn(): Promise<void> {
     const turn = this.store.agentEditTurn();
     if (!turn || !this.canvas) return;
-    const conflict = await this.canvas.agentRevertChangeSet(turn);
+    const conflict = await this.canvas.revertChangeSet(turn);
     if (conflict) {
       this.transcript.add({role: 'error', text: `Couldn't undo the agent's turn: ${conflict}`});
       return;
@@ -567,7 +567,7 @@ export class AgentService {
 
   /** The user opened a pill: show that node. This is the user steering the view. */
   focusRef(id: string): void {
-    if (!this.canvas?.agentFocusNode(id)) {
+    if (!this.canvas?.focusNode(id)) {
       this.say("That node isn't in this graph");
       return;
     }
@@ -579,7 +579,7 @@ export class AgentService {
   nodeLabel(id: string): string | null {
     const now = Date.now();
     if (!this.labelCache || now - this.labelCache.at > 1_000) {
-      this.labelCache = {at: now, labels: new Map((this.canvas?.agentNodes() ?? []).map(n => [n.id, n.label]))};
+      this.labelCache = {at: now, labels: new Map((this.canvas?.nodes() ?? []).map(n => [n.id, n.label]))};
     }
     return this.labelCache.labels.get(id) ?? null;
   }
@@ -591,9 +591,9 @@ export class AgentService {
   /** What is selected, else the node under the crosshairs, as chat pills. */
   private selectionRefs(): CanvasRef[] {
     if (!this.canvas) return [];
-    const nodes = new Map(this.canvas.agentNodes().map(n => [n.id, n]));
-    const edges = new Map(this.canvas.agentEdges().map(e => [e.id, e]));
-    const selection = this.canvas.agentSelection();
+    const nodes = new Map(this.canvas.nodes().map(n => [n.id, n]));
+    const edges = new Map(this.canvas.edges().map(e => [e.id, e]));
+    const selection = this.canvas.selection();
     const label = (id: string) => nodes.get(id)?.label || 'unlabeled node';
     const refs: CanvasRef[] = [
       ...selection.nodeIds.filter(id => nodes.has(id)).map(id => ({kind: 'node' as const, id, label: label(id)})),
@@ -671,7 +671,7 @@ export class AgentService {
   }
 
   /** What a tool call may do beyond reading the canvas. */
-  private toolHost(canvas: AgentCanvasTarget): AgentToolHost {
+  private toolHost(canvas: CanvasPort): AgentToolHost {
     return {
       canvas,
       followMode: () => (this.userIsEditing() ? 'free' : this.store.followMode()),
@@ -684,7 +684,7 @@ export class AgentService {
       definePlugin: source => this.definePlugin(source),
       applyChanges: async changes => {
         const meta = this.turns.editMeta(this.store.endpoint()?.agent ?? 'agent');
-        const result = await canvas.agentApplyChanges(changes, meta);
+        const result = await canvas.applyChanges(changes, meta);
         if (result.ok) {
           this.turns.recordEdit(meta.changeSetId);
           this.marks.flash(result.touchedNodeIds);

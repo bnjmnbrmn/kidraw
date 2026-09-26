@@ -1,13 +1,13 @@
-import type {AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
+import type {CanvasEdge, CanvasNode} from '../drawing-area/canvas-port';
 import {
   EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_SUPPORTS_TAG,
 } from '../plugins/explanation.plugin';
 import {numberedTags} from '../plugins/tag-groups';
 import {examplesOf, premiseLinks, premisesOf, readingPath} from './reading-path';
 
-const node = (id: string, ...steps: number[]): AgentNodeInfo =>
+const node = (id: string, ...steps: number[]): CanvasNode =>
   ({id, label: id.toUpperCase(), tags: ['other', ...steps.map(step => `step/${step}`)]});
-const edge = (id: string, from: string, to: string, tags: string[]): AgentEdgeInfo => ({id, from, to, labels: [], tags});
+const edge = (id: string, from: string, to: string, tags: string[]): CanvasEdge => ({id, from, to, labels: [], tags});
 
 describe('reading path', () => {
   it('reads step numbers from tags, ignoring anything else after the prefix', () => {

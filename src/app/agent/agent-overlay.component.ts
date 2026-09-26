@@ -1,7 +1,7 @@
 import {Component, effect, inject, Input, NgZone, OnDestroy} from '@angular/core';
 import {AgentService} from './agent.service';
 import {AgentCaption, AgentStore} from './agent-store';
-import {ClientRect} from './agent-canvas';
+import {ClientRect} from '../drawing-area/canvas-port';
 
 interface PlacedCaption {
   caption: AgentCaption;

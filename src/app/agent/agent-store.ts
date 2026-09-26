@@ -1,5 +1,5 @@
 import {computed, inject, Injectable, Injector, signal} from '@angular/core';
-import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
+import type {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
 import type {AgentOption, CanvasRef, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
@@ -66,7 +66,7 @@ export class AgentStore {
   /** 'free' once the user moves the view themselves. */
   readonly followMode = signal<'following' | 'free'>('following');
   readonly captions = signal<AgentCaption[]>([]);
-  readonly lookHere = signal<AgentNodeInfo | null>(null);
+  readonly lookHere = signal<CanvasNode | null>(null);
   readonly attachedRefs = signal<CanvasRef[]>([]);
   /** Progress under the transcript (connecting, reconnecting). Errors go in the transcript. */
   readonly statusText = signal('');
@@ -120,13 +120,13 @@ export class AgentStore {
   private loading: Promise<AgentService> | null = null;
   private keyboardListener: ((chatHasKeyboard: boolean) => void) | null = null;
   private attachment: {
-    canvas: AgentCanvasTarget;
+    canvas: CanvasPort;
     graph: () => GraphIdentity;
     userIsEditing: () => boolean;
   } | null = null;
 
   /** See AgentService.attachCanvas. Loads agent mode now only if this tab has a session to resume. */
-  attachCanvas(canvas: AgentCanvasTarget, graph: () => GraphIdentity, userIsEditing: () => boolean): void {
+  attachCanvas(canvas: CanvasPort, graph: () => GraphIdentity, userIsEditing: () => boolean): void {
     this.attachment = {canvas, graph, userIsEditing};
     if (this.service) this.service.attachCanvas(canvas, graph, userIsEditing);
     else if (hasStoredSession()) void this.load();

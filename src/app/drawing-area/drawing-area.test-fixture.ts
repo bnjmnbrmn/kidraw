@@ -26,7 +26,7 @@ import { GatherController } from './gather-controller';
 import { SelectDrag } from './select-drag';
 import { StyleController } from './style-controller';
 import { LayoutController } from './layout-controller';
-import { AgentCanvasSurface } from './agent-canvas-surface';
+import { CanvasPortSurface } from './canvas-port-surface';
 import { CrosshairsHover } from './crosshairs-hover';
 import { Camera } from './camera';
 import { CrosshairsProbe } from './crosshairs-probe';
@@ -69,7 +69,7 @@ export function wireDrawingAreaCollaborators(component: any): void {
   component.clipboard = new ClipboardController(component.clipboardHost());
   component.style = new StyleController(component.styleHost());
   component.layout = new LayoutController(component.layoutHost());
-  component.agentCanvas = new AgentCanvasSurface(component.agentCanvasHost());
+  component.canvasPort = new CanvasPortSurface(component.canvasPortHost());
   component.hover = new CrosshairsHover(component.crosshairsHoverHost());
   component.journey = new NavJourney();
   component.linkNav = new LinkNavController(component.linkNavHost());

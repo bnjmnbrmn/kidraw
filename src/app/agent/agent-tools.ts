@@ -1,21 +1,21 @@
 import {resolveIdentity} from '../plugins/plugin-registry';
 import {fuzzyMatch} from '../lib/fuzzy-match';
-import type {AgentCanvasTarget, AgentChange, AgentChangeResult, AgentNodeInfo} from './agent-canvas';
+import type {CanvasPort, CanvasChange, CanvasChangeResult, CanvasNode} from '../drawing-area/canvas-port';
 
 /** Hooks the tool executor needs from the agent session (view control, annotations). */
 export interface AgentToolHost {
-  canvas: AgentCanvasTarget;
+  canvas: CanvasPort;
   /** 'free' means the user has taken control of the view, or is busy editing. */
   followMode(): 'following' | 'free';
   /** Move the view onto the node and mark it; never touches the selection. */
-  focus(node: AgentNodeInfo): void;
+  focus(node: CanvasNode): void;
   /** Shown instead of moving the view while the user has control. */
-  showLookHere(node: AgentNodeInfo): void;
-  addCaption(node: AgentNodeInfo, text: string): void;
-  setHighlights(nodes: AgentNodeInfo[]): void;
+  showLookHere(node: CanvasNode): void;
+  addCaption(node: CanvasNode, text: string): void;
+  setHighlights(nodes: CanvasNode[]): void;
   clearAnnotations(): void;
   /** Apply changes as one undo step of the current agent turn. */
-  applyChanges(changes: AgentChange[]): Promise<AgentChangeResult>;
+  applyChanges(changes: CanvasChange[]): Promise<CanvasChangeResult>;
   /** Why the agent may not change the graph right now (e.g. the user pressed Stop), or null. */
   editsRefused(): string | null;
   /** Add a diagram type written as YAML (plugins/declarative-plugin.ts).
@@ -29,10 +29,10 @@ export interface AgentToolHost {
  * is resolved like any node reference (id, label, fuzzy) to an id. Edges are
  * referenced by id. Throws with the change number on the first bad entry.
  */
-export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChange[] {
+export function resolveChanges(raw: unknown, nodes: CanvasNode[]): CanvasChange[] {
   if (!Array.isArray(raw) || raw.length === 0) throw new Error('changes must be a non-empty array');
   const handles = new Set<string>();
-  return raw.map((item, index): AgentChange => {
+  return raw.map((item, index): CanvasChange => {
     const change = (item ?? {}) as Record<string, unknown>;
     const where = `change ${index + 1}`;
     const nodeRef = (key: string): string => {
@@ -47,7 +47,7 @@ export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChang
     switch (change['kind']) {
       case 'add_node': {
         const handle = typeof change['handle'] === 'string' ? change['handle'] : undefined;
-        const resolved: AgentChange = {
+        const resolved: CanvasChange = {
           kind: 'add_node', text: String(change['text'] ?? ''),
           ...(handle !== undefined ? {handle} : {}),
           ...(change['near'] !== undefined ? {near: nodeRef('near')} : {}),
@@ -96,14 +96,14 @@ export function resolveChanges(raw: unknown, nodes: AgentNodeInfo[]): AgentChang
   });
 }
 
-export type NodeResolution = {node: AgentNodeInfo} | {error: string};
+export type NodeResolution = {node: CanvasNode} | {error: string};
 
 /**
  * Resolve an agent's node reference: an exact id, an exact label (ignoring
  * case), a unique substring, or a clearly best fuzzy match. Ambiguity is an
  * error that lists candidates, so the agent can retry with an id.
  */
-export function resolveNodeRef(query: string, nodes: AgentNodeInfo[]): NodeResolution {
+export function resolveNodeRef(query: string, nodes: CanvasNode[]): NodeResolution {
   const q = query.trim();
   if (!q) return {error: 'Empty node reference'};
   const byId = nodes.find(n => n.id === q);
@@ -119,7 +119,7 @@ export function resolveNodeRef(query: string, nodes: AgentNodeInfo[]): NodeResol
 
   const scored = nodes
     .map(n => ({node: n, match: fuzzyMatch(q, n.label)}))
-    .filter((s): s is {node: AgentNodeInfo; match: NonNullable<typeof s.match>} => s.match !== null)
+    .filter((s): s is {node: CanvasNode; match: NonNullable<typeof s.match>} => s.match !== null)
     .sort((a, b) => b.match.score - a.match.score);
   if (scored.length === 1 || (scored.length > 1 && scored[0].match.score >= scored[1].match.score + 8)) {
     return {node: scored[0].node};
@@ -130,17 +130,17 @@ export function resolveNodeRef(query: string, nodes: AgentNodeInfo[]): NodeResol
     : {error: `No node matches "${q}". Call get_outline or find_nodes for ids.`};
 }
 
-function ambiguous(query: string, nodes: AgentNodeInfo[]): string {
+function ambiguous(query: string, nodes: CanvasNode[]): string {
   const list = nodes.map(n => `${n.id}: "${n.label}"`).join(', ');
   return `"${query}" matches several nodes (${list}). Use an id.`;
 }
 
-const brief = (n: AgentNodeInfo) => ({id: n.id, label: n.label});
+const brief = (n: CanvasNode) => ({id: n.id, label: n.label});
 
 const isPresent = <T>(value: T | undefined): value is T => value !== undefined;
 
-function requireNode(host: AgentToolHost, ref: unknown): AgentNodeInfo {
-  const resolution = resolveNodeRef(String(ref ?? ''), host.canvas.agentNodes());
+function requireNode(host: AgentToolHost, ref: unknown): CanvasNode {
+  const resolution = resolveNodeRef(String(ref ?? ''), host.canvas.nodes());
   if ('error' in resolution) throw new Error(resolution.error);
   return resolution.node;
 }
@@ -150,9 +150,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
   const canvas = host.canvas;
   switch (name) {
     case 'get_outline': {
-      const nodes = canvas.agentNodes();
-      const edges = canvas.agentEdges();
-      const identity = resolveIdentity(canvas.agentDiagramTypeId());
+      const nodes = canvas.nodes();
+      const edges = canvas.edges();
+      const identity = resolveIdentity(canvas.diagramTypeId());
       return {
         diagramType: {
           id: identity.id, name: identity.name,
@@ -180,7 +180,7 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
     case 'find_nodes': {
       const query = String(args['query'] ?? '');
       const limit = Math.min(Math.max(Number(args['limit'] ?? 10), 1), 50);
-      const matches = canvas.agentNodes()
+      const matches = canvas.nodes()
         .map(n => ({node: n, match: fuzzyMatch(query, n.label)}))
         .filter(s => s.match !== null)
         .sort((a, b) => b.match!.score - a.match!.score)
@@ -189,9 +189,9 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
       return {matches};
     }
     case 'get_selection': {
-      const nodes = new Map(canvas.agentNodes().map(n => [n.id, n]));
-      const edges = new Map(canvas.agentEdges().map(e => [e.id, e]));
-      const selection = canvas.agentSelection();
+      const nodes = new Map(canvas.nodes().map(n => [n.id, n]));
+      const edges = new Map(canvas.edges().map(e => [e.id, e]));
+      const selection = canvas.selection();
       const under = selection.underCrosshairsId ? nodes.get(selection.underCrosshairsId) : undefined;
       return {
         selectedNodes: selection.nodeIds.map(id => nodes.get(id)).filter(isPresent).map(brief),
@@ -201,11 +201,11 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
       };
     }
     case 'get_view': {
-      const nodes = new Map(canvas.agentNodes().map(n => [n.id, n]));
+      const nodes = new Map(canvas.nodes().map(n => [n.id, n]));
       return {
-        zoomPercent: canvas.agentZoomPercent(),
+        zoomPercent: canvas.zoomPercent(),
         userHasControl: host.followMode() === 'free',
-        visibleNodes: canvas.agentVisibleNodeIds().map(id => nodes.get(id)).filter(isPresent).map(brief),
+        visibleNodes: canvas.visibleNodeIds().map(id => nodes.get(id)).filter(isPresent).map(brief),
       };
     }
     case 'focus': {
@@ -220,10 +220,10 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
     }
     case 'highlight': {
       const refs = Array.isArray(args['nodes']) ? args['nodes'] : [];
-      const found: AgentNodeInfo[] = [];
+      const found: CanvasNode[] = [];
       const notFound: string[] = [];
       for (const ref of refs) {
-        const resolution = resolveNodeRef(String(ref), canvas.agentNodes());
+        const resolution = resolveNodeRef(String(ref), canvas.nodes());
         if ('node' in resolution) found.push(resolution.node);
         else notFound.push(`${ref}: ${resolution.error}`);
       }
@@ -243,7 +243,7 @@ export function executeAgentTool(name: string, args: Record<string, unknown>, ho
     case 'apply_changes': {
       const refused = host.editsRefused();
       if (refused) throw new Error(refused);
-      const changes = resolveChanges(args['changes'], canvas.agentNodes());
+      const changes = resolveChanges(args['changes'], canvas.nodes());
       return host.applyChanges(changes).then(result => {
         if (!result.ok) throw new Error(result.error ?? 'The changes were not applied');
         return {applied: changes.length, created: result.created};

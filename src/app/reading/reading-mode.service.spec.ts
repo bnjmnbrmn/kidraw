@@ -1,4 +1,4 @@
-import type {AgentCanvasTarget, AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
+import type {CanvasPort, CanvasEdge, CanvasNode} from '../drawing-area/canvas-port';
 import {
   EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_DOESNT_FOLLOW_TAG, EXPLANATION_EXAMPLE_TAG,
   EXPLANATION_SUPPORTS_TAG,
@@ -6,16 +6,16 @@ import {
 } from '../plugins/explanation.plugin';
 import {ReadingModeService} from './reading-mode.service';
 
-const node = (id: string, label: string, ...steps: number[]): AgentNodeInfo =>
+const node = (id: string, label: string, ...steps: number[]): CanvasNode =>
   ({id, label, tags: steps.map(step => `step/${step}`)});
-const supports = (id: string, from: string, to: string): AgentEdgeInfo =>
+const supports = (id: string, from: string, to: string): CanvasEdge =>
   ({id, from, to, labels: [], tags: [EXPLANATION_SUPPORTS_TAG]});
 
 describe('ReadingModeService', () => {
-  let nodes: AgentNodeInfo[];
-  let edges: AgentEdgeInfo[];
+  let nodes: CanvasNode[];
+  let edges: CanvasEdge[];
   let selection: {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null};
-  let canvas: jasmine.SpyObj<AgentCanvasTarget>;
+  let canvas: jasmine.SpyObj<CanvasPort>;
   let said: string[];
   let reading: ReadingModeService;
 
@@ -23,13 +23,13 @@ describe('ReadingModeService', () => {
     nodes = [node('a', 'All men are mortal', 1), node('b', 'Socrates is a man', 2), node('c', 'Socrates is mortal', 3)];
     edges = [supports('s1', 'a', 'c'), supports('s2', 'b', 'c')];
     selection = {nodeIds: [], edgeIds: [], underCrosshairsId: null};
-    canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas',
-      ['agentNodes', 'agentEdges', 'agentSelection', 'agentFocusNode', 'agentSetHighlights', 'agentApplyChanges']);
-    canvas.agentNodes.and.callFake(() => nodes);
-    canvas.agentEdges.and.callFake(() => edges);
-    canvas.agentSelection.and.callFake(() => selection);
-    canvas.agentFocusNode.and.returnValue(true);
-    canvas.agentApplyChanges.and.resolveTo({ok: true, created: [], touchedNodeIds: []});
+    canvas = jasmine.createSpyObj<CanvasPort>('canvas',
+      ['nodes', 'edges', 'selection', 'focusNode', 'setHighlights', 'applyChanges']);
+    canvas.nodes.and.callFake(() => nodes);
+    canvas.edges.and.callFake(() => edges);
+    canvas.selection.and.callFake(() => selection);
+    canvas.focusNode.and.returnValue(true);
+    canvas.applyChanges.and.resolveTo({ok: true, created: [], touchedNodeIds: []});
     said = [];
     reading = new ReadingModeService();
     reading.attach(canvas, text => said.push(text));
@@ -45,13 +45,13 @@ describe('ReadingModeService', () => {
   it('starts at the beginning, steps in order and stops at both ends', () => {
     expect(reading.enter()).toBeTrue();
     expect(said.pop()).toBe('Step 1 of 3: All men are mortal');
-    expect(canvas.agentFocusNode).toHaveBeenCalledWith('a');
+    expect(canvas.focusNode).toHaveBeenCalledWith('a');
     reading.previous();
     expect(said.pop()).toBe('This is the first step');
     reading.next();
     reading.next();
     expect(said.pop()).toBe('Step 3 of 3: Socrates is mortal');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c']);
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['c']);
     reading.next();
     expect(said.pop()).toBe('That was the last step');
     expect(reading.step()).toBe(2);
@@ -75,7 +75,7 @@ describe('ReadingModeService', () => {
     selection = {nodeIds: ['c'], edgeIds: [], underCrosshairsId: null};
     reading.enter();
     reading.why();
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b']);
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['c', 'a', 'b']);
     expect(said.pop()).toBe('Follows from: All men are mortal · Socrates is a man');
   });
 
@@ -89,7 +89,7 @@ describe('ReadingModeService', () => {
     reading.why();
     expect(said.pop()).toBe('Follows from: All men are mortal · Socrates is a man. Assumes: Everyone here is Greek. '
       + 'Example: Plato is mortal too');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 'b', 'as', 'ex', 'a1']);
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['c', 'a', 'b', 'as', 'ex', 'a1']);
     reading.next();
     expect(said.pop()).toBe('Step 4 of 4 (example): Plato is mortal too');
   });
@@ -101,11 +101,11 @@ describe('ReadingModeService', () => {
       {id: 'd1', from: 'def', to: 'b', labels: [], tags: [EXPLANATION_DEFINITION_TAG]},
       {id: 'd2', from: 'def', to: 'a', labels: [], tags: [EXPLANATION_DEFINITION_TAG]}];
     reading.enter();
-    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['def']);
+    expect(canvas.setHighlights.calls.mostRecent().args[0]).toEqual(['def']);
     reading.next();
-    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['a', 'd2']);
+    expect(canvas.setHighlights.calls.mostRecent().args[0]).toEqual(['a', 'd2']);
     reading.next();
-    expect(canvas.agentSetHighlights.calls.mostRecent().args[0]).toEqual(['b']);
+    expect(canvas.setHighlights.calls.mostRecent().args[0]).toEqual(['b']);
   });
 
   it('keeps the reader in place when the agent inserts a step behind them', () => {
@@ -123,17 +123,17 @@ describe('ReadingModeService', () => {
     nodes[1].tags = ['keep'];
 
     expect(await reading.toggleMark('doesnt-follow')).toEqual({marked: true, target: 'statement'});
-    let [changes, meta] = canvas.agentApplyChanges.calls.mostRecent().args;
+    let [changes, meta] = canvas.applyChanges.calls.mostRecent().args;
     expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep', EXPLANATION_DOESNT_FOLLOW_TAG]}]);
     expect(meta.author).toBe('user');
 
     nodes[1].tags = ['keep', EXPLANATION_DOESNT_FOLLOW_TAG];
     expect(await reading.toggleMark('too-detailed')).toEqual({marked: true, target: 'statement'});
-    [changes] = canvas.agentApplyChanges.calls.mostRecent().args;
+    [changes] = canvas.applyChanges.calls.mostRecent().args;
     expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep', EXPLANATION_TOO_DETAILED_TAG]}]);
 
     expect(await reading.toggleMark('doesnt-follow')).toEqual({marked: false, target: 'statement'});
-    [changes] = canvas.agentApplyChanges.calls.mostRecent().args;
+    [changes] = canvas.applyChanges.calls.mostRecent().args;
     expect(changes).toEqual([{kind: 'update_node', node: 'b', tags: ['keep']}]);
   });
 
@@ -143,12 +143,12 @@ describe('ReadingModeService', () => {
 
     reading.nextLink();
     expect(said.pop()).toBe('Link 1 of 2: from All men are mortal');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['c', 'a', 's1']);
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['c', 'a', 's1']);
     reading.nextLink();
     expect(said.pop()).toBe('Link 2 of 2: from Socrates is a man');
 
     expect(await reading.toggleMark('doesnt-follow')).toEqual({marked: true, target: 'link'});
-    expect(canvas.agentApplyChanges.calls.mostRecent().args[0])
+    expect(canvas.applyChanges.calls.mostRecent().args[0])
       .toEqual([{kind: 'update_edge', edge: 's2', tags: [EXPLANATION_SUPPORTS_TAG, EXPLANATION_DOESNT_FOLLOW_TAG]}]);
     expect(await reading.toggleMark('too-detailed')).toBeNull();
 
@@ -168,7 +168,7 @@ describe('ReadingModeService', () => {
   });
 
   it('does not mark anything when not reading, or when the edit is refused', async () => {
-    canvas.agentApplyChanges.and.resolveTo({ok: false, error: 'conflict', created: [], touchedNodeIds: []});
+    canvas.applyChanges.and.resolveTo({ok: false, error: 'conflict', created: [], touchedNodeIds: []});
     expect(await reading.toggleMark('doesnt-follow')).toBeNull();
     reading.enter();
     expect(await reading.toggleMark('doesnt-follow')).toBeNull();
@@ -191,6 +191,6 @@ describe('ReadingModeService', () => {
     reading.enter();
     reading.exit();
     expect(reading.active()).toBeFalse();
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith([]);
+    expect(canvas.setHighlights).toHaveBeenCalledWith([]);
   });
 });

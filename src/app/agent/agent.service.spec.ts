@@ -1,5 +1,5 @@
 import {TestBed} from '@angular/core/testing';
-import {AgentCanvasTarget} from './agent-canvas';
+import {CanvasPort} from '../drawing-area/canvas-port';
 import {AgentService} from './agent.service';
 import {GraphIdentity} from './agent-store';
 
@@ -54,23 +54,23 @@ const READY = {
   options: [MODEL_OPTION], canSignIn: true,
 };
 
-function fakeCanvas(): jasmine.SpyObj<AgentCanvasTarget> {
-  const canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas', [
-    'agentNodes', 'agentEdges', 'agentSelection', 'agentVisibleNodeIds', 'agentZoomPercent',
-    'agentFocusNode', 'agentSetHighlights', 'agentNodeClientRect', 'agentViewClientRect',
-    'agentDiagramTypeId', 'agentApplyChanges', 'agentRevertChangeSet',
+function fakeCanvas(): jasmine.SpyObj<CanvasPort> {
+  const canvas = jasmine.createSpyObj<CanvasPort>('canvas', [
+    'nodes', 'edges', 'selection', 'visibleNodeIds', 'zoomPercent',
+    'focusNode', 'setHighlights', 'nodeClientRect', 'viewClientRect',
+    'diagramTypeId', 'applyChanges', 'revertChangeSet',
   ]);
-  canvas.agentDiagramTypeId.and.returnValue('explanation');
-  canvas.agentApplyChanges.and.resolveTo({ok: true, created: [{kind: 'node', id: 'da-9'}], touchedNodeIds: ['da-9']});
-  canvas.agentRevertChangeSet.and.resolveTo(null);
-  canvas.agentNodes.and.returnValue([{id: 'n1', label: 'Start', tags: []}, {id: 'n2', label: 'End', tags: []}]);
-  canvas.agentEdges.and.returnValue([]);
-  canvas.agentSelection.and.returnValue({nodeIds: ['n2'], edgeIds: [], underCrosshairsId: null});
-  canvas.agentVisibleNodeIds.and.returnValue(['n1', 'n2']);
-  canvas.agentZoomPercent.and.returnValue(100);
-  canvas.agentFocusNode.and.returnValue(true);
-  canvas.agentNodeClientRect.and.returnValue(null);
-  canvas.agentViewClientRect.and.returnValue({left: 0, top: 0, width: 800, height: 600});
+  canvas.diagramTypeId.and.returnValue('explanation');
+  canvas.applyChanges.and.resolveTo({ok: true, created: [{kind: 'node', id: 'da-9'}], touchedNodeIds: ['da-9']});
+  canvas.revertChangeSet.and.resolveTo(null);
+  canvas.nodes.and.returnValue([{id: 'n1', label: 'Start', tags: []}, {id: 'n2', label: 'End', tags: []}]);
+  canvas.edges.and.returnValue([]);
+  canvas.selection.and.returnValue({nodeIds: ['n2'], edgeIds: [], underCrosshairsId: null});
+  canvas.visibleNodeIds.and.returnValue(['n1', 'n2']);
+  canvas.zoomPercent.and.returnValue(100);
+  canvas.focusNode.and.returnValue(true);
+  canvas.nodeClientRect.and.returnValue(null);
+  canvas.viewClientRect.and.returnValue({left: 0, top: 0, width: 800, height: 600});
   return canvas;
 }
 
@@ -85,7 +85,7 @@ describe('AgentService', () => {
   const realWebSocket = window.WebSocket;
   let graph: GraphIdentity;
   let editing: boolean;
-  let canvas: jasmine.SpyObj<AgentCanvasTarget>;
+  let canvas: jasmine.SpyObj<CanvasPort>;
 
   function createService(): AgentService {
     const service = TestBed.inject(AgentService);
@@ -227,7 +227,7 @@ describe('AgentService', () => {
     const refused = socket.sent.find(m => m['type'] === 'tool_result' && m['callId'] === 'c1')!;
     expect(refused['ok']).toBeFalse();
     expect(refused['error']).toMatch(/not shared/i);
-    expect(canvas.agentNodes).not.toHaveBeenCalled();
+    expect(canvas.nodes).not.toHaveBeenCalled();
     expect(service.store.graphChange()?.title).toBe('private.kidraw.yaml');
 
     service.answerGraphChange('session');
@@ -250,7 +250,7 @@ describe('AgentService', () => {
     service.graphMayHaveChanged();
     expect(service.store.graphChange()?.key).toBe('local:Untitled#2');
     expect(service.store.captions().length).toBe(0);
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith([]);
+    expect(canvas.setHighlights).toHaveBeenCalledWith([]);
   });
 
   it('sends the detail level with every prompt', () => {
@@ -286,15 +286,15 @@ describe('AgentService', () => {
 
     socket.receive({type: 'tool_call', callId: 'f1', name: 'focus', args: {node: 'Start'}});
     await settle();
-    expect(canvas.agentFocusNode).toHaveBeenCalledWith('n1');
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['n1']);
+    expect(canvas.focusNode).toHaveBeenCalledWith('n1');
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['n1']);
     expect(service.store.lookHere()).toBeNull();
 
-    canvas.agentFocusNode.calls.reset();
+    canvas.focusNode.calls.reset();
     editing = true;
     socket.receive({type: 'tool_call', callId: 'f2', name: 'focus', args: {node: 'End'}});
     await settle();
-    expect(canvas.agentFocusNode).not.toHaveBeenCalled();
+    expect(canvas.focusNode).not.toHaveBeenCalled();
     expect(service.store.lookHere()?.id).toBe('n2');
     expect(socket.sent.find(m => m['callId'] === 'f2')!['result']['viewMoved']).toBeFalse();
   });
@@ -311,7 +311,7 @@ describe('AgentService', () => {
     await settle();
     edit('a2');
     await settle();
-    const metas = canvas.agentApplyChanges.calls.allArgs().map(([, meta]) => meta);
+    const metas = canvas.applyChanges.calls.allArgs().map(([, meta]) => meta);
     expect(metas.length).toBe(2);
     expect(metas[0]).toEqual(jasmine.objectContaining({author: 'agent:codex', label: 'Agent: explain it'}));
     expect(metas[1].changeSetId).toBe(metas[0].changeSetId);
@@ -323,14 +323,14 @@ describe('AgentService', () => {
     const refused = socket.sent.find(m => m['callId'] === 'a3')!;
     expect(refused['ok']).toBeFalse();
     expect(refused['error']).toMatch(/stopped you/);
-    expect(canvas.agentApplyChanges).toHaveBeenCalledTimes(2);
+    expect(canvas.applyChanges).toHaveBeenCalledTimes(2);
 
     socket.receive({type: 'turn_end', stopReason: 'cancelled'});
     expect(service.sendPrompt('carry on')).toBeTrue();
     edit('a4');
     await settle();
-    expect(canvas.agentApplyChanges).toHaveBeenCalledTimes(3);
-    expect(canvas.agentApplyChanges.calls.mostRecent().args[1].changeSetId).not.toBe(metas[0].changeSetId);
+    expect(canvas.applyChanges).toHaveBeenCalledTimes(3);
+    expect(canvas.applyChanges.calls.mostRecent().args[1].changeSetId).not.toBe(metas[0].changeSetId);
   });
 
   it('undoes the agent\'s last editing turn as a change set', async () => {
@@ -343,12 +343,12 @@ describe('AgentService', () => {
     expect(turn).not.toBeNull();
 
     await service.revertLastTurn();
-    expect(canvas.agentRevertChangeSet).toHaveBeenCalledWith(turn!);
+    expect(canvas.revertChangeSet).toHaveBeenCalledWith(turn!);
     expect(service.store.agentEditTurn()).toBeNull();
   });
 
   it('asking with nothing selected or under the crosshairs does not open the chat', () => {
-    canvas.agentSelection.and.returnValue({nodeIds: [], edgeIds: [], underCrosshairsId: null});
+    canvas.selection.and.returnValue({nodeIds: [], edgeIds: [], underCrosshairsId: null});
     const service = createService();
     expect(service.askAboutSelection()).toBeFalse();
     expect(service.store.panelOpen()).toBeFalse();

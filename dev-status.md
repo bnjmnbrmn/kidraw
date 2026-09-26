@@ -78,7 +78,7 @@ explanation graphs on `explanation-graphs`._
 >   `clipboard-controller.ts`, `style-controller.ts` (the thirteen style
 >   commands and the defaults new nodes and edges take),
 >   `layout-controller.ts` (layouts, routing and its worker),
->   `agent-canvas-surface.ts` (the `AgentCanvasTarget` agent and reading mode
+>   `canvas-port-surface.ts` (the `CanvasPort` agent and reading mode
 >   hold) and `crosshairs-hover.ts` (the hover trace and landing ghost; all
 >   five 2026-09-24, each checked by a browser script run before and after
 >   the move). Plus the pure pieces:

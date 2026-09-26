@@ -16,7 +16,7 @@ export interface PluginNode {
  * Reads are plain data. The one write is `apply`, which runs graph operations
  * as a single undo group — so a plugin's change undoes, saves and (later)
  * syncs like any other, and no plugin touches Konva. The drawing area lends
- * this; `AgentCanvasTarget` is the same idea for agents.
+ * this; `CanvasPort` is the same idea for agents.
  */
 export interface PluginHost {
   /** The graph's diagram type: the id of the plugin bound as its identity. */

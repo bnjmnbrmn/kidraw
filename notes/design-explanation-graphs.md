@@ -76,7 +76,7 @@ Related: [idea-mcp-server.md](idea-mcp-server.md) (agent mode),
    edge kind's color wins over directedness and theme colors. The
    Explanation plugin declares the two kinds above and box nodes sized for a
    sentence.
-3. **Agent edits** (`agent-change-planner.ts`, the `apply_changes` tool).
+3. **Agent edits** (`canvas-change-planner.ts`, the `apply_changes` tool).
    - The agent sends changes by node label or id, with handles for nodes it
      adds in the same batch. The planner places new nodes below `near`, or
      below everything.

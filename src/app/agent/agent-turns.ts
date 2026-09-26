@@ -8,7 +8,7 @@
  * a tool call or two before it notices.
  */
 import type {WritableSignal} from '@angular/core';
-import type {AgentEditMeta} from './agent-canvas';
+import type {CanvasEditMeta} from '../drawing-area/canvas-port';
 
 export class AgentTurns {
   private count = 0;
@@ -39,7 +39,7 @@ export class AgentTurns {
   }
 
   /** Who and what an edit is filed under. */
-  editMeta(agentName: string): AgentEditMeta {
+  editMeta(agentName: string): CanvasEditMeta {
     this.changeSetId ??= this.newChangeSetId();
     return {author: `agent:${agentName}`, label: this.label, changeSetId: this.changeSetId};
   }

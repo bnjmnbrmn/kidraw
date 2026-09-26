@@ -1,4 +1,4 @@
-import { AgentCanvasHost, AgentCanvasSurface } from './agent-canvas-surface';
+import { CanvasPortHost, CanvasPortSurface } from './canvas-port-surface';
 
 function fakeNode(id: string, x: number, y: number, extra: object = {}) {
   return {
@@ -29,39 +29,39 @@ function setUp() {
     finishTweens: () => undefined,
     centerViewOnLayerPoint: (point: object) => centered.push(point),
     viewChangedByUser: jasmine.createSpy('viewChangedByUser'),
-  } as unknown as AgentCanvasHost;
-  return {surface: new AgentCanvasSurface(host), a, b, edge, batchDraw, centered};
+  } as unknown as CanvasPortHost;
+  return {surface: new CanvasPortSurface(host), a, b, edge, batchDraw, centered};
 }
 
-describe('AgentCanvasSurface', () => {
+describe('CanvasPortSurface', () => {
   it('reads the graph: nodes with labels and tags, edges with their ends and labels', () => {
     const {surface} = setUp();
-    expect(surface.agentNodes()).toEqual([
+    expect(surface.nodes()).toEqual([
       {id: 'a', label: 'A', tags: ['kind/a']}, {id: 'b', label: 'B', tags: ['kind/b']}]);
-    expect(surface.agentEdges()).toEqual([{id: 'e', from: 'a', to: 'b', labels: ['why'], tags: []}]);
-    expect(surface.agentDiagramTypeId()).toBe('explanation');
+    expect(surface.edges()).toEqual([{id: 'e', from: 'a', to: 'b', labels: ['why'], tags: []}]);
+    expect(surface.diagramTypeId()).toBe('explanation');
   });
 
   it('reads the selection, the node under the crosshairs, the zoom and what is in view', () => {
     const {surface, a} = setUp();
     a.isSelected = true;
-    expect(surface.agentSelection()).toEqual({nodeIds: ['a'], edgeIds: [], underCrosshairsId: 'b'});
-    expect(surface.agentZoomPercent()).toBe(100);
-    expect(surface.agentVisibleNodeIds()).toEqual(['a']);
+    expect(surface.selection()).toEqual({nodeIds: ['a'], edgeIds: [], underCrosshairsId: 'b'});
+    expect(surface.zoomPercent()).toBe(100);
+    expect(surface.visibleNodeIds()).toEqual(['a']);
   });
 
   it('points at a node by panning to it, and says when there is no such node', () => {
     const {surface, centered} = setUp();
-    expect(surface.agentFocusNode('b')).toBeTrue();
+    expect(surface.focusNode('b')).toBeTrue();
     expect(centered).toEqual([{x: 2050, y: 125}]);
-    expect(surface.agentFocusNode('nope')).toBeFalse();
+    expect(surface.focusNode('nope')).toBeFalse();
   });
 
   it('replaces the highlights: nodes get a halo, edges are emphasized', () => {
     const {surface, a, b, edge} = setUp();
-    surface.agentSetHighlights(['a', 'e']);
+    surface.setHighlights(['a', 'e']);
     expect([a.agentHighlighted, b.agentHighlighted, edge.emphasized]).toEqual([true, false, true]);
-    surface.agentSetHighlights(['b']);
+    surface.setHighlights(['b']);
     expect([a.agentHighlighted, b.agentHighlighted, edge.emphasized]).toEqual([false, true, false]);
   });
 });

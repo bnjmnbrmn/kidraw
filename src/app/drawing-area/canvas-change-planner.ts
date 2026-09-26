@@ -1,4 +1,4 @@
-import type {AgentChange, AgentChangeResult, AgentEditMeta} from '../agent/agent-canvas';
+import type {CanvasChange, CanvasChangeResult, CanvasEditMeta} from './canvas-port';
 import {resolveIdentity} from '../plugins/plugin-registry';
 import {APP_NODE_DEFAULTS} from '../lib/file-format/snapshot-mapping';
 import {EdgeDirectedness, NodeShape, TextOverflowMode} from './command.model';
@@ -18,7 +18,8 @@ const GAP_Y = 60;
 const GAP_X = 40;
 
 /**
- * Turn an agent's changes into graph operations against the current graph.
+ * Turn a port client's changes (an agent's edits, reading mode's marks) into
+ * graph operations against the current graph.
  * Nothing is applied here: the result is checked and applied as one undo group
  * (HistoryController.apply). Fails, with a message the agent can
  * act on, on the first change that refers to something that doesn't exist.
@@ -26,9 +27,9 @@ const GAP_X = 40;
  * New nodes get the bound diagram type's defaults and are placed below the
  * node they are `near` (or below everything), moved right past any overlap.
  */
-export function planAgentChanges(
+export function planCanvasChanges(
   graph: GraphSnapshot,
-  changes: readonly AgentChange[],
+  changes: readonly CanvasChange[],
   nextId: () => string,
 ): ChangePlan | {error: string} {
   const identity = resolveIdentity(graph.diagramType);
@@ -249,18 +250,18 @@ export function planAgentChanges(
   return {ops, created, touchedNodeIds: [...touched].filter(id => nodes.has(id)), arrange};
 }
 
-/** Plan an agent's changes and apply them as one undo group through `apply`
+/** Plan a client's changes and apply them as one undo group through `apply`
  *  (HistoryController.apply), reporting failures in terms the
  *  agent can act on. Lives here so the drawing area's own bundle stays small. */
-export async function applyAgentChanges(
+export async function applyCanvasChanges(
   graph: GraphSnapshot,
-  changes: readonly AgentChange[],
-  meta: AgentEditMeta,
+  changes: readonly CanvasChange[],
+  meta: CanvasEditMeta,
   nextId: () => string,
   apply: (group: UndoGroup) => Promise<string | null>,
   arrange: () => Promise<unknown> = async () => {},
-): Promise<AgentChangeResult> {
-  const plan = planAgentChanges(graph, changes, nextId);
+): Promise<CanvasChangeResult> {
+  const plan = planCanvasChanges(graph, changes, nextId);
   if ('error' in plan) return {ok: false, error: plan.error, created: [], touchedNodeIds: []};
   if (plan.ops.length > 0) {
     const conflict = await apply({author: meta.author, label: meta.label, ops: plan.ops, changeSetId: meta.changeSetId});

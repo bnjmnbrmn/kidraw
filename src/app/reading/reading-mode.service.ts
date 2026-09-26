@@ -1,5 +1,5 @@
 import {Injectable, signal} from '@angular/core';
-import type {AgentCanvasTarget, AgentChange, AgentEdgeInfo} from '../agent/agent-canvas';
+import type {CanvasPort, CanvasChange, CanvasEdge} from '../drawing-area/canvas-port';
 import type {CanvasRef} from '../agent/agent-protocol';
 import {
   EXPLANATION_ASSUMPTION_KIND_TAG, EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_KIND_TAG,
@@ -42,14 +42,14 @@ export class ReadingModeService {
   /** Index into the reading path. */
   readonly step = signal(0);
 
-  private canvas: AgentCanvasTarget | null = null;
+  private canvas: CanvasPort | null = null;
   private say: (text: string) => void = () => {};
   private path: string[] = [];
   /** The link being pointed at, as an index into the current statement's
    *  premise links; null when pointing at the statement itself. */
   private linkIndex: number | null = null;
 
-  attach(canvas: AgentCanvasTarget, say: (text: string) => void): void {
+  attach(canvas: CanvasPort, say: (text: string) => void): void {
     this.canvas = canvas;
     this.say = say;
   }
@@ -59,13 +59,13 @@ export class ReadingModeService {
   enter(): boolean {
     const canvas = this.canvas;
     if (!canvas) return false;
-    const {nodeIds, warnings} = readingPath(canvas.agentNodes(), canvas.agentEdges());
+    const {nodeIds, warnings} = readingPath(canvas.nodes(), canvas.edges());
     if (nodeIds.length === 0) {
       this.say('No reading order here: an explanation numbers its statements 1, 2, 3…');
       return false;
     }
     this.path = nodeIds;
-    const selection = canvas.agentSelection();
+    const selection = canvas.selection();
     const here = selection.nodeIds[0] ?? selection.underCrosshairsId;
     const start = here ? nodeIds.indexOf(here) : -1;
     this.active.set(true);
@@ -82,7 +82,7 @@ export class ReadingModeService {
     if (!this.active()) return;
     this.active.set(false);
     this.linkIndex = null;
-    this.canvas?.agentSetHighlights([]);
+    this.canvas?.setHighlights([]);
     this.say('Left reading mode');
   }
 
@@ -99,7 +99,7 @@ export class ReadingModeService {
   private refreshedStep(): number {
     const current = this.path[this.step()];
     const step = this.step();
-    this.path = readingPath(this.canvas?.agentNodes() ?? []).nodeIds;
+    this.path = readingPath(this.canvas?.nodes() ?? []).nodeIds;
     const occurrences = this.path.flatMap((id, i) => (id === current ? [i] : []));
     if (occurrences.length === 0) return Math.min(step, this.path.length - 1);
     return occurrences.reduce((best, i) => (Math.abs(i - step) < Math.abs(best - step) ? i : best));
@@ -112,7 +112,7 @@ export class ReadingModeService {
     const current = this.path[this.step()];
     if (!canvas || !current) return;
     this.linkIndex = null;
-    const edges = canvas.agentEdges();
+    const edges = canvas.edges();
     const groups: [string, string[]][] = [
       ['Follows from', premisesOf(current, edges)],
       ['Assumes', premisesOf(current, edges, EXPLANATION_ASSUMPTION_TAG)],
@@ -125,7 +125,7 @@ export class ReadingModeService {
       return;
     }
     const background = backgroundLinks(edges).filter(link => link.to === current).map(link => link.id);
-    canvas.agentSetHighlights([current, ...related, ...background]);
+    canvas.setHighlights([current, ...related, ...background]);
     const labels = this.labels();
     this.say(groups
       .filter(([, ids]) => ids.length > 0)
@@ -139,7 +139,7 @@ export class ReadingModeService {
     const canvas = this.canvas;
     const current = this.path[this.step()];
     if (!canvas || !current) return;
-    const links = premiseLinks(current, canvas.agentEdges());
+    const links = premiseLinks(current, canvas.edges());
     if (links.length === 0) {
       this.linkIndex = null;
       this.say('Nothing supports this statement: it has no links to point at');
@@ -148,13 +148,13 @@ export class ReadingModeService {
     const next = this.linkIndex === null ? 0 : this.linkIndex + 1;
     if (next >= links.length) {
       this.linkIndex = null;
-      canvas.agentSetHighlights([current]);
+      canvas.setHighlights([current]);
       this.say('Back to the statement');
       return;
     }
     this.linkIndex = next;
     const link = links[next];
-    canvas.agentSetHighlights([current, link.from, link.id]);
+    canvas.setHighlights([current, link.from, link.id]);
     this.say(`Link ${next + 1} of ${links.length}: from ${this.labels().get(link.from) || 'an unlabeled statement'}`);
   }
 
@@ -178,7 +178,7 @@ export class ReadingModeService {
       const marked = !link.tags.includes(tag);
       return this.applyMark({kind: 'update_edge', edge: link.id, tags: withMark(link.tags, marked)}, marked, 'link');
     }
-    const node = canvas.agentNodes().find(n => n.id === id);
+    const node = canvas.nodes().find(n => n.id === id);
     if (!node) return null;
     const marked = !node.tags.includes(tag);
     return this.applyMark({kind: 'update_node', node: node.id, tags: withMark(node.tags, marked)}, marked, 'statement');
@@ -195,25 +195,25 @@ export class ReadingModeService {
       return index < 0 ? Number.MAX_SAFE_INTEGER / 2 : index;
     };
     const isMarked = (tags: string[]) => tags.some(tag => EXPLANATION_FEEDBACK_TAGS.includes(tag));
-    const statements = canvas.agentNodes().filter(node => isMarked(node.tags)).map(node => ({
+    const statements = canvas.nodes().filter(node => isMarked(node.tags)).map(node => ({
       at: position(node.id),
       ref: {kind: 'node' as const, id: node.id, label: labels.get(node.id) || 'unlabeled statement'},
     }));
-    const links = canvas.agentEdges().filter(edge => isMarked(edge.tags)).map(edge => ({
+    const links = canvas.edges().filter(edge => isMarked(edge.tags)).map(edge => ({
       at: position(edge.to) - 0.5,
       ref: {kind: 'edge' as const, id: edge.id, label: `${short(labels.get(edge.from))} → ${short(labels.get(edge.to))}`},
     }));
     return [...statements, ...links].sort((a, b) => a.at - b.at).map(entry => entry.ref);
   }
 
-  private pointedLink(): AgentEdgeInfo | null {
+  private pointedLink(): CanvasEdge | null {
     const current = this.path[this.step()];
     if (this.linkIndex === null || !this.canvas || !current) return null;
-    return premiseLinks(current, this.canvas.agentEdges())[this.linkIndex] ?? null;
+    return premiseLinks(current, this.canvas.edges())[this.linkIndex] ?? null;
   }
 
-  private async applyMark(change: AgentChange, marked: boolean, target: MarkResult['target']): Promise<MarkResult | null> {
-    const result = await this.canvas!.agentApplyChanges([change], {
+  private async applyMark(change: CanvasChange, marked: boolean, target: MarkResult['target']): Promise<MarkResult | null> {
+    const result = await this.canvas!.applyChanges([change], {
       author: 'user',
       label: marked ? `Mark a ${target}` : 'Clear a mark',
       changeSetId: `reading-mark-${Date.now().toString(36)}`,
@@ -243,10 +243,10 @@ export class ReadingModeService {
     this.step.set(index);
     this.linkIndex = null;
     const id = this.path[index];
-    canvas.agentFocusNode(id);
-    canvas.agentSetHighlights([id, ...this.firstUseLinks(index)]);
+    canvas.focusNode(id);
+    canvas.setHighlights([id, ...this.firstUseLinks(index)]);
     const label = this.labels().get(id) || 'an unlabeled statement';
-    const kind = kindOf(canvas.agentNodes().find(node => node.id === id)?.tags ?? []);
+    const kind = kindOf(canvas.nodes().find(node => node.id === id)?.tags ?? []);
     this.say(`Step ${index + 1} of ${this.path.length}${kind ? ` (${kind})` : ''}: ${label}${note ? ` (${note})` : ''}`);
   }
 
@@ -263,7 +263,7 @@ export class ReadingModeService {
       if (!firstVisit.has(node)) firstVisit.set(node, i);
     });
     if (firstVisit.get(id) !== index) return [];
-    const background = backgroundLinks(canvas.agentEdges());
+    const background = backgroundLinks(canvas.edges());
     return background
       .filter(link => link.to === id)
       .filter(link => Math.min(...background
@@ -273,7 +273,7 @@ export class ReadingModeService {
   }
 
   private labels(): Map<string, string> {
-    return new Map((this.canvas?.agentNodes() ?? []).map(node => [node.id, plainText(node.label)]));
+    return new Map((this.canvas?.nodes() ?? []).map(node => [node.id, plainText(node.label)]));
   }
 }
 

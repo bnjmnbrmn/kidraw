@@ -5,7 +5,7 @@ import type { DetailLevel } from './protocol.js';
  * KiDraw canvas tools offered to agents over MCP. Every tool runs in the
  * user's tab; kidraw-agent only relays calls and results. Most read the graph
  * or guide the user's view; apply_changes edits the graph, as one undoable
- * step per call (src/app/drawing-area/agent-change-planner.ts).
+ * step per call (src/app/drawing-area/canvas-change-planner.ts).
  */
 export interface CanvasToolDefinition {
   name: string;
@@ -17,7 +17,7 @@ export interface CanvasToolDefinition {
 
 const NODE_REF = 'A node label (fuzzy-matched) or a node id from get_outline, e.g. "n12".';
 
-/** One entry in an apply_changes batch. Mirrors AgentChange in src/app/agent/agent-canvas.ts. */
+/** One entry in an apply_changes batch. Mirrors CanvasChange in src/app/drawing-area/canvas-port.ts. */
 const CHANGE = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('add_node'),

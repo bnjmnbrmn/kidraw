@@ -309,9 +309,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit() {
     this.agent.onKeyboardOwnerChange(chatHasKeyboard => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
-    this.reading.attach(this.drawingArea.agentCanvas, text => this.headerComponent?.showStatusMessage(text, 4000));
-    // Agent mode reaches the canvas only through the AgentCanvasTarget surface.
-    this.agent.attachCanvas(this.drawingArea.agentCanvas, () => {
+    this.reading.attach(this.drawingArea.canvasPort, text => this.headerComponent?.showStatusMessage(text, 4000));
+    // Agent mode and reading mode reach the canvas only through its CanvasPort.
+    this.agent.attachCanvas(this.drawingArea.canvasPort, () => {
       const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};
       const stable = identity.path !== 'Untitled';
       return {
@@ -426,15 +426,15 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       say('Say what went wrong, e.g. :note step 4 skips why scores become probabilities');
       return true;
     }
-    const nodes = this.drawingArea.agentCanvas.agentNodes();
+    const nodes = this.drawingArea.canvasPort.nodes();
     const label = (id: string | null | undefined) => nodes.find(node => node.id === id)?.label ?? null;
-    const selection = this.drawingArea.agentCanvas.agentSelection();
+    const selection = this.drawingArea.canvasPort.selection();
     const lastReply = [...this.agent.messages()].reverse().find(message => message.role === 'agent')?.text;
     const record = {
       at: new Date().toISOString(),
       note,
       graph: this.headerComponent?.fileIdentity?.path ?? 'Untitled',
-      diagramType: this.drawingArea.agentCanvas.agentDiagramTypeId(),
+      diagramType: this.drawingArea.canvasPort.diagramTypeId(),
       readingStep: this.reading.active() ? this.reading.step() + 1 : null,
       readingStatement: label(this.reading.currentNodeId()),
       selected: selection.nodeIds.map(label),

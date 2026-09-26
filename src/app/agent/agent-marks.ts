@@ -7,7 +7,7 @@
  * All of it points at nodes of one graph, so it all goes when the graph does.
  */
 import type {WritableSignal} from '@angular/core';
-import type {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
+import type {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
 import type {AgentCaption} from './agent-store';
 
 /** How long nodes the agent just changed stay lit. */
@@ -21,14 +21,14 @@ export class AgentMarks {
   private nextCaptionId = 1;
 
   constructor(
-    private readonly canvas: () => AgentCanvasTarget | null,
+    private readonly canvas: () => CanvasPort | null,
     private readonly captions: WritableSignal<AgentCaption[]>,
-    private readonly lookHere: WritableSignal<AgentNodeInfo | null>,
+    private readonly lookHere: WritableSignal<CanvasNode | null>,
   ) {}
 
   /** Move the view onto the node and mark it. Never touches the selection. */
   focus(id: string): void {
-    this.canvas()?.agentFocusNode(id);
+    this.canvas()?.focusNode(id);
     this.focusedId = id;
     this.showHalos();
   }
@@ -39,7 +39,7 @@ export class AgentMarks {
   }
 
   /** A caption beside the node, replacing any it already had. */
-  caption(node: AgentNodeInfo, text: string): void {
+  caption(node: CanvasNode, text: string): void {
     this.captions.update(list => [
       ...list.filter(c => c.nodeId !== node.id),
       {id: this.nextCaptionId++, nodeId: node.id, label: node.label, text},
@@ -50,7 +50,7 @@ export class AgentMarks {
   flash(ids: string[]): void {
     const canvas = this.canvas();
     if (!canvas || ids.length === 0) return;
-    canvas.agentSetHighlights([...new Set([...this.haloIds(), ...ids])]);
+    canvas.setHighlights([...new Set([...this.haloIds(), ...ids])]);
     clearTimeout(this.flashTimer);
     this.flashTimer = setTimeout(() => this.showHalos(), FLASH_MS);
   }
@@ -61,11 +61,11 @@ export class AgentMarks {
     if (this.highlightIds.length === 0 && !this.focusedId) return;
     this.highlightIds = [];
     this.focusedId = null;
-    this.canvas()?.agentSetHighlights([]);
+    this.canvas()?.setHighlights([]);
   }
 
   private showHalos(): void {
-    this.canvas()?.agentSetHighlights(this.haloIds());
+    this.canvas()?.setHighlights(this.haloIds());
   }
 
   private haloIds(): string[] {

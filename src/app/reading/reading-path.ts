@@ -1,4 +1,4 @@
-import type {AgentEdgeInfo, AgentNodeInfo} from '../agent/agent-canvas';
+import type {CanvasEdge, CanvasNode} from '../drawing-area/canvas-port';
 import {
   EXPLANATION_ASSUMPTION_TAG, EXPLANATION_DEFINITION_TAG, EXPLANATION_EXAMPLE_TAG, EXPLANATION_STEP_TAG_PREFIX,
   EXPLANATION_SUPPORTS_TAG,
@@ -22,7 +22,7 @@ const ORDERED_TAGS = [...DEPENDENCY_TAGS, EXPLANATION_EXAMPLE_TAG];
  * `step/N` tag for each step it is read at, so it can be visited again later.
  * With the edges, it also checks that nothing is read before what it builds on.
  */
-export function readingPath(nodes: readonly AgentNodeInfo[], edges: readonly AgentEdgeInfo[] = []): ReadingPath {
+export function readingPath(nodes: readonly CanvasNode[], edges: readonly CanvasEdge[] = []): ReadingPath {
   const visits = nodes
     .flatMap(node => numberedTags(node.tags, EXPLANATION_STEP_TAG_PREFIX).map(step => ({step, id: node.id})))
     .sort((a, b) => a.step - b.step);
@@ -46,21 +46,21 @@ export function readingPath(nodes: readonly AgentNodeInfo[], edges: readonly Age
 }
 
 /** The links into a statement from what it depends on: premises, then assumptions and definitions. */
-export function premiseLinks(nodeId: string, edges: readonly AgentEdgeInfo[]): AgentEdgeInfo[] {
+export function premiseLinks(nodeId: string, edges: readonly CanvasEdge[]): CanvasEdge[] {
   return DEPENDENCY_TAGS.flatMap(tag => edges.filter(edge => edge.to === nodeId && edge.tags.includes(tag)));
 }
 
 /** The nodes linked into a statement by one kind of link (by default, its premises). */
-export function premisesOf(nodeId: string, edges: readonly AgentEdgeInfo[], tag = EXPLANATION_SUPPORTS_TAG): string[] {
+export function premisesOf(nodeId: string, edges: readonly CanvasEdge[], tag = EXPLANATION_SUPPORTS_TAG): string[] {
   return edges.filter(edge => edge.to === nodeId && edge.tags.includes(tag)).map(edge => edge.from);
 }
 
 /** Background links, drawn faint unless emphasized: from definitions and assumptions. */
-export function backgroundLinks(edges: readonly AgentEdgeInfo[]): AgentEdgeInfo[] {
+export function backgroundLinks(edges: readonly CanvasEdge[]): CanvasEdge[] {
   return edges.filter(edge => edge.tags.includes(EXPLANATION_ASSUMPTION_TAG) || edge.tags.includes(EXPLANATION_DEFINITION_TAG));
 }
 
 /** The example nodes a statement links to. */
-export function examplesOf(nodeId: string, edges: readonly AgentEdgeInfo[]): string[] {
+export function examplesOf(nodeId: string, edges: readonly CanvasEdge[]): string[] {
   return edges.filter(edge => edge.from === nodeId && edge.tags.includes(EXPLANATION_EXAMPLE_TAG)).map(edge => edge.to);
 }

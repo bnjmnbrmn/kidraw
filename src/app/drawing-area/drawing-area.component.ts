@@ -95,7 +95,7 @@ import { CenterMenuService } from '../center-menu/center-menu.service';
 import { SelectDrag, SelectDragHost } from './select-drag';
 import { StyleController, StyleHost } from './style-controller';
 import { LayoutController, LayoutHost } from './layout-controller';
-import { AgentCanvasSurface, AgentCanvasHost } from './agent-canvas-surface';
+import { CanvasPortSurface, CanvasPortHost } from './canvas-port-surface';
 import { CrosshairHover, CrosshairsHover, CrosshairsHoverHost } from './crosshairs-hover';
 
 @Component({
@@ -170,8 +170,8 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
    *  (layout-controller.ts). */
   private readonly layout = new LayoutController(this.layoutHost());
   /** What an agent sees of the canvas and may do to it; the shell hands
-   *  this to agent mode and reading mode (agent-canvas-surface.ts). */
-  readonly agentCanvas = new AgentCanvasSurface(this.agentCanvasHost());
+   *  this to agent mode and reading mode (canvas-port-surface.ts). */
+  readonly canvasPort = new CanvasPortSurface(this.canvasPortHost());
   /** What the crosshairs are on (crosshairs-probe.ts). */
   private readonly probe = new CrosshairsProbe(
     () => this.drawingLayer, () => this.crosshairsLayer, this.camera);
@@ -254,7 +254,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
         this.crosshairsLayer?.batchDraw();
       }),
     ];
-    this.agentCanvas.watchUserViewChanges();
+    this.canvasPort.watchUserViewChanges();
     this.crosshairsLayer = new CrosshairsLayer(this.stage, effectivePalette().crosshairsStroke);
     this.stage.add(this.crosshairsLayer);
 
@@ -724,7 +724,7 @@ export class DrawingAreaComponent implements AfterViewInit, OnChanges, OnDestroy
 
   /** Lends the agent's surface what it needs, through getters so the stage
    *  and layer can still be assigned later in ngAfterViewInit. */
-  private agentCanvasHost(): AgentCanvasHost {
+  private canvasPortHost(): CanvasPortHost {
     const da = this;
     return {
       get drawingLayer() { return da.drawingLayer; },

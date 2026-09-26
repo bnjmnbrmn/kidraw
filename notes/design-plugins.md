@@ -52,11 +52,11 @@ Earlier decisions this builds on:
   2026-09-23 — from a section count of the file).
 - Explanation leaks out of its extension: the reading surface in
   `KeymenuComponent`, `reading-mode.service.ts` importing explanation tags,
-  and `set_reading_order` / `arrange` hardcoded into `AgentChange`.
+  and `set_reading_order` / `arrange` hardcoded into `CanvasChange`.
 - The task-status submenu was withdrawn in da-438 (2026-08-29) "until
   plugins exist"; `SET_TASK_STATUS` is still handled by the component.
-- `AgentCanvasTarget` is the one narrow host surface that exists: reads plus
-  `agentApplyChanges`, which applies graph operations as undo groups.
+- `CanvasPort` is the one narrow host surface that exists: reads plus
+  `applyChanges`, which applies graph operations as undo groups.
 
 ## Proposed model (inferred, 2026-09-23 — not yet agreed)
 
@@ -115,7 +115,7 @@ named for their owners. Two things it showed (inferred, 2026-09-23):
 ### The host API is the real design work
 
 If a plugin's handler receives the component, code moves without coupling
-dropping. `AgentCanvasTarget` is the pattern: read the graph, selection and
+dropping. `CanvasPort` is the pattern: read the graph, selection and
 view; change the graph only through operations.
 
 **Rule from day one: plugins change the graph only through operations and

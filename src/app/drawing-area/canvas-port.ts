@@ -1,18 +1,22 @@
 /**
- * What agent mode needs from the drawing area. AgentCanvasSurface
- * (drawing-area/agent-canvas-surface.ts) implements this; the agent tools and
- * caption overlay use only this surface, so the canvas internals stay behind
- * it.
+ * The canvas as seen by everything that is not the keyboard: agent mode
+ * (agent/) and reading mode (reading/). They read the graph, the selection
+ * and the view, point at nodes and highlight things, and change the graph
+ * only through `applyChanges`, which plans graph operations and applies them
+ * as one undo group, the same path undo takes (HistoryController.apply).
+ * Neither sees Konva, and neither runs the keyboard's commands.
  *
- * Most of it reads the graph or guides the view. Agent edits come in through
- * `agentApplyChanges` only, which plans graph operations and applies them
- * through the same path as undo (HistoryController.apply); add no
- * other agent-specific setters.
+ * CanvasPortSurface (canvas-port-surface.ts) implements it. The drawing area
+ * owns this contract; its clients depend on it, never the other way round,
+ * so agent mode can be taken out without the canvas noticing. Add no setters
+ * for one client's convenience: a new need is a new change kind.
+ *
+ * Renamed from AgentCanvasTarget on 2026-09-26, when it had two clients.
  */
 
-/** One change an agent asks for. Node references are ids of existing nodes,
+/** One change a client asks for. Node references are ids of existing nodes,
  *  or the handle of a node added earlier in the same batch. Edges are ids. */
-export type AgentChange =
+export type CanvasChange =
   /** `nodeKind` names one of the diagram type's node kinds (e.g. "definition"); omit for a plain node. */
   | {kind: 'add_node'; text: string; handle?: string; near?: string; tags?: string[]; nodeKind?: string}
   /** `nodeKind: null` makes it a plain node. */
@@ -28,7 +32,7 @@ export type AgentChange =
   /** Lay the whole graph out top-down along its edges, after the rest of the batch. */
   | {kind: 'arrange'};
 
-export interface AgentEditMeta {
+export interface CanvasEditMeta {
   /** e.g. 'agent:codex' */
   author: string;
   /** Short description for undo and status, e.g. "Agent: explain recursion". */
@@ -37,7 +41,7 @@ export interface AgentEditMeta {
   changeSetId: string;
 }
 
-export interface AgentChangeResult {
+export interface CanvasChangeResult {
   ok: boolean;
   /** Why nothing was applied (a bad reference, or a conflict with newer edits). */
   error?: string;
@@ -47,13 +51,13 @@ export interface AgentChangeResult {
 }
 
 
-export interface AgentNodeInfo {
+export interface CanvasNode {
   id: string;
   label: string;
   tags: string[];
 }
 
-export interface AgentEdgeInfo {
+export interface CanvasEdge {
   id: string;
   from: string;
   to: string;
@@ -69,25 +73,25 @@ export interface ClientRect {
   height: number;
 }
 
-export interface AgentCanvasTarget {
-  agentNodes(): AgentNodeInfo[];
-  agentEdges(): AgentEdgeInfo[];
-  agentSelection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null};
+export interface CanvasPort {
+  nodes(): CanvasNode[];
+  edges(): CanvasEdge[];
+  selection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null};
   /** Nodes at least partly inside the usable viewport. */
-  agentVisibleNodeIds(): string[];
-  agentZoomPercent(): number;
+  visibleNodeIds(): string[];
+  zoomPercent(): number;
   /** Select the node and pan the view onto it. False if there is no such node. */
-  agentFocusNode(id: string): boolean;
+  focusNode(id: string): boolean;
   /** Replace the highlight set: node ids get a halo, edge ids are emphasized
    *  (a faint background link drawn at full strength). */
-  agentSetHighlights(ids: string[]): void;
-  agentNodeClientRect(id: string): ClientRect | null;
+  setHighlights(ids: string[]): void;
+  nodeClientRect(id: string): ClientRect | null;
   /** The usable viewport (inside header, keymenu, and panel insets). */
-  agentViewClientRect(): ClientRect;
+  viewClientRect(): ClientRect;
   /** The bound diagram type's id (see the plugin registry). */
-  agentDiagramTypeId(): string;
+  diagramTypeId(): string;
   /** Apply a batch as one undo group, all-or-nothing. */
-  agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult>;
+  applyChanges(changes: CanvasChange[], meta: CanvasEditMeta): Promise<CanvasChangeResult>;
   /** Revert a change set (e.g. an agent turn). Resolves to a conflict message, or null. */
-  agentRevertChangeSet(changeSetId: string): Promise<string | null>;
+  revertChangeSet(changeSetId: string): Promise<string | null>;
 }

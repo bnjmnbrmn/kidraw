@@ -1,8 +1,8 @@
-import {AgentCanvasTarget, AgentNodeInfo} from './agent-canvas';
-import {AgentChange, AgentChangeResult} from './agent-canvas';
+import {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
+import {CanvasChange, CanvasChangeResult} from '../drawing-area/canvas-port';
 import {AgentToolHost, executeAgentTool, resolveChanges, resolveNodeRef} from './agent-tools';
 
-const NODES: AgentNodeInfo[] = [
+const NODES: CanvasNode[] = [
   {id: 'n0', label: 'Next', tags: []},
   {id: 'n1', label: 'Pre-MVP', tags: []},
   {id: 'n2', label: 'Which killer features do I need?', tags: ['status/blocked']},
@@ -36,26 +36,26 @@ describe('resolveNodeRef', () => {
 });
 
 describe('executeAgentTool', () => {
-  let canvas: jasmine.SpyObj<AgentCanvasTarget>;
+  let canvas: jasmine.SpyObj<CanvasPort>;
   let host: AgentToolHost;
   let mode: 'following' | 'free';
-  let lookHere: AgentNodeInfo | null;
-  let captions: {node: AgentNodeInfo; text: string}[];
-  let applied: AgentChange[][];
+  let lookHere: CanvasNode | null;
+  let captions: {node: CanvasNode; text: string}[];
+  let applied: CanvasChange[][];
   let refused: string | null;
-  let applyResult: AgentChangeResult;
+  let applyResult: CanvasChangeResult;
   let defined: string[];
 
   beforeEach(() => {
-    canvas = jasmine.createSpyObj<AgentCanvasTarget>('canvas', [
-      'agentNodes', 'agentEdges', 'agentSelection', 'agentVisibleNodeIds', 'agentZoomPercent',
-      'agentFocusNode', 'agentSetHighlights', 'agentNodeClientRect', 'agentViewClientRect',
-      'agentDiagramTypeId', 'agentApplyChanges', 'agentRevertChangeSet',
+    canvas = jasmine.createSpyObj<CanvasPort>('canvas', [
+      'nodes', 'edges', 'selection', 'visibleNodeIds', 'zoomPercent',
+      'focusNode', 'setHighlights', 'nodeClientRect', 'viewClientRect',
+      'diagramTypeId', 'applyChanges', 'revertChangeSet',
     ]);
-    canvas.agentDiagramTypeId.and.returnValue('explanation');
-    canvas.agentNodes.and.returnValue(NODES);
-    canvas.agentEdges.and.returnValue([{id: 'e1', from: 'n0', to: 'n1', labels: [], tags: []}]);
-    canvas.agentFocusNode.and.returnValue(true);
+    canvas.diagramTypeId.and.returnValue('explanation');
+    canvas.nodes.and.returnValue(NODES);
+    canvas.edges.and.returnValue([{id: 'e1', from: 'n0', to: 'n1', labels: [], tags: []}]);
+    canvas.focusNode.and.returnValue(true);
     mode = 'following';
     lookHere = null;
     captions = [];
@@ -76,10 +76,10 @@ describe('executeAgentTool', () => {
       editsRefused: () => refused,
       canvas,
       followMode: () => mode,
-      focus: node => { canvas.agentFocusNode(node.id); },
+      focus: node => { canvas.focusNode(node.id); },
       showLookHere: node => { lookHere = node; },
       addCaption: (node, text) => captions.push({node, text}),
-      setHighlights: nodes => canvas.agentSetHighlights(nodes.map(n => n.id)),
+      setHighlights: nodes => canvas.setHighlights(nodes.map(n => n.id)),
       clearAnnotations: () => { captions = []; },
     };
   });
@@ -109,14 +109,14 @@ describe('executeAgentTool', () => {
 
   it('moves the view when following', () => {
     const result = executeAgentTool('focus', {node: 'Pre-MVP'}, host) as {viewMoved: boolean};
-    expect(canvas.agentFocusNode).toHaveBeenCalledWith('n1');
+    expect(canvas.focusNode).toHaveBeenCalledWith('n1');
     expect(result.viewMoved).toBeTrue();
   });
 
   it('shows a look-here hint instead of moving when the user leads', () => {
     mode = 'free';
     const result = executeAgentTool('focus', {node: 'n2'}, host) as {viewMoved: boolean};
-    expect(canvas.agentFocusNode).not.toHaveBeenCalled();
+    expect(canvas.focusNode).not.toHaveBeenCalled();
     expect(lookHere?.id).toBe('n2');
     expect(result.viewMoved).toBeFalse();
   });
@@ -129,7 +129,7 @@ describe('executeAgentTool', () => {
 
   it('highlights what it can resolve and reports the rest', () => {
     const result = executeAgentTool('highlight', {nodes: ['Next', 'zebra']}, host) as {notFound?: string[]};
-    expect(canvas.agentSetHighlights).toHaveBeenCalledWith(['n0']);
+    expect(canvas.setHighlights).toHaveBeenCalledWith(['n0']);
     expect(result.notFound?.length).toBe(1);
   });
 

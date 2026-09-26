@@ -1,15 +1,14 @@
 /**
- * What an agent sees of the canvas and may do to it (`AgentCanvasTarget`,
- * notes/idea-mcp-server.md): read the graph, the selection and the view;
- * point at a node and highlight things, never moving the user's selection;
- * and change the graph through operations, one undo group per batch —
- * never through the keyboard's commands. Reading mode (reading/) steps
- * through an explanation on the same surface.
+ * The drawing area's side of `CanvasPort` (canvas-port.ts): what agent mode
+ * and reading mode see of the canvas and may do to it. Read the graph, the
+ * selection and the view; point at a node and highlight things, never moving
+ * the user's selection; and change the graph through operations, one undo
+ * group per batch, never through the keyboard's commands.
  */
 import type Konva from 'konva';
 import type {
-  AgentCanvasTarget, AgentChange, AgentChangeResult, AgentEdgeInfo, AgentEditMeta, AgentNodeInfo, ClientRect,
-} from '../agent/agent-canvas';
+  CanvasPort, CanvasChange, CanvasChangeResult, CanvasEdge, CanvasEditMeta, CanvasNode, ClientRect,
+} from '../drawing-area/canvas-port';
 import type { DANode } from './da-node';
 import type { DrawingLayer } from './drawing.layer';
 import type { GraphOperation, UndoGroup } from './graph-operations';
@@ -18,8 +17,8 @@ import { layeredLayout } from './layered-layout';
 import type { Point } from './utils';
 import type { Viewport } from './viewport';
 
-/** What the agent's surface needs from the drawing area. */
-export interface AgentCanvasHost {
+/** What the port needs from the drawing area. */
+export interface CanvasPortHost {
   readonly drawingLayer: DrawingLayer;
   readonly viewport: Viewport;
   readonly stage: Konva.Stage;
@@ -33,27 +32,27 @@ export interface AgentCanvasHost {
   /** Apply an undo group all-or-nothing; a conflict message, or null. */
   applyOperations(group: UndoGroup): Promise<string | null>;
   revertChangeSet(changeSetId: string): Promise<string | null>;
-  /** The user, not the agent, panned or zoomed. */
+  /** The user, not a client of the port, panned or zoomed. */
   viewChangedByUser(): void;
 }
 
-export class AgentCanvasSurface implements AgentCanvasTarget {
-  /** Until this time (performance.now()), view changes are the agent's own focus animation. */
-  private agentViewMoveUntil = 0;
+export class CanvasPortSurface implements CanvasPort {
+  /** Until this time (performance.now()), view changes are the port's own focus animation. */
+  private portViewMoveUntil = 0;
   private lastUserViewChangeEmit = 0;
 
-  constructor(private readonly host: AgentCanvasHost) {}
+  constructor(private readonly host: CanvasPortHost) {}
 
   // Read-only inspection plus view guidance. Nothing here mutates the graph
-  // or touches the undo stack, until agentApplyChanges.
+  // or touches the undo stack, until applyChanges.
 
-  agentNodes(): AgentNodeInfo[] {
+  nodes(): CanvasNode[] {
     return this.host.drawingLayer.getDANodes().map(node => ({
       id: node.id, label: node.label.text(), tags: [...node.tags],
     }));
   }
 
-  agentEdges(): AgentEdgeInfo[] {
+  edges(): CanvasEdge[] {
     return this.host.drawingLayer.getDAEdges().map(edge => ({
       id: edge.id,
       from: edge.srcNode.id,
@@ -63,7 +62,7 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     }));
   }
 
-  agentSelection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null} {
+  selection(): {nodeIds: string[]; edgeIds: string[]; underCrosshairsId: string | null} {
     const layer = this.host.drawingLayer;
     return {
       nodeIds: layer.getSelectedDANodes().map(n => n.id),
@@ -72,11 +71,11 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     };
   }
 
-  agentZoomPercent(): number {
+  zoomPercent(): number {
     return Math.round(this.host.drawingLayer.scaleX() * 100);
   }
 
-  agentVisibleNodeIds(): string[] {
+  visibleNodeIds(): string[] {
     const layer = this.host.drawingLayer;
     const scale = layer.scaleX();
     const {minX, maxX, minY, maxY} = this.host.viewport;
@@ -97,7 +96,7 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     this.host.drawingLayer.on('xChange.agentView yChange.agentView scaleXChange.agentView', () => {
       const now = performance.now();
       // A tween changes the view every frame; one notification per burst is plenty.
-      if (now < this.agentViewMoveUntil || now - this.lastUserViewChangeEmit < 250) return;
+      if (now < this.portViewMoveUntil || now - this.lastUserViewChangeEmit < 250) return;
       this.lastUserViewChangeEmit = now;
       this.host.viewChangedByUser();
     });
@@ -105,31 +104,31 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
 
   /** Pan the view onto the node. The agent only points: it never changes the
    *  user's selection, so nothing the user is doing gets redirected. */
-  agentFocusNode(id: string): boolean {
+  focusNode(id: string): boolean {
     const node = this.host.drawingLayer.getDANodes().find(n => n.id === id);
     if (!node) return false;
-    this.agentViewMoveUntil = performance.now() + this.host.recenterDuration * 1000 + 150;
+    this.portViewMoveUntil = performance.now() + this.host.recenterDuration * 1000 + 150;
     this.host.finishTweens();
     this.host.centerViewOnLayerPoint(this.host.nodeCenter(node));
     this.host.drawingLayer.batchDraw();
     return true;
   }
 
-  agentDiagramTypeId(): string {
+  diagramTypeId(): string {
     return this.host.drawingLayer.diagramType;
   }
 
-  async agentApplyChanges(changes: AgentChange[], meta: AgentEditMeta): Promise<AgentChangeResult> {
-    const planner = await import('./agent-change-planner');
-    return planner.applyAgentChanges(
+  async applyChanges(changes: CanvasChange[], meta: CanvasEditMeta): Promise<CanvasChangeResult> {
+    const planner = await import('./canvas-change-planner');
+    return planner.applyCanvasChanges(
       this.host.drawingLayer.serializeGraph(), changes, meta, nextId, group => this.host.applyOperations(group),
-      () => this.agentArrange(meta));
+      () => this.arrange(meta));
   }
 
   /** The agent's "arrange": lay the graph out top-down along its links
    *  (layered-layout.ts), as moves in the agent's change set, so undoing its
    *  turn puts the nodes back. Pinned nodes stay where they are. */
-  private async agentArrange(meta: AgentEditMeta): Promise<string | null> {
+  private async arrange(meta: CanvasEditMeta): Promise<string | null> {
     const layer = this.host.drawingLayer;
     const nodes = layer.getDANodes();
     const edges = layer.getDAEdges();
@@ -155,11 +154,11 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     return conflict;
   }
 
-  agentRevertChangeSet(changeSetId: string): Promise<string | null> {
+  revertChangeSet(changeSetId: string): Promise<string | null> {
     return this.host.revertChangeSet(changeSetId);
   }
 
-  agentSetHighlights(ids: string[]): void {
+  setHighlights(ids: string[]): void {
     const layer = this.host.drawingLayer;
     const wanted = new Set(ids);
     for (const node of layer.getDANodes()) {
@@ -169,7 +168,7 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     layer.batchDraw();
   }
 
-  agentNodeClientRect(id: string): ClientRect | null {
+  nodeClientRect(id: string): ClientRect | null {
     const layer = this.host.drawingLayer;
     const node = layer.getDANodes().find(n => n.id === id);
     if (!node) return null;
@@ -183,7 +182,7 @@ export class AgentCanvasSurface implements AgentCanvasTarget {
     };
   }
 
-  agentViewClientRect(): ClientRect {
+  viewClientRect(): ClientRect {
     const viewport = this.host.viewport;
     const container = this.host.stage.container().getBoundingClientRect();
     return {
