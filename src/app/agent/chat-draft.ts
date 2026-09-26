@@ -149,3 +149,39 @@ function lineRanges(text: string): LineRange[] {
   }
   return ranges;
 }
+
+/** One run of the draft as the chat box draws it. */
+export interface DraftPiece {
+  text: string;
+  /** The insert-mode caret: a bar before the next piece. */
+  caret?: boolean;
+  /** The vim-mode caret: a block on this piece. */
+  block?: boolean;
+  /** Inside a visual selection. */
+  selected?: boolean;
+}
+
+/** The draft split for drawing: text, the caret (a bar while inserting, a
+ *  block on a character in vim modes) and any visual selection. */
+export function draftPieces(draft: ChatDraft): DraftPiece[] {
+  const {text, cursor, mode} = draft.state();
+  if (mode === 'insert') {
+    return [{text: text.slice(0, cursor)}, {text: '', caret: true}, {text: text.slice(cursor)}];
+  }
+  if (text.length === 0) return [{text: ' ', block: true}];
+  const at = Math.min(cursor, text.length - 1);
+  const selection = draft.selection();
+  const cuts = [...new Set([0, at, at + 1, text.length, ...(selection ? [selection.start, selection.end] : [])])]
+    .sort((a, b) => a - b);
+  return cuts.slice(0, -1).map((start, i) => {
+    const end = cuts[i + 1];
+    const piece = text.slice(start, end);
+    const block = start === at;
+    return {
+      // A block on a line break still needs something to cover.
+      text: block && piece === '\n' ? ' \n' : piece,
+      block,
+      selected: selection !== null && start >= selection.start && end <= selection.end,
+    };
+  });
+}

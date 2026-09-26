@@ -115,3 +115,17 @@ function write(key: string, value: unknown): void {
     // Quota or disabled storage: settings just won't persist.
   }
 }
+
+/** An absolute ws:// or wss:// address (http(s) is converted), or null. A
+ *  relative string would otherwise resolve against this page's own server
+ *  and hang instead of failing. */
+export function endpointUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'https:') url.protocol = 'wss:';
+    else if (url.protocol === 'http:') url.protocol = 'ws:';
+    return url.protocol === 'wss:' || url.protocol === 'ws:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}

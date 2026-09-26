@@ -1,5 +1,5 @@
 import {DACommand, DACommandType} from '../drawing-area/command.model';
-import {ChatDraft} from './chat-draft';
+import {ChatDraft, draftPieces} from './chat-draft';
 
 describe('ChatDraft', () => {
   let draft: ChatDraft;
@@ -76,5 +76,21 @@ describe('ChatDraft', () => {
     draft.clear();
     expect(draft.state()).toEqual({text: '', cursor: 0, mode: 'vimNormal', anchor: null});
     expect(draft.apply({kind: DACommandType.UNSELECT_ALL} as DACommand)).toBeFalse();
+  });
+
+  describe('draftPieces', () => {
+    it('puts a bar caret between characters while inserting', () => {
+      draft.set('abc');
+      run({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'insert'}, {kind: DACommandType.CURSOR_LEFT});
+      expect(draftPieces(draft)).toEqual([{text: 'ab'}, {text: '', caret: true}, {text: 'c'}]);
+    });
+
+    it('puts a block on the character in vim normal, and a blank block on an empty draft', () => {
+      draft.set('ab');
+      run({kind: DACommandType.SET_TEXT_CURSOR_MODE, mode: 'vimNormal'});
+      expect(draftPieces(draft).find(piece => piece.block)?.text).toBe('b');
+      draft.clear();
+      expect(draftPieces(draft)).toEqual([{text: ' ', block: true}]);
+    });
   });
 });
