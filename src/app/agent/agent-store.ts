@@ -1,6 +1,8 @@
 import {computed, inject, Injectable, Injector, signal} from '@angular/core';
 import type {CanvasPort, CanvasNode} from '../drawing-area/canvas-port';
-import type {AgentOption, CanvasRef, DetailLevel} from './agent-protocol';
+import {DACommandType} from '../drawing-area/command.model';
+import {PluginSettingsService} from '../plugins/plugin-settings.service';
+import {AgentOption, CanvasRef, DETAIL_LEVELS, DetailLevel} from './agent-protocol';
 import {AgentEndpointSettings, AgentSettingsService} from './agent-settings.service';
 import type {AgentService} from './agent.service';
 import {ChatDraft} from './chat-draft';
@@ -37,6 +39,24 @@ export interface GraphIdentity {
   stable: boolean;
 }
 
+/** Where the open graph lives, as the header knows it. */
+export interface GraphFile {
+  vaultName: string | null;
+  path: string;
+}
+
+/** How consent recognizes a graph: by vault and path; each Untitled graph
+ *  loaded into the tab is a graph of its own (`untitledRevision`), so sharing
+ *  one never shares the next. */
+export function graphIdentity(file: GraphFile, untitledRevision: number): GraphIdentity {
+  const stable = file.path !== 'Untitled';
+  return {
+    key: stable ? `${file.vaultName ?? 'local'}:${file.path}` : `local:Untitled#${untitledRevision}`,
+    title: file.path,
+    stable,
+  };
+}
+
 /** Key labels for hints, set by the shell from the active key profile. */
 export interface AgentKeyLabels {
   chat: string;
@@ -57,6 +77,7 @@ const AGENT_PROVIDERS: Record<string, string> = {codex: 'Codex (OpenAI)'};
 @Injectable({providedIn: 'root'})
 export class AgentStore {
   private readonly settings = inject(AgentSettingsService);
+  private readonly plugins = inject(PluginSettingsService);
   private readonly injector = inject(Injector);
 
   readonly state = signal<AgentState>('off');
@@ -130,6 +151,40 @@ export class AgentStore {
     this.attachment = {canvas, graph, userIsEditing};
     if (this.service) this.service.attachCanvas(canvas, graph, userIsEditing);
     else if (hasStoredSession()) void this.load();
+  }
+
+  /** The chat's keys (the AI Chat plugin's commands). False for any other command. */
+  runCommand(kind: DACommandType): boolean {
+    const run = {
+      [DACommandType.OPEN_AGENT_CHAT]: () => this.openPanel(),
+      [DACommandType.CLOSE_AGENT_CHAT]: () => this.closePanel(),
+      [DACommandType.ASK_AGENT_ABOUT_SELECTION]: () => this.askAboutSelection(),
+      [DACommandType.FOLLOW_AGENT]: () => this.follow(),
+    }[kind as string];
+    if (!run) return false;
+    if (this.plugins.isEnabled('agent-chat')) run();
+    else this.say('AI Chat is turned off in Settings');
+    return true;
+  }
+
+  /** `:detail`, and `:detail <level>`: what it says back. */
+  detailCommand(arg: string): string {
+    const levels = DETAIL_LEVELS.join(', ');
+    if (arg === '') return `Detail: ${this.detailLevel()}. :detail ${levels.replace(/, (?=[^,]*$)/, ' or ')} changes it.`;
+    if (!(DETAIL_LEVELS as readonly string[]).includes(arg)) return `Not a detail level: ${arg}. Choose ${levels}.`;
+    this.setDetailLevel(arg as DetailLevel);
+    return `Detail: ${arg}. The agent hears about it with your next message.`;
+  }
+
+  /** Hints name the agent keys of the active key profile; the Shift chords
+   *  are fixed (notes/architecture-key-profiles.md). */
+  useKeys(keys: {chat: string; askAboutSelection: string; follow: string}): void {
+    this.keyLabels.set({
+      chat: keys.chat,
+      ask: keys.askAboutSelection,
+      follow: `Shift+${keys.follow.toUpperCase()}`,
+      close: `Shift+${keys.chat.toUpperCase()}`,
+    });
   }
 
   /** The shell's hook for suspending the keymenu while the chat has the keyboard. */

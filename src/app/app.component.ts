@@ -15,8 +15,7 @@ import {ThemeService} from './services/theme.service';
 import {VisualConfigService} from './services/visual-config.service';
 import {CompactMenuSide} from './services/visual-config.model';
 import {KeymenuKeyAssignments, IJKL_KEYMENU_KEY_ASSIGNMENTS, VIM_KEYMENU_KEY_ASSIGNMENTS} from './keymenu/config/key-assignments';
-import {AGENT_PANEL_WIDTH, AgentStore} from './agent/agent-store';
-import {DETAIL_LEVELS, DetailLevel} from './agent/agent-protocol';
+import {AGENT_PANEL_WIDTH, AgentStore, graphIdentity} from './agent/agent-store';
 
 /** Problems noted with :note, kept in this browser as well as the debug log. */
 const NOTES_KEY = 'kidraw_notes_v1';
@@ -26,12 +25,6 @@ import {describePluginChange, PluginSettingsService} from './plugins/plugin-sett
 import {PluginLibraryService} from './plugins/plugin-library.service';
 import {AgentPanelComponent} from './agent/agent-panel.component';
 import {AgentOverlayComponent} from './agent/agent-overlay.component';
-
-/** The commands the AI Chat plugin brings. */
-function isAgentCommand(kind: DACommandType): boolean {
-  return kind === DACommandType.OPEN_AGENT_CHAT || kind === DACommandType.CLOSE_AGENT_CHAT
-    || kind === DACommandType.ASK_AGENT_ABOUT_SELECTION || kind === DACommandType.FOLLOW_AGENT;
-}
 
 /** How the keymenu presents itself: the classic keyboard overlay, the
  *  compact file-picker-style tree (da-200), or nothing. The toggle key
@@ -258,17 +251,6 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     if (notice && this.headerComponent) this.headerComponent.showStatusMessage(notice.text, 3500);
   });
 
-  /** Hints name the agent keys of the active profile; the Shift chords are fixed (architecture-key-profiles). */
-  private updateAgentKeyLabels(): void {
-    const keys = this.keyAssignments.agent;
-    this.agent.keyLabels.set({
-      chat: keys.chat,
-      ask: keys.askAboutSelection,
-      follow: `Shift+${keys.follow.toUpperCase()}`,
-      close: `Shift+${keys.chat.toUpperCase()}`,
-    });
-  }
-
   /** The user is in the middle of something (typing, a popup, a non-normal
    *  mode): the agent points with a hint instead of moving the view. */
   private userIsEditing(): boolean {
@@ -286,10 +268,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   commandsSubject: Subject<DACommand> = new Subject<DACommand>();
 
   ngOnInit() {
-    this.updateAgentKeyLabels();
+    this.agent.useKeys(this.keyAssignments.agent);
     this.configSub = this.keyboardConfig.configChanged$.subscribe(() => {
       this.keyAssignments = this.profileToAssignments(this.keyboardConfig.keyProfile);
-      this.updateAgentKeyLabels();
+      this.agent.useKeys(this.keyAssignments.agent);
     });
     // Mirror the compact-menu settings into fields: the drawing area's
     // viewport inset is derived from them, so a Settings change has to
@@ -311,15 +293,9 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
     this.agent.onKeyboardOwnerChange(chatHasKeyboard => this.syncKeymenuToAgentKeyboard(chatHasKeyboard));
     this.reading.attach(this.drawingArea.canvasPort, text => this.headerComponent?.showStatusMessage(text, 4000));
     // Agent mode and reading mode reach the canvas only through its CanvasPort.
-    this.agent.attachCanvas(this.drawingArea.canvasPort, () => {
-      const identity = this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'};
-      const stable = identity.path !== 'Untitled';
-      return {
-        key: stable ? `${identity.vaultName ?? 'local'}:${identity.path}` : `local:Untitled#${this.untitledGraphRevision}`,
-        title: identity.path,
-        stable,
-      };
-    }, () => this.userIsEditing());
+    this.agent.attachCanvas(this.drawingArea.canvasPort,
+      () => graphIdentity(this.headerComponent?.fileIdentity ?? {vaultName: null, path: 'Untitled'}, this.untitledGraphRevision),
+      () => this.userIsEditing());
   }
 
   private profileToAssignments(profile: string): KeymenuKeyAssignments {
@@ -345,26 +321,10 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
       this.openExLine();
       return;
     }
-    if (isAgentCommand(kmCommand.kind) && !this.pluginSettings.isEnabled('agent-chat')) {
-      this.headerComponent?.showStatusMessage('AI Chat is turned off in Settings', 4000);
+    if (this.agent.runCommand(kmCommand.kind)) return;
+    if (kmCommand.kind === DACommandType.ENTER_READING_MODE) {
+      this.enterReadingMode();
       return;
-    }
-    switch (kmCommand.kind) {
-      case DACommandType.OPEN_AGENT_CHAT:
-        this.agent.openPanel();
-        return;
-      case DACommandType.CLOSE_AGENT_CHAT:
-        this.agent.closePanel();
-        return;
-      case DACommandType.ASK_AGENT_ABOUT_SELECTION:
-        this.agent.askAboutSelection();
-        return;
-      case DACommandType.FOLLOW_AGENT:
-        this.agent.follow();
-        return;
-      case DACommandType.ENTER_READING_MODE:
-        this.enterReadingMode();
-        return;
     }
     const replacesGraph = kmCommand.kind === DACommandType.NEW_GRAPH
       || kmCommand.kind === DACommandType.LOAD_SAMPLE_GRAPH
@@ -457,16 +417,7 @@ export class AppComponent implements OnInit, AfterViewInit, OnDestroy {
   private runDetailCommand(text: string): boolean {
     const [name, arg = ''] = text.trim().split(/\s+/);
     if (name !== 'detail') return false;
-    const say = (message: string) => this.headerComponent?.showStatusMessage(message, 4000);
-    const levels = DETAIL_LEVELS.join(', ');
-    if (arg === '') {
-      say(`Detail: ${this.agent.detailLevel()}. :detail ${levels.replace(/, (?=[^,]*$)/, ' or ')} changes it.`);
-    } else if ((DETAIL_LEVELS as readonly string[]).includes(arg)) {
-      this.agent.setDetailLevel(arg as DetailLevel);
-      say(`Detail: ${arg}. The agent hears about it with your next message.`);
-    } else {
-      say(`Not a detail level: ${arg}. Choose ${levels}.`);
-    }
+    this.headerComponent?.showStatusMessage(this.agent.detailCommand(arg), 4000);
     return true;
   }
 
