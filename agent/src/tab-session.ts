@@ -9,21 +9,13 @@ import { tokensMatch, type AgentServerConfig } from './config.js';
 import type { McpBridge, McpEndpoint } from './mcp-bridge.js';
 import { decidePermission } from './permissions.js';
 import { AgentControls } from './agent-controls.js';
-import {
-  DETAIL_LEVELS, type CanvasRef, type DetailLevel, type OptionChoice, type PromptMessage, type ServerToTab,
-  type TabToServer,
-} from './protocol.js';
+import { type OptionChoice, type PromptMessage, type ServerToTab, type TabToServer } from './protocol.js';
+import { PromptText } from './prompt-text.js';
+import { PendingToolCalls } from './tool-calls.js';
 import { Transcript } from './transcript.js';
 import { startAgent, type StartedAgent } from './runners.js';
-import { DETAIL_GUIDANCE, SESSION_PREAMBLE, SOURCE_GUIDANCE } from './tools.js';
 
 type Log = (message: string) => void;
-
-interface PendingToolCall {
-  resolve(result: unknown): void;
-  reject(err: Error): void;
-  timer: NodeJS.Timeout;
-}
 
 /**
  * One agent session for one KiDraw tab.
@@ -48,9 +40,6 @@ export class TabSession {
   private context: acp.ClientContext | null = null;
   private session: acp.ActiveSession | null = null;
   private busy = false;
-  private firstPrompt = true;
-  /** The detail level the agent was last told about. */
-  private lastDetail: DetailLevel | null = null;
   /** What this session would have to say again if its tab came back. */
   private readonly transcript = new Transcript();
   /** The model picker and the sign-in flow (agent-controls.ts). */
@@ -61,7 +50,10 @@ export class TabSession {
     isBusy: () => this.busy,
     saveLogin: () => this.agent?.saveLogin(),
   });
-  private readonly pending = new Map<string, PendingToolCall>();
+  /** Canvas tool calls waiting on the tab (tool-calls.ts). */
+  private readonly toolCalls: PendingToolCalls;
+  /** What goes with each message (prompt-text.ts). */
+  private readonly promptText: PromptText;
   /** Agent tool-call titles by id: updates often omit the title. */
   private readonly toolTitles = new Map<string, string>();
   private releaseConnection: () => void = () => {};
@@ -71,7 +63,10 @@ export class TabSession {
     private readonly bridge: McpBridge,
     private readonly log: Log,
     private readonly onClosed: (session: TabSession) => void,
-  ) {}
+  ) {
+    this.toolCalls = new PendingToolCalls(config.toolTimeoutMs);
+    this.promptText = new PromptText(Boolean(config.sourceDir));
+  }
 
   /** Only a running session can be picked up by another socket. */
   get resumable(): boolean {
@@ -106,7 +101,7 @@ export class TabSession {
     this.ws = ws;
     if (previous && previous !== ws) {
       // Tool calls sent to the old socket will never be answered.
-      this.rejectPending('KiDraw tab reconnected');
+      this.toolCalls.rejectAll('KiDraw tab reconnected');
       previous.close(4001, 'Session continued in another connection');
     }
     ws.on('message', data => {
@@ -121,7 +116,7 @@ export class TabSession {
 
   private detach(): void {
     this.ws = null;
-    this.rejectPending('KiDraw tab disconnected');
+    this.toolCalls.rejectAll('KiDraw tab disconnected');
     if (this.state === 'closed') return;
     if (this.state !== 'ready') {
       this.close();
@@ -193,7 +188,7 @@ export class TabSession {
         void this.cancel();
         break;
       case 'tool_result':
-        this.settleToolCall(message.callId, message.ok, message.result, message.error);
+        this.toolCalls.settle(message.callId, message.ok, message.result, message.error);
         break;
       case 'set_option':
         if (this.ready()) void this.controls.set(message.id, message.value);
@@ -288,7 +283,7 @@ export class TabSession {
     this.transcript.push(refs.length > 0 ? { role: 'user', text: message.text, refs } : { role: 'user', text: message.text });
     const session = this.session;
     try {
-      const text = this.buildPromptText(message.text, refs, message.detail);
+      const text = this.promptText.compose(message.text, refs, message.detail);
       // A failed prompt never produces a `stop` update, so race the update
       // stream against the prompt's own rejection; otherwise the turn hangs.
       const failed = session.prompt(text).then(
@@ -309,25 +304,6 @@ export class TabSession {
     } finally {
       this.busy = false;
     }
-  }
-
-  private buildPromptText(text: string, refs: CanvasRef[], detail: unknown): string {
-    const parts: string[] = [];
-    if (this.firstPrompt) {
-      parts.push(SESSION_PREAMBLE, '');
-      if (this.config.sourceDir) parts.push(SOURCE_GUIDANCE, '');
-      this.firstPrompt = false;
-    }
-    // Only when it changes: the agent follows the most recent one.
-    if (DETAIL_LEVELS.includes(detail as DetailLevel) && detail !== this.lastDetail) {
-      this.lastDetail = detail as DetailLevel;
-      parts.push(DETAIL_GUIDANCE[this.lastDetail], '');
-    }
-    if (refs.length > 0) {
-      parts.push('The user is pointing at: ' + refs.map(r => `[[ref:${r.id}|${r.label}]] (${r.kind})`).join(', '), '');
-    }
-    parts.push(text);
-    return parts.join('\n');
   }
 
   private relayUpdate(update: acp.SessionNotification['update']): void {
@@ -375,39 +351,14 @@ export class TabSession {
 
   private invokeTool(name: string, args: Record<string, unknown>): Promise<unknown> {
     if (this.state !== 'ready' || !this.ws) return Promise.reject(new Error('KiDraw tab is not connected'));
-    const callId = randomUUID();
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(callId);
-        reject(new Error(`KiDraw did not answer "${name}" in time`));
-      }, this.config.toolTimeoutMs);
-      this.pending.set(callId, { resolve, reject, timer });
-      this.send({ type: 'tool_call', callId, name, args });
-    });
-  }
-
-  private settleToolCall(callId: string, ok: boolean, result: unknown, error: string | undefined): void {
-    const call = this.pending.get(callId);
-    if (!call) return;
-    this.pending.delete(callId);
-    clearTimeout(call.timer);
-    if (ok) call.resolve(result);
-    else call.reject(new Error(error ?? 'Tool failed in KiDraw'));
-  }
-
-  private rejectPending(reason: string): void {
-    for (const call of this.pending.values()) {
-      clearTimeout(call.timer);
-      call.reject(new Error(reason));
-    }
-    this.pending.clear();
+    return this.toolCalls.call(name, args, message => this.send(message));
   }
 
   close(): void {
     if (this.state === 'closed') return;
     this.state = 'closed';
     if (this.graceTimer) clearTimeout(this.graceTimer);
-    this.rejectPending('KiDraw session ended');
+    this.toolCalls.rejectAll('KiDraw session ended');
     this.controls.cancelSignIn();
     this.releaseConnection();
     this.agent?.stop();

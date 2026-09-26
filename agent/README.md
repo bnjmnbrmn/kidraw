@@ -60,6 +60,8 @@ own rejection — otherwise the turn would hang forever.
 | `server.ts` | WebSocket server; origin, token and protocol checks; new vs resumed sessions; the session cap |
 | `tab-session.ts` | One session: socket lifecycle and resume, the ACP connection, the prompt turn, the tool bridge |
 | `transcript.ts` | What a session would have to say again if its tab came back |
+| `prompt-text.ts` | What goes with each message: the preamble, the detail level when it changes, what the user points at |
+| `tool-calls.ts` | Canvas tool calls waiting on the tab, with their timeouts |
 | `agent-controls.ts` | The model picker and the device-code sign-in, both over stock ACP |
 | `mcp-bridge.ts` | Per-session MCP endpoints; routes a tool call to exactly one tab |
 | `tools.ts` | The canvas tool schemas and the prompt preamble — the agent's whole view of KiDraw |
